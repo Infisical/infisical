@@ -6,6 +6,7 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
+import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import {
   TAuth0ClientSecretRotation,
   TAuth0ClientSecretRotationGeneratedCredentials,
@@ -253,7 +254,8 @@ export type TRotationFactory<
   secretRotation: T,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   issueCredentials: TRotationFactoryIssueCredentials<C, P>;
   revokeCredentials: TRotationFactoryRevokeCredentials<C>;

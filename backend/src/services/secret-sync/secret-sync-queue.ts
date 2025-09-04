@@ -5,6 +5,7 @@ import { Job } from "bullmq";
 import { ProjectMembershipRole, SecretType } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -98,6 +99,7 @@ type TSecretSyncQueueFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 };
 
 type SecretSyncActionJob = Job<
@@ -141,7 +143,8 @@ export const secretSyncQueueFactory = ({
   resourceMetadataDAL,
   folderCommitService,
   licenseService,
-  gatewayService
+  gatewayService,
+  gatewayV2Service
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -357,7 +360,8 @@ export const secretSyncQueueFactory = ({
     const importedSecrets = await SecretSyncFns.getSecrets(secretSync, {
       appConnectionDAL,
       kmsService,
-      gatewayService
+      gatewayService,
+      gatewayV2Service
     });
 
     if (!Object.keys(importedSecrets).length) return {};
@@ -486,7 +490,8 @@ export const secretSyncQueueFactory = ({
       await SecretSyncFns.syncSecrets(secretSyncWithCredentials, secretMap, {
         appConnectionDAL,
         kmsService,
-        gatewayService
+        gatewayService,
+        gatewayV2Service
       });
 
       isSynced = true;
@@ -736,7 +741,8 @@ export const secretSyncQueueFactory = ({
         {
           appConnectionDAL,
           kmsService,
-          gatewayService
+          gatewayService,
+          gatewayV2Service
         }
       );
 

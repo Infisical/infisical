@@ -52,6 +52,9 @@ export const constructPemChainFromCerts = (certificates: x509.X509Certificate[])
     .join("\n")
     .trim();
 
+export const prependCertToPemChain = (cert: x509.X509Certificate, pemChain: string) =>
+  `${cert.toString("pem")}\n${pemChain}`;
+
 export const splitPemChain = (pemText: string) => {
   const re2Pattern = new RE2("-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----", "g");
 

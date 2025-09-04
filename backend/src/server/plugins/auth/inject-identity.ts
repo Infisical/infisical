@@ -121,6 +121,11 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
       return;
     }
 
+    // Authentication is handled on a route-level
+    if (req.url === "/api/v1/proxies/register-instance-proxy") {
+      return;
+    }
+
     const { authMode, token, actor } = await extractAuth(req, appCfg.AUTH_SECRET);
 
     if (!authMode) return;

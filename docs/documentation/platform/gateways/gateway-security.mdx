@@ -6,86 +6,124 @@ description: "Understand the security model and tenant isolation of Infisical's 
 
 # Gateway Security Architecture
 
-The Infisical Gateway enables Infisical Cloud to securely interact with private resources using mutual TLS authentication and private PKI (Public Key Infrastructure) system to ensure secure, isolated communication between multiple tenants. 
+The Infisical Gateway enables secure access to private resources using SSH reverse tunnels, certificate-based authentication, and a comprehensive PKI (Public Key Infrastructure) system. The architecture provides end-to-end encryption and complete tenant isolation through multiple certificate authorities.
 This document explains the internal security architecture and how tenant isolation is maintained.
 
 ## Security Model Overview
 
-### Private PKI System
-Each organization (tenant) in Infisical has its own private PKI system consisting of:
+### Certificate Architecture
 
-1. **Root CA**: The ultimate trust anchor for the organization
-2. **Intermediate CAs**:
-   - Client CA: Issues certificates for cloud components
-   - Gateway CA: Issues certificates for gateway instances
+The gateway system uses multiple certificate authorities depending on deployment configuration:
 
-This hierarchical structure ensures complete isolation between organizations as each has its own independent certificate chain.
+**For Organizations Using Infisical-Managed Proxies:**
+
+- **Instance proxy SSH Client CA & Server CA** - Gateway ↔ Infisical Proxy Server authentication
+- **Instance proxy PKI Client CA & Server CA** - Platform ↔ Infisical Proxy Server authentication
+- **Organization Gateway Client CA & Server CA** - Platform ↔ Gateway authentication
+
+**For Organizations Using Customer-Deployed Proxies:**
+
+- **Organization proxy SSH Client CA & Server CA** - Gateway ↔ Customer Proxy Server authentication
+- **Organization proxy PKI Client CA & Server CA** - Platform ↔ Customer Proxy Server authentication
+- **Organization Gateway Client CA & Server CA** - Platform ↔ Gateway authentication
 
 ### Certificate Hierarchy
+
 ```
-Root CA (Organization Specific)
-├── Client CA
-│   └── Client Certificates (Cloud Components)
-└── Gateway CA
-    └── Gateway Certificates (Gateway Instances)
+Instance Level (Shared Proxies):
+├── Instance Proxy SSH CA (Gateway ↔ Proxy)
+├── Instance Proxy PKI CA (Platform ↔ Proxy)
+
+Organization Level:
+├── Organization Proxy SSH CA (Gateway ↔ Org Proxy)
+├── Organization Proxy PKI CA (Platform ↔ Org Proxy)
+└── Organization Gateway CA (Platform ↔ Gateway)
 ```
 
 ## Communication Security
 
 ### 1. Gateway Registration
+
 When a gateway is first deployed:
 
-1. Establishes initial connection using machine identity token
-2. Allocates a relay address for communication
-3. Exchanges certificates through a secure handshake:
-   - Gateway receives a unique certificate signed by organization's Gateway CA along with certificate chain for verification
+1. Authenticates with Infisical using machine identity token
+2. Receives SSH certificates for proxy server authentication
+3. Establishes SSH reverse tunnel to assigned proxy server
+4. Certificate issuance varies by proxy configuration:
+   - **Infisical-managed proxy**: Receives Instance proxy SSH client certificate + Instance proxy SSH Server CA
+   - **Customer-deployed proxy**: Receives Organization proxy SSH client certificate + Organization proxy SSH Server CA
 
-### 2. Mutual TLS Authentication
-All communication between gateway and cloud uses mutual TLS (mTLS):
+### 2. SSH Tunnel Authentication
+
+Gateway ↔ Proxy Server communication uses SSH certificate authentication:
 
 - **Gateway Authentication**:
-  - Presents certificate signed by organization's Gateway CA
-  - Certificate contains unique identifiers (Organization ID, Gateway ID)
-  - Cloud validates complete certificate chain
 
-- **Cloud Authentication**:
-  - Presents certificate signed by organization's Client CA
-  - Certificate includes required organizational unit ("gateway-client")
-  - Gateway validates certificate chain back to organization's root CA
+  - Presents SSH client certificate (Instance or Organization proxy SSH Client CA)
+  - Certificate contains gateway identification and permissions
+  - Proxy server validates certificate against appropriate SSH Client CA
 
-### 3. Relay Communication
-The relay system provides secure tunneling:
+- **Proxy Server Authentication**:
+  - Presents SSH server certificate (Instance or Organization proxy SSH Server CA)
+  - Gateway validates certificate against appropriate SSH Server CA
+  - Ensures gateway connects to legitimate proxy infrastructure
 
-1. **Connection Establishment**:
-   - Uses QUIC protocol over UDP for efficient, secure communication
-   - Provides built-in encryption, congestion control, and multiplexing
-   - Enables faster connection establishment and reduced latency
-   - Each organization's traffic is isolated using separate relay sessions
+### 3. Application Traffic Security
 
-2. **Traffic Isolation**:
-   - Each gateway gets unique relay credentials
-   - Traffic is end-to-end encrypted using QUIC's TLS 1.3
+End-to-end encryption for application data:
+
+1. **mTLS Layer**:
+
+   - Infisical platform establishes mTLS connections directly with gateways
+   - Uses Organization Gateway certificates for authentication
+   - Application traffic is encrypted end-to-end between platform and gateway
+
+2. **SSH Tunnel Layer**:
+
+   - mTLS-encrypted application traffic travels through SSH reverse tunnels
+   - Creates double encryption: mTLS payload within SSH tunnel
+   - Proxy servers cannot decrypt either encryption layer
+
+3. **Traffic Isolation**:
+   - Each gateway maintains separate SSH tunnels
    - Organization's private keys never leave their environment
+   - Complete cryptographic isolation between organizations
 
 ## Tenant Isolation
 
-### Certificate-Based Isolation
-- Each organization has unique root CA and intermediate CAs
-- Certificates contain organization-specific identifiers
-- Cross-tenant communication is cryptographically impossible
+### Multi-Layer Certificate Isolation
 
-### Gateway-Project Mapping
-- Gateways are explicitly mapped to specific projects
-- Access controls enforce organization boundaries
-- Project-level permissions determine resource accessibility
+The architecture provides tenant isolation through multiple certificate authority layers:
+
+- **Instance-level CAs**: Shared proxy infrastructure uses instance-level certificates
+- **Organization-level CAs**: Each organization has unique certificate authorities
+- **Proxy deployment flexibility**: Organizations can choose shared or dedicated proxy infrastructure
+- **Cryptographic separation**: Cross-tenant communication is cryptographically impossible
+
+### Authentication Flows by Deployment Type
+
+**Infisical-Managed Proxy Deployments:**
+
+- Gateway authenticates with proxy using Instance proxy SSH certificates
+- Platform authenticates with proxy using Instance proxy PKI certificates
+- Platform authenticates with gateway using Organization Gateway certificates
+
+**Customer-Deployed Proxy Deployments:**
+
+- Gateway authenticates with proxy using Organization proxy SSH certificates
+- Platform authenticates with proxy using Organization proxy PKI certificates
+- Platform authenticates with gateway using Organization Gateway certificates
 
 ### Resource Access Control
-1. **Project Verification**:
-   - Gateway verifies project membership
-   - Validates organization ownership
-   - Enforces project-level permissions
 
-2. **Resource Restrictions**:
-   - Gateways only accept connections to approved resources
-   - Each connection requires explicit project authorization
-   - Resources remain private to their assigned organization
+1. **Certificate Validation**:
+
+   - All connections require valid certificates from appropriate CAs
+   - Embedded certificate details control access permissions
+   - Ephemeral certificate validation ensures time-bound access
+
+2. **Network Isolation**:
+
+   - Each organization's traffic flows through isolated certificate-authenticated channels
+   - Proxy servers route traffic based on certificate validation without content access
+   - Gateway validates all incoming connections against Organization Gateway Client CA

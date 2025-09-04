@@ -14,7 +14,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { format, formatRelative } from "date-fns";
+import { formatRelative } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -48,13 +48,14 @@ import {
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
+import { useDeleteGatewayV2ById } from "@app/hooks/api/gateways-v2";
 
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
 
 export const GatewayListPage = withPermission(
   () => {
     const [search, setSearch] = useState("");
-    const { data: gateways, isPending: isGatewayLoading } = useQuery(gatewaysQueryKeys.list());
+    const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "deleteGateway",
@@ -62,16 +63,20 @@ export const GatewayListPage = withPermission(
     ] as const);
 
     const deleteGatewayById = useDeleteGatewayById();
+    const deleteGatewayV2ById = useDeleteGatewayV2ById();
 
     const handleDeleteGateway = async () => {
-      await deleteGatewayById.mutateAsync((popUp.deleteGateway.data as { id: string }).id, {
-        onSuccess: () => {
-          handlePopUpToggle("deleteGateway");
-          createNotification({
-            type: "success",
-            text: "Successfully delete gateway"
-          });
-        }
+      const data = popUp.deleteGateway.data as { id: string; isV1: boolean };
+      if (data.isV1) {
+        await deleteGatewayById.mutateAsync(data.id);
+      } else {
+        await deleteGatewayV2ById.mutateAsync(data.id);
+      }
+
+      handlePopUpToggle("deleteGateway");
+      createNotification({
+        type: "success",
+        text: "Successfully deleted gateway"
       });
     };
 
@@ -127,7 +132,6 @@ export const GatewayListPage = withPermission(
                     <THead>
                       <Tr>
                         <Th className="w-1/3">Name</Th>
-                        <Th>Cert Issued At</Th>
                         <Th>Identity</Th>
                         <Th>
                           Health Check
@@ -143,13 +147,12 @@ export const GatewayListPage = withPermission(
                       </Tr>
                     </THead>
                     <TBody>
-                      {isGatewayLoading && (
+                      {isGatewaysLoading && (
                         <TableSkeleton innerKey="gateway-table" columns={4} key="gateway-table" />
                       )}
                       {filteredGateway?.map((el) => (
                         <Tr key={el.id}>
                           <Td>{el.name}</Td>
-                          <Td>{format(new Date(el.issuedAt), "yyyy-MM-dd hh:mm:ss aaa")}</Td>
                           <Td>{el.identity.name}</Td>
                           <Td>
                             {el.heartbeat
@@ -176,20 +179,22 @@ export const GatewayListPage = withPermission(
                                   >
                                     Copy ID
                                   </DropdownMenuItem>
-                                  <OrgPermissionCan
-                                    I={OrgGatewayPermissionActions.EditGateways}
-                                    a={OrgPermissionSubjects.Gateway}
-                                  >
-                                    {(isAllowed: boolean) => (
-                                      <DropdownMenuItem
-                                        isDisabled={!isAllowed}
-                                        icon={<FontAwesomeIcon icon={faEdit} />}
-                                        onClick={() => handlePopUpOpen("editDetails", el)}
-                                      >
-                                        Edit Details
-                                      </DropdownMenuItem>
-                                    )}
-                                  </OrgPermissionCan>
+                                  {el.isV1 && (
+                                    <OrgPermissionCan
+                                      I={OrgGatewayPermissionActions.EditGateways}
+                                      a={OrgPermissionSubjects.Gateway}
+                                    >
+                                      {(isAllowed: boolean) => (
+                                        <DropdownMenuItem
+                                          isDisabled={!isAllowed}
+                                          icon={<FontAwesomeIcon icon={faEdit} />}
+                                          onClick={() => handlePopUpOpen("editDetails", el)}
+                                        >
+                                          Edit Details
+                                        </DropdownMenuItem>
+                                      )}
+                                    </OrgPermissionCan>
+                                  )}
                                   <OrgPermissionCan
                                     I={OrgPermissionAppConnectionActions.Delete}
                                     a={OrgPermissionSubjects.AppConnections}
@@ -224,7 +229,7 @@ export const GatewayListPage = withPermission(
                       />
                     </ModalContent>
                   </Modal>
-                  {!isGatewayLoading && !filteredGateway?.length && (
+                  {!isGatewaysLoading && !filteredGateway?.length && (
                     <EmptyState
                       title={
                         gateways?.length
@@ -251,8 +256,5 @@ export const GatewayListPage = withPermission(
       </div>
     );
   },
-  {
-    action: OrgPermissionAppConnectionActions.Read,
-    subject: OrgPermissionSubjects.AppConnections
-  }
+  { action: OrgGatewayPermissionActions.ListGateways, subject: OrgPermissionSubjects.Gateway }
 );

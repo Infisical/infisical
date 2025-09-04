@@ -1,0 +1,168 @@
+---
+title: "Networking"
+description: "Network configuration and firewall requirements for Infisical Gateway"
+---
+
+The Infisical Gateway requires outbound network connectivity to establish secure communication with Infisical's relay infrastructure. 
+This page outlines the required ports, protocols, and firewall configurations needed for optimal gateway usage.
+
+## Network Architecture
+
+The gateway uses a relay-based architecture to establish secure connections:
+
+1. **Gateway** connects outbound to **Relay Servers** using UDP/QUIC protocol
+2. **Relay Servers** facilitate secure communication between Gateway and Infisical Cloud
+3. All traffic is end-to-end encrypted using mutual TLS over QUIC
+
+## Required Network Connectivity
+
+### Outbound Connections (Required)
+
+The gateway requires the following outbound connectivity:
+
+| Protocol | Destination | Ports | Purpose |
+|----------|-------------|-------|---------|
+| UDP | Relay Servers | 49152-65535 | Allocated relay communication (TLS) |
+| TCP | app.infisical.com / eu.infisical.com | 443 | API communication and relay allocation |
+
+### Relay Server IP Addresses
+
+Your firewall must allow outbound connectivity to the following Infisical relay servers on dynamically allocated ports.
+
+<Tabs>
+  <Tab title="Infisical cloud (US)">
+    ```
+    54.235.197.91:49152-65535
+    18.215.196.229:49152-65535
+    3.222.120.233:49152-65535
+    34.196.115.157:49152-65535
+    ```
+  </Tab>
+  <Tab title="Infisical cloud (EU)">
+    ```
+    3.125.237.40:49152-65535
+    52.28.157.98:49152-65535
+    3.125.176.90:49152-65535
+    ```
+  </Tab>
+  <Tab title="Infisical dedicated">
+    Please contact your Infisical account manager for dedicated relay server IP addresses.
+  </Tab>
+</Tabs>
+
+<Warning>
+    These IP addresses are static and managed by Infisical. Any changes will be communicated with 60-day advance notice.
+</Warning>
+
+## Protocol Details
+
+### QUIC over UDP
+
+The gateway uses QUIC (Quick UDP Internet Connections) for primary communication:
+
+- **Port 5349**: STUN/TURN over TLS (secure relay communication)
+- **Built-in features**: Connection migration, multiplexing, reduced latency
+- **Encryption**: TLS 1.3 with certificate pinning
+
+## Understanding Firewall Behavior with UDP
+
+Unlike TCP connections, UDP is a stateless protocol, and depending on your organization's firewall configuration, you may need to adjust network rules accordingly.
+When the gateway sends UDP packets to a relay server, the return responses need to be allowed back through the firewall. 
+Modern firewalls handle this through "connection tracking" (also called "stateful inspection"), but the behavior can vary depending on your firewall configuration. 
+
+
+### Connection Tracking 
+
+Modern firewalls automatically track UDP connections and allow return responses. This is the preferred configuration as it:
+- Automatically handles return responses
+- Reduces firewall rule complexity
+- Avoids the need for manual IP whitelisting
+
+In the event that your firewall does not support connection tracking, you will need to whitelist the relay IPs to explicitly define return traffic manually.
+
+## Common Network Scenarios
+
+### Corporate Firewalls
+
+For corporate environments with strict egress filtering:
+
+1. **Whitelist relay IP addresses** (listed above)
+2. **Allow UDP port 5349** outbound
+3. **Configure connection tracking** for UDP return traffic
+4. **Allow ephemeral port range** 49152-65535 for return traffic if connection tracking is disabled
+
+### Cloud Environments (AWS/GCP/Azure)
+
+Configure security groups to allow:
+- **Outbound UDP** to relay IPs on port 5349
+- **Outbound HTTPS** to app.infisical.com/eu.infisical.com on port 443
+- **Inbound UDP** on ephemeral ports (if not using stateful rules)
+
+## Frequently Asked Questions
+
+<Accordion title="What happens if there is a network interruption?">
+The gateway is designed to handle network interruptions gracefully:
+
+- **Automatic reconnection**: The gateway will automatically attempt to reconnect to relay servers every 5 seconds if the connection is lost
+- **Connection retry logic**: Built-in retry mechanisms handle temporary network outages without manual intervention
+- **Multiple relay servers**: If one relay server is unavailable, the gateway can connect to alternative relay servers
+- **Persistent sessions**: Existing connections are maintained where possible during brief network interruptions
+- **Graceful degradation**: The gateway logs connection issues and continues attempting to restore connectivity
+
+No manual intervention is typically required during network interruptions.
+</Accordion>
+
+<Accordion title="Why does the gateway use QUIC instead of TCP?">
+QUIC (Quick UDP Internet Connections) provides several advantages over traditional TCP for gateway communication:
+
+- **Faster connection establishment**: QUIC combines transport and security handshakes, reducing connection setup time
+- **Built-in encryption**: TLS 1.3 is integrated into the protocol, ensuring all traffic is encrypted by default
+- **Connection migration**: QUIC connections can survive IP address changes (useful for NAT rebinding)
+- **Reduced head-of-line blocking**: Multiple data streams can be multiplexed without blocking each other
+- **Better performance over unreliable networks**: Advanced congestion control and packet loss recovery
+- **Lower latency**: Optimized for real-time communication between gateway and cloud services
+
+While TCP is stateful and easier for firewalls to track, QUIC's performance benefits outweigh the additional firewall configuration requirements.
+</Accordion>
+
+<Accordion title="Do I need to open any inbound ports on my firewall?">
+No inbound ports need to be opened. The gateway only makes outbound connections:
+
+- **Outbound UDP** to relay servers on ports 49152-65535
+- **Outbound HTTPS** to Infisical API endpoints
+- **Return responses** are handled by connection tracking or explicit IP whitelisting
+
+This design maintains security by avoiding the need for inbound firewall rules that could expose your network to external threats.
+</Accordion>
+
+<Accordion title="What if my firewall blocks the required UDP ports?">
+If your firewall has strict UDP restrictions:
+
+1. **Work with your network team** to allow outbound UDP to the specific relay IP addresses
+2. **Use explicit IP whitelisting** if connection tracking is disabled  
+3. **Consider network policy exceptions** for the gateway host
+4. **Monitor firewall logs** to identify which specific rules are blocking traffic
+
+The gateway requires UDP connectivity to function - TCP-only configurations are not supported.
+</Accordion>
+
+<Accordion title="How many relay servers does the gateway connect to?">
+The gateway connects to **one relay server at a time**:
+
+- **Single active connection**: Only one relay connection is established per gateway instance
+- **Automatic failover**: If the current relay becomes unavailable, the gateway will connect to an alternative relay
+- **Load distribution**: Different gateway instances may connect to different relay servers for load balancing
+- **No manual selection**: The Infisical API automatically assigns the optimal relay server based on availability and proximity
+
+You should whitelist all relay IP addresses to ensure proper failover functionality.
+</Accordion>
+<Accordion title="Can the relay servers decrypt traffic going through them?">
+No, relay servers cannot decrypt any traffic passing through them:
+
+- **End-to-end encryption**: All traffic between the gateway and Infisical Cloud is encrypted using mutual TLS with certificate pinning
+- **Relay acts as a tunnel**: The relay server only forwards encrypted packets - it has no access to encryption keys
+- **No data storage**: Relay servers do not store any traffic or network-identifiable information  
+- **Certificate isolation**: Each organization has its own private PKI system, ensuring complete tenant isolation
+
+The relay infrastructure is designed as a secure forwarding mechanism, similar to a VPN tunnel, where the relay provider cannot see the contents of the traffic flowing through it.
+</Accordion>

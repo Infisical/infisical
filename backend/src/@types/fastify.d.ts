@@ -16,6 +16,7 @@ import { TEventBusService } from "@app/ee/services/event/event-bus-service";
 import { TServerSentEventsService } from "@app/ee/services/event/event-sse-service";
 import { TExternalKmsServiceFactory } from "@app/ee/services/external-kms/external-kms-service";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGithubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
 import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
 import { TIdentityAuthTemplateServiceFactory } from "@app/ee/services/identity-auth-template";
@@ -31,6 +32,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-types";
 import { TProjectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-types";
+import { TProxyServiceFactory } from "@app/ee/services/proxy/proxy-service";
 import { RateLimitConfiguration, TRateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-types";
 import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-types";
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
@@ -303,6 +305,8 @@ declare module "fastify" {
       bus: TEventBusService;
       sse: TServerSentEventsService;
       identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
+      proxy: TProxyServiceFactory;
+      gatewayV2: TGatewayV2ServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

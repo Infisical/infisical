@@ -23,6 +23,7 @@ import { registerOrgRoleRouter } from "./org-role-router";
 import { registerPITRouter } from "./pit-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
+import { registerProxyRouter } from "./proxy-router";
 import { registerRateLimitRouter } from "./rate-limit-router";
 import { registerSamlRouter } from "./saml-router";
 import { registerScimRouter } from "./scim-router";
@@ -79,6 +80,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   );
 
   await server.register(registerGatewayRouter, { prefix: "/gateways" });
+  await server.register(registerProxyRouter, { prefix: "/proxies" });
   await server.register(registerGithubOrgSyncRouter, { prefix: "/github-org-sync-config" });
 
   await server.register(
