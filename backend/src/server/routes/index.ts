@@ -312,6 +312,7 @@ import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
+import { primaryForwardingMode } from "../plugins/primary-forwarding-mode";
 import { registerV1Routes } from "./v1";
 import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
@@ -2146,8 +2147,14 @@ export const registerRoutes = async (
     user: userDAL,
     kmipClient: kmipClientDAL
   });
+  const isPrimaryForwardingMode = Boolean(envConfig.INFISICAL_PRIMARY_URL);
+  if (isPrimaryForwardingMode) {
+    logger.info(`Infisical primary instance is configured: ${envConfig.INFISICAL_PRIMARY_URL}`);
 
-  await server.register(injectIdentity, { userDAL, serviceTokenDAL });
+    await server.register(primaryForwardingMode, { primaryUrl: envConfig.INFISICAL_PRIMARY_URL as string });
+  }
+
+  await server.register(injectIdentity, { isPrimaryForwardingMode });
   await server.register(injectAssumePrivilege);
   await server.register(injectPermission);
   await server.register(injectRateLimits);

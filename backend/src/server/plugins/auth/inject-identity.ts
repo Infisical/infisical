@@ -107,10 +107,15 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
 };
 
 // ! Important: You can only 100% count on the `req.permission.orgId` field being present when the auth method is Identity Access Token (Machine Identity).
-export const injectIdentity = fp(async (server: FastifyZodProvider) => {
+export const injectIdentity = fp(async (server: FastifyZodProvider, opt: { isPrimaryForwardingMode?: boolean }) => {
   server.decorateRequest("auth", null);
+  server.decorateRequest("isPrimaryForwardingMode", Boolean(opt.isPrimaryForwardingMode));
   server.addHook("onRequest", async (req) => {
     const appCfg = getConfig();
+
+    if (opt.isPrimaryForwardingMode && req.method !== "GET") {
+      return;
+    }
 
     if (req.url.includes(".well-known/est") || req.url.includes("/api/v3/auth/")) {
       return;

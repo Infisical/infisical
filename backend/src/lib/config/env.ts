@@ -218,6 +218,8 @@ const envSchema = z
     ),
     PARAMS_FOLDER_SECRET_DETECTION_ENTROPY: z.coerce.number().optional().default(3.7),
 
+    INFISICAL_PRIMARY_URL: zpStr(z.string().optional()),
+
     // HSM
     HSM_LIB_PATH: zpStr(z.string().optional()),
     HSM_PIN: zpStr(z.string().optional()),

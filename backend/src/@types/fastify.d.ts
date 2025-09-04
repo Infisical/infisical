@@ -162,6 +162,7 @@ declare module "fastify" {
     };
     // identity injection. depending on which kinda of token the information is filled in auth
     auth: TAuthMode;
+    isPrimaryForwardingMode: boolean;
     permission: {
       authMethod: ActorAuthMethod;
       type: ActorType;
