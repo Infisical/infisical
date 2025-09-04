@@ -2,18 +2,68 @@ import { faCode } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState, useRef, useEffect } from "react";
 import * as monaco from "monaco-editor";
+import { cva, VariantProps } from "cva";
+import { twMerge } from "tailwind-merge";
+
+type Props = {
+  isDisabled?: boolean;
+  isFullWidth?: boolean;
+  isRequired?: boolean;
+};
+
+const codeEditorVariants = cva(
+  "relative overflow-hidden w-full p-2 focus:ring-2 ring-primary-800 outline-none border text-gray-400 font-inter placeholder-gray-500 placeholder-opacity-50",
+  {
+    variants: {
+      size: {
+        xs: "text-xs",
+        sm: "text-sm",
+        md: "text-md",
+        lg: "text-lg"
+      },
+      isRounded: {
+        true: "rounded-md",
+        false: ""
+      },
+      variant: {
+        filled: "bg-mineshaft-900 text-gray-400",
+        outline: "bg-transparent",
+        plain: "bg-transparent outline-none"
+      },
+      isError: {
+        true: "focus:ring-red/50 placeholder-red-300 border-red",
+        false: "focus:ring-primary-400/50 focus:ring-1 border-mineshaft-500"
+      }
+    },
+    compoundVariants: [
+      {
+        variant: "plain",
+        isError: [true, false],
+        className: "border-none"
+      }
+    ]
+  }
+);
+
+export type CodeEditorProps = {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+} & VariantProps<typeof codeEditorVariants> &
+  Props;
 
 export const CodeEditor = ({
   value,
   onChange,
   placeholder = "Start typing...",
-  className = ""
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  className?: string;
-}) => {
+  className,
+  size = "md",
+  isRounded = true,
+  variant = "filled",
+  isError = false,
+  isDisabled = false
+}: CodeEditorProps) => {
   const [detectedLanguage, setDetectedLanguage] = useState<string>("properties");
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,15 +93,14 @@ export const CodeEditor = ({
     ];
     if (yamlPatterns.some((pattern) => pattern.test(content))) return "yaml";
 
-    if (/^[A-Z_][A-Z0-9_]*=/m.test(content) || content.includes("export "))
-      return "properties";
+    if (/^[A-Z_][A-Z0-9_]*=/m.test(content) || content.includes("export ")) return "properties";
 
     return "properties";
   };
 
   useEffect(() => {
     if (!containerRef.current) return;
-    
+
     monaco.editor.defineTheme("secrets-dark-theme", {
       base: "vs-dark",
       inherit: true,
@@ -75,13 +124,6 @@ export const CodeEditor = ({
       }
     });
 
-    monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-      validate: true,
-      schemas: [],
-      allowComments: true,
-      trailingCommas: "ignore"
-    });
-
     const editor = monaco.editor.create(containerRef.current, {
       value: value || "",
       language: detectLanguage(value || ""),
@@ -99,7 +141,7 @@ export const CodeEditor = ({
       suggest: { insertMode: "replace" },
       quickSuggestions: { other: true, comments: false, strings: true }
     });
-    
+
     const disposable = editor.onDidChangeModelContent(() => {
       const newValue = editor.getValue();
       const newLanguage = detectLanguage(newValue);
@@ -118,20 +160,6 @@ export const CodeEditor = ({
       editor.dispose();
     };
   }, []);
-
-  useEffect(() => {
-    if (editorRef.current && editorRef.current.getValue() !== value) {
-      editorRef.current.setValue(value || "");
-      const newLanguage = detectLanguage(value || "");
-      if (newLanguage !== detectedLanguage) {
-        setDetectedLanguage(newLanguage);
-        monaco.editor.setModelLanguage(
-          editorRef.current.getModel()!,
-          newLanguage
-        );
-      }
-    }
-  }, [value, detectedLanguage]);
 
   const getLanguageColor = (lang: string) => {
     switch (lang) {
@@ -161,7 +189,11 @@ export const CodeEditor = ({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-md border border-mineshaft-600 ${className}`}
+      className={twMerge(
+        codeEditorVariants({ size, isRounded, variant, isError, className }),
+        "focus-within:ring-1 focus-within:ring-primary-800 outline-none border text-gray-400 font-inter placeholder-gray-500 placeholder-opacity-50",
+        isDisabled && "pointer-events-none"
+      )}
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-mineshaft-600 bg-mineshaft-800 px-3 py-2">
@@ -170,21 +202,14 @@ export const CodeEditor = ({
             icon={faCode}
             className={`h-4 w-4 ${getLanguageColor(detectedLanguage)}`}
           />
-          <span
-            className={`text-sm font-medium ${getLanguageColor(
-              detectedLanguage
-            )}`}
-          >
+          <span className={`text-sm font-medium ${getLanguageColor(detectedLanguage)}`}>
             {getLanguageDisplay(detectedLanguage)}
           </span>
         </div>
       </div>
 
       {/* Editor */}
-      <div
-        ref={containerRef}
-        className="h-[50vh] min-h-[400px] w-full"
-      />
+      <div ref={containerRef} className="h-[50vh] min-h-[400px] w-full" />
 
       {/* Placeholder */}
       {!value && (

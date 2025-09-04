@@ -112,6 +112,7 @@ const PasteEnvForm = ({ onParsedEnv }: Pick<Props, "onParsedEnv">) => {
         <CodeEditor
           value={editorValue}
           onChange={setEditorValue}
+          variant="filled"
           placeholder="Paste your secrets here... (JSON, YAML, or ENV format)"
         />
       </FormControl>
