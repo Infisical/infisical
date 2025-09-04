@@ -92,7 +92,11 @@ export const SelectOrganizationSection = () => {
           url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${
             callbackPort ? `&callbackPort=${callbackPort}` : ""
           }`;
-        } else if (organization.orgAuthMethod === AuthMethod.SAML) {
+        } else if (
+          organization.orgAuthMethod === AuthMethod.SAML &&
+          // if google sso is enforced, we don't want to redirect to saml
+          !organization.googleSsoAuthEnforced
+        ) {
           url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
 
           if (callbackPort) {
