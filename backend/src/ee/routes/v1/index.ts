@@ -3,7 +3,7 @@ import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-templat
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
-import { registerAuditLogStreamRouter } from "./audit-log-stream-router";
+import { AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP, registerAuditLogStreamRouter } from "./audit-log-stream-routers";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerKubernetesDynamicSecretLeaseRouter } from "./dynamic-secret-lease-routers/kubernetes-lease-router";
@@ -114,7 +114,19 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerSecretRouter, { prefix: "/secrets" });
   await server.register(registerSecretVersionRouter, { prefix: "/secret" });
   await server.register(registerGroupRouter, { prefix: "/groups" });
-  await server.register(registerAuditLogStreamRouter, { prefix: "/audit-log-streams" });
+
+  await server.register(
+    async (auditLogStreamRouter) => {
+      await auditLogStreamRouter.register(registerAuditLogStreamRouter);
+
+      // Provider-specific endpoints
+      for await (const [provider, router] of Object.entries(AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP)) {
+        await auditLogStreamRouter.register(router, { prefix: `/${provider}` });
+      }
+    },
+    { prefix: "/audit-log-streams" }
+  );
+
   await server.register(registerUserAdditionalPrivilegeRouter, { prefix: "/user-project-additional-privilege" });
   await server.register(
     async (privilegeRouter) => {
