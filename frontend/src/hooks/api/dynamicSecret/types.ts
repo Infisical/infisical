@@ -102,7 +102,7 @@ export type TDynamicSecretProvider =
       inputs:
         | {
             method: DynamicSecretAwsIamAuth.AccessKey;
-            credentialType?: DynamicSecretAwsIamCredentialType;
+            credentialType: DynamicSecretAwsIamCredentialType;
             accessKey: string;
             secretAccessKey: string;
             region: string;
@@ -113,7 +113,7 @@ export type TDynamicSecretProvider =
           }
         | {
             method: DynamicSecretAwsIamAuth.AssumeRole;
-            credentialType?: DynamicSecretAwsIamCredentialType;
+            credentialType: DynamicSecretAwsIamCredentialType;
             roleArn: string;
             region: string;
             awsPath?: string;
@@ -123,7 +123,7 @@ export type TDynamicSecretProvider =
           }
         | {
             method: DynamicSecretAwsIamAuth.IRSA;
-            credentialType?: DynamicSecretAwsIamCredentialType;
+            credentialType: DynamicSecretAwsIamCredentialType;
             region: string;
             awsPath?: string;
             policyDocument?: string;

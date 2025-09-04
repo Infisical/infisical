@@ -5,6 +5,17 @@ description: "Learn how to dynamically generate AWS IAM Users."
 
 The Infisical AWS IAM dynamic secret allows you to generate AWS IAM Users and temporary credentials on demand based on a configured AWS policy. Infisical supports several authentication methods to connect to your AWS account, including assuming an IAM Role, using IAM Roles for Service Accounts (IRSA) on EKS, or static Access Keys.
 
+## AWS STS Duration Limits
+
+When using **Temporary Credentials**, AWS STS has specific maximum duration limits:
+
+- **AssumeRole operations**: Maximum 1 hour (3600 seconds) when using temporary credentials
+- **GetSessionToken operations** (Access Key & IRSA): Maximum 12 hours (43200 seconds)
+
+<Info>
+**Automatic Duration Adjustment**: If you specify a TTL that exceeds these AWS limits, Infisical will automatically use the maximum allowed duration instead of failing the operation. This ensures your dynamic secrets work reliably within AWS constraints.
+</Info>
+
 ## Prerequisite
 
 Infisical needs an AWS IAM principal (a user or a role) with the required permissions to create and manage other IAM users and temporary credentials. This principal will be responsible for the lifecycle of the dynamically generated users and temporary credentials.
@@ -267,6 +278,10 @@ Infisical needs an AWS IAM principal (a user or a role) with the required permis
               - Include an AWS Session Token
               - Be valid for the duration specified in Default TTL
             </Info>
+
+            <Warning>
+              **Duration Limit**: AssumeRole temporary credentials are limited to 1 hour maximum by AWS. TTL values exceeding this limit will be automatically adjusted to 1 hour.
+            </Warning>
           </Tab>
         </Tabs>
       </Step>
@@ -479,6 +494,10 @@ Infisical needs an AWS IAM principal (a user or a role) with the required permis
                   - Include an AWS Session Token
                   - Be valid for the duration specified in Default TTL
                 </Info>
+
+                <Note>
+                  **Duration Limit**: IRSA temporary credentials support up to 12 hours maximum via GetSessionToken. TTL values exceeding this limit will be automatically adjusted.
+                </Note>
               </Tab>
             </Tabs>
         </Step>
@@ -606,6 +625,10 @@ Infisical needs an AWS IAM principal (a user or a role) with the required permis
               - Include an AWS Session Token
               - Be valid for the duration specified in Default TTL
             </Info>
+
+            <Note>
+              **Duration Limit**: Access Key temporary credentials support up to 12 hours maximum via GetSessionToken. TTL values exceeding this limit will be automatically adjusted.
+            </Note>
           </Tab>
         </Tabs>
 
