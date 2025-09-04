@@ -528,15 +528,18 @@ export const orgServiceFactory = ({
   /*
    * Create organization
    * */
-  const createOrganization = async ({
-    userId,
-    userEmail,
-    orgName
-  }: {
-    userId: string;
-    orgName: string;
-    userEmail?: string | null;
-  }) => {
+  const createOrganization = async (
+    {
+      userId,
+      userEmail,
+      orgName
+    }: {
+      userId?: string;
+      orgName: string;
+      userEmail?: string | null;
+    },
+    trx?: Knex
+  ) => {
     const { privateKey, publicKey } = await crypto.encryption().asymmetric().generateKeyPair();
     const key = crypto.randomBytes(32).toString("base64");
     const {
@@ -555,22 +558,25 @@ export const orgServiceFactory = ({
     } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(key);
 
     const customerId = await licenseService.generateOrgCustomerId(orgName, userEmail);
-    const organization = await orgDAL.transaction(async (tx) => {
+
+    const createOrg = async (tx: Knex) => {
       // akhilmhdh: for now this is auto created. in future we can input from user and for previous users just modifiy
       const org = await orgDAL.create(
         { name: orgName, customerId, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) },
         tx
       );
-      await orgDAL.createMembership(
-        {
-          userId,
-          orgId: org.id,
-          role: OrgMembershipRole.Admin,
-          status: OrgMembershipStatus.Accepted,
-          isActive: true
-        },
-        tx
-      );
+      if (userId) {
+        await orgDAL.createMembership(
+          {
+            userId,
+            orgId: org.id,
+            role: OrgMembershipRole.Admin,
+            status: OrgMembershipStatus.Accepted,
+            isActive: true
+          },
+          tx
+        );
+      }
       await orgBotDAL.create(
         {
           name: org.name,
@@ -590,7 +596,9 @@ export const orgServiceFactory = ({
         tx
       );
       return org;
-    });
+    };
+
+    const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
     return organization;

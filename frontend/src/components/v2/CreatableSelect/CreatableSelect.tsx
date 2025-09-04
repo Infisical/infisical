@@ -60,7 +60,8 @@ export const CreatableSelect = <T,>({
             isSelected && "text-mineshaft-200",
             "px-3 py-2 text-xs hover:cursor-pointer"
           ),
-        noOptionsMessage: () => "text-mineshaft-400 p-2 rounded-md"
+        noOptionsMessage: () => "text-mineshaft-400 p-2 rounded-md",
+        loadingMessage: () => "text-mineshaft-400 p-2 rounded-md"
       }}
       {...props}
     />

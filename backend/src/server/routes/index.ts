@@ -842,7 +842,9 @@ export const registerRoutes = async (
     licenseService,
     kmsService,
     microsoftTeamsService,
-    invalidateCacheQueue
+    invalidateCacheQueue,
+    smtpService,
+    tokenService
   });
 
   const orgAdminService = orgAdminServiceFactory({

@@ -1,3 +1,5 @@
+import { OrgMembershipStatus } from "@app/hooks/api/organization/types";
+
 import { Organization } from "../types";
 
 export enum LoginMethod {
@@ -20,6 +22,7 @@ export type OrganizationWithProjects = Organization & {
       lastName: string | null;
     };
     membershipId: string;
+    status: OrgMembershipStatus;
     role: string;
     roleId: string | null;
   }[];
@@ -142,3 +145,13 @@ export interface TGetEnvOverrides {
     fields: { key: string; value: string; hasEnvEntry: boolean; description?: string }[];
   };
 }
+
+export type TCreateOrganizationDTO = {
+  name: string;
+  inviteAdminEmails: string[];
+};
+
+export type TResendOrgInviteDTO = {
+  organizationId: string;
+  membershipId: string;
+};
