@@ -16,6 +16,8 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys } from "@app/hooks/api";
 import { useImportVault } from "@app/hooks/api/migration/mutations";
+import { useHasCustomMigrationAvailable } from "@app/hooks/api/migration";
+import { ExternalMigrationProviders } from "@app/hooks/api/migration/types";
 
 type Props = {
   id?: string;
@@ -24,11 +26,13 @@ type Props = {
 
 enum VaultMappingType {
   KeyVault = "key-vault",
-  Namespace = "namespace"
+  Namespace = "namespace",
+  Custom = "custom"
 }
 
 const MAPPING_TYPE_MENU_ITEMS = [
   {
+    isCustom: false,
     value: VaultMappingType.KeyVault,
     label: "Key Vaults",
     tooltip: (
@@ -48,6 +52,7 @@ const MAPPING_TYPE_MENU_ITEMS = [
     )
   },
   {
+    isCustom: false,
     value: VaultMappingType.Namespace,
     label: "Namespaces",
     tooltip: (
@@ -63,10 +68,25 @@ const MAPPING_TYPE_MENU_ITEMS = [
         </div>
       </div>
     )
+  },
+  {
+    isCustom: true,
+    value: VaultMappingType.Custom,
+    label: "Custom Migration",
+    tooltip: (
+      <div>
+        Custom migrations allow you to shape your Vault migration to your specific needs. Please
+        contact our sales team to get started with custom migrations.
+      </div>
+    )
   }
 ];
 
 export const VaultPlatformModal = ({ onClose }: Props) => {
+  const { data: isCustomMigrationAvailable } = useHasCustomMigrationAvailable(
+    ExternalMigrationProviders.Vault
+  );
+
   const formSchema = z.object({
     vaultUrl: z.string().min(1),
     gatewayId: z.string().optional(),
@@ -230,31 +250,44 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
               errorText={error?.message}
               className="flex-1"
             >
-              <div className="mt-2 grid h-full w-full grid-cols-2 gap-4">
+              <div className="mt-2 grid grid-cols-2 gap-4">
                 {MAPPING_TYPE_MENU_ITEMS.map((el) => (
                   <div
                     key={el.value}
                     className={twMerge(
                       "flex w-full cursor-pointer flex-col items-center gap-2 rounded border border-mineshaft-600 p-4 opacity-75 transition-all",
                       field.value === el.value
-                        ? "border-primary-700 border-opacity-70 bg-mineshaft-600 opacity-100"
-                        : "hover:border-primary-700 hover:bg-mineshaft-600"
+                        ? "border-primary-700 border-opacity-70 bg-mineshaft-700 opacity-100"
+                        : "hover:border-primary-800/75 hover:bg-mineshaft-600",
+                      el.isCustom && "col-span-2",
+                      el.isCustom &&
+                        !isCustomMigrationAvailable?.data?.enabled &&
+                        "!cursor-not-allowed !border-mineshaft-600 !bg-mineshaft-600 !opacity-40"
                     )}
-                    onClick={() => field.onChange(el.value)}
+                    onClick={() => {
+                      if (el.isCustom && !isCustomMigrationAvailable?.data?.enabled) return;
+
+                      field.onChange(el.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      if (el.isCustom && !isCustomMigrationAvailable?.data?.enabled) return;
+
+                      field.onChange(el.value);
+                    }}
                     role="button"
                     tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        field.onChange(el.value);
-                      }
-                    }}
                   >
                     <div className="flex items-center gap-1">
                       <div className="text-center text-sm">{el.label}</div>
                       {el.tooltip && (
                         <div className="text-center text-sm">
                           <Tooltip content={el.tooltip} className="max-w-96">
-                            <FontAwesomeIcon className="opacity-60" icon={faQuestionCircle} />
+                            <FontAwesomeIcon
+                              size="sm"
+                              className="text-mineshaft-400"
+                              icon={faQuestionCircle}
+                            />
                           </Tooltip>
                         </div>
                       )}
@@ -272,7 +305,7 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
             isLoading={isLoading}
             isDisabled={!isDirty || isSubmitting || isLoading || !isValid}
           >
-            Import data
+            Import Data
           </Button>
           <Button variant="outline_bg" onClick={onClose}>
             Cancel

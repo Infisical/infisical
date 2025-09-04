@@ -159,3 +159,8 @@ export enum OrgIdentityOrderBy {
   Name = "name",
   Role = "role"
 }
+
+export enum OrgMembershipStatus {
+  Invited = "invited",
+  Accepted = "accepted"
+}

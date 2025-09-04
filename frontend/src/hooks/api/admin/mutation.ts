@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { Organization } from "@app/hooks/api/organization/types";
 
 import { organizationKeys } from "../organization/queries";
 import { User } from "../users/types";
@@ -8,7 +9,9 @@ import { adminQueryKeys, adminStandaloneKeys } from "./queries";
 import {
   RootKeyEncryptionStrategy,
   TCreateAdminUserDTO,
+  TCreateOrganizationDTO,
   TInvalidateCacheDTO,
+  TResendOrgInviteDTO,
   TServerConfig,
   TUpdateServerConfigDTO,
   TUsageReportResponse
@@ -191,6 +194,50 @@ export const useInvalidateCache = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.getInvalidateCache() });
+    }
+  });
+};
+
+export const useServerAdminCreateOrganization = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (opt: TCreateOrganizationDTO) => {
+      const { data } = await apiRequest.post<{ organization: Organization }>(
+        "/api/v1/admin/organization-management/organizations",
+        opt
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.getOrganizations() });
+    }
+  });
+};
+
+export const useServerAdminResendOrgInvite = () => {
+  return useMutation({
+    mutationFn: async ({ organizationId, membershipId }: TResendOrgInviteDTO) => {
+      await apiRequest.post(
+        `/api/v1/admin/organization-management/organizations/${organizationId}/memberships/${membershipId}/resend-invite`
+      );
+    }
+  });
+};
+
+export const useServerAdminAccessOrg = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (orgId: string) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/admin/organization-management/organizations/${orgId}/access`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.getOrganizations() });
     }
   });
 };

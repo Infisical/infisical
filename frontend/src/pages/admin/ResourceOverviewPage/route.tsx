@@ -1,11 +1,11 @@
 import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
-import { UserIdentitiesResourcesPage } from "./UserIdentitiesResourcesPage";
+import { ResourceOverviewPage } from "./ResourceOverviewPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/admin/_admin-layout/resources/user-identities"
+  "/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview"
 )({
-  component: UserIdentitiesResourcesPage,
+  component: ResourceOverviewPage,
   beforeLoad: async () => {
     return {
       breadcrumbs: [
@@ -14,9 +14,9 @@ export const Route = createFileRoute(
           link: linkOptions({ to: "/admin" })
         },
         {
-          label: "User Identities",
+          label: "Resource Overview",
           link: linkOptions({
-            to: "/admin/resources/user-identities"
+            to: "/admin/resources/overview"
           })
         }
       ]

@@ -13,6 +13,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
+import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -217,7 +218,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
                 }),
                 membershipId: z.string(),
                 role: z.string(),
-                roleId: z.string().nullish()
+                roleId: z.string().nullish(),
+                status: z.string().nullish()
               })
               .array(),
             projects: z
@@ -841,7 +843,92 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // Usage Report Routes
+  server.route({
+    method: "POST",
+    url: "/organization-management/organizations",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        name: GenericResourceNameSchema,
+        inviteAdminEmails: z.string().email().array().min(1)
+      }),
+      response: {
+        200: z.object({
+          organization: OrganizationsSchema
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const organization = await server.services.superAdmin.createOrganization(req.body, req.permission);
+      return { organization };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/organization-management/organizations/:organizationId/memberships/:membershipId/resend-invite",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        organizationId: z.string(),
+        membershipId: z.string()
+      }),
+      response: {
+        200: z.object({
+          organizationMembership: OrgMembershipsSchema
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const organizationMembership = await server.services.superAdmin.resendOrgInvite(req.params, req.permission);
+      return { organizationMembership };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/organization-management/organizations/:organizationId/access",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        organizationId: z.string()
+      }),
+      response: {
+        200: z.object({
+          organizationMembership: OrgMembershipsSchema
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const organizationMembership = await server.services.superAdmin.joinOrganization(
+        req.params.organizationId,
+        req.permission
+      );
+      return { organizationMembership };
+    }
+  });
+
   server.route({
     method: "POST",
     url: "/usage-report/generate",

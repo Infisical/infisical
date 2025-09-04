@@ -52,6 +52,7 @@ export enum OrgPermissionSubjects {
   Gateway = "gateway",
   SecretShare = "secret-share",
   GithubOrgSync = "github-org-sync",
+  GithubOrgSyncManual = "github-org-sync-manual",
   MachineIdentityAuthTemplate = "machine-identity-auth-template"
 }
 
@@ -115,6 +116,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.IncidentAccount]
   | [OrgPermissionActions, OrgPermissionSubjects.Scim]
   | [OrgPermissionActions, OrgPermissionSubjects.GithubOrgSync]
+  | [OrgPermissionActions, OrgPermissionSubjects.GithubOrgSyncManual]
   | [OrgPermissionActions, OrgPermissionSubjects.Sso]
   | [OrgPermissionActions, OrgPermissionSubjects.Ldap]
   | [OrgPermissionGroupActions, OrgPermissionSubjects.Groups]

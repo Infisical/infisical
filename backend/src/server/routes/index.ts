@@ -683,7 +683,8 @@ export const registerRoutes = async (
     kmsService,
     permissionService,
     groupDAL,
-    userGroupMembershipDAL
+    userGroupMembershipDAL,
+    orgMembershipDAL
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -844,7 +845,9 @@ export const registerRoutes = async (
     licenseService,
     kmsService,
     microsoftTeamsService,
-    invalidateCacheQueue
+    invalidateCacheQueue,
+    smtpService,
+    tokenService
   });
 
   const offlineUsageReportService = offlineUsageReportServiceFactory({
