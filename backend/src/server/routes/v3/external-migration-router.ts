@@ -2,7 +2,7 @@ import fastifyMultipart from "@fastify/multipart";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
-import { writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
@@ -88,6 +88,9 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
   server.route({
     method: "GET",
     url: "/custom-migration-enabled/:provider",
+    config: {
+      rateLimit: readLimit
+    },
     schema: {
       params: z.object({
         provider: z.nativeEnum(ExternalMigrationProviders)
