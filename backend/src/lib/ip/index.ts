@@ -1,7 +1,5 @@
 import net from "node:net";
 
-import RE2 from "re2";
-
 import { ForbiddenRequestError } from "../errors";
 
 export enum IPType {
@@ -9,55 +7,25 @@ export enum IPType {
   IPV6 = "ipv6"
 }
 
-const PORT_REGEX = new RE2(/^\d+$/);
-
-/**
- * Strips port from IP address if present.
- * Handles both IPv4 (e.g. 1.2.3.4:1234) and IPv6 (e.g. [2001:db8::1]:8080) formats.
- * Returns the IP address without port and a boolean indicating if a port was present.
- */
-const stripPort = (ip: string): { ipAddress: string } => {
-  // Handle IPv6 with port (e.g. [2001:db8::1]:8080)
-  if (ip.startsWith("[") && ip.includes("]:")) {
-    const endBracketIndex = ip.indexOf("]");
-    if (endBracketIndex === -1) return { ipAddress: ip };
-    const ipPart = ip.slice(1, endBracketIndex);
-    const portPart = ip.slice(endBracketIndex + 2);
-    if (!portPart || !PORT_REGEX.test(portPart)) return { ipAddress: ip };
-    return { ipAddress: ipPart };
-  }
-
-  // Handle IPv4 with port (e.g. 1.2.3.4:1234)
-  if (ip.includes(":")) {
-    const [ipPart, portPart] = ip.split(":");
-    if (!portPart || !PORT_REGEX.test(portPart)) return { ipAddress: ip };
-    return { ipAddress: ipPart };
-  }
-
-  return { ipAddress: ip };
-};
-
 /**
  * Return details of IP [ip]:
  * - If [ip] is a specific IP address then return the IPv4/IPv6 address
  * - If [ip] is a subnet then return the network IPv4/IPv6 address and prefix
  */
 export const extractIPDetails = (ip: string) => {
-  const { ipAddress } = stripPort(ip);
-
-  if (net.isIPv4(ipAddress))
+  if (net.isIPv4(ip))
     return {
-      ipAddress,
+      ipAddress: ip,
       type: IPType.IPV4
     };
 
-  if (net.isIPv6(ipAddress))
+  if (net.isIPv6(ip))
     return {
-      ipAddress,
+      ipAddress: ip,
       type: IPType.IPV6
     };
 
-  const [ipNet, prefix] = ipAddress.split("/");
+  const [ipNet, prefix] = ip.split("/");
 
   let type;
   switch (net.isIP(ipNet)) {
@@ -89,8 +57,7 @@ export const extractIPDetails = (ip: string) => {
  *
  */
 export const isValidCidr = (cidr: string): boolean => {
-  const { ipAddress } = stripPort(cidr);
-  const [ip, prefix] = ipAddress.split("/");
+  const [ip, prefix] = cidr.split("/");
 
   const prefixNum = parseInt(prefix, 10);
 
@@ -123,15 +90,13 @@ export const isValidCidr = (cidr: string): boolean => {
  *
  */
 export const isValidIpOrCidr = (ip: string): boolean => {
-  const { ipAddress } = stripPort(ip);
-
   // if the string contains a slash, treat it as a CIDR block
-  if (ipAddress.includes("/")) {
-    return isValidCidr(ipAddress);
+  if (ip.includes("/")) {
+    return isValidCidr(ip);
   }
 
   // otherwise, treat it as a standalone IP address
-  if (net.isIPv4(ipAddress) || net.isIPv6(ipAddress)) {
+  if (net.isIPv4(ip) || net.isIPv6(ip)) {
     return true;
   }
 
@@ -139,8 +104,7 @@ export const isValidIpOrCidr = (ip: string): boolean => {
 };
 
 export const isValidIp = (ip: string) => {
-  const { ipAddress } = stripPort(ip);
-  return net.isIPv4(ipAddress) || net.isIPv6(ipAddress);
+  return net.isIPv4(ip) || net.isIPv6(ip);
 };
 
 export type TIp = {
@@ -148,7 +112,6 @@ export type TIp = {
   type: IPType;
   prefix: number;
 };
-
 /**
  * Validates the IP address [ipAddress] against the trusted IPs [trustedIps].
  */
@@ -163,9 +126,8 @@ export const checkIPAgainstBlocklist = ({ ipAddress, trustedIps }: { ipAddress: 
     }
   }
 
-  const { type, ipAddress: cleanIpAddress } = extractIPDetails(ipAddress);
-
-  const check = blockList.check(cleanIpAddress, type);
+  const { type } = extractIPDetails(ipAddress);
+  const check = blockList.check(ipAddress, type);
 
   if (!check)
     throw new ForbiddenRequestError({
