@@ -70,7 +70,7 @@ export const DatadogProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: 
             <FormControl
               errorText={error?.message}
               isError={Boolean(error?.message)}
-              label="Endpoint URL"
+              label="Datadog Region"
               helperText={value}
             >
               <Select
