@@ -8,7 +8,7 @@ import { getDatadogProviderListItem } from "./datadog/datadog-provider-fns";
 import { getSplunkProviderListItem } from "./splunk/splunk-provider-fns";
 
 export const listProviderOptions = () => {
-  return [getCustomProviderListItem(), getDatadogProviderListItem(), getSplunkProviderListItem()].sort((a, b) =>
+  return [getDatadogProviderListItem(), getSplunkProviderListItem(), getCustomProviderListItem()].sort((a, b) =>
     a.name.localeCompare(b.name)
   );
 };

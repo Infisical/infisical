@@ -1,15 +1,18 @@
 import { LogProvider } from "@app/ee/services/audit-log-stream/audit-log-stream-enums";
 import {
-  CustomProviderSchema,
-  SanitizedCustomProviderSchema
+  CreateCustomProviderLogStreamSchema,
+  SanitizedCustomProviderSchema,
+  UpdateCustomProviderLogStreamSchema
 } from "@app/ee/services/audit-log-stream/custom/custom-provider-schemas";
 import {
-  DatadogProviderSchema,
-  SanitizedDatadogProviderSchema
+  CreateDatadogProviderLogStreamSchema,
+  SanitizedDatadogProviderSchema,
+  UpdateDatadogProviderLogStreamSchema
 } from "@app/ee/services/audit-log-stream/datadog/datadog-provider-schemas";
 import {
+  CreateSplunkProviderLogStreamSchema,
   SanitizedSplunkProviderSchema,
-  SplunkProviderSchema
+  UpdateSplunkProviderLogStreamSchema
 } from "@app/ee/services/audit-log-stream/splunk/splunk-provider-schemas";
 
 import { registerAuditLogStreamEndpoints } from "./audit-log-stream-endpoints";
@@ -23,8 +26,8 @@ export const AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP: Record<LogProvider, (server: 
         server,
         provider: LogProvider.Custom,
         sanitizedResponseSchema: SanitizedCustomProviderSchema,
-        createSchema: CustomProviderSchema,
-        updateSchema: CustomProviderSchema
+        createSchema: CreateCustomProviderLogStreamSchema,
+        updateSchema: UpdateCustomProviderLogStreamSchema
       });
     },
     [LogProvider.Datadog]: async (server: FastifyZodProvider) => {
@@ -32,8 +35,8 @@ export const AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP: Record<LogProvider, (server: 
         server,
         provider: LogProvider.Datadog,
         sanitizedResponseSchema: SanitizedDatadogProviderSchema,
-        createSchema: DatadogProviderSchema,
-        updateSchema: DatadogProviderSchema
+        createSchema: CreateDatadogProviderLogStreamSchema,
+        updateSchema: UpdateDatadogProviderLogStreamSchema
       });
     },
     [LogProvider.Splunk]: async (server: FastifyZodProvider) => {
@@ -41,8 +44,8 @@ export const AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP: Record<LogProvider, (server: 
         server,
         provider: LogProvider.Splunk,
         sanitizedResponseSchema: SanitizedSplunkProviderSchema,
-        createSchema: SplunkProviderSchema,
-        updateSchema: SplunkProviderSchema
+        createSchema: CreateSplunkProviderLogStreamSchema,
+        updateSchema: UpdateSplunkProviderLogStreamSchema
       });
     }
   };
