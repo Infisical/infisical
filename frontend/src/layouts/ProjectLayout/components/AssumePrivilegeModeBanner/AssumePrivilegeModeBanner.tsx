@@ -36,7 +36,10 @@ export const AssumePrivilegeModeBanner = () => {
               },
               {
                 onSuccess: () => {
-                  const url = getProjectHomePage(currentWorkspace.type);
+                  const url = getProjectHomePage(
+                    currentWorkspace.type,
+                    currentWorkspace.environments
+                  );
                   window.location.href = url.replace("$projectId", currentWorkspace.id);
                 }
               }

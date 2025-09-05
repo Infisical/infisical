@@ -91,7 +91,7 @@ export const validateAuth0ConnectionCredentials = async ({ credentials }: TAuth0
     };
   } catch (e: unknown) {
     throw new BadRequestError({
-      message: (e as Error).message ?? `Unable to validate connection: verify credentials`
+      message: (e as Error).message ?? "Unable to validate connection: verify credentials"
     });
   }
 };

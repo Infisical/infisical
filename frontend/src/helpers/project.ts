@@ -1,6 +1,6 @@
 import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/workspace/queries";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType, WorkspaceEnv } from "@app/hooks/api/workspace/types";
 
 const secretsToBeAdded = [
   {
@@ -72,12 +72,14 @@ export const getProjectBaseURL = (type: ProjectType) => {
   }
 };
 
-export const getProjectHomePage = (type: ProjectType) => {
+// @ts-expect-error akhilmhdh: will remove this later
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const getProjectHomePage = (type: ProjectType, environments: WorkspaceEnv[]) => {
   switch (type) {
     case ProjectType.SecretManager:
-      return "/projects/secret-management/$projectId/overview";
+      return "/projects/secret-management/$projectId/overview" as const;
     case ProjectType.CertificateManager:
-      return "/projects/cert-management/$projectId/subscribers";
+      return "/projects/cert-management/$projectId/subscribers" as const;
     case ProjectType.SecretScanning:
       return `/projects/${type}/$projectId/data-sources` as const;
     default:

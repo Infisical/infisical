@@ -419,6 +419,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           secret: secretRawSchema.extend({
             secretValueHidden: z.boolean(),
+            secretPath: z.string(),
             tags: SanitizedTagSchema.array().optional(),
             secretMetadata: ResourceMetadataSchema.optional()
           })

@@ -103,9 +103,8 @@ export const EnvironmentSection = () => {
         <PermissionDeniedBanner />
       )}
       <AddEnvironmentModal
-        popUp={popUp}
-        handlePopUpClose={handlePopUpClose}
-        handlePopUpToggle={handlePopUpToggle}
+        isOpen={popUp.createEnv.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("createEnv", isOpen)}
       />
       <UpdateEnvironmentModal
         popUp={popUp}

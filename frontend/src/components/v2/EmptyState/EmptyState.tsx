@@ -10,6 +10,7 @@ type Props = {
   children?: ReactNode;
   icon?: IconDefinition;
   iconSize?: SizeProp;
+  titleClassName?: string;
 };
 
 export const EmptyState = ({
@@ -17,7 +18,8 @@ export const EmptyState = ({
   className,
   children,
   icon = faCubesStacked,
-  iconSize = "2x"
+  iconSize = "2x",
+  titleClassName
 }: Props) => (
   <div
     className={twMerge(
@@ -27,7 +29,7 @@ export const EmptyState = ({
   >
     <FontAwesomeIcon icon={icon} size={iconSize} />
     <div className="flex flex-col items-center py-4">
-      <div className="text-sm text-bunker-300">{title}</div>
+      <div className={twMerge("text-sm text-bunker-300", titleClassName)}>{title}</div>
       <div>{children}</div>
     </div>
   </div>

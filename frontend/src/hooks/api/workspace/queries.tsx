@@ -47,7 +47,8 @@ import {
   UpdateEnvironmentDTO,
   UpdatePitVersionLimitDTO,
   UpdateProjectDTO,
-  Workspace
+  Workspace,
+  WorkspaceEnv
 } from "./types";
 
 export const fetchWorkspaceById = async (workspaceId: string) => {
@@ -396,12 +397,16 @@ export const useDeleteWorkspace = () => {
 export const useCreateWsEnvironment = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<object, object, CreateEnvironmentDTO>({
-    mutationFn: ({ workspaceId, name, slug }) => {
-      return apiRequest.post(`/api/v1/workspace/${workspaceId}/environments`, {
-        name,
-        slug
-      });
+  return useMutation<WorkspaceEnv, WorkspaceEnv, CreateEnvironmentDTO>({
+    mutationFn: async ({ workspaceId, name, slug }) => {
+      const { data } = await apiRequest.post<{ environment: WorkspaceEnv }>(
+        `/api/v1/workspace/${workspaceId}/environments`,
+        {
+          name,
+          slug
+        }
+      );
+      return data.environment;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

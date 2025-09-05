@@ -30,6 +30,7 @@ import {
   TDeleteFolderDTO,
   TDeleteManyFoldersDTO,
   TGetFolderByIdDTO,
+  TGetFolderByPathDTO,
   TGetFolderDTO,
   TGetFoldersDeepByEnvsDTO,
   TUpdateFolderDTO,
@@ -1398,6 +1399,31 @@ export const secretFolderServiceFactory = ({
     };
   };
 
+  const getFolderByPath = async (
+    { projectId, environment, secretPath }: TGetFolderByPathDTO,
+    actor: OrgServiceActor
+  ) => {
+    // folder check is allowed to be read by anyone
+    // permission is to check if user has access
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+
+    if (!folder)
+      throw new NotFoundError({
+        message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
+      });
+
+    return folder;
+  };
+
   return {
     createFolder,
     updateFolder,
@@ -1405,6 +1431,7 @@ export const secretFolderServiceFactory = ({
     deleteFolder,
     getFolders,
     getFolderById,
+    getFolderByPath,
     getProjectFolderCount,
     getFoldersMultiEnv,
     getFoldersDeepByEnvs,

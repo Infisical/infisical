@@ -83,6 +83,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(db.ref("id").withSchema(TableName.OrgMembership).as("orgMembershipId"))
         .select(db.ref("role").withSchema(TableName.OrgMembership).as("orgMembershipRole"))
         .select(db.ref("roleId").withSchema(TableName.OrgMembership).as("orgMembershipRoleId"))
+        .select(db.ref("status").withSchema(TableName.OrgMembership).as("orgMembershipStatus"))
         .select(db.ref("name").withSchema(TableName.OrgRoles).as("orgMembershipRoleName"));
 
       const formattedDocs = sqlNestRelationships({
@@ -112,7 +113,8 @@ export const orgDALFactory = (db: TDbClient) => {
               orgMembershipId,
               orgMembershipRole,
               orgMembershipRoleName,
-              orgMembershipRoleId
+              orgMembershipRoleId,
+              orgMembershipStatus
             }) => ({
               user: {
                 id: userId,
@@ -121,6 +123,7 @@ export const orgDALFactory = (db: TDbClient) => {
                 firstName,
                 lastName
               },
+              status: orgMembershipStatus,
               membershipId: orgMembershipId,
               role: orgMembershipRoleName || orgMembershipRole, // custom role name or pre-defined role name
               roleId: orgMembershipRoleId
@@ -488,6 +491,15 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const bulkCreateMemberships = async (data: TOrgMembershipsInsert[], tx?: Knex) => {
+    try {
+      const memberships = await (tx || db)(TableName.OrgMembership).insert(data).returning("*");
+      return memberships;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Create org memberships" });
+    }
+  };
+
   const updateMembershipById = async (id: string, data: TOrgMembershipsUpdate, tx?: Knex) => {
     try {
       const [membership] = await (tx || db)(TableName.OrgMembership).where({ id }).update(data).returning("*");
@@ -668,6 +680,7 @@ export const orgDALFactory = (db: TDbClient) => {
     findMembership,
     findMembershipWithScimFilter,
     createMembership,
+    bulkCreateMemberships,
     updateMembershipById,
     deleteMembershipById,
     deleteMembershipsById,

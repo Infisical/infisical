@@ -422,6 +422,7 @@ export const queueServiceFactory = (
   redisCfg: TRedisConfigKeys,
   { dbConnectionUrl, dbRootCert }: { dbConnectionUrl: string; dbRootCert?: string }
 ): TQueueServiceFactory => {
+  const isClusterMode = Boolean(redisCfg?.REDIS_CLUSTER_HOSTS);
   const connection = buildRedisFromConfig(redisCfg);
   const queueContainer = {} as Record<
     QueueName,
@@ -464,6 +465,8 @@ export const queueServiceFactory = (
     }
 
     queueContainer[name] = new Queue(name as string, {
+      // ref: docs.bullmq.io/bull/patterns/redis-cluster
+      prefix: isClusterMode ? `{${name}}` : undefined,
       ...queueSettings,
       ...(crypto.isFipsModeEnabled()
         ? {
@@ -479,6 +482,7 @@ export const queueServiceFactory = (
     const appCfg = getConfig();
     if (appCfg.QUEUE_WORKERS_ENABLED && isQueueEnabled(name)) {
       workerContainer[name] = new Worker(name, jobFn, {
+        prefix: isClusterMode ? `{${name}}` : undefined,
         ...queueSettings,
         ...(crypto.isFipsModeEnabled()
           ? {

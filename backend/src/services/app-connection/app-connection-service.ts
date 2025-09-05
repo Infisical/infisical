@@ -600,7 +600,7 @@ export const appConnectionServiceFactory = ({
     azureClientSecrets: azureClientSecretsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     azureDevOps: azureDevOpsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
-    hcvault: hcVaultConnectionService(connectAppConnectionById),
+    hcvault: hcVaultConnectionService(connectAppConnectionById, gatewayService),
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),

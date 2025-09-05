@@ -1,6 +1,2 @@
-export {
-  useCreateAuditLogStream,
-  useDeleteAuditLogStream,
-  useUpdateAuditLogStream
-} from "./mutations";
-export { useGetAuditLogStreamDetails, useGetAuditLogStreams } from "./queries";
+export * from "./mutations";
+export * from "./queries";
