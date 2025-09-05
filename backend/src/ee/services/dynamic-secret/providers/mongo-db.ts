@@ -28,15 +28,15 @@ const generateUsername = (usernameTemplate?: string | null, identity?: { name: s
 export const MongoDBProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretMongoDBSchema.parseAsync(inputs);
-    const [hostIp] = await verifyHostInputValidity(providerInputs.host);
-    return { ...providerInputs, hostIp };
+    await verifyHostInputValidity(providerInputs.host);
+    return { ...providerInputs };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretMongoDBSchema> & { hostIp: string }) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretMongoDBSchema>) => {
     const isSrv = !providerInputs.port;
     const uri = isSrv
-      ? `mongodb+srv://${providerInputs.hostIp}`
-      : `mongodb://${providerInputs.hostIp}:${providerInputs.port}`;
+      ? `mongodb+srv://${providerInputs.host}`
+      : `mongodb://${providerInputs.host}:${providerInputs.port}`;
 
     const client = new MongoClient(uri, {
       auth: {
