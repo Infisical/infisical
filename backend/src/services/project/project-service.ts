@@ -16,6 +16,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
@@ -1852,9 +1853,49 @@ export const projectServiceFactory = ({
     if (projectMember) throw new BadRequestError({ message: "User already has access to the project" });
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
-    const filteredProjectMembers = projectMembers
+
+    let filteredProjectMembers = projectMembers
       .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
       .map((el) => el.user.email!);
+
+    const customRolesWithMemberCreate = await projectRoleDAL.find({ projectId });
+    const customRoleSlugsCanalCreate = customRolesWithMemberCreate
+      .filter((role) => {
+        try {
+          const permissions = JSON.parse(role.permissions as string) as Array<{
+            action: string;
+            subject: string;
+          }>;
+          return permissions.some(
+            (perm) =>
+              perm.action === ProjectPermissionMemberActions.Create && perm.subject === ProjectPermissionSub.Member
+          );
+        } catch {
+          return false;
+        }
+      })
+      .map((role) => role.slug);
+
+    if (customRoleSlugsCanalCreate.length > 0) {
+      const usersWithCustomCreateMemberRole = projectMembers
+        .filter((member) =>
+          member.roles.some((role) => role.customRoleSlug && customRoleSlugsCanalCreate.includes(role.customRoleSlug))
+        )
+        .map((el) => el.user.email!)
+        .filter(Boolean);
+
+      if (usersWithCustomCreateMemberRole.length > 0) {
+        filteredProjectMembers = usersWithCustomCreateMemberRole;
+      }
+    }
+
+    if (filteredProjectMembers.length === 0) {
+      throw new BadRequestError({
+        message:
+          "No users in this project have permission to grant access. Please contact an organization administrator to assign appropriate permissions to project members."
+      });
+    }
+
     const org = await orgDAL.findOne({ id: permission.orgId });
     const project = await projectDAL.findById(projectId);
     const userDetails = await userDAL.findById(permission.id);
