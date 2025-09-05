@@ -24,96 +24,98 @@ export async function up(knex: Knex): Promise<void> {
       t.string("url").nullable().alter();
     });
 
-    const superAdminDAL = superAdminDALFactory(knex);
-    const envConfig = await getMigrationEnvConfig(superAdminDAL);
-    const keyStore = inMemoryKeyStore();
+    if (!hasEncryptedCredentials) {
+      const superAdminDAL = superAdminDALFactory(knex);
+      const envConfig = await getMigrationEnvConfig(superAdminDAL);
+      const keyStore = inMemoryKeyStore();
 
-    const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
+      const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
 
-    const orgEncryptionRingBuffer =
-      createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+      const orgEncryptionRingBuffer =
+        createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
 
-    const logStreams = await knex(TableName.AuditLogStream).select(
-      "id",
-      "orgId",
+      const logStreams = await knex(TableName.AuditLogStream).select(
+        "id",
+        "orgId",
 
-      "url",
-      "encryptedHeadersAlgorithm",
-      "encryptedHeadersCiphertext",
-      "encryptedHeadersIV",
-      "encryptedHeadersKeyEncoding",
-      "encryptedHeadersTag"
-    );
+        "url",
+        "encryptedHeadersAlgorithm",
+        "encryptedHeadersCiphertext",
+        "encryptedHeadersIV",
+        "encryptedHeadersKeyEncoding",
+        "encryptedHeadersTag"
+      );
 
-    const updatedLogStreams = await Promise.all(
-      logStreams.map(async (el) => {
-        let orgKmsService = orgEncryptionRingBuffer.getItem(el.orgId);
-        if (!orgKmsService) {
-          orgKmsService = await kmsService.createCipherPairWithDataKey(
-            {
-              type: KmsDataKey.Organization,
-              orgId: el.orgId
-            },
-            knex
-          );
-          orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
-        }
+      const updatedLogStreams = await Promise.all(
+        logStreams.map(async (el) => {
+          let orgKmsService = orgEncryptionRingBuffer.getItem(el.orgId);
+          if (!orgKmsService) {
+            orgKmsService = await kmsService.createCipherPairWithDataKey(
+              {
+                type: KmsDataKey.Organization,
+                orgId: el.orgId
+              },
+              knex
+            );
+            orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
+          }
 
-        const provider = "custom";
-        let credentials;
+          const provider = "custom";
+          let credentials;
 
-        if (
-          el.encryptedHeadersTag &&
-          el.encryptedHeadersIV &&
-          el.encryptedHeadersCiphertext &&
-          el.encryptedHeadersKeyEncoding
-        ) {
-          const decryptedHeaders = crypto
-            .encryption()
-            .symmetric()
-            .decryptWithRootEncryptionKey({
-              tag: el.encryptedHeadersTag,
-              iv: el.encryptedHeadersIV,
-              ciphertext: el.encryptedHeadersCiphertext,
-              keyEncoding: el.encryptedHeadersKeyEncoding as SecretKeyEncoding
-            });
+          if (
+            el.encryptedHeadersTag &&
+            el.encryptedHeadersIV &&
+            el.encryptedHeadersCiphertext &&
+            el.encryptedHeadersKeyEncoding
+          ) {
+            const decryptedHeaders = crypto
+              .encryption()
+              .symmetric()
+              .decryptWithRootEncryptionKey({
+                tag: el.encryptedHeadersTag,
+                iv: el.encryptedHeadersIV,
+                ciphertext: el.encryptedHeadersCiphertext,
+                keyEncoding: el.encryptedHeadersKeyEncoding as SecretKeyEncoding
+              });
 
-          credentials = {
+            credentials = {
+              url: el.url,
+              headers: JSON.parse(decryptedHeaders)
+            };
+          } else {
+            credentials = {
+              url: el.url,
+              headers: []
+            };
+          }
+
+          const encryptedCredentials = orgKmsService.encryptor({
+            plainText: Buffer.from(JSON.stringify(credentials), "utf8")
+          }).cipherTextBlob;
+
+          return {
+            id: el.id,
+            orgId: el.orgId,
             url: el.url,
-            headers: JSON.parse(decryptedHeaders)
+            provider,
+            encryptedCredentials
           };
-        } else {
-          credentials = {
-            url: el.url,
-            headers: []
-          };
-        }
+        })
+      );
 
-        const encryptedCredentials = orgKmsService.encryptor({
-          plainText: Buffer.from(JSON.stringify(credentials), "utf8")
-        }).cipherTextBlob;
+      for (let i = 0; i < updatedLogStreams.length; i += BATCH_SIZE) {
+        // eslint-disable-next-line no-await-in-loop
+        await knex(TableName.AuditLogStream)
+          .insert(updatedLogStreams.slice(i, i + BATCH_SIZE))
+          .onConflict("id")
+          .merge();
+      }
 
-        return {
-          id: el.id,
-          orgId: el.orgId,
-          url: el.url,
-          provider,
-          encryptedCredentials
-        };
-      })
-    );
-
-    for (let i = 0; i < updatedLogStreams.length; i += BATCH_SIZE) {
-      // eslint-disable-next-line no-await-in-loop
-      await knex(TableName.AuditLogStream)
-        .insert(updatedLogStreams.slice(i, i + BATCH_SIZE))
-        .onConflict("id")
-        .merge();
+      await knex.schema.alterTable(TableName.AuditLogStream, (t) => {
+        t.binary("encryptedCredentials").notNullable().alter();
+      });
     }
-
-    await knex.schema.alterTable(TableName.AuditLogStream, (t) => {
-      t.binary("encryptedCredentials").notNullable().alter();
-    });
   }
 }
 
@@ -125,90 +127,95 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.AuditLogStream)) {
-    const superAdminDAL = superAdminDALFactory(knex);
-    const envConfig = await getMigrationEnvConfig(superAdminDAL);
-    const keyStore = inMemoryKeyStore();
+    const hasProvider = await knex.schema.hasColumn(TableName.AuditLogStream, "provider");
+    const hasEncryptedCredentials = await knex.schema.hasColumn(TableName.AuditLogStream, "encryptedCredentials");
 
-    const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
+    if (hasEncryptedCredentials) {
+      const superAdminDAL = superAdminDALFactory(knex);
+      const envConfig = await getMigrationEnvConfig(superAdminDAL);
+      const keyStore = inMemoryKeyStore();
 
-    const orgEncryptionRingBuffer =
-      createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
+      const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
 
-    const logStreamsToRevert = await knex(TableName.AuditLogStream)
-      .select("id", "orgId", "encryptedCredentials")
-      .where("provider", "custom")
-      .whereNotNull("encryptedCredentials");
+      const orgEncryptionRingBuffer =
+        createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
 
-    const updatedLogStreams = await Promise.all(
-      logStreamsToRevert.map(async (el) => {
-        let orgKmsService = orgEncryptionRingBuffer.getItem(el.orgId);
-        if (!orgKmsService) {
-          orgKmsService = await kmsService.createCipherPairWithDataKey(
-            {
-              type: KmsDataKey.Organization,
-              orgId: el.orgId
-            },
-            knex
-          );
-          orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
-        }
+      const logStreamsToRevert = await knex(TableName.AuditLogStream)
+        .select("id", "orgId", "encryptedCredentials")
+        .where("provider", "custom")
+        .whereNotNull("encryptedCredentials");
 
-        const decryptedCredentials = orgKmsService
-          .decryptor({
-            cipherTextBlob: el.encryptedCredentials
-          })
-          .toString();
+      const updatedLogStreams = await Promise.all(
+        logStreamsToRevert.map(async (el) => {
+          let orgKmsService = orgEncryptionRingBuffer.getItem(el.orgId);
+          if (!orgKmsService) {
+            orgKmsService = await kmsService.createCipherPairWithDataKey(
+              {
+                type: KmsDataKey.Organization,
+                orgId: el.orgId
+              },
+              knex
+            );
+            orgEncryptionRingBuffer.push(el.orgId, orgKmsService);
+          }
 
-        const credentials: { url: string; headers: { key: string; value: string }[] } =
-          JSON.parse(decryptedCredentials);
+          const decryptedCredentials = orgKmsService
+            .decryptor({
+              cipherTextBlob: el.encryptedCredentials
+            })
+            .toString();
 
-        const originalUrl: string = credentials.url;
+          const credentials: { url: string; headers: { key: string; value: string }[] } =
+            JSON.parse(decryptedCredentials);
 
-        const encryptedHeadersResult = crypto
-          .encryption()
-          .symmetric()
-          .encryptWithRootEncryptionKey(JSON.stringify(credentials.headers), envConfig);
+          const originalUrl: string = credentials.url;
 
-        const encryptedHeadersAlgorithm: string = encryptedHeadersResult.algorithm;
-        const encryptedHeadersCiphertext: string = encryptedHeadersResult.ciphertext;
-        const encryptedHeadersIV: string = encryptedHeadersResult.iv;
-        const encryptedHeadersKeyEncoding: string = encryptedHeadersResult.encoding;
-        const encryptedHeadersTag: string = encryptedHeadersResult.tag;
+          const encryptedHeadersResult = crypto
+            .encryption()
+            .symmetric()
+            .encryptWithRootEncryptionKey(JSON.stringify(credentials.headers), envConfig);
 
-        return {
-          id: el.id,
-          orgId: el.orgId,
-          encryptedCredentials: el.encryptedCredentials,
+          const encryptedHeadersAlgorithm: string = encryptedHeadersResult.algorithm;
+          const encryptedHeadersCiphertext: string = encryptedHeadersResult.ciphertext;
+          const encryptedHeadersIV: string = encryptedHeadersResult.iv;
+          const encryptedHeadersKeyEncoding: string = encryptedHeadersResult.encoding;
+          const encryptedHeadersTag: string = encryptedHeadersResult.tag;
 
-          url: originalUrl,
-          encryptedHeadersAlgorithm,
-          encryptedHeadersCiphertext,
-          encryptedHeadersIV,
-          encryptedHeadersKeyEncoding,
-          encryptedHeadersTag
-        };
-      })
-    );
+          return {
+            id: el.id,
+            orgId: el.orgId,
+            encryptedCredentials: el.encryptedCredentials,
 
-    for (let i = 0; i < updatedLogStreams.length; i += BATCH_SIZE) {
-      // eslint-disable-next-line no-await-in-loop
+            url: originalUrl,
+            encryptedHeadersAlgorithm,
+            encryptedHeadersCiphertext,
+            encryptedHeadersIV,
+            encryptedHeadersKeyEncoding,
+            encryptedHeadersTag
+          };
+        })
+      );
+
+      for (let i = 0; i < updatedLogStreams.length; i += BATCH_SIZE) {
+        // eslint-disable-next-line no-await-in-loop
+        await knex(TableName.AuditLogStream)
+          .insert(updatedLogStreams.slice(i, i + BATCH_SIZE))
+          .onConflict("id")
+          .merge();
+      }
+
       await knex(TableName.AuditLogStream)
-        .insert(updatedLogStreams.slice(i, i + BATCH_SIZE))
-        .onConflict("id")
-        .merge();
+        .where((qb) => {
+          void qb.whereNot("provider", "custom").orWhereNull("url");
+        })
+        .del();
     }
-
-    await knex(TableName.AuditLogStream)
-      .where((qb) => {
-        void qb.whereNot("provider", "custom").orWhereNull("url");
-      })
-      .del();
 
     await knex.schema.alterTable(TableName.AuditLogStream, (t) => {
       t.string("url").notNullable().alter();
 
-      t.dropColumn("provider");
-      t.dropColumn("encryptedCredentials");
+      if (hasProvider) t.dropColumn("provider");
+      if (hasEncryptedCredentials) t.dropColumn("encryptedCredentials");
     });
   }
 }
