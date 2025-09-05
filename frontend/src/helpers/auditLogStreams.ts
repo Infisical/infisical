@@ -25,6 +25,8 @@ export function getProviderUrl(
     case LogProvider.Splunk:
       return `https://${logStream.credentials.hostname}:8088/services/collector/event`;
     default:
-      return "Not found";
+      throw new Error(
+        `Unhandled provider in getProviderUrl: ${(logStream as TAuditLogStream).provider}`
+      );
   }
 }
