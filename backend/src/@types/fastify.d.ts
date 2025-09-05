@@ -1,6 +1,6 @@
 import "fastify";
 
-import { Redis } from "ioredis";
+import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
 import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
@@ -196,7 +196,7 @@ declare module "fastify" {
   }
 
   interface FastifyInstance {
-    redis: Redis;
+    redis: Redis | Cluster;
     services: {
       login: TAuthLoginFactory;
       password: TAuthPasswordFactory;

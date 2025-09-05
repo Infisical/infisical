@@ -3,7 +3,7 @@ import { Readable } from "node:stream";
 
 import { MongoAbility, PureAbility } from "@casl/ability";
 import { MongoQuery } from "@ucast/mongo2js";
-import Redis from "ioredis";
+import { Cluster, Redis } from "ioredis";
 import { nanoid } from "nanoid";
 
 import { ProjectType } from "@app/db/schemas";
@@ -65,7 +65,7 @@ export type EventStreamClient = {
   matcher: PureAbility;
 };
 
-export function createEventStreamClient(redis: Redis, options: IEventStreamClientOpts): EventStreamClient {
+export function createEventStreamClient(redis: Redis | Cluster, options: IEventStreamClientOpts): EventStreamClient {
   const rules = options.registered.map((r) => {
     const secretPath = r.conditions?.secretPath;
     const hasConditions = r.conditions?.environmentSlug || r.conditions?.secretPath;

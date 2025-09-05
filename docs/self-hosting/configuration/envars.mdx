@@ -142,7 +142,7 @@ DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
 Redis is used for caching and background tasks. You can use either a standalone Redis instance or a Redis Sentinel setup.
 
 <Tabs>
-  <Tab title="Redis standalone">
+  <Tab title="Redis Standalone">
     <ParamField query="REDIS_URL" type="string" default="none" required>
       Redis connection string.
     </ParamField>
@@ -172,6 +172,29 @@ Redis is used for caching and background tasks. You can use either a standalone 
     </ParamField>
     <ParamField query="REDIS_SENTINEL_PASSWORD" type="string" default="none">
       Authentication password for Redis Sentinel
+    </ParamField>
+    <ParamField query="REDIS_USERNAME" type="string" default="none">
+      Authentication username for Redis Node
+    </ParamField>
+    <ParamField query="REDIS_PASSWORD" type="string" default="none">
+      Authentication password for Redis Node
+    </ParamField>
+  </Tab>
+  <Tab title="Redis Cluster">
+    <ParamField
+      query="REDIS_CLUSTER_HOSTS"
+      type="string"
+      default="none"
+      required
+    >
+      Comma-separated list of Redis Cluster host:port pairs. ```
+      192.168.65.254:26379,192.168.65.254:26380 ```
+    </ParamField>
+    <ParamField query="REDIS_USERNAME" type="string" default="none">
+      Authentication username for Redis Node
+    </ParamField>
+    <ParamField query="REDIS_PASSWORD" type="string" default="none">
+      Authentication password for Redis Node
     </ParamField>
   </Tab>
 </Tabs>
