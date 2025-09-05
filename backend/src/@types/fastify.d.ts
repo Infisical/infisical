@@ -1,6 +1,6 @@
 import "fastify";
 
-import { Redis } from "ioredis";
+import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
 import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
@@ -83,6 +83,7 @@ import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
+import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { TOrgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
@@ -161,6 +162,7 @@ declare module "fastify" {
     };
     // identity injection. depending on which kinda of token the information is filled in auth
     auth: TAuthMode;
+    shouldForwardWritesToPrimaryInstance: boolean;
     permission: {
       authMethod: ActorAuthMethod;
       type: ActorType;
@@ -194,7 +196,7 @@ declare module "fastify" {
   }
 
   interface FastifyInstance {
-    redis: Redis;
+    redis: Redis | Cluster;
     services: {
       login: TAuthLoginFactory;
       password: TAuthPasswordFactory;
@@ -303,6 +305,7 @@ declare module "fastify" {
       bus: TEventBusService;
       sse: TServerSentEventsService;
       identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
+      offlineUsageReport: TOfflineUsageReportServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

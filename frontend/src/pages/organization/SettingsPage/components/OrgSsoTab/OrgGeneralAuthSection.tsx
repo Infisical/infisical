@@ -204,9 +204,10 @@ export const OrgGeneralAuthSection = ({
             </OrgPermissionCan>
           </div>
           <p className="text-sm text-mineshaft-300">
-            Enforce users to authenticate via Google to access this organization.
+            Enforce users to authenticate via Google OAuth SSO to access this organization.
             <br />
-            When this is enabled your organization members will only be able to login with Google.
+            When this is enabled your organization members will only be able to login with Google
+            SSO (not Google SAML).
           </p>
         </div>
       </div>

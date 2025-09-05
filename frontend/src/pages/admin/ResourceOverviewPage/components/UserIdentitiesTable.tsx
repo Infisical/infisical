@@ -218,7 +218,7 @@ const UserPanelTable = ({
                         </div>
                       </Td>
                       <Td className="w-5/12 max-w-0">
-                        <p className="truncate">{email}</p>
+                        <p className="truncate">{username || email}</p>
                       </Td>
                       <Td>
                         <div className="flex justify-end">
@@ -463,6 +463,12 @@ export const UserIdentitiesTable = () => {
         </div>
       </div>
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="text-xl font-semibold text-mineshaft-100">User Identities</p>
+            <p className="text-sm text-bunker-300">Manage user identities across your instance.</p>
+          </div>
+        </div>
         <UserPanelTable
           handlePopUpOpen={handlePopUpOpen}
           users={users}
@@ -515,14 +521,14 @@ export const UserIdentitiesTable = () => {
         />
         <DeleteActionModal
           isOpen={popUp.removeUsers.isOpen}
-          title="Are you sure you want to remove the following users?"
+          title="Are you sure you want to delete the following users?"
           onChange={(isOpen) => handlePopUpToggle("removeUsers", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={() => handleRemoveUsers()}
-          buttonText="Remove"
+          buttonText="Delete"
         >
           <div className="mt-4 text-sm text-mineshaft-400">
-            The following members will be removed:
+            The following users will be deleted:
           </div>
           <div className="mt-2 max-h-[20rem] overflow-y-auto rounded border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
             <ul className="list-disc">
@@ -549,7 +555,7 @@ export const UserIdentitiesTable = () => {
                               className="ml-1 mt-[0.05rem] inline-flex w-min items-center gap-1.5 whitespace-nowrap"
                             >
                               <FontAwesomeIcon icon={faWarning} />
-                              <span>Removing Yourself</span>
+                              <span>Deleting Yourself</span>
                             </Badge>
                           </div>
                         </Tooltip>

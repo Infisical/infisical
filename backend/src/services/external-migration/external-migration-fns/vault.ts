@@ -408,19 +408,123 @@ export const transformToInfisicalFormatNamespaceToProjects = (
   };
 };
 
+export const transformToInfisicalFormatKeyVaultToProjectsCustomC1 = (vaultData: VaultData[]): InfisicalImportData => {
+  const projects: Array<{ name: string; id: string }> = [];
+  const environments: Array<{ name: string; id: string; projectId: string; envParentId?: string }> = [];
+  const folders: Array<{ id: string; name: string; environmentId: string; parentFolderId?: string }> = [];
+  const secrets: Array<{ id: string; name: string; environmentId: string; value: string; folderId?: string }> = [];
+
+  // track created entities to avoid duplicates
+  const projectMap = new Map<string, string>(); // team name -> projectId
+  const environmentMap = new Map<string, string>(); // team-name:envName -> environmentId
+  const folderMap = new Map<string, string>(); // team-name:envName:folderPath -> folderId
+
+  for (const data of vaultData) {
+    const { path, secretData } = data;
+
+    const pathParts = path.split("/").filter(Boolean);
+    if (pathParts.length < 2) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    // first level: environment (dev, prod, staging, etc.)
+    const environmentName = pathParts[0];
+    // second level: team name (team1, team2, etc.)
+    const teamName = pathParts[1];
+    // remaining parts: folder structure
+    const folderParts = pathParts.slice(2);
+
+    // create project (team) if if doesn't exist
+    if (!projectMap.has(teamName)) {
+      const projectId = uuidv4();
+      projectMap.set(teamName, projectId);
+      projects.push({
+        name: teamName,
+        id: projectId
+      });
+    }
+    const projectId = projectMap.get(teamName)!;
+
+    // create environment (dev, prod, etc.) for team
+    const envKey = `${teamName}:${environmentName}`;
+    if (!environmentMap.has(envKey)) {
+      const environmentId = uuidv4();
+      environmentMap.set(envKey, environmentId);
+      environments.push({
+        name: environmentName,
+        id: environmentId,
+        projectId
+      });
+    }
+    const environmentId = environmentMap.get(envKey)!;
+
+    // create folder structure for path segments
+    let currentFolderId: string | undefined;
+    let currentPath = "";
+
+    for (const folderName of folderParts) {
+      currentPath = currentPath ? `${currentPath}/${folderName}` : folderName;
+      const folderKey = `${teamName}:${environmentName}:${currentPath}`;
+
+      if (!folderMap.has(folderKey)) {
+        const folderId = uuidv4();
+        folderMap.set(folderKey, folderId);
+        folders.push({
+          id: folderId,
+          name: folderName,
+          environmentId,
+          parentFolderId: currentFolderId || environmentId
+        });
+        currentFolderId = folderId;
+      } else {
+        currentFolderId = folderMap.get(folderKey)!;
+      }
+    }
+
+    for (const [key, value] of Object.entries(secretData)) {
+      secrets.push({
+        id: uuidv4(),
+        name: key,
+        environmentId,
+        value: String(value),
+        folderId: currentFolderId
+      });
+    }
+  }
+
+  return {
+    projects,
+    environments,
+    folders,
+    secrets
+  };
+};
+
+// refer to internal doc for more details on which ID's belong to which orgs.
+// when its a custom migration, then it doesn't matter which mapping type is used (as of now).
+export const vaultMigrationTransformMappings: Record<
+  string,
+  (vaultData: VaultData[], mappingType: VaultMappingType) => InfisicalImportData
+> = {
+  "68c57ab3-cea5-41fc-ae38-e156b10c14d2": transformToInfisicalFormatKeyVaultToProjectsCustomC1
+} as const;
+
 export const importVaultDataFn = async (
   {
     vaultAccessToken,
     vaultNamespace,
     vaultUrl,
     mappingType,
-    gatewayId
+    gatewayId,
+    orgId
   }: {
     vaultAccessToken: string;
     vaultNamespace?: string;
     vaultUrl: string;
     mappingType: VaultMappingType;
     gatewayId?: string;
+    orgId: string;
   },
   { gatewayService }: { gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId"> }
 ) => {
@@ -432,6 +536,25 @@ export const importVaultDataFn = async (
     });
   }
 
+  let transformFn: (vaultData: VaultData[], mappingType: VaultMappingType) => InfisicalImportData;
+
+  if (mappingType === VaultMappingType.Custom) {
+    transformFn = vaultMigrationTransformMappings[orgId];
+
+    if (!transformFn) {
+      throw new BadRequestError({
+        message: "Please contact our sales team to enable custom vault migrations."
+      });
+    }
+  } else {
+    transformFn = transformToInfisicalFormatNamespaceToProjects;
+  }
+
+  logger.info(
+    { orgId, mappingType },
+    `[importVaultDataFn]: Running ${orgId in vaultMigrationTransformMappings ? "custom" : "default"} transform`
+  );
+
   const vaultApi = vaultFactory(gatewayService);
 
   const vaultData = await vaultApi.collectVaultData({
@@ -441,7 +564,5 @@ export const importVaultDataFn = async (
     gatewayId
   });
 
-  const infisicalData = transformToInfisicalFormatNamespaceToProjects(vaultData, mappingType);
-
-  return infisicalData;
+  return transformFn(vaultData, mappingType);
 };

@@ -1,11 +1,11 @@
 import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
-import { MachineIdentitiesResourcesPage } from "./MachineIdentitiesResourcesPage";
+import { AccessManagementPage } from "./AccessManagementPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/admin/_admin-layout/resources/machine-identities"
+  "/_authenticate/_inject-org-details/admin/_admin-layout/access-management"
 )({
-  component: MachineIdentitiesResourcesPage,
+  component: AccessManagementPage,
   beforeLoad: async () => {
     return {
       breadcrumbs: [
@@ -14,9 +14,9 @@ export const Route = createFileRoute(
           link: linkOptions({ to: "/admin" })
         },
         {
-          label: "Machine Identities",
+          label: "Access Control",
           link: linkOptions({
-            to: "/admin/resources/machine-identities"
+            to: "/admin/access-management"
           })
         }
       ]

@@ -1,3 +1,5 @@
+import { OrgMembershipStatus } from "@app/hooks/api/organization/types";
+
 import { Organization } from "../types";
 
 export enum LoginMethod {
@@ -20,6 +22,7 @@ export type OrganizationWithProjects = Organization & {
       lastName: string | null;
     };
     membershipId: string;
+    status: OrgMembershipStatus;
     role: string;
     roleId: string | null;
   }[];
@@ -53,6 +56,7 @@ export type TServerConfig = {
   fipsEnabled: boolean;
   envOverrides?: Record<string, string>;
   paramsFolderSecretDetectionEnabled: boolean;
+  isOfflineUsageReportsEnabled: boolean;
 };
 
 export type TUpdateServerConfigDTO = {
@@ -142,3 +146,19 @@ export interface TGetEnvOverrides {
     fields: { key: string; value: string; hasEnvEntry: boolean; description?: string }[];
   };
 }
+
+export type TUsageReportResponse = {
+  filename: string;
+  csvContent: string;
+  signature: string;
+};
+
+export type TCreateOrganizationDTO = {
+  name: string;
+  inviteAdminEmails: string[];
+};
+
+export type TResendOrgInviteDTO = {
+  organizationId: string;
+  membershipId: string;
+};
