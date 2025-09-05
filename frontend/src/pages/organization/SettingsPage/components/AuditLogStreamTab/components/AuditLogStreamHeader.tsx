@@ -1,8 +1,8 @@
+import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { AUDIT_LOG_STREAM_PROVIDER_MAP } from "@app/helpers/auditLogStreams";
 import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
-import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 
 type Props = {
   provider: LogProvider;

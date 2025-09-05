@@ -29,8 +29,10 @@ export const CustomProviderSchema = BaseCustomProviderSchema.extend({
 export const SanitizedCustomProviderSchema = BaseCustomProviderSchema.extend({
   credentials: z.object({
     url: CustomProviderCredentialsSchema.shape.url,
-    // Only return header keys
-    headers: CustomProviderCredentialsSchema.shape.headers.element.pick({ key: true }).array()
+    // Return header keys and a redacted value
+    headers: CustomProviderCredentialsSchema.shape.headers.transform((headers) =>
+      headers.map((header) => ({ ...header, value: "******" }))
+    )
   })
 });
 

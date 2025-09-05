@@ -99,6 +99,26 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
                     type="password"
                     placeholder="Bearer <token>"
                     autoComplete="new-password"
+                    onFocus={(e) => {
+                      if (
+                        auditLogStream &&
+                        auditLogStream.credentials.headers[i].value === "******" &&
+                        field.value === "******"
+                      ) {
+                        field.onChange("");
+                      }
+                      e.target.type = "text";
+                    }}
+                    onBlur={(e) => {
+                      if (
+                        auditLogStream &&
+                        auditLogStream.credentials.headers[i].value === "******" &&
+                        field.value === ""
+                      ) {
+                        field.onChange("******");
+                      }
+                      e.target.type = "password";
+                    }}
                   />
                 </FormControl>
               )}
