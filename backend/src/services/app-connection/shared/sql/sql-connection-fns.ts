@@ -90,7 +90,7 @@ export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection,
     connection: {
       database,
       port,
-      host: app === AppConnection.Postgres ? baseHost : host,
+      host: app === AppConnection.Postgres ? host : baseHost,
       user: username,
       password,
       connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
