@@ -13,6 +13,7 @@ export const AUDIT_LOG_STREAM_PROVIDER_MAP: Record<
   [LogProvider.Splunk]: { name: "Splunk", image: "Splunk.png", size: 65 }
 };
 
+// Strictly for showing to the client in the front-end
 export function getProviderUrl(
   logStream: DiscriminativePick<TAuditLogStream, "provider" | "credentials">
 ) {

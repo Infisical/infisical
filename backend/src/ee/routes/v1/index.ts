@@ -120,9 +120,11 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await auditLogStreamRouter.register(registerAuditLogStreamRouter);
 
       // Provider-specific endpoints
-      for await (const [provider, router] of Object.entries(AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP)) {
-        await auditLogStreamRouter.register(router, { prefix: `/${provider}` });
-      }
+      await Promise.all(
+        Object.entries(AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP).map(([provider, router]) =>
+          auditLogStreamRouter.register(router, { prefix: `/${provider}` })
+        )
+      );
     },
     { prefix: "/audit-log-streams" }
   );

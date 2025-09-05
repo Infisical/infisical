@@ -14,7 +14,7 @@ function createPayload(event: Record<string, unknown>) {
 
   return {
     time: Math.floor(Date.now() / 1000),
-    host: new URL(appCfg.SITE_URL || "http://infisical").host,
+    ...(appCfg.SITE_URL && { host: new URL(appCfg.SITE_URL).host }),
     source: "infisical",
     sourcetype: "_json",
     event
@@ -29,7 +29,7 @@ async function createSplunkUrl(hostname: string) {
     throw new BadRequestError({ message: `Invalid Splunk hostname provided: ${(error as Error).message}` });
   }
 
-  await blockLocalAndPrivateIpAddresses(`https://${hostname}`);
+  await blockLocalAndPrivateIpAddresses(`https://${parsedHostname}`);
 
   return `https://${parsedHostname}:8088/services/collector/event`;
 }

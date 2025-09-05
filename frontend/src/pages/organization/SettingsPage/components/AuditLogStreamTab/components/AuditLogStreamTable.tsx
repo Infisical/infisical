@@ -255,7 +255,7 @@ export const AuditLogStreamTable = () => {
             {isPending && (
               <TableSkeleton
                 innerKey="audit-log-streams-table"
-                columns={4}
+                columns={3}
                 key="audit-log-streams"
               />
             )}

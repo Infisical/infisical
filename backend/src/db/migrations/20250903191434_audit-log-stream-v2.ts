@@ -198,7 +198,11 @@ export async function down(knex: Knex): Promise<void> {
         .merge();
     }
 
-    await knex(TableName.AuditLogStream).whereNot("provider", "custom").orWhereNull("url").del();
+    await knex(TableName.AuditLogStream)
+      .where((qb) => {
+        void qb.whereNot("provider", "custom").orWhereNull("url");
+      })
+      .del();
 
     await knex.schema.alterTable(TableName.AuditLogStream, (t) => {
       t.string("url").notNullable().alter();

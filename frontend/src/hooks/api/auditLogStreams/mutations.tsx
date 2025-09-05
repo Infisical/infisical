@@ -16,7 +16,7 @@ export const useCreateAuditLogStream = () => {
     mutationFn: async ({ provider, ...params }: TCreateAuditLogStreamDTO) => {
       const { data } = await apiRequest.post<{ auditLogStream: TAuditLogStream }>(
         `/api/v1/audit-log-streams/${provider}`,
-        { ...params, provider }
+        params
       );
 
       return data.auditLogStream;

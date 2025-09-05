@@ -92,7 +92,7 @@ export const LogStreamProviderSelect = ({ onSelect }: Props) => {
             </button>
           );
         })}
-        {!filteredOptions?.length && (
+        {!filteredOptions.length && (
           <EmptyState
             className="col-span-full mt-40"
             title="No providers match search"

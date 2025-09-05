@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { LogProvider } from "../audit-log-stream-enums";
@@ -7,8 +8,14 @@ export const CustomProviderCredentialsSchema = z.object({
   url: z.string().url().trim().min(1).max(255),
   headers: z
     .object({
-      key: z.string().min(1),
-      value: z.string().min(1)
+      key: z
+        .string()
+        .min(1)
+        .refine((val) => new RE2(/^[^\n\r]+$/).test(val), "Header keys cannot contain newlines or carriage returns"),
+      value: z
+        .string()
+        .min(1)
+        .refine((val) => new RE2(/^[^\n\r]+$/).test(val), "Header values cannot contain newlines or carriage returns")
     })
     .array()
 });
