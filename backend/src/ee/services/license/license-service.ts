@@ -323,6 +323,8 @@ export const licenseServiceFactory = ({
       });
     }
 
+    await updateSubscriptionOrgMemberCount(orgId);
+
     const {
       data: { url }
     } = await licenseServerCloudApi.request.post(
