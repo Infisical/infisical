@@ -1,6 +1,6 @@
 import { faCode } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import * as monaco from "monaco-editor";
 import { cva, VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
@@ -47,38 +47,83 @@ export type CodeEditorProps = {
   isDisabled?: boolean;
 } & VariantProps<typeof codeEditorVariants>;
 
-const registerEnvLanguage = () => {
-  monaco.languages.register({ id: 'env' });
-  monaco.languages.setMonarchTokensProvider('env', {
-    tokenizer: {
-      root: [
-        [/#.*$/, 'comment'],
-        [/^[A-Z_][A-Z0-9_]*(?=\s*=)/, 'variable.name'],
-        [/^export\s+/, 'keyword'],
-        [/=/, 'delimiter'],
-        [/"([^"\\]|\\.)*$/, 'string.invalid'],
-        [/"/, 'string', '@string_double'],
-        [/'([^'\\]|\\.)*$/, 'string.invalid'],
-        [/'/, 'string', '@string_single'],
-        [/(?<==\s*)[^\s#]+/, 'string'],
-        [/\d+/, 'number'],
-        [/\s+/, 'white']
-      ],
+// Optimized language detection
+const detectLanguage = (content: string): string => {
+  const trimmed = content.trim();
+  if (!trimmed) return "env";
 
-      string_double: [
-        [/[^\\"]+/, 'string'],
-        [/\\./, 'string.escape'],
-        [/"/, 'string', '@pop']
-      ],
+  // JSON detection
+  if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || 
+      (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+    try {
+      JSON.parse(trimmed);
+      return "json";
+    } catch {
+      return "json";
+    }
+  }
 
-      string_single: [
-        [/[^\\']+/, 'string'],
-        [/\\./, 'string.escape'],
-        [/'/, 'string', '@pop']
-      ]
+  // Simple scoring for YAML vs ENV
+  let yamlScore = 0;
+  let envScore = 0;
+
+  for (const line of trimmed.split("\n")) {
+    const l = line.trim();
+    if (!l || l.startsWith("#")) continue;
+
+    // ENV indicators
+    if (l.includes("=")) {
+      const eqIndex = l.indexOf("=");
+      if (eqIndex > 0 && !l.includes(":")) envScore++;
+    }
+    if (l.startsWith("export ")) envScore++;
+
+    // YAML indicators  
+    if (l.includes(":") && !l.includes("=")) yamlScore++;
+    if (l.startsWith("- ")) yamlScore++;
+    if (l === "---") yamlScore++;
+  }
+
+  return yamlScore > envScore ? "yaml" : "env";
+};
+
+// Singleton pattern for theme and language registration
+let isInitialized = false;
+
+const initializeMonaco = () => {
+  if (isInitialized) return;
+  
+  // Register ENV language
+  monaco.languages.register({ id: "env" });
+  
+  // Define theme
+  monaco.editor.defineTheme("secrets-dark-theme", {
+    base: "vs-dark",
+    inherit: true,
+    rules: [
+      { token: "comment", foreground: "6B7280", fontStyle: "italic" },
+      { token: "key", foreground: "F97316", fontStyle: "bold" },
+      { token: "delimiter", foreground: "FFFFFF" },
+      { token: "string", foreground: "10B981" },
+      { token: "number", foreground: "60A5FA" }
+    ],
+    colors: {
+      "editor.background": "#19191C",
+      "editor.foreground": "#F3F4F6",
+      "editor.lineHighlightBackground": "#374151",
+      "editor.selectionBackground": "#4338CA",
+      "editorCursor.foreground": "#F59E0B"
     }
   });
+
+  isInitialized = true;
 };
+
+const LANGUAGE_CONFIG = {
+  json: { color: "text-blue-400", display: "JSON" },
+  yaml: { color: "text-green-400", display: "YAML" },
+  env: { color: "text-orange-400", display: "ENV" }
+} as const;
 
 export const CodeEditor = ({
   value,
@@ -95,71 +140,21 @@ export const CodeEditor = ({
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const detectLanguage = (content: string): string => {
-    if (!content.trim()) return "env";
-    const trimmed = content.trim();
-
-    // JSON detection
-    if (
-      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
-      (trimmed.startsWith("[") && trimmed.endsWith("]"))
-    ) {
-      try {
-        JSON.parse(content);
-        return "json";
-      } catch {
-        return "json";
+  const handleLanguageChange = useCallback((newValue: string) => {
+    const newLanguage = detectLanguage(newValue);
+    if (newLanguage !== detectedLanguage) {
+      setDetectedLanguage(newLanguage);
+      if (editorRef.current) {
+        monaco.editor.setModelLanguage(editorRef.current.getModel()!, newLanguage);
       }
     }
-
-    // YAML detection
-    const yamlPatterns = [
-      /^[a-zA-Z_][a-zA-Z0-9_]*:\s*[^\n=]+$/m,
-      /^[a-zA-Z_][a-zA-Z0-9_]*:$/m,
-      /^\s*-\s+/m,
-      /^---\s*$/m
-    ];
-    if (yamlPatterns.some((pattern) => pattern.test(content))) return "yaml";
-
-    // ENV detection
-    if (
-      /^[A-Z_][A-Z0-9_]*\s*=/m.test(content) || 
-      content.includes("export ") ||
-      /^#/m.test(content)
-    ) {
-      return "env";
-    }
-
-    return "env";
-  };
+    onChange(newValue);
+  }, [detectedLanguage, onChange]);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    registerEnvLanguage();
-
-    monaco.editor.defineTheme("secrets-dark-theme", {
-      base: "vs-dark",
-      inherit: true,
-      rules: [
-        { token: "comment", foreground: "6B7280", fontStyle: "italic" },
-        { token: "variable.name", foreground: "F97316", fontStyle: "bold" },
-        { token: "keyword", foreground: "A78BFA", fontStyle: "bold" },
-        { token: "delimiter", foreground: "FFFFFF" },
-        { token: "string", foreground: "10B981" },
-        { token: "string.invalid", foreground: "EF4444" },
-        { token: "string.escape", foreground: "6EE7B7" },
-        { token: "number", foreground: "60A5FA" }
-      ],
-      colors: {
-        "editor.background": "#19191C",
-        "editor.foreground": "#F3F4F6",
-        "editor.lineHighlightBackground": "#374151",
-        "editor.selectionBackground": "#4338CA",
-        "editorCursor.foreground": "#F59E0B",
-        "editor.lineHighlightBorder": "#4B5563"
-      }
-    });
+    initializeMonaco();
 
     const detectedLang = detectLanguage(value || "");
     setDetectedLanguage(detectedLang);
@@ -217,19 +212,11 @@ export const CodeEditor = ({
       wordBasedSuggestions: "allDocuments",
       suggestOnTriggerCharacters: true,
       detectIndentation: true,
-      insertSpaces: true,
       tabSize: 2
     });
 
     const disposable = editor.onDidChangeModelContent(() => {
-      const newValue = editor.getValue();
-      const newLanguage = detectLanguage(newValue);
-
-      if (newLanguage !== detectedLanguage) {
-        setDetectedLanguage(newLanguage);
-        monaco.editor.setModelLanguage(editor.getModel()!, newLanguage);
-      }
-      onChange(newValue);
+      handleLanguageChange(editor.getValue());
     });
 
     editorRef.current = editor;
@@ -240,48 +227,34 @@ export const CodeEditor = ({
     };
   }, []);
 
-  const getLanguageColor = (lang: string) => {
-    switch (lang) {
-      case "json":
-        return "text-blue-400";
-      case "yaml":
-        return "text-green-400";
-      case "env":
-        return "text-orange-400";
-      default:
-        return "text-gray-400";
+  // Update editor value when prop changes
+  useEffect(() => {
+    if (editorRef.current && value !== editorRef.current.getValue()) {
+      const newLanguage = detectLanguage(value);
+      if (newLanguage !== detectedLanguage) {
+        setDetectedLanguage(newLanguage);
+        monaco.editor.setModelLanguage(editorRef.current.getModel()!, newLanguage);
+      }
+      editorRef.current.setValue(value);
     }
-  };
+  }, [value, detectedLanguage]);
 
-  const getLanguageDisplay = (lang: string) => {
-    switch (lang) {
-      case "env":
-        return "ENV";
-      case "json":
-        return "JSON";
-      case "yaml":
-        return "YAML";
-      default:
-        return lang.toUpperCase();
-    }
-  };
+  const langConfig = LANGUAGE_CONFIG[detectedLanguage as keyof typeof LANGUAGE_CONFIG] || 
+                    { color: "text-gray-400", display: detectedLanguage.toUpperCase() };
 
   return (
     <div
       className={twMerge(
         codeEditorVariants({ size, isRounded, variant, isError, className }),
-        "border font-inter text-gray-400 placeholder-gray-500 placeholder-opacity-50 outline-none focus-within:ring-1 focus-within:ring-primary-800",
+        "border font-inter text-gray-400 placeholder-gray-500 outline-none focus-within:ring-1 focus-within:ring-primary-800",
         isDisabled && "pointer-events-none"
       )}
     >
       <div className="flex items-center justify-between border-b border-mineshaft-600 bg-mineshaft-800 px-3 py-2">
         <div className="flex items-center gap-2">
-          <FontAwesomeIcon
-            icon={faCode}
-            className={`h-4 w-4 ${getLanguageColor(detectedLanguage)}`}
-          />
-          <span className={`text-sm font-medium ${getLanguageColor(detectedLanguage)}`}>
-            {getLanguageDisplay(detectedLanguage)}
+          <FontAwesomeIcon icon={faCode} className={`h-4 w-4 ${langConfig.color}`} />
+          <span className={`text-sm font-medium ${langConfig.color}`}>
+            {langConfig.display}
           </span>
         </div>
         <span className="text-xs text-mineshaft-400">Ctrl+Space for suggestions</span>
