@@ -15,8 +15,8 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys } from "@app/hooks/api";
-import { useImportVault } from "@app/hooks/api/migration/mutations";
 import { useHasCustomMigrationAvailable } from "@app/hooks/api/migration";
+import { useImportVault } from "@app/hooks/api/migration/mutations";
 import { ExternalMigrationProviders } from "@app/hooks/api/migration/types";
 
 type Props = {
