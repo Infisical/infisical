@@ -1,7 +1,7 @@
 import z from "zod";
 
 import { GatewaysV2Schema } from "@app/db/schemas";
-import { writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -39,6 +39,9 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
           })
         })
       }
+    },
+    config: {
+      rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
@@ -89,6 +92,9 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
           })
         }).array()
       }
+    },
+    config: {
+      rateLimit: readLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -38,8 +39,14 @@ export const registerProxyRouter = async (server: FastifyZodProvider) => {
     onRequest: (req, _, next) => {
       const authHeader = req.headers.authorization;
 
-      if (appCfg.PROXY_AUTH_SECRET && authHeader === `Bearer ${appCfg.PROXY_AUTH_SECRET}`) {
-        return next();
+      if (appCfg.PROXY_AUTH_SECRET && authHeader) {
+        const expectedHeader = `Bearer ${appCfg.PROXY_AUTH_SECRET}`;
+        if (
+          authHeader.length === expectedHeader.length &&
+          crypto.nativeCrypto.timingSafeEqual(Buffer.from(authHeader), Buffer.from(expectedHeader))
+        ) {
+          return next();
+        }
       }
 
       throw new UnauthorizedError({
