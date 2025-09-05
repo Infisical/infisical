@@ -1628,7 +1628,8 @@ export const registerRoutes = async (
     identityOrgMembershipDAL,
     licenseService,
     identityDAL,
-    identityAuthTemplateDAL
+    identityAuthTemplateDAL,
+    keyStore
   });
 
   const dynamicSecretProviders = buildDynamicSecretProviders({

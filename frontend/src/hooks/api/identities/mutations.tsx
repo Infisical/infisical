@@ -18,6 +18,7 @@ import {
   AddIdentityTlsCertAuthDTO,
   AddIdentityTokenAuthDTO,
   AddIdentityUniversalAuthDTO,
+  ClearIdentityLdapAuthLockoutsDTO,
   ClearIdentityUniversalAuthLockoutsDTO,
   ClientSecretData,
   CreateIdentityDTO,
@@ -1432,7 +1433,11 @@ export const useAddIdentityLdapAuth = () => {
       accessTokenTTL,
       accessTokenMaxTTL,
       accessTokenNumUsesLimit,
-      accessTokenTrustedIps
+      accessTokenTrustedIps,
+      lockoutEnabled,
+      lockoutThreshold,
+      lockoutDurationSeconds,
+      lockoutCounterResetSeconds
     }) => {
       const { data } = await apiRequest.post<{ identityLdapAuth: IdentityLdapAuth }>(
         `/api/v1/auth/ldap-auth/identities/${identityId}`,
@@ -1448,7 +1453,11 @@ export const useAddIdentityLdapAuth = () => {
           accessTokenTTL,
           accessTokenMaxTTL,
           accessTokenNumUsesLimit,
-          accessTokenTrustedIps
+          accessTokenTrustedIps,
+          lockoutEnabled,
+          lockoutThreshold,
+          lockoutDurationSeconds,
+          lockoutCounterResetSeconds
         }
       );
       return data.identityLdapAuth;
@@ -1481,7 +1490,11 @@ export const useUpdateIdentityLdapAuth = () => {
       accessTokenTTL,
       accessTokenMaxTTL,
       accessTokenNumUsesLimit,
-      accessTokenTrustedIps
+      accessTokenTrustedIps,
+      lockoutEnabled,
+      lockoutThreshold,
+      lockoutDurationSeconds,
+      lockoutCounterResetSeconds
     }) => {
       const { data } = await apiRequest.patch<{ identityLdapAuth: IdentityLdapAuth }>(
         `/api/v1/auth/ldap-auth/identities/${identityId}`,
@@ -1497,7 +1510,11 @@ export const useUpdateIdentityLdapAuth = () => {
           accessTokenTTL,
           accessTokenMaxTTL,
           accessTokenNumUsesLimit,
-          accessTokenTrustedIps
+          accessTokenTrustedIps,
+          lockoutEnabled,
+          lockoutThreshold,
+          lockoutDurationSeconds,
+          lockoutCounterResetSeconds
         }
       );
       return data.identityLdapAuth;
@@ -1526,6 +1543,25 @@ export const useDeleteIdentityLdapAuth = () => {
         queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityLdapAuth(identityId)
+      });
+    }
+  });
+};
+
+export const useClearIdentityLdapAuthLockouts = () => {
+  const queryClient = useQueryClient();
+  return useMutation<number, object, ClearIdentityLdapAuthLockoutsDTO>({
+    mutationFn: async ({ identityId }) => {
+      const {
+        data: { deleted }
+      } = await apiRequest.post<{ deleted: number }>(
+        `/api/v1/auth/ldap-auth/identities/${identityId}/clear-lockouts`
+      );
+      return deleted;
+    },
+    onSuccess: (_, { identityId }) => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityLdapAuth(identityId)
       });

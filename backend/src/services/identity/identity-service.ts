@@ -33,7 +33,7 @@ type TIdentityServiceFactoryDep = {
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRole">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
-  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern">;
+  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
@@ -261,12 +261,18 @@ export const identityServiceFactory = ({
     const activeLockouts = await keyStore.getKeysByPattern(`lockout:identity:${id}:*`);
 
     const activeLockoutAuthMethods = new Set<string>();
-    activeLockouts.forEach((key) => {
+    for await (const key of activeLockouts) {
       const parts = key.split(":");
       if (parts.length > 3) {
-        activeLockoutAuthMethods.add(parts[3]);
+        const lockoutRaw = await keyStore.getItem(key);
+        if (lockoutRaw) {
+          const lockout = JSON.parse(lockoutRaw) as { lockedOut: boolean };
+          if (lockout.lockedOut) {
+            activeLockoutAuthMethods.add(parts[3]);
+          }
+        }
       }
-    });
+    }
 
     return {
       ...identity,
