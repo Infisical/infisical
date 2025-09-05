@@ -1,4 +1,4 @@
-export type TGatewayV2 = {
+export type TConnector = {
   id: string;
   identityId: string;
   name: string;

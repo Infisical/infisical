@@ -1,4 +1,3 @@
-import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { z } from "zod";
 
@@ -19,7 +18,12 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
+import {
+  OrgPermissionConnectorActions,
+  OrgPermissionGatewayActions,
+  OrgPermissionSubjects
+} from "../permission/org-permission";
+import { throwUnlessCanAny } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TGatewayDALFactory } from "./gateway-dal";
 import {
@@ -75,10 +79,11 @@ export const gatewayServiceFactory = ({
       actorAuthMethod,
       orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.CreateGateways,
-      OrgPermissionSubjects.Gateway
-    );
+
+    throwUnlessCanAny(permission, [
+      { action: OrgPermissionConnectorActions.CreateConnectors, subject: OrgPermissionSubjects.Connector },
+      { action: OrgPermissionGatewayActions.CreateGateways, subject: OrgPermissionSubjects.Gateway }
+    ]);
   };
 
   const getGatewayRelayDetails = async (actorId: string, actorOrgId: string, actorAuthMethod: ActorAuthMethod) => {
@@ -487,10 +492,12 @@ export const gatewayServiceFactory = ({
       orgPermission.authMethod,
       orgPermission.orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.ListGateways,
-      OrgPermissionSubjects.Gateway
-    );
+
+    throwUnlessCanAny(permission, [
+      { action: OrgPermissionConnectorActions.ListConnectors, subject: OrgPermissionSubjects.Connector },
+      { action: OrgPermissionGatewayActions.ListGateways, subject: OrgPermissionSubjects.Gateway }
+    ]);
+
     const orgGatewayConfig = await orgGatewayConfigDAL.findOne({ orgId: orgPermission.orgId });
     if (!orgGatewayConfig) return [];
 
@@ -508,10 +515,12 @@ export const gatewayServiceFactory = ({
       orgPermission.authMethod,
       orgPermission.orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.ListGateways,
-      OrgPermissionSubjects.Gateway
-    );
+
+    throwUnlessCanAny(permission, [
+      { action: OrgPermissionConnectorActions.ListConnectors, subject: OrgPermissionSubjects.Connector },
+      { action: OrgPermissionGatewayActions.ListGateways, subject: OrgPermissionSubjects.Gateway }
+    ]);
+
     const orgGatewayConfig = await orgGatewayConfigDAL.findOne({ orgId: orgPermission.orgId });
     if (!orgGatewayConfig) throw new NotFoundError({ message: `Gateway with ID ${id} not found.` });
 
@@ -528,10 +537,12 @@ export const gatewayServiceFactory = ({
       orgPermission.authMethod,
       orgPermission.orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.EditGateways,
-      OrgPermissionSubjects.Gateway
-    );
+
+    throwUnlessCanAny(permission, [
+      { action: OrgPermissionConnectorActions.EditConnectors, subject: OrgPermissionSubjects.Connector },
+      { action: OrgPermissionGatewayActions.EditGateways, subject: OrgPermissionSubjects.Gateway }
+    ]);
+
     const orgGatewayConfig = await orgGatewayConfigDAL.findOne({ orgId: orgPermission.orgId });
     if (!orgGatewayConfig) throw new NotFoundError({ message: `Gateway with ID ${id} not found.` });
 
@@ -549,10 +560,12 @@ export const gatewayServiceFactory = ({
       orgPermission.authMethod,
       orgPermission.orgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.DeleteGateways,
-      OrgPermissionSubjects.Gateway
-    );
+
+    throwUnlessCanAny(permission, [
+      { action: OrgPermissionConnectorActions.DeleteConnectors, subject: OrgPermissionSubjects.Connector },
+      { action: OrgPermissionGatewayActions.DeleteGateways, subject: OrgPermissionSubjects.Gateway }
+    ]);
+
     const orgGatewayConfig = await orgGatewayConfigDAL.findOne({ orgId: orgPermission.orgId });
     if (!orgGatewayConfig) throw new NotFoundError({ message: `Gateway with ID ${id} not found.` });
 

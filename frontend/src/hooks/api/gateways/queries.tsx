@@ -2,7 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TGatewayV2 } from "../gateways-v2/types";
+import { TConnector } from "../connectors/types";
 import { TGateway } from "./types";
 
 export const gatewaysQueryKeys = {
@@ -14,7 +14,7 @@ export const gatewaysQueryKeys = {
       queryFn: async () => {
         const [{ data }, { data: dataV2 }] = await Promise.all([
           apiRequest.get<{ gateways: TGateway[] }>("/api/v1/gateways"),
-          apiRequest.get<TGatewayV2[]>("/api/v2/gateways")
+          apiRequest.get<TConnector[]>("/api/v1/connectors")
         ]);
 
         return [

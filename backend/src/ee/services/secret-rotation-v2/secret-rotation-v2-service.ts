@@ -82,7 +82,7 @@ import {
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 
-import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { TConnectorServiceFactory } from "../connector/connector-service";
 import { awsIamUserSecretRotationFactory } from "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns";
 import { oktaClientSecretRotationFactory } from "./okta-client-secret/okta-client-secret-rotation-fns";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
@@ -111,7 +111,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  connectorService: Pick<TConnectorServiceFactory, "getPlatformConnectionDetailsByConnectorId">;
 };
 
 export type TSecretRotationV2ServiceFactory = ReturnType<typeof secretRotationV2ServiceFactory>;
@@ -156,7 +156,7 @@ export const secretRotationV2ServiceFactory = ({
   folderCommitService,
   appConnectionDAL,
   gatewayService,
-  gatewayV2Service
+  connectorService
 }: TSecretRotationV2ServiceFactoryDep) => {
   const $queueSendSecretRotationStatusNotification = async (secretRotation: TSecretRotationV2Raw) => {
     const appCfg = getConfig();
@@ -471,7 +471,7 @@ export const secretRotationV2ServiceFactory = ({
       appConnectionDAL,
       kmsService,
       gatewayService,
-      gatewayV2Service
+      connectorService
     );
 
     // even though we have a db constraint we want to check before any rotation of credentials is attempted
@@ -836,7 +836,7 @@ export const secretRotationV2ServiceFactory = ({
         appConnectionDAL,
         kmsService,
         gatewayService,
-        gatewayV2Service
+        connectorService
       );
 
       const generatedCredentials = await decryptSecretRotationCredentials({
@@ -921,7 +921,7 @@ export const secretRotationV2ServiceFactory = ({
         appConnectionDAL,
         kmsService,
         gatewayService,
-        gatewayV2Service
+        connectorService
       );
 
       const updatedRotation = await rotationFactory.rotateCredentials(

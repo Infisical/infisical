@@ -2,17 +2,17 @@ import axios, { AxiosError } from "axios";
 import handlebars from "handlebars";
 import https from "https";
 
+import { withConnectorProxy } from "@app/lib/connector/connector";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { GatewayHttpProxyActions, GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
-import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TKubernetesTokenRequest } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
+import { TConnectorServiceFactory } from "../../connector/connector-service";
 import { TDynamicSecretKubernetesLeaseConfig } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
-import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import {
   DynamicSecretKubernetesSchema,
   KubernetesAuthMethod,
@@ -28,7 +28,7 @@ const GATEWAY_AUTH_DEFAULT_URL = "https://kubernetes.default.svc.cluster.local";
 
 type TKubernetesProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  connectorService: Pick<TConnectorServiceFactory, "getPlatformConnectionDetailsByConnectorId">;
 };
 
 const generateUsername = (usernameTemplate?: string | null) => {
@@ -43,7 +43,7 @@ const generateUsername = (usernameTemplate?: string | null) => {
 
 export const KubernetesProvider = ({
   gatewayService,
-  gatewayV2Service
+  connectorService
 }: TKubernetesProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretKubernetesSchema.parseAsync(inputs);
@@ -64,13 +64,14 @@ export const KubernetesProvider = ({
     },
     gatewayCallback: (host: string, port: number, httpsAgent?: https.Agent) => Promise<T>
   ): Promise<T> => {
-    const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-      gatewayId: inputs.gatewayId,
+    const connectorConnectionDetails = await connectorService.getPlatformConnectionDetailsByConnectorId({
+      connectorId: inputs.gatewayId,
       targetHost: inputs.targetHost,
       targetPort: inputs.targetPort
     });
-    if (gatewayV2ConnectionDetails) {
-      const callbackResult = await withGatewayV2Proxy(
+
+    if (connectorConnectionDetails) {
+      const callbackResult = await withConnectorProxy(
         async (port) => {
           return gatewayCallback(
             inputs.reviewTokenThroughGateway ? "http://localhost" : "https://localhost",
@@ -79,9 +80,9 @@ export const KubernetesProvider = ({
           );
         },
         {
-          proxyIp: gatewayV2ConnectionDetails.proxyIp,
-          gateway: gatewayV2ConnectionDetails.gateway,
-          proxy: gatewayV2ConnectionDetails.proxy,
+          relayIp: connectorConnectionDetails.relayIp,
+          connector: connectorConnectionDetails.connector,
+          relay: connectorConnectionDetails.relay,
           protocol: inputs.reviewTokenThroughGateway ? GatewayProxyProtocol.Http : GatewayProxyProtocol.Tcp,
           httpsAgent: inputs.httpsAgent
         }

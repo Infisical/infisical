@@ -124,14 +124,14 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                       </MenuItem>
                     )}
                   </Link>
-                  <Link to="/organization/gateways">
+                  <Link to="/organization/connectors">
                     {({ isActive }) => (
                       <MenuItem isSelected={isActive}>
                         <div className="mx-1 flex gap-2">
                           <div className="w-6">
                             <FontAwesomeIcon icon={faDoorClosed} className="mr-4" />
                           </div>
-                          Gateways
+                          Connectors
                         </div>
                       </MenuItem>
                     )}

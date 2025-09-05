@@ -1,9 +1,9 @@
 import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 
+import { TConnectorServiceFactory } from "@app/ee/services/connector/connector-service";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
-import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
@@ -147,7 +147,7 @@ export const validateHCVaultConnectionCredentials = async (
   connection: THCVaultConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  _connectorService: Pick<TConnectorServiceFactory, "getPlatformConnectionDetailsByConnectorId">
 ) => {
   const instanceUrl = await getHCVaultInstanceUrl(connection);
 

@@ -180,12 +180,12 @@ export enum TableName {
   Reminder = "reminders",
   ReminderRecipient = "reminders_recipients",
 
-  // gateway v2
-  InstanceProxyConfig = "instance_proxy_config",
-  OrgProxyConfig = "org_proxy_config",
-  OrgGatewayConfigV2 = "org_gateway_config_v2",
-  Proxy = "proxies",
-  GatewayV2 = "gateways_v2"
+  // connector/relay
+  InstanceRelayConfig = "instance_relay_config",
+  OrgRelayConfig = "org_relay_config",
+  OrgConnectorConfig = "org_connector_config",
+  Relay = "relays",
+  Connector = "connectors"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

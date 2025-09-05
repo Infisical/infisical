@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const ProxiesSchema = z.object({
+export const RelaysSchema = z.object({
   id: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -17,6 +17,6 @@ export const ProxiesSchema = z.object({
   ip: z.string()
 });
 
-export type TProxies = z.infer<typeof ProxiesSchema>;
-export type TProxiesInsert = Omit<z.input<typeof ProxiesSchema>, TImmutableDBKeys>;
-export type TProxiesUpdate = Partial<Omit<z.input<typeof ProxiesSchema>, TImmutableDBKeys>>;
+export type TRelays = z.infer<typeof RelaysSchema>;
+export type TRelaysInsert = Omit<z.input<typeof RelaysSchema>, TImmutableDBKeys>;
+export type TRelaysUpdate = Partial<Omit<z.input<typeof RelaysSchema>, TImmutableDBKeys>>;

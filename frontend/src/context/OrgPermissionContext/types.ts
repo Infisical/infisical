@@ -12,6 +12,7 @@ export enum OrgPermissionBillingActions {
   ManageBilling = "manage-billing"
 }
 
+// we are deprecating this in favor of connector
 export enum OrgGatewayPermissionActions {
   // is there a better word for this. This mean can an identity be a gateway
   CreateGateways = "create-gateways",
@@ -19,6 +20,14 @@ export enum OrgGatewayPermissionActions {
   EditGateways = "edit-gateways",
   DeleteGateways = "delete-gateways",
   AttachGateways = "attach-gateways"
+}
+
+export enum OrgPermissionConnectorActions {
+  CreateConnectors = "create-connectors",
+  ListConnectors = "list-connectors",
+  EditConnectors = "edit-connectors",
+  DeleteConnectors = "delete-connectors",
+  AttachConnectors = "attach-connectors"
 }
 
 export enum OrgPermissionMachineIdentityAuthTemplateActions {

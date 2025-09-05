@@ -25,6 +25,9 @@ import { auditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/
 import { certificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { certificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-service";
 import { certificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
+import { connectorDalFactory } from "@app/ee/services/connector/connector-dal";
+import { connectorServiceFactory } from "@app/ee/services/connector/connector-service";
+import { orgConnectorConfigDalFactory } from "@app/ee/services/connector/org-connector-config-dal";
 import { dynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { dynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-service";
 import { buildDynamicSecretProviders } from "@app/ee/services/dynamic-secret/providers";
@@ -38,9 +41,6 @@ import { externalKmsServiceFactory } from "@app/ee/services/external-kms/externa
 import { gatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { gatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { orgGatewayConfigDALFactory } from "@app/ee/services/gateway/org-gateway-config-dal";
-import { gatewayV2DalFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
-import { gatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { orgGatewayConfigV2DalFactory } from "@app/ee/services/gateway-v2/org-gateway-config-v2-dal";
 import { githubOrgSyncDALFactory } from "@app/ee/services/github-org-sync/github-org-sync-dal";
 import { githubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
@@ -73,12 +73,12 @@ import { projectTemplateDALFactory } from "@app/ee/services/project-template/pro
 import { projectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { projectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { projectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
-import { instanceProxyConfigDalFactory } from "@app/ee/services/proxy/instance-proxy-config-dal";
-import { orgProxyConfigDalFactory } from "@app/ee/services/proxy/org-proxy-config-dal";
-import { proxyDalFactory } from "@app/ee/services/proxy/proxy-dal";
-import { proxyServiceFactory } from "@app/ee/services/proxy/proxy-service";
 import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
 import { rateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
+import { instanceRelayConfigDalFactory } from "@app/ee/services/relay/instance-relay-config-dal";
+import { orgRelayConfigDalFactory } from "@app/ee/services/relay/org-relay-config-dal";
+import { relayDalFactory } from "@app/ee/services/relay/relay-dal";
+import { relayServiceFactory } from "@app/ee/services/relay/relay-service";
 import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { samlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
 import { scimDALFactory } from "@app/ee/services/scim/scim-dal";
@@ -496,8 +496,8 @@ export const registerRoutes = async (
   const kmipClientCertificateDAL = kmipClientCertificateDALFactory(db);
   const kmipOrgConfigDAL = kmipOrgConfigDALFactory(db);
   const kmipOrgServerCertificateDAL = kmipOrgServerCertificateDALFactory(db);
-
   const orgGatewayConfigDAL = orgGatewayConfigDALFactory(db);
+
   const gatewayDAL = gatewayDALFactory(db);
   const secretReminderRecipientsDAL = secretReminderRecipientsDALFactory(db);
   const githubOrgSyncDAL = githubOrgSyncDALFactory(db);
@@ -948,12 +948,11 @@ export const registerRoutes = async (
   const pkiSubscriberDAL = pkiSubscriberDALFactory(db);
   const pkiTemplatesDAL = pkiTemplatesDALFactory(db);
 
-  const instanceProxyConfigDAL = instanceProxyConfigDalFactory(db);
-  const orgProxyConfigDAL = orgProxyConfigDalFactory(db);
-  const proxyDAL = proxyDalFactory(db);
-  const gatewayV2DAL = gatewayV2DalFactory(db);
-
-  const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
+  const instanceRelayConfigDAL = instanceRelayConfigDalFactory(db);
+  const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
+  const relayDAL = relayDalFactory(db);
+  const connectorDAL = connectorDalFactory(db);
+  const orgConnectorConfigDAL = orgConnectorConfigDalFactory(db);
 
   const certificateService = certificateServiceFactory({
     certificateDAL,
@@ -1073,20 +1072,20 @@ export const registerRoutes = async (
     keyStore
   });
 
-  const proxyService = proxyServiceFactory({
-    instanceProxyConfigDAL,
-    orgProxyConfigDAL,
-    proxyDAL,
+  const relayService = relayServiceFactory({
+    instanceRelayConfigDAL,
+    orgRelayConfigDAL,
+    relayDAL,
     kmsService
   });
 
-  const gatewayV2Service = gatewayV2ServiceFactory({
+  const connectorService = connectorServiceFactory({
     kmsService,
     licenseService,
-    proxyService,
-    orgGatewayConfigV2DAL,
-    gatewayV2DAL,
-    proxyDAL,
+    relayService,
+    orgConnectorConfigDAL,
+    connectorDAL,
+    relayDAL,
     permissionService
   });
 
@@ -1115,7 +1114,7 @@ export const registerRoutes = async (
     appConnectionDAL,
     licenseService,
     gatewayService,
-    gatewayV2Service
+    connectorService
   });
 
   const secretQueueService = secretQueueFactory({
@@ -1556,8 +1555,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     gatewayService,
-    gatewayV2Service,
-    gatewayV2DAL,
+    connectorService,
+    connectorDAL,
     gatewayDAL,
     kmsService
   });
@@ -1655,7 +1654,7 @@ export const registerRoutes = async (
 
   const dynamicSecretProviders = buildDynamicSecretProviders({
     gatewayService,
-    gatewayV2Service
+    connectorService
   });
 
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
@@ -1677,7 +1676,7 @@ export const registerRoutes = async (
     licenseService,
     kmsService,
     gatewayDAL,
-    gatewayV2DAL,
+    connectorDAL,
     resourceMetadataDAL
   });
 
@@ -1802,9 +1801,9 @@ export const registerRoutes = async (
     kmsService,
     licenseService,
     gatewayService,
-    gatewayV2Service,
+    connectorService,
     gatewayDAL,
-    gatewayV2DAL
+    connectorDAL
   });
 
   const secretSyncService = secretSyncServiceFactory({
@@ -1904,7 +1903,7 @@ export const registerRoutes = async (
     queueService,
     appConnectionDAL,
     gatewayService,
-    gatewayV2Service
+    connectorService
   });
 
   const certificateAuthorityService = certificateAuthorityServiceFactory({
@@ -2138,8 +2137,8 @@ export const registerRoutes = async (
     reminder: reminderService,
     bus: eventBusService,
     sse: sseService,
-    proxy: proxyService,
-    gatewayV2: gatewayV2Service
+    relay: relayService,
+    connector: connectorService
   });
 
   const cronJobs: CronJob[] = [];

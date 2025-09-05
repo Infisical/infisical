@@ -63,7 +63,7 @@ import { Route as organizationIdentityDetailsByIDPageRouteImport } from './pages
 import { Route as organizationGroupDetailsByIDPageRouteImport } from './pages/organization/GroupDetailsByIDPage/route'
 import { Route as organizationSettingsPageRouteImport } from './pages/organization/SettingsPage/route'
 import { Route as organizationSecretSharingPageRouteImport } from './pages/organization/SecretSharingPage/route'
-import { Route as organizationGatewaysGatewayListPageRouteImport } from './pages/organization/Gateways/GatewayListPage/route'
+import { Route as organizationConnectorsConnectorListPageRouteImport } from './pages/organization/Connectors/ConnectorListPage/route'
 import { Route as organizationAppConnectionsAppConnectionsPageRouteImport } from './pages/organization/AppConnections/AppConnectionsPage/route'
 import { Route as sshLayoutImport } from './pages/ssh/layout'
 import { Route as secretScanningLayoutImport } from './pages/secret-scanning/layout'
@@ -253,9 +253,9 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingImport =
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing',
   )()
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysImport =
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsImport =
   createFileRoute(
-    '/_authenticate/_inject-org-details/_org-layout/organization/gateways',
+    '/_authenticate/_inject-org-details/_org-layout/organization/connectors',
   )()
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsImport =
   createFileRoute(
@@ -557,10 +557,10 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRoute =
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
   } as any)
 
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRoute =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysImport.update({
-    id: '/gateways',
-    path: '/gateways',
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsRoute =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsImport.update({
+    id: '/connectors',
+    path: '/connectors',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
   } as any)
@@ -770,12 +770,12 @@ const organizationSecretSharingPageRouteRoute =
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRoute,
   } as any)
 
-const organizationGatewaysGatewayListPageRouteRoute =
-  organizationGatewaysGatewayListPageRouteImport.update({
+const organizationConnectorsConnectorListPageRouteRoute =
+  organizationConnectorsConnectorListPageRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRoute,
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsRoute,
   } as any)
 
 const organizationAppConnectionsAppConnectionsPageRouteRoute =
@@ -2346,11 +2346,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/organization/gateways': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organization/gateways'
-      path: '/gateways'
-      fullPath: '/organization/gateways'
-      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysImport
+    '/_authenticate/_inject-org-details/_org-layout/organization/connectors': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/connectors'
+      path: '/connectors'
+      fullPath: '/organization/connectors'
+      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing': {
@@ -2381,12 +2381,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof organizationAppConnectionsAppConnectionsPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/organization/gateways/': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organization/gateways/'
+    '/_authenticate/_inject-org-details/_org-layout/organization/connectors/': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/connectors/'
       path: '/'
-      fullPath: '/organization/gateways/'
-      preLoaderRoute: typeof organizationGatewaysGatewayListPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysImport
+      fullPath: '/organization/connectors/'
+      preLoaderRoute: typeof organizationConnectorsConnectorListPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/': {
       id: '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/'
@@ -3689,19 +3689,19 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithCh
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteChildren,
   )
 
-interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRouteChildren {
-  organizationGatewaysGatewayListPageRouteRoute: typeof organizationGatewaysGatewayListPageRouteRoute
+interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsRouteChildren {
+  organizationConnectorsConnectorListPageRouteRoute: typeof organizationConnectorsConnectorListPageRouteRoute
 }
 
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRouteChildren =
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsRouteChildren =
   {
-    organizationGatewaysGatewayListPageRouteRoute:
-      organizationGatewaysGatewayListPageRouteRoute,
+    organizationConnectorsConnectorListPageRouteRoute:
+      organizationConnectorsConnectorListPageRouteRoute,
   }
 
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRouteWithChildren =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRoute._addFileChildren(
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRouteChildren,
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsRouteWithChildren =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsRoute._addFileChildren(
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsRouteChildren,
   )
 
 interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRouteChildren {
@@ -3745,7 +3745,7 @@ interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren {
   organizationBillingPageRouteRoute: typeof organizationBillingPageRouteRoute
   organizationProjectsPageRouteRoute: typeof organizationProjectsPageRouteRoute
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRouteWithChildren
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRouteWithChildren
   organizationGroupDetailsByIDPageRouteRoute: typeof organizationGroupDetailsByIDPageRouteRoute
@@ -3763,8 +3763,8 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: Authentica
     organizationProjectsPageRouteRoute: organizationProjectsPageRouteRoute,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRoute:
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren,
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRoute:
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRouteWithChildren,
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsRoute:
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRoute:
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRoute:
@@ -4658,12 +4658,12 @@ export interface FileRoutesByFullPath {
   '/admin/environment': typeof adminEnvironmentPageRouteRoute
   '/admin/integrations': typeof adminIntegrationsPageRouteRoute
   '/organization/app-connections': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren
-  '/organization/gateways': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRouteWithChildren
+  '/organization/connectors': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsRouteWithChildren
   '/organization/secret-sharing': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRouteWithChildren
   '/organization/settings': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRouteWithChildren
   '/secret-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdRouteWithChildren
   '/organization/app-connections/': typeof organizationAppConnectionsAppConnectionsPageRouteRoute
-  '/organization/gateways/': typeof organizationGatewaysGatewayListPageRouteRoute
+  '/organization/connectors/': typeof organizationConnectorsConnectorListPageRouteRoute
   '/organization/secret-sharing/': typeof organizationSecretSharingPageRouteRoute
   '/organization/settings/': typeof organizationSettingsPageRouteRoute
   '/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
@@ -4877,7 +4877,7 @@ export interface FileRoutesByTo {
   '/admin/integrations': typeof adminIntegrationsPageRouteRoute
   '/secret-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdRouteWithChildren
   '/organization/app-connections': typeof organizationAppConnectionsAppConnectionsPageRouteRoute
-  '/organization/gateways': typeof organizationGatewaysGatewayListPageRouteRoute
+  '/organization/connectors': typeof organizationConnectorsConnectorListPageRouteRoute
   '/organization/secret-sharing': typeof organizationSecretSharingPageRouteRoute
   '/organization/settings': typeof organizationSettingsPageRouteRoute
   '/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
@@ -5094,12 +5094,12 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/admin/_admin-layout/environment': typeof adminEnvironmentPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/integrations': typeof adminIntegrationsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/app-connections': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren
-  '/_authenticate/_inject-org-details/_org-layout/organization/gateways': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRouteWithChildren
+  '/_authenticate/_inject-org-details/_org-layout/organization/connectors': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationConnectorsRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organization/settings': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/': typeof organizationAppConnectionsAppConnectionsPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organization/gateways/': typeof organizationGatewaysGatewayListPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organization/connectors/': typeof organizationConnectorsConnectorListPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/': typeof organizationSecretSharingPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/settings/': typeof organizationSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
@@ -5323,12 +5323,12 @@ export interface FileRouteTypes {
     | '/admin/environment'
     | '/admin/integrations'
     | '/organization/app-connections'
-    | '/organization/gateways'
+    | '/organization/connectors'
     | '/organization/secret-sharing'
     | '/organization/settings'
     | '/secret-manager/$projectId'
     | '/organization/app-connections/'
-    | '/organization/gateways/'
+    | '/organization/connectors/'
     | '/organization/secret-sharing/'
     | '/organization/settings/'
     | '/organization/groups/$groupId'
@@ -5541,7 +5541,7 @@ export interface FileRouteTypes {
     | '/admin/integrations'
     | '/secret-manager/$projectId'
     | '/organization/app-connections'
-    | '/organization/gateways'
+    | '/organization/connectors'
     | '/organization/secret-sharing'
     | '/organization/settings'
     | '/organization/groups/$groupId'
@@ -5756,12 +5756,12 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/admin/_admin-layout/environment'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/integrations'
     | '/_authenticate/_inject-org-details/_org-layout/organization/app-connections'
-    | '/_authenticate/_inject-org-details/_org-layout/organization/gateways'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/connectors'
     | '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing'
     | '/_authenticate/_inject-org-details/_org-layout/organization/settings'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/'
-    | '/_authenticate/_inject-org-details/_org-layout/organization/gateways/'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/connectors/'
     | '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/'
     | '/_authenticate/_inject-org-details/_org-layout/organization/settings/'
     | '/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId'
@@ -6181,7 +6181,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organization/billing",
         "/_authenticate/_inject-org-details/_org-layout/organization/projects",
         "/_authenticate/_inject-org-details/_org-layout/organization/app-connections",
-        "/_authenticate/_inject-org-details/_org-layout/organization/gateways",
+        "/_authenticate/_inject-org-details/_org-layout/organization/connectors",
         "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing",
         "/_authenticate/_inject-org-details/_org-layout/organization/settings",
         "/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId",
@@ -6253,11 +6253,11 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback"
       ]
     },
-    "/_authenticate/_inject-org-details/_org-layout/organization/gateways": {
+    "/_authenticate/_inject-org-details/_org-layout/organization/connectors": {
       "filePath": "",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization",
       "children": [
-        "/_authenticate/_inject-org-details/_org-layout/organization/gateways/"
+        "/_authenticate/_inject-org-details/_org-layout/organization/connectors/"
       ]
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing": {
@@ -6287,9 +6287,9 @@ export const routeTree = rootRoute
       "filePath": "organization/AppConnections/AppConnectionsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization/app-connections"
     },
-    "/_authenticate/_inject-org-details/_org-layout/organization/gateways/": {
-      "filePath": "organization/Gateways/GatewayListPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organization/gateways"
+    "/_authenticate/_inject-org-details/_org-layout/organization/connectors/": {
+      "filePath": "organization/Connectors/ConnectorListPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization/connectors"
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/": {
       "filePath": "organization/SecretSharingPage/route.tsx",

@@ -7,17 +7,17 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const GatewaysV2Schema = z.object({
+export const ConnectorsSchema = z.object({
   id: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   orgId: z.string().uuid(),
   identityId: z.string().uuid(),
-  proxyId: z.string().uuid().nullable().optional(),
+  relayId: z.string().uuid().nullable().optional(),
   name: z.string(),
   heartbeat: z.date().nullable().optional()
 });
 
-export type TGatewaysV2 = z.infer<typeof GatewaysV2Schema>;
-export type TGatewaysV2Insert = Omit<z.input<typeof GatewaysV2Schema>, TImmutableDBKeys>;
-export type TGatewaysV2Update = Partial<Omit<z.input<typeof GatewaysV2Schema>, TImmutableDBKeys>>;
+export type TConnectors = z.infer<typeof ConnectorsSchema>;
+export type TConnectorsInsert = Omit<z.input<typeof ConnectorsSchema>, TImmutableDBKeys>;
+export type TConnectorsUpdate = Partial<Omit<z.input<typeof ConnectorsSchema>, TImmutableDBKeys>>;

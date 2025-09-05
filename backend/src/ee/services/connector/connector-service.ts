@@ -1,15 +1,14 @@
 import net from "node:net";
 
-import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { TProxies } from "@app/db/schemas";
+import { TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { withConnectorProxy } from "@app/lib/connector/connector";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
-import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
@@ -22,42 +21,51 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
+import {
+  OrgPermissionConnectorActions,
+  OrgPermissionGatewayActions,
+  OrgPermissionSubjects
+} from "../permission/org-permission";
+import { throwUnlessCanAny } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { TProxyDALFactory } from "../proxy/proxy-dal";
-import { isInstanceProxy } from "../proxy/proxy-fns";
-import { TProxyServiceFactory } from "../proxy/proxy-service";
-import { GATEWAY_ACTOR_OID, GATEWAY_ROUTING_INFO_OID } from "./gateway-v2-constants";
-import { TGatewayV2DALFactory } from "./gateway-v2-dal";
-import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
+import { TRelayDALFactory } from "../relay/relay-dal";
+import { isInstanceRelay } from "../relay/relay-fns";
+import { TRelayServiceFactory } from "../relay/relay-service";
+import { CONNECTOR_ACTOR_OID, CONNECTOR_ROUTING_INFO_OID } from "./connector-constants";
+import { TConnectorDALFactory } from "./connector-dal";
+import { TOrgConnectorConfigDALFactory } from "./org-connector-config-dal";
 
-type TGatewayV2ServiceFactoryDep = {
-  orgGatewayConfigV2DAL: Pick<TOrgGatewayConfigV2DALFactory, "findOne" | "create" | "transaction" | "findById">;
+type TConnectorServiceFactoryDep = {
+  orgConnectorConfigDAL: Pick<TOrgConnectorConfigDALFactory, "findOne" | "create" | "transaction" | "findById">;
   licenseService: Pick<TLicenseServiceFactory, "onPremFeatures" | "getPlan">;
   kmsService: TKmsServiceFactory;
-  proxyService: TProxyServiceFactory;
-  gatewayV2DAL: TGatewayV2DALFactory;
-  proxyDAL: TProxyDALFactory;
+  relayService: TRelayServiceFactory;
+  connectorDAL: TConnectorDALFactory;
+  relayDAL: TRelayDALFactory;
   permissionService: TPermissionServiceFactory;
 };
 
-export type TGatewayV2ServiceFactory = ReturnType<typeof gatewayV2ServiceFactory>;
+export type TConnectorServiceFactory = ReturnType<typeof connectorServiceFactory>;
 
-export const gatewayV2ServiceFactory = ({
-  orgGatewayConfigV2DAL,
+export const connectorServiceFactory = ({
+  orgConnectorConfigDAL,
   licenseService,
   kmsService,
-  proxyService,
-  gatewayV2DAL,
-  proxyDAL,
+  relayService,
+  connectorDAL,
+  relayDAL,
   permissionService
-}: TGatewayV2ServiceFactoryDep) => {
-  const $validateIdentityAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
+}: TConnectorServiceFactoryDep) => {
+  const $validateIdentityAccessToConnector = async (
+    orgId: string,
+    actorId: string,
+    actorAuthMethod: ActorAuthMethod
+  ) => {
     const orgLicensePlan = await licenseService.getPlan(orgId);
     if (!orgLicensePlan.gateway) {
       throw new BadRequestError({
         message:
-          "Gateway operation failed due to organization plan restrictions. Please upgrade your instance to Infisical's Enterprise plan."
+          "Connector operation failed due to organization plan restrictions. Please upgrade your instance to Infisical's Enterprise plan."
       });
     }
 
@@ -69,10 +77,10 @@ export const gatewayV2ServiceFactory = ({
       orgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.CreateGateways,
-      OrgPermissionSubjects.Gateway
-    );
+    throwUnlessCanAny(permission, [
+      { action: OrgPermissionConnectorActions.CreateConnectors, subject: OrgPermissionSubjects.Connector },
+      { action: OrgPermissionGatewayActions.CreateGateways, subject: OrgPermissionSubjects.Gateway }
+    ]);
   };
 
   const $getOrgCAs = async (orgId: string) => {
@@ -81,11 +89,11 @@ export const gatewayV2ServiceFactory = ({
       orgId
     });
 
-    const orgCAs = await orgGatewayConfigV2DAL.transaction(async (tx) => {
-      const orgGatewayConfigV2 = await orgGatewayConfigV2DAL.findOne({ orgId });
-      if (orgGatewayConfigV2) return orgGatewayConfigV2;
+    const orgCAs = await orgConnectorConfigDAL.transaction(async (tx) => {
+      const orgConnectorConfig = await orgConnectorConfigDAL.findOne({ orgId });
+      if (orgConnectorConfig) return orgConnectorConfig;
 
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgGatewayV2Init(orgId)]);
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgConnectorInit(orgId)]);
 
       // generate root CA
       const rootCaKeyAlgorithm = CertKeyAlgorithm.RSA_2048;
@@ -98,7 +106,7 @@ export const gatewayV2ServiceFactory = ({
       const rootCaExpiration = new Date(new Date().setFullYear(2045));
 
       const rootCaCert = await x509.X509CertificateGenerator.createSelfSigned({
-        name: `O=${orgId},CN=Infisical Gateway Root CA`,
+        name: `O=${orgId},CN=Infisical Connector Root CA`,
         serialNumber: rootCaSerialNumber,
         notBefore: rootCaIssuedAt,
         notAfter: rootCaExpiration,
@@ -119,7 +127,7 @@ export const gatewayV2ServiceFactory = ({
       const serverCaSkObj = crypto.nativeCrypto.KeyObject.from(serverCaKeys.privateKey);
       const serverCaCert = await x509.X509CertificateGenerator.create({
         serialNumber: serverCaSerialNumber,
-        subject: `O=${orgId},CN=Infisical Gateway Server CA`,
+        subject: `O=${orgId},CN=Infisical Connector Server CA`,
         issuer: rootCaCert.subject,
         notBefore: serverCaIssuedAt,
         notAfter: serverCaExpiration,
@@ -149,7 +157,7 @@ export const gatewayV2ServiceFactory = ({
       const clientCaSkObj = crypto.nativeCrypto.KeyObject.from(clientCaKeys.privateKey);
       const clientCaCert = await x509.X509CertificateGenerator.create({
         serialNumber: clientCaSerialNumber,
-        subject: `O=${orgId},CN=Infisical Gateway Client CA`,
+        subject: `O=${orgId},CN=Infisical Connector Client CA`,
         issuer: rootCaCert.subject,
         notBefore: clientCaIssuedAt,
         notAfter: clientCaExpiration,
@@ -171,7 +179,7 @@ export const gatewayV2ServiceFactory = ({
         ]
       });
 
-      const encryptedRootGatewayCaPrivateKey = orgKmsEncryptor({
+      const encryptedRootConnectorCaPrivateKey = orgKmsEncryptor({
         plainText: Buffer.from(
           rootCaSkObj.export({
             type: "pkcs8",
@@ -179,73 +187,79 @@ export const gatewayV2ServiceFactory = ({
           })
         )
       }).cipherTextBlob;
-      const encryptedRootGatewayCaCertificate = orgKmsEncryptor({
+      const encryptedRootConnectorCaCertificate = orgKmsEncryptor({
         plainText: Buffer.from(rootCaCert.rawData)
       }).cipherTextBlob;
 
-      const encryptedGatewayServerCaPrivateKey = orgKmsEncryptor({
+      const encryptedConnectorServerCaPrivateKey = orgKmsEncryptor({
         plainText: Buffer.from(serverCaSkObj.export({ type: "pkcs8", format: "der" }))
       }).cipherTextBlob;
-      const encryptedGatewayServerCaCertificate = orgKmsEncryptor({
+      const encryptedConnectorServerCaCertificate = orgKmsEncryptor({
         plainText: Buffer.from(serverCaCert.rawData)
       }).cipherTextBlob;
-      const encryptedGatewayServerCaCertificateChain = orgKmsEncryptor({
+      const encryptedConnectorServerCaCertificateChain = orgKmsEncryptor({
         plainText: Buffer.from(constructPemChainFromCerts([rootCaCert]))
       }).cipherTextBlob;
 
-      const encryptedGatewayClientCaPrivateKey = orgKmsEncryptor({
+      const encryptedConnectorClientCaPrivateKey = orgKmsEncryptor({
         plainText: Buffer.from(clientCaSkObj.export({ type: "pkcs8", format: "der" }))
       }).cipherTextBlob;
-      const encryptedGatewayClientCaCertificate = orgKmsEncryptor({
+      const encryptedConnectorClientCaCertificate = orgKmsEncryptor({
         plainText: Buffer.from(clientCaCert.rawData)
       }).cipherTextBlob;
-      const encryptedGatewayClientCaCertificateChain = orgKmsEncryptor({
+      const encryptedConnectorClientCaCertificateChain = orgKmsEncryptor({
         plainText: Buffer.from(constructPemChainFromCerts([rootCaCert]))
       }).cipherTextBlob;
 
-      return orgGatewayConfigV2DAL.create({
+      return orgConnectorConfigDAL.create({
         orgId,
-        encryptedRootGatewayCaPrivateKey,
-        encryptedRootGatewayCaCertificate,
-        encryptedGatewayServerCaPrivateKey,
-        encryptedGatewayServerCaCertificate,
-        encryptedGatewayServerCaCertificateChain,
-        encryptedGatewayClientCaPrivateKey,
-        encryptedGatewayClientCaCertificate,
-        encryptedGatewayClientCaCertificateChain
+        encryptedRootConnectorCaPrivateKey,
+        encryptedRootConnectorCaCertificate,
+        encryptedConnectorServerCaPrivateKey,
+        encryptedConnectorServerCaCertificate,
+        encryptedConnectorServerCaCertificateChain,
+        encryptedConnectorClientCaPrivateKey,
+        encryptedConnectorClientCaCertificate,
+        encryptedConnectorClientCaCertificateChain
       });
     });
 
-    const rootGatewayCaPrivateKey = orgKmsDecryptor({ cipherTextBlob: orgCAs.encryptedRootGatewayCaPrivateKey });
-    const rootGatewayCaCertificate = orgKmsDecryptor({ cipherTextBlob: orgCAs.encryptedRootGatewayCaCertificate });
+    const rootConnectorCaPrivateKey = orgKmsDecryptor({ cipherTextBlob: orgCAs.encryptedRootConnectorCaPrivateKey });
+    const rootConnectorCaCertificate = orgKmsDecryptor({ cipherTextBlob: orgCAs.encryptedRootConnectorCaCertificate });
 
-    const gatewayServerCaPrivateKey = orgKmsDecryptor({ cipherTextBlob: orgCAs.encryptedGatewayServerCaPrivateKey });
-    const gatewayServerCaCertificate = orgKmsDecryptor({ cipherTextBlob: orgCAs.encryptedGatewayServerCaCertificate });
-    const gatewayServerCaCertificateChain = orgKmsDecryptor({
-      cipherTextBlob: orgCAs.encryptedGatewayServerCaCertificateChain
+    const connectorServerCaPrivateKey = orgKmsDecryptor({
+      cipherTextBlob: orgCAs.encryptedConnectorServerCaPrivateKey
+    });
+    const connectorServerCaCertificate = orgKmsDecryptor({
+      cipherTextBlob: orgCAs.encryptedConnectorServerCaCertificate
+    });
+    const connectorServerCaCertificateChain = orgKmsDecryptor({
+      cipherTextBlob: orgCAs.encryptedConnectorServerCaCertificateChain
     });
 
-    const gatewayClientCaPrivateKey = orgKmsDecryptor({ cipherTextBlob: orgCAs.encryptedGatewayClientCaPrivateKey });
-    const gatewayClientCaCertificate = orgKmsDecryptor({
-      cipherTextBlob: orgCAs.encryptedGatewayClientCaCertificate
+    const connectorClientCaPrivateKey = orgKmsDecryptor({
+      cipherTextBlob: orgCAs.encryptedConnectorClientCaPrivateKey
     });
-    const gatewayClientCaCertificateChain = orgKmsDecryptor({
-      cipherTextBlob: orgCAs.encryptedGatewayClientCaCertificateChain
+    const connectorClientCaCertificate = orgKmsDecryptor({
+      cipherTextBlob: orgCAs.encryptedConnectorClientCaCertificate
+    });
+    const connectorClientCaCertificateChain = orgKmsDecryptor({
+      cipherTextBlob: orgCAs.encryptedConnectorClientCaCertificateChain
     });
 
     return {
-      rootGatewayCaPrivateKey,
-      rootGatewayCaCertificate,
-      gatewayServerCaPrivateKey,
-      gatewayServerCaCertificate,
-      gatewayServerCaCertificateChain,
-      gatewayClientCaPrivateKey,
-      gatewayClientCaCertificate,
-      gatewayClientCaCertificateChain
+      rootConnectorCaPrivateKey,
+      rootConnectorCaCertificate,
+      connectorServerCaPrivateKey,
+      connectorServerCaCertificate,
+      connectorServerCaCertificateChain,
+      connectorClientCaPrivateKey,
+      connectorClientCaCertificate,
+      connectorClientCaCertificateChain
     };
   };
 
-  const listGateways = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
+  const listConnectors = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
     const { permission } = await permissionService.getOrgPermission(
       orgPermission.type,
       orgPermission.id,
@@ -254,88 +268,88 @@ export const gatewayV2ServiceFactory = ({
       orgPermission.orgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.ListGateways,
-      OrgPermissionSubjects.Gateway
-    );
+    throwUnlessCanAny(permission, [
+      { action: OrgPermissionConnectorActions.ListConnectors, subject: OrgPermissionSubjects.Connector },
+      { action: OrgPermissionGatewayActions.ListGateways, subject: OrgPermissionSubjects.Gateway }
+    ]);
 
-    const gateways = await gatewayV2DAL.find({
+    const connectors = await connectorDAL.find({
       orgId: orgPermission.orgId
     });
 
-    return gateways;
+    return connectors;
   };
 
-  const getPlatformConnectionDetailsByGatewayId = async ({
-    gatewayId,
+  const getPlatformConnectionDetailsByConnectorId = async ({
+    connectorId,
     targetHost,
     targetPort
   }: {
-    gatewayId: string;
+    connectorId: string;
     targetHost: string;
     targetPort: number;
   }) => {
-    const gateway = await gatewayV2DAL.findById(gatewayId);
-    if (!gateway) {
+    const connector = await connectorDAL.findById(connectorId);
+    if (!connector) {
       return;
     }
 
-    const orgGatewayConfig = await orgGatewayConfigV2DAL.findOne({ orgId: gateway.orgId });
-    if (!orgGatewayConfig) {
-      throw new NotFoundError({ message: `Gateway Config for org ${gateway.orgId} not found.` });
+    const orgConnectorConfig = await orgConnectorConfigDAL.findOne({ orgId: connector.orgId });
+    if (!orgConnectorConfig) {
+      throw new NotFoundError({ message: `Connector Config for org ${connector.orgId} not found.` });
     }
 
-    if (!gateway.proxyId) {
+    if (!connector.relayId) {
       throw new BadRequestError({
-        message: "Gateway is not associated with a proxy"
+        message: "Connector is not associated with a relay"
       });
     }
 
-    const orgLicensePlan = await licenseService.getPlan(orgGatewayConfig.orgId);
+    const orgLicensePlan = await licenseService.getPlan(orgConnectorConfig.orgId);
     if (!orgLicensePlan.gateway) {
       throw new BadRequestError({
-        message: "Please upgrade your instance to Infisical's Enterprise plan to use gateways."
+        message: "Please upgrade your instance to Infisical's Enterprise plan to use connectors."
       });
     }
 
     const { decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: orgGatewayConfig.orgId
+      orgId: orgConnectorConfig.orgId
     });
 
     const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
 
-    const rootGatewayCaCert = new x509.X509Certificate(
+    const rootConnectorCaCert = new x509.X509Certificate(
       orgKmsDecryptor({
-        cipherTextBlob: orgGatewayConfig.encryptedRootGatewayCaCertificate
+        cipherTextBlob: orgConnectorConfig.encryptedRootConnectorCaCertificate
       })
     );
 
-    const gatewayClientCaCert = new x509.X509Certificate(
+    const connectorClientCaCert = new x509.X509Certificate(
       orgKmsDecryptor({
-        cipherTextBlob: orgGatewayConfig.encryptedGatewayClientCaCertificate
+        cipherTextBlob: orgConnectorConfig.encryptedConnectorClientCaCertificate
       })
     );
 
-    const gatewayServerCaCert = new x509.X509Certificate(
+    const connectorServerCaCert = new x509.X509Certificate(
       orgKmsDecryptor({
-        cipherTextBlob: orgGatewayConfig.encryptedGatewayServerCaCertificate
+        cipherTextBlob: orgConnectorConfig.encryptedConnectorServerCaCertificate
       })
     );
 
-    const gatewayClientCaPrivateKey = orgKmsDecryptor({
-      cipherTextBlob: orgGatewayConfig.encryptedGatewayClientCaPrivateKey
+    const connectorClientCaPrivateKey = orgKmsDecryptor({
+      cipherTextBlob: orgConnectorConfig.encryptedConnectorClientCaPrivateKey
     });
 
-    const gatewayClientCaSkObj = crypto.nativeCrypto.createPrivateKey({
-      key: gatewayClientCaPrivateKey,
+    const connectorClientCaSkObj = crypto.nativeCrypto.createPrivateKey({
+      key: connectorClientCaPrivateKey,
       format: "der",
       type: "pkcs8"
     });
 
-    const importedGatewayClientCaPrivateKey = await crypto.nativeCrypto.subtle.importKey(
+    const importedConnectorClientCaPrivateKey = await crypto.nativeCrypto.subtle.importKey(
       "pkcs8",
-      gatewayClientCaSkObj.export({ format: "der", type: "pkcs8" }),
+      connectorClientCaSkObj.export({ format: "der", type: "pkcs8" }),
       alg,
       true,
       ["sign"]
@@ -352,29 +366,29 @@ export const gatewayV2ServiceFactory = ({
     };
 
     const routingExtension = new x509.Extension(
-      GATEWAY_ROUTING_INFO_OID,
+      CONNECTOR_ROUTING_INFO_OID,
       false,
       Buffer.from(JSON.stringify(routingInfo))
     );
 
     const actorExtension = new x509.Extension(
-      GATEWAY_ACTOR_OID,
+      CONNECTOR_ACTOR_OID,
       false,
       Buffer.from(JSON.stringify({ type: ActorType.PLATFORM }))
     );
 
     const clientCert = await x509.X509CertificateGenerator.create({
       serialNumber: clientCertSerialNumber,
-      subject: `O=${orgGatewayConfig.orgId},OU=gateway-client,CN=${ActorType.PLATFORM}:${gatewayId}`,
-      issuer: gatewayClientCaCert.subject,
+      subject: `O=${orgConnectorConfig.orgId},OU=connector-client,CN=${ActorType.PLATFORM}:${connectorId}`,
+      issuer: connectorClientCaCert.subject,
       notAfter: clientCertExpiration,
       notBefore: clientCertIssuedAt,
-      signingKey: importedGatewayClientCaPrivateKey,
+      signingKey: importedConnectorClientCaPrivateKey,
       publicKey: clientKeys.publicKey,
       signingAlgorithm: alg,
       extensions: [
         new x509.BasicConstraintsExtension(false),
-        await x509.AuthorityKeyIdentifierExtension.create(gatewayClientCaCert, false),
+        await x509.AuthorityKeyIdentifierExtension.create(connectorClientCaCert, false),
         await x509.SubjectKeyIdentifierExtension.create(clientKeys.publicKey),
         new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
         new x509.KeyUsagesExtension(
@@ -390,96 +404,96 @@ export const gatewayV2ServiceFactory = ({
       ]
     });
 
-    const gatewayClientCertPrivateKey = crypto.nativeCrypto.KeyObject.from(clientKeys.privateKey);
+    const connectorClientCertPrivateKey = crypto.nativeCrypto.KeyObject.from(clientKeys.privateKey);
 
-    const proxyCredentials = await proxyService.getCredentialsForClient({
-      proxyId: gateway.proxyId,
-      orgId: gateway.orgId,
-      gatewayId
+    const relayCredentials = await relayService.getCredentialsForClient({
+      relayId: connector.relayId,
+      orgId: connector.orgId,
+      connectorId
     });
 
     return {
-      proxyIp: proxyCredentials.proxyIp,
-      gateway: {
+      relayIp: relayCredentials.relayIp,
+      connector: {
         clientCertificate: clientCert.toString("pem"),
-        clientPrivateKey: gatewayClientCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
-        serverCertificateChain: constructPemChainFromCerts([gatewayServerCaCert, rootGatewayCaCert])
+        clientPrivateKey: connectorClientCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
+        serverCertificateChain: constructPemChainFromCerts([connectorServerCaCert, rootConnectorCaCert])
       },
-      proxy: {
-        clientCertificate: proxyCredentials.clientCertificate,
-        clientPrivateKey: proxyCredentials.clientPrivateKey,
-        serverCertificateChain: proxyCredentials.serverCertificateChain
+      relay: {
+        clientCertificate: relayCredentials.clientCertificate,
+        clientPrivateKey: relayCredentials.clientPrivateKey,
+        serverCertificateChain: relayCredentials.serverCertificateChain
       }
     };
   };
 
-  const registerGateway = async ({
+  const registerConnector = async ({
     orgId,
     actorId,
     actorAuthMethod,
-    proxyName,
+    relayName,
     name
   }: {
     orgId: string;
     actorId: string;
     actorAuthMethod: ActorAuthMethod;
-    proxyName: string;
+    relayName: string;
     name: string;
   }) => {
-    await $validateIdentityAccessToGateway(orgId, actorId, actorAuthMethod);
+    await $validateIdentityAccessToConnector(orgId, actorId, actorAuthMethod);
     const orgCAs = await $getOrgCAs(orgId);
 
-    let proxy: TProxies;
-    if (isInstanceProxy(proxyName)) {
-      proxy = await proxyDAL.findOne({ name: proxyName });
+    let relay: TRelays;
+    if (isInstanceRelay(relayName)) {
+      relay = await relayDAL.findOne({ name: relayName });
     } else {
-      proxy = await proxyDAL.findOne({ orgId, name: proxyName });
+      relay = await relayDAL.findOne({ orgId, name: relayName });
     }
 
-    if (!proxy) {
-      throw new NotFoundError({ message: `Proxy ${proxyName} not found` });
+    if (!relay) {
+      throw new NotFoundError({ message: `Relay ${relayName} not found` });
     }
 
     try {
-      const [gateway] = await gatewayV2DAL.upsert(
+      const [connector] = await connectorDAL.upsert(
         [
           {
             orgId,
             name,
             identityId: actorId,
-            proxyId: proxy.id
+            relayId: relay.id
           }
         ],
         ["identityId"]
       );
 
       const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
-      const gatewayServerCaCert = new x509.X509Certificate(orgCAs.gatewayServerCaCertificate);
-      const rootGatewayCaCert = new x509.X509Certificate(orgCAs.rootGatewayCaCertificate);
-      const gatewayClientCaCert = new x509.X509Certificate(orgCAs.gatewayClientCaCertificate);
+      const connectorServerCaCert = new x509.X509Certificate(orgCAs.connectorServerCaCertificate);
+      const rootConnectorCaCert = new x509.X509Certificate(orgCAs.rootConnectorCaCertificate);
+      const connectorClientCaCert = new x509.X509Certificate(orgCAs.connectorClientCaCertificate);
 
-      const gatewayServerCaSkObj = crypto.nativeCrypto.createPrivateKey({
-        key: orgCAs.gatewayServerCaPrivateKey,
+      const connectorServerCaSkObj = crypto.nativeCrypto.createPrivateKey({
+        key: orgCAs.connectorServerCaPrivateKey,
         format: "der",
         type: "pkcs8"
       });
-      const gatewayServerCaPrivateKey = await crypto.nativeCrypto.subtle.importKey(
+      const connectorServerCaPrivateKey = await crypto.nativeCrypto.subtle.importKey(
         "pkcs8",
-        gatewayServerCaSkObj.export({ format: "der", type: "pkcs8" }),
+        connectorServerCaSkObj.export({ format: "der", type: "pkcs8" }),
         alg,
         true,
         ["sign"]
       );
 
-      const gatewayServerKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-      const gatewayServerCertIssuedAt = new Date();
-      const gatewayServerCertExpireAt = new Date(new Date().setMonth(new Date().getMonth() + 1));
-      const gatewayServerCertPrivateKey = crypto.nativeCrypto.KeyObject.from(gatewayServerKeys.privateKey);
+      const connectorServerKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+      const connectorServerCertIssuedAt = new Date();
+      const connectorServerCertExpireAt = new Date(new Date().setMonth(new Date().getMonth() + 1));
+      const connectorServerCertPrivateKey = crypto.nativeCrypto.KeyObject.from(connectorServerKeys.privateKey);
 
-      const gatewayServerCertExtensions: x509.Extension[] = [
+      const connectorServerCertExtensions: x509.Extension[] = [
         new x509.BasicConstraintsExtension(false),
-        await x509.AuthorityKeyIdentifierExtension.create(gatewayServerCaCert, false),
-        await x509.SubjectKeyIdentifierExtension.create(gatewayServerKeys.publicKey),
+        await x509.AuthorityKeyIdentifierExtension.create(connectorServerCaCert, false),
+        await x509.SubjectKeyIdentifierExtension.create(connectorServerKeys.publicKey),
         new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
         new x509.KeyUsagesExtension(
           // eslint-disable-next-line no-bitwise
@@ -494,42 +508,42 @@ export const gatewayV2ServiceFactory = ({
         ])
       ];
 
-      const gatewayServerSerialNumber = createSerialNumber();
-      const gatewayServerCertificate = await x509.X509CertificateGenerator.create({
-        serialNumber: gatewayServerSerialNumber,
-        subject: `O=${orgId},CN=Gateway`,
-        issuer: gatewayServerCaCert.subject,
-        notBefore: gatewayServerCertIssuedAt,
-        notAfter: gatewayServerCertExpireAt,
-        signingKey: gatewayServerCaPrivateKey,
-        publicKey: gatewayServerKeys.publicKey,
+      const connectorServerSerialNumber = createSerialNumber();
+      const connectorServerCertificate = await x509.X509CertificateGenerator.create({
+        serialNumber: connectorServerSerialNumber,
+        subject: `O=${orgId},CN=Connector`,
+        issuer: connectorServerCaCert.subject,
+        notBefore: connectorServerCertIssuedAt,
+        notAfter: connectorServerCertExpireAt,
+        signingKey: connectorServerCaPrivateKey,
+        publicKey: connectorServerKeys.publicKey,
         signingAlgorithm: alg,
-        extensions: gatewayServerCertExtensions
+        extensions: connectorServerCertExtensions
       });
 
-      const proxyCredentials = await proxyService.getCredentialsForGateway({
-        proxyName,
+      const relayCredentials = await relayService.getCredentialsForConnector({
+        relayName,
         orgId,
-        gatewayId: gateway.id
+        connectorId: connector.id
       });
 
       return {
-        gatewayId: gateway.id,
-        proxyIp: proxyCredentials.proxyIp,
+        connectorId: connector.id,
+        relayIp: relayCredentials.relayIp,
         pki: {
-          serverCertificate: gatewayServerCertificate.toString("pem"),
-          serverPrivateKey: gatewayServerCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
-          clientCertificateChain: constructPemChainFromCerts([gatewayClientCaCert, rootGatewayCaCert])
+          serverCertificate: connectorServerCertificate.toString("pem"),
+          serverPrivateKey: connectorServerCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
+          clientCertificateChain: constructPemChainFromCerts([connectorClientCaCert, rootConnectorCaCert])
         },
         ssh: {
-          clientCertificate: proxyCredentials.clientSshCert,
-          clientPrivateKey: proxyCredentials.clientSshPrivateKey,
-          serverCAPublicKey: proxyCredentials.serverCAPublicKey
+          clientCertificate: relayCredentials.clientSshCert,
+          clientPrivateKey: relayCredentials.clientSshPrivateKey,
+          serverCAPublicKey: relayCredentials.serverCAPublicKey
         }
       };
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
-        throw new BadRequestError({ message: `Gateway with name "${name}" already exists` });
+        throw new BadRequestError({ message: `Connector with name "${name}" already exists` });
       }
 
       throw err;
@@ -537,28 +551,28 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const heartbeat = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
-    await $validateIdentityAccessToGateway(orgPermission.orgId, orgPermission.id, orgPermission.authMethod);
+    await $validateIdentityAccessToConnector(orgPermission.orgId, orgPermission.id, orgPermission.authMethod);
 
-    const gateway = await gatewayV2DAL.findOne({
+    const connector = await connectorDAL.findOne({
       orgId: orgPermission.orgId,
       identityId: orgPermission.id
     });
 
-    if (!gateway) {
-      throw new NotFoundError({ message: `Gateway for identity ${orgPermission.id} not found.` });
+    if (!connector) {
+      throw new NotFoundError({ message: `Connector for identity ${orgPermission.id} not found.` });
     }
 
-    const gatewayV2ConnectionDetails = await getPlatformConnectionDetailsByGatewayId({
-      gatewayId: gateway.id,
+    const connectorConnectionDetails = await getPlatformConnectionDetailsByConnectorId({
+      connectorId: connector.id,
       targetHost: "health-check",
       targetPort: 443
     });
 
-    if (!gatewayV2ConnectionDetails) {
-      throw new NotFoundError({ message: `Gateway connection details for gateway ${gateway.id} not found.` });
+    if (!connectorConnectionDetails) {
+      throw new NotFoundError({ message: `Connector connection details for connector ${connector.id} not found.` });
     }
 
-    const isGatewayReachable = await withGatewayV2Proxy(
+    const isConnectorReachable = await withConnectorProxy(
       async (port) => {
         return new Promise<boolean>((resolve, reject) => {
           const socket = new net.Socket();
@@ -613,46 +627,46 @@ export const gatewayV2ServiceFactory = ({
       },
       {
         protocol: GatewayProxyProtocol.Ping,
-        proxyIp: gatewayV2ConnectionDetails.proxyIp,
-        gateway: gatewayV2ConnectionDetails.gateway,
-        proxy: gatewayV2ConnectionDetails.proxy
+        relayIp: connectorConnectionDetails.relayIp,
+        connector: connectorConnectionDetails.connector,
+        relay: connectorConnectionDetails.relay
       }
     );
 
-    if (!isGatewayReachable) {
-      throw new BadRequestError({ message: `Gateway ${gateway.id} is not reachable` });
+    if (!isConnectorReachable) {
+      throw new BadRequestError({ message: `Connector ${connector.id} is not reachable` });
     }
 
-    await gatewayV2DAL.updateById(gateway.id, { heartbeat: new Date() });
+    await connectorDAL.updateById(connector.id, { heartbeat: new Date() });
   };
 
-  const deleteGatewayById = async ({ orgPermission, id }: { orgPermission: OrgServiceActor; id: string }) => {
-    const gateway = await gatewayV2DAL.findOne({ id, orgId: orgPermission.orgId });
-    if (!gateway) {
-      throw new NotFoundError({ message: `Gateway ${id} not found` });
+  const deleteConnectorById = async ({ orgPermission, id }: { orgPermission: OrgServiceActor; id: string }) => {
+    const connector = await connectorDAL.findOne({ id, orgId: orgPermission.orgId });
+    if (!connector) {
+      throw new NotFoundError({ message: `Connector ${id} not found` });
     }
 
     const { permission } = await permissionService.getOrgPermission(
       orgPermission.type,
       orgPermission.id,
-      gateway.orgId,
+      connector.orgId,
       orgPermission.authMethod,
       orgPermission.orgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.DeleteGateways,
-      OrgPermissionSubjects.Gateway
-    );
+    throwUnlessCanAny(permission, [
+      { action: OrgPermissionConnectorActions.DeleteConnectors, subject: OrgPermissionSubjects.Connector },
+      { action: OrgPermissionGatewayActions.DeleteGateways, subject: OrgPermissionSubjects.Gateway }
+    ]);
 
-    return gatewayV2DAL.deleteById(gateway.id);
+    return connectorDAL.deleteById(connector.id);
   };
 
   return {
-    listGateways,
-    registerGateway,
-    getPlatformConnectionDetailsByGatewayId,
-    deleteGatewayById,
+    listConnectors,
+    registerConnector,
+    getPlatformConnectionDetailsByConnectorId,
+    deleteConnectorById,
     heartbeat
   };
 };

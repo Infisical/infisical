@@ -4,26 +4,28 @@ import https from "https";
 import RE2 from "re2";
 
 import { IdentityAuthMethod, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
+import { TConnectorDALFactory } from "@app/ee/services/connector/connector-dal";
+import { TConnectorServiceFactory } from "@app/ee/services/connector/connector-service";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
-import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
-import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
+  OrgPermissionConnectorActions,
   OrgPermissionGatewayActions,
   OrgPermissionIdentityActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
+  throwUnlessCanAny,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
+import { withConnectorProxy } from "@app/lib/connector/connector";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { GatewayHttpProxyActions, GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
-import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 
@@ -57,9 +59,9 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayService: TGatewayServiceFactory;
-  gatewayV2Service: TGatewayV2ServiceFactory;
+  connectorService: TConnectorServiceFactory;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
-  gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
+  connectorDAL: Pick<TConnectorDALFactory, "find">;
 };
 
 export type TIdentityKubernetesAuthServiceFactory = ReturnType<typeof identityKubernetesAuthServiceFactory>;
@@ -73,9 +75,9 @@ export const identityKubernetesAuthServiceFactory = ({
   permissionService,
   licenseService,
   gatewayService,
-  gatewayV2Service,
+  connectorService,
   gatewayDAL,
-  gatewayV2DAL,
+  connectorDAL,
   kmsService
 }: TIdentityKubernetesAuthServiceFactoryDep) => {
   const $gatewayProxyWrapper = async <T>(
@@ -88,13 +90,13 @@ export const identityKubernetesAuthServiceFactory = ({
     },
     gatewayCallback: (host: string, port: number, httpsAgent?: https.Agent) => Promise<T>
   ): Promise<T> => {
-    const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-      gatewayId: inputs.gatewayId,
+    const connectorConnectionDetails = await connectorService.getPlatformConnectionDetailsByConnectorId({
+      connectorId: inputs.gatewayId,
       targetHost: inputs.targetHost ?? GATEWAY_AUTH_DEFAULT_HOST,
       targetPort: inputs.targetPort ?? 443
     });
 
-    if (gatewayV2ConnectionDetails) {
+    if (connectorConnectionDetails) {
       let httpsAgent: https.Agent | undefined;
       if (!inputs.reviewTokenThroughGateway) {
         httpsAgent = new https.Agent({
@@ -103,7 +105,7 @@ export const identityKubernetesAuthServiceFactory = ({
         });
       }
 
-      const callbackResult = await withGatewayV2Proxy(
+      const callbackResult = await withConnectorProxy(
         async (port) => {
           const res = await gatewayCallback(
             inputs.reviewTokenThroughGateway ? "http://localhost" : "https://localhost",
@@ -114,9 +116,9 @@ export const identityKubernetesAuthServiceFactory = ({
         },
         {
           protocol: inputs.reviewTokenThroughGateway ? GatewayProxyProtocol.Http : GatewayProxyProtocol.Tcp,
-          proxyIp: gatewayV2ConnectionDetails.proxyIp,
-          gateway: gatewayV2ConnectionDetails.gateway,
-          proxy: gatewayV2ConnectionDetails.proxy,
+          relayIp: connectorConnectionDetails.relayIp,
+          connector: connectorConnectionDetails.connector,
+          relay: connectorConnectionDetails.relay,
           httpsAgent
         }
       );
@@ -322,15 +324,15 @@ export const identityKubernetesAuthServiceFactory = ({
     let data: TCreateTokenReviewResponse | undefined;
 
     if (identityKubernetesAuth.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
-      if (!identityKubernetesAuth.gatewayId && !identityKubernetesAuth.gatewayV2Id) {
+      if (!identityKubernetesAuth.gatewayId && !identityKubernetesAuth.connectorId) {
         throw new BadRequestError({
-          message: "Gateway ID is required when token review mode is set to Gateway"
+          message: "Connector ID is required when token review mode is set to Gateway"
         });
       }
 
       data = await $gatewayProxyWrapper(
         {
-          gatewayId: (identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId) as string,
+          gatewayId: (identityKubernetesAuth.connectorId ?? identityKubernetesAuth.gatewayId) as string,
           reviewTokenThroughGateway: true
         },
         tokenReviewCallbackThroughGateway
@@ -350,10 +352,10 @@ export const identityKubernetesAuthServiceFactory = ({
       const [k8sHost, k8sPort] = kubernetesHost.split(":");
 
       data =
-        identityKubernetesAuth.gatewayId || identityKubernetesAuth.gatewayV2Id
+        identityKubernetesAuth.gatewayId || identityKubernetesAuth.connectorId
           ? await $gatewayProxyWrapper(
               {
-                gatewayId: (identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId) as string,
+                gatewayId: (identityKubernetesAuth.connectorId ?? identityKubernetesAuth.gatewayId) as string,
                 targetHost: k8sHost,
                 targetPort: k8sPort ? Number(k8sPort) : 443,
                 reviewTokenThroughGateway: false
@@ -539,10 +541,10 @@ export const identityKubernetesAuthServiceFactory = ({
     let isGatewayV1 = true;
     if (gatewayId) {
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: identityMembershipOrg.orgId });
-      const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: identityMembershipOrg.orgId });
-      if (!gateway && !gatewayV2) {
+      const [connector] = await connectorDAL.find({ id: gatewayId, orgId: identityMembershipOrg.orgId });
+      if (!gateway && !connector) {
         throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found`
+          message: `Connector with ID ${gatewayId} not found`
         });
       }
 
@@ -557,10 +559,11 @@ export const identityKubernetesAuthServiceFactory = ({
         actorAuthMethod,
         actorOrgId
       );
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
+
+      throwUnlessCanAny(orgPermission, [
+        { action: OrgPermissionConnectorActions.AttachConnectors, subject: OrgPermissionSubjects.Connector },
+        { action: OrgPermissionGatewayActions.AttachGateways, subject: OrgPermissionSubjects.Gateway }
+      ]);
     }
 
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
@@ -581,7 +584,7 @@ export const identityKubernetesAuthServiceFactory = ({
           accessTokenTTL,
           accessTokenNumUsesLimit,
           gatewayId: isGatewayV1 ? gatewayId : null,
-          gatewayV2Id: isGatewayV1 ? null : gatewayId,
+          connectorId: isGatewayV1 ? null : gatewayId,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
           encryptedKubernetesTokenReviewerJwt: tokenReviewerJwt
             ? encryptor({ plainText: Buffer.from(tokenReviewerJwt) }).cipherTextBlob
@@ -664,11 +667,11 @@ export const identityKubernetesAuthServiceFactory = ({
     let isGatewayV1 = true;
     if (gatewayId) {
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: identityMembershipOrg.orgId });
-      const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: identityMembershipOrg.orgId });
+      const [connector] = await connectorDAL.find({ id: gatewayId, orgId: identityMembershipOrg.orgId });
 
-      if (!gateway && !gatewayV2) {
+      if (!gateway && !connector) {
         throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found`
+          message: `Connector with ID ${gatewayId} not found`
         });
       }
 
@@ -683,15 +686,16 @@ export const identityKubernetesAuthServiceFactory = ({
         actorAuthMethod,
         actorOrgId
       );
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
+
+      throwUnlessCanAny(orgPermission, [
+        { action: OrgPermissionConnectorActions.AttachConnectors, subject: OrgPermissionSubjects.Connector },
+        { action: OrgPermissionGatewayActions.AttachGateways, subject: OrgPermissionSubjects.Gateway }
+      ]);
     }
 
     const shouldUpdateGatewayId = Boolean(gatewayId);
     const gatewayIdValue = isGatewayV1 ? gatewayId : null;
-    const gatewayV2IdValue = isGatewayV1 ? null : gatewayId;
+    const connectorIdValue = isGatewayV1 ? null : gatewayId;
 
     const updateQuery: TIdentityKubernetesAuthsUpdate = {
       kubernetesHost,
@@ -700,7 +704,7 @@ export const identityKubernetesAuthServiceFactory = ({
       allowedNames,
       allowedAudience,
       gatewayId: shouldUpdateGatewayId ? gatewayIdValue : undefined,
-      gatewayV2Id: shouldUpdateGatewayId ? gatewayV2IdValue : undefined,
+      connectorId: shouldUpdateGatewayId ? connectorIdValue : undefined,
       accessTokenMaxTTL,
       accessTokenTTL,
       accessTokenNumUsesLimit,
@@ -800,7 +804,7 @@ export const identityKubernetesAuthServiceFactory = ({
       caCert,
       tokenReviewerJwt,
       orgId: identityMembershipOrg.orgId,
-      gatewayId: identityKubernetesAuth.gatewayId ?? identityKubernetesAuth.gatewayV2Id
+      gatewayId: identityKubernetesAuth.gatewayId ?? identityKubernetesAuth.connectorId
     };
   };
 

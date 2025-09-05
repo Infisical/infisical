@@ -73,6 +73,22 @@ export function hasSecretReadValueOrDescribePermission(
   return canNewPermission || canOldPermission;
 }
 
+export function throwUnlessCanAny(
+  permission: MongoAbility<OrgPermissionSet | ProjectPermissionSet> | PureAbility,
+  checks: Array<{
+    action: OrgPermissionSet[0] | ProjectPermissionSet[0];
+    subject: OrgPermissionSet[1] | ProjectPermissionSet[1];
+  }>
+) {
+  const hasAnyPermission = checks.some((perm) => permission.can(perm.action, perm.subject));
+
+  if (!hasAnyPermission) {
+    // Throw using the first permission check as the primary error
+    const perm = checks[0];
+    ForbiddenError.from(permission).throwUnlessCan(perm.action, perm.subject);
+  }
+}
+
 const OptionalArrayPermissionSchema = ProjectPermissionV2Schema.array().optional();
 export function checkForInvalidPermissionCombination(permissions: z.infer<typeof OptionalArrayPermissionSchema>) {
   if (!permissions) return;

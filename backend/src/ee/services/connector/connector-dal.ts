@@ -1,25 +1,25 @@
 import { TDbClient } from "@app/db";
-import { GatewaysV2Schema, TableName, TGatewaysV2 } from "@app/db/schemas";
+import { ConnectorsSchema, TableName, TConnectors } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 
-export type TGatewayV2DALFactory = ReturnType<typeof gatewayV2DalFactory>;
+export type TConnectorDALFactory = ReturnType<typeof connectorDalFactory>;
 
-export const gatewayV2DalFactory = (db: TDbClient) => {
-  const orm = ormify(db, TableName.GatewayV2);
+export const connectorDalFactory = (db: TDbClient) => {
+  const orm = ormify(db, TableName.Connector);
 
-  const find = async (filter: TFindFilter<TGatewaysV2>, { offset, limit, sort, tx }: TFindOpt<TGatewaysV2> = {}) => {
+  const find = async (filter: TFindFilter<TConnectors>, { offset, limit, sort, tx }: TFindOpt<TConnectors> = {}) => {
     try {
-      const query = (tx || db)(TableName.GatewayV2)
+      const query = (tx || db)(TableName.Connector)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        .where(buildFindFilter(filter, TableName.GatewayV2))
-        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.GatewayV2}.identityId`)
+        .where(buildFindFilter(filter, TableName.Connector))
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Connector}.identityId`)
         .join(
           TableName.IdentityOrgMembership,
           `${TableName.IdentityOrgMembership}.identityId`,
-          `${TableName.GatewayV2}.identityId`
+          `${TableName.Connector}.identityId`
         )
-        .select(selectAllTableCols(TableName.GatewayV2))
+        .select(selectAllTableCols(TableName.Connector))
         .select(db.ref("name").withSchema(TableName.Identity).as("identityName"));
 
       if (limit) void query.limit(limit);
@@ -31,11 +31,11 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
       const docs = await query;
 
       return docs.map((el) => ({
-        ...GatewaysV2Schema.parse(el),
+        ...ConnectorsSchema.parse(el),
         identity: { id: el.identityId, name: el.identityName }
       }));
     } catch (error) {
-      throw new DatabaseError({ error, name: `${TableName.GatewayV2}: Find` });
+      throw new DatabaseError({ error, name: `${TableName.Connector}: Find` });
     }
   };
 

@@ -65,6 +65,9 @@ import {
   TCertificateTemplates,
   TCertificateTemplatesInsert,
   TCertificateTemplatesUpdate,
+  TConnectors,
+  TConnectorsInsert,
+  TConnectorsUpdate,
   TDynamicSecretLeases,
   TDynamicSecretLeasesInsert,
   TDynamicSecretLeasesUpdate,
@@ -101,9 +104,6 @@ import {
   TGateways,
   TGatewaysInsert,
   TGatewaysUpdate,
-  TGatewaysV2,
-  TGatewaysV2Insert,
-  TGatewaysV2Update,
   TGitAppInstallSessions,
   TGitAppInstallSessionsInsert,
   TGitAppInstallSessionsUpdate,
@@ -182,9 +182,9 @@ import {
   TIncidentContacts,
   TIncidentContactsInsert,
   TIncidentContactsUpdate,
-  TInstanceProxyConfig,
-  TInstanceProxyConfigInsert,
-  TInstanceProxyConfigUpdate,
+  TInstanceRelayConfig,
+  TInstanceRelayConfigInsert,
+  TInstanceRelayConfigUpdate,
   TIntegrationAuths,
   TIntegrationAuthsInsert,
   TIntegrationAuthsUpdate,
@@ -233,18 +233,18 @@ import {
   TOrgBots,
   TOrgBotsInsert,
   TOrgBotsUpdate,
+  TOrgConnectorConfig,
+  TOrgConnectorConfigInsert,
+  TOrgConnectorConfigUpdate,
   TOrgGatewayConfig,
   TOrgGatewayConfigInsert,
   TOrgGatewayConfigUpdate,
-  TOrgGatewayConfigV2,
-  TOrgGatewayConfigV2Insert,
-  TOrgGatewayConfigV2Update,
   TOrgMemberships,
   TOrgMembershipsInsert,
   TOrgMembershipsUpdate,
-  TOrgProxyConfig,
-  TOrgProxyConfigInsert,
-  TOrgProxyConfigUpdate,
+  TOrgRelayConfig,
+  TOrgRelayConfigInsert,
+  TOrgRelayConfigUpdate,
   TOrgRoles,
   TOrgRolesInsert,
   TOrgRolesUpdate,
@@ -299,12 +299,12 @@ import {
   TProjectUserMembershipRoles,
   TProjectUserMembershipRolesInsert,
   TProjectUserMembershipRolesUpdate,
-  TProxies,
-  TProxiesInsert,
-  TProxiesUpdate,
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
+  TRelays,
+  TRelaysInsert,
+  TRelaysUpdate,
   TResourceMetadata,
   TResourceMetadataInsert,
   TResourceMetadataUpdate,
@@ -1269,22 +1269,22 @@ declare module "knex/types/tables" {
       TRemindersRecipientsInsert,
       TRemindersRecipientsUpdate
     >;
-    [TableName.InstanceProxyConfig]: KnexOriginal.CompositeTableType<
-      TInstanceProxyConfig,
-      TInstanceProxyConfigInsert,
-      TInstanceProxyConfigUpdate
+    [TableName.Connector]: KnexOriginal.CompositeTableType<TConnectors, TConnectorsInsert, TConnectorsUpdate>;
+    [TableName.Relay]: KnexOriginal.CompositeTableType<TRelays, TRelaysInsert, TRelaysUpdate>;
+    [TableName.InstanceRelayConfig]: KnexOriginal.CompositeTableType<
+      TInstanceRelayConfig,
+      TInstanceRelayConfigInsert,
+      TInstanceRelayConfigUpdate
     >;
-    [TableName.OrgProxyConfig]: KnexOriginal.CompositeTableType<
-      TOrgProxyConfig,
-      TOrgProxyConfigInsert,
-      TOrgProxyConfigUpdate
+    [TableName.OrgRelayConfig]: KnexOriginal.CompositeTableType<
+      TOrgRelayConfig,
+      TOrgRelayConfigInsert,
+      TOrgRelayConfigUpdate
     >;
-    [TableName.OrgGatewayConfigV2]: KnexOriginal.CompositeTableType<
-      TOrgGatewayConfigV2,
-      TOrgGatewayConfigV2Insert,
-      TOrgGatewayConfigV2Update
+    [TableName.OrgConnectorConfig]: KnexOriginal.CompositeTableType<
+      TOrgConnectorConfig,
+      TOrgConnectorConfigInsert,
+      TOrgConnectorConfigUpdate
     >;
-    [TableName.Proxy]: KnexOriginal.CompositeTableType<TProxies, TProxiesInsert, TProxiesUpdate>;
-    [TableName.GatewayV2]: KnexOriginal.CompositeTableType<TGatewaysV2, TGatewaysV2Insert, TGatewaysV2Update>;
   }
 }

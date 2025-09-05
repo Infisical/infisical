@@ -7,6 +7,7 @@ import {
   OrgPermissionAppConnectionActions,
   OrgPermissionAuditLogsActions,
   OrgPermissionBillingActions,
+  OrgPermissionConnectorActions,
   OrgPermissionGroupActions,
   OrgPermissionIdentityActions,
   OrgPermissionKmipActions,
@@ -90,6 +91,16 @@ const orgGatewayPermissionSchema = z
   })
   .optional();
 
+const orgConnectorPermissionSchema = z
+  .object({
+    [OrgPermissionConnectorActions.ListConnectors]: z.boolean().optional(),
+    [OrgPermissionConnectorActions.CreateConnectors]: z.boolean().optional(),
+    [OrgPermissionConnectorActions.EditConnectors]: z.boolean().optional(),
+    [OrgPermissionConnectorActions.DeleteConnectors]: z.boolean().optional(),
+    [OrgPermissionConnectorActions.AttachConnectors]: z.boolean().optional()
+  })
+  .optional();
+
 const machineIdentityAuthTemplatePermissionSchema = z
   .object({
     [OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates]: z.boolean().optional(),
@@ -148,6 +159,7 @@ export const formSchema = z.object({
       "app-connections": appConnectionsPermissionSchema,
       kmip: kmipPermissionSchema,
       gateway: orgGatewayPermissionSchema,
+      connector: orgConnectorPermissionSchema,
       "machine-identity-auth-template": machineIdentityAuthTemplatePermissionSchema,
       "secret-share": secretSharingPermissionSchema
     })

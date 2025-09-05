@@ -1,11 +1,11 @@
 import z from "zod";
 
-import { GatewaysV2Schema } from "@app/db/schemas";
+import { ConnectorsSchema } from "@app/db/schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
+const SanitizedConnectorSchema = ConnectorsSchema.pick({
   id: true,
   identityId: true,
   name: true,
@@ -14,19 +14,19 @@ const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   heartbeat: true
 });
 
-export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
+export const registerConnectorRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/",
     schema: {
       body: z.object({
-        proxyName: z.string(),
+        relayName: z.string(),
         name: z.string()
       }),
       response: {
         200: z.object({
-          gatewayId: z.string(),
-          proxyIp: z.string(),
+          connectorId: z.string(),
+          relayIp: z.string(),
           pki: z.object({
             serverCertificate: z.string(),
             serverPrivateKey: z.string(),
@@ -45,15 +45,15 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const gateway = await server.services.gatewayV2.registerGateway({
+      const connector = await server.services.connector.registerConnector({
         orgId: req.permission.orgId,
-        proxyName: req.body.proxyName,
+        relayName: req.body.relayName,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         name: req.body.name
       });
 
-      return gateway;
+      return connector;
     }
   });
 
@@ -72,7 +72,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      await server.services.gatewayV2.heartbeat({
+      await server.services.connector.heartbeat({
         orgPermission: req.permission
       });
 
@@ -85,7 +85,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     url: "/",
     schema: {
       response: {
-        200: SanitizedGatewayV2Schema.extend({
+        200: SanitizedConnectorSchema.extend({
           identity: z.object({
             name: z.string(),
             id: z.string()
@@ -98,11 +98,11 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const gateways = await server.services.gatewayV2.listGateways({
+      const connectors = await server.services.connector.listConnectors({
         orgPermission: req.permission
       });
 
-      return gateways;
+      return connectors;
     }
   });
 
@@ -117,16 +117,16 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         id: z.string()
       }),
       response: {
-        200: SanitizedGatewayV2Schema
+        200: SanitizedConnectorSchema
       }
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.JWT]),
     handler: async (req) => {
-      const gateway = await server.services.gatewayV2.deleteGatewayById({
+      const connector = await server.services.connector.deleteConnectorById({
         orgPermission: req.permission,
         id: req.params.id
       });
-      return gateway;
+      return connector;
     }
   });
 };

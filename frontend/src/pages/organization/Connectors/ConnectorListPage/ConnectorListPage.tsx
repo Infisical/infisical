@@ -47,12 +47,12 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
+import { useDeleteConnectorById } from "@app/hooks/api/connectors";
 import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
-import { useDeleteGatewayV2ById } from "@app/hooks/api/gateways-v2";
 
-import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
+import { EditConnectorDetailsModal } from "./components/EditConnectorDetailsModal";
 
-export const GatewayListPage = withPermission(
+export const ConnectorListPage = withPermission(
   () => {
     const [search, setSearch] = useState("");
     const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
@@ -63,20 +63,20 @@ export const GatewayListPage = withPermission(
     ] as const);
 
     const deleteGatewayById = useDeleteGatewayById();
-    const deleteGatewayV2ById = useDeleteGatewayV2ById();
+    const deleteConnectorById = useDeleteConnectorById();
 
     const handleDeleteGateway = async () => {
       const data = popUp.deleteGateway.data as { id: string; isV1: boolean };
       if (data.isV1) {
         await deleteGatewayById.mutateAsync(data.id);
       } else {
-        await deleteGatewayV2ById.mutateAsync(data.id);
+        await deleteConnectorById.mutateAsync(data.id);
       }
 
       handlePopUpToggle("deleteGateway");
       createNotification({
         type: "success",
-        text: "Successfully deleted gateway"
+        text: "Successfully deleted connector"
       });
     };
 
@@ -87,7 +87,7 @@ export const GatewayListPage = withPermission(
     return (
       <div className="bg-bunker-800">
         <Helmet>
-          <title>Infisical | Gateways</title>
+          <title>Infisical | Connectors</title>
           <meta property="og:image" content="/images/message.png" />
         </Helmet>
         <div className="flex w-full justify-center bg-bunker-800 text-white">
@@ -96,10 +96,10 @@ export const GatewayListPage = withPermission(
               className="w-full"
               title={
                 <div className="flex w-full items-center">
-                  <span>Gateways</span>
+                  <span>Connectors</span>
                   <a
                     className="-mt-1.5"
-                    href="https://infisical.com/docs/documentation/platform/gateways/overview"
+                    href="https://infisical.com/docs/documentation/platform/connectors/overview"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -114,7 +114,7 @@ export const GatewayListPage = withPermission(
                   </a>
                 </div>
               }
-              description="Create and configure gateway to access private network resources from Infisical"
+              description="Create and configure connectors to access private network resources from Infisical"
             />
             <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
               <div>
@@ -123,7 +123,7 @@ export const GatewayListPage = withPermission(
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-                    placeholder="Search gateway..."
+                    placeholder="Search connector..."
                     className="flex-1"
                   />
                 </div>
@@ -148,7 +148,11 @@ export const GatewayListPage = withPermission(
                     </THead>
                     <TBody>
                       {isGatewaysLoading && (
-                        <TableSkeleton innerKey="gateway-table" columns={4} key="gateway-table" />
+                        <TableSkeleton
+                          innerKey="connector-table"
+                          columns={4}
+                          key="connector-table"
+                        />
                       )}
                       {filteredGateway?.map((el) => (
                         <Tr key={el.id}>
@@ -222,8 +226,8 @@ export const GatewayListPage = withPermission(
                     isOpen={popUp.editDetails.isOpen}
                     onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}
                   >
-                    <ModalContent title="Edit Gateway">
-                      <EditGatewayDetailsModal
+                    <ModalContent title="Edit Connector">
+                      <EditConnectorDetailsModal
                         gatewayDetails={popUp.editDetails.data}
                         onClose={() => handlePopUpToggle("editDetails")}
                       />
@@ -233,15 +237,15 @@ export const GatewayListPage = withPermission(
                     <EmptyState
                       title={
                         gateways?.length
-                          ? "No Gateways match search..."
-                          : "No Gateways have been configured"
+                          ? "No Connectors match search..."
+                          : "No Connectors have been configured"
                       }
                       icon={gateways?.length ? faSearch : faPlug}
                     />
                   )}
                   <DeleteActionModal
                     isOpen={popUp.deleteGateway.isOpen}
-                    title={`Are you sure you want to delete gateway ${
+                    title={`Are you sure you want to delete connector ${
                       (popUp?.deleteGateway?.data as { name: string })?.name || ""
                     }?`}
                     onChange={(isOpen) => handlePopUpToggle("deleteGateway", isOpen)}

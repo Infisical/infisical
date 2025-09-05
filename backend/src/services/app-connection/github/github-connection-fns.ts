@@ -2,15 +2,15 @@ import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import https from "https";
 import RE2 from "re2";
 
+import { TConnectorServiceFactory } from "@app/ee/services/connector/connector-service";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
-import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getConfig } from "@app/lib/config/env";
 import { request as httpRequest } from "@app/lib/config/request";
+import { withConnectorProxy } from "@app/lib/connector/connector";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
-import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
@@ -51,7 +51,7 @@ export const getGitHubInstanceApiUrl = async (config: {
 export const requestWithGitHubGateway = async <T>(
   appConnection: { gatewayId?: string | null },
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  connectorService: Pick<TConnectorServiceFactory, "getPlatformConnectionDetailsByConnectorId">,
   requestConfig: AxiosRequestConfig
 ): Promise<AxiosResponse<T>> => {
   const { gatewayId } = appConnection;
@@ -66,14 +66,14 @@ export const requestWithGitHubGateway = async <T>(
   await blockLocalAndPrivateIpAddresses(url.toString());
 
   const [targetHost] = await verifyHostInputValidity(url.host, true);
-  const gatewayConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-    gatewayId,
+  const connectorConnectionDetails = await connectorService.getPlatformConnectionDetailsByConnectorId({
+    connectorId: gatewayId,
     targetHost,
     targetPort: 443
   });
 
-  if (gatewayConnectionDetails) {
-    return withGatewayV2Proxy(
+  if (connectorConnectionDetails) {
+    return withConnectorProxy(
       async (proxyPort) => {
         const httpsAgent = new https.Agent({
           servername: targetHost
@@ -105,9 +105,9 @@ export const requestWithGitHubGateway = async <T>(
       },
       {
         protocol: GatewayProxyProtocol.Tcp,
-        proxyIp: gatewayConnectionDetails.proxyIp,
-        gateway: gatewayConnectionDetails.gateway,
-        proxy: gatewayConnectionDetails.proxy
+        relayIp: connectorConnectionDetails.relayIp,
+        connector: connectorConnectionDetails.connector,
+        relay: connectorConnectionDetails.relay
       }
     );
   }
@@ -165,7 +165,7 @@ export const requestWithGitHubGateway = async <T>(
 export const getGitHubAppAuthToken = async (
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  connectorService: Pick<TConnectorServiceFactory, "getPlatformConnectionDetailsByConnectorId">
 ) => {
   const appCfg = getConfig();
   const appId = appCfg.INF_APP_CONNECTION_GITHUB_APP_ID;
@@ -201,7 +201,7 @@ export const getGitHubAppAuthToken = async (
   const response = await requestWithGitHubGateway<{ token: string; expires_at: string }>(
     appConnection,
     gatewayService,
-    gatewayV2Service,
+    connectorService,
     {
       url: `https://${apiBaseUrl}/app/installations/${installationId}/access_tokens`,
       method: "POST",
@@ -242,7 +242,7 @@ function extractNextPageUrl(linkHeader: string | undefined): string | null {
 export const makePaginatedGitHubRequest = async <T, R = T[]>(
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  connectorService: Pick<TConnectorServiceFactory, "getPlatformConnectionDetailsByConnectorId">,
   path: string,
   dataMapper?: (data: R) => T[]
 ): Promise<T[]> => {
@@ -251,7 +251,7 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
   const token =
     method === GitHubConnectionMethod.OAuth
       ? credentials.accessToken
-      : await getGitHubAppAuthToken(appConnection, gatewayService, gatewayV2Service);
+      : await getGitHubAppAuthToken(appConnection, gatewayService, connectorService);
 
   const baseUrl = `https://${await getGitHubInstanceApiUrl(appConnection)}${path}`;
   const initialUrlObj = new URL(baseUrl);
@@ -264,7 +264,7 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
   const firstResponse: AxiosResponse<R> = await requestWithGitHubGateway<R>(
     appConnection,
     gatewayService,
-    gatewayV2Service,
+    connectorService,
     {
       url: initialUrlObj.toString(),
       method: "GET",
@@ -294,7 +294,7 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
       pageUrlObj.searchParams.set("page", pageNum.toString());
 
       pageRequests.push(
-        requestWithGitHubGateway<R>(appConnection, gatewayService, gatewayV2Service, {
+        requestWithGitHubGateway<R>(appConnection, gatewayService, connectorService, {
           url: pageUrlObj.toString(),
           method: "GET",
           headers: {
@@ -321,7 +321,7 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
       const response: AxiosResponse<R> = await requestWithGitHubGateway<R>(
         appConnection,
         gatewayService,
-        gatewayV2Service,
+        connectorService,
         {
           url,
           method: "GET",
@@ -371,13 +371,13 @@ type GitHubEnvironment = {
 export const getGitHubRepositories = async (
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  connectorService: Pick<TConnectorServiceFactory, "getPlatformConnectionDetailsByConnectorId">
 ) => {
   if (appConnection.method === GitHubConnectionMethod.App) {
     return makePaginatedGitHubRequest<GitHubRepository, { repositories: GitHubRepository[] }>(
       appConnection,
       gatewayService,
-      gatewayV2Service,
+      connectorService,
       "/installation/repositories",
       (data) => data.repositories
     );
@@ -386,7 +386,7 @@ export const getGitHubRepositories = async (
   const repos = await makePaginatedGitHubRequest<GitHubRepository>(
     appConnection,
     gatewayService,
-    gatewayV2Service,
+    connectorService,
     "/user/repos"
   );
 
@@ -396,13 +396,13 @@ export const getGitHubRepositories = async (
 export const getGitHubOrganizations = async (
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  connectorService: Pick<TConnectorServiceFactory, "getPlatformConnectionDetailsByConnectorId">
 ) => {
   if (appConnection.method === GitHubConnectionMethod.App) {
     const installationRepositories = await makePaginatedGitHubRequest<
       GitHubRepository,
       { repositories: GitHubRepository[] }
-    >(appConnection, gatewayService, gatewayV2Service, "/installation/repositories", (data) => data.repositories);
+    >(appConnection, gatewayService, connectorService, "/installation/repositories", (data) => data.repositories);
 
     const organizationMap: Record<string, GitHubOrganization> = {};
     installationRepositories.forEach((repo) => {
@@ -414,13 +414,13 @@ export const getGitHubOrganizations = async (
     return Object.values(organizationMap);
   }
 
-  return makePaginatedGitHubRequest<GitHubOrganization>(appConnection, gatewayService, gatewayV2Service, "/user/orgs");
+  return makePaginatedGitHubRequest<GitHubOrganization>(appConnection, gatewayService, connectorService, "/user/orgs");
 };
 
 export const getGitHubEnvironments = async (
   appConnection: TGitHubConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  connectorService: Pick<TConnectorServiceFactory, "getPlatformConnectionDetailsByConnectorId">,
   owner: string,
   repo: string
 ) => {
@@ -428,7 +428,7 @@ export const getGitHubEnvironments = async (
     return await makePaginatedGitHubRequest<GitHubEnvironment, { environments: GitHubEnvironment[] }>(
       appConnection,
       gatewayService,
-      gatewayV2Service,
+      connectorService,
       `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/environments`,
       (data) => data.environments
     );
@@ -457,7 +457,7 @@ export function isGithubErrorResponse(data: GithubTokenRespData): data is Github
 export const validateGitHubConnectionCredentials = async (
   config: TGitHubConnectionConfig,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+  connectorService: Pick<TConnectorServiceFactory, "getPlatformConnectionDetailsByConnectorId">
 ) => {
   const { credentials, method } = config;
   const {
@@ -493,7 +493,7 @@ export const validateGitHubConnectionCredentials = async (
   const host = credentials.host || "github.com";
 
   try {
-    tokenResp = await requestWithGitHubGateway<GithubTokenRespData>(config, gatewayService, gatewayV2Service, {
+    tokenResp = await requestWithGitHubGateway<GithubTokenRespData>(config, gatewayService, connectorService, {
       url: `https://${host}/login/oauth/access_token`,
       method: "POST",
       data: {
@@ -545,7 +545,7 @@ export const validateGitHubConnectionCredentials = async (
           id: number;
         };
       }[];
-    }>(config, gatewayService, gatewayV2Service, {
+    }>(config, gatewayService, connectorService, {
       url: `https://${await getGitHubInstanceApiUrl(config)}/user/installations`,
       headers: {
         Accept: "application/json",

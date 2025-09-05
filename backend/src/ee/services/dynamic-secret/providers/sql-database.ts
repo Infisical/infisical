@@ -2,16 +2,16 @@ import handlebars from "handlebars";
 import knex from "knex";
 import { z } from "zod";
 
+import { withConnectorProxy } from "@app/lib/connector/connector";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
-import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
+import { TConnectorServiceFactory } from "../../connector/connector-service";
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
-import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretSqlDBSchema, PasswordRequirements, SqlProviders, TDynamicProviderFns } from "./models";
 import { compileUsernameTemplate } from "./templateUtils";
@@ -130,12 +130,12 @@ const generateUsername = (provider: SqlProviders, usernameTemplate?: string | nu
 
 type TSqlDatabaseProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  connectorService: Pick<TConnectorServiceFactory, "getPlatformConnectionDetailsByConnectorId">;
 };
 
 export const SqlDatabaseProvider = ({
   gatewayService,
-  gatewayV2Service
+  connectorService
 }: TSqlDatabaseProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSqlDBSchema.parseAsync(inputs);
@@ -189,21 +189,21 @@ export const SqlDatabaseProvider = ({
     providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>,
     gatewayCallback: (host: string, port: number) => Promise<void>
   ) => {
-    const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-      gatewayId: providerInputs.gatewayId as string,
+    const connectorConnectionDetails = await connectorService.getPlatformConnectionDetailsByConnectorId({
+      connectorId: providerInputs.gatewayId as string,
       targetHost: providerInputs.host,
       targetPort: providerInputs.port
     });
 
-    if (gatewayV2ConnectionDetails) {
-      return withGatewayV2Proxy(
+    if (connectorConnectionDetails) {
+      return withConnectorProxy(
         async (port) => {
           await gatewayCallback("localhost", port);
         },
         {
-          proxyIp: gatewayV2ConnectionDetails.proxyIp,
-          gateway: gatewayV2ConnectionDetails.gateway,
-          proxy: gatewayV2ConnectionDetails.proxy,
+          relayIp: connectorConnectionDetails.relayIp,
+          connector: connectorConnectionDetails.connector,
+          relay: connectorConnectionDetails.relay,
           protocol: GatewayProxyProtocol.Tcp
         }
       );

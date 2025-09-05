@@ -9,7 +9,6 @@ import {
 
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
 import { registerProjectRoleRouter } from "./project-role-router";
-import { registerGatewayV2Router } from "./gateway-router";
 
 export const registerV2EERoutes = async (server: FastifyZodProvider) => {
   // org role starts with organization
@@ -23,8 +22,6 @@ export const registerV2EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerIdentityProjectAdditionalPrivilegeRouter, {
     prefix: "/identity-project-additional-privilege"
   });
-
-  await server.register(registerGatewayV2Router, { prefix: "/gateways" });
 
   await server.register(
     async (secretRotationV2Router) => {

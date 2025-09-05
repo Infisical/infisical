@@ -19,18 +19,18 @@ interface IGatewayProxyServer {
 }
 
 const createProxyConnection = async ({
-  proxyIp,
+  relayIp,
   clientCertificate,
   clientPrivateKey,
   serverCertificateChain
 }: {
-  proxyIp: string;
+  relayIp: string;
   clientCertificate: string;
   clientPrivateKey: string;
   serverCertificateChain: string;
 }): Promise<net.Socket> => {
-  const [targetHost] = await verifyHostInputValidity(proxyIp);
-  const [, portStr] = proxyIp.split(":");
+  const [targetHost] = await verifyHostInputValidity(relayIp);
+  const [, portStr] = relayIp.split(":");
   const port = parseInt(portStr, 10) || 8443;
 
   const serverCAs = splitPemChain(serverCertificateChain);
@@ -121,15 +121,15 @@ const createGatewayConnection = async (
 
 const setupProxyServer = async ({
   protocol,
-  proxyIp,
-  gateway,
-  proxy,
+  relayIp,
+  connector,
+  relay,
   httpsAgent
 }: {
   protocol: GatewayProxyProtocol;
-  proxyIp: string;
-  gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
-  proxy: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
+  relayIp: string;
+  connector: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
+  relay: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
   httpsAgent?: https.Agent;
 }): Promise<IGatewayProxyServer> => {
   const proxyErrorMsg: string[] = [];
@@ -145,14 +145,14 @@ const setupProxyServer = async ({
 
           // Stage 1: Connect to proxy relay with TLS
           const proxyConn = await createProxyConnection({
-            proxyIp,
-            clientCertificate: proxy.clientCertificate,
-            clientPrivateKey: proxy.clientPrivateKey,
-            serverCertificateChain: proxy.serverCertificateChain
+            relayIp,
+            clientCertificate: relay.clientCertificate,
+            clientPrivateKey: relay.clientPrivateKey,
+            serverCertificateChain: relay.serverCertificateChain
           });
 
           // Stage 2: Establish mTLS connection to gateway through the proxy
-          const gatewayConn = await createGatewayConnection(proxyConn, gateway);
+          const gatewayConn = await createGatewayConnection(proxyConn, connector);
 
           let command = "";
 
@@ -240,23 +240,23 @@ const setupProxyServer = async ({
   });
 };
 
-export const withGatewayV2Proxy = async <T>(
+export const withConnectorProxy = async <T>(
   callback: (port: number) => Promise<T>,
   options: {
     protocol: GatewayProxyProtocol;
-    proxyIp: string;
-    gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
-    proxy: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
+    relayIp: string;
+    connector: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
+    relay: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
     httpsAgent?: https.Agent;
   }
 ): Promise<T> => {
-  const { protocol, proxyIp, gateway, proxy, httpsAgent } = options;
+  const { protocol, relayIp, connector, relay, httpsAgent } = options;
 
   const { port, cleanup, getProxyError } = await setupProxyServer({
     protocol,
-    proxyIp,
-    gateway,
-    proxy,
+    relayIp,
+    connector,
+    relay,
     httpsAgent
   });
 

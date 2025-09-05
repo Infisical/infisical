@@ -3,16 +3,18 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
 import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-connection-service";
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
+import { TConnectorDALFactory } from "@app/ee/services/connector/connector-dal";
+import { TConnectorServiceFactory } from "@app/ee/services/connector/connector-service";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
-import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
-import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionAppConnectionActions,
+  OrgPermissionConnectorActions,
   OrgPermissionGatewayActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
+import { throwUnlessCanAny } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -112,9 +114,9 @@ export type TAppConnectionServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  connectorService: Pick<TConnectorServiceFactory, "getPlatformConnectionDetailsByConnectorId">;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
-  gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
+  connectorDAL: Pick<TConnectorDALFactory, "find">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -166,9 +168,9 @@ export const appConnectionServiceFactory = ({
   kmsService,
   licenseService,
   gatewayService,
-  gatewayV2Service,
+  connectorService,
   gatewayDAL,
-  gatewayV2DAL
+  connectorDAL
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnectionsByOrg = async (actor: OrgServiceActor, app?: AppConnection) => {
     const { permission } = await permissionService.getOrgPermission(
@@ -266,16 +268,16 @@ export const appConnectionServiceFactory = ({
     );
 
     if (gatewayId) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
+      throwUnlessCanAny(permission, [
+        { action: OrgPermissionConnectorActions.AttachConnectors, subject: OrgPermissionSubjects.Connector },
+        { action: OrgPermissionGatewayActions.AttachGateways, subject: OrgPermissionSubjects.Gateway }
+      ]);
 
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
-      const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
-      if (!gateway && !gatewayV2) {
+      const [connector] = await connectorDAL.find({ id: gatewayId, orgId: actor.orgId });
+      if (!gateway && !connector) {
         throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found for org`
+          message: `Connector with ID ${gatewayId} not found for org`
         });
       }
     }
@@ -296,7 +298,7 @@ export const appConnectionServiceFactory = ({
         gatewayId
       } as TAppConnectionConfig,
       gatewayService,
-      gatewayV2Service
+      connectorService
     );
 
     try {
@@ -330,7 +332,7 @@ export const appConnectionServiceFactory = ({
           } as TAppConnectionConfig,
           (platformCredentials) => createConnection(platformCredentials),
           gatewayService,
-          gatewayV2Service
+          connectorService
         );
       } else {
         connection = await createConnection(validatedCredentials);
@@ -379,10 +381,10 @@ export const appConnectionServiceFactory = ({
     );
 
     if (gatewayId !== appConnection.gatewayId) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
+      throwUnlessCanAny(permission, [
+        { action: OrgPermissionConnectorActions.AttachConnectors, subject: OrgPermissionSubjects.Connector },
+        { action: OrgPermissionGatewayActions.AttachGateways, subject: OrgPermissionSubjects.Gateway }
+      ]);
 
       if (gatewayId) {
         const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
@@ -427,7 +429,7 @@ export const appConnectionServiceFactory = ({
           gatewayId
         } as TAppConnectionConfig,
         gatewayService,
-        gatewayV2Service
+        connectorService
       );
 
       if (!updatedCredentials)
@@ -469,7 +471,7 @@ export const appConnectionServiceFactory = ({
           } as TAppConnectionConfig,
           (platformCredentials) => updateConnection(platformCredentials),
           gatewayService,
-          gatewayV2Service
+          connectorService
         );
       } else {
         updatedConnection = await updateConnection(updatedCredentials);
@@ -599,7 +601,7 @@ export const appConnectionServiceFactory = ({
     deleteAppConnection,
     connectAppConnectionById,
     listAvailableAppConnectionsForUser,
-    github: githubConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service),
+    github: githubConnectionService(connectAppConnectionById, gatewayService, connectorService),
     githubRadar: githubRadarConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),
     databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),

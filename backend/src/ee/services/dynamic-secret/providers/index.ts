@@ -1,7 +1,7 @@
 import { SnowflakeProvider } from "@app/ee/services/dynamic-secret/providers/snowflake";
 
+import { TConnectorServiceFactory } from "../../connector/connector-service";
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
-import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { AwsElastiCacheDatabaseProvider } from "./aws-elasticache";
 import { AwsIamProvider } from "./aws-iam";
 import { AzureEntraIDProvider } from "./azure-entra-id";
@@ -25,14 +25,14 @@ import { VerticaProvider } from "./vertica";
 
 type TBuildDynamicSecretProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  connectorService: Pick<TConnectorServiceFactory, "getPlatformConnectionDetailsByConnectorId">;
 };
 
 export const buildDynamicSecretProviders = ({
   gatewayService,
-  gatewayV2Service
+  connectorService
 }: TBuildDynamicSecretProviderDTO): Record<DynamicSecretProviders, TDynamicProviderFns> => ({
-  [DynamicSecretProviders.SqlDatabase]: SqlDatabaseProvider({ gatewayService, gatewayV2Service }),
+  [DynamicSecretProviders.SqlDatabase]: SqlDatabaseProvider({ gatewayService, connectorService }),
   [DynamicSecretProviders.Cassandra]: CassandraProvider(),
   [DynamicSecretProviders.AwsIam]: AwsIamProvider(),
   [DynamicSecretProviders.Redis]: RedisDatabaseProvider(),
@@ -47,7 +47,7 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.Snowflake]: SnowflakeProvider(),
   [DynamicSecretProviders.Totp]: TotpProvider(),
   [DynamicSecretProviders.SapAse]: SapAseProvider(),
-  [DynamicSecretProviders.Kubernetes]: KubernetesProvider({ gatewayService, gatewayV2Service }),
+  [DynamicSecretProviders.Kubernetes]: KubernetesProvider({ gatewayService, connectorService }),
   [DynamicSecretProviders.Vertica]: VerticaProvider({ gatewayService }),
   [DynamicSecretProviders.GcpIam]: GcpIamProvider(),
   [DynamicSecretProviders.Github]: GithubProvider(),

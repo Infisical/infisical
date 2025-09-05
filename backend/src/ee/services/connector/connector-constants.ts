@@ -1,0 +1,2 @@
+export const CONNECTOR_ROUTING_INFO_OID = "1.3.6.1.4.1.12345.100.1";
+export const CONNECTOR_ACTOR_OID = "1.3.6.1.4.1.12345.100.2";

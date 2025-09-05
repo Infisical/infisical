@@ -16,11 +16,16 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
+import { TConnectorDALFactory } from "../connector/connector-dal";
 import { TDynamicSecretLeaseDALFactory } from "../dynamic-secret-lease/dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "../dynamic-secret-lease/dynamic-secret-lease-queue";
 import { TGatewayDALFactory } from "../gateway/gateway-dal";
-import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
-import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
+import {
+  OrgPermissionConnectorActions,
+  OrgPermissionGatewayActions,
+  OrgPermissionSubjects
+} from "../permission/org-permission";
+import { throwUnlessCanAny } from "../permission/permission-fns";
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
 import { DynamicSecretStatus, TDynamicSecretServiceFactory } from "./dynamic-secret-types";
 import { AzureEntraIDProvider } from "./providers/azure-entra-id";
@@ -40,7 +45,7 @@ type TDynamicSecretServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayDAL: Pick<TGatewayDALFactory, "findOne" | "find">;
-  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
+  connectorDAL: Pick<TConnectorDALFactory, "findOne" | "find">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
@@ -55,7 +60,7 @@ export const dynamicSecretServiceFactory = ({
   projectDAL,
   kmsService,
   gatewayDAL,
-  gatewayV2DAL,
+  connectorDAL,
   resourceMetadataDAL
 }: TDynamicSecretServiceFactoryDep): TDynamicSecretServiceFactory => {
   const create: TDynamicSecretServiceFactory["create"] = async ({
@@ -122,11 +127,11 @@ export const dynamicSecretServiceFactory = ({
       const gatewayId = inputs.gatewayId as string;
 
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actorOrgId });
-      const [gatewayv2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actorOrgId });
+      const [connector] = await connectorDAL.find({ id: gatewayId, orgId: actorOrgId });
 
-      if (!gateway && !gatewayv2) {
+      if (!gateway && !connector) {
         throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found`
+          message: `Connector with ID ${gatewayId} not found`
         });
       }
 
@@ -137,17 +142,17 @@ export const dynamicSecretServiceFactory = ({
       const { permission: orgPermission } = await permissionService.getOrgPermission(
         actor,
         actorId,
-        gateway?.orgId ?? gatewayv2?.orgId,
+        gateway?.orgId ?? connector?.orgId,
         actorAuthMethod,
         actorOrgId
       );
 
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
+      throwUnlessCanAny(orgPermission, [
+        { action: OrgPermissionConnectorActions.AttachConnectors, subject: OrgPermissionSubjects.Connector },
+        { action: OrgPermissionGatewayActions.AttachGateways, subject: OrgPermissionSubjects.Gateway }
+      ]);
 
-      selectedGatewayId = gateway?.id ?? gatewayv2?.id;
+      selectedGatewayId = gateway?.id ?? connector?.id;
     }
 
     const isConnected = await selectedProvider.validateConnection(provider.inputs, { projectId });
@@ -169,7 +174,7 @@ export const dynamicSecretServiceFactory = ({
           folderId: folder.id,
           name,
           gatewayId: isGatewayV1 ? selectedGatewayId : undefined,
-          gatewayV2Id: isGatewayV1 ? undefined : selectedGatewayId,
+          connectorId: isGatewayV1 ? undefined : selectedGatewayId,
           usernameTemplate
         },
         tx
@@ -285,11 +290,11 @@ export const dynamicSecretServiceFactory = ({
       const gatewayId = updatedInput.gatewayId as string;
 
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actorOrgId });
-      const [gatewayv2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actorOrgId });
+      const [connector] = await connectorDAL.find({ id: gatewayId, orgId: actorOrgId });
 
-      if (!gateway && !gatewayv2) {
+      if (!gateway && !connector) {
         throw new NotFoundError({
-          message: `Gateway with ID ${gatewayId} not found`
+          message: `Connector with ID ${gatewayId} not found`
         });
       }
 
@@ -305,12 +310,12 @@ export const dynamicSecretServiceFactory = ({
         actorOrgId
       );
 
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
+      throwUnlessCanAny(orgPermission, [
+        { action: OrgPermissionConnectorActions.AttachConnectors, subject: OrgPermissionSubjects.Connector },
+        { action: OrgPermissionGatewayActions.AttachGateways, subject: OrgPermissionSubjects.Gateway }
+      ]);
 
-      selectedGatewayId = gateway?.id ?? gatewayv2?.id;
+      selectedGatewayId = gateway?.id ?? connector?.id;
     }
 
     const isConnected = await selectedProvider.validateConnection(newInput, { projectId });
@@ -327,7 +332,7 @@ export const dynamicSecretServiceFactory = ({
           name: newName ?? name,
           status: null,
           gatewayId: isGatewayV1 ? selectedGatewayId : null,
-          gatewayV2Id: isGatewayV1 ? null : selectedGatewayId,
+          connectorId: isGatewayV1 ? null : selectedGatewayId,
           usernameTemplate
         },
         tx
