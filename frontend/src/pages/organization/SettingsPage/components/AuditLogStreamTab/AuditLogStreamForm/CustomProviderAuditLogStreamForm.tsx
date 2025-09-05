@@ -102,6 +102,7 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
                     onFocus={(e) => {
                       if (
                         auditLogStream &&
+                        auditLogStream.credentials.headers[i] &&
                         auditLogStream.credentials.headers[i].value === "******" &&
                         field.value === "******"
                       ) {
@@ -112,6 +113,7 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
                     onBlur={(e) => {
                       if (
                         auditLogStream &&
+                        auditLogStream.credentials.headers[i] &&
                         auditLogStream.credentials.headers[i].value === "******" &&
                         field.value === ""
                       ) {
