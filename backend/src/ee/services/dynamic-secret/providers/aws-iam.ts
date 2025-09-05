@@ -31,8 +31,6 @@ import { compileUsernameTemplate } from "./templateUtils";
 
 // AWS STS duration constants (in seconds)
 const AWS_STS_MIN_DURATION = 900;
-const AWS_STS_MAX_DURATION_SESSION_TOKEN = 43200; // 12 hours for GetSessionToken
-const AWS_STS_MAX_DURATION_ASSUME_ROLE = 3600; // 1 hour for AssumeRole when using temp credentials
 
 const generateUsername = (usernameTemplate?: string | null, identity?: { name: string }) => {
   const randomUsername = alphaNumericNanoId(32);
@@ -229,8 +227,8 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
         let stsClient: STSClient;
         let entityId: string;
 
-        const currentTime = Math.floor(Date.now() / 1000);
-        const requestedDuration = expireAt - currentTime;
+        const currentTime = Date.now();
+        const requestedDuration = Math.floor((expireAt - currentTime) / 1000);
 
         if (requestedDuration <= 0) {
           throw new BadRequestError({ message: "Expiration time must be in the future" });
@@ -239,8 +237,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
         let durationSeconds: number;
 
         if (providerInputs.method === AwsIamAuthType.AssumeRole) {
-          // AssumeRole has a lower maximum duration when using temporary credentials
-          durationSeconds = Math.min(requestedDuration, AWS_STS_MAX_DURATION_ASSUME_ROLE);
+          durationSeconds = requestedDuration;
           const appCfg = getConfig();
           stsClient = new STSClient({
             region: providerInputs.region,
@@ -259,7 +256,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
             new AssumeRoleCommand({
               RoleArn: providerInputs.roleArn,
               RoleSessionName: `infisical-temp-cred-${crypto.nativeCrypto.randomUUID()}`,
-              DurationSeconds: Math.max(durationSeconds, AWS_STS_MIN_DURATION),
+              DurationSeconds: durationSeconds,
               ExternalId: metadata.projectId
             })
           );
@@ -283,8 +280,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
           };
         }
         if (providerInputs.method === AwsIamAuthType.AccessKey) {
-          // GetSessionToken supports longer durations
-          durationSeconds = Math.min(requestedDuration, AWS_STS_MAX_DURATION_SESSION_TOKEN);
+          durationSeconds = requestedDuration;
           stsClient = new STSClient({
             region: providerInputs.region,
             useFipsEndpoint: crypto.isFipsModeEnabled(),
@@ -297,7 +293,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
 
           const sessionTokenRes = await stsClient.send(
             new GetSessionTokenCommand({
-              DurationSeconds: Math.max(durationSeconds, AWS_STS_MIN_DURATION)
+              DurationSeconds: durationSeconds
             })
           );
 
@@ -320,8 +316,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
           };
         }
         if (providerInputs.method === AwsIamAuthType.IRSA) {
-          // GetSessionToken supports longer durations
-          durationSeconds = Math.min(requestedDuration, AWS_STS_MAX_DURATION_SESSION_TOKEN);
+          durationSeconds = requestedDuration;
           stsClient = new STSClient({
             region: providerInputs.region,
             useFipsEndpoint: crypto.isFipsModeEnabled(),
@@ -330,7 +325,7 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
 
           const sessionTokenRes = await stsClient.send(
             new GetSessionTokenCommand({
-              DurationSeconds: Math.max(durationSeconds, AWS_STS_MIN_DURATION)
+              DurationSeconds: durationSeconds
             })
           );
 
@@ -364,8 +359,18 @@ export const AwsIamProvider = (): TDynamicProviderFns => {
         if (providerInputs.method === AwsIamAuthType.AssumeRole) {
           sensitiveTokens.push(providerInputs.roleArn);
         }
+
+        let errorMessage = (err as Error)?.message || "Unknown error";
+
+        if (err && typeof err === "object" && "name" in err && "$metadata" in err) {
+          const awsError = err as { name?: string; message?: string; $metadata?: object };
+          if (awsError.name) {
+            errorMessage = `${awsError.name}: ${errorMessage}`;
+          }
+        }
+
         const sanitizedErrorMessage = sanitizeString({
-          unsanitizedString: (err as Error)?.message,
+          unsanitizedString: errorMessage,
           tokens: sensitiveTokens
         });
         throw new BadRequestError({

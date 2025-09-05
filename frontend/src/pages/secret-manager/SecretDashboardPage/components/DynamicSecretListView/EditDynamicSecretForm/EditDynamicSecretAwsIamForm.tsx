@@ -16,94 +16,82 @@ import { slugSchema } from "@app/lib/schemas";
 
 import { MetadataForm } from "../MetadataForm";
 
-const formSchema = z
-  .object({
-    inputs: z.discriminatedUnion("method", [
-      z.object({
-        method: z.literal(DynamicSecretAwsIamAuth.AccessKey),
-        credentialType: z
-          .nativeEnum(DynamicSecretAwsIamCredentialType)
-          .default(DynamicSecretAwsIamCredentialType.IamUser),
-        accessKey: z.string().trim().min(1),
-        secretAccessKey: z.string().trim().min(1),
-        region: z.string().trim().min(1),
-        awsPath: z.string().trim().optional(),
-        permissionBoundaryPolicyArn: z.string().trim().optional(),
-        policyDocument: z.string().trim().optional(),
-        userGroups: z.string().trim().optional(),
-        policyArns: z.string().trim().optional(),
-        tags: z
-          .array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) }))
-          .optional()
-      }),
-      z.object({
-        method: z.literal(DynamicSecretAwsIamAuth.AssumeRole),
-        credentialType: z
-          .nativeEnum(DynamicSecretAwsIamCredentialType)
-          .default(DynamicSecretAwsIamCredentialType.IamUser),
-        roleArn: z.string().trim().min(1),
-        region: z.string().trim().min(1),
-        awsPath: z.string().trim().optional(),
-        permissionBoundaryPolicyArn: z.string().trim().optional(),
-        policyDocument: z.string().trim().optional(),
-        userGroups: z.string().trim().optional(),
-        policyArns: z.string().trim().optional(),
-        tags: z
-          .array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) }))
-          .optional()
-      }),
-      z.object({
-        method: z.literal(DynamicSecretAwsIamAuth.IRSA),
-        credentialType: z
-          .nativeEnum(DynamicSecretAwsIamCredentialType)
-          .default(DynamicSecretAwsIamCredentialType.IamUser),
-        region: z.string().trim().min(1),
-        awsPath: z.string().trim().optional(),
-        permissionBoundaryPolicyArn: z.string().trim().optional(),
-        policyDocument: z.string().trim().optional(),
-        userGroups: z.string().trim().optional(),
-        policyArns: z.string().trim().optional(),
-        tags: z
-          .array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) }))
-          .optional()
-      })
-    ]),
-    defaultTTL: z.string().superRefine((val, ctx) => {
+const formSchema = z.object({
+  inputs: z.discriminatedUnion("method", [
+    z.object({
+      method: z.literal(DynamicSecretAwsIamAuth.AccessKey),
+      credentialType: z
+        .nativeEnum(DynamicSecretAwsIamCredentialType)
+        .default(DynamicSecretAwsIamCredentialType.IamUser),
+      accessKey: z.string().trim().min(1),
+      secretAccessKey: z.string().trim().min(1),
+      region: z.string().trim().min(1),
+      awsPath: z.string().trim().optional(),
+      permissionBoundaryPolicyArn: z.string().trim().optional(),
+      policyDocument: z.string().trim().optional(),
+      userGroups: z.string().trim().optional(),
+      policyArns: z.string().trim().optional(),
+      tags: z
+        .array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) }))
+        .optional()
+    }),
+    z.object({
+      method: z.literal(DynamicSecretAwsIamAuth.AssumeRole),
+      credentialType: z
+        .nativeEnum(DynamicSecretAwsIamCredentialType)
+        .default(DynamicSecretAwsIamCredentialType.IamUser),
+      roleArn: z.string().trim().min(1),
+      region: z.string().trim().min(1),
+      awsPath: z.string().trim().optional(),
+      permissionBoundaryPolicyArn: z.string().trim().optional(),
+      policyDocument: z.string().trim().optional(),
+      userGroups: z.string().trim().optional(),
+      policyArns: z.string().trim().optional(),
+      tags: z
+        .array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) }))
+        .optional()
+    }),
+    z.object({
+      method: z.literal(DynamicSecretAwsIamAuth.IRSA),
+      credentialType: z
+        .nativeEnum(DynamicSecretAwsIamCredentialType)
+        .default(DynamicSecretAwsIamCredentialType.IamUser),
+      region: z.string().trim().min(1),
+      awsPath: z.string().trim().optional(),
+      permissionBoundaryPolicyArn: z.string().trim().optional(),
+      policyDocument: z.string().trim().optional(),
+      userGroups: z.string().trim().optional(),
+      policyArns: z.string().trim().optional(),
+      tags: z
+        .array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) }))
+        .optional()
+    })
+  ]),
+  defaultTTL: z.string().superRefine((val, ctx) => {
+    const valMs = ms(val);
+    if (valMs < 60 * 1000)
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
+    // a day
+    if (valMs > 24 * 60 * 60 * 1000)
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
+  }),
+  maxTTL: z
+    .string()
+    .optional()
+    .superRefine((val, ctx) => {
+      if (!val) return;
       const valMs = ms(val);
       if (valMs < 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
       // a day
       if (valMs > 24 * 60 * 60 * 1000)
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
-    }),
-    maxTTL: z
-      .string()
-      .optional()
-      .superRefine((val, ctx) => {
-        if (!val) return;
-        const valMs = ms(val);
-        if (valMs < 60 * 1000)
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
-        // a day
-        if (valMs > 24 * 60 * 60 * 1000)
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
-      })
-      .nullable(),
-    newName: slugSchema().optional(),
-    usernameTemplate: z.string().trim().nullable().optional()
-  })
-  .refine(
-    (data) => {
-      if (data.inputs.credentialType === DynamicSecretAwsIamCredentialType.TemporaryCredentials) {
-        return !data.inputs.awsPath || data.inputs.awsPath === "";
-      }
-      return true;
-    },
-    {
-      message: "AWS IAM Path cannot be set when using temporary credentials",
-      path: ["inputs", "awsPath"]
-    }
-  );
+    })
+    .nullable(),
+  newName: slugSchema().optional(),
+  usernameTemplate: z.string().trim().nullable().optional()
+});
+
 type TForm = z.infer<typeof formSchema>;
 
 type Props = {
