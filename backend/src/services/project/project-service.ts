@@ -1857,35 +1857,39 @@ export const projectServiceFactory = ({
     let filteredProjectMembers = projectMembers
       .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
       .map((el) => el.user.email!);
+    if (filteredProjectMembers.length === 0) {
+      const customRolesWithMemberCreate = await projectRoleDAL.find({ projectId });
+      const customRoleSlugsCanalCreate = customRolesWithMemberCreate
+        .filter((role) => {
+          try {
+            const permissions = (
+              typeof role.permissions === "string" ? JSON.parse(role.permissions) : role.permissions
+            ) as Array<[string, string, object?, number?]>;
 
-    const customRolesWithMemberCreate = await projectRoleDAL.find({ projectId });
-    const customRoleSlugsCanalCreate = customRolesWithMemberCreate
-      .filter((role) => {
-        try {
-          const permissions = JSON.parse(role.permissions as string) as Array<{
-            action: string;
-            subject: string;
-          }>;
-          return permissions.some(
-            (perm) =>
-              perm.action === ProjectPermissionMemberActions.Create && perm.subject === ProjectPermissionSub.Member
-          );
-        } catch {
-          return false;
+            return permissions.some(([permissionActions, permissionSubject]) => {
+              if (permissionSubject === ProjectPermissionSub.Member) {
+                const actionsList = permissionActions.split(",").map((action) => action.trim());
+                return actionsList.includes(ProjectPermissionMemberActions.Create);
+              }
+              return false;
+            });
+          } catch {
+            return false;
+          }
+        })
+        .map((role) => role.slug);
+
+      if (customRoleSlugsCanalCreate.length > 0) {
+        const usersWithCustomCreateMemberRole = projectMembers
+          .filter((member) =>
+            member.roles.some((role) => role.customRoleSlug && customRoleSlugsCanalCreate.includes(role.customRoleSlug))
+          )
+          .map((el) => el.user.email!)
+          .filter(Boolean);
+
+        if (usersWithCustomCreateMemberRole.length > 0) {
+          filteredProjectMembers = usersWithCustomCreateMemberRole;
         }
-      })
-      .map((role) => role.slug);
-
-    if (customRoleSlugsCanalCreate.length > 0) {
-      const usersWithCustomCreateMemberRole = projectMembers
-        .filter((member) =>
-          member.roles.some((role) => role.customRoleSlug && customRoleSlugsCanalCreate.includes(role.customRoleSlug))
-        )
-        .map((el) => el.user.email!)
-        .filter(Boolean);
-
-      if (usersWithCustomCreateMemberRole.length > 0) {
-        filteredProjectMembers = usersWithCustomCreateMemberRole;
       }
     }
 
