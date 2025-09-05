@@ -86,7 +86,7 @@ type TSecretQueueFactoryDep = {
   integrationAuthService: Pick<TIntegrationAuthServiceFactory, "getIntegrationAccessToken">;
   folderDAL: TSecretFolderDALFactory;
   secretDAL: TSecretDALFactory;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findById">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   projectDAL: TProjectDALFactory;

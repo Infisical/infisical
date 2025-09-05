@@ -70,7 +70,7 @@ const processReservedImports = async <
   }
 >(
   imports: T[],
-  secretImportDAL: Pick<TSecretImportDALFactory, "findById">
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByIds">
 ): Promise<T[]> => {
   const reservedImportIds: string[] = [];
 
@@ -94,17 +94,13 @@ const processReservedImports = async <
       { importPath: string; importEnv: { id: string; slug: string; name: string } }
     >();
 
-    /* eslint-disable no-await-in-loop */
-    for (const importId of reservedImportIds) {
-      const referencedImport = await secretImportDAL.findById(importId);
-      if (referencedImport) {
-        importDetailsMap.set(importId, {
-          importPath: referencedImport.importPath,
-          importEnv: referencedImport.importEnv
-        });
-      }
-    }
-    /* eslint-enable no-await-in-loop */
+    const referencedImports = await secretImportDAL.findByIds(reservedImportIds);
+    referencedImports.forEach((referencedImport) => {
+      importDetailsMap.set(referencedImport.id, {
+        importPath: referencedImport.importPath,
+        importEnv: referencedImport.importEnv
+      });
+    });
 
     return imports.map((secretImport) => {
       if (secretImport.isReserved) {
@@ -241,7 +237,7 @@ export const fnSecretsV2FromImports = async ({
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath">;
   viewSecretValue: boolean;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "find">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findById">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
   decryptor: (value?: Buffer | null) => string;
   expandSecretReferences?: (inputSecret: {
     value?: string;

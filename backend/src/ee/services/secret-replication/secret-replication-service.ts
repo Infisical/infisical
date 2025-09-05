@@ -59,7 +59,7 @@ type TSecretReplicationServiceFactoryDep = {
     TSecretVersionV2DALFactory,
     "find" | "insertMany" | "update" | "findLatestVersionMany"
   >;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "updateById" | "findByFolderIds" | "findById">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "updateById" | "findByFolderIds" | "findByIds">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     "findSecretPathByFolderIds" | "findBySecretPath" | "create" | "findOne" | "findByManySecretPath"

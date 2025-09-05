@@ -108,7 +108,7 @@ type TSecretV2BridgeServiceFactoryDep = {
     | "findBySecretPathMultiEnv"
     | "findSecretPathByFolderIds"
   >;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findById">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "handleSecretReminder" | "removeSecretReminder">;
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "create" | "transaction">;

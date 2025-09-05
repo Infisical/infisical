@@ -39,7 +39,7 @@ const getIntegrationSecretsV2 = async (
   },
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderId">,
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath">,
-  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findById">
+  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">
 ) => {
   const content: Record<string, boolean> = {};
   if (dto.depth > MAX_SYNC_SECRET_DEPTH) {
@@ -300,7 +300,7 @@ export const deleteIntegrationSecrets = async ({
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderId">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath" | "findBySecretPath">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findById">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 }) => {
