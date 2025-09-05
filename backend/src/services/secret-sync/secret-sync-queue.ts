@@ -80,7 +80,7 @@ type TSecretSyncQueueFactoryDep = {
     | "deleteMany"
     | "invalidateSecretCacheByProjectId"
   >;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   secretSyncDAL: Pick<TSecretSyncDALFactory, "findById" | "find" | "updateById" | "deleteById" | "update">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
