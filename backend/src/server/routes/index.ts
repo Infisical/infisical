@@ -559,20 +559,22 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const auditLogStreamService = auditLogStreamServiceFactory({
+    licenseService,
+    permissionService,
+    auditLogStreamDAL,
+    kmsService
+  });
+
   const auditLogQueue = await auditLogQueueServiceFactory({
     auditLogDAL,
     queueService,
     projectDAL,
     licenseService,
-    auditLogStreamDAL
+    auditLogStreamService
   });
 
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
-  const auditLogStreamService = auditLogStreamServiceFactory({
-    licenseService,
-    permissionService,
-    auditLogStreamDAL
-  });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,

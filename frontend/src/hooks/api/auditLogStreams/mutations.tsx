@@ -12,50 +12,54 @@ import {
 
 export const useCreateAuditLogStream = () => {
   const queryClient = useQueryClient();
-
-  return useMutation<{ auditLogStream: TAuditLogStream }, object, TCreateAuditLogStreamDTO>({
-    mutationFn: async (dto) => {
+  return useMutation({
+    mutationFn: async ({ provider, ...params }: TCreateAuditLogStreamDTO) => {
       const { data } = await apiRequest.post<{ auditLogStream: TAuditLogStream }>(
-        "/api/v1/audit-log-streams",
-        dto
+        `/api/v1/audit-log-streams/${provider}`,
+        params
       );
-      return data;
+
+      return data.auditLogStream;
     },
-    onSuccess: (_, { orgId }) => {
-      queryClient.invalidateQueries({ queryKey: auditLogStreamKeys.list(orgId) });
-    }
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: auditLogStreamKeys.list() })
   });
 };
 
 export const useUpdateAuditLogStream = () => {
   const queryClient = useQueryClient();
-
-  return useMutation<{ auditLogStream: TAuditLogStream }, object, TUpdateAuditLogStreamDTO>({
-    mutationFn: async (dto) => {
+  return useMutation({
+    mutationFn: async ({ auditLogStreamId, provider, ...params }: TUpdateAuditLogStreamDTO) => {
       const { data } = await apiRequest.patch<{ auditLogStream: TAuditLogStream }>(
-        `/api/v1/audit-log-streams/${dto.id}`,
-        dto
+        `/api/v1/audit-log-streams/${provider}/${auditLogStreamId}`,
+        params
       );
-      return data;
+
+      return data.auditLogStream;
     },
-    onSuccess: (_, { orgId }) => {
-      queryClient.invalidateQueries({ queryKey: auditLogStreamKeys.list(orgId) });
+    onSuccess: (_, { auditLogStreamId, provider }) => {
+      queryClient.invalidateQueries({ queryKey: auditLogStreamKeys.list() });
+      queryClient.invalidateQueries({
+        queryKey: auditLogStreamKeys.getById(provider, auditLogStreamId)
+      });
     }
   });
 };
 
 export const useDeleteAuditLogStream = () => {
   const queryClient = useQueryClient();
-
-  return useMutation<{ auditLogStream: TAuditLogStream }, object, TDeleteAuditLogStreamDTO>({
-    mutationFn: async (dto) => {
+  return useMutation({
+    mutationFn: async ({ auditLogStreamId, provider }: TDeleteAuditLogStreamDTO) => {
       const { data } = await apiRequest.delete<{ auditLogStream: TAuditLogStream }>(
-        `/api/v1/audit-log-streams/${dto.id}`
+        `/api/v1/audit-log-streams/${provider}/${auditLogStreamId}`
       );
-      return data;
+
+      return data.auditLogStream;
     },
-    onSuccess: (_, { orgId }) => {
-      queryClient.invalidateQueries({ queryKey: auditLogStreamKeys.list(orgId) });
+    onSuccess: (_, { auditLogStreamId, provider }) => {
+      queryClient.invalidateQueries({ queryKey: auditLogStreamKeys.list() });
+      queryClient.invalidateQueries({
+        queryKey: auditLogStreamKeys.getById(provider, auditLogStreamId)
+      });
     }
   });
 };

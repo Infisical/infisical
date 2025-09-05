@@ -1,242 +1,252 @@
 import { ForbiddenError } from "@casl/ability";
-import { RawAxiosRequestHeaders } from "axios";
+import { AxiosError } from "axios";
 
-import { SecretKeyEncoding } from "@app/db/schemas";
-import { getConfig } from "@app/lib/config/env";
-import { request } from "@app/lib/config/request";
-import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { TAuditLogs } from "@app/db/schemas";
+import {
+  decryptLogStream,
+  decryptLogStreamCredentials,
+  encryptLogStreamCredentials,
+  listProviderOptions
+} from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { OrgServiceActor } from "@app/lib/types";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { AUDIT_LOG_STREAM_TIMEOUT } from "../audit-log/audit-log-queue";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TAuditLogStreamDALFactory } from "./audit-log-stream-dal";
-import { providerSpecificPayload } from "./audit-log-stream-fns";
-import { LogStreamHeaders, TAuditLogStreamServiceFactory } from "./audit-log-stream-types";
+import { LogProvider } from "./audit-log-stream-enums";
+import { LOG_STREAM_FACTORY_MAP } from "./audit-log-stream-factory";
+import { TAuditLogStream, TCreateAuditLogStreamDTO, TUpdateAuditLogStreamDTO } from "./audit-log-stream-types";
+import { TCustomProviderCredentials } from "./custom/custom-provider-types";
 
-type TAuditLogStreamServiceFactoryDep = {
+export type TAuditLogStreamServiceFactoryDep = {
   auditLogStreamDAL: TAuditLogStreamDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
+
+export type TAuditLogStreamServiceFactory = ReturnType<typeof auditLogStreamServiceFactory>;
 
 export const auditLogStreamServiceFactory = ({
   auditLogStreamDAL,
   permissionService,
-  licenseService
-}: TAuditLogStreamServiceFactoryDep): TAuditLogStreamServiceFactory => {
-  const create: TAuditLogStreamServiceFactory["create"] = async ({
-    url,
-    actor,
-    headers = [],
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID attached to authentication token" });
-
-    const plan = await licenseService.getPlan(actorOrgId);
+  licenseService,
+  kmsService
+}: TAuditLogStreamServiceFactoryDep) => {
+  const create = async ({ provider, credentials }: TCreateAuditLogStreamDTO, actor: OrgServiceActor) => {
+    const plan = await licenseService.getPlan(actor.orgId);
     if (!plan.auditLogStreams) {
       throw new BadRequestError({
-        message: "Failed to create audit log streams due to plan restriction. Upgrade plan to create group."
+        message: "Failed to create Audit Log Stream: Plan restriction. Upgrade plan to continue."
       });
     }
 
     const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      actorOrgId,
-      actorAuthMethod,
-      actorOrgId
+      actor.type,
+      actor.id,
+      actor.orgId,
+      actor.authMethod,
+      actor.orgId
     );
+
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
-    const appCfg = getConfig();
-    if (appCfg.isCloud) await blockLocalAndPrivateIpAddresses(url);
-
-    const totalStreams = await auditLogStreamDAL.find({ orgId: actorOrgId });
+    const totalStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
     if (totalStreams.length >= plan.auditLogStreamLimit) {
       throw new BadRequestError({
-        message:
-          "Failed to create audit log streams due to plan limit reached. Kindly contact Infisical to add more streams."
+        message: "Failed to create Audit Log Stream: Plan limit reached. Contact Infisical to increase quota."
       });
     }
 
-    // testing connection first
-    const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
-    if (headers.length)
-      headers.forEach(({ key, value }) => {
-        streamHeaders[key] = value;
-      });
+    const factory = LOG_STREAM_FACTORY_MAP[provider]();
+    const validatedCredentials = await factory.validateCredentials({ credentials });
 
-    await request
-      .post(
-        url,
-        { ...providerSpecificPayload(url), ping: "ok" },
-        {
-          headers: streamHeaders,
-          // request timeout
-          timeout: AUDIT_LOG_STREAM_TIMEOUT,
-          // connection timeout
-          signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
-        }
-      )
-      .catch((err) => {
-        throw new BadRequestError({ message: `Failed to connect with upstream source: ${(err as Error)?.message}` });
-      });
+    const encryptedCredentials = await encryptLogStreamCredentials({
+      credentials: validatedCredentials,
+      orgId: actor.orgId,
+      kmsService
+    });
 
-    const encryptedHeaders = headers
-      ? crypto.encryption().symmetric().encryptWithRootEncryptionKey(JSON.stringify(headers))
-      : undefined;
     const logStream = await auditLogStreamDAL.create({
-      orgId: actorOrgId,
-      url,
-      ...(encryptedHeaders
-        ? {
-            encryptedHeadersCiphertext: encryptedHeaders.ciphertext,
-            encryptedHeadersIV: encryptedHeaders.iv,
-            encryptedHeadersTag: encryptedHeaders.tag,
-            encryptedHeadersAlgorithm: encryptedHeaders.algorithm,
-            encryptedHeadersKeyEncoding: encryptedHeaders.encoding
-          }
-        : {})
+      orgId: actor.orgId,
+      provider,
+      encryptedCredentials
     });
-    return logStream;
+
+    return { ...logStream, credentials: validatedCredentials } as TAuditLogStream;
   };
 
-  const updateById: TAuditLogStreamServiceFactory["updateById"] = async ({
-    id,
-    url,
-    actor,
-    headers = [],
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID attached to authentication token" });
-
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.auditLogStreams)
+  const updateById = async (
+    { logStreamId, provider, credentials }: TUpdateAuditLogStreamDTO,
+    actor: OrgServiceActor
+  ) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+    if (!plan.auditLogStreams) {
       throw new BadRequestError({
-        message: "Failed to update audit log streams due to plan restriction. Upgrade plan to create group."
+        message: "Failed to update Audit Log Stream: Plan restriction. Upgrade plan to continue."
       });
+    }
 
-    const logStream = await auditLogStreamDAL.findById(id);
-    if (!logStream) throw new NotFoundError({ message: `Audit log stream with ID '${id}' not found` });
+    const logStream = await auditLogStreamDAL.findById(logStreamId);
+    if (!logStream) throw new NotFoundError({ message: `Audit Log Stream with ID '${logStreamId}' not found` });
 
-    const { orgId } = logStream;
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission(
+      actor.type,
+      actor.id,
+      actor.orgId,
+      actor.authMethod,
+      logStream.orgId
+    );
+
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
-    const appCfg = getConfig();
-    if (url && appCfg.isCloud) await blockLocalAndPrivateIpAddresses(url);
 
-    // testing connection first
-    const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
-    if (headers.length)
-      headers.forEach(({ key, value }) => {
-        streamHeaders[key] = value;
-      });
+    const finalCredentials = { ...credentials };
 
-    await request
-      .post(
-        url || logStream.url,
-        { ...providerSpecificPayload(url || logStream.url), ping: "ok" },
-        {
-          headers: streamHeaders,
-          // request timeout
-          timeout: AUDIT_LOG_STREAM_TIMEOUT,
-          // connection timeout
-          signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
-        }
-      )
-      .catch((err) => {
-        throw new Error(`Failed to connect with the source ${(err as Error)?.message}`);
-      });
+    // For the "Custom" provider, we must handle masked header values ('******').
+    // These are placeholders from the frontend for secrets that haven't been changed.
+    // We need to replace them with the original, unmasked values from the database.
+    if (
+      provider === LogProvider.Custom &&
+      "headers" in finalCredentials &&
+      Array.isArray(finalCredentials.headers) &&
+      finalCredentials.headers.some((header) => header.value === "******")
+    ) {
+      const decryptedOldCredentials = (await decryptLogStreamCredentials({
+        encryptedCredentials: logStream.encryptedCredentials,
+        orgId: logStream.orgId,
+        kmsService
+      })) as TCustomProviderCredentials;
 
-    const encryptedHeaders = headers
-      ? crypto.encryption().symmetric().encryptWithRootEncryptionKey(JSON.stringify(headers))
-      : undefined;
-    const updatedLogStream = await auditLogStreamDAL.updateById(id, {
-      url,
-      ...(encryptedHeaders
-        ? {
-            encryptedHeadersCiphertext: encryptedHeaders.ciphertext,
-            encryptedHeadersIV: encryptedHeaders.iv,
-            encryptedHeadersTag: encryptedHeaders.tag,
-            encryptedHeadersAlgorithm: encryptedHeaders.algorithm,
-            encryptedHeadersKeyEncoding: encryptedHeaders.encoding
+      const oldHeadersMap = decryptedOldCredentials.headers.reduce<Record<string, string>>((acc, header) => {
+        acc[header.key] = header.value;
+        return acc;
+      }, {});
+
+      const finalHeaders: { key: string; value: string }[] = [];
+      for (const header of finalCredentials.headers) {
+        if (header.value === "******") {
+          const oldValue = oldHeadersMap[header.key];
+          if (oldValue) {
+            finalHeaders.push({ key: header.key, value: oldValue });
           }
-        : {})
+        } else {
+          finalHeaders.push(header);
+        }
+      }
+      finalCredentials.headers = finalHeaders;
+    }
+
+    const factory = LOG_STREAM_FACTORY_MAP[provider]();
+    const validatedCredentials = await factory.validateCredentials({ credentials: finalCredentials });
+
+    const encryptedCredentials = await encryptLogStreamCredentials({
+      credentials: validatedCredentials,
+      orgId: actor.orgId,
+      kmsService
     });
-    return updatedLogStream;
+
+    const updatedLogStream = await auditLogStreamDAL.updateById(logStreamId, {
+      encryptedCredentials
+    });
+
+    return { ...updatedLogStream, credentials: validatedCredentials } as TAuditLogStream;
   };
 
-  const deleteById: TAuditLogStreamServiceFactory["deleteById"] = async ({
-    id,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }) => {
-    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID attached to authentication token" });
+  const deleteById = async (logStreamId: string, provider: LogProvider, actor: OrgServiceActor) => {
+    const logStream = await auditLogStreamDAL.findById(logStreamId);
+    if (!logStream) throw new NotFoundError({ message: `Audit Log Stream with ID '${logStreamId}' not found` });
 
-    const logStream = await auditLogStreamDAL.findById(id);
-    if (!logStream) throw new NotFoundError({ message: `Audit log stream with ID '${id}' not found` });
+    const { permission } = await permissionService.getOrgPermission(
+      actor.type,
+      actor.id,
+      actor.orgId,
+      actor.authMethod,
+      logStream.orgId
+    );
 
-    const { orgId } = logStream;
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
 
-    const deletedLogStream = await auditLogStreamDAL.deleteById(id);
-    return deletedLogStream;
+    if (logStream.provider !== provider) {
+      throw new BadRequestError({
+        message: `Audit Log Stream with ID '${logStreamId}' is not for provider '${provider}'`
+      });
+    }
+
+    const deletedLogStream = await auditLogStreamDAL.deleteById(logStreamId);
+
+    return decryptLogStream(deletedLogStream, kmsService);
   };
 
-  const getById: TAuditLogStreamServiceFactory["getById"] = async ({
-    id,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }) => {
-    const logStream = await auditLogStreamDAL.findById(id);
-    if (!logStream) throw new NotFoundError({ message: `Audit log stream with ID '${id}' not found` });
+  const getById = async (logStreamId: string, provider: LogProvider, actor: OrgServiceActor) => {
+    const logStream = await auditLogStreamDAL.findById(logStreamId);
 
-    const { orgId } = logStream;
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    if (!logStream) throw new NotFoundError({ message: `Audit log stream with ID '${logStreamId}' not found` });
 
-    const headers =
-      logStream?.encryptedHeadersCiphertext && logStream?.encryptedHeadersIV && logStream?.encryptedHeadersTag
-        ? (JSON.parse(
-            crypto
-              .encryption()
-              .symmetric()
-              .decryptWithRootEncryptionKey({
-                tag: logStream.encryptedHeadersTag,
-                iv: logStream.encryptedHeadersIV,
-                ciphertext: logStream.encryptedHeadersCiphertext,
-                keyEncoding: logStream.encryptedHeadersKeyEncoding as SecretKeyEncoding
-              })
-          ) as LogStreamHeaders[])
-        : undefined;
-
-    return { ...logStream, headers };
-  };
-
-  const list: TAuditLogStreamServiceFactory["list"] = async ({ actor, actorId, actorOrgId, actorAuthMethod }) => {
     const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      actorOrgId,
-      actorAuthMethod,
-      actorOrgId
+      actor.type,
+      actor.id,
+      logStream.orgId,
+      actor.authMethod,
+      actor.orgId
     );
+
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
 
-    const logStreams = await auditLogStreamDAL.find({ orgId: actorOrgId });
-    return logStreams;
+    if (logStream.provider !== provider) {
+      throw new BadRequestError({
+        message: `Audit Log Stream with ID '${logStreamId}' is not for provider '${provider}'`
+      });
+    }
+
+    return decryptLogStream(logStream, kmsService);
+  };
+
+  const list = async (actor: OrgServiceActor) => {
+    const { permission } = await permissionService.getOrgPermission(
+      actor.type,
+      actor.id,
+      actor.orgId,
+      actor.authMethod,
+      actor.orgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+
+    const logStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
+
+    return Promise.all(logStreams.map((stream) => decryptLogStream(stream, kmsService)));
+  };
+
+  const streamLog = async (orgId: string, auditLog: TAuditLogs) => {
+    const logStreams = await auditLogStreamDAL.find({ orgId });
+    await Promise.allSettled(
+      logStreams.map(async ({ provider, encryptedCredentials }) => {
+        const credentials = await decryptLogStreamCredentials({
+          encryptedCredentials,
+          orgId,
+          kmsService
+        });
+
+        const factory = LOG_STREAM_FACTORY_MAP[provider as LogProvider]();
+
+        try {
+          await factory.streamLog({
+            credentials,
+            auditLog
+          });
+        } catch (error) {
+          logger.error(
+            error,
+            `Failed to stream audit log [auditLogId=${auditLog.id}] [provider=${provider}] [orgId=${orgId}]${error instanceof AxiosError ? `: ${error.message}` : ""}`
+          );
+          throw error;
+        }
+      })
+    );
   };
 
   return {
@@ -244,6 +254,8 @@ export const auditLogStreamServiceFactory = ({
     updateById,
     deleteById,
     getById,
-    list
+    list,
+    listProviderOptions,
+    streamLog
   };
 };

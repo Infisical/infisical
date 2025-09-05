@@ -7,7 +7,7 @@ import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-app
 import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-types";
 import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
-import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-types";
+import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-types";
 import { TCertificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
 import { TDynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-types";
