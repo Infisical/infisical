@@ -84,32 +84,45 @@ export const identityUaServiceFactory = ({
 
     const LOCKOUT_KEY = `lockout:identity:${identityUa.identityId}:${IdentityAuthMethod.UNIVERSAL_AUTH}:${clientId}`;
 
-    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
+    let isKeyStoreAvailable = true;
     try {
-      lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(LOCKOUT_KEY)], 500, {
-        retryCount: 3,
-        retryDelay: 300,
-        retryJitter: 100
-      });
-    } catch (e) {
-      logger.info(
-        `identity login failed to acquire lock [identityId=${identityUa.identityId}] [authMethod=${IdentityAuthMethod.UNIVERSAL_AUTH}]`
-      );
-      throw new RateLimitError({ message: "Rate limit exceeded" });
+      await keyStore.getItem("ping");
+    } catch (error) {
+      isKeyStoreAvailable = false;
+      logger.warn({ err: error }, "KeyStore is unavailable. Proceeding with login but disabling lockout features.");
+    }
+
+    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
+
+    if (isKeyStoreAvailable) {
+      try {
+        lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(LOCKOUT_KEY)], 500, {
+          retryCount: 3,
+          retryDelay: 300,
+          retryJitter: 100
+        });
+      } catch (e) {
+        logger.info(
+          `identity login failed to acquire lock [identityId=${identityUa.identityId}] [authMethod=${IdentityAuthMethod.UNIVERSAL_AUTH}]`
+        );
+        throw new RateLimitError({ message: "Rate limit exceeded" });
+      }
     }
 
     try {
-      const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
-
       let lockout: LockoutObject | undefined;
-      if (lockoutRaw) {
-        lockout = JSON.parse(lockoutRaw) as LockoutObject;
-      }
 
-      if (lockout && lockout.lockedOut) {
-        throw new UnauthorizedError({
-          message: "This identity auth method is temporarily locked, please try again later"
-        });
+      if (isKeyStoreAvailable) {
+        const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
+        if (lockoutRaw) {
+          lockout = JSON.parse(lockoutRaw) as LockoutObject;
+        }
+
+        if (lockout && lockout.lockedOut) {
+          throw new UnauthorizedError({
+            message: "This identity auth method is temporarily locked, please try again later"
+          });
+        }
       }
 
       const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityUa.identityId });
@@ -137,7 +150,7 @@ export const identityUaServiceFactory = ({
       }
 
       if (!validClientSecretInfo) {
-        if (identityUa.lockoutEnabled) {
+        if (isKeyStoreAvailable && identityUa.lockoutEnabled) {
           if (!lockout) {
             lockout = {
               lockedOut: false,
@@ -158,7 +171,7 @@ export const identityUaServiceFactory = ({
         }
 
         throw new UnauthorizedError({ message: "Invalid credentials" });
-      } else if (lockout) {
+      } else if (isKeyStoreAvailable && lockout) {
         await keyStore.deleteItem(LOCKOUT_KEY);
       }
 
@@ -257,7 +270,7 @@ export const identityUaServiceFactory = ({
         ...accessTokenTTLParams
       };
     } finally {
-      await lock.release();
+      if (lock) await lock.release();
     }
   };
 
