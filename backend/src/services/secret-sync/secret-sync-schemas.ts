@@ -85,8 +85,8 @@ export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefi
       id: z.string().uuid()
     }),
     environment: z.object({ slug: z.string(), name: z.string(), id: z.string().uuid() }).nullable(),
-    folder: z.object({ id: z.string(), path: z.string() }).nullable()
-  });
+    folder: z.array(z.object({ id: z.string(), path: z.string() }))
+    });
 
 export const GenericCreateSecretSyncFieldsSchema = <T extends AnyZodObject | undefined = undefined>(
   destination: SecretSync,
@@ -111,7 +111,8 @@ export const GenericCreateSecretSyncFieldsSchema = <T extends AnyZodObject | und
       .transform(removeTrailingSlash)
       .describe(SecretSyncs.CREATE(destination).secretPath),
     isAutoSyncEnabled: z.boolean().default(true).describe(SecretSyncs.CREATE(destination).isAutoSyncEnabled),
-    syncOptions: BaseSyncOptionsSchema({ destination, syncOptionsConfig, merge })
+    syncOptions: BaseSyncOptionsSchema({ destination, syncOptionsConfig, merge }),
+    recursive: z.boolean().optional().default(false)
   });
 
 export const GenericUpdateSecretSyncFieldsSchema = <T extends AnyZodObject | undefined = undefined>(

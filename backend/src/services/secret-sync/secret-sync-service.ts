@@ -95,7 +95,7 @@ export const secretSyncServiceFactory = ({
         secretSync.environment && secretSync.folder
           ? subject(ProjectPermissionSub.SecretSyncs, {
               environment: secretSync.environment.slug,
-              secretPath: secretSync.folder.path
+              secretPath: secretSync.folder.map((f: { path: string }) => f.path)
             })
           : ProjectPermissionSub.SecretSyncs
       )
@@ -219,7 +219,7 @@ export const secretSyncServiceFactory = ({
   };
 
   const createSecretSync = async (
-    { projectId, secretPath, environment, ...params }: TCreateSecretSyncDTO,
+    { projectId, secretPath, environment, recursive, ...params }: TCreateSecretSyncDTO,
     actor: OrgServiceActor
   ) => {
     await enterpriseSyncCheck(
@@ -257,9 +257,19 @@ export const secretSyncServiceFactory = ({
       }
     );
 
-    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+    const foldersRaw = await folderDAL.findBySecretPath(projectId, environment, secretPath, undefined, recursive);
+    const result = {
+      commonData: {
+        ...params,
+        ...(params.isAutoSyncEnabled && { syncStatus: SecretSyncStatus.Pending }),
+        projectId
+      },
+      folderIds: (Array.isArray(foldersRaw) ? foldersRaw : [foldersRaw])
+        .filter(Boolean)
+        .map((folder: any) => folder.id)
+    };
 
-    if (!folder)
+    if (!result)
       throw new BadRequestError({
         message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
       });
@@ -270,20 +280,15 @@ export const secretSyncServiceFactory = ({
     await appConnectionService.connectAppConnectionById(destinationApp, params.connectionId, actor);
 
     try {
-      const secretSync = await secretSyncDAL.create({
-        folderId: folder.id,
-        ...params,
-        ...(params.isAutoSyncEnabled && { syncStatus: SecretSyncStatus.Pending }),
-        projectId
-      });
+        const secretSync = await secretSyncDAL.create(result.commonData, result.folderIds);
 
       if (secretSync.isAutoSyncEnabled) await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId: secretSync.id });
 
-      return secretSync as TSecretSync;
+      return secretSync as TSecretSync; 
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({
-          message: `A Secret Sync with the name "${params.name}" already exists for the project with ID "${folder.projectId}"`
+          message: `A Secret Sync with the name "${params.name}" already exists for the project with ID "${foldersRaw[0].projectId}"`
         });
       }
 
