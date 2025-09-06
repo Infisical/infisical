@@ -1,4 +1,4 @@
-import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { QueueJobs, TQueueServiceFactory } from "@app/queue";
 
 import { TCreateUserNotificationDTO } from "./notification-types";
 import { TUserNotificationDALFactory } from "./user-notification-dal";
@@ -17,25 +17,28 @@ export const notificationQueueServiceFactory = async ({
   queueService
 }: TNotificationQueueServiceFactoryDep): Promise<TNotificationQueueServiceFactory> => {
   const pushUserNotification = async (data: TCreateUserNotificationDTO) => {
-    await queueService.queue<QueueName.UserNotification>(QueueName.UserNotification, QueueJobs.UserNotification, data, {
-      removeOnFail: {
-        count: 3
-      },
-      removeOnComplete: true
-    });
+    await queueService.queuePg(QueueJobs.UserNotification, data);
   };
 
-  queueService.start(QueueName.UserNotification, async (job) => {
-    const { userId, type, title, body, link } = job.data;
+  await queueService.startPg(
+    QueueJobs.UserNotification,
+    async ([job]) => {
+      const { userId, type, title, body, link } = job.data as TCreateUserNotificationDTO;
 
-    await userNotificationDAL.create({
-      userId,
-      type,
-      title,
-      body,
-      link
-    });
-  });
+      await userNotificationDAL.create({
+        userId,
+        type,
+        title,
+        body,
+        link
+      });
+    },
+    {
+      batchSize: 100,
+      workerCount: 5,
+      pollingIntervalSeconds: 2
+    }
+  );
 
   return {
     pushUserNotification
