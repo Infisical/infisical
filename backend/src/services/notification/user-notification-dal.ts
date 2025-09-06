@@ -21,7 +21,7 @@ export const userNotificationDALFactory = (db: TDbClient) => {
       userId,
       startDate,
       endDate,
-      limit = 10000,
+      limit = 1000,
       offset = 0
     }: {
       userId: string;

@@ -29,8 +29,8 @@ export const notificationServiceFactory = ({
     return notifications;
   };
 
-  const createUserNotification = async (data: TCreateUserNotificationDTO) => {
-    return notificationQueue.pushUserNotification(data);
+  const createUserNotifications = async (data: TCreateUserNotificationDTO[]) => {
+    return notificationQueue.pushUserNotifications(data);
   };
 
   const deleteUserNotification = async ({ userId, notificationId }: { userId: string; notificationId: string }) => {
@@ -47,23 +47,34 @@ export const notificationServiceFactory = ({
     await userNotificationDAL.markAllNotificationsAsRead(userId);
   };
 
-  const markUserNotificationAsRead = async ({ userId, notificationId }: { userId: string; notificationId: string }) => {
-    await userNotificationDAL.update(
+  const updateUserNotification = async ({
+    userId,
+    notificationId,
+    isRead
+  }: {
+    userId: string;
+    notificationId: string;
+    isRead: boolean;
+  }) => {
+    const [updatedNotification] = await userNotificationDAL.update(
       {
         id: notificationId,
         userId
       },
       {
-        isRead: true
+        isRead
       }
     );
+
+    if (!updatedNotification) throw new NotFoundError({ message: "Notification not found" });
+    return updatedNotification;
   };
 
   return {
     listUserNotifications,
-    createUserNotification,
+    createUserNotifications,
     deleteUserNotification,
     markUserNotificationsAsRead,
-    markUserNotificationAsRead
+    updateUserNotification
   };
 };

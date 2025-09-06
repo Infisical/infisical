@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
-import { faBell, faCircleQuestion, faUserCircle } from "@fortawesome/free-regular-svg-icons";
+import { faCircleQuestion, faUserCircle } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowUpRightFromSquare,
   faBook,
@@ -25,7 +25,6 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   BreadcrumbContainer,
   Button,
-  ContentLoader,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -43,19 +42,13 @@ import { useToggle } from "@app/hooks";
 import { useGetOrganizations, useLogoutUser, workspaceKeys } from "@app/hooks/api";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
-import {
-  useDeleteNotification,
-  useMarkAllNotificationsAsRead,
-  useMarkNotificationAsRead
-} from "@app/hooks/api/notifications/mutations";
-import { useGetMyNotifications } from "@app/hooks/api/notifications/queries";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { SubscriptionPlan } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
-import { Notification } from "./Notification";
+import { NotificationDropdown } from "./NotificationDropdown";
 
 const getPlan = (subscription: SubscriptionPlan) => {
   if (subscription.groups) return "Enterprise";
@@ -126,16 +119,6 @@ export const Navbar = () => {
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
   const router = useRouter();
   const queryClient = useQueryClient();
-
-  const { data: notifications, isLoading } = useGetMyNotifications();
-  const { mutate: markAllAsRead } = useMarkAllNotificationsAsRead();
-  const { mutate: markNotificationAsRead } = useMarkNotificationAsRead();
-  const { mutate: deleteNotification } = useDeleteNotification();
-
-  const unreadCount = useMemo(
-    () => notifications?.filter((n) => !n.isRead).length || 0,
-    [notifications]
-  );
 
   const location = useLocation();
   const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
@@ -377,86 +360,7 @@ export const Navbar = () => {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger>
-          <div className="relative border border-r-0 border-mineshaft-500 px-2.5 py-1 hover:bg-mineshaft-600">
-            <FontAwesomeIcon icon={faBell} className="text-mineshaft-200" />
-            {unreadCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-yellow-400 px-1 text-[10px] text-black">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            )}
-          </div>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          side="bottom"
-          className="mt-3 flex h-[550px] w-[400px] overflow-hidden rounded-lg"
-        >
-          <div className="flex w-full flex-col">
-            <div className="flex items-center justify-between border-b border-mineshaft-500 px-4 py-2">
-              <span className="text-xl font-semibold text-white">Notifications</span>
-              <button
-                type="button"
-                className="text-xs font-medium text-mineshaft-300 hover:text-primary-400 disabled:pointer-events-none disabled:opacity-50"
-                onClick={(e) => {
-                  e.preventDefault();
-                  markAllAsRead();
-                }}
-                disabled={unreadCount === 0}
-              >
-                Mark all as read
-              </button>
-            </div>
-            <div className="flex h-full w-full overflow-auto">
-              {isLoading && (
-                <div className="flex h-full w-full items-center justify-center">
-                  <ContentLoader className="pointer-events-none" lottieClassName="size-10" />
-                </div>
-              )}
-              {!isLoading && notifications?.length === 0 && (
-                <div className="flex h-full w-full flex-col items-center justify-center">
-                  <FontAwesomeIcon icon={faBell} size="3x" className="text-mineshaft-400" />
-                  <span className="mt-4 text-sm text-mineshaft-300">No new notifications</span>
-                  <span className="text-xs text-mineshaft-400">
-                    We&apos;ll let you know when something important happens.
-                  </span>
-                </div>
-              )}
-              {!isLoading && notifications && notifications.length > 0 && (
-                <div className="flex w-full flex-col">
-                  {notifications.map((notification) => (
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      key={notification.id}
-                      onClick={() => {
-                        if (!notification.isRead) {
-                          markNotificationAsRead(notification.id);
-                        }
-                        if (notification.link) {
-                          router.navigate({ to: notification.link });
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key !== "Enter") return;
-                        if (!notification.isRead) {
-                          markNotificationAsRead(notification.id);
-                        }
-                        if (notification.link) {
-                          router.navigate({ to: notification.link });
-                        }
-                      }}
-                    >
-                      <Notification notification={notification} onDelete={deleteNotification} />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <NotificationDropdown />
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <div className="rounded-r-md border border-mineshaft-500 px-2.5 py-1 hover:bg-mineshaft-600">

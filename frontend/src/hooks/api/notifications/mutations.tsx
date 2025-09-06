@@ -23,17 +23,21 @@ export const useMarkAllNotificationsAsRead = () => {
   });
 };
 
-export const useMarkNotificationAsRead = () => {
+export const useUpdateNotification = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (notificationId: string) => {
-      await apiRequest.post(`/api/v1/notifications/user/${notificationId}/mark-as-read`);
+    mutationFn: async ({ notificationId, isRead }: { notificationId: string; isRead: boolean }) => {
+      const { data } = await apiRequest.patch<{ notification: TUserNotification }>(
+        `/api/v1/notifications/user/${notificationId}`,
+        { isRead }
+      );
+      return data.notification;
     },
-    onSuccess: (_, notificationId) => {
+    onSuccess: (updatedNotification) => {
       queryClient.setQueryData<TUserNotification[]>(notificationKeys.list(), (oldData) => {
         if (!oldData) return oldData;
         return oldData.map((notification) =>
-          notification.id === notificationId ? { ...notification, isRead: true } : notification
+          notification.id === updatedNotification.id ? updatedNotification : notification
         );
       });
     }

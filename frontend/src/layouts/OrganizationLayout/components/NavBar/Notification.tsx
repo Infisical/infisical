@@ -26,9 +26,9 @@ export const Notification = ({ notification, onDelete }: Props) => {
           {!notification.isRead && (
             <FontAwesomeIcon icon={faCircle} className="mt-1.5 size-2 text-yellow-400" />
           )}
-          <Tooltip content={notification.title} delayDuration={300}>
-            <span className="overflow-hidden text-ellipsis whitespace-nowrap font-medium leading-5 text-mineshaft-100">
-              <Markdown>{notification.title}</Markdown>
+          <Tooltip content={<Markdown>{notification.title}</Markdown>} delayDuration={300}>
+            <span className="overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium leading-5 text-mineshaft-100">
+              <Markdown components={{ p: "span" }}>{notification.title}</Markdown>
             </span>
           </Tooltip>
           <span className="ml-auto mt-px whitespace-nowrap text-xs text-mineshaft-400">
@@ -36,7 +36,7 @@ export const Notification = ({ notification, onDelete }: Props) => {
           </span>
         </div>
         {notification.body && (
-          <span className="max-w-[350px] text-sm text-mineshaft-300">
+          <span className="max-w-[350px] text-xs text-mineshaft-300">
             <Markdown>{notification.body}</Markdown>
           </span>
         )}

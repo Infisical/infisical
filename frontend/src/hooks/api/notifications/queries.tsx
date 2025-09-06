@@ -20,6 +20,6 @@ export const useGetMyNotifications = () => {
       );
       return notifications;
     },
-    refetchInterval: 10 * 1000 // Poll every 10 seconds
+    refetchInterval: 30 * 1000 // Poll every 30 seconds
   });
 };

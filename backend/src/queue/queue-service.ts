@@ -318,7 +318,7 @@ export type TQueueJobTypes = {
   };
   [QueueName.UserNotification]: {
     name: QueueJobs.UserNotification;
-    payload: TCreateUserNotificationDTO;
+    payload: { notifications: TCreateUserNotificationDTO[] };
   };
 };
 

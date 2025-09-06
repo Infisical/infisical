@@ -64,15 +64,23 @@ export const registerNotificationRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
-    url: "/user/:notificationId/mark-as-read",
+    url: "/user/:notificationId",
     config: {
       rateLimit: writeLimit
     },
-    method: "POST",
+    method: "PATCH",
     schema: {
       params: z.object({
         notificationId: z.string()
-      })
+      }),
+      body: z.object({
+        isRead: z.boolean()
+      }),
+      response: {
+        200: z.object({
+          notification: UserNotificationsSchema
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
@@ -80,10 +88,13 @@ export const registerNotificationRouter = async (server: FastifyZodProvider) => 
         throw new UnauthorizedError({ message: "This endpoint can only be accessed by users" });
       }
 
-      await server.services.notification.markUserNotificationAsRead({
+      const notification = await server.services.notification.updateUserNotification({
         notificationId: req.params.notificationId,
-        userId: req.auth.userId
+        userId: req.auth.userId,
+        ...req.body
       });
+
+      return { notification };
     }
   });
 
