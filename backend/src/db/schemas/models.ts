@@ -131,6 +131,7 @@ export enum TableName {
   SecretApprovalRequestSecretTagV2 = "secret_approval_request_secret_tags_v2",
   SnapshotSecretV2 = "secret_snapshot_secrets_v2",
   ProjectSplitBackfillIds = "project_split_backfill_ids",
+  UserNotifications = "user_notifications",
   // Gateway
   OrgGatewayConfig = "org_gateway_config",
   Gateway = "gateways",

@@ -11,9 +11,10 @@ type Props = {
   text?: string | string[];
   frequency?: number;
   className?: string;
+  lottieClassName?: string;
 };
 
-export const ContentLoader = ({ text, frequency = 2000, className }: Props) => {
+export const ContentLoader = ({ text, frequency = 2000, className, lottieClassName }: Props) => {
   const [pos, setPos] = useState(0);
   const isTextArray = Array.isArray(text);
   useEffect(() => {
@@ -33,7 +34,11 @@ export const ContentLoader = ({ text, frequency = 2000, className }: Props) => {
         className
       )}
     >
-      <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
+      <Lottie
+        isAutoPlay
+        icon="infisical_loading"
+        className={twMerge("h-32 w-32", lottieClassName)}
+      />
       {text && isTextArray && (
         <AnimatePresence mode="wait">
           <motion.div
