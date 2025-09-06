@@ -9,6 +9,7 @@ export async function up(knex: Knex): Promise<void> {
       .createTable(TableName.UserNotifications, (t) => {
         t.uuid("id").defaultTo(knex.fn.uuid());
         t.uuid("userId").notNullable();
+        t.uuid("orgId").nullable();
 
         t.string("type").notNullable();
         t.string("title").notNullable(); // Markdown
@@ -32,10 +33,11 @@ export async function up(knex: Knex): Promise<void> {
 
     await knex.schema.alterTable(TableName.UserNotifications, (t) => {
       t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
 
       t.index("type");
       t.index(["userId", "isRead"]);
-      t.index(["userId", "createdAt"]);
+      t.index(["userId", "createdAt", "orgId"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.UserNotifications);

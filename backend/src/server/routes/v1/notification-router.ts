@@ -26,7 +26,10 @@ export const registerNotificationRouter = async (server: FastifyZodProvider) => 
         throw new UnauthorizedError({ message: "This endpoint can only be accessed by users" });
       }
 
-      const notifications = await server.services.notification.listUserNotifications({ userId: req.auth.userId });
+      const notifications = await server.services.notification.listUserNotifications({
+        userId: req.auth.userId,
+        orgId: req.auth.orgId
+      });
 
       return { notifications };
     }
@@ -111,7 +114,10 @@ export const registerNotificationRouter = async (server: FastifyZodProvider) => 
         throw new UnauthorizedError({ message: "This endpoint can only be accessed by users" });
       }
 
-      await server.services.notification.markUserNotificationsAsRead({ userId: req.auth.userId });
+      await server.services.notification.markUserNotificationsAsRead({
+        userId: req.auth.userId,
+        orgId: req.auth.orgId
+      });
     }
   });
 };

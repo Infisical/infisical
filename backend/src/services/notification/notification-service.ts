@@ -15,13 +15,14 @@ export const notificationServiceFactory = ({
   notificationQueue,
   userNotificationDAL
 }: TNotificationServiceFactoryDep) => {
-  const listUserNotifications = async ({ userId }: { userId: string }) => {
+  const listUserNotifications = async ({ userId, orgId }: { userId: string; orgId: string }) => {
     const now = new Date();
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
     const notifications = await userNotificationDAL.find({
       userId,
+      orgId,
       startDate: threeMonthsAgo.toISOString(),
       endDate: now.toISOString()
     });
@@ -43,8 +44,8 @@ export const notificationServiceFactory = ({
     return deletedNotifications[0];
   };
 
-  const markUserNotificationsAsRead = async ({ userId }: { userId: string }) => {
-    await userNotificationDAL.markAllNotificationsAsRead(userId);
+  const markUserNotificationsAsRead = async ({ userId, orgId }: { userId: string; orgId: string }) => {
+    await userNotificationDAL.markAllNotificationsAsRead(userId, orgId);
   };
 
   const updateUserNotification = async ({

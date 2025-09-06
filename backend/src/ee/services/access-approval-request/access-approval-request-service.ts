@@ -282,6 +282,7 @@ export const accessApprovalRequestServiceFactory = ({
       await notificationService.createUserNotifications(
         approverUsers.map((approver) => ({
           userId: approver.id,
+          orgId: actorOrgId,
           type: NotificationType.ACCESS_APPROVAL_REQUEST,
           title: "Access Approval Request",
           body: `**${requesterFullName}** (${requestedByUser.email}) has requested ${isTemporary ? "temporary" : "permanent"} access to **${secretPath}** in the **${envSlug}** environment for project **${project.name}**.`,
@@ -443,6 +444,7 @@ export const accessApprovalRequestServiceFactory = ({
           .filter((approver) => Boolean(approver.userId) && approver.userId !== editedByUser.id)
           .map((approver) => ({
             userId: approver.userId!,
+            orgId: actorOrgId,
             type: NotificationType.ACCESS_APPROVAL_REQUEST_UPDATED,
             title: "Access Approval Request Updated",
             body: `**${editorFullName}** (${editedByUser.email}) has updated the access request submitted by **${requesterFullName}** (${requestedByUser.email}) for **${secretPath}** in the **${envSlug}** environment for project **${project.name}**.`,

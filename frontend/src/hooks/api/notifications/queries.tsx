@@ -1,17 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { useOrganization } from "@app/context";
 
 import { TUserNotification } from "./types";
 
 export const notificationKeys = {
   all: ["notifications"] as const,
-  list: () => [...notificationKeys.all, "list"] as const
+  list: (orgId: string) => [...notificationKeys.all, "list", { orgId }] as const
 };
 
 export const useGetMyNotifications = () => {
+  const { currentOrg } = useOrganization();
+  const orgId = currentOrg.id || "";
+
   return useQuery({
-    queryKey: notificationKeys.list(),
+    queryKey: notificationKeys.list(orgId),
     queryFn: async () => {
       const {
         data: { notifications }

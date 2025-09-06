@@ -10,6 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const UserNotificationsSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
+  orgId: z.string().uuid().nullable().optional(),
   type: z.string(),
   title: z.string(),
   body: z.string().nullable().optional(),

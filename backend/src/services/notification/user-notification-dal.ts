@@ -19,12 +19,14 @@ export const userNotificationDALFactory = (db: TDbClient) => {
   const find = async (
     {
       userId,
+      orgId,
       startDate,
       endDate,
       limit = 1000,
       offset = 0
     }: {
       userId: string;
+      orgId: string;
       startDate: string;
       endDate: string;
       limit?: number;
@@ -35,6 +37,11 @@ export const userNotificationDALFactory = (db: TDbClient) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.UserNotifications)
         .where(`${TableName.UserNotifications}.userId`, userId)
+        .andWhere((qb) => {
+          void qb
+            .where(`${TableName.UserNotifications}.orgId`, orgId)
+            .orWhereNull(`${TableName.UserNotifications}.orgId`);
+        })
         .whereRaw(`"${TableName.UserNotifications}"."createdAt" >= ?::timestamptz`, [startDate])
         .andWhereRaw(`"${TableName.UserNotifications}"."createdAt" < ?::timestamptz`, [endDate])
         .select(selectAllTableCols(TableName.UserNotifications))
@@ -110,8 +117,13 @@ export const userNotificationDALFactory = (db: TDbClient) => {
     }
   };
 
-  const markAllNotificationsAsRead = async (userId: string) => {
-    await db(TableName.UserNotifications).where({ userId }).update({ isRead: true });
+  const markAllNotificationsAsRead = async (userId: string, orgId: string) => {
+    await db(TableName.UserNotifications)
+      .where({ userId })
+      .andWhere((qb) => {
+        void qb.where({ orgId }).orWhereNull("orgId");
+      })
+      .update({ isRead: true });
   };
 
   return { ...notificationOrm, pruneNotifications, find, markAllNotificationsAsRead };
