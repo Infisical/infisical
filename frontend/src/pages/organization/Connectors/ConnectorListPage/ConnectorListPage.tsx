@@ -17,7 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { formatRelative } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
+import { OrgPermissionCan, OrgPermissionCanAny } from "@app/components/permissions";
 import {
   DeleteActionModal,
   DropdownMenu,
@@ -42,7 +42,7 @@ import {
 } from "@app/components/v2";
 import {
   OrgGatewayPermissionActions,
-  OrgPermissionAppConnectionActions,
+  OrgPermissionConnectorActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
@@ -199,9 +199,17 @@ export const ConnectorListPage = withPermission(
                                       )}
                                     </OrgPermissionCan>
                                   )}
-                                  <OrgPermissionCan
-                                    I={OrgPermissionAppConnectionActions.Delete}
-                                    a={OrgPermissionSubjects.AppConnections}
+                                  <OrgPermissionCanAny
+                                    permissions={[
+                                      {
+                                        action: OrgGatewayPermissionActions.DeleteGateways,
+                                        subject: OrgPermissionSubjects.Gateway
+                                      },
+                                      {
+                                        action: OrgPermissionConnectorActions.DeleteConnectors,
+                                        subject: OrgPermissionSubjects.Connector
+                                      }
+                                    ]}
                                   >
                                     {(isAllowed: boolean) => (
                                       <DropdownMenuItem
@@ -210,10 +218,10 @@ export const ConnectorListPage = withPermission(
                                         className="text-red"
                                         onClick={() => handlePopUpOpen("deleteGateway", el)}
                                       >
-                                        Delete Gateway
+                                        Delete Connector
                                       </DropdownMenuItem>
                                     )}
-                                  </OrgPermissionCan>
+                                  </OrgPermissionCanAny>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </Tooltip>

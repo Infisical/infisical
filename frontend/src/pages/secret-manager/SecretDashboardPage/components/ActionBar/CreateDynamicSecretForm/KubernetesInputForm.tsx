@@ -8,7 +8,7 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
+import { OrgPermissionCanAny } from "@app/components/permissions";
 import {
   Button,
   FilterableSelect,
@@ -22,7 +22,10 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { OrgPermissionSubjects } from "@app/context/OrgPermissionContext";
-import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
+import {
+  OrgGatewayPermissionActions,
+  OrgPermissionConnectorActions
+} from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
 import {
   DynamicSecretProviders,
@@ -122,7 +125,7 @@ const formSchema = z
       ctx.addIssue({
         path: ["provider.gatewayId"],
         code: z.ZodIssueCode.custom,
-        message: "When auth method is set to Gateway, a gateway must be selected"
+        message: "When auth method is set to Connector, a connector must be selected"
       });
     }
     if (data.provider.authMethod === AuthMethod.Api) {
@@ -293,9 +296,17 @@ export const KubernetesInputForm = ({
             <div className="flex items-center space-x-2">
               <div className="flex-grow">
                 <div>
-                  <OrgPermissionCan
-                    I={OrgGatewayPermissionActions.AttachGateways}
-                    a={OrgPermissionSubjects.Gateway}
+                  <OrgPermissionCanAny
+                    permissions={[
+                      {
+                        action: OrgGatewayPermissionActions.AttachGateways,
+                        subject: OrgPermissionSubjects.Gateway
+                      },
+                      {
+                        action: OrgPermissionConnectorActions.AttachConnectors,
+                        subject: OrgPermissionSubjects.Connector
+                      }
+                    ]}
                   >
                     {(isAllowed) => (
                       <Controller
@@ -306,11 +317,11 @@ export const KubernetesInputForm = ({
                           <FormControl
                             isError={Boolean(error?.message)}
                             errorText={error?.message}
-                            label="Gateway"
+                            label="Connector"
                           >
                             <Tooltip
                               isDisabled={isAllowed}
-                              content="Restricted access. You don't have permission to attach gateways to resources."
+                              content="Restricted access. You don't have permission to attach connectors to resources."
                             >
                               <div>
                                 <Select
@@ -320,14 +331,14 @@ export const KubernetesInputForm = ({
                                   className="w-full border border-mineshaft-500"
                                   dropdownContainerClassName="max-w-none"
                                   isLoading={isGatewaysLoading}
-                                  placeholder="Default: Internet Gateway"
+                                  placeholder="Default: No Connector"
                                   position="popper"
                                 >
                                   <SelectItem
                                     value={null as unknown as string}
                                     onClick={() => onChange(undefined)}
                                   >
-                                    Internet Gateway
+                                    No Connector
                                   </SelectItem>
                                   {gateways?.map((el) => (
                                     <SelectItem value={el.id} key={el.id}>
@@ -341,7 +352,7 @@ export const KubernetesInputForm = ({
                         )}
                       />
                     )}
-                  </OrgPermissionCan>
+                  </OrgPermissionCanAny>
                 </div>
                 <Controller
                   control={control}
@@ -353,7 +364,7 @@ export const KubernetesInputForm = ({
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                       className="w-full"
-                      tooltipText="Select the method of authentication. Token (API) uses a direct API token, while Gateway uses the service account of a Gateway deployed in a Kubernetes cluster to generate the service account token."
+                      tooltipText="Select the method of authentication. Token (API) uses a direct API token, while Connector uses the service account of a Connector deployed in a Kubernetes cluster to generate the service account token."
                     >
                       <Select
                         defaultValue={field.value}
@@ -362,7 +373,7 @@ export const KubernetesInputForm = ({
                         onValueChange={(e) => field.onChange(e)}
                       >
                         <SelectItem value={AuthMethod.Api}>Token (API)</SelectItem>
-                        <SelectItem value={AuthMethod.Gateway}>Gateway</SelectItem>
+                        <SelectItem value={AuthMethod.Gateway}>Connector</SelectItem>
                       </Select>
                     </FormControl>
                   )}

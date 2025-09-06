@@ -47,7 +47,7 @@ export const KubernetesProvider = ({
 }: TKubernetesProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretKubernetesSchema.parseAsync(inputs);
-    if (!providerInputs.gatewayId && providerInputs.url) {
+    if (!(providerInputs.gatewayId || providerInputs.connectorId) && providerInputs.url) {
       await blockLocalAndPrivateIpAddresses(providerInputs.url);
     }
 
@@ -349,11 +349,11 @@ export const KubernetesProvider = ({
             })
           : undefined;
 
-      if (providerInputs.gatewayId) {
+      if (providerInputs.gatewayId || providerInputs.connectorId) {
         if (providerInputs.authMethod === KubernetesAuthMethod.Gateway) {
           await $gatewayProxyWrapper(
             {
-              gatewayId: providerInputs.gatewayId,
+              gatewayId: (providerInputs.connectorId ?? providerInputs.gatewayId) as string,
               targetHost: k8sHost,
               targetPort: k8sPort,
               httpsAgent,
@@ -366,7 +366,7 @@ export const KubernetesProvider = ({
         } else {
           await $gatewayProxyWrapper(
             {
-              gatewayId: providerInputs.gatewayId,
+              gatewayId: (providerInputs.connectorId ?? providerInputs.gatewayId) as string,
               targetHost: k8sGatewayHost,
               targetPort: k8sPort,
               httpsAgent,
@@ -605,11 +605,11 @@ export const KubernetesProvider = ({
             })
           : undefined;
 
-      if (providerInputs.gatewayId) {
+      if (providerInputs.gatewayId || providerInputs.connectorId) {
         if (providerInputs.authMethod === KubernetesAuthMethod.Gateway) {
           tokenData = await $gatewayProxyWrapper(
             {
-              gatewayId: providerInputs.gatewayId,
+              gatewayId: (providerInputs.connectorId ?? providerInputs.gatewayId) as string,
               targetHost: k8sHost,
               targetPort: k8sPort,
               httpsAgent,
@@ -622,7 +622,7 @@ export const KubernetesProvider = ({
         } else {
           tokenData = await $gatewayProxyWrapper(
             {
-              gatewayId: providerInputs.gatewayId,
+              gatewayId: (providerInputs.connectorId ?? providerInputs.gatewayId) as string,
               targetHost: k8sGatewayHost,
               targetPort: k8sPort,
               httpsAgent,
@@ -764,11 +764,11 @@ export const KubernetesProvider = ({
               })
             : undefined;
 
-        if (providerInputs.gatewayId) {
+        if (providerInputs.gatewayId || providerInputs.connectorId) {
           if (providerInputs.authMethod === KubernetesAuthMethod.Gateway) {
             await $gatewayProxyWrapper(
               {
-                gatewayId: providerInputs.gatewayId,
+                gatewayId: (providerInputs.connectorId ?? providerInputs.gatewayId) as string,
                 targetHost: k8sHost,
                 targetPort: k8sPort,
                 httpsAgent,
@@ -779,7 +779,7 @@ export const KubernetesProvider = ({
           } else {
             await $gatewayProxyWrapper(
               {
-                gatewayId: providerInputs.gatewayId,
+                gatewayId: (providerInputs.connectorId ?? providerInputs.gatewayId) as string,
                 targetHost: k8sGatewayHost,
                 targetPort: k8sPort,
                 httpsAgent,

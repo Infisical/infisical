@@ -122,16 +122,21 @@ export const dynamicSecretServiceFactory = ({
     const selectedProvider = dynamicSecretProviders[provider.type];
     const inputs = await selectedProvider.validateProviderInputs(provider.inputs, { projectId });
 
-    let selectedGatewayId: string | null = null;
-    if (inputs && typeof inputs === "object" && "gatewayId" in inputs && inputs.gatewayId) {
-      const gatewayId = inputs.gatewayId as string;
+    let selectedConnectorId: string | null = null;
+    if (
+      inputs &&
+      typeof inputs === "object" &&
+      (("gatewayId" in inputs && inputs.gatewayId) || ("connectorId" in inputs && inputs.connectorId))
+    ) {
+      const castedInputs = inputs as { gatewayId?: string; connectorId?: string };
+      const connectorId = castedInputs.connectorId || castedInputs.gatewayId;
 
-      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actorOrgId });
-      const [connector] = await connectorDAL.find({ id: gatewayId, orgId: actorOrgId });
+      const [gateway] = await gatewayDAL.find({ id: connectorId, orgId: actorOrgId });
+      const [connector] = await connectorDAL.find({ id: connectorId, orgId: actorOrgId });
 
       if (!gateway && !connector) {
         throw new NotFoundError({
-          message: `Connector with ID ${gatewayId} not found`
+          message: `Connector with ID ${connectorId} not found`
         });
       }
 
@@ -152,7 +157,7 @@ export const dynamicSecretServiceFactory = ({
         { action: OrgPermissionGatewayActions.AttachGateways, subject: OrgPermissionSubjects.Gateway }
       ]);
 
-      selectedGatewayId = gateway?.id ?? connector?.id;
+      selectedConnectorId = gateway?.id ?? connector?.id;
     }
 
     const isConnected = await selectedProvider.validateConnection(provider.inputs, { projectId });
@@ -173,8 +178,8 @@ export const dynamicSecretServiceFactory = ({
           defaultTTL,
           folderId: folder.id,
           name,
-          gatewayId: isGatewayV1 ? selectedGatewayId : undefined,
-          connectorId: isGatewayV1 ? undefined : selectedGatewayId,
+          gatewayId: isGatewayV1 ? selectedConnectorId : undefined,
+          connectorId: isGatewayV1 ? undefined : selectedConnectorId,
           usernameTemplate
         },
         tx
@@ -284,17 +289,23 @@ export const dynamicSecretServiceFactory = ({
     const newInput = { ...decryptedStoredInput, ...(inputs || {}) };
     const updatedInput = await selectedProvider.validateProviderInputs(newInput, { projectId });
 
-    let selectedGatewayId: string | null = null;
+    let selectedConnectorId: string | null = null;
     let isGatewayV1 = true;
-    if (updatedInput && typeof updatedInput === "object" && "gatewayId" in updatedInput && updatedInput?.gatewayId) {
-      const gatewayId = updatedInput.gatewayId as string;
+    if (
+      updatedInput &&
+      typeof updatedInput === "object" &&
+      (("gatewayId" in updatedInput && updatedInput?.gatewayId) ||
+        ("connectorId" in updatedInput && updatedInput?.connectorId))
+    ) {
+      const castedInputs = updatedInput as { gatewayId?: string; connectorId?: string };
+      const connectorId = castedInputs.connectorId || castedInputs.gatewayId;
 
-      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actorOrgId });
-      const [connector] = await connectorDAL.find({ id: gatewayId, orgId: actorOrgId });
+      const [gateway] = await gatewayDAL.find({ id: connectorId, orgId: actorOrgId });
+      const [connector] = await connectorDAL.find({ id: connectorId, orgId: actorOrgId });
 
       if (!gateway && !connector) {
         throw new NotFoundError({
-          message: `Connector with ID ${gatewayId} not found`
+          message: `Connector with ID ${connectorId} not found`
         });
       }
 
@@ -315,7 +326,7 @@ export const dynamicSecretServiceFactory = ({
         { action: OrgPermissionGatewayActions.AttachGateways, subject: OrgPermissionSubjects.Gateway }
       ]);
 
-      selectedGatewayId = gateway?.id ?? connector?.id;
+      selectedConnectorId = gateway?.id ?? connector?.id;
     }
 
     const isConnected = await selectedProvider.validateConnection(newInput, { projectId });
@@ -331,8 +342,8 @@ export const dynamicSecretServiceFactory = ({
           defaultTTL,
           name: newName ?? name,
           status: null,
-          gatewayId: isGatewayV1 ? selectedGatewayId : null,
-          connectorId: isGatewayV1 ? null : selectedGatewayId,
+          gatewayId: isGatewayV1 ? selectedConnectorId : null,
+          connectorId: isGatewayV1 ? null : selectedConnectorId,
           usernameTemplate
         },
         tx

@@ -362,7 +362,8 @@ export const DynamicSecretKubernetesSchema = z
           (val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val),
           "Invalid namespace format"
         ),
-      gatewayId: z.string().optional(),
+      gatewayId: z.string().optional(), // deprecate
+      connectorId: z.string().optional(),
       audiences: z.array(z.string().trim().min(1)),
       authMethod: z.nativeEnum(KubernetesAuthMethod).default(KubernetesAuthMethod.Api)
     }),
@@ -390,7 +391,8 @@ export const DynamicSecretKubernetesSchema = z
             namespaces.every((ns) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(ns))
           );
         }, "Must be a valid comma-separated list of namespace values"),
-      gatewayId: z.string().optional(),
+      gatewayId: z.string().optional(), // deprecate
+      connectorId: z.string().optional(),
       audiences: z.array(z.string().trim().min(1)),
       roleType: z.nativeEnum(KubernetesRoleType),
       role: z.string().trim().min(1),

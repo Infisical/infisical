@@ -58,7 +58,8 @@ export enum OrgPermissionSubjects {
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
   Kmip = "kmip",
-  Gateway = "gateway",
+  Gateway = "gateway", // we are deprecating this in favor of connector
+  Connector = "connector",
   SecretShare = "secret-share",
   GithubOrgSync = "github-org-sync",
   GithubOrgSyncManual = "github-org-sync-manual",
@@ -143,7 +144,8 @@ export type OrgPermissionSet =
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     ]
   | [OrgGatewayPermissionActions, OrgPermissionSubjects.Gateway]
-  | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare];
+  | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare]
+  | [OrgPermissionConnectorActions, OrgPermissionSubjects.Connector];
 // TODO(scott): add back once org UI refactored
 // | [
 //     OrgPermissionAppConnectionActions,
