@@ -162,6 +162,7 @@ export const useGetProjectSecretsOverview = (
     includeImports,
     includeDynamicSecrets,
     includeSecretRotations,
+    includeEmptySecrets,
     environments
   }: TGetDashboardProjectSecretsOverviewDTO,
   options?: Omit<
@@ -191,6 +192,7 @@ export const useGetProjectSecretsOverview = (
       includeImports,
       includeDynamicSecrets,
       includeSecretRotations,
+      includeEmptySecrets,
       environments
     }),
     queryFn: () =>
@@ -207,12 +209,12 @@ export const useGetProjectSecretsOverview = (
         includeImports,
         includeDynamicSecrets,
         includeSecretRotations,
+        includeEmptySecrets,
         environments
       }),
     select: useCallback((data: Awaited<ReturnType<typeof fetchProjectSecretsOverview>>) => {
       const { secrets, secretRotations, ...select } = data;
       const uniqueSecrets = secrets ? unique(secrets, (i) => i.secretKey) : [];
-
       const uniqueFolders = select.folders ? unique(select.folders, (i) => i.name) : [];
 
       const uniqueDynamicSecrets = select.dynamicSecrets

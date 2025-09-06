@@ -361,6 +361,7 @@ export type TFindSecretsByFolderIdsFilter = {
   includeTagsInSearch?: boolean;
   includeMetadataInSearch?: boolean;
   keys?: string[];
+  includeEmptySecrets?: boolean;
 };
 
 export type TGetSecretsRawByFolderMappingsDTO = {
