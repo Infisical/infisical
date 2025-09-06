@@ -106,7 +106,7 @@ const Page = () => {
   });
 
   const { permission } = useProjectPermission();
-  const { mutateAsync: createCommit } = useCreateCommit();
+  const { mutateAsync: createCommit, isPending: isCommitPending } = useCreateCommit();
 
   const tableRef = useRef<HTMLTableElement>(null);
 
@@ -997,7 +997,7 @@ const Page = () => {
                   environment={environment}
                   workspaceId={workspaceId}
                   secretPath={secretPath}
-                  isCommitting={false}
+                  isCommitting={isCommitPending}
                 />
               )}
               {noAccessSecretCount > 0 && <SecretNoAccessListView count={noAccessSecretCount} />}
