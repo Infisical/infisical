@@ -1,4 +1,5 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
+import { PackRule, unpackRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 
 import {
@@ -20,6 +21,7 @@ import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSet,
   ProjectPermissionSshHostActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -1859,30 +1861,29 @@ export const projectServiceFactory = ({
       .map((el) => el.user.email!);
     if (filteredProjectMembers.length === 0) {
       const customRolesWithMemberCreate = await projectRoleDAL.find({ projectId });
-      const customRoleSlugsCanalCreate = customRolesWithMemberCreate
+      const customRoleSlugsCanCreate = customRolesWithMemberCreate
         .filter((role) => {
           try {
             const permissions = (
-              typeof role.permissions === "string" ? JSON.parse(role.permissions) : role.permissions
-            ) as Array<[string, string, object?, number?]>;
+              typeof role.permissions === "string"
+                ? (JSON.parse(role.permissions) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[])
+                : role.permissions
+            ) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[];
 
-            return permissions.some(([permissionActions, permissionSubject]) => {
-              if (permissionSubject === ProjectPermissionSub.Member) {
-                const actionsList = permissionActions.split(",").map((action) => action.trim());
-                return actionsList.includes(ProjectPermissionMemberActions.Create);
-              }
-              return false;
-            });
+            const ability = createMongoAbility<MongoAbility<ProjectPermissionSet>>(
+              unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(permissions)
+            );
+            return ability.can(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
           } catch {
             return false;
           }
         })
         .map((role) => role.slug);
 
-      if (customRoleSlugsCanalCreate.length > 0) {
+      if (customRoleSlugsCanCreate.length > 0) {
         const usersWithCustomCreateMemberRole = projectMembers
           .filter((member) =>
-            member.roles.some((role) => role.customRoleSlug && customRoleSlugsCanalCreate.includes(role.customRoleSlug))
+            member.roles.some((role) => role.customRoleSlug && customRoleSlugsCanCreate.includes(role.customRoleSlug))
           )
           .map((el) => el.user.email!)
           .filter(Boolean);
@@ -1896,7 +1897,7 @@ export const projectServiceFactory = ({
     if (filteredProjectMembers.length === 0) {
       throw new BadRequestError({
         message:
-          "No users in this project have permission to grant access. Please contact an organization administrator to assign appropriate permissions to project members."
+          "No users in this project have permission to grant you access. Please contact an organization administrator to assign the necessary permissions."
       });
     }
 
