@@ -39,8 +39,8 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     onRequest: (req, _, next) => {
       const authHeader = req.headers.authorization;
 
-      if (appCfg.PROXY_AUTH_SECRET && authHeader) {
-        const expectedHeader = `Bearer ${appCfg.PROXY_AUTH_SECRET}`;
+      if (appCfg.RELAY_AUTH_SECRET && authHeader) {
+        const expectedHeader = `Bearer ${appCfg.RELAY_AUTH_SECRET}`;
         if (
           authHeader.length === expectedHeader.length &&
           crypto.nativeCrypto.timingSafeEqual(Buffer.from(authHeader), Buffer.from(expectedHeader))
