@@ -11,17 +11,9 @@ export async function up(knex: Knex): Promise<void> {
   const hasJoinTable = await knex.schema.hasTable(JOIN_TABLE);
   if (!hasJoinTable) {
     await knex.schema.createTable(JOIN_TABLE, (t) => {
-      t.uuid("secretSyncId")
-        .notNullable()
-        .references("id")
-        .inTable(TABLE)
-        .onDelete("CASCADE");
+      t.uuid("secretSyncId").notNullable().references("id").inTable(TABLE).onDelete("CASCADE");
 
-      t.uuid("folderId")
-        .notNullable()
-        .references("id")
-        .inTable("secret_folders")
-        .onDelete("CASCADE");
+      t.uuid("folderId").notNullable().references("id").inTable("secret_folders").onDelete("CASCADE");
 
       t.primary(["secretSyncId", "folderId"]);
       t.timestamp("createdAt").defaultTo(knex.fn.now());

@@ -264,9 +264,7 @@ export const secretSyncServiceFactory = ({
         ...(params.isAutoSyncEnabled && { syncStatus: SecretSyncStatus.Pending }),
         projectId
       },
-      folderIds: (Array.isArray(foldersRaw) ? foldersRaw : [foldersRaw])
-        .filter(Boolean)
-        .map((folder: any) => folder.id)
+      folderIds: (Array.isArray(foldersRaw) ? foldersRaw : [foldersRaw]).filter(Boolean).map((folder: any) => folder.id)
     };
 
     if (!result)
@@ -280,11 +278,11 @@ export const secretSyncServiceFactory = ({
     await appConnectionService.connectAppConnectionById(destinationApp, params.connectionId, actor);
 
     try {
-        const secretSync = await secretSyncDAL.create(result.commonData, result.folderIds);
+      const secretSync = await secretSyncDAL.create(result.commonData, result.folderIds);
 
       if (secretSync.isAutoSyncEnabled) await secretSyncQueue.queueSecretSyncSyncSecretsById({ syncId: secretSync.id });
 
-      return secretSync as TSecretSync; 
+      return secretSync as TSecretSync;
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({

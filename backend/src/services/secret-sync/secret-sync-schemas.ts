@@ -86,7 +86,7 @@ export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefi
     }),
     environment: z.object({ slug: z.string(), name: z.string(), id: z.string().uuid() }).nullable(),
     folder: z.array(z.object({ id: z.string(), path: z.string() }))
-    });
+  });
 
 export const GenericCreateSecretSyncFieldsSchema = <T extends AnyZodObject | undefined = undefined>(
   destination: SecretSync,

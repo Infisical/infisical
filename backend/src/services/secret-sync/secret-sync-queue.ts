@@ -225,7 +225,7 @@ export const secretSyncQueueFactory = ({
       canExpandValue: () => true
     });
 
-    const secrets = await secretV2BridgeDAL.findByFolderIds({ folderIds : folderId });
+    const secrets = await secretV2BridgeDAL.findByFolderIds({ folderIds: folderId });
 
     await Promise.allSettled(
       secrets.map(async (secret) => {

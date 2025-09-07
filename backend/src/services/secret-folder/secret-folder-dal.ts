@@ -105,14 +105,16 @@ const sqlListDescendantsFromFolder = (
     isReserved?: boolean | null;
     description?: string | null;
     lastSecretModified?: Date | null;
-  }) => {
-    const parentId = folder.parentId ?? null;
-    const description = folder.description ?? null;
+  }
+) => {
+  const parentId = folder.parentId ?? null;
+  const description = folder.description ?? null;
 
-    return db
-    .with("seed", (qb) =>
-      void qb
-        .select({
+  return db
+    .with(
+      "seed",
+      (qb) =>
+        void qb.select({
           depth: db.raw("1"),
           path: db.raw("?::text", [folder.path]),
           envSlug: db.raw("?::text", [folder.envSlug]),
@@ -130,42 +132,41 @@ const sqlListDescendantsFromFolder = (
           lastSecretModified: db.raw("?::timestamptz", [folder.lastSecretModified]),
           envId: db.raw("?::uuid", [folder.envId])
         })
-  )
+    )
 
-  .withRecursive("tree", (baseQb) => {
-    void baseQb
+    .withRecursive("tree", (baseQb) => {
+      void baseQb
         .select("*")
         .from("seed")
-        .union((qb) => 
-          void qb
-            .select({
-              depth: db.raw("tree.depth + 1"),
-              path: db.raw(
-                "CONCAT((CASE WHEN tree.path = '/' THEN '' ELSE tree.path END),'/', sf.name)"
-              ),
-              envSlug: db.ref("envSlug").withSchema("tree"),
-              envName: db.ref("envName").withSchema("tree"),
-              projectId: db.ref("projectId").withSchema("tree"),
+        .union(
+          (qb) =>
+            void qb
+              .select({
+                depth: db.raw("tree.depth + 1"),
+                path: db.raw("CONCAT((CASE WHEN tree.path = '/' THEN '' ELSE tree.path END),'/', sf.name)"),
+                envSlug: db.ref("envSlug").withSchema("tree"),
+                envName: db.ref("envName").withSchema("tree"),
+                projectId: db.ref("projectId").withSchema("tree"),
 
-              id: db.ref("id").withSchema("sf"),
-              name: db.ref("name").withSchema("sf"),
-              version: db.ref("version").withSchema("sf"),
-              createdAt: db.ref("createdAt").withSchema("sf"),
-              updatedAt: db.ref("updatedAt").withSchema("sf"),
-              parentId: db.ref("parentId").withSchema("sf"),
-              isReserved: db.ref("isReserved").withSchema("sf"),
-              description: db.ref("description").withSchema("sf"),
-              lastSecretModified: db.ref("lastSecretModified").withSchema("sf"),
-              envId: db.ref("envId").withSchema("sf")
-            })
-            .from({ sf: TableName.SecretFolder })
-            .join("tree" , "tree.id", "sf.parentId")
-          );
-        })
+                id: db.ref("id").withSchema("sf"),
+                name: db.ref("name").withSchema("sf"),
+                version: db.ref("version").withSchema("sf"),
+                createdAt: db.ref("createdAt").withSchema("sf"),
+                updatedAt: db.ref("updatedAt").withSchema("sf"),
+                parentId: db.ref("parentId").withSchema("sf"),
+                isReserved: db.ref("isReserved").withSchema("sf"),
+                description: db.ref("description").withSchema("sf"),
+                lastSecretModified: db.ref("lastSecretModified").withSchema("sf"),
+                envId: db.ref("envId").withSchema("sf")
+              })
+              .from({ sf: TableName.SecretFolder })
+              .join("tree", "tree.id", "sf.parentId")
+        );
+    })
     .from("tree")
     .select("*")
     .orderBy([{ column: "depth" }, { column: "path" }]);
-    }
+};
 
 const sqlFindFolderByPathQuery = (db: Knex, projectId: string, environments: string[], secretPath: string) => {
   // this is removing an trailing slash like /folder1/folder2/ -> /folder1/folder2
@@ -290,7 +291,13 @@ export const ROOT_FOLDER_NAME = "root";
 export const secretFolderDALFactory = (db: TDbClient) => {
   const secretFolderOrm = ormify(db, TableName.SecretFolder);
 
-  const findBySecretPath = async (projectId: string, environment: string, path: string, tx?: Knex, recursive: boolean = false) => {
+  const findBySecretPath = async (
+    projectId: string,
+    environment: string,
+    path: string,
+    tx?: Knex,
+    recursive: boolean = false
+  ) => {
     const isValidPath = isValidSecretPath(path);
     if (!isValidPath)
       throw new BadRequestError({
@@ -304,8 +311,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
       const folder = await query;
       if (!folder) return;
       const { envId: id, envName: name, envSlug: slug, ...el } = folder;
-      if(!recursive)
-      {
+      if (!recursive) {
         return { ...el, envId: id, environment: { id, name, slug } };
       }
       return await sqlListDescendantsFromFolder(tx || db.replicaNode(), folder);
