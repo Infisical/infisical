@@ -66,7 +66,6 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
 
   const onSubmit = async ({ environment, connection, ...formData }: TSecretSyncForm) => {
     try {
-      console.log("I am formdata: ", formData)
       const secretSync = await createSecretSync.mutateAsync({
         ...formData,
         connectionId: connection.id,
