@@ -149,10 +149,9 @@ export const secretSyncDALFactory = (
     data: Parameters<(typeof secretSyncOrm)["create"]>[0],
     folderIds?: Parameters<(typeof secretSyncOrmWithFolder)["insertMany"]>[0]
   ) => {
-
     const secretSync = await secretSyncOrm.transaction(async (tx) => {
       const sync = await secretSyncOrm.create(data, tx);
-      
+
       if (folderIds && folderIds.length > 0) {
         const folderData = folderIds.map((folderId: string) => ({
           folderId,
@@ -160,12 +159,12 @@ export const secretSyncDALFactory = (
         }));
         await secretSyncOrmWithFolder.insertMany(folderData, tx);
       }
-      
+
       return baseSecretSyncQuery({ filter: { id: sync.id }, db, tx }).first();
     });
 
-    const normalizedFolderIds = Array.isArray(folderIds) ? folderIds : (folderIds ? [folderIds] : []);
-    
+    const normalizedFolderIds = Array.isArray(folderIds) ? folderIds : folderIds ? [folderIds] : [];
+
     // TODO (scott): replace with cached folder path once implemented
     const folderWithPath = normalizedFolderIds.length
       ? await folderDAL.findSecretPathByFolderIds(secretSync.projectId, normalizedFolderIds)

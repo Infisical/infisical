@@ -95,9 +95,7 @@ export const secretSyncServiceFactory = ({
         secretSync.environment && secretSync.folder
           ? subject(ProjectPermissionSub.SecretSyncs, {
               environment: secretSync.environment.slug,
-              secretPath: Array.isArray(secretSync.folder)
-              ? secretSync.folder.map((f: { path: string }) => f.path)
-              : []
+              secretPath: Array.isArray(secretSync.folder) ? secretSync.folder.map((f: { path: string }) => f.path) : []
             })
           : ProjectPermissionSub.SecretSyncs
       )
