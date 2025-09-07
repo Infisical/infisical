@@ -109,12 +109,13 @@ export const executeWithPotentialGateway = async <T>(
   connectorService: Pick<TConnectorServiceFactory, "getPlatformConnectionDetailsByConnectorId">,
   operation: (client: Knex) => Promise<T>
 ): Promise<T> => {
-  const { credentials, app, gatewayId } = config;
+  const { credentials, app, connectorId, gatewayId } = config;
+  const selectedConnectorId = connectorId || gatewayId;
 
-  if (gatewayId && gatewayService && connectorService) {
+  if (selectedConnectorId && gatewayService && connectorService) {
     const [targetHost] = await verifyHostInputValidity(credentials.host, true);
     const platformConnectionDetails = await connectorService.getPlatformConnectionDetailsByConnectorId({
-      connectorId: gatewayId,
+      connectorId: selectedConnectorId,
       targetHost,
       targetPort: credentials.port
     });
@@ -149,7 +150,7 @@ export const executeWithPotentialGateway = async <T>(
       );
     }
 
-    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
+    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(selectedConnectorId);
     const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
 
     return withGatewayProxy(

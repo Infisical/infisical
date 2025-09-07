@@ -156,7 +156,8 @@ export const SqlDatabaseProvider = ({
       allowedExpressions: (val) => ["username", "database"].includes(val)
     });
 
-    return { ...providerInputs, hostIp };
+    // added gatewayId mapping for backwards compatibility
+    return { ...providerInputs, hostIp, gatewayId: providerInputs.gatewayId || providerInputs.connectorId };
   };
 
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>) => {

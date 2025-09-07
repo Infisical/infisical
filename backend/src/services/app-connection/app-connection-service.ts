@@ -251,7 +251,7 @@ export const appConnectionServiceFactory = ({
   };
 
   const createAppConnection = async (
-    { method, app, credentials, gatewayId, ...params }: TCreateAppConnectionDTO,
+    { method, app, credentials, gatewayId, connectorId, ...params }: TCreateAppConnectionDTO,
     actor: OrgServiceActor
   ) => {
     const { permission } = await permissionService.getOrgPermission(
@@ -267,17 +267,19 @@ export const appConnectionServiceFactory = ({
       OrgPermissionSubjects.AppConnections
     );
 
-    if (gatewayId) {
+    const inputConnectorId = connectorId || gatewayId;
+
+    if (inputConnectorId) {
       throwUnlessCanAny(permission, [
         { action: OrgPermissionConnectorActions.AttachConnectors, subject: OrgPermissionSubjects.Connector },
         { action: OrgPermissionGatewayActions.AttachGateways, subject: OrgPermissionSubjects.Gateway }
       ]);
 
-      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
-      const [connector] = await connectorDAL.find({ id: gatewayId, orgId: actor.orgId });
+      const [gateway] = await gatewayDAL.find({ id: inputConnectorId, orgId: actor.orgId });
+      const [connector] = await connectorDAL.find({ id: inputConnectorId, orgId: actor.orgId });
       if (!gateway && !connector) {
         throw new NotFoundError({
-          message: `Connector with ID ${gatewayId} not found for org`
+          message: `Connector with ID ${inputConnectorId} not found for org`
         });
       }
     }
@@ -295,7 +297,7 @@ export const appConnectionServiceFactory = ({
         credentials,
         method,
         orgId: actor.orgId,
-        gatewayId
+        connectorId: inputConnectorId
       } as TAppConnectionConfig,
       gatewayService,
       connectorService
@@ -314,7 +316,7 @@ export const appConnectionServiceFactory = ({
           encryptedCredentials,
           method,
           app,
-          gatewayId,
+          connectorId: inputConnectorId,
           ...params
         });
       };
@@ -328,7 +330,7 @@ export const appConnectionServiceFactory = ({
             orgId: actor.orgId,
             credentials: validatedCredentials,
             method,
-            gatewayId
+            connectorId: inputConnectorId
           } as TAppConnectionConfig,
           (platformCredentials) => createConnection(platformCredentials),
           gatewayService,
@@ -353,7 +355,7 @@ export const appConnectionServiceFactory = ({
   };
 
   const updateAppConnection = async (
-    { connectionId, credentials, gatewayId, ...params }: TUpdateAppConnectionDTO,
+    { connectionId, credentials, gatewayId, connectorId, ...params }: TUpdateAppConnectionDTO,
     actor: OrgServiceActor
   ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
@@ -380,17 +382,19 @@ export const appConnectionServiceFactory = ({
       OrgPermissionSubjects.AppConnections
     );
 
-    if (gatewayId !== appConnection.gatewayId) {
+    const inputConnectorId = connectorId || gatewayId;
+
+    if (inputConnectorId !== appConnection.connectorId) {
       throwUnlessCanAny(permission, [
         { action: OrgPermissionConnectorActions.AttachConnectors, subject: OrgPermissionSubjects.Connector },
         { action: OrgPermissionGatewayActions.AttachGateways, subject: OrgPermissionSubjects.Gateway }
       ]);
 
-      if (gatewayId) {
-        const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
+      if (inputConnectorId) {
+        const [gateway] = await gatewayDAL.find({ id: inputConnectorId, orgId: actor.orgId });
         if (!gateway) {
           throw new NotFoundError({
-            message: `Gateway with ID ${gatewayId} not found for org`
+            message: `Connector with ID ${inputConnectorId} not found for org`
           });
         }
       }
@@ -426,7 +430,7 @@ export const appConnectionServiceFactory = ({
           orgId: actor.orgId,
           credentials,
           method,
-          gatewayId
+          connectorId: inputConnectorId
         } as TAppConnectionConfig,
         gatewayService,
         connectorService
@@ -449,7 +453,7 @@ export const appConnectionServiceFactory = ({
         return appConnectionDAL.updateById(connectionId, {
           orgId: actor.orgId,
           encryptedCredentials,
-          gatewayId,
+          connectorId: inputConnectorId,
           ...params
         });
       };
@@ -467,7 +471,7 @@ export const appConnectionServiceFactory = ({
             orgId: actor.orgId,
             credentials: updatedCredentials,
             method,
-            gatewayId
+            connectorId: inputConnectorId
           } as TAppConnectionConfig,
           (platformCredentials) => updateConnection(platformCredentials),
           gatewayService,

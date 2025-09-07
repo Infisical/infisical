@@ -26,6 +26,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     description?: string | null;
     isPlatformManagedCredentials?: boolean;
     gatewayId?: string | null;
+    connectorId?: string | null;
   }>;
   updateSchema: z.ZodType<{
     name?: string;
@@ -33,6 +34,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     description?: string | null;
     isPlatformManagedCredentials?: boolean;
     gatewayId?: string | null;
+    connectorId?: string | null;
   }>;
   sanitizedResponseSchema: z.ZodTypeAny;
 }) => {
@@ -226,10 +228,10 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { name, method, credentials, description, isPlatformManagedCredentials, gatewayId } = req.body;
+      const { name, method, credentials, description, isPlatformManagedCredentials, gatewayId, connectorId } = req.body;
 
       const appConnection = (await server.services.appConnection.createAppConnection(
-        { name, method, app, credentials, description, isPlatformManagedCredentials, gatewayId },
+        { name, method, app, credentials, description, isPlatformManagedCredentials, gatewayId, connectorId },
         req.permission
       )) as T;
 
@@ -272,11 +274,11 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { name, credentials, description, isPlatformManagedCredentials, gatewayId } = req.body;
+      const { name, credentials, description, isPlatformManagedCredentials, gatewayId, connectorId } = req.body;
       const { connectionId } = req.params;
 
       const appConnection = (await server.services.appConnection.updateAppConnection(
-        { name, credentials, connectionId, description, isPlatformManagedCredentials, gatewayId },
+        { name, credentials, connectionId, description, isPlatformManagedCredentials, gatewayId, connectorId },
         req.permission
       )) as T;
 

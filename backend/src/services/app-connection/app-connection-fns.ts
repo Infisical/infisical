@@ -340,6 +340,7 @@ export const decryptAppConnection = async (
 ) => {
   return {
     ...appConnection,
+    gatewayId: appConnection.connectorId || appConnection.gatewayId,
     credentials: await decryptAppConnectionCredentials({
       encryptedCredentials: appConnection.encryptedCredentials,
       orgId: appConnection.orgId,

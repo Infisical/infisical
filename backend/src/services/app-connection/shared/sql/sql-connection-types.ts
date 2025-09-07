@@ -3,7 +3,7 @@ import { TSqlConnectionInput } from "@app/services/app-connection/app-connection
 
 export type TSqlConnectionConfig = DiscriminativePick<
   TSqlConnectionInput,
-  "method" | "app" | "credentials" | "gatewayId"
+  "method" | "app" | "credentials" | "gatewayId" | "connectorId"
 > & {
   orgId: string;
 };

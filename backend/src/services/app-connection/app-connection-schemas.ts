@@ -41,6 +41,12 @@ export const GenericCreateAppConnectionFieldsSchema = (
       : z
           .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
           .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+          .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
+    connectorId: supportsGateways
+      ? z.string().uuid().nullish().describe("The Connector ID to use for this connection.")
+      : z
+          .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+          .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
           .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`)
   });
 
@@ -66,6 +72,12 @@ export const GenericUpdateAppConnectionFieldsSchema = (
           .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
     gatewayId: supportsGateways
       ? z.string().uuid().nullish().describe("The Gateway ID to use for this connection.")
+      : z
+          .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
+          .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))
+          .describe(`Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections.`),
+    connectorId: supportsGateways
+      ? z.string().uuid().nullish().describe("The Connector ID to use for this connection.")
       : z
           .undefined({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` })
           .or(z.null({ message: `Not supported for ${APP_CONNECTION_NAME_MAP[app]} Connections` }))

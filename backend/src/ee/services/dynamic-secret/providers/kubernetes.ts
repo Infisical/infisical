@@ -51,7 +51,10 @@ export const KubernetesProvider = ({
       await blockLocalAndPrivateIpAddresses(providerInputs.url);
     }
 
-    return providerInputs;
+    return {
+      ...providerInputs,
+      gatewayId: providerInputs.gatewayId || providerInputs.connectorId // added for backwards compatibility
+    };
   };
 
   const $gatewayProxyWrapper = async <T>(

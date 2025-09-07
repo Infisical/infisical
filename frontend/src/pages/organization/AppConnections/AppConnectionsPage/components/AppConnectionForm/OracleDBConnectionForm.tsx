@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
-import { OrgPermissionCan } from "@app/components/permissions";
+import { OrgPermissionCanAny } from "@app/components/permissions";
 import { Button, FormControl, ModalClose, Select, SelectItem, Tooltip } from "@app/components/v2";
 import { useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
+  OrgPermissionConnectorActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
@@ -56,7 +57,7 @@ export const OracleDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
     defaultValues: appConnection ?? {
       app: AppConnection.OracleDB,
       method: OracleDBConnectionMethod.UsernameAndPassword,
-      gatewayId: null,
+      connectorId: null,
       credentials: {
         host: "",
         port: 1521,
@@ -73,12 +74,20 @@ export const OracleDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const {
     handleSubmit,
     control,
-    formState: { isSubmitting, isDirty }
+    formState: { isSubmitting, isDirty },
+    setValue
   } = form;
 
   const { subscription } = useSubscription();
   const isPlatformManagedCredentials = appConnection?.isPlatformManagedCredentials ?? false;
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
+
+  useEffect(() => {
+    if (appConnection?.gatewayId) {
+      setValue("connectorId", appConnection.gatewayId);
+      setValue("gatewayId", null);
+    }
+  }, [appConnection, setValue]);
 
   const confirmSubmit = async (formData: FormData) => {
     if (formData.isPlatformManagedCredentials) {
@@ -99,24 +108,32 @@ export const OracleDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
       >
         {!isUpdate && <GenericAppConnectionsFields />}
         {subscription.gateway && (
-          <OrgPermissionCan
-            I={OrgGatewayPermissionActions.AttachGateways}
-            a={OrgPermissionSubjects.Gateway}
+          <OrgPermissionCanAny
+            permissions={[
+              {
+                action: OrgGatewayPermissionActions.AttachGateways,
+                subject: OrgPermissionSubjects.Gateway
+              },
+              {
+                action: OrgPermissionConnectorActions.AttachConnectors,
+                subject: OrgPermissionSubjects.Connector
+              }
+            ]}
           >
             {(isAllowed) => (
               <Controller
                 control={control}
-                name="gatewayId"
+                name="connectorId"
                 defaultValue=""
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <FormControl
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
-                    label="Gateway"
+                    label="Connector"
                   >
                     <Tooltip
                       isDisabled={isAllowed}
-                      content="Restricted access. You don't have permission to attach gateways to resources."
+                      content="Restricted access. You don't have permission to attach connectors to resources."
                     >
                       <div>
                         <Select
@@ -126,14 +143,14 @@ export const OracleDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
                           className="w-full border border-mineshaft-500"
                           dropdownContainerClassName="max-w-none"
                           isLoading={isGatewaysLoading}
-                          placeholder="Default: Internet Gateway"
+                          placeholder="Default: No Connector"
                           position="popper"
                         >
                           <SelectItem
                             value={null as unknown as string}
                             onClick={() => onChange(undefined)}
                           >
-                            Internet Gateway
+                            No Connector
                           </SelectItem>
                           {gateways?.map((el) => (
                             <SelectItem value={el.id} key={el.id}>
@@ -147,7 +164,7 @@ export const OracleDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 )}
               />
             )}
-          </OrgPermissionCan>
+          </OrgPermissionCanAny>
         )}
         <Controller
           name="method"

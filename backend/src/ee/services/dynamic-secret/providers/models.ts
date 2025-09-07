@@ -408,7 +408,7 @@ export const DynamicSecretKubernetesSchema = z
       !data.connectorId
     ) {
       ctx.addIssue({
-        path: ["connectorId"],
+        path: ["connectorId", "gatewayId"],
         code: z.ZodIssueCode.custom,
         message: "When auth method is set to Connector, a connector must be selected"
       });

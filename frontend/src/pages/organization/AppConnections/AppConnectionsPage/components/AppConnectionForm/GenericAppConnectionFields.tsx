@@ -10,6 +10,10 @@ export const genericAppConnectionFieldsSchema = z.object({
   gatewayId: z
     .string()
     .nullish()
+    .transform((v) => (v === "" ? null : v)),
+  connectorId: z
+    .string()
+    .nullish()
     .transform((v) => (v === "" ? null : v))
 });
 
