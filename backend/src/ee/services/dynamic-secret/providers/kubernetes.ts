@@ -154,7 +154,8 @@ export const KubernetesProvider = ({
             {
               headers: {
                 "Content-Type": "application/json",
-                ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+                ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+                providerInputs.authMethod === KubernetesAuthMethod.Connector
                   ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
                   : { Authorization: `Bearer ${providerInputs.clusterToken}` })
               },
@@ -199,7 +200,8 @@ export const KubernetesProvider = ({
             {
               headers: {
                 "Content-Type": "application/json",
-                ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+                ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+                providerInputs.authMethod === KubernetesAuthMethod.Connector
                   ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
                   : { Authorization: `Bearer ${providerInputs.clusterToken}` })
               },
@@ -225,7 +227,8 @@ export const KubernetesProvider = ({
             {
               headers: {
                 "Content-Type": "application/json",
-                ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+                ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+                providerInputs.authMethod === KubernetesAuthMethod.Connector
                   ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
                   : { Authorization: `Bearer ${providerInputs.clusterToken}` })
               },
@@ -246,7 +249,8 @@ export const KubernetesProvider = ({
               {
                 headers: {
                   "Content-Type": "application/json",
-                  ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+                  ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+                  providerInputs.authMethod === KubernetesAuthMethod.Connector
                     ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
                     : { Authorization: `Bearer ${providerInputs.clusterToken}` })
                 },
@@ -263,7 +267,8 @@ export const KubernetesProvider = ({
             await axios.delete(`${baseUrl}/apis/rbac.authorization.k8s.io/v1/clusterrolebindings/${roleBindingName}`, {
               headers: {
                 "Content-Type": "application/json",
-                ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+                ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+                providerInputs.authMethod === KubernetesAuthMethod.Connector
                   ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
                   : { Authorization: `Bearer ${providerInputs.clusterToken}` })
               },
@@ -280,7 +285,8 @@ export const KubernetesProvider = ({
           await axios.delete(`${baseUrl}/api/v1/namespaces/${namespace}/serviceaccounts/${serviceAccountName}`, {
             headers: {
               "Content-Type": "application/json",
-              ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+              ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+              providerInputs.authMethod === KubernetesAuthMethod.Connector
                 ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
                 : { Authorization: `Bearer ${providerInputs.clusterToken}` })
             },
@@ -318,7 +324,8 @@ export const KubernetesProvider = ({
         {
           headers: {
             "Content-Type": "application/json",
-            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+            providerInputs.authMethod === KubernetesAuthMethod.Connector
               ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
               : { Authorization: `Bearer ${providerInputs.clusterToken}` })
           },
@@ -334,7 +341,10 @@ export const KubernetesProvider = ({
     };
 
     const rawUrl =
-      providerInputs.authMethod === KubernetesAuthMethod.Gateway ? GATEWAY_AUTH_DEFAULT_URL : providerInputs.url || "";
+      providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+      providerInputs.authMethod === KubernetesAuthMethod.Connector
+        ? GATEWAY_AUTH_DEFAULT_URL
+        : providerInputs.url || "";
     const url = new URL(rawUrl);
     const k8sGatewayHost = url.hostname;
     const k8sPort = url.port ? Number(url.port) : 443;
@@ -350,7 +360,10 @@ export const KubernetesProvider = ({
           : undefined;
 
       if (providerInputs.gatewayId || providerInputs.connectorId) {
-        if (providerInputs.authMethod === KubernetesAuthMethod.Gateway) {
+        if (
+          providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+          providerInputs.authMethod === KubernetesAuthMethod.Connector
+        ) {
           await $gatewayProxyWrapper(
             {
               gatewayId: (providerInputs.connectorId ?? providerInputs.gatewayId) as string,
@@ -458,7 +471,8 @@ export const KubernetesProvider = ({
         {
           headers: {
             "Content-Type": "application/json",
-            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+            providerInputs.authMethod === KubernetesAuthMethod.Connector
               ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
               : { Authorization: `Bearer ${providerInputs.clusterToken}` })
           },
@@ -503,7 +517,8 @@ export const KubernetesProvider = ({
         {
           headers: {
             "Content-Type": "application/json",
-            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+            providerInputs.authMethod === KubernetesAuthMethod.Connector
               ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
               : { Authorization: `Bearer ${providerInputs.clusterToken}` })
           },
@@ -529,7 +544,8 @@ export const KubernetesProvider = ({
         {
           headers: {
             "Content-Type": "application/json",
-            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+            providerInputs.authMethod === KubernetesAuthMethod.Connector
               ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
               : { Authorization: `Bearer ${providerInputs.clusterToken}` })
           },
@@ -570,7 +586,8 @@ export const KubernetesProvider = ({
         {
           headers: {
             "Content-Type": "application/json",
-            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+            providerInputs.authMethod === KubernetesAuthMethod.Connector
               ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
               : { Authorization: `Bearer ${providerInputs.clusterToken}` })
           },
@@ -588,7 +605,10 @@ export const KubernetesProvider = ({
     };
 
     const rawUrl =
-      providerInputs.authMethod === KubernetesAuthMethod.Gateway ? GATEWAY_AUTH_DEFAULT_URL : providerInputs.url || "";
+      providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+      providerInputs.authMethod === KubernetesAuthMethod.Connector
+        ? GATEWAY_AUTH_DEFAULT_URL
+        : providerInputs.url || "";
     const url = new URL(rawUrl);
     const k8sHost = `${url.protocol}//${url.hostname}`;
     const k8sGatewayHost = url.hostname;
@@ -606,7 +626,10 @@ export const KubernetesProvider = ({
           : undefined;
 
       if (providerInputs.gatewayId || providerInputs.connectorId) {
-        if (providerInputs.authMethod === KubernetesAuthMethod.Gateway) {
+        if (
+          providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+          providerInputs.authMethod === KubernetesAuthMethod.Connector
+        ) {
           tokenData = await $gatewayProxyWrapper(
             {
               gatewayId: (providerInputs.connectorId ?? providerInputs.gatewayId) as string,
@@ -695,7 +718,8 @@ export const KubernetesProvider = ({
           {
             headers: {
               "Content-Type": "application/json",
-              ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+              ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+              providerInputs.authMethod === KubernetesAuthMethod.Connector
                 ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
                 : { Authorization: `Bearer ${providerInputs.clusterToken}` })
             },
@@ -712,7 +736,8 @@ export const KubernetesProvider = ({
         await axios.delete(`${baseUrl}/apis/rbac.authorization.k8s.io/v1/clusterrolebindings/${roleBindingName}`, {
           headers: {
             "Content-Type": "application/json",
-            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+            ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+            providerInputs.authMethod === KubernetesAuthMethod.Connector
               ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
               : { Authorization: `Bearer ${providerInputs.clusterToken}` })
           },
@@ -730,7 +755,8 @@ export const KubernetesProvider = ({
       await axios.delete(`${baseUrl}/api/v1/namespaces/${namespace}/serviceaccounts/${entityId}`, {
         headers: {
           "Content-Type": "application/json",
-          ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway
+          ...(providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+          providerInputs.authMethod === KubernetesAuthMethod.Connector
             ? { "x-infisical-action": GatewayHttpProxyActions.UseGatewayK8sServiceAccount }
             : { Authorization: `Bearer ${providerInputs.clusterToken}` })
         },
@@ -747,7 +773,8 @@ export const KubernetesProvider = ({
     if (providerInputs.credentialType === KubernetesCredentialType.Dynamic) {
       try {
         const rawUrl =
-          providerInputs.authMethod === KubernetesAuthMethod.Gateway
+          providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+          providerInputs.authMethod === KubernetesAuthMethod.Connector
             ? GATEWAY_AUTH_DEFAULT_URL
             : providerInputs.url || "";
 
@@ -765,7 +792,10 @@ export const KubernetesProvider = ({
             : undefined;
 
         if (providerInputs.gatewayId || providerInputs.connectorId) {
-          if (providerInputs.authMethod === KubernetesAuthMethod.Gateway) {
+          if (
+            providerInputs.authMethod === KubernetesAuthMethod.Gateway ||
+            providerInputs.authMethod === KubernetesAuthMethod.Connector
+          ) {
             await $gatewayProxyWrapper(
               {
                 gatewayId: (providerInputs.connectorId ?? providerInputs.gatewayId) as string,

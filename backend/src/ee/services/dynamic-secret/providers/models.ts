@@ -54,7 +54,8 @@ export enum KubernetesRoleType {
 
 export enum KubernetesAuthMethod {
   Gateway = "gateway",
-  Api = "api"
+  Api = "api",
+  Connector = "connector"
 }
 
 export enum TotpConfigType {
@@ -400,11 +401,15 @@ export const DynamicSecretKubernetesSchema = z
     })
   ])
   .superRefine((data, ctx) => {
-    if (data.authMethod === KubernetesAuthMethod.Gateway && !data.gatewayId) {
+    if (
+      (data.authMethod === KubernetesAuthMethod.Gateway || data.authMethod === KubernetesAuthMethod.Connector) &&
+      !data.gatewayId &&
+      !data.connectorId
+    ) {
       ctx.addIssue({
-        path: ["gatewayId"],
+        path: ["connectorId"],
         code: z.ZodIssueCode.custom,
-        message: "When auth method is set to Gateway, a gateway must be selected"
+        message: "When auth method is set to Connector, a connector must be selected"
       });
     }
     if (data.authMethod === KubernetesAuthMethod.Api || !data.authMethod) {

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Controller, FieldValues, useFieldArray, useForm } from "react-hook-form";
 import { faQuestionCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -39,7 +40,8 @@ enum RoleType {
 
 enum AuthMethod {
   Api = "api",
-  Gateway = "gateway"
+  Gateway = "gateway",
+  Connector = "connector"
 }
 
 const credentialTypes = [
@@ -72,6 +74,7 @@ const formSchema = z
             "Namespace must be a single value, not a comma-separated list"
           ),
         gatewayId: z.string().optional(),
+        connectorId: z.string().optional(),
         audiences: z.array(z.string().trim().min(1)),
         authMethod: z.nativeEnum(AuthMethod).default(AuthMethod.Api)
       }),
@@ -90,6 +93,7 @@ const formSchema = z
             return namespaces.length > 0 && namespaces.every((ns) => ns.length > 0);
           }, "Must be a valid comma-separated list of namespace values"),
         gatewayId: z.string().optional(),
+        connectorId: z.string().optional(),
         audiences: z.array(z.string().trim().min(1)),
         roleType: z.nativeEnum(RoleType),
         role: z.string().trim().min(1),
@@ -118,9 +122,9 @@ const formSchema = z
     usernameTemplate: z.string().trim().optional()
   })
   .superRefine((data, ctx) => {
-    if (data.inputs.authMethod === AuthMethod.Gateway && !data.inputs.gatewayId) {
+    if (data.inputs.authMethod === AuthMethod.Connector && !data.inputs.connectorId) {
       ctx.addIssue({
-        path: ["inputs.gatewayId"],
+        path: ["inputs.connectorId"],
         code: z.ZodIssueCode.custom,
         message: "When auth method is set to Connector, a connector must be selected"
       });
@@ -164,7 +168,8 @@ export const EditDynamicSecretKubernetesForm = ({
     control,
     formState: { isSubmitting },
     handleSubmit,
-    watch
+    watch,
+    setValue
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     values: {
@@ -175,6 +180,16 @@ export const EditDynamicSecretKubernetesForm = ({
       inputs: dynamicSecret.inputs as TForm["inputs"]
     }
   });
+
+  useEffect(() => {
+    const castedInputs = dynamicSecret.inputs as TForm["inputs"];
+    if (castedInputs) {
+      if (castedInputs.authMethod === AuthMethod.Gateway) {
+        setValue("inputs.authMethod", AuthMethod.Connector);
+        setValue("inputs.connectorId", castedInputs.gatewayId);
+      }
+    }
+  }, [dynamicSecret.inputs]);
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -303,7 +318,7 @@ export const EditDynamicSecretKubernetesForm = ({
                       {(isAllowed) => (
                         <Controller
                           control={control}
-                          name="inputs.gatewayId"
+                          name="inputs.connectorId"
                           defaultValue=""
                           render={({ field: { value, onChange }, fieldState: { error } }) => (
                             <FormControl
@@ -365,7 +380,7 @@ export const EditDynamicSecretKubernetesForm = ({
                           onValueChange={(e) => field.onChange(e)}
                         >
                           <SelectItem value={AuthMethod.Api}>Token (API)</SelectItem>
-                          <SelectItem value={AuthMethod.Gateway}>Connector</SelectItem>
+                          <SelectItem value={AuthMethod.Connector}>Connector</SelectItem>
                         </Select>
                       </FormControl>
                     )}

@@ -41,7 +41,8 @@ enum RoleType {
 
 export enum AuthMethod {
   Api = "api",
-  Gateway = "gateway"
+  Gateway = "gateway",
+  Connector = "connector"
 }
 
 const credentialTypes = [
@@ -74,6 +75,7 @@ const formSchema = z
             "Namespace must be a single value, not a comma-separated list"
           ),
         gatewayId: z.string().optional(),
+        connectorId: z.string().optional(),
         audiences: z.array(z.string().trim().min(1)),
         authMethod: z.nativeEnum(AuthMethod).default(AuthMethod.Api)
       }),
@@ -92,6 +94,7 @@ const formSchema = z
             return namespaces.length > 0 && namespaces.every((ns) => ns.length > 0);
           }, "Must be a valid comma-separated list of namespace values"),
         gatewayId: z.string().optional(),
+        connectorId: z.string().optional(),
         audiences: z.array(z.string().trim().min(1)),
         roleType: z.nativeEnum(RoleType),
         role: z.string().trim().min(1),
@@ -121,9 +124,9 @@ const formSchema = z
     usernameTemplate: z.string().trim().optional()
   })
   .superRefine((data, ctx) => {
-    if (data.provider.authMethod === AuthMethod.Gateway && !data.provider.gatewayId) {
+    if (data.provider.authMethod === AuthMethod.Connector && !data.provider.connectorId) {
       ctx.addIssue({
-        path: ["provider.gatewayId"],
+        path: ["provider.connectorId"],
         code: z.ZodIssueCode.custom,
         message: "When auth method is set to Connector, a connector must be selected"
       });
@@ -181,7 +184,7 @@ export const KubernetesInputForm = ({
         serviceAccountName: "",
         namespace: "",
         credentialType: KubernetesDynamicSecretCredentialType.Static,
-        gatewayId: undefined,
+        connectorId: undefined,
         audiences: [],
         authMethod: AuthMethod.Api
       } as const,
@@ -311,7 +314,7 @@ export const KubernetesInputForm = ({
                     {(isAllowed) => (
                       <Controller
                         control={control}
-                        name="provider.gatewayId"
+                        name="provider.connectorId"
                         defaultValue=""
                         render={({ field: { value, onChange }, fieldState: { error } }) => (
                           <FormControl
@@ -373,7 +376,7 @@ export const KubernetesInputForm = ({
                         onValueChange={(e) => field.onChange(e)}
                       >
                         <SelectItem value={AuthMethod.Api}>Token (API)</SelectItem>
-                        <SelectItem value={AuthMethod.Gateway}>Connector</SelectItem>
+                        <SelectItem value={AuthMethod.Connector}>Connector</SelectItem>
                       </Select>
                     </FormControl>
                   )}
