@@ -140,7 +140,10 @@ export const SqlDatabaseProvider = ({
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSqlDBSchema.parseAsync(inputs);
 
-    const [hostIp] = await verifyHostInputValidity(providerInputs.host, Boolean(providerInputs.gatewayId));
+    const [hostIp] = await verifyHostInputValidity(
+      providerInputs.host,
+      Boolean(providerInputs.gatewayId || providerInputs.connectorId)
+    );
     validateHandlebarTemplate("SQL creation", providerInputs.creationStatement, {
       allowedExpressions: (val) => ["username", "password", "expiration", "database"].includes(val)
     });
@@ -190,7 +193,7 @@ export const SqlDatabaseProvider = ({
     gatewayCallback: (host: string, port: number) => Promise<void>
   ) => {
     const connectorConnectionDetails = await connectorService.getPlatformConnectionDetailsByConnectorId({
-      connectorId: providerInputs.gatewayId as string,
+      connectorId: (providerInputs.gatewayId || providerInputs.connectorId) as string,
       targetHost: providerInputs.host,
       targetPort: providerInputs.port
     });
@@ -209,7 +212,9 @@ export const SqlDatabaseProvider = ({
       );
     }
 
-    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(providerInputs.gatewayId as string);
+    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(
+      (providerInputs.gatewayId || providerInputs.connectorId) as string
+    );
     const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
     await withGatewayProxy(
       async (port) => {
@@ -255,7 +260,7 @@ export const SqlDatabaseProvider = ({
       }
     };
 
-    if (providerInputs.gatewayId) {
+    if (providerInputs.gatewayId || providerInputs.connectorId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();
@@ -307,7 +312,7 @@ export const SqlDatabaseProvider = ({
         await db.destroy();
       }
     };
-    if (providerInputs.gatewayId) {
+    if (providerInputs.gatewayId || providerInputs.connectorId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();
@@ -342,7 +347,7 @@ export const SqlDatabaseProvider = ({
         await db.destroy();
       }
     };
-    if (providerInputs.gatewayId) {
+    if (providerInputs.gatewayId || providerInputs.connectorId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();
@@ -386,7 +391,7 @@ export const SqlDatabaseProvider = ({
         await db.destroy();
       }
     };
-    if (providerInputs.gatewayId) {
+    if (providerInputs.gatewayId || providerInputs.connectorId) {
       await gatewayProxyWrapper(providerInputs, gatewayCallback);
     } else {
       await gatewayCallback();

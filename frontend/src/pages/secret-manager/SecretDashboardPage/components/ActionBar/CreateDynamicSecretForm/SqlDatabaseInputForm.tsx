@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
+import { OrgPermissionCanAny } from "@app/components/permissions";
 import {
   Accordion,
   AccordionContent,
@@ -24,6 +24,7 @@ import {
 } from "@app/components/v2";
 import {
   OrgGatewayPermissionActions,
+  OrgPermissionConnectorActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
@@ -67,7 +68,8 @@ const formSchema = z.object({
     revocationStatement: z.string().min(1),
     renewStatement: z.string().optional(),
     ca: z.string().optional(),
-    gatewayId: z.string().optional()
+    gatewayId: z.string().optional(),
+    connectorId: z.string().optional()
   }),
   defaultTTL: z.string().superRefine((val, ctx) => {
     const valMs = ms(val);
@@ -309,24 +311,32 @@ export const SqlDatabaseInputForm = ({
               Configuration
             </div>
             <div>
-              <OrgPermissionCan
-                I={OrgGatewayPermissionActions.AttachGateways}
-                a={OrgPermissionSubjects.Gateway}
+              <OrgPermissionCanAny
+                permissions={[
+                  {
+                    action: OrgPermissionConnectorActions.AttachConnectors,
+                    subject: OrgPermissionSubjects.Connector
+                  },
+                  {
+                    action: OrgGatewayPermissionActions.AttachGateways,
+                    subject: OrgPermissionSubjects.Gateway
+                  }
+                ]}
               >
                 {(isAllowed) => (
                   <Controller
                     control={control}
-                    name="provider.gatewayId"
+                    name="provider.connectorId"
                     defaultValue=""
                     render={({ field: { value, onChange }, fieldState: { error } }) => (
                       <FormControl
                         isError={Boolean(error?.message)}
                         errorText={error?.message}
-                        label="Gateway"
+                        label="Connector"
                       >
                         <Tooltip
                           isDisabled={isAllowed}
-                          content="Restricted access. You don't have permission to attach gateways to resources."
+                          content="Restricted access. You don't have permission to attach connectors to resources."
                         >
                           <div>
                             <Select
@@ -336,14 +346,14 @@ export const SqlDatabaseInputForm = ({
                               className="w-full border border-mineshaft-500"
                               dropdownContainerClassName="max-w-none"
                               isLoading={isGatewaysLoading}
-                              placeholder="Default: Internet Gateway"
+                              placeholder="Default: No Connector"
                               position="popper"
                             >
                               <SelectItem
                                 value={null as unknown as string}
                                 onClick={() => onChange(undefined)}
                               >
-                                Internet Gateway
+                                No Connector
                               </SelectItem>
                               {gateways?.map((el) => (
                                 <SelectItem value={el.id} key={el.id}>
@@ -357,7 +367,7 @@ export const SqlDatabaseInputForm = ({
                     )}
                   />
                 )}
-              </OrgPermissionCan>
+              </OrgPermissionCanAny>
             </div>
             <div className="flex flex-col">
               <div className="pb-0.5 pl-1 text-sm text-mineshaft-400">Service</div>

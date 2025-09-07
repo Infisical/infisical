@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
@@ -6,7 +7,7 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
+import { OrgPermissionCanAny } from "@app/components/permissions";
 import {
   Accordion,
   AccordionContent,
@@ -22,7 +23,10 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { OrgPermissionSubjects } from "@app/context";
-import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
+import {
+  OrgGatewayPermissionActions,
+  OrgPermissionConnectorActions
+} from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys, useUpdateDynamicSecret } from "@app/hooks/api";
 import { SqlProviders, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { slugSchema } from "@app/lib/schemas";
@@ -64,7 +68,8 @@ const formSchema = z.object({
       revocationStatement: z.string().min(1),
       renewStatement: z.string().optional(),
       ca: z.string().optional(),
-      gatewayId: z.string().optional().nullable()
+      gatewayId: z.string().optional().nullable(),
+      connectorId: z.string().optional().nullable()
     })
     .partial(),
   defaultTTL: z.string().superRefine((val, ctx) => {
@@ -130,6 +135,7 @@ export const EditDynamicSecretSqlProviderForm = ({
     control,
     watch,
     formState: { isSubmitting },
+    setValue,
     handleSubmit
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
@@ -152,9 +158,16 @@ export const EditDynamicSecretSqlProviderForm = ({
 
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
+  useEffect(() => {
+    const castedInputs = dynamicSecret.inputs as TForm["inputs"];
+    if (castedInputs && castedInputs.gatewayId) {
+      setValue("inputs.connectorId", castedInputs.gatewayId);
+    }
+  }, [dynamicSecret.inputs]);
+
   const updateDynamicSecret = useUpdateDynamicSecret();
-  const selectedGatewayId = watch("inputs.gatewayId");
-  const isGatewayInActive = gateways?.findIndex((el) => el.id === selectedGatewayId) === -1;
+  const selectedConnectorId = watch("inputs.connectorId");
+  const isConnectorInActive = gateways?.findIndex((el) => el.id === selectedConnectorId) === -1;
 
   const handleUpdateDynamicSecret = async ({
     inputs,
@@ -178,7 +191,7 @@ export const EditDynamicSecretSqlProviderForm = ({
           defaultTTL,
           inputs: {
             ...inputs,
-            gatewayId: isGatewayInActive ? null : inputs.gatewayId
+            connectorId: isConnectorInActive ? null : inputs.connectorId
           },
           newName: newName === dynamicSecret.name ? undefined : newName,
           metadata,
@@ -252,29 +265,37 @@ export const EditDynamicSecretSqlProviderForm = ({
         <div>
           <div className="mb-4 border-b border-b-mineshaft-600 pb-2">Configuration</div>
           <div>
-            <OrgPermissionCan
-              I={OrgGatewayPermissionActions.AttachGateways}
-              a={OrgPermissionSubjects.Gateway}
+            <OrgPermissionCanAny
+              permissions={[
+                {
+                  action: OrgGatewayPermissionActions.AttachGateways,
+                  subject: OrgPermissionSubjects.Gateway
+                },
+                {
+                  action: OrgPermissionConnectorActions.AttachConnectors,
+                  subject: OrgPermissionSubjects.Connector
+                }
+              ]}
             >
               {(isAllowed) => (
                 <Controller
                   control={control}
-                  name="inputs.gatewayId"
+                  name="inputs.connectorId"
                   defaultValue=""
                   render={({ field: { value, onChange }, fieldState: { error } }) => (
                     <FormControl
-                      isError={Boolean(error?.message) || isGatewayInActive}
+                      isError={Boolean(error?.message) || isConnectorInActive}
                       errorText={
-                        isGatewayInActive && selectedGatewayId
-                          ? `Project Gateway ${selectedGatewayId} is removed`
+                        isConnectorInActive && selectedConnectorId
+                          ? `Project Connector ${selectedConnectorId} is removed`
                           : error?.message
                       }
-                      label="Gateway"
+                      label="Connector"
                       helperText=""
                     >
                       <Tooltip
                         isDisabled={isAllowed}
-                        content="Restricted access. You don't have permission to attach gateways to resources."
+                        content="Restricted access. You don't have permission to attach connectors to resources."
                       >
                         <div>
                           <Select
@@ -284,14 +305,14 @@ export const EditDynamicSecretSqlProviderForm = ({
                             className="w-full border border-mineshaft-500"
                             dropdownContainerClassName="max-w-none"
                             isLoading={isGatewaysLoading}
-                            placeholder="Default: Internet Gateway"
+                            placeholder="Default: No Connector"
                             position="popper"
                           >
                             <SelectItem
                               value={null as unknown as string}
                               onClick={() => onChange(undefined)}
                             >
-                              Internet Gateway
+                              No Connector
                             </SelectItem>
                             {gateways?.map((el) => (
                               <SelectItem value={el.id} key={el.id}>
@@ -305,7 +326,7 @@ export const EditDynamicSecretSqlProviderForm = ({
                   )}
                 />
               )}
-            </OrgPermissionCan>
+            </OrgPermissionCanAny>
           </div>
           <div className="flex flex-col">
             <Controller

@@ -166,7 +166,8 @@ export const DynamicSecretSqlDBSchema = z.object({
   revocationStatement: z.string().trim(),
   renewStatement: z.string().trim().optional(),
   ca: z.string().optional(),
-  gatewayId: z.string().nullable().optional()
+  gatewayId: z.string().nullable().optional(),
+  connectorId: z.string().nullable().optional()
 });
 
 export const DynamicSecretCassandraSchema = z.object({
