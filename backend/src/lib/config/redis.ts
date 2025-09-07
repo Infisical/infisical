@@ -15,8 +15,6 @@ export type TRedisConfigKeys = Partial<{
   REDIS_SENTINEL_ENABLE_TLS: boolean;
   REDIS_SENTINEL_USERNAME: string;
   REDIS_SENTINEL_PASSWORD: string;
-
-  REDIS_READ_REPLICAS: { host: string; port: number }[];
 }>;
 
 export const buildRedisFromConfig = (cfg: TRedisConfigKeys) => {

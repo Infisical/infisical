@@ -109,7 +109,11 @@ const pickPrimaryOrSecondaryRedis = (primary: Redis | Cluster, secondaries?: Arr
   return selectedReplica;
 };
 
-export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFactory => {
+interface TKeyStoreFactoryDTO extends TRedisConfigKeys {
+  REDIS_READ_REPLICAS?: { host: string; port: number }[];
+}
+
+export const keyStoreFactory = (redisConfigKeys: TKeyStoreFactoryDTO): TKeyStoreFactory => {
   const primaryRedis = buildRedisFromConfig(redisConfigKeys);
   const redisReadReplicas = redisConfigKeys.REDIS_READ_REPLICAS?.map((el) => {
     if (redisConfigKeys.REDIS_URL) {

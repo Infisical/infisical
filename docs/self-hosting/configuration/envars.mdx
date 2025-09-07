@@ -208,13 +208,13 @@ Redis is used for caching and background tasks. You can use either a standalone 
       query="REDIS_READ_REPLICAS"
       type="string"
       default="none"
-      required
+      optional
     >
       Comma-separated list of Redis read replicas host:port pairs. ```
       192.168.65.254:26379,192.168.65.254:26380 ```
     </ParamField>
 
-    The rest of the parameters of the primary instance will be inherited.
+    The paramters like username, password, tls, redis type of the primary instance will be inherited.
 
   </Tab>
 </Tabs>
