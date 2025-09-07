@@ -86,7 +86,7 @@ export const SecretSyncSourceFields = () => {
       defaultValue={false}
       render={({ field: { value, onChange } }) => (
         <div className="flex items-center gap-2">
-          <span className="text-sm text-bunker-200">Recursive</span>
+          <span className="text-sm text-bunker-200">Sync subfolders recursively</span>
           <Checkbox
             id="recursive"
             isChecked={value}

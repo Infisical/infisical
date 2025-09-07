@@ -47,7 +47,7 @@ export async function down(knex: Knex): Promise<void> {
 
     await knex.raw(`
       UPDATE "${TABLE}" s
-      SET "folderId" = sub.folder_id
+      SET "folderId" = sub.folderId
       FROM (
         SELECT DISTINCT ON ("secretSyncId") "secretSyncId", "folderId"
         FROM "${JOIN_TABLE}"

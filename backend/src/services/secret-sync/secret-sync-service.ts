@@ -95,7 +95,9 @@ export const secretSyncServiceFactory = ({
         secretSync.environment && secretSync.folder
           ? subject(ProjectPermissionSub.SecretSyncs, {
               environment: secretSync.environment.slug,
-              secretPath: secretSync.folder.map((f: { path: string }) => f.path)
+              secretPath: Array.isArray(secretSync.folder)
+              ? secretSync.folder.map((f: { path: string }) => f.path)
+              : []
             })
           : ProjectPermissionSub.SecretSyncs
       )
@@ -267,7 +269,7 @@ export const secretSyncServiceFactory = ({
       folderIds: (Array.isArray(foldersRaw) ? foldersRaw : [foldersRaw]).filter(Boolean).map((folder: any) => folder.id)
     };
 
-    if (!result)
+    if (!result.folderIds.length)
       throw new BadRequestError({
         message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
       });

@@ -149,30 +149,23 @@ export const secretSyncDALFactory = (
     data: Parameters<(typeof secretSyncOrm)["create"]>[0],
     folderIds?: Parameters<(typeof secretSyncOrmWithFolder)["insertMany"]>[0]
   ) => {
-    const secretSync = (await secretSyncOrm.transaction(async (tx) => {
+
+    const secretSync = await secretSyncOrm.transaction(async (tx) => {
       const sync = await secretSyncOrm.create(data, tx);
-
-      return baseSecretSyncQuery({
-        filter: { id: sync.id },
-        db,
-        tx
-      }).first();
-    }))!;
-
-    const secretSyncId = secretSync.id;
-
-    await secretSyncOrmWithFolder.transaction(async (tx) => {
+      
       if (folderIds && folderIds.length > 0) {
         const folderData = folderIds.map((folderId: string) => ({
           folderId,
-          secretSyncId
+          secretSyncId: sync.id
         }));
         await secretSyncOrmWithFolder.insertMany(folderData, tx);
       }
+      
+      return baseSecretSyncQuery({ filter: { id: sync.id }, db, tx }).first();
     });
 
-    const normalizedFolderIds = Array.isArray(folderIds) ? folderIds : [folderIds];
-
+    const normalizedFolderIds = Array.isArray(folderIds) ? folderIds : (folderIds ? [folderIds] : []);
+    
     // TODO (scott): replace with cached folder path once implemented
     const folderWithPath = normalizedFolderIds.length
       ? await folderDAL.findSecretPathByFolderIds(secretSync.projectId, normalizedFolderIds)
@@ -255,5 +248,5 @@ export const secretSyncDALFactory = (
     }
   };
 
-  return { ...secretSyncOrm, ...secretSyncOrmWithFolder, deleteById, findById, findOne, find, create, updateById };
+  return { ...secretSyncOrm, deleteById, findById, findOne, find, create, updateById };
 };
