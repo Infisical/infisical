@@ -6,12 +6,17 @@ export type TRedisConfigKeys = Partial<{
   REDIS_PASSWORD: string;
 
   REDIS_CLUSTER_HOSTS: { host: string; port: number }[];
+  REDIS_CLUSTER_ENABLE_TLS: boolean;
+  // ref: https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls
+  REDIS_CLUSTER_AWS_ELASTICACHE_DNS_LOOKUP_MODE: boolean;
 
   REDIS_SENTINEL_HOSTS: { host: string; port: number }[];
   REDIS_SENTINEL_MASTER_NAME: string;
   REDIS_SENTINEL_ENABLE_TLS: boolean;
   REDIS_SENTINEL_USERNAME: string;
   REDIS_SENTINEL_PASSWORD: string;
+
+  REDIS_READ_REPLICAS: { host: string; port: number }[];
 }>;
 
 export const buildRedisFromConfig = (cfg: TRedisConfigKeys) => {
@@ -19,9 +24,13 @@ export const buildRedisFromConfig = (cfg: TRedisConfigKeys) => {
 
   if (cfg.REDIS_CLUSTER_HOSTS) {
     return new Redis.Cluster(cfg.REDIS_CLUSTER_HOSTS, {
+      dnsLookup: cfg.REDIS_CLUSTER_AWS_ELASTICACHE_DNS_LOOKUP_MODE
+        ? (address, callback) => callback(null, address)
+        : undefined,
       redisOptions: {
         username: cfg.REDIS_USERNAME,
-        password: cfg.REDIS_PASSWORD
+        password: cfg.REDIS_PASSWORD,
+        tls: cfg?.REDIS_CLUSTER_ENABLE_TLS ? {} : undefined
       }
     });
   }

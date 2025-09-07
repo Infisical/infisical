@@ -57,6 +57,22 @@ const envSchema = z
         .optional()
         .describe("Comma-separated list of Redis Cluster host:port pairs. Eg: 192.168.65.254:6379,192.168.65.254:6380")
     ),
+    REDIS_READ_REPLICAS: zpStr(
+      z
+        .string()
+        .optional()
+        .describe(
+          "Comma-separated list of Redis read replicas host:port pairs. Eg: 192.168.65.254:6379,192.168.65.254:6380"
+        )
+    ),
+    REDIS_CLUSTER_ENABLE_TLS: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((el) => el === "true"),
+    REDIS_CLUSTER_AWS_ELASTICACHE_DNS_LOOKUP_MODE: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((el) => el === "true"),
     HOST: zpStr(z.string().default("localhost")),
     DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database connection string")).default(
       `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
@@ -372,6 +388,12 @@ const envSchema = z
         return { host: host.trim(), port: Number(port.trim()) };
       }),
     REDIS_CLUSTER_HOSTS: data.REDIS_CLUSTER_HOSTS?.trim()
+      ?.split(",")
+      .map((el) => {
+        const [host, port] = el.trim().split(":");
+        return { host: host.trim(), port: Number(port.trim()) };
+      }),
+    REDIS_READ_REPLICAS: data.REDIS_READ_REPLICAS?.trim()
       ?.split(",")
       .map((el) => {
         const [host, port] = el.trim().split(":");
