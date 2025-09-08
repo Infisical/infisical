@@ -545,6 +545,11 @@ import {
   TSecretReminderRecipientsInsert,
   TSecretReminderRecipientsUpdate
 } from "@app/db/schemas/secret-reminder-recipients";
+import {
+  TUserNotifications,
+  TUserNotificationsInsert,
+  TUserNotificationsUpdate
+} from "@app/db/schemas/user-notifications";
 
 declare module "knex" {
   namespace Knex {
@@ -1248,6 +1253,17 @@ declare module "knex/types/tables" {
       TSecretScanningResourcesInsert,
       TSecretScanningResourcesUpdate
     >;
+    [TableName.InstanceRelayConfig]: KnexOriginal.CompositeTableType<
+      TInstanceRelayConfig,
+      TInstanceRelayConfigInsert,
+      TInstanceRelayConfigUpdate
+    >;
+    [TableName.OrgRelayConfig]: KnexOriginal.CompositeTableType<
+      TOrgRelayConfig,
+      TOrgRelayConfigInsert,
+      TOrgRelayConfigUpdate
+    >;
+    [TableName.Relay]: KnexOriginal.CompositeTableType<TRelays, TRelaysInsert, TRelaysUpdate>;
     [TableName.SecretScanningScan]: KnexOriginal.CompositeTableType<
       TSecretScanningScans,
       TSecretScanningScansInsert,
@@ -1275,16 +1291,10 @@ declare module "knex/types/tables" {
       TOrgGatewayConfigV2Update
     >;
     [TableName.GatewayV2]: KnexOriginal.CompositeTableType<TGatewaysV2, TGatewaysV2Insert, TGatewaysV2Update>;
-    [TableName.InstanceRelayConfig]: KnexOriginal.CompositeTableType<
-      TInstanceRelayConfig,
-      TInstanceRelayConfigInsert,
-      TInstanceRelayConfigUpdate
+    [TableName.UserNotifications]: KnexOriginal.CompositeTableType<
+      TUserNotifications,
+      TUserNotificationsInsert,
+      TUserNotificationsUpdate
     >;
-    [TableName.OrgRelayConfig]: KnexOriginal.CompositeTableType<
-      TOrgRelayConfig,
-      TOrgRelayConfigInsert,
-      TOrgRelayConfigUpdate
-    >;
-    [TableName.Relay]: KnexOriginal.CompositeTableType<TRelays, TRelaysInsert, TRelaysUpdate>;
   }
 }

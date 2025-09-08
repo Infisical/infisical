@@ -48,6 +48,7 @@ import { AuthMethod } from "@app/hooks/api/users/types";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
+import { NotificationDropdown } from "./NotificationDropdown";
 
 const getPlan = (subscription: SubscriptionPlan) => {
   if (subscription.groups) return "Enterprise";
@@ -118,6 +119,7 @@ export const Navbar = () => {
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
   const router = useRouter();
   const queryClient = useQueryClient();
+
   const location = useLocation();
   const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
   const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
@@ -304,7 +306,7 @@ export const Navbar = () => {
       <div className="flex-grow" />
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger>
-          <div className="rounded-l-md border border-r-0 border-mineshaft-500 px-2 py-1 hover:bg-mineshaft-600">
+          <div className="rounded-l-md border border-r-0 border-mineshaft-500 px-2.5 py-1 hover:bg-mineshaft-600">
             <FontAwesomeIcon icon={faCircleQuestion} className="text-mineshaft-200" />
           </div>
         </DropdownMenuTrigger>
@@ -358,9 +360,10 @@ export const Navbar = () => {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+      <NotificationDropdown />
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
-          <div className="rounded-r-md border border-mineshaft-500 px-2 py-1 hover:bg-mineshaft-600">
+          <div className="rounded-r-md border border-mineshaft-500 px-2.5 py-1 hover:bg-mineshaft-600">
             <FontAwesomeIcon icon={faUserCircle} className="text-mineshaft-200" />
           </div>
         </DropdownMenuTrigger>

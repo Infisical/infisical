@@ -23,6 +23,7 @@ import { logger } from "@app/lib/logger";
 import { QueueWorkerProfile } from "@app/lib/types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { ExternalPlatforms } from "@app/services/external-migration/external-migration-types";
+import { TCreateUserNotificationDTO } from "@app/services/notification/notification-types";
 import {
   TFailedIntegrationSyncEmailsPayload,
   TIntegrationSyncPayload,
@@ -67,7 +68,8 @@ export enum QueueName {
   SecretScanningV2 = "secret-scanning-v2",
   TelemetryAggregatedEvents = "telemetry-aggregated-events",
   DailyReminders = "daily-reminders",
-  SecretReminderMigration = "secret-reminder-migration"
+  SecretReminderMigration = "secret-reminder-migration",
+  UserNotification = "user-notification"
 }
 
 export enum QueueJobs {
@@ -109,7 +111,8 @@ export enum QueueJobs {
   PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal",
   TelemetryAggregatedEvents = "telemetry-aggregated-events",
   DailyReminders = "daily-reminders",
-  SecretReminderMigration = "secret-reminder-migration"
+  SecretReminderMigration = "secret-reminder-migration",
+  UserNotification = "user-notification-job"
 }
 
 export type TQueueJobTypes = {
@@ -312,6 +315,10 @@ export type TQueueJobTypes = {
   [QueueName.TelemetryAggregatedEvents]: {
     name: QueueJobs.TelemetryAggregatedEvents;
     payload: undefined;
+  };
+  [QueueName.UserNotification]: {
+    name: QueueJobs.UserNotification;
+    payload: { notifications: TCreateUserNotificationDTO[] };
   };
 };
 

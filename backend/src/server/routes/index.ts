@@ -225,6 +225,11 @@ import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { microsoftTeamsIntegrationDALFactory } from "@app/services/microsoft-teams/microsoft-teams-integration-dal";
 import { microsoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { projectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
+import { notificationQueueServiceFactory } from "@app/services/notification/notification-queue";
+import { notificationServiceFactory } from "@app/services/notification/notification-service";
+import { userNotificationDALFactory } from "@app/services/notification/user-notification-dal";
+import { offlineUsageReportDALFactory } from "@app/services/offline-usage-report/offline-usage-report-dal";
+import { offlineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
 import { orgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
@@ -298,8 +303,6 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { invalidateCacheQueueFactory } from "@app/services/super-admin/invalidate-cache-queue";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
-import { offlineUsageReportDALFactory } from "@app/services/offline-usage-report/offline-usage-report-dal";
-import { offlineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { telemetryDALFactory } from "@app/services/telemetry/telemetry-dal";
 import { telemetryQueueServiceFactory } from "@app/services/telemetry/telemetry-queue";
 import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -429,6 +432,7 @@ export const registerRoutes = async (
   const telemetryDAL = telemetryDALFactory(db);
   const appConnectionDAL = appConnectionDALFactory(db);
   const secretSyncDAL = secretSyncDALFactory(db, folderDAL);
+  const userNotificationDAL = userNotificationDALFactory(db);
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
@@ -580,6 +584,13 @@ export const registerRoutes = async (
     licenseService,
     auditLogStreamService
   });
+
+  const notificationQueue = await notificationQueueServiceFactory({
+    userNotificationDAL,
+    queueService
+  });
+
+  const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
 
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
@@ -1414,7 +1425,8 @@ export const registerRoutes = async (
     kmsService,
     groupDAL,
     microsoftTeamsService,
-    projectMicrosoftTeamsConfigDAL
+    projectMicrosoftTeamsConfigDAL,
+    notificationService
   });
 
   const secretReplicationService = secretReplicationServiceFactory({
@@ -1718,7 +1730,8 @@ export const registerRoutes = async (
     secretVersionV2DAL: secretVersionV2BridgeDAL,
     identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL,
     serviceTokenService,
-    orgService
+    orgService,
+    userNotificationDAL
   });
 
   const dailyReminderQueueService = dailyReminderQueueServiceFactory({
@@ -2143,6 +2156,8 @@ export const registerRoutes = async (
     kmip: kmipService,
     kmipOperation: kmipOperationService,
     gateway: gatewayService,
+    relay: relayService,
+    gatewayV2: gatewayV2Service,
     secretRotationV2: secretRotationV2Service,
     microsoftTeams: microsoftTeamsService,
     assumePrivileges: assumePrivilegeService,
@@ -2152,8 +2167,7 @@ export const registerRoutes = async (
     reminder: reminderService,
     bus: eventBusService,
     sse: sseService,
-    relay: relayService,
-    gatewayV2: gatewayV2Service
+    notification: notificationService
   });
 
   const cronJobs: CronJob[] = [];

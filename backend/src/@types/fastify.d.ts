@@ -85,6 +85,7 @@ import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { TOrgRoleServiceFactory } from "@app/services/org/org-role-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
@@ -297,6 +298,8 @@ declare module "fastify" {
       secretRotationV2: TSecretRotationV2ServiceFactory;
       microsoftTeams: TMicrosoftTeamsServiceFactory;
       assumePrivileges: TAssumePrivilegeServiceFactory;
+      relay: TRelayServiceFactory;
+      gatewayV2: TGatewayV2ServiceFactory;
       githubOrgSync: TGithubOrgSyncServiceFactory;
       folderCommit: TFolderCommitServiceFactory;
       pit: TPitServiceFactory;
@@ -307,8 +310,7 @@ declare module "fastify" {
       bus: TEventBusService;
       sse: TServerSentEventsService;
       identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
-      relay: TRelayServiceFactory;
-      gatewayV2: TGatewayV2ServiceFactory;
+      notification: TNotificationServiceFactory;
       offlineUsageReport: TOfflineUsageReportServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
