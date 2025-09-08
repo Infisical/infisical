@@ -1097,6 +1097,7 @@ export const useAddIdentityKubernetesAuth = () => {
       accessTokenNumUsesLimit,
       accessTokenTrustedIps,
       gatewayId,
+      connectorId,
       tokenReviewMode
     }) => {
       const {
@@ -1115,6 +1116,7 @@ export const useAddIdentityKubernetesAuth = () => {
           accessTokenNumUsesLimit,
           accessTokenTrustedIps,
           gatewayId,
+          connectorId,
           tokenReviewMode
         }
       );
@@ -1206,6 +1208,7 @@ export const useUpdateIdentityKubernetesAuth = () => {
       accessTokenNumUsesLimit,
       accessTokenTrustedIps,
       gatewayId,
+      connectorId,
       tokenReviewMode
     }) => {
       const {
@@ -1224,6 +1227,7 @@ export const useUpdateIdentityKubernetesAuth = () => {
           accessTokenNumUsesLimit,
           accessTokenTrustedIps,
           gatewayId,
+          connectorId,
           tokenReviewMode
         }
       );

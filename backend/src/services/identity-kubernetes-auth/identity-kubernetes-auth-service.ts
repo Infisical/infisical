@@ -323,10 +323,13 @@ export const identityKubernetesAuthServiceFactory = ({
 
     let data: TCreateTokenReviewResponse | undefined;
 
-    if (identityKubernetesAuth.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway) {
+    if (
+      identityKubernetesAuth.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway ||
+      identityKubernetesAuth.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Connector
+    ) {
       if (!identityKubernetesAuth.gatewayId && !identityKubernetesAuth.connectorId) {
         throw new BadRequestError({
-          message: "Connector ID is required when token review mode is set to Gateway"
+          message: "Connector ID is required when token review mode is set to Connector"
         });
       }
 
@@ -479,6 +482,7 @@ export const identityKubernetesAuthServiceFactory = ({
   const attachKubernetesAuth = async ({
     identityId,
     gatewayId,
+    connectorId,
     kubernetesHost,
     caCert,
     tokenReviewerJwt,
@@ -539,12 +543,13 @@ export const identityKubernetesAuthServiceFactory = ({
     });
 
     let isGatewayV1 = true;
-    if (gatewayId) {
-      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: identityMembershipOrg.orgId });
-      const [connector] = await connectorDAL.find({ id: gatewayId, orgId: identityMembershipOrg.orgId });
+    const inputConnectorId = connectorId ?? gatewayId;
+    if (inputConnectorId) {
+      const [gateway] = await gatewayDAL.find({ id: inputConnectorId, orgId: identityMembershipOrg.orgId });
+      const [connector] = await connectorDAL.find({ id: inputConnectorId, orgId: identityMembershipOrg.orgId });
       if (!gateway && !connector) {
         throw new NotFoundError({
-          message: `Connector with ID ${gatewayId} not found`
+          message: `Connector with ID ${inputConnectorId} not found`
         });
       }
 
@@ -583,8 +588,8 @@ export const identityKubernetesAuthServiceFactory = ({
           accessTokenMaxTTL,
           accessTokenTTL,
           accessTokenNumUsesLimit,
-          gatewayId: isGatewayV1 ? gatewayId : null,
-          connectorId: isGatewayV1 ? null : gatewayId,
+          gatewayId: isGatewayV1 ? inputConnectorId : null,
+          connectorId: isGatewayV1 ? null : inputConnectorId,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps),
           encryptedKubernetesTokenReviewerJwt: tokenReviewerJwt
             ? encryptor({ plainText: Buffer.from(tokenReviewerJwt) }).cipherTextBlob
@@ -609,6 +614,7 @@ export const identityKubernetesAuthServiceFactory = ({
     allowedNames,
     allowedAudience,
     gatewayId,
+    connectorId,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -665,13 +671,14 @@ export const identityKubernetesAuthServiceFactory = ({
     });
 
     let isGatewayV1 = true;
-    if (gatewayId) {
-      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: identityMembershipOrg.orgId });
-      const [connector] = await connectorDAL.find({ id: gatewayId, orgId: identityMembershipOrg.orgId });
+    const inputConnectorId = connectorId ?? gatewayId;
+    if (inputConnectorId) {
+      const [gateway] = await gatewayDAL.find({ id: inputConnectorId, orgId: identityMembershipOrg.orgId });
+      const [connector] = await connectorDAL.find({ id: inputConnectorId, orgId: identityMembershipOrg.orgId });
 
       if (!gateway && !connector) {
         throw new NotFoundError({
-          message: `Connector with ID ${gatewayId} not found`
+          message: `Connector with ID ${inputConnectorId} not found`
         });
       }
 
@@ -693,9 +700,9 @@ export const identityKubernetesAuthServiceFactory = ({
       ]);
     }
 
-    const shouldUpdateGatewayId = Boolean(gatewayId);
-    const gatewayIdValue = isGatewayV1 ? gatewayId : null;
-    const connectorIdValue = isGatewayV1 ? null : gatewayId;
+    const shouldUpdateConnectorId = Boolean(inputConnectorId);
+    const gatewayIdValue = isGatewayV1 ? inputConnectorId : null;
+    const connectorIdValue = isGatewayV1 ? null : inputConnectorId;
 
     const updateQuery: TIdentityKubernetesAuthsUpdate = {
       kubernetesHost,
@@ -703,8 +710,8 @@ export const identityKubernetesAuthServiceFactory = ({
       allowedNamespaces,
       allowedNames,
       allowedAudience,
-      gatewayId: shouldUpdateGatewayId ? gatewayIdValue : undefined,
-      connectorId: shouldUpdateGatewayId ? connectorIdValue : undefined,
+      gatewayId: shouldUpdateConnectorId ? gatewayIdValue : undefined,
+      connectorId: shouldUpdateConnectorId ? connectorIdValue : undefined,
       accessTokenMaxTTL,
       accessTokenTTL,
       accessTokenNumUsesLimit,

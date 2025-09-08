@@ -438,7 +438,8 @@ export type DeleteIdentityAzureAuthDTO = {
 
 export enum IdentityKubernetesAuthTokenReviewMode {
   Api = "api",
-  Gateway = "gateway"
+  Gateway = "gateway",
+  Connector = "connector"
 }
 
 export type IdentityKubernetesAuth = {
@@ -455,6 +456,7 @@ export type IdentityKubernetesAuth = {
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: IdentityTrustedIp[];
   gatewayId?: string | null;
+  connectorId?: string | null;
 };
 
 export type AddIdentityKubernetesAuthDTO = {
@@ -467,6 +469,7 @@ export type AddIdentityKubernetesAuthDTO = {
   allowedNames: string;
   allowedAudience: string;
   gatewayId?: string | null;
+  connectorId?: string | null;
   caCert: string;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
@@ -486,6 +489,7 @@ export type UpdateIdentityKubernetesAuthDTO = {
   allowedNames?: string;
   allowedAudience?: string;
   gatewayId?: string | null;
+  connectorId?: string | null;
   caCert?: string;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;

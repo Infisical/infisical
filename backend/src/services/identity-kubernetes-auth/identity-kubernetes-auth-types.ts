@@ -7,7 +7,8 @@ export type TLoginKubernetesAuthDTO = {
 
 export enum IdentityKubernetesAuthTokenReviewMode {
   Api = "api",
-  Gateway = "gateway"
+  Gateway = "gateway",
+  Connector = "connector"
 }
 
 export type TAttachKubernetesAuthDTO = {
@@ -20,6 +21,7 @@ export type TAttachKubernetesAuthDTO = {
   allowedNames: string;
   allowedAudience: string;
   gatewayId?: string | null;
+  connectorId?: string | null;
   accessTokenTTL: number;
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
@@ -37,6 +39,7 @@ export type TUpdateKubernetesAuthDTO = {
   allowedNames?: string;
   allowedAudience?: string;
   gatewayId?: string | null;
+  connectorId?: string | null;
   accessTokenTTL?: number;
   accessTokenMaxTTL?: number;
   accessTokenNumUsesLimit?: number;

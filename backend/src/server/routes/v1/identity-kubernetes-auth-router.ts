@@ -25,7 +25,8 @@ const IdentityKubernetesAuthResponseSchema = IdentityKubernetesAuthsSchema.pick(
   allowedNamespaces: true,
   allowedNames: true,
   allowedAudience: true,
-  gatewayId: true
+  gatewayId: true,
+  connectorId: true
 }).extend({
   caCert: z.string(),
   tokenReviewerJwt: z.string().optional().nullable()
@@ -138,6 +139,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           allowedNames: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedNames),
           allowedAudience: z.string().describe(KUBERNETES_AUTH.ATTACH.allowedAudience),
           gatewayId: z.string().uuid().optional().nullable().describe(KUBERNETES_AUTH.ATTACH.gatewayId),
+          connectorId: z.string().uuid().optional().nullable(),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
@@ -175,11 +177,16 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
               message: "When token review mode is set to API, a Kubernetes host must be provided"
             });
           }
-          if (data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway && !data.gatewayId) {
+          if (
+            (data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway ||
+              data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Connector) &&
+            !data.gatewayId &&
+            !data.connectorId
+          ) {
             ctx.addIssue({
-              path: ["gatewayId"],
+              path: ["gatewayId", "connectorId"],
               code: z.ZodIssueCode.custom,
-              message: "When token review mode is set to Gateway, a gateway must be selected"
+              message: "When token review mode is set to Connector, a connector must be selected"
             });
           }
 
@@ -286,6 +293,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
           allowedNames: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedNames),
           allowedAudience: z.string().optional().describe(KUBERNETES_AUTH.UPDATE.allowedAudience),
           gatewayId: z.string().uuid().optional().nullable().describe(KUBERNETES_AUTH.UPDATE.gatewayId),
+          connectorId: z.string().uuid().optional().nullable(),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()
@@ -318,13 +326,15 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
         .superRefine((data, ctx) => {
           if (
             data.tokenReviewMode &&
-            data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
-            !data.gatewayId
+            (data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway ||
+              data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Connector) &&
+            !data.gatewayId &&
+            !data.connectorId
           ) {
             ctx.addIssue({
-              path: ["gatewayId"],
+              path: ["gatewayId", "connectorId"],
               code: z.ZodIssueCode.custom,
-              message: "When token review mode is set to Gateway, a gateway must be selected"
+              message: "When token review mode is set to Connector, a connector must be selected"
             });
           }
           if (data.accessTokenMaxTTL && data.accessTokenTTL ? data.accessTokenTTL > data.accessTokenMaxTTL : false) {

@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
+import { OrgPermissionCanAny } from "@app/components/permissions";
 import {
   Button,
   FormControl,
@@ -25,6 +25,7 @@ import {
 import { useOrganization, useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
+  OrgPermissionConnectorActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import {
@@ -49,6 +50,7 @@ const schema = z
     kubernetesHost: z.string().optional().nullable(),
     tokenReviewerJwt: z.string().optional(),
     gatewayId: z.string().optional().nullable(),
+    connectorId: z.string().optional().nullable(),
     allowedNames: z.string(),
     allowedNamespaces: z.string(),
     allowedAudience: z.string(),
@@ -80,11 +82,14 @@ const schema = z
       });
     }
 
-    if (data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway && !data.gatewayId) {
+    if (
+      data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Connector &&
+      !data.connectorId
+    ) {
       ctx.addIssue({
-        path: ["gatewayId"],
+        path: ["connectorId"],
         code: z.ZodIssueCode.custom,
-        message: "When token review mode is set to Gateway, a gateway must be selected"
+        message: "When token review mode is set to Connector, a connector must be selected"
       });
     }
   });
@@ -137,7 +142,7 @@ export const IdentityKubernetesAuthForm = ({
       tokenReviewerJwt: "",
       allowedNames: "",
       allowedNamespaces: "",
-      gatewayId: "",
+      connectorId: "",
       allowedAudience: "",
       caCert: "",
       accessTokenTTL: "2592000",
@@ -155,8 +160,13 @@ export const IdentityKubernetesAuthForm = ({
 
   useEffect(() => {
     if (data) {
+      const tokenReviewModeVal =
+        data.tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway
+          ? IdentityKubernetesAuthTokenReviewMode.Connector
+          : data.tokenReviewMode;
+
       reset({
-        tokenReviewMode: data.tokenReviewMode,
+        tokenReviewMode: tokenReviewModeVal,
         kubernetesHost: data.kubernetesHost,
         tokenReviewerJwt: data.tokenReviewerJwt,
         allowedNames: data.allowedNames,
@@ -164,6 +174,7 @@ export const IdentityKubernetesAuthForm = ({
         allowedAudience: data.allowedAudience,
         caCert: data.caCert,
         gatewayId: data.gatewayId || null,
+        connectorId: data.connectorId || data.gatewayId || null,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
         accessTokenNumUsesLimit: String(data.accessTokenNumUsesLimit),
@@ -203,6 +214,7 @@ export const IdentityKubernetesAuthForm = ({
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
     gatewayId,
+    connectorId,
     tokenReviewMode,
     accessTokenTrustedIps
   }: FormData) => {
@@ -224,8 +236,9 @@ export const IdentityKubernetesAuthForm = ({
           allowedNamespaces,
           allowedAudience,
           caCert,
-          identityId,
           gatewayId: gatewayId || null,
+          identityId,
+          connectorId,
           tokenReviewMode,
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
@@ -248,6 +261,7 @@ export const IdentityKubernetesAuthForm = ({
           allowedNamespaces: allowedNamespaces || "",
           allowedAudience: allowedAudience || "",
           gatewayId: gatewayId || null,
+          connectorId: connectorId || null,
           caCert: caCert || "",
           tokenReviewMode,
           accessTokenTTL: Number(accessTokenTTL),
@@ -284,6 +298,7 @@ export const IdentityKubernetesAuthForm = ({
             "tokenReviewerJwt",
             "tokenReviewMode",
             "gatewayId",
+            "connectorId",
             "accessTokenTTL",
             "accessTokenMaxTTL",
             "accessTokenNumUsesLimit",
@@ -303,25 +318,33 @@ export const IdentityKubernetesAuthForm = ({
         <TabPanel value={IdentityFormTab.Configuration}>
           <div className="flex w-full items-center gap-2">
             <div className="w-full flex-1">
-              <OrgPermissionCan
-                I={OrgGatewayPermissionActions.AttachGateways}
-                a={OrgPermissionSubjects.Gateway}
+              <OrgPermissionCanAny
+                permissions={[
+                  {
+                    action: OrgGatewayPermissionActions.AttachGateways,
+                    subject: OrgPermissionSubjects.Gateway
+                  },
+                  {
+                    action: OrgPermissionConnectorActions.AttachConnectors,
+                    subject: OrgPermissionSubjects.Connector
+                  }
+                ]}
               >
                 {(isAllowed) => (
                   <Controller
                     control={control}
-                    name="gatewayId"
+                    name="connectorId"
                     defaultValue=""
                     render={({ field: { value, onChange }, fieldState: { error } }) => (
                       <FormControl
                         isError={Boolean(error?.message)}
                         errorText={error?.message}
-                        label="Gateway"
+                        label="Connector"
                         isOptional
                       >
                         <Tooltip
                           isDisabled={isAllowed}
-                          content="Restricted access. You don't have permission to attach gateways to resources."
+                          content="Restricted access. You don't have permission to attach connectors to resources."
                         >
                           <div>
                             <Select
@@ -346,7 +369,7 @@ export const IdentityKubernetesAuthForm = ({
                               className="w-full border border-mineshaft-500"
                               dropdownContainerClassName="max-w-none"
                               isLoading={isGatewayLoading}
-                              placeholder="Default: Internet Gateway"
+                              placeholder="Default: No Connector"
                               position="popper"
                             >
                               <SelectItem
@@ -355,7 +378,7 @@ export const IdentityKubernetesAuthForm = ({
                                   onChange(null);
                                 }}
                               >
-                                Internet Gateway
+                                No Connector
                               </SelectItem>
                               {gateways?.map((el) => (
                                 <SelectItem value={el.id} key={el.id}>
@@ -369,7 +392,7 @@ export const IdentityKubernetesAuthForm = ({
                     )}
                   />
                 )}
-              </OrgPermissionCan>
+              </OrgPermissionCanAny>
             </div>
 
             <Controller
@@ -378,11 +401,11 @@ export const IdentityKubernetesAuthForm = ({
               render={({ field }) => (
                 <FormControl
                   tooltipClassName="max-w-md"
-                  tooltipText="The method of which tokens are reviewed. If you select Gateway as Reviewer, the selected gateway will be used to review tokens with. If this option is enabled, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding."
+                  tooltipText="The method of which tokens are reviewed. If you select Connector as Reviewer, the selected connector will be used to review tokens with. If this option is enabled, the connector must be deployed in Kubernetes, and the connector must have the system:auth-delegator ClusterRole binding."
                   label="Review Mode"
                 >
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectItem value="gateway">Gateway as Reviewer</SelectItem>
+                    <SelectItem value="connector">Connector as Reviewer</SelectItem>
                     <SelectItem value="api">Manual Token Reviewer JWT (API)</SelectItem>
                   </Select>
                 </FormControl>
