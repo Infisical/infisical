@@ -49,7 +49,7 @@ export const NotificationDropdown = () => {
         className="mt-3 flex h-[550px] w-[400px] overflow-hidden rounded-lg"
       >
         <div className="flex w-full flex-col">
-          <div className="flex items-center justify-between border-b border-mineshaft-500 px-4 py-2">
+          <div className="flex items-center justify-between border-b border-mineshaft-500 px-3 py-2">
             <span className="font-semibold text-white">Notifications</span>
             <button
               type="button"
