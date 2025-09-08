@@ -1,12 +1,10 @@
-import { useOrganization } from "@app/context";
-import { useFetchServerStatus, useGetAuditLogStreams } from "@app/hooks/api";
+import { useFetchServerStatus, useListAuditLogStreams } from "@app/hooks/api";
 
 import { OrgAlertBanner } from "../OrgAlertBanner";
 
 export const AuditLogBanner = () => {
-  const org = useOrganization();
   const { data: status, isLoading: isLoadingStatus } = useFetchServerStatus();
-  const { data: streams, isLoading: isLoadingStreams } = useGetAuditLogStreams(org.currentOrg.id);
+  const { data: streams, isLoading: isLoadingStreams } = useListAuditLogStreams();
 
   if (isLoadingStreams || isLoadingStatus || !streams) return null;
 

@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -99,6 +99,11 @@ export const SecretListView = ({
     }
   });
   const { addPendingChange } = useBatchModeActions();
+
+  const pendingChangesRef = useRef(pendingChanges);
+  useEffect(() => {
+    pendingChangesRef.current = pendingChanges;
+  }, [pendingChanges]);
 
   const handleSecretOperation = async (
     operation: "create" | "update" | "delete",
@@ -337,7 +342,10 @@ export const SecretListView = ({
                 secretPath
               });
             } else {
-              const trueOriginalSecret = getTrueOriginalSecret(orgSecret, pendingChanges.secrets);
+              const trueOriginalSecret = getTrueOriginalSecret(
+                orgSecret,
+                pendingChangesRef.current.secrets
+              );
 
               const updateChange: PendingSecretUpdate = {
                 id: orgSecret.id,
@@ -442,15 +450,7 @@ export const SecretListView = ({
         });
       }
     },
-    [
-      environment,
-      secretPath,
-      isProtectedBranch,
-      isBatchMode,
-      workspaceId,
-      addPendingChange,
-      pendingChanges.secrets
-    ]
+    [environment, secretPath, isProtectedBranch, isBatchMode, workspaceId, addPendingChange]
   );
 
   const handleSecretDelete = useCallback(async () => {
@@ -535,6 +535,13 @@ export const SecretListView = ({
     (sec: SecretV3RawSanitized) => handlePopUpOpen("secretDetail", sec),
     []
   );
+  const onShareSecret = useCallback(
+    (sec: SecretV3RawSanitized) =>
+      handlePopUpOpen("createSharedSecret", {
+        value: sec.valueOverride ?? sec.value
+      }),
+    []
+  );
 
   return (
     <>
@@ -557,11 +564,7 @@ export const SecretListView = ({
           onDetailViewSecret={onDetailViewSecret}
           importedBy={importedBy}
           onCreateTag={onCreateTag}
-          handleSecretShare={() =>
-            handlePopUpOpen("createSharedSecret", {
-              value: secret.valueOverride ?? secret.value
-            })
-          }
+          onShareSecret={onShareSecret}
           isPending={secret.isPending}
           pendingAction={secret.pendingAction}
         />

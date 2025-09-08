@@ -30,7 +30,7 @@ const generateUsername = (usernameTemplate?: string | null, identity?: { name: s
 export const CassandraProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretCassandraSchema.parseAsync(inputs);
-    const hostIps = await Promise.all(
+    await Promise.all(
       providerInputs.host
         .split(",")
         .filter(Boolean)
@@ -48,10 +48,10 @@ export const CassandraProvider = (): TDynamicProviderFns => {
       allowedExpressions: (val) => ["username"].includes(val)
     });
 
-    return { ...providerInputs, hostIps };
+    return { ...providerInputs };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretCassandraSchema> & { hostIps: string[] }) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretCassandraSchema>) => {
     const sslOptions = providerInputs.ca ? { rejectUnauthorized: false, ca: providerInputs.ca } : undefined;
     const client = new cassandra.Client({
       sslOptions,
@@ -64,7 +64,7 @@ export const CassandraProvider = (): TDynamicProviderFns => {
       },
       keyspace: providerInputs.keyspace,
       localDataCenter: providerInputs?.localDataCenter,
-      contactPoints: providerInputs.hostIps
+      contactPoints: providerInputs.host.split(",")
     });
     return client;
   };

@@ -298,6 +298,8 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { invalidateCacheQueueFactory } from "@app/services/super-admin/invalidate-cache-queue";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
+import { offlineUsageReportDALFactory } from "@app/services/offline-usage-report/offline-usage-report-dal";
+import { offlineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { telemetryDALFactory } from "@app/services/telemetry/telemetry-dal";
 import { telemetryQueueServiceFactory } from "@app/services/telemetry/telemetry-queue";
 import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -317,6 +319,7 @@ import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
+import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
 import { registerV1Routes } from "./v1";
 import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
@@ -392,6 +395,7 @@ export const registerRoutes = async (
   const reminderRecipientDAL = reminderRecipientDALFactory(db);
 
   const integrationDAL = integrationDALFactory(db);
+  const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
   const integrationAuthDAL = integrationAuthDALFactory(db);
   const webhookDAL = webhookDALFactory(db);
   const serviceTokenDAL = serviceTokenDALFactory(db);
@@ -562,20 +566,22 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const auditLogStreamService = auditLogStreamServiceFactory({
+    licenseService,
+    permissionService,
+    auditLogStreamDAL,
+    kmsService
+  });
+
   const auditLogQueue = await auditLogQueueServiceFactory({
     auditLogDAL,
     queueService,
     projectDAL,
     licenseService,
-    auditLogStreamDAL
+    auditLogStreamService
   });
 
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
-  const auditLogStreamService = auditLogStreamServiceFactory({
-    licenseService,
-    permissionService,
-    auditLogStreamDAL
-  });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
@@ -849,7 +855,14 @@ export const registerRoutes = async (
     licenseService,
     kmsService,
     microsoftTeamsService,
-    invalidateCacheQueue
+    invalidateCacheQueue,
+    smtpService,
+    tokenService
+  });
+
+  const offlineUsageReportService = offlineUsageReportServiceFactory({
+    offlineUsageReportDAL,
+    licenseService
   });
 
   const orgAdminService = orgAdminServiceFactory({
@@ -2044,6 +2057,7 @@ export const registerRoutes = async (
     apiKey: apiKeyService,
     authToken: tokenService,
     superAdmin: superAdminService,
+    offlineUsageReport: offlineUsageReportService,
     project: projectService,
     projectMembership: projectMembershipService,
     projectKey: projectKeyService,
@@ -2178,8 +2192,14 @@ export const registerRoutes = async (
     user: userDAL,
     kmipClient: kmipClientDAL
   });
+  const shouldForwardWritesToPrimaryInstance = Boolean(envConfig.INFISICAL_PRIMARY_INSTANCE_URL);
+  if (shouldForwardWritesToPrimaryInstance) {
+    logger.info(`Infisical primary instance is configured: ${envConfig.INFISICAL_PRIMARY_INSTANCE_URL}`);
 
-  await server.register(injectIdentity, { userDAL, serviceTokenDAL });
+    await server.register(forwardWritesToPrimary, { primaryUrl: envConfig.INFISICAL_PRIMARY_INSTANCE_URL as string });
+  }
+
+  await server.register(injectIdentity, { shouldForwardWritesToPrimaryInstance });
   await server.register(injectAssumePrivilege);
   await server.register(injectPermission);
   await server.register(injectRateLimits);

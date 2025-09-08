@@ -156,8 +156,10 @@ export const SqlDatabaseProvider = ({
     return { ...providerInputs, hostIp };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>) => {
-    const ssl = providerInputs.ca ? { rejectUnauthorized: false, ca: providerInputs.ca } : undefined;
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSqlDBSchema> & { hostIp: string }) => {
+    const ssl = providerInputs.ca
+      ? { rejectUnauthorized: false, ca: providerInputs.ca, servername: providerInputs.host }
+      : undefined;
     const isMsSQLClient = providerInputs.client === SqlProviders.MsSQL;
 
     const db = knex({
@@ -165,7 +167,7 @@ export const SqlDatabaseProvider = ({
       connection: {
         database: providerInputs.database,
         port: providerInputs.port,
-        host: providerInputs.host,
+        host: providerInputs.client === SqlProviders.Postgres ? providerInputs.hostIp : providerInputs.host,
         user: providerInputs.username,
         password: providerInputs.password,
         ssl,
@@ -235,8 +237,8 @@ export const SqlDatabaseProvider = ({
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
     let isConnected = false;
-    const gatewayCallback = async (host = providerInputs.hostIp, port = providerInputs.port) => {
-      const db = await $getClient({ ...providerInputs, port, host });
+    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+      const db = await $getClient({ ...providerInputs, port, host, hostIp: providerInputs.hostIp });
       // oracle needs from keyword
       const testStatement = providerInputs.client === SqlProviders.Oracle ? "SELECT 1 FROM DUAL" : "SELECT 1";
 

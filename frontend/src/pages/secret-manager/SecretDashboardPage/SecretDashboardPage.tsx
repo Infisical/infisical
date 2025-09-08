@@ -29,6 +29,7 @@ import {
   useWorkspace
 } from "@app/context";
 import {
+  ProjectPermissionCommitsActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
@@ -106,7 +107,7 @@ const Page = () => {
   });
 
   const { permission } = useProjectPermission();
-  const { mutateAsync: createCommit } = useCreateCommit();
+  const { mutateAsync: createCommit, isPending: isCommitPending } = useCreateCommit();
 
   const tableRef = useRef<HTMLTableElement>(null);
 
@@ -211,6 +212,11 @@ const Page = () => {
   const canDoReadRollback = permission.can(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.SecretRollback
+  );
+
+  const canReadCommits = permission.can(
+    ProjectPermissionCommitsActions.Read,
+    ProjectPermissionSub.Commits
   );
 
   const defaultFilterState = {
@@ -377,7 +383,7 @@ const Page = () => {
     directory: secretPath,
     workspaceId,
     environment,
-    isPaused: !canDoReadRollback
+    isPaused: !canReadCommits
   });
 
   const {
@@ -997,7 +1003,7 @@ const Page = () => {
                   environment={environment}
                   workspaceId={workspaceId}
                   secretPath={secretPath}
-                  isCommitting={false}
+                  isCommitting={isCommitPending}
                 />
               )}
               {noAccessSecretCount > 0 && <SecretNoAccessListView count={noAccessSecretCount} />}
