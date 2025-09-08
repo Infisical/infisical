@@ -94,6 +94,8 @@ export const OrgLDAPSection = (): JSX.Element => {
     handlePopUpOpen("ldapGroupMap");
   };
 
+  const isGoogleOAuthEnabled = currentOrg.googleSsoAuthEnforced;
+
   return (
     <div className="mb-4">
       <div className="py-4">
@@ -116,16 +118,31 @@ export const OrgLDAPSection = (): JSX.Element => {
         <div className="pt-4">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-md text-mineshaft-100">Enable LDAP</h2>
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Ldap}>
+            <OrgPermissionCan
+              I={OrgPermissionActions.Edit}
+              a={OrgPermissionSubjects.Ldap}
+              tooltipProps={{
+                className: "max-w-sm",
+                side: "left"
+              }}
+              allowedLabel={
+                isGoogleOAuthEnabled
+                  ? "You cannot enable LDAP SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable LDAP SSO."
+                  : undefined
+              }
+              renderTooltip={isGoogleOAuthEnabled}
+            >
               {(isAllowed) => (
-                <Switch
-                  id="enable-saml-sso"
-                  onCheckedChange={(value) => handleLDAPToggle(value)}
-                  isChecked={data ? data.isActive : false}
-                  isDisabled={!isAllowed}
-                >
-                  Enable
-                </Switch>
+                <div>
+                  <Switch
+                    id="enable-saml-sso"
+                    onCheckedChange={(value) => handleLDAPToggle(value)}
+                    isChecked={data ? data.isActive : false}
+                    isDisabled={!isAllowed || isGoogleOAuthEnabled}
+                  >
+                    Enable
+                  </Switch>
+                </div>
               )}
             </OrgPermissionCan>
           </div>

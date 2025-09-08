@@ -807,6 +807,7 @@ export const registerRoutes = async (
     groupDAL,
     orgBotDAL,
     oidcConfigDAL,
+    ldapConfigDAL,
     loginService,
     projectBotService,
     reminderService

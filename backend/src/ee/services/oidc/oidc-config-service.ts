@@ -499,6 +499,13 @@ export const oidcConfigServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
 
+    if (org.googleSsoAuthEnforced && isActive) {
+      throw new BadRequestError({
+        message:
+          "You cannot enable OIDC SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable OIDC SSO."
+      });
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: org.id
@@ -585,6 +592,13 @@ export const oidcConfigServiceFactory = ({
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
+
+    if (org.googleSsoAuthEnforced && isActive) {
+      throw new BadRequestError({
+        message:
+          "You cannot enable OIDC SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable OIDC SSO."
+      });
+    }
 
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,

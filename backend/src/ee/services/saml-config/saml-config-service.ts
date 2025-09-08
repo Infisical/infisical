@@ -82,6 +82,19 @@ export const samlConfigServiceFactory = ({
           "Failed to create SAML SSO configuration due to plan restriction. Upgrade plan to create SSO configuration."
       });
 
+    const org = await orgDAL.findOrgById(orgId);
+
+    if (!org) {
+      throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
+    }
+
+    if (org.googleSsoAuthEnforced && isActive) {
+      throw new BadRequestError({
+        message:
+          "You cannot enable SAML SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable SAML SSO."
+      });
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
@@ -119,6 +132,19 @@ export const samlConfigServiceFactory = ({
         message:
           "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
       });
+
+    const org = await orgDAL.findOrgById(orgId);
+
+    if (!org) {
+      throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
+    }
+
+    if (org.googleSsoAuthEnforced && isActive) {
+      throw new BadRequestError({
+        message:
+          "Cannot enable SAML SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable SAML SSO."
+      });
+    }
 
     const updateQuery: TSamlConfigsUpdate = { authProvider, isActive, lastUsed: null };
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
