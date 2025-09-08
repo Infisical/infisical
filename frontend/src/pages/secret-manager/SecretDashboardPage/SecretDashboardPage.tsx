@@ -29,6 +29,7 @@ import {
   useWorkspace
 } from "@app/context";
 import {
+  ProjectPermissionCommitsActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
@@ -213,6 +214,11 @@ const Page = () => {
     ProjectPermissionSub.SecretRollback
   );
 
+  const canReadCommits = permission.can(
+    ProjectPermissionCommitsActions.Read,
+    ProjectPermissionSub.Commits
+  );
+
   const defaultFilterState = {
     tags: {},
     searchFilter: (routerQueryParams.search as string) || "",
@@ -377,7 +383,7 @@ const Page = () => {
     directory: secretPath,
     workspaceId,
     environment,
-    isPaused: !canDoReadRollback
+    isPaused: !canReadCommits
   });
 
   const {
