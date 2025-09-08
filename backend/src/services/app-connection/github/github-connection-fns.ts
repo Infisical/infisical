@@ -105,9 +105,9 @@ export const requestWithGitHubGateway = async <T>(
       },
       {
         protocol: GatewayProxyProtocol.Tcp,
-        proxyIp: gatewayConnectionDetails.proxyIp,
+        relayIp: gatewayConnectionDetails.relayIp,
         gateway: gatewayConnectionDetails.gateway,
-        proxy: gatewayConnectionDetails.proxy
+        relay: gatewayConnectionDetails.relay
       }
     );
   }

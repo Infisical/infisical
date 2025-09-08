@@ -182,9 +182,9 @@ import {
   TIncidentContacts,
   TIncidentContactsInsert,
   TIncidentContactsUpdate,
-  TInstanceProxyConfig,
-  TInstanceProxyConfigInsert,
-  TInstanceProxyConfigUpdate,
+  TInstanceRelayConfig,
+  TInstanceRelayConfigInsert,
+  TInstanceRelayConfigUpdate,
   TIntegrationAuths,
   TIntegrationAuthsInsert,
   TIntegrationAuthsUpdate,
@@ -242,9 +242,9 @@ import {
   TOrgMemberships,
   TOrgMembershipsInsert,
   TOrgMembershipsUpdate,
-  TOrgProxyConfig,
-  TOrgProxyConfigInsert,
-  TOrgProxyConfigUpdate,
+  TOrgRelayConfig,
+  TOrgRelayConfigInsert,
+  TOrgRelayConfigUpdate,
   TOrgRoles,
   TOrgRolesInsert,
   TOrgRolesUpdate,
@@ -299,12 +299,12 @@ import {
   TProjectUserMembershipRoles,
   TProjectUserMembershipRolesInsert,
   TProjectUserMembershipRolesUpdate,
-  TProxies,
-  TProxiesInsert,
-  TProxiesUpdate,
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
+  TRelays,
+  TRelaysInsert,
+  TRelaysUpdate,
   TResourceMetadata,
   TResourceMetadataInsert,
   TResourceMetadataUpdate,
@@ -1269,22 +1269,22 @@ declare module "knex/types/tables" {
       TRemindersRecipientsInsert,
       TRemindersRecipientsUpdate
     >;
-    [TableName.InstanceProxyConfig]: KnexOriginal.CompositeTableType<
-      TInstanceProxyConfig,
-      TInstanceProxyConfigInsert,
-      TInstanceProxyConfigUpdate
-    >;
-    [TableName.OrgProxyConfig]: KnexOriginal.CompositeTableType<
-      TOrgProxyConfig,
-      TOrgProxyConfigInsert,
-      TOrgProxyConfigUpdate
-    >;
     [TableName.OrgGatewayConfigV2]: KnexOriginal.CompositeTableType<
       TOrgGatewayConfigV2,
       TOrgGatewayConfigV2Insert,
       TOrgGatewayConfigV2Update
     >;
-    [TableName.Proxy]: KnexOriginal.CompositeTableType<TProxies, TProxiesInsert, TProxiesUpdate>;
     [TableName.GatewayV2]: KnexOriginal.CompositeTableType<TGatewaysV2, TGatewaysV2Insert, TGatewaysV2Update>;
+    [TableName.InstanceRelayConfig]: KnexOriginal.CompositeTableType<
+      TInstanceRelayConfig,
+      TInstanceRelayConfigInsert,
+      TInstanceRelayConfigUpdate
+    >;
+    [TableName.OrgRelayConfig]: KnexOriginal.CompositeTableType<
+      TOrgRelayConfig,
+      TOrgRelayConfigInsert,
+      TOrgRelayConfigUpdate
+    >;
+    [TableName.Relay]: KnexOriginal.CompositeTableType<TRelays, TRelaysInsert, TRelaysUpdate>;
   }
 }

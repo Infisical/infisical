@@ -73,12 +73,12 @@ import { projectTemplateDALFactory } from "@app/ee/services/project-template/pro
 import { projectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { projectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { projectUserAdditionalPrivilegeServiceFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-service";
-import { instanceProxyConfigDalFactory } from "@app/ee/services/proxy/instance-proxy-config-dal";
-import { orgProxyConfigDalFactory } from "@app/ee/services/proxy/org-proxy-config-dal";
-import { proxyDalFactory } from "@app/ee/services/proxy/proxy-dal";
-import { proxyServiceFactory } from "@app/ee/services/proxy/proxy-service";
 import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
 import { rateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
+import { instanceRelayConfigDalFactory } from "@app/ee/services/relay/instance-relay-config-dal";
+import { orgRelayConfigDalFactory } from "@app/ee/services/relay/org-relay-config-dal";
+import { relayDalFactory } from "@app/ee/services/relay/relay-dal";
+import { relayServiceFactory } from "@app/ee/services/relay/relay-service";
 import { samlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { samlConfigServiceFactory } from "@app/ee/services/saml-config/saml-config-service";
 import { scimDALFactory } from "@app/ee/services/scim/scim-dal";
@@ -948,9 +948,9 @@ export const registerRoutes = async (
   const pkiSubscriberDAL = pkiSubscriberDALFactory(db);
   const pkiTemplatesDAL = pkiTemplatesDALFactory(db);
 
-  const instanceProxyConfigDAL = instanceProxyConfigDalFactory(db);
-  const orgProxyConfigDAL = orgProxyConfigDalFactory(db);
-  const proxyDAL = proxyDalFactory(db);
+  const instanceRelayConfigDAL = instanceRelayConfigDalFactory(db);
+  const orgRelayConfigDAL = orgRelayConfigDalFactory(db);
+  const relayDAL = relayDalFactory(db);
   const gatewayV2DAL = gatewayV2DalFactory(db);
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
@@ -1073,20 +1073,20 @@ export const registerRoutes = async (
     keyStore
   });
 
-  const proxyService = proxyServiceFactory({
-    instanceProxyConfigDAL,
-    orgProxyConfigDAL,
-    proxyDAL,
+  const relayService = relayServiceFactory({
+    instanceRelayConfigDAL,
+    orgRelayConfigDAL,
+    relayDAL,
     kmsService
   });
 
   const gatewayV2Service = gatewayV2ServiceFactory({
     kmsService,
     licenseService,
-    proxyService,
+    relayService,
     orgGatewayConfigV2DAL,
     gatewayV2DAL,
-    proxyDAL,
+    relayDAL,
     permissionService
   });
 
@@ -2138,7 +2138,7 @@ export const registerRoutes = async (
     reminder: reminderService,
     bus: eventBusService,
     sse: sseService,
-    proxy: proxyService,
+    relay: relayService,
     gatewayV2: gatewayV2Service
   });
 

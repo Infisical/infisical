@@ -201,9 +201,9 @@ export const SqlDatabaseProvider = ({
           await gatewayCallback("localhost", port);
         },
         {
-          proxyIp: gatewayV2ConnectionDetails.proxyIp,
+          relayIp: gatewayV2ConnectionDetails.relayIp,
           gateway: gatewayV2ConnectionDetails.gateway,
-          proxy: gatewayV2ConnectionDetails.proxy,
+          relay: gatewayV2ConnectionDetails.relay,
           protocol: GatewayProxyProtocol.Tcp
         }
       );

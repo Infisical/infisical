@@ -3,7 +3,7 @@ import net from "node:net";
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { TProxies } from "@app/db/schemas";
+import { TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -24,9 +24,9 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { TProxyDALFactory } from "../proxy/proxy-dal";
-import { isInstanceProxy } from "../proxy/proxy-fns";
-import { TProxyServiceFactory } from "../proxy/proxy-service";
+import { TRelayDALFactory } from "../relay/relay-dal";
+import { isInstanceRelay } from "../relay/relay-fns";
+import { TRelayServiceFactory } from "../relay/relay-service";
 import { GATEWAY_ACTOR_OID, GATEWAY_ROUTING_INFO_OID } from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
 import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
@@ -35,9 +35,9 @@ type TGatewayV2ServiceFactoryDep = {
   orgGatewayConfigV2DAL: Pick<TOrgGatewayConfigV2DALFactory, "findOne" | "create" | "transaction" | "findById">;
   licenseService: Pick<TLicenseServiceFactory, "onPremFeatures" | "getPlan">;
   kmsService: TKmsServiceFactory;
-  proxyService: TProxyServiceFactory;
+  relayService: TRelayServiceFactory;
   gatewayV2DAL: TGatewayV2DALFactory;
-  proxyDAL: TProxyDALFactory;
+  relayDAL: TRelayDALFactory;
   permissionService: TPermissionServiceFactory;
 };
 
@@ -47,9 +47,9 @@ export const gatewayV2ServiceFactory = ({
   orgGatewayConfigV2DAL,
   licenseService,
   kmsService,
-  proxyService,
+  relayService,
   gatewayV2DAL,
-  proxyDAL,
+  relayDAL,
   permissionService
 }: TGatewayV2ServiceFactoryDep) => {
   const $validateIdentityAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
@@ -285,9 +285,9 @@ export const gatewayV2ServiceFactory = ({
       throw new NotFoundError({ message: `Gateway Config for org ${gateway.orgId} not found.` });
     }
 
-    if (!gateway.proxyId) {
+    if (!gateway.relayId) {
       throw new BadRequestError({
-        message: "Gateway is not associated with a proxy"
+        message: "Gateway is not associated with a relay"
       });
     }
 
@@ -392,23 +392,23 @@ export const gatewayV2ServiceFactory = ({
 
     const gatewayClientCertPrivateKey = crypto.nativeCrypto.KeyObject.from(clientKeys.privateKey);
 
-    const proxyCredentials = await proxyService.getCredentialsForClient({
-      proxyId: gateway.proxyId,
+    const relayCredentials = await relayService.getCredentialsForClient({
+      relayId: gateway.relayId,
       orgId: gateway.orgId,
       gatewayId
     });
 
     return {
-      proxyIp: proxyCredentials.proxyIp,
+      relayIp: relayCredentials.relayIp,
       gateway: {
         clientCertificate: clientCert.toString("pem"),
         clientPrivateKey: gatewayClientCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
         serverCertificateChain: constructPemChainFromCerts([gatewayServerCaCert, rootGatewayCaCert])
       },
-      proxy: {
-        clientCertificate: proxyCredentials.clientCertificate,
-        clientPrivateKey: proxyCredentials.clientPrivateKey,
-        serverCertificateChain: proxyCredentials.serverCertificateChain
+      relay: {
+        clientCertificate: relayCredentials.clientCertificate,
+        clientPrivateKey: relayCredentials.clientPrivateKey,
+        serverCertificateChain: relayCredentials.serverCertificateChain
       }
     };
   };
@@ -417,27 +417,27 @@ export const gatewayV2ServiceFactory = ({
     orgId,
     actorId,
     actorAuthMethod,
-    proxyName,
+    relayName,
     name
   }: {
     orgId: string;
     actorId: string;
     actorAuthMethod: ActorAuthMethod;
-    proxyName: string;
+    relayName: string;
     name: string;
   }) => {
     await $validateIdentityAccessToGateway(orgId, actorId, actorAuthMethod);
     const orgCAs = await $getOrgCAs(orgId);
 
-    let proxy: TProxies;
-    if (isInstanceProxy(proxyName)) {
-      proxy = await proxyDAL.findOne({ name: proxyName });
+    let relay: TRelays;
+    if (isInstanceRelay(relayName)) {
+      relay = await relayDAL.findOne({ name: relayName });
     } else {
-      proxy = await proxyDAL.findOne({ orgId, name: proxyName });
+      relay = await relayDAL.findOne({ orgId, name: relayName });
     }
 
-    if (!proxy) {
-      throw new NotFoundError({ message: `Proxy ${proxyName} not found` });
+    if (!relay) {
+      throw new NotFoundError({ message: `Relay ${relayName} not found` });
     }
 
     try {
@@ -447,7 +447,7 @@ export const gatewayV2ServiceFactory = ({
             orgId,
             name,
             identityId: actorId,
-            proxyId: proxy.id
+            relayId: relay.id
           }
         ],
         ["identityId"]
@@ -507,24 +507,24 @@ export const gatewayV2ServiceFactory = ({
         extensions: gatewayServerCertExtensions
       });
 
-      const proxyCredentials = await proxyService.getCredentialsForGateway({
-        proxyName,
+      const relayCredentials = await relayService.getCredentialsForGateway({
+        relayName,
         orgId,
         gatewayId: gateway.id
       });
 
       return {
         gatewayId: gateway.id,
-        proxyIp: proxyCredentials.proxyIp,
+        relayIp: relayCredentials.relayIp,
         pki: {
           serverCertificate: gatewayServerCertificate.toString("pem"),
           serverPrivateKey: gatewayServerCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
           clientCertificateChain: constructPemChainFromCerts([gatewayClientCaCert, rootGatewayCaCert])
         },
         ssh: {
-          clientCertificate: proxyCredentials.clientSshCert,
-          clientPrivateKey: proxyCredentials.clientSshPrivateKey,
-          serverCAPublicKey: proxyCredentials.serverCAPublicKey
+          clientCertificate: relayCredentials.clientSshCert,
+          clientPrivateKey: relayCredentials.clientSshPrivateKey,
+          serverCAPublicKey: relayCredentials.serverCAPublicKey
         }
       };
     } catch (err) {
@@ -613,9 +613,9 @@ export const gatewayV2ServiceFactory = ({
       },
       {
         protocol: GatewayProxyProtocol.Ping,
-        proxyIp: gatewayV2ConnectionDetails.proxyIp,
+        relayIp: gatewayV2ConnectionDetails.relayIp,
         gateway: gatewayV2ConnectionDetails.gateway,
-        proxy: gatewayV2ConnectionDetails.proxy
+        relay: gatewayV2ConnectionDetails.relay
       }
     );
 

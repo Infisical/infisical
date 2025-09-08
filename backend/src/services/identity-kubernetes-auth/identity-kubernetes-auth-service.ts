@@ -114,9 +114,9 @@ export const identityKubernetesAuthServiceFactory = ({
         },
         {
           protocol: inputs.reviewTokenThroughGateway ? GatewayProxyProtocol.Http : GatewayProxyProtocol.Tcp,
-          proxyIp: gatewayV2ConnectionDetails.proxyIp,
+          relayIp: gatewayV2ConnectionDetails.relayIp,
           gateway: gatewayV2ConnectionDetails.gateway,
-          proxy: gatewayV2ConnectionDetails.proxy,
+          relay: gatewayV2ConnectionDetails.relay,
           httpsAgent
         }
       );

@@ -13,7 +13,7 @@ export const GatewaysV2Schema = z.object({
   updatedAt: z.date(),
   orgId: z.string().uuid(),
   identityId: z.string().uuid(),
-  proxyId: z.string().uuid().nullable().optional(),
+  relayId: z.string().uuid().nullable().optional(),
   name: z.string(),
   heartbeat: z.date().nullable().optional()
 });

@@ -181,10 +181,10 @@ export enum TableName {
   ReminderRecipient = "reminders_recipients",
 
   // gateway v2
-  InstanceProxyConfig = "instance_proxy_config",
-  OrgProxyConfig = "org_proxy_config",
+  InstanceRelayConfig = "instance_relay_config",
+  OrgRelayConfig = "org_relay_config",
   OrgGatewayConfigV2 = "org_gateway_config_v2",
-  Proxy = "proxies",
+  Relay = "relays",
   GatewayV2 = "gateways_v2"
 }
 

@@ -122,7 +122,7 @@ export const injectIdentity = fp(async (server: FastifyZodProvider) => {
     }
 
     // Authentication is handled on a route-level
-    if (req.url === "/api/v1/proxies/register-instance-proxy") {
+    if (req.url === "/api/v1/proxies/register-instance-relay") {
       return;
     }
 

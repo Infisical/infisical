@@ -11,26 +11,26 @@ import { BadRequestError } from "../errors";
 import { GatewayProxyProtocol } from "../gateway/types";
 import { logger } from "../logger";
 
-interface IGatewayProxyServer {
+interface IGatewayRelayServer {
   server: net.Server;
   port: number;
   cleanup: () => Promise<void>;
-  getProxyError: () => string;
+  getRelayError: () => string;
 }
 
-const createProxyConnection = async ({
-  proxyIp,
+const createRelayConnection = async ({
+  relayIp,
   clientCertificate,
   clientPrivateKey,
   serverCertificateChain
 }: {
-  proxyIp: string;
+  relayIp: string;
   clientCertificate: string;
   clientPrivateKey: string;
   serverCertificateChain: string;
 }): Promise<net.Socket> => {
-  const [targetHost] = await verifyHostInputValidity(proxyIp);
-  const [, portStr] = proxyIp.split(":");
+  const [targetHost] = await verifyHostInputValidity(relayIp);
+  const [, portStr] = relayIp.split(":");
   const port = parseInt(portStr, 10) || 8443;
 
   const serverCAs = splitPemChain(serverCertificateChain);
@@ -47,7 +47,7 @@ const createProxyConnection = async ({
   return new Promise((resolve, reject) => {
     try {
       const socket = tls.connect(tlsOptions, () => {
-        logger.info("Proxy TLS connection established successfully");
+        logger.info("Relay TLS connection established successfully");
         resolve(socket);
       });
 
@@ -75,11 +75,11 @@ const createProxyConnection = async ({
 };
 
 const createGatewayConnection = async (
-  proxyConn: net.Socket,
+  relayConn: net.Socket,
   gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string }
 ): Promise<net.Socket> => {
   const tlsOptions: tls.ConnectionOptions = {
-    socket: proxyConn,
+    socket: relayConn,
     cert: gateway.clientCertificate,
     key: gateway.clientPrivateKey,
     ca: splitPemChain(gateway.serverCertificateChain),
@@ -119,20 +119,20 @@ const createGatewayConnection = async (
   });
 };
 
-const setupProxyServer = async ({
+const setupRelayServer = async ({
   protocol,
-  proxyIp,
+  relayIp,
   gateway,
-  proxy,
+  relay,
   httpsAgent
 }: {
   protocol: GatewayProxyProtocol;
-  proxyIp: string;
+  relayIp: string;
   gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
-  proxy: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
+  relay: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
   httpsAgent?: https.Agent;
-}): Promise<IGatewayProxyServer> => {
-  const proxyErrorMsg: string[] = [];
+}): Promise<IGatewayRelayServer> => {
+  const relayErrorMsg: string[] = [];
 
   return new Promise((resolve, reject) => {
     const server = net.createServer();
@@ -143,16 +143,16 @@ const setupProxyServer = async ({
           clientConn.setKeepAlive(true, 30000);
           clientConn.setNoDelay(true);
 
-          // Stage 1: Connect to proxy relay with TLS
-          const proxyConn = await createProxyConnection({
-            proxyIp,
-            clientCertificate: proxy.clientCertificate,
-            clientPrivateKey: proxy.clientPrivateKey,
-            serverCertificateChain: proxy.serverCertificateChain
+          // Stage 1: Connect to relay with TLS
+          const relayConn = await createRelayConnection({
+            relayIp,
+            clientCertificate: relay.clientCertificate,
+            clientPrivateKey: relay.clientPrivateKey,
+            serverCertificateChain: relay.serverCertificateChain
           });
 
-          // Stage 2: Establish mTLS connection to gateway through the proxy
-          const gatewayConn = await createGatewayConnection(proxyConn, gateway);
+          // Stage 2: Establish mTLS connection to gateway through the relay
+          const gatewayConn = await createGatewayConnection(relayConn, gateway);
 
           let command = "";
 
@@ -191,22 +191,22 @@ const setupProxyServer = async ({
 
           // Handle connection closure
           clientConn.on("close", () => {
-            proxyConn.destroy();
+            relayConn.destroy();
             gatewayConn.destroy();
           });
 
-          proxyConn.on("close", () => {
+          relayConn.on("close", () => {
             clientConn.destroy();
             gatewayConn.destroy();
           });
 
           gatewayConn.on("close", () => {
             clientConn.destroy();
-            proxyConn.destroy();
+            relayConn.destroy();
           });
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
-          proxyErrorMsg.push(errorMsg);
+          relayErrorMsg.push(errorMsg);
           clientConn.destroy();
         }
       })();
@@ -234,7 +234,7 @@ const setupProxyServer = async ({
             logger.debug("Error closing server:", err instanceof Error ? err.message : String(err));
           }
         },
-        getProxyError: () => proxyErrorMsg.join(",")
+        getRelayError: () => relayErrorMsg.join(",")
       });
     });
   });
@@ -244,19 +244,19 @@ export const withGatewayV2Proxy = async <T>(
   callback: (port: number) => Promise<T>,
   options: {
     protocol: GatewayProxyProtocol;
-    proxyIp: string;
+    relayIp: string;
     gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
-    proxy: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
+    relay: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
     httpsAgent?: https.Agent;
   }
 ): Promise<T> => {
-  const { protocol, proxyIp, gateway, proxy, httpsAgent } = options;
+  const { protocol, relayIp, gateway, relay, httpsAgent } = options;
 
-  const { port, cleanup, getProxyError } = await setupProxyServer({
+  const { port, cleanup, getRelayError } = await setupRelayServer({
     protocol,
-    proxyIp,
+    relayIp,
     gateway,
-    proxy,
+    relay,
     httpsAgent
   });
 
@@ -264,12 +264,12 @@ export const withGatewayV2Proxy = async <T>(
     // Execute the callback with the allocated port
     return await callback(port);
   } catch (err) {
-    const proxyErrorMessage = getProxyError();
-    if (proxyErrorMessage) {
-      logger.error("Proxy error:", proxyErrorMessage);
+    const relayErrorMessage = getRelayError();
+    if (relayErrorMessage) {
+      logger.error("Relay error:", relayErrorMessage);
     }
     logger.error("Gateway error:", err instanceof Error ? err.message : String(err));
-    let errorMessage = proxyErrorMessage || (err instanceof Error ? err.message : String(err));
+    let errorMessage = relayErrorMessage || (err instanceof Error ? err.message : String(err));
     if (axios.isAxiosError(err) && (err.response?.data as { message?: string })?.message) {
       errorMessage = (err.response?.data as { message: string }).message;
     }
