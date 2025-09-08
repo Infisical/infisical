@@ -14,7 +14,7 @@ export const RelaysSchema = z.object({
   orgId: z.string().uuid().nullable().optional(),
   identityId: z.string().uuid().nullable().optional(),
   name: z.string(),
-  ip: z.string()
+  host: z.string()
 });
 
 export type TRelays = z.infer<typeof RelaysSchema>;

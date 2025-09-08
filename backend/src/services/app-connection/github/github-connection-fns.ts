@@ -105,7 +105,7 @@ export const requestWithGitHubGateway = async <T>(
       },
       {
         protocol: GatewayProxyProtocol.Tcp,
-        relayIp: gatewayConnectionDetails.relayIp,
+        relayHost: gatewayConnectionDetails.relayHost,
         gateway: gatewayConnectionDetails.gateway,
         relay: gatewayConnectionDetails.relay
       }

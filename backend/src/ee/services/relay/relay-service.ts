@@ -19,7 +19,6 @@ import { SshCertKeyAlgorithm } from "../ssh-certificate/ssh-certificate-types";
 import { TInstanceRelayConfigDALFactory } from "./instance-relay-config-dal";
 import { TOrgRelayConfigDALFactory } from "./org-relay-config-dal";
 import { TRelayDALFactory } from "./relay-dal";
-import { isInstanceRelay } from "./relay-fns";
 
 export type TRelayServiceFactory = ReturnType<typeof relayServiceFactory>;
 
@@ -588,7 +587,7 @@ export const relayServiceFactory = ({
   };
 
   const $generateRelayServerCredentials = async ({
-    ip,
+    host,
     orgId,
     relayPkiServerCaCertificate,
     relayPkiServerCaPrivateKey,
@@ -597,7 +596,7 @@ export const relayServiceFactory = ({
     relaySshClientCaPublicKey,
     relaySshServerCaPrivateKey
   }: {
-    ip: string;
+    host: string;
     relayPkiServerCaCertificate: Buffer;
     relayPkiServerCaPrivateKey: Buffer;
     relayPkiClientCaCertificateChain: Buffer;
@@ -640,13 +639,13 @@ export const relayServiceFactory = ({
       ),
       new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.SERVER_AUTH]], true),
       // san
-      new x509.SubjectAlternativeNameExtension([{ type: "ip", value: ip }], false)
+      new x509.SubjectAlternativeNameExtension([{ type: "ip", value: host }], false)
     ];
 
     const relayServerSerialNumber = createSerialNumber();
     const relayServerCertificate = await x509.X509CertificateGenerator.create({
       serialNumber: relayServerSerialNumber,
-      subject: `CN=${ip},O=${orgId ?? "Infisical"},OU=Relay`,
+      subject: `CN=${host},O=${orgId ?? "Infisical"},OU=Relay`,
       issuer: relayServerCaCert.subject,
       notBefore: relayServerCertIssuedAt,
       notAfter: relayServerCertExpireAt,
@@ -665,7 +664,7 @@ export const relayServiceFactory = ({
       caPrivateKey: relaySshServerCaPrivateKey.toString("utf8"),
       clientPublicKey: relayServerSshPublicKey,
       keyId: "relay-server",
-      principals: [`${ip}:2222`],
+      principals: [`${host}:2222`],
       certType: SshCertType.HOST,
       requestedTtl: "30d"
     });
@@ -772,15 +771,15 @@ export const relayServiceFactory = ({
     orgId: string;
     gatewayId: string;
   }) => {
-    let relay: TRelays | null;
-    if (isInstanceRelay(relayName)) {
+    let relay: TRelays | null = await relayDAL.findOne({
+      orgId,
+      name: relayName
+    });
+
+    if (!relay) {
       relay = await relayDAL.findOne({
-        name: relayName
-      });
-    } else {
-      relay = await relayDAL.findOne({
-        orgId,
-        name: relayName
+        name: relayName,
+        orgId: null
       });
     }
 
@@ -794,7 +793,7 @@ export const relayServiceFactory = ({
     const { publicKey: relayClientSshPublicKey, privateKey: relayClientSshPrivateKey } =
       await createSshKeyPair(keyAlgorithm);
 
-    if (isInstanceRelay(relayName)) {
+    if (relay.orgId === null) {
       const instanceCAs = await $getInstanceCAs();
       const relayClientSshCert = await createSshCert({
         caPrivateKey: instanceCAs.instanceRelaySshClientCaPrivateKey.toString("utf8"),
@@ -806,7 +805,7 @@ export const relayServiceFactory = ({
       });
 
       return {
-        relayIp: relay.ip,
+        relayHost: relay.host,
         clientSshCert: relayClientSshCert.signedPublicKey,
         clientSshPrivateKey: relayClientSshPrivateKey,
         serverCAPublicKey: instanceCAs.instanceRelaySshServerCaPublicKey.toString("utf8")
@@ -824,7 +823,7 @@ export const relayServiceFactory = ({
     });
 
     return {
-      relayIp: relay.ip,
+      relayHost: relay.host,
       clientSshCert: relayClientSshCert.signedPublicKey,
       clientSshPrivateKey: relayClientSshPrivateKey,
       serverCAPublicKey: orgCAs.relaySshServerCaPublicKey.toString("utf8")
@@ -850,7 +849,7 @@ export const relayServiceFactory = ({
       });
     }
 
-    if (isInstanceRelay(relay.name)) {
+    if (relay.orgId === null) {
       const instanceCAs = await $getInstanceCAs();
       const relayCertificateCredentials = await $generateRelayClientCredentials({
         gatewayId,
@@ -863,7 +862,7 @@ export const relayServiceFactory = ({
 
       return {
         ...relayCertificateCredentials,
-        relayIp: relay.ip
+        relayHost: relay.host
       };
     }
 
@@ -879,17 +878,17 @@ export const relayServiceFactory = ({
 
     return {
       ...relayCertificateCredentials,
-      relayIp: relay.ip
+      relayHost: relay.host
     };
   };
 
   const registerRelay = async ({
-    ip,
+    host,
     name,
     identityId,
     orgId
   }: {
-    ip: string;
+    host: string;
     name: string;
     identityId?: string;
     orgId?: string;
@@ -898,12 +897,6 @@ export const relayServiceFactory = ({
     const isOrgRelay = identityId && orgId;
 
     if (isOrgRelay) {
-      if (isInstanceRelay(name)) {
-        throw new BadRequestError({
-          message: "Org relay name cannot start with 'infisical-'. This is reserved for internal use."
-        });
-      }
-
       relay = await relayDAL.transaction(async (tx) => {
         const existingRelay = await relayDAL.findOne(
           {
@@ -913,7 +906,7 @@ export const relayServiceFactory = ({
           tx
         );
 
-        if (existingRelay && (existingRelay.ip !== ip || existingRelay.name !== name)) {
+        if (existingRelay && (existingRelay.host !== host || existingRelay.name !== name)) {
           throw new BadRequestError({
             message: "Org relay with this machine identity already exists."
           });
@@ -922,7 +915,7 @@ export const relayServiceFactory = ({
         if (!existingRelay) {
           return relayDAL.create(
             {
-              ip,
+              host,
               name,
               identityId,
               orgId
@@ -934,30 +927,25 @@ export const relayServiceFactory = ({
         return existingRelay;
       });
     } else {
-      if (!isInstanceRelay(name)) {
-        throw new BadRequestError({
-          message: "Instance relay name must start with 'infisical-'."
-        });
-      }
-
       relay = await relayDAL.transaction(async (tx) => {
         const existingRelay = await relayDAL.findOne(
           {
-            name
+            name,
+            orgId: null
           },
           tx
         );
 
-        if (existingRelay && existingRelay.ip !== ip) {
+        if (existingRelay && existingRelay.host !== host) {
           throw new BadRequestError({
-            message: "Instance relay with this name already exists with a different IP address"
+            message: "Instance relay with this name already exists with a different host"
           });
         }
 
         if (!existingRelay) {
           return relayDAL.create(
             {
-              ip,
+              host,
               name
             },
             tx
@@ -968,10 +956,10 @@ export const relayServiceFactory = ({
       });
     }
 
-    if (isInstanceRelay(name)) {
+    if (relay.orgId === null) {
       const instanceCAs = await $getInstanceCAs();
       return $generateRelayServerCredentials({
-        ip,
+        host,
         relayPkiServerCaCertificate: instanceCAs.instanceRelayPkiServerCaCertificate,
         relayPkiServerCaPrivateKey: instanceCAs.instanceRelayPkiServerCaPrivateKey,
         relayPkiClientCaCertificate: instanceCAs.instanceRelayPkiClientCaCertificate,
@@ -984,7 +972,7 @@ export const relayServiceFactory = ({
     if (relay.orgId) {
       const orgCAs = await $getOrgCAs(relay.orgId);
       return $generateRelayServerCredentials({
-        ip,
+        host,
         orgId: relay.orgId,
         relayPkiServerCaCertificate: orgCAs.relayPkiServerCaCertificate,
         relayPkiServerCaPrivateKey: orgCAs.relayPkiServerCaPrivateKey,

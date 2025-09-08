@@ -30,7 +30,7 @@ The gateway requires the following outbound connectivity:
 
 **For Instance Relays (Infisical Cloud):** Your firewall must allow outbound connectivity to Infisical-managed relay servers.
 
-**For Organization Relays:** Your firewall must allow outbound connectivity to your own relay server IP addresses.
+**For Organization Relays:** Your firewall must allow outbound connectivity to your own relay server IP addresses or hostnames.
 
 **For Self-hosted Instance Relays:** Your firewall must allow outbound connectivity to relay servers configured by your instance administrator.
 
@@ -42,15 +42,16 @@ The gateway requires the following outbound connectivity:
     connections to the desired relay server IP on port 2222.
   </Tab>
   <Tab title="Organization Relays">
-    You control the relay server IP addresses when deploying your own
-    organization relays. **Firewall requirements:** Allow outbound TCP
-    connections to your relay server IP on port 2222. For example, if your relay
-    is at `203.0.113.100`, allow TCP to `203.0.113.100:2222`.
+    You control the relay server IP addresses or hostnames when deploying your
+    own organization relays. **Firewall requirements:** Allow outbound TCP
+    connections to your relay server IP or hostname on port 2222. For example,
+    if your relay is at `203.0.113.100` or `relay.example.com`, allow TCP to
+    `203.0.113.100:2222` or `relay.example.com:2222`.
   </Tab>
   <Tab title="Self-hosted Instance Relays">
-    Contact your instance administrator for the relay server IP addresses
-    configured for your deployment. **Firewall requirements:** Allow outbound
-    TCP connections to instance relay servers on port 2222.
+    Contact your instance administrator for the relay server IP addresses or
+    hostnames configured for your deployment. **Firewall requirements:** Allow
+    outbound TCP connections to instance relay servers on port 2222.
   </Tab>
 </Tabs>
 
@@ -81,7 +82,7 @@ SSH connections over TCP are stateful and handled seamlessly by all modern firew
 
 Since SSH uses TCP, you only need simple outbound rules:
 
-1. **Allow outbound TCP** to relay servers on port 2222
+1. **Allow outbound TCP** to relay servers (IP addresses or hostnames) on port 2222
 2. **Allow outbound HTTPS** to Infisical API endpoints on port 443
 3. **No inbound rules required** - all connections are outbound only
 
@@ -91,7 +92,7 @@ Since SSH uses TCP, you only need simple outbound rules:
 
 For corporate environments with strict egress filtering:
 
-1. **Allow outbound TCP** to relay servers on port 2222
+1. **Allow outbound TCP** to relay servers (IP addresses or hostnames) on port 2222
 2. **Allow outbound HTTPS** to the Infisical API server on port 443
 3. **No inbound rules required** - all connections are outbound only
 4. **Standard TCP rules** - simple and straightforward configuration
@@ -100,7 +101,7 @@ For corporate environments with strict egress filtering:
 
 Configure security groups to allow:
 
-- **Outbound TCP** to relay servers on port 2222
+- **Outbound TCP** to relay servers (IP addresses or hostnames) on port 2222
 - **Outbound HTTPS** to app.infisical.com/eu.infisical.com on port 443
 - **No inbound rules required** - SSH reverse tunnels are outbound only
 
@@ -146,7 +147,7 @@ This design maintains security by avoiding the need for inbound firewall rules t
 <Accordion title="What if my firewall blocks SSH connections?">
 If your firewall has strict outbound restrictions:
 
-1. **Work with your network team** to allow outbound TCP connections on port 2222 to relay servers
+1. **Work with your network team** to allow outbound TCP connections on port 2222 to relay servers (IP addresses or hostnames)
 2. **Allow standard SSH traffic** - most enterprises already have SSH policies in place
 3. **Consider network policy exceptions** for the gateway host if needed
 4. **Monitor firewall logs** to identify which specific rules are blocking traffic

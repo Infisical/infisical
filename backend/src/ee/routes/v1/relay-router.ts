@@ -18,7 +18,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        ip: z.string(),
+        host: z.string(),
         name: z.string()
       }),
       response: {
@@ -68,7 +68,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        ip: z.string(),
+        host: z.string(),
         name: z.string()
       }),
       response: {

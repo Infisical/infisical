@@ -98,8 +98,10 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("identityId");
       t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
 
-      t.string("name").notNullable().unique();
-      t.string("ip").notNullable();
+      t.string("name").notNullable();
+      t.string("host").notNullable();
+
+      t.unique(["orgId", "name"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.Relay);
@@ -119,7 +121,9 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("relayId");
       t.foreign("relayId").references("id").inTable(TableName.Relay).onDelete("SET NULL");
 
-      t.string("name").notNullable().unique();
+      t.string("name").notNullable();
+
+      t.unique(["orgId", "name"]);
 
       t.dateTime("heartbeat");
     });

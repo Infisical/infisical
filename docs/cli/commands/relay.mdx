@@ -6,7 +6,7 @@ description: "Relay-related commands for Infisical including proxy components"
 <Tabs>
   <Tab title="Start relay">
     ```bash
-    infisical relay start --type=<type> --ip=<ip> --name=<name> --auth-method=<auth-method>
+    infisical relay start --type=<type> --host=<host> --name=<name> --auth-method=<auth-method>
     ```
   </Tab>
 </Tabs>
@@ -25,7 +25,7 @@ The relay system uses SSH reverse tunnels over TCP, eliminating firewall complex
   Run the Infisical relay component. The relay handles network traffic routing and can operate in different modes.
 
 ```bash
-infisical relay start --type=<type> --ip=<ip> --name=<name> --auth-method=<auth-method>
+infisical relay start --type=<type> --host=<host> --name=<name> --auth-method=<auth-method>
 ```
 
 ### Flags
@@ -38,20 +38,23 @@ infisical relay start --type=<type> --ip=<ip> --name=<name> --auth-method=<auth-
 
     ```bash
     # Organization relay (customer-deployed)
-    infisical relay start --type=org --ip=192.168.1.100 --name=my-org-relay
+    infisical relay start --type=org --host=192.168.1.100 --name=my-org-relay
 
     # Instance relay (configured by instance admin)
-    INFISICAL_PROXY_AUTH_SECRET=<secret> infisical relay start --type=instance --ip=10.0.1.50 --name=shared-relay
+    INFISICAL_PROXY_AUTH_SECRET=<secret> infisical relay start --type=instance --host=10.0.1.50 --name=shared-relay
     ```
 
   </Accordion>
 
-  <Accordion title="--ip">
-    The public IP address of the instance where the relay is deployed. This must be a static public IP that gateways can reach.
+  <Accordion title="--host">
+    The host (IP address or hostname) of the instance where the relay is deployed. This must be a static public IP or resolvable hostname that gateways can reach.
 
     ```bash
-    # Example
-    infisical relay start --ip=203.0.113.100 --type=org --name=my-relay
+    # Example with IP address
+    infisical relay start --host=203.0.113.100 --type=org --name=my-relay
+
+    # Example with hostname
+    infisical relay start --host=relay.example.com --type=org --name=my-relay
     ```
 
   </Accordion>
@@ -61,7 +64,7 @@ infisical relay start --type=<type> --ip=<ip> --name=<name> --auth-method=<auth-
 
     ```bash
     # Example
-    infisical relay start --name=my-relay --type=org --ip=192.168.1.100
+    infisical relay start --name=my-relay --type=org --host=192.168.1.100
     ```
 
   </Accordion>
@@ -76,10 +79,10 @@ Shared relay servers that serve all organizations on your Infisical instance. Fo
 
 ```bash
 # Organization relay with Universal Auth (customer-deployed)
-infisical relay start --type=org --ip=192.168.1.100 --name=my-org-relay --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret>
+infisical relay start --type=org --host=192.168.1.100 --name=my-org-relay --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret>
 
 # Instance relay (configured by instance admin)
-INFISICAL_PROXY_AUTH_SECRET=<secret> infisical relay start --type=instance --ip=10.0.1.50 --name=shared-relay
+INFISICAL_PROXY_AUTH_SECRET=<secret> infisical relay start --type=instance --host=10.0.1.50 --name=shared-relay
 ```
 
 ### Authentication Methods
@@ -105,7 +108,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
     </ParamField>
 
     ```bash
-      infisical relay start --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --type=org --ip=<ip> --name=<name>
+      infisical relay start --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --type=org --host=<host> --name=<name>
     ```
 
   </Accordion>
@@ -129,7 +132,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
 
 
     ```bash
-      infisical relay start --auth-method=kubernetes --machine-identity-id=<machine-identity-id> --type=org --ip=<ip> --name=<name>
+      infisical relay start --auth-method=kubernetes --machine-identity-id=<machine-identity-id> --type=org --host=<host> --name=<name>
     ```
 
   </Accordion>
@@ -150,7 +153,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
 
 
     ```bash
-      infisical relay start --auth-method=azure --machine-identity-id=<machine-identity-id> --type=org --ip=<ip> --name=<name>
+      infisical relay start --auth-method=azure --machine-identity-id=<machine-identity-id> --type=org --host=<host> --name=<name>
     ```
 
   </Accordion>
@@ -171,7 +174,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
 
 
     ```bash
-      infisical relay start --auth-method=gcp-id-token --machine-identity-id=<machine-identity-id> --type=org --ip=<ip> --name=<name>
+      infisical relay start --auth-method=gcp-id-token --machine-identity-id=<machine-identity-id> --type=org --host=<host> --name=<name>
     ```
 
   </Accordion>
@@ -193,7 +196,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
     </ParamField>
 
     ```bash
-      infisical relay start --auth-method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path> --type=org --ip=<ip> --name=<name>
+      infisical relay start --auth-method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path> --type=org --host=<host> --name=<name>
     ```
 
   </Accordion>
@@ -212,7 +215,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
     </ParamField>
 
       ```bash
-        infisical relay start --auth-method=aws-iam --machine-identity-id=<machine-identity-id> --type=org --ip=<ip> --name=<name>
+        infisical relay start --auth-method=aws-iam --machine-identity-id=<machine-identity-id> --type=org --host=<host> --name=<name>
       ```
 
   </Accordion>
@@ -234,7 +237,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
     </ParamField>
 
     ```bash
-      infisical relay start --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt> --type=org --ip=<ip> --name=<name>
+      infisical relay start --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt> --type=org --host=<host> --name=<name>
     ```
 
   </Accordion>
@@ -258,7 +261,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
 
 
     ```bash
-      infisical relay start --auth-method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id> --type=org --ip=<ip> --name=<name>
+      infisical relay start --auth-method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id> --type=org --host=<host> --name=<name>
     ```
 
   </Accordion>
@@ -274,7 +277,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
     </ParamField>
 
     ```bash
-      infisical relay start --token=<token> --type=org --ip=<ip> --name=<name>
+      infisical relay start --token=<token> --type=org --host=<host> --name=<name>
     ```
 
   </Accordion>

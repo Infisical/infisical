@@ -25,7 +25,6 @@ import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TRelayDALFactory } from "../relay/relay-dal";
-import { isInstanceRelay } from "../relay/relay-fns";
 import { TRelayServiceFactory } from "../relay/relay-service";
 import { GATEWAY_ACTOR_OID, GATEWAY_ROUTING_INFO_OID } from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
@@ -399,7 +398,7 @@ export const gatewayV2ServiceFactory = ({
     });
 
     return {
-      relayIp: relayCredentials.relayIp,
+      relayHost: relayCredentials.relayHost,
       gateway: {
         clientCertificate: clientCert.toString("pem"),
         clientPrivateKey: gatewayClientCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
@@ -429,11 +428,9 @@ export const gatewayV2ServiceFactory = ({
     await $validateIdentityAccessToGateway(orgId, actorId, actorAuthMethod);
     const orgCAs = await $getOrgCAs(orgId);
 
-    let relay: TRelays;
-    if (isInstanceRelay(relayName)) {
-      relay = await relayDAL.findOne({ name: relayName });
-    } else {
-      relay = await relayDAL.findOne({ orgId, name: relayName });
+    let relay: TRelays = await relayDAL.findOne({ orgId, name: relayName });
+    if (!relay) {
+      relay = await relayDAL.findOne({ name: relayName, orgId: null });
     }
 
     if (!relay) {
@@ -515,7 +512,7 @@ export const gatewayV2ServiceFactory = ({
 
       return {
         gatewayId: gateway.id,
-        relayIp: relayCredentials.relayIp,
+        relayHost: relayCredentials.relayHost,
         pki: {
           serverCertificate: gatewayServerCertificate.toString("pem"),
           serverPrivateKey: gatewayServerCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
@@ -613,7 +610,7 @@ export const gatewayV2ServiceFactory = ({
       },
       {
         protocol: GatewayProxyProtocol.Ping,
-        relayIp: gatewayV2ConnectionDetails.relayIp,
+        relayHost: gatewayV2ConnectionDetails.relayHost,
         gateway: gatewayV2ConnectionDetails.gateway,
         relay: gatewayV2ConnectionDetails.relay
       }

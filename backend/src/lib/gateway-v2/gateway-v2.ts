@@ -19,23 +19,24 @@ interface IGatewayRelayServer {
 }
 
 const createRelayConnection = async ({
-  relayIp,
+  relayHost,
   clientCertificate,
   clientPrivateKey,
   serverCertificateChain
 }: {
-  relayIp: string;
+  relayHost: string;
   clientCertificate: string;
   clientPrivateKey: string;
   serverCertificateChain: string;
 }): Promise<net.Socket> => {
-  const [targetHost] = await verifyHostInputValidity(relayIp);
-  const [, portStr] = relayIp.split(":");
+  const [targetHost] = await verifyHostInputValidity(relayHost);
+  const [, portStr] = relayHost.split(":");
   const port = parseInt(portStr, 10) || 8443;
 
   const serverCAs = splitPemChain(serverCertificateChain);
   const tlsOptions: tls.ConnectionOptions = {
     host: targetHost,
+    servername: relayHost,
     port,
     cert: clientCertificate,
     key: clientPrivateKey,
@@ -121,13 +122,13 @@ const createGatewayConnection = async (
 
 const setupRelayServer = async ({
   protocol,
-  relayIp,
+  relayHost,
   gateway,
   relay,
   httpsAgent
 }: {
   protocol: GatewayProxyProtocol;
-  relayIp: string;
+  relayHost: string;
   gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
   relay: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
   httpsAgent?: https.Agent;
@@ -145,7 +146,7 @@ const setupRelayServer = async ({
 
           // Stage 1: Connect to relay with TLS
           const relayConn = await createRelayConnection({
-            relayIp,
+            relayHost,
             clientCertificate: relay.clientCertificate,
             clientPrivateKey: relay.clientPrivateKey,
             serverCertificateChain: relay.serverCertificateChain
@@ -244,17 +245,17 @@ export const withGatewayV2Proxy = async <T>(
   callback: (port: number) => Promise<T>,
   options: {
     protocol: GatewayProxyProtocol;
-    relayIp: string;
+    relayHost: string;
     gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
     relay: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string };
     httpsAgent?: https.Agent;
   }
 ): Promise<T> => {
-  const { protocol, relayIp, gateway, relay, httpsAgent } = options;
+  const { protocol, relayHost, gateway, relay, httpsAgent } = options;
 
   const { port, cleanup, getRelayError } = await setupRelayServer({
     protocol,
-    relayIp,
+    relayHost,
     gateway,
     relay,
     httpsAgent
