@@ -1,0 +1,303 @@
+---
+title: "infisical relay"
+description: "Relay-related commands for Infisical including proxy components"
+---
+
+<Tabs>
+  <Tab title="Start relay">
+    ```bash
+    infisical relay start --type=<type> --ip=<ip> --name=<name> --auth-method=<auth-method>
+    ```
+  </Tab>
+</Tabs>
+
+## Description
+
+Relay-related commands for Infisical that provide identity-aware relay infrastructure for routing encrypted traffic:
+
+- **Relay**: Identity-aware server that routes encrypted traffic (can be instance-wide or organization-specific)
+
+The relay system uses SSH reverse tunnels over TCP, eliminating firewall complexity and providing excellent performance for enterprise environments.
+
+## Subcommands & flags
+
+<Accordion title="infisical relay start" defaultOpen="true">
+  Run the Infisical relay component. The relay handles network traffic routing and can operate in different modes.
+
+```bash
+infisical relay start --type=<type> --ip=<ip> --name=<name> --auth-method=<auth-method>
+```
+
+### Flags
+
+  <Accordion title="--type">
+    The type of relay to run. Must be either 'instance' or 'org'.
+    
+    - **`instance`**: Shared relay server that can be used by all organizations on your Infisical instance. Set up by the instance administrator. Uses `INFISICAL_PROXY_AUTH_SECRET` environment variable for authentication, which must be configured by the instance admin.
+    - **`org`**: Dedicated relay server that individual organizations deploy and manage in their own infrastructure. Provides enhanced security, custom geographic placement, and compliance benefits. Uses standard Infisical authentication methods.
+
+    ```bash
+    # Organization relay (customer-deployed)
+    infisical relay start --type=org --ip=192.168.1.100 --name=my-org-relay
+
+    # Instance relay (configured by instance admin)
+    INFISICAL_PROXY_AUTH_SECRET=<secret> infisical relay start --type=instance --ip=10.0.1.50 --name=shared-relay
+    ```
+
+  </Accordion>
+
+  <Accordion title="--ip">
+    The public IP address of the instance where the relay is deployed. This must be a static public IP that gateways can reach.
+
+    ```bash
+    # Example
+    infisical relay start --ip=203.0.113.100 --type=org --name=my-relay
+    ```
+
+  </Accordion>
+
+  <Accordion title="--name">
+    The name of the relay.
+
+    ```bash
+    # Example
+    infisical relay start --name=my-relay --type=org --ip=192.168.1.100
+    ```
+
+  </Accordion>
+
+### Authentication
+
+**Organization Relays (`--type=org`):**
+Deploy your own relay server in your infrastructure for enhanced security and reduced latency. Supports all standard Infisical authentication methods documented below.
+
+**Instance Relays (`--type=instance`):**
+Shared relay servers that serve all organizations on your Infisical instance. For Infisical Cloud, these are already running and ready to use. For self-hosted deployments, they're set up by the instance administrator. Authentication is handled via the `INFISICAL_PROXY_AUTH_SECRET` environment variable.
+
+```bash
+# Organization relay with Universal Auth (customer-deployed)
+infisical relay start --type=org --ip=192.168.1.100 --name=my-org-relay --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret>
+
+# Instance relay (configured by instance admin)
+INFISICAL_PROXY_AUTH_SECRET=<secret> infisical relay start --type=instance --ip=10.0.1.50 --name=shared-relay
+```
+
+### Authentication Methods
+
+The Infisical CLI supports multiple authentication methods for organization relays. Below are the available authentication methods, with their respective flags.
+
+<AccordionGroup>
+  <Accordion title="Universal Auth">
+    The Universal Auth method is a simple and secure way to authenticate with Infisical. It requires a client ID and a client secret to authenticate with Infisical.
+
+      <ParamField query="Flags">
+      <Expandable title="properties">
+          <ParamField query="client-id" type="string" required>
+          Your machine identity client ID.
+          </ParamField>
+          <ParamField query="client-secret" type="string" required>
+          Your machine identity client secret.
+          </ParamField>
+          <ParamField query="auth-method" type="string" required>
+            The authentication method to use. Must be `universal-auth` when using Universal Auth.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+    ```bash
+      infisical relay start --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --type=org --ip=<ip> --name=<name>
+    ```
+
+  </Accordion>
+  <Accordion title="Native Kubernetes">
+    The Native Kubernetes method is used to authenticate with Infisical when running in a Kubernetes environment. It requires a service account token to authenticate with Infisical.
+
+      <ParamField query="Flags">
+      <Expandable title="properties">
+          <ParamField query="machine-identity-id" type="string" required>
+          Your machine identity ID.
+          </ParamField>
+          <ParamField query="service-account-token-path" type="string" optional>
+            Path to the Kubernetes service account token to use. Default: `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+          </ParamField>
+          <ParamField query="auth-method" type="string" required>
+            The authentication method to use. Must be `kubernetes` when using Native Kubernetes.
+          </ParamField>
+      </Expandable>
+
+    </ParamField>
+
+
+    ```bash
+      infisical relay start --auth-method=kubernetes --machine-identity-id=<machine-identity-id> --type=org --ip=<ip> --name=<name>
+    ```
+
+  </Accordion>
+  <Accordion title="Native Azure">
+    The Native Azure method is used to authenticate with Infisical when running in an Azure environment.
+
+    <ParamField query="Flags">
+      <Expandable title="properties">
+          <ParamField query="machine-identity-id" type="string" required>
+            Your machine identity ID.
+          </ParamField>
+          <ParamField query="auth-method" type="string" required>
+            The authentication method to use. Must be `azure` when using Native Azure.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+
+
+    ```bash
+      infisical relay start --auth-method=azure --machine-identity-id=<machine-identity-id> --type=org --ip=<ip> --name=<name>
+    ```
+
+  </Accordion>
+  <Accordion title="Native GCP ID Token">
+    The Native GCP ID Token method is used to authenticate with Infisical when running in a GCP environment.
+
+    <ParamField query="Flags">
+      <Expandable title="properties">
+          <ParamField query="machine-identity-id" type="string" required>
+            Your machine identity ID.
+          </ParamField>
+          <ParamField query="auth-method" type="string" required>
+            The authentication method to use. Must be `gcp-id-token` when using Native GCP ID Token.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+
+
+    ```bash
+      infisical relay start --auth-method=gcp-id-token --machine-identity-id=<machine-identity-id> --type=org --ip=<ip> --name=<name>
+    ```
+
+  </Accordion>
+  <Accordion title="GCP IAM">
+    The GCP IAM method is used to authenticate with Infisical with a GCP service account key.
+
+    <ParamField query="Flags">
+      <Expandable title="properties">
+          <ParamField query="machine-identity-id" type="string" required>
+          Your machine identity ID.
+          </ParamField>
+          <ParamField query="service-account-key-file-path" type="string" required>
+            Path to your GCP service account key file _(Must be in JSON format!)_
+          </ParamField>
+          <ParamField query="auth-method" type="string" required>
+            The authentication method to use. Must be `gcp-iam` when using GCP IAM.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+    ```bash
+      infisical relay start --auth-method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path> --type=org --ip=<ip> --name=<name>
+    ```
+
+  </Accordion>
+  <Accordion title="Native AWS IAM">
+    The AWS IAM method is used to authenticate with Infisical with an AWS IAM role while running in an AWS environment like EC2, Lambda, etc.
+
+    <ParamField query="Flags">
+      <Expandable title="properties">
+          <ParamField query="machine-identity-id" type="string" required>
+            Your machine identity ID.
+          </ParamField>
+          <ParamField query="auth-method" type="string" required>
+            The authentication method to use. Must be `aws-iam` when using Native AWS IAM.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+      ```bash
+        infisical relay start --auth-method=aws-iam --machine-identity-id=<machine-identity-id> --type=org --ip=<ip> --name=<name>
+      ```
+
+  </Accordion>
+  <Accordion title="OIDC Auth">
+    The OIDC Auth method is used to authenticate with Infisical via identity tokens with OIDC.
+
+    <ParamField query="Flags">
+      <Expandable title="properties">
+          <ParamField query="machine-identity-id" type="string" required>
+            Your machine identity ID.
+          </ParamField>
+          <ParamField query="jwt" type="string" required>
+            The OIDC JWT from the identity provider.
+          </ParamField>
+          <ParamField query="auth-method" type="string" required>
+            The authentication method to use. Must be `oidc-auth` when using OIDC Auth.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+    ```bash
+      infisical relay start --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt> --type=org --ip=<ip> --name=<name>
+    ```
+
+  </Accordion>
+
+  <Accordion title="JWT Auth">
+    The JWT Auth method is used to authenticate with Infisical via a JWT token.
+
+    <ParamField query="Flags">
+      <Expandable title="properties">
+          <ParamField query="jwt" type="string" required>
+            The JWT token to use for authentication.
+          </ParamField>
+          <ParamField query="machine-identity-id" type="string" required>
+            Your machine identity ID.
+          </ParamField>
+          <ParamField query="auth-method" type="string" required>
+            The authentication method to use. Must be `jwt-auth` when using JWT Auth.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+
+    ```bash
+      infisical relay start --auth-method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id> --type=org --ip=<ip> --name=<name>
+    ```
+
+  </Accordion>
+  <Accordion title="Token Auth">
+    You can use the `INFISICAL_TOKEN` environment variable to authenticate with Infisical with a raw machine identity access token.
+
+    <ParamField query="Flags">
+      <Expandable title="properties">
+          <ParamField query="token" type="string" required>
+            The machine identity access token to use for authentication.
+          </ParamField>
+      </Expandable>
+    </ParamField>
+
+    ```bash
+      infisical relay start --token=<token> --type=org --ip=<ip> --name=<name>
+    ```
+
+  </Accordion>
+</AccordionGroup>
+
+### Deployment Considerations
+
+**When to use Instance Relays (`--type=instance`):**
+
+- You want to get started quickly without setting up your own relay infrastructure
+- You're using Infisical Cloud and want to leverage the existing relay infrastructure
+- You're on a self-hosted instance where the admin has already set up shared relays
+- You don't need custom geographic placement of relay servers
+- You don't have specific compliance requirements that require dedicated infrastructure
+- You want to minimize operational overhead by using shared infrastructure
+
+**When to use Organization Relays (`--type=org`):**
+
+- You need lower latency by deploying relay servers closer to your resources
+- You have security requirements that mandate running infrastructure in your own environment
+- You have compliance requirements such as data sovereignty or air-gapped environments
+- You need custom network policies or specific networking configurations
+- You have high-scale performance requirements that shared infrastructure can't meet
+- You want full control over your relay infrastructure and its configuration
+
+</Accordion>

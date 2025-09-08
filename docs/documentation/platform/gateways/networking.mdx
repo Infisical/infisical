@@ -3,17 +3,17 @@ title: "Networking"
 description: "Network configuration and firewall requirements for Infisical Gateway"
 ---
 
-The Infisical Gateway requires outbound network connectivity to establish secure SSH reverse tunnels with proxy servers.
+The Infisical Gateway requires outbound network connectivity to establish secure SSH reverse tunnels with relay servers.
 This page outlines the required ports, protocols, and firewall configurations needed for optimal gateway usage.
 
 ## Network Architecture
 
 The gateway uses SSH reverse tunnels to establish secure connections with end-to-end encryption:
 
-1. **Gateway** connects outbound to **Proxy Servers** using SSH over TCP
+1. **Gateway** connects outbound to **Relay Servers** using SSH over TCP
 2. **Infisical platform** establishes mTLS connections with gateways for application traffic
-3. **Proxy Servers** route the doubly-encrypted traffic (mTLS payload within SSH tunnels) between the platform and gateways
-4. **Double encryption** ensures proxy servers cannot access application data - only the platform and gateway can decrypt traffic
+3. **Relay Servers** route the doubly-encrypted traffic (mTLS payload within SSH tunnels) between the platform and gateways
+4. **Double encryption** ensures relay servers cannot access application data - only the platform and gateway can decrypt traffic
 
 ## Required Network Connectivity
 
@@ -23,34 +23,34 @@ The gateway requires the following outbound connectivity:
 
 | Protocol | Destination                          | Ports | Purpose                                    |
 | -------- | ------------------------------------ | ----- | ------------------------------------------ |
-| TCP      | Proxy Servers                        | 2222  | SSH reverse tunnel establishment           |
+| TCP      | Relay Servers                        | 2222  | SSH reverse tunnel establishment           |
 | TCP      | app.infisical.com / eu.infisical.com | 443   | API communication and certificate requests |
 
-### Proxy Server Connectivity
+### Relay Server Connectivity
 
-**For Instance Proxies (Infisical Cloud):** Your firewall must allow outbound connectivity to Infisical-managed proxy servers.
+**For Instance Relays (Infisical Cloud):** Your firewall must allow outbound connectivity to Infisical-managed relay servers.
 
-**For Organization Proxies:** Your firewall must allow outbound connectivity to your own proxy server IP addresses.
+**For Organization Relays:** Your firewall must allow outbound connectivity to your own relay server IP addresses.
 
-**For Self-hosted Instance Proxies:** Your firewall must allow outbound connectivity to proxy servers configured by your instance administrator.
+**For Self-hosted Instance Relays:** Your firewall must allow outbound connectivity to relay servers configured by your instance administrator.
 
 <Tabs>
-  <Tab title="Instance Proxies (Infisical Cloud)">
-    Infisical provides multiple managed proxy servers with static IP addresses.
-    You can whitelist these IPs ahead of time based on which proxy server you
+  <Tab title="Instance Relays (Infisical Cloud)">
+    Infisical provides multiple managed relay servers with static IP addresses.
+    You can whitelist these IPs ahead of time based on which relay server you
     choose to connect to. **Firewall requirements:** Allow outbound TCP
-    connections to the desired proxy server IP on port 2222.
+    connections to the desired relay server IP on port 2222.
   </Tab>
-  <Tab title="Organization Proxies">
-    You control the proxy server IP addresses when deploying your own
-    organization proxies. **Firewall requirements:** Allow outbound TCP
-    connections to your proxy server IP on port 2222. For example, if your proxy
+  <Tab title="Organization Relays">
+    You control the relay server IP addresses when deploying your own
+    organization relays. **Firewall requirements:** Allow outbound TCP
+    connections to your relay server IP on port 2222. For example, if your relay
     is at `203.0.113.100`, allow TCP to `203.0.113.100:2222`.
   </Tab>
-  <Tab title="Self-hosted Instance Proxies">
-    Contact your instance administrator for the proxy server IP addresses
+  <Tab title="Self-hosted Instance Relays">
+    Contact your instance administrator for the relay server IP addresses
     configured for your deployment. **Firewall requirements:** Allow outbound
-    TCP connections to instance proxy servers on port 2222.
+    TCP connections to instance relay servers on port 2222.
   </Tab>
 </Tabs>
 
@@ -60,7 +60,7 @@ The gateway requires the following outbound connectivity:
 
 The gateway uses SSH reverse tunnels for primary communication:
 
-- **Port 2222**: SSH connection to proxy servers
+- **Port 2222**: SSH connection to relay servers
 - **Built-in features**: Automatic reconnection, certificate-based authentication, encrypted tunneling
 - **Encryption**: SSH with certificate-based authentication and key exchange
 
@@ -81,7 +81,7 @@ SSH connections over TCP are stateful and handled seamlessly by all modern firew
 
 Since SSH uses TCP, you only need simple outbound rules:
 
-1. **Allow outbound TCP** to proxy servers on port 2222
+1. **Allow outbound TCP** to relay servers on port 2222
 2. **Allow outbound HTTPS** to Infisical API endpoints on port 443
 3. **No inbound rules required** - all connections are outbound only
 
@@ -91,7 +91,7 @@ Since SSH uses TCP, you only need simple outbound rules:
 
 For corporate environments with strict egress filtering:
 
-1. **Allow outbound TCP** to proxy servers on port 2222
+1. **Allow outbound TCP** to relay servers on port 2222
 2. **Allow outbound HTTPS** to the Infisical API server on port 443
 3. **No inbound rules required** - all connections are outbound only
 4. **Standard TCP rules** - simple and straightforward configuration
@@ -100,7 +100,7 @@ For corporate environments with strict egress filtering:
 
 Configure security groups to allow:
 
-- **Outbound TCP** to proxy servers on port 2222
+- **Outbound TCP** to relay servers on port 2222
 - **Outbound HTTPS** to app.infisical.com/eu.infisical.com on port 443
 - **No inbound rules required** - SSH reverse tunnels are outbound only
 
@@ -109,7 +109,7 @@ Configure security groups to allow:
 <Accordion title="What happens if there is a network interruption?">
 The gateway is designed to handle network interruptions gracefully:
 
-- **Automatic reconnection**: The gateway will automatically attempt to reconnect to proxy servers if the SSH connection is lost
+- **Automatic reconnection**: The gateway will automatically attempt to reconnect to relay servers if the SSH connection is lost
 - **Connection retry logic**: Built-in retry mechanisms handle temporary network outages without manual intervention
 - **Persistent SSH tunnels**: SSH connections are automatically re-established when connectivity is restored
 - **Certificate rotation**: The gateway handles certificate renewal automatically during reconnection
@@ -135,7 +135,7 @@ TCP's reliability and firewall compatibility make it ideal for enterprise enviro
 <Accordion title="Do I need to open any inbound ports on my firewall?">
 No inbound ports need to be opened. The gateway only makes outbound connections:
 
-- **Outbound SSH** to proxy servers on port 2222
+- **Outbound SSH** to relay servers on port 2222
 - **Outbound HTTPS** to Infisical API endpoints on port 443
 - **SSH reverse tunnels** handle all communication - no return traffic configuration needed
 
@@ -146,32 +146,32 @@ This design maintains security by avoiding the need for inbound firewall rules t
 <Accordion title="What if my firewall blocks SSH connections?">
 If your firewall has strict outbound restrictions:
 
-1. **Work with your network team** to allow outbound TCP connections on port 2222 to proxy servers
+1. **Work with your network team** to allow outbound TCP connections on port 2222 to relay servers
 2. **Allow standard SSH traffic** - most enterprises already have SSH policies in place
 3. **Consider network policy exceptions** for the gateway host if needed
 4. **Monitor firewall logs** to identify which specific rules are blocking traffic
 
 </Accordion>
 
-<Accordion title="How many proxy servers does the gateway connect to?">
-The gateway connects to **one proxy server**:
+<Accordion title="How many relay servers does the gateway connect to?">
+The gateway connects to **one relay server**:
 
-- **Single SSH connection**: Each gateway establishes one SSH reverse tunnel to its assigned proxy server
-- **Named proxy assignment**: Gateways connect to the specific proxy server specified by `--proxy-name`
-- **Automatic reconnection**: If the proxy connection is lost, the gateway automatically reconnects to the same proxy
+- **Single SSH connection**: Each gateway establishes one SSH reverse tunnel to its assigned relay server
+- **Named relay assignment**: Gateways connect to the specific relay server specified by `--relay`
+- **Automatic reconnection**: If the relay connection is lost, the gateway automatically reconnects to the same relay
 - **Certificate-based authentication**: Each connection uses SSH certificates issued by Infisical for secure authentication
 
 </Accordion>
-<Accordion title="Can the proxy servers decrypt traffic going through them?">
-No, proxy servers cannot decrypt any traffic passing through them due to end-to-end encryption:
+<Accordion title="Can the relay servers decrypt traffic going through them?">
+No, relay servers cannot decrypt any traffic passing through them due to end-to-end encryption:
 
-- **Client-to-Gateway mTLS**: Clients establish mTLS connections directly with gateways, encrypting all application traffic
-- **SSH tunnel encryption**: The mTLS-encrypted traffic is then transmitted through SSH reverse tunnels to proxy servers
+- **Client-to-Gateway mTLS (via TLS-pinned tunnel)**: Clients connect via a proxy that establishes a TLS-pinned tunnel to the gateway; mTLS between the client and gateway is negotiated inside this tunnel, encrypting all application traffic
+- **SSH tunnel encryption**: The mTLS-encrypted traffic is then transmitted through SSH reverse tunnels to relay servers
 - **Double encryption**: Traffic is encrypted twice - once by client mTLS and again by SSH tunnels
-- **Proxy acts as a relay**: The proxy server only routes the doubly-encrypted traffic without access to either encryption layer
-- **No data storage**: Proxy servers do not store any traffic or sensitive information
+- **Relay only routes traffic**: The relay server only routes the doubly-encrypted traffic without access to either encryption layer
+- **No data storage**: Relay servers do not store any traffic or sensitive information
 - **Certificate isolation**: Each connection uses unique certificates, ensuring complete tenant isolation
 
-The proxy infrastructure is designed as a secure routing mechanism where only the client and gateway can decrypt the actual application traffic.
+The relay infrastructure is designed as a secure routing mechanism where only the client and gateway can decrypt the actual application traffic.
 
 </Accordion>
