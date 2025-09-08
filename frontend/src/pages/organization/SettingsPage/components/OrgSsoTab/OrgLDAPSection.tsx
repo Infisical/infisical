@@ -135,7 +135,7 @@ export const OrgLDAPSection = (): JSX.Element => {
               {(isAllowed) => (
                 <div>
                   <Switch
-                    id="enable-saml-sso"
+                    id="enable-ldap-sso"
                     onCheckedChange={(value) => handleLDAPToggle(value)}
                     isChecked={data ? data.isActive : false}
                     isDisabled={!isAllowed || isGoogleOAuthEnabled}
