@@ -123,7 +123,7 @@ export const injectIdentity = fp(
       }
 
       // Authentication is handled on a route-level
-      if (req.url === "/api/v1/proxies/register-instance-relay") {
+      if (req.url === "/api/v1/relays/register-instance-relay") {
         return;
       }
 

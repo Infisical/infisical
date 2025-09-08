@@ -15,28 +15,28 @@ This document explains the internal security architecture and how tenant isolati
 
 The gateway system uses multiple certificate authorities depending on deployment configuration:
 
-**For Organizations Using Infisical-Managed Proxies:**
+**For Organizations Using Infisical-Managed Relays:**
 
-- **Instance proxy SSH Client CA & Server CA** - Gateway ↔ Infisical Proxy Server authentication
-- **Instance proxy PKI Client CA & Server CA** - Platform ↔ Infisical Proxy Server authentication
+- **Instance relay SSH Client CA & Server CA** - Gateway ↔ Infisical Relay Server authentication
+- **Instance relay PKI Client CA & Server CA** - Platform ↔ Infisical Relay Server authentication
 - **Organization Gateway Client CA & Server CA** - Platform ↔ Gateway authentication
 
-**For Organizations Using Customer-Deployed Proxies:**
+**For Organizations Using Customer-Deployed Relays:**
 
-- **Organization proxy SSH Client CA & Server CA** - Gateway ↔ Customer Proxy Server authentication
-- **Organization proxy PKI Client CA & Server CA** - Platform ↔ Customer Proxy Server authentication
+- **Organization relay SSH Client CA & Server CA** - Gateway ↔ Customer Relay Server authentication
+- **Organization relay PKI Client CA & Server CA** - Platform ↔ Customer Relay Server authentication
 - **Organization Gateway Client CA & Server CA** - Platform ↔ Gateway authentication
 
 ### Certificate Hierarchy
 
 ```
-Instance Level (Shared Proxies):
-├── Instance Proxy SSH CA (Gateway ↔ Proxy)
-├── Instance Proxy PKI CA (Platform ↔ Proxy)
+Instance Level (Shared Relays):
+├── Instance Relay SSH CA (Gateway ↔ Relay)
+├── Instance Relay PKI CA (Platform ↔ Relay)
 
 Organization Level:
-├── Organization Proxy SSH CA (Gateway ↔ Org Proxy)
-├── Organization Proxy PKI CA (Platform ↔ Org Proxy)
+├── Organization Relay SSH CA (Gateway ↔ Org Relay)
+├── Organization Relay PKI CA (Platform ↔ Org Relay)
 └── Organization Gateway CA (Platform ↔ Gateway)
 ```
 
@@ -47,26 +47,26 @@ Organization Level:
 When a gateway is first deployed:
 
 1. Authenticates with Infisical using machine identity token
-2. Receives SSH certificates for proxy server authentication
-3. Establishes SSH reverse tunnel to assigned proxy server
-4. Certificate issuance varies by proxy configuration:
-   - **Infisical-managed proxy**: Receives Instance proxy SSH client certificate + Instance proxy SSH Server CA
-   - **Customer-deployed proxy**: Receives Organization proxy SSH client certificate + Organization proxy SSH Server CA
+2. Receives SSH certificates for relay server authentication
+3. Establishes SSH reverse tunnel to assigned relay server
+4. Certificate issuance varies by relay configuration:
+   - **Infisical-managed relay**: Receives Instance relay SSH client certificate + Instance relay SSH Server CA
+   - **Customer-deployed relay**: Receives Organization relay SSH client certificate + Organization relay SSH Server CA
 
 ### 2. SSH Tunnel Authentication
 
-Gateway ↔ Proxy Server communication uses SSH certificate authentication:
+Gateway ↔ Relay Server communication uses SSH certificate authentication:
 
 - **Gateway Authentication**:
 
-  - Presents SSH client certificate (Instance or Organization proxy SSH Client CA)
+  - Presents SSH client certificate (Instance or Organization relay SSH Client CA)
   - Certificate contains gateway identification and permissions
-  - Proxy server validates certificate against appropriate SSH Client CA
+  - Relay server validates certificate against appropriate SSH Client CA
 
-- **Proxy Server Authentication**:
-  - Presents SSH server certificate (Instance or Organization proxy SSH Server CA)
+- **Relay Server Authentication**:
+  - Presents SSH server certificate (Instance or Organization relay SSH Server CA)
   - Gateway validates certificate against appropriate SSH Server CA
-  - Ensures gateway connects to legitimate proxy infrastructure
+  - Ensures gateway connects to legitimate relay infrastructure
 
 ### 3. Application Traffic Security
 
@@ -82,7 +82,7 @@ End-to-end encryption for application data:
 
    - mTLS-encrypted application traffic travels through SSH reverse tunnels
    - Creates double encryption: mTLS payload within SSH tunnel
-   - Proxy servers cannot decrypt either encryption layer
+   - Relay servers cannot decrypt either encryption layer
 
 3. **Traffic Isolation**:
    - Each gateway maintains separate SSH tunnels
@@ -95,23 +95,23 @@ End-to-end encryption for application data:
 
 The architecture provides tenant isolation through multiple certificate authority layers:
 
-- **Instance-level CAs**: Shared proxy infrastructure uses instance-level certificates
+- **Instance-level CAs**: Shared relay infrastructure uses instance-level certificates
 - **Organization-level CAs**: Each organization has unique certificate authorities
-- **Proxy deployment flexibility**: Organizations can choose shared or dedicated proxy infrastructure
+- **Relay deployment flexibility**: Organizations can choose shared or dedicated relay infrastructure
 - **Cryptographic separation**: Cross-tenant communication is cryptographically impossible
 
 ### Authentication Flows by Deployment Type
 
-**Infisical-Managed Proxy Deployments:**
+**Infisical-Managed Relay Deployments:**
 
-- Gateway authenticates with proxy using Instance proxy SSH certificates
-- Platform authenticates with proxy using Instance proxy PKI certificates
+- Gateway authenticates with relay using Instance relay SSH certificates
+- Platform authenticates with relay using Instance relay PKI certificates
 - Platform authenticates with gateway using Organization Gateway certificates
 
-**Customer-Deployed Proxy Deployments:**
+**Customer-Deployed Relay Deployments:**
 
-- Gateway authenticates with proxy using Organization proxy SSH certificates
-- Platform authenticates with proxy using Organization proxy PKI certificates
+- Gateway authenticates with relay using Organization relay SSH certificates
+- Platform authenticates with relay using Organization relay PKI certificates
 - Platform authenticates with gateway using Organization Gateway certificates
 
 ### Resource Access Control
@@ -125,5 +125,5 @@ The architecture provides tenant isolation through multiple certificate authorit
 2. **Network Isolation**:
 
    - Each organization's traffic flows through isolated certificate-authenticated channels
-   - Proxy servers route traffic based on certificate validation without content access
+   - Relay servers route traffic based on certificate validation without content access
    - Gateway validates all incoming connections against Organization Gateway Client CA
