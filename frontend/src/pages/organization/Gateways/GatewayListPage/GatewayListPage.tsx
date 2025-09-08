@@ -152,7 +152,14 @@ export const GatewayListPage = withPermission(
                       )}
                       {filteredGateway?.map((el) => (
                         <Tr key={el.id}>
-                          <Td>{el.name}</Td>
+                          <Td>
+                            <div className="flex items-center gap-2">
+                              <span>{el.name}</span>
+                              <span className="rounded bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
+                                Gateway v{el.isV1 ? "1" : "2"}
+                              </span>
+                            </div>
+                          </Td>
                           <Td>{el.identity.name}</Td>
                           <Td>
                             {el.heartbeat
