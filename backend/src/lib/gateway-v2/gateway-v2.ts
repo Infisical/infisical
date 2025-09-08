@@ -77,8 +77,15 @@ const createRelayConnection = async ({
 
 const createGatewayConnection = async (
   relayConn: net.Socket,
-  gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string }
+  gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string },
+  protocol: GatewayProxyProtocol
 ): Promise<net.Socket> => {
+  const protocolToAlpn = {
+    [GatewayProxyProtocol.Http]: "infisical-http-proxy",
+    [GatewayProxyProtocol.Tcp]: "infisical-tcp-proxy",
+    [GatewayProxyProtocol.Ping]: "infisical-ping"
+  };
+
   const tlsOptions: tls.ConnectionOptions = {
     socket: relayConn,
     cert: gateway.clientCertificate,
@@ -86,7 +93,8 @@ const createGatewayConnection = async (
     ca: splitPemChain(gateway.serverCertificateChain),
     minVersion: "TLSv1.2",
     maxVersion: "TLSv1.3",
-    rejectUnauthorized: true
+    rejectUnauthorized: true,
+    ALPNProtocols: [protocolToAlpn[protocol]]
   };
 
   return new Promise((resolve, reject) => {
@@ -153,38 +161,28 @@ const setupRelayServer = async ({
           });
 
           // Stage 2: Establish mTLS connection to gateway through the relay
-          const gatewayConn = await createGatewayConnection(relayConn, gateway);
+          const gatewayConn = await createGatewayConnection(relayConn, gateway, protocol);
 
-          let command = "";
-
-          // Send protocol data to gateway
+          // Send protocol-specific configuration for HTTP requests
           if (protocol === GatewayProxyProtocol.Http) {
-            command += "FORWARD-HTTP";
-            // extract ca certificate from httpsAgent if present
             if (httpsAgent) {
               const agentOptions = httpsAgent.options;
               if (agentOptions && agentOptions.ca) {
                 const caCert = Array.isArray(agentOptions.ca) ? agentOptions.ca.join("\n") : agentOptions.ca;
                 const caB64 = Buffer.from(caCert as string).toString("base64");
-                command += ` ca=${caB64}`;
-
                 const rejectUnauthorized = agentOptions.rejectUnauthorized !== false;
-                command += ` verify=${rejectUnauthorized}`;
+
+                const configCommand = `CONFIG ca=${caB64} verify=${rejectUnauthorized}\n`;
+                gatewayConn.write(Buffer.from(configCommand));
+              } else {
+                // Send empty config to signal end of configuration
+                gatewayConn.write(Buffer.from("CONFIG\n"));
               }
+            } else {
+              // Send empty config to signal end of configuration
+              gatewayConn.write(Buffer.from("CONFIG\n"));
             }
-
-            command += "\n";
-          } else if (protocol === GatewayProxyProtocol.Tcp) {
-            command += `FORWARD-TCP\n`;
-          } else if (protocol === GatewayProxyProtocol.Ping) {
-            command += `PING\n`;
-          } else {
-            throw new BadRequestError({
-              message: `Invalid protocol: ${protocol as string}`
-            });
           }
-
-          gatewayConn.write(Buffer.from(command));
 
           // Bidirectional data forwarding
           clientConn.pipe(gatewayConn);
