@@ -49,15 +49,15 @@ export const getGitHubInstanceApiUrl = async (config: {
 };
 
 export const requestWithGitHubGateway = async <T>(
-  appConnection: { gatewayId?: string | null },
+  appConnection: { gatewayId?: string | null; connectorId?: string | null },
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   connectorService: Pick<TConnectorServiceFactory, "getPlatformConnectionDetailsByConnectorId">,
   requestConfig: AxiosRequestConfig
 ): Promise<AxiosResponse<T>> => {
-  const { gatewayId } = appConnection;
+  const { gatewayId, connectorId } = appConnection;
 
   // If gateway isn't set up, don't proxy request
-  if (!gatewayId) {
+  if (!gatewayId && !connectorId) {
     return httpRequest.request(requestConfig);
   }
 
@@ -67,7 +67,7 @@ export const requestWithGitHubGateway = async <T>(
 
   const [targetHost] = await verifyHostInputValidity(url.host, true);
   const connectorConnectionDetails = await connectorService.getPlatformConnectionDetailsByConnectorId({
-    connectorId: gatewayId,
+    connectorId: (connectorId || gatewayId) as string,
     targetHost,
     targetPort: 443
   });
@@ -112,7 +112,7 @@ export const requestWithGitHubGateway = async <T>(
     );
   }
 
-  const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
+  const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId((gatewayId || connectorId) as string);
   const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
 
   return withGatewayProxy(

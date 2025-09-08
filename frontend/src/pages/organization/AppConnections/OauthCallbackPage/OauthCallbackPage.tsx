@@ -31,7 +31,10 @@ type BaseFormData = {
 };
 
 type GithubFormData = BaseFormData &
-  Pick<TGitHubConnection, "name" | "method" | "description" | "gatewayId" | "credentials">;
+  Pick<
+    TGitHubConnection,
+    "name" | "method" | "description" | "gatewayId" | "connectorId" | "credentials"
+  >;
 
 type GithubRadarFormData = BaseFormData &
   Pick<TGitHubRadarConnection, "name" | "method" | "description">;
@@ -399,7 +402,8 @@ export const OAuthCallbackPage = () => {
 
     clearState(AppConnection.GitHub);
 
-    const { connectionId, name, description, returnUrl, gatewayId, credentials } = formData;
+    const { connectionId, name, description, returnUrl, gatewayId, connectorId, credentials } =
+      formData;
 
     try {
       if (connectionId) {
@@ -414,7 +418,8 @@ export const OAuthCallbackPage = () => {
                   ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
                   ...(credentials?.host && { host: credentials.host })
                 },
-                gatewayId
+                gatewayId,
+                connectorId
               }
             : {
                 connectionId,
@@ -423,7 +428,8 @@ export const OAuthCallbackPage = () => {
                   ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
                   ...(credentials?.host && { host: credentials.host })
                 },
-                gatewayId
+                gatewayId,
+                connectorId
               })
         });
       } else {
@@ -440,7 +446,8 @@ export const OAuthCallbackPage = () => {
                   installationId: installationId as string,
                   ...(credentials?.host && { host: credentials.host })
                 },
-                gatewayId
+                gatewayId,
+                connectorId
               }
             : {
                 method: GitHubConnectionMethod.OAuth,
@@ -449,7 +456,8 @@ export const OAuthCallbackPage = () => {
                   ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
                   ...(credentials?.host && { host: credentials.host })
                 },
-                gatewayId
+                gatewayId,
+                connectorId
               })
         });
       }

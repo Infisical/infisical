@@ -23,8 +23,12 @@ export const ViewIdentityKubernetesAuthContent = ({
   const { data, isPending } = useGetIdentityKubernetesAuth(identityId);
 
   const selectedGateway = useMemo(() => {
-    return gateways?.find((gateway) => gateway.id === data?.gatewayId) || null;
-  }, [gateways, data?.gatewayId]);
+    return (
+      gateways?.find(
+        (gateway) => gateway.id === data?.gatewayId || gateway.id === data?.connectorId
+      ) || null
+    );
+  }, [gateways, data?.gatewayId, data?.connectorId]);
 
   if (isPending) {
     return (

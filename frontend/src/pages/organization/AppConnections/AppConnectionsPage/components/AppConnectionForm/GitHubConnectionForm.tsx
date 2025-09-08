@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
-import { OrgPermissionCan } from "@app/components/permissions";
+import { OrgPermissionCanAny } from "@app/components/permissions";
 import {
   Accordion,
   AccordionContent,
@@ -23,6 +23,7 @@ import {
 import { useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
+  OrgPermissionConnectorActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
@@ -77,7 +78,7 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
     defaultValues: appConnection ?? {
       app: AppConnection.GitHub,
       method: GitHubConnectionMethod.App,
-      gatewayId: null,
+      connectorId: null,
       credentials: {
         instanceType: "cloud"
       }
@@ -203,7 +204,7 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
                       onValueChange={(e) => {
                         field.onChange(e);
                         if (e === "cloud") {
-                          setValue("gatewayId", null);
+                          setValue("connectorId", null);
                         }
                       }}
                       className="w-full border border-mineshaft-500"
@@ -235,23 +236,31 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
                 )}
               />
               {subscription.gateway && instanceType === "server" && (
-                <OrgPermissionCan
-                  I={OrgGatewayPermissionActions.AttachGateways}
-                  a={OrgPermissionSubjects.Gateway}
+                <OrgPermissionCanAny
+                  permissions={[
+                    {
+                      action: OrgGatewayPermissionActions.AttachGateways,
+                      subject: OrgPermissionSubjects.Gateway
+                    },
+                    {
+                      action: OrgPermissionConnectorActions.AttachConnectors,
+                      subject: OrgPermissionSubjects.Connector
+                    }
+                  ]}
                 >
                   {(isAllowed) => (
                     <Controller
                       control={control}
-                      name="gatewayId"
+                      name="connectorId"
                       render={({ field: { value, onChange }, fieldState: { error } }) => (
                         <FormControl
                           isError={Boolean(error?.message)}
                           errorText={error?.message}
-                          label="Gateway"
+                          label="Connector"
                         >
                           <Tooltip
                             isDisabled={isAllowed}
-                            content="Restricted access. You don't have permission to attach gateways to resources."
+                            content="Restricted access. You don't have permission to attach connectors to resources."
                           >
                             <div>
                               <Select
@@ -261,14 +270,14 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
                                 className="w-full border border-mineshaft-500"
                                 dropdownContainerClassName="max-w-none"
                                 isLoading={isGatewaysLoading}
-                                placeholder="Default: Internet Gateway"
+                                placeholder="Default: No Connector"
                                 position="popper"
                               >
                                 <SelectItem
                                   value={null as unknown as string}
                                   onClick={() => onChange(null)}
                                 >
-                                  Internet Gateway
+                                  No Connector
                                 </SelectItem>
                                 {gateways?.map((el) => (
                                   <SelectItem value={el.id} key={el.id}>
@@ -282,7 +291,7 @@ export const GitHubConnectionForm = ({ appConnection }: Props) => {
                       )}
                     />
                   )}
-                </OrgPermissionCan>
+                </OrgPermissionCanAny>
               )}
             </AccordionContent>
           </AccordionItem>
