@@ -20,13 +20,13 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     url: "/",
     schema: {
       body: z.object({
-        proxyName: z.string(),
+        relayName: z.string(),
         name: z.string()
       }),
       response: {
         200: z.object({
           gatewayId: z.string(),
-          proxyIp: z.string(),
+          relayHost: z.string(),
           pki: z.object({
             serverCertificate: z.string(),
             serverPrivateKey: z.string(),
@@ -47,7 +47,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const gateway = await server.services.gatewayV2.registerGateway({
         orgId: req.permission.orgId,
-        proxyName: req.body.proxyName,
+        relayName: req.body.relayName,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         name: req.body.name
