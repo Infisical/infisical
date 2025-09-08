@@ -190,12 +190,32 @@ Redis is used for caching and background tasks. You can use either a standalone 
       Comma-separated list of Redis Cluster host:port pairs. ```
       192.168.65.254:26379,192.168.65.254:26380 ```
     </ParamField>
+    <ParamField query="REDIS_CLUSTER_ENABLE_TLS" type="boolean" default="false">
+      Enable Redis TLS encryption on connection.
+    </ParamField>
+    <ParamField query="REDIS_CLUSTER_AWS_ELASTICACHE_DNS_LOOKUP_MODE" type="boolean" default="false">
+      Enable this if you are using AWS encrypt on transit for Elasticache cluster. For more information refer ![here](https://github.com/redis/ioredis?tab=readme-ov-file#special-note-aws-elasticache-clusters-with-tls).
+    </ParamField>
     <ParamField query="REDIS_USERNAME" type="string" default="none">
       Authentication username for Redis Node
     </ParamField>
     <ParamField query="REDIS_PASSWORD" type="string" default="none">
       Authentication password for Redis Node
     </ParamField>
+  </Tab>
+  <Tab title="Redis Read Replica">
+    <ParamField
+      query="REDIS_READ_REPLICAS"
+      type="string"
+      default="none"
+      optional
+    >
+      Comma-separated list of Redis read replicas host:port pairs. ```
+      192.168.65.254:26379,192.168.65.254:26380 ```
+    </ParamField>
+
+    The paramters like username, password, tls, redis type of the primary instance will be inherited.
+
   </Tab>
 </Tabs>
 
