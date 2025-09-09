@@ -41,7 +41,10 @@ import {
 } from "./certificate-types";
 
 type TCertificateServiceFactoryDep = {
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update" | "find" | "transaction" | "create">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "findOne" | "deleteById" | "update" | "find" | "transaction" | "create" | "findBySerialNumber"
+  >;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
@@ -75,7 +78,13 @@ export const certificateServiceFactory = ({
    * Return details for certificate with serial number [serialNumber]
    */
   const getCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
-    const cert = await certificateDAL.findOne({ serialNumber });
+    const cert = await certificateDAL.findBySerialNumber(serialNumber);
+
+    if (!cert) {
+      throw new NotFoundError({
+        message: "Certificate not found"
+      });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,

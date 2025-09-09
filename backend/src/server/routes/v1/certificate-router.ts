@@ -34,7 +34,9 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificate: CertificatesSchema
+          certificate: CertificatesSchema.extend({
+            collectionId: z.string().uuid().nullable().optional()
+          })
         })
       }
     },

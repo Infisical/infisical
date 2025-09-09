@@ -143,6 +143,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         commonName: cert.commonName,
         altNames: cert.altNames,
         certificateTemplateId: cert.certificateTemplateId ?? CERT_TEMPLATE_NONE_VALUE,
+        collectionId: cert.collectionId,
         ttl: "",
         keyUsages: Object.fromEntries((cert.keyUsages || []).map((name) => [name, true])),
         extendedKeyUsages: Object.fromEntries(

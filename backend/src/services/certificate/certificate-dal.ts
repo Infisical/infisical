@@ -1,7 +1,7 @@
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 import { CertStatus } from "./certificate-types";
 
@@ -79,10 +79,27 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findBySerialNumber = async (serialNumber: string) => {
+    try {
+      const cert = await db
+        .replicaNode()(TableName.Certificate)
+        .where({ serialNumber })
+        .leftJoin(TableName.PkiCollectionItem, `${TableName.Certificate}.id`, `${TableName.PkiCollectionItem}.certId`)
+        .select(selectAllTableCols(TableName.Certificate))
+        .select(db.ref("pkiCollectionId").withSchema(TableName.PkiCollectionItem).as("collectionId"))
+        .first();
+
+      return cert;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificate by serial number" });
+    }
+  };
+
   return {
     ...certificateOrm,
     countCertificatesInProject,
     countCertificatesForPkiSubscriber,
-    findLatestActiveCertForSubscriber
+    findLatestActiveCertForSubscriber,
+    findBySerialNumber
   };
 };

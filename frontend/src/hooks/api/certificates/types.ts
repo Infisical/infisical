@@ -13,6 +13,7 @@ export type TCertificate = {
   notAfter: string;
   keyUsages: CertKeyUsage[];
   extendedKeyUsages: CertExtendedKeyUsage[];
+  collectionId?: string;
 };
 
 export type TDeleteCertDTO = {
