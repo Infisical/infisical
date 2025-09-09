@@ -1,9 +1,10 @@
+import { Cluster, Redis } from "ioredis";
+
 import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
 import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
 import { applyJitter } from "@app/lib/dates";
 import { delay as delayMs } from "@app/lib/delay";
 import { ExecutionResult, Redlock, Settings } from "@app/lib/red-lock";
-import { Redis, Cluster } from "ioredis";
 
 export const PgSqlLock = {
   BootUpMigration: 2023,
