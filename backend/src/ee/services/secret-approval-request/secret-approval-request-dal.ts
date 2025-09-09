@@ -345,7 +345,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
 
   const findProjectRequestCount = async (projectId: string, userId: string, policyId?: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db)
+      const docs = await (tx || db.replicaNode())
         .with(
           "temp",
           (tx || db.replicaNode())(TableName.SecretApprovalRequest)
@@ -494,7 +494,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .distinctOn(`${TableName.SecretApprovalRequest}.id`)
         .as("inner");
 
-      const query = (tx || db)
+      const query = (tx || db.replicaNode())
         .select("*")
         .select(db.raw("count(*) OVER() as total_count"))
         .from(innerQuery)
