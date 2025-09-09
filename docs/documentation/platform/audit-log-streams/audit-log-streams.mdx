@@ -77,7 +77,11 @@ Infisical Audit Log Streaming enables you to transmit your organization's audit 
 
         <Steps>
             <Step title="Create Infisical Data Source">
-                In Cribl Stream, navigate to **Data > Sources > HTTP** and click **Add Source**.
+                In Cribl Stream, navigate to **Worker Groups** and select your Worker Group. Take note of the **Ingress Address** for later steps.
+
+        				![cribl ingress address](/images/platform/audit-log-streams/cribl-ingress-address.png)
+
+                Within your Worker Group, navigate to **Data > Sources > HTTP** and click **Add Source**.
 
         				![cribl add source](/images/platform/audit-log-streams/cribl-add-source.png)
 
@@ -97,7 +101,7 @@ Infisical Audit Log Streaming enables you to transmit your organization's audit 
                 On Infisical, create a new audit log stream and select the **Cribl** provider option.
 
                 Input the following credentials:
-                - **Cribl Stream URL**: Your HTTP source endpoint composed of `http://<instance-hostname>:<port>/<http-event-api-path>/_bulk`
+                - **Cribl Stream URL**: Your HTTP source endpoint composed of `http://<ingress-address>:<port>/<http-event-api-path>/_bulk`
                 - **Cribl Stream Token**: The authentication token from Step 1
 
                 <Info>
