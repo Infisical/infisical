@@ -47,15 +47,14 @@ import { Route as adminEnvironmentPageRouteImport } from './pages/admin/Environm
 import { Route as adminEncryptionPageRouteImport } from './pages/admin/EncryptionPage/route'
 import { Route as adminCachingPageRouteImport } from './pages/admin/CachingPage/route'
 import { Route as adminAuthenticationPageRouteImport } from './pages/admin/AuthenticationPage/route'
+import { Route as adminAccessManagementPageRouteImport } from './pages/admin/AccessManagementPage/route'
 import { Route as organizationProjectsPageRouteImport } from './pages/organization/ProjectsPage/route'
 import { Route as organizationBillingPageRouteImport } from './pages/organization/BillingPage/route'
 import { Route as organizationAuditLogsPageRouteImport } from './pages/organization/AuditLogsPage/route'
 import { Route as organizationAccessManagementPageRouteImport } from './pages/organization/AccessManagementPage/route'
 import { Route as adminGeneralPageRouteImport } from './pages/admin/GeneralPage/route'
 import { Route as secretManagerRedirectsRedirectApprovalPageImport } from './pages/secret-manager/redirects/redirect-approval-page'
-import { Route as adminUserIdentitiesResourcesPageRouteImport } from './pages/admin/UserIdentitiesResourcesPage/route'
-import { Route as adminOrganizationResourcesPageRouteImport } from './pages/admin/OrganizationResourcesPage/route'
-import { Route as adminMachineIdentitiesResourcesPageRouteImport } from './pages/admin/MachineIdentitiesResourcesPage/route'
+import { Route as adminResourceOverviewPageRouteImport } from './pages/admin/ResourceOverviewPage/route'
 import { Route as organizationSecretSharingSettingsPageRouteImport } from './pages/organization/SecretSharingSettingsPage/route'
 import { Route as organizationRoleByIDPageRouteImport } from './pages/organization/RoleByIDPage/route'
 import { Route as organizationUserDetailsByIDPageRouteImport } from './pages/organization/UserDetailsByIDPage/route'
@@ -606,6 +605,13 @@ const adminAuthenticationPageRouteRoute =
     getParentRoute: () => adminLayoutRoute,
   } as any)
 
+const adminAccessManagementPageRouteRoute =
+  adminAccessManagementPageRouteImport.update({
+    id: '/access-management',
+    path: '/access-management',
+    getParentRoute: () => adminLayoutRoute,
+  } as any)
+
 const organizationProjectsPageRouteRoute =
   organizationProjectsPageRouteImport.update({
     id: '/projects',
@@ -693,24 +699,10 @@ const AuthenticateInjectOrgDetailsOrgLayoutProjectsCertManagementProjectIdRoute 
     } as any,
   )
 
-const adminUserIdentitiesResourcesPageRouteRoute =
-  adminUserIdentitiesResourcesPageRouteImport.update({
-    id: '/resources/user-identities',
-    path: '/resources/user-identities',
-    getParentRoute: () => adminLayoutRoute,
-  } as any)
-
-const adminOrganizationResourcesPageRouteRoute =
-  adminOrganizationResourcesPageRouteImport.update({
-    id: '/resources/organizations',
-    path: '/resources/organizations',
-    getParentRoute: () => adminLayoutRoute,
-  } as any)
-
-const adminMachineIdentitiesResourcesPageRouteRoute =
-  adminMachineIdentitiesResourcesPageRouteImport.update({
-    id: '/resources/machine-identities',
-    path: '/resources/machine-identities',
+const adminResourceOverviewPageRouteRoute =
+  adminResourceOverviewPageRouteImport.update({
+    id: '/resources/overview',
+    path: '/resources/overview',
     getParentRoute: () => adminLayoutRoute,
   } as any)
 
@@ -2304,6 +2296,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof organizationProjectsPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
     }
+    '/_authenticate/_inject-org-details/admin/_admin-layout/access-management': {
+      id: '/_authenticate/_inject-org-details/admin/_admin-layout/access-management'
+      path: '/access-management'
+      fullPath: '/admin/access-management'
+      preLoaderRoute: typeof adminAccessManagementPageRouteImport
+      parentRoute: typeof adminLayoutImport
+    }
     '/_authenticate/_inject-org-details/admin/_admin-layout/authentication': {
       id: '/_authenticate/_inject-org-details/admin/_admin-layout/authentication'
       path: '/authentication'
@@ -2437,25 +2436,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof organizationSecretSharingSettingsPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingImport
     }
-    '/_authenticate/_inject-org-details/admin/_admin-layout/resources/machine-identities': {
-      id: '/_authenticate/_inject-org-details/admin/_admin-layout/resources/machine-identities'
-      path: '/resources/machine-identities'
-      fullPath: '/admin/resources/machine-identities'
-      preLoaderRoute: typeof adminMachineIdentitiesResourcesPageRouteImport
-      parentRoute: typeof adminLayoutImport
-    }
-    '/_authenticate/_inject-org-details/admin/_admin-layout/resources/organizations': {
-      id: '/_authenticate/_inject-org-details/admin/_admin-layout/resources/organizations'
-      path: '/resources/organizations'
-      fullPath: '/admin/resources/organizations'
-      preLoaderRoute: typeof adminOrganizationResourcesPageRouteImport
-      parentRoute: typeof adminLayoutImport
-    }
-    '/_authenticate/_inject-org-details/admin/_admin-layout/resources/user-identities': {
-      id: '/_authenticate/_inject-org-details/admin/_admin-layout/resources/user-identities'
-      path: '/resources/user-identities'
-      fullPath: '/admin/resources/user-identities'
-      preLoaderRoute: typeof adminUserIdentitiesResourcesPageRouteImport
+    '/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview': {
+      id: '/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview'
+      path: '/resources/overview'
+      fullPath: '/admin/resources/overview'
+      preLoaderRoute: typeof adminResourceOverviewPageRouteImport
       parentRoute: typeof adminLayoutImport
     }
     '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId': {
@@ -4438,29 +4423,24 @@ const organizationLayoutRouteWithChildren =
 
 interface adminLayoutRouteChildren {
   adminGeneralPageRouteRoute: typeof adminGeneralPageRouteRoute
+  adminAccessManagementPageRouteRoute: typeof adminAccessManagementPageRouteRoute
   adminAuthenticationPageRouteRoute: typeof adminAuthenticationPageRouteRoute
   adminCachingPageRouteRoute: typeof adminCachingPageRouteRoute
   adminEncryptionPageRouteRoute: typeof adminEncryptionPageRouteRoute
   adminEnvironmentPageRouteRoute: typeof adminEnvironmentPageRouteRoute
   adminIntegrationsPageRouteRoute: typeof adminIntegrationsPageRouteRoute
-  adminMachineIdentitiesResourcesPageRouteRoute: typeof adminMachineIdentitiesResourcesPageRouteRoute
-  adminOrganizationResourcesPageRouteRoute: typeof adminOrganizationResourcesPageRouteRoute
-  adminUserIdentitiesResourcesPageRouteRoute: typeof adminUserIdentitiesResourcesPageRouteRoute
+  adminResourceOverviewPageRouteRoute: typeof adminResourceOverviewPageRouteRoute
 }
 
 const adminLayoutRouteChildren: adminLayoutRouteChildren = {
   adminGeneralPageRouteRoute: adminGeneralPageRouteRoute,
+  adminAccessManagementPageRouteRoute: adminAccessManagementPageRouteRoute,
   adminAuthenticationPageRouteRoute: adminAuthenticationPageRouteRoute,
   adminCachingPageRouteRoute: adminCachingPageRouteRoute,
   adminEncryptionPageRouteRoute: adminEncryptionPageRouteRoute,
   adminEnvironmentPageRouteRoute: adminEnvironmentPageRouteRoute,
   adminIntegrationsPageRouteRoute: adminIntegrationsPageRouteRoute,
-  adminMachineIdentitiesResourcesPageRouteRoute:
-    adminMachineIdentitiesResourcesPageRouteRoute,
-  adminOrganizationResourcesPageRouteRoute:
-    adminOrganizationResourcesPageRouteRoute,
-  adminUserIdentitiesResourcesPageRouteRoute:
-    adminUserIdentitiesResourcesPageRouteRoute,
+  adminResourceOverviewPageRouteRoute: adminResourceOverviewPageRouteRoute,
 }
 
 const adminLayoutRouteWithChildren = adminLayoutRoute._addFileChildren(
@@ -4652,6 +4632,7 @@ export interface FileRoutesByFullPath {
   '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/organization/billing': typeof organizationBillingPageRouteRoute
   '/organization/projects': typeof organizationProjectsPageRouteRoute
+  '/admin/access-management': typeof adminAccessManagementPageRouteRoute
   '/admin/authentication': typeof adminAuthenticationPageRouteRoute
   '/admin/caching': typeof adminCachingPageRouteRoute
   '/admin/encryption': typeof adminEncryptionPageRouteRoute
@@ -4671,9 +4652,7 @@ export interface FileRoutesByFullPath {
   '/organization/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/organization/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/organization/secret-sharing/settings': typeof organizationSecretSharingSettingsPageRouteRoute
-  '/admin/resources/machine-identities': typeof adminMachineIdentitiesResourcesPageRouteRoute
-  '/admin/resources/organizations': typeof adminOrganizationResourcesPageRouteRoute
-  '/admin/resources/user-identities': typeof adminUserIdentitiesResourcesPageRouteRoute
+  '/admin/resources/overview': typeof adminResourceOverviewPageRouteRoute
   '/projects/cert-management/$projectId': typeof certManagerLayoutRouteWithChildren
   '/projects/kms/$projectId': typeof kmsLayoutRouteWithChildren
   '/projects/secret-management/$projectId': typeof secretManagerLayoutRouteWithChildren
@@ -4870,6 +4849,7 @@ export interface FileRoutesByTo {
   '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/organization/billing': typeof organizationBillingPageRouteRoute
   '/organization/projects': typeof organizationProjectsPageRouteRoute
+  '/admin/access-management': typeof adminAccessManagementPageRouteRoute
   '/admin/authentication': typeof adminAuthenticationPageRouteRoute
   '/admin/caching': typeof adminCachingPageRouteRoute
   '/admin/encryption': typeof adminEncryptionPageRouteRoute
@@ -4885,9 +4865,7 @@ export interface FileRoutesByTo {
   '/organization/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/organization/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/organization/secret-sharing/settings': typeof organizationSecretSharingSettingsPageRouteRoute
-  '/admin/resources/machine-identities': typeof adminMachineIdentitiesResourcesPageRouteRoute
-  '/admin/resources/organizations': typeof adminOrganizationResourcesPageRouteRoute
-  '/admin/resources/user-identities': typeof adminUserIdentitiesResourcesPageRouteRoute
+  '/admin/resources/overview': typeof adminResourceOverviewPageRouteRoute
   '/projects/cert-management/$projectId': typeof certManagerLayoutRouteWithChildren
   '/projects/kms/$projectId': typeof kmsLayoutRouteWithChildren
   '/projects/secret-management/$projectId': typeof secretManagerLayoutRouteWithChildren
@@ -5088,6 +5066,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/billing': typeof organizationBillingPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/projects': typeof organizationProjectsPageRouteRoute
+  '/_authenticate/_inject-org-details/admin/_admin-layout/access-management': typeof adminAccessManagementPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/authentication': typeof adminAuthenticationPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/caching': typeof adminCachingPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/encryption': typeof adminEncryptionPageRouteRoute
@@ -5107,9 +5086,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organization/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/settings': typeof organizationSecretSharingSettingsPageRouteRoute
-  '/_authenticate/_inject-org-details/admin/_admin-layout/resources/machine-identities': typeof adminMachineIdentitiesResourcesPageRouteRoute
-  '/_authenticate/_inject-org-details/admin/_admin-layout/resources/organizations': typeof adminOrganizationResourcesPageRouteRoute
-  '/_authenticate/_inject-org-details/admin/_admin-layout/resources/user-identities': typeof adminUserIdentitiesResourcesPageRouteRoute
+  '/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview': typeof adminResourceOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsCertManagementProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/projects/kms/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsKmsProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretManagementProjectIdRouteWithChildren
@@ -5317,6 +5294,7 @@ export interface FileRouteTypes {
     | '/organization/audit-logs'
     | '/organization/billing'
     | '/organization/projects'
+    | '/admin/access-management'
     | '/admin/authentication'
     | '/admin/caching'
     | '/admin/encryption'
@@ -5336,9 +5314,7 @@ export interface FileRouteTypes {
     | '/organization/members/$membershipId'
     | '/organization/roles/$roleId'
     | '/organization/secret-sharing/settings'
-    | '/admin/resources/machine-identities'
-    | '/admin/resources/organizations'
-    | '/admin/resources/user-identities'
+    | '/admin/resources/overview'
     | '/projects/cert-management/$projectId'
     | '/projects/kms/$projectId'
     | '/projects/secret-management/$projectId'
@@ -5534,6 +5510,7 @@ export interface FileRouteTypes {
     | '/organization/audit-logs'
     | '/organization/billing'
     | '/organization/projects'
+    | '/admin/access-management'
     | '/admin/authentication'
     | '/admin/caching'
     | '/admin/encryption'
@@ -5549,9 +5526,7 @@ export interface FileRouteTypes {
     | '/organization/members/$membershipId'
     | '/organization/roles/$roleId'
     | '/organization/secret-sharing/settings'
-    | '/admin/resources/machine-identities'
-    | '/admin/resources/organizations'
-    | '/admin/resources/user-identities'
+    | '/admin/resources/overview'
     | '/projects/cert-management/$projectId'
     | '/projects/kms/$projectId'
     | '/projects/secret-management/$projectId'
@@ -5750,6 +5725,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organization/audit-logs'
     | '/_authenticate/_inject-org-details/_org-layout/organization/billing'
     | '/_authenticate/_inject-org-details/_org-layout/organization/projects'
+    | '/_authenticate/_inject-org-details/admin/_admin-layout/access-management'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/authentication'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/caching'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/encryption'
@@ -5769,9 +5745,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organization/members/$membershipId'
     | '/_authenticate/_inject-org-details/_org-layout/organization/roles/$roleId'
     | '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/settings'
-    | '/_authenticate/_inject-org-details/admin/_admin-layout/resources/machine-identities'
-    | '/_authenticate/_inject-org-details/admin/_admin-layout/resources/organizations'
-    | '/_authenticate/_inject-org-details/admin/_admin-layout/resources/user-identities'
+    | '/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview'
     | '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/projects/kms/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId'
@@ -6195,14 +6169,13 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/admin",
       "children": [
         "/_authenticate/_inject-org-details/admin/_admin-layout/",
+        "/_authenticate/_inject-org-details/admin/_admin-layout/access-management",
         "/_authenticate/_inject-org-details/admin/_admin-layout/authentication",
         "/_authenticate/_inject-org-details/admin/_admin-layout/caching",
         "/_authenticate/_inject-org-details/admin/_admin-layout/encryption",
         "/_authenticate/_inject-org-details/admin/_admin-layout/environment",
         "/_authenticate/_inject-org-details/admin/_admin-layout/integrations",
-        "/_authenticate/_inject-org-details/admin/_admin-layout/resources/machine-identities",
-        "/_authenticate/_inject-org-details/admin/_admin-layout/resources/organizations",
-        "/_authenticate/_inject-org-details/admin/_admin-layout/resources/user-identities"
+        "/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview"
       ]
     },
     "/_authenticate/_inject-org-details/admin/_admin-layout/": {
@@ -6224,6 +6197,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organization/projects": {
       "filePath": "organization/ProjectsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
+    },
+    "/_authenticate/_inject-org-details/admin/_admin-layout/access-management": {
+      "filePath": "admin/AccessManagementPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/admin/_admin-layout"
     },
     "/_authenticate/_inject-org-details/admin/_admin-layout/authentication": {
       "filePath": "admin/AuthenticationPage/route.tsx",
@@ -6319,16 +6296,8 @@ export const routeTree = rootRoute
       "filePath": "organization/SecretSharingSettingsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing"
     },
-    "/_authenticate/_inject-org-details/admin/_admin-layout/resources/machine-identities": {
-      "filePath": "admin/MachineIdentitiesResourcesPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/admin/_admin-layout"
-    },
-    "/_authenticate/_inject-org-details/admin/_admin-layout/resources/organizations": {
-      "filePath": "admin/OrganizationResourcesPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/admin/_admin-layout"
-    },
-    "/_authenticate/_inject-org-details/admin/_admin-layout/resources/user-identities": {
-      "filePath": "admin/UserIdentitiesResourcesPage/route.tsx",
+    "/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview": {
+      "filePath": "admin/ResourceOverviewPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/admin/_admin-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId": {

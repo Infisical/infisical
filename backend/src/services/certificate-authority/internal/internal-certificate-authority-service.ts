@@ -1190,7 +1190,9 @@ export const internalCertificateAuthorityServiceFactory = ({
         });
       }
 
-      collectionId = certificateTemplate.pkiCollectionId as string;
+      if (!collectionId) {
+        collectionId = certificateTemplate.pkiCollectionId as string;
+      }
       ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateTemplate.caId);
     }
 

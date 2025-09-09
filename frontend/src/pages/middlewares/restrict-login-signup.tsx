@@ -15,7 +15,8 @@ import { setAuthToken } from "@app/hooks/api/reactQuery";
 
 const QueryParamsSchema = z.object({
   callback_port: z.coerce.number().optional().catch(undefined),
-  force: z.boolean().optional()
+  force: z.boolean().optional(),
+  org_id: z.string().optional().catch(undefined)
 });
 
 export const AuthConsentWrapper = () => {
@@ -100,6 +101,12 @@ export const Route = createFileRoute("/_restrict-login-signup")({
     if (search?.callback_port) {
       if (location.pathname.endsWith("select-organization") || location.pathname.endsWith("login"))
         return;
+    }
+
+    if (search.org_id) {
+      if (location.pathname.endsWith("select-organization")) return;
+
+      throw redirect({ to: "/login/select-organization", search: { org_id: search.org_id } });
     }
 
     if (!data.organizationId) {

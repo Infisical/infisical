@@ -28,14 +28,14 @@ const generateUsername = (usernameTemplate?: string | null, identity?: { name: s
 export const ElasticSearchProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretElasticSearchSchema.parseAsync(inputs);
-    const [hostIp] = await verifyHostInputValidity(providerInputs.host);
-    return { ...providerInputs, hostIp };
+    await verifyHostInputValidity(providerInputs.host);
+    return { ...providerInputs };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretElasticSearchSchema> & { hostIp: string }) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretElasticSearchSchema>) => {
     const connection = new ElasticSearchClient({
       node: {
-        url: new URL(`${providerInputs.hostIp}:${providerInputs.port}`),
+        url: new URL(`${providerInputs.host}:${providerInputs.port}`),
         ...(providerInputs.ca && {
           ssl: {
             rejectUnauthorized: false,

@@ -530,6 +530,11 @@ import {
   TSecretReminderRecipientsInsert,
   TSecretReminderRecipientsUpdate
 } from "@app/db/schemas/secret-reminder-recipients";
+import {
+  TUserNotifications,
+  TUserNotificationsInsert,
+  TUserNotificationsUpdate
+} from "@app/db/schemas/user-notifications";
 
 declare module "knex" {
   namespace Knex {
@@ -1253,6 +1258,11 @@ declare module "knex/types/tables" {
       TRemindersRecipients,
       TRemindersRecipientsInsert,
       TRemindersRecipientsUpdate
+    >;
+    [TableName.UserNotifications]: KnexOriginal.CompositeTableType<
+      TUserNotifications,
+      TUserNotificationsInsert,
+      TUserNotificationsUpdate
     >;
   }
 }

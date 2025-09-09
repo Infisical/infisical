@@ -218,6 +218,11 @@ import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { microsoftTeamsIntegrationDALFactory } from "@app/services/microsoft-teams/microsoft-teams-integration-dal";
 import { microsoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { projectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
+import { notificationQueueServiceFactory } from "@app/services/notification/notification-queue";
+import { notificationServiceFactory } from "@app/services/notification/notification-service";
+import { userNotificationDALFactory } from "@app/services/notification/user-notification-dal";
+import { offlineUsageReportDALFactory } from "@app/services/offline-usage-report/offline-usage-report-dal";
+import { offlineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
 import { orgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
@@ -310,6 +315,7 @@ import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
+import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
 import { registerV1Routes } from "./v1";
 import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
@@ -385,6 +391,7 @@ export const registerRoutes = async (
   const reminderRecipientDAL = reminderRecipientDALFactory(db);
 
   const integrationDAL = integrationDALFactory(db);
+  const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
   const integrationAuthDAL = integrationAuthDALFactory(db);
   const webhookDAL = webhookDALFactory(db);
   const serviceTokenDAL = serviceTokenDALFactory(db);
@@ -418,6 +425,7 @@ export const registerRoutes = async (
   const telemetryDAL = telemetryDALFactory(db);
   const appConnectionDAL = appConnectionDALFactory(db);
   const secretSyncDAL = secretSyncDALFactory(db, folderDAL);
+  const userNotificationDAL = userNotificationDALFactory(db);
 
   // ee db layer ops
   const permissionDAL = permissionDALFactory(db);
@@ -555,20 +563,29 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const auditLogStreamService = auditLogStreamServiceFactory({
+    licenseService,
+    permissionService,
+    auditLogStreamDAL,
+    kmsService
+  });
+
   const auditLogQueue = await auditLogQueueServiceFactory({
     auditLogDAL,
     queueService,
     projectDAL,
     licenseService,
-    auditLogStreamDAL
+    auditLogStreamService
   });
 
-  const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
-  const auditLogStreamService = auditLogStreamServiceFactory({
-    licenseService,
-    permissionService,
-    auditLogStreamDAL
+  const notificationQueue = await notificationQueueServiceFactory({
+    userNotificationDAL,
+    queueService
   });
+
+  const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
+
+  const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
@@ -842,7 +859,14 @@ export const registerRoutes = async (
     licenseService,
     kmsService,
     microsoftTeamsService,
-    invalidateCacheQueue
+    invalidateCacheQueue,
+    smtpService,
+    tokenService
+  });
+
+  const offlineUsageReportService = offlineUsageReportServiceFactory({
+    offlineUsageReportDAL,
+    licenseService
   });
 
   const orgAdminService = orgAdminServiceFactory({
@@ -1369,7 +1393,8 @@ export const registerRoutes = async (
     kmsService,
     groupDAL,
     microsoftTeamsService,
-    projectMicrosoftTeamsConfigDAL
+    projectMicrosoftTeamsConfigDAL,
+    notificationService
   });
 
   const secretReplicationService = secretReplicationServiceFactory({
@@ -1668,7 +1693,8 @@ export const registerRoutes = async (
     secretVersionV2DAL: secretVersionV2BridgeDAL,
     identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL,
     serviceTokenService,
-    orgService
+    orgService,
+    userNotificationDAL
   });
 
   const dailyReminderQueueService = dailyReminderQueueServiceFactory({
@@ -2004,6 +2030,7 @@ export const registerRoutes = async (
     apiKey: apiKeyService,
     authToken: tokenService,
     superAdmin: superAdminService,
+    offlineUsageReport: offlineUsageReportService,
     project: projectService,
     projectMembership: projectMembershipService,
     projectKey: projectKeyService,
@@ -2097,7 +2124,8 @@ export const registerRoutes = async (
     secretScanningV2: secretScanningV2Service,
     reminder: reminderService,
     bus: eventBusService,
-    sse: sseService
+    sse: sseService,
+    notification: notificationService
   });
 
   const cronJobs: CronJob[] = [];
@@ -2136,8 +2164,14 @@ export const registerRoutes = async (
     user: userDAL,
     kmipClient: kmipClientDAL
   });
+  const shouldForwardWritesToPrimaryInstance = Boolean(envConfig.INFISICAL_PRIMARY_INSTANCE_URL);
+  if (shouldForwardWritesToPrimaryInstance) {
+    logger.info(`Infisical primary instance is configured: ${envConfig.INFISICAL_PRIMARY_INSTANCE_URL}`);
 
-  await server.register(injectIdentity, { userDAL, serviceTokenDAL });
+    await server.register(forwardWritesToPrimary, { primaryUrl: envConfig.INFISICAL_PRIMARY_INSTANCE_URL as string });
+  }
+
+  await server.register(injectIdentity, { shouldForwardWritesToPrimaryInstance });
   await server.register(injectAssumePrivilege);
   await server.register(injectPermission);
   await server.register(injectRateLimits);

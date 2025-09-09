@@ -75,7 +75,7 @@ type Props = {
   onCreateTag: () => void;
   environment: string;
   secretPath: string;
-  handleSecretShare: () => void;
+  onShareSecret: (sec: SecretV3RawSanitized) => void;
   importedBy?: {
     environment: { name: string; slug: string };
     folders: {
@@ -102,7 +102,7 @@ export const SecretItem = memo(
     onToggleSecretSelect,
     environment,
     secretPath,
-    handleSecretShare,
+    onShareSecret,
     importedBy,
     isPending,
     pendingAction,
@@ -682,7 +682,7 @@ export const SecretItem = memo(
                       variant="plain"
                       size="md"
                       ariaLabel="share-secret"
-                      onClick={handleSecretShare}
+                      onClick={() => onShareSecret(secret)}
                     >
                       <Tooltip content="Share Secret">
                         <FontAwesomeSymbol

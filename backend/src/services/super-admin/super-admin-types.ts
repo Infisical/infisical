@@ -34,6 +34,16 @@ export type TGetOrganizationsDTO = {
   searchTerm: string;
 };
 
+export type TCreateOrganizationDTO = {
+  name: string;
+  inviteAdminEmails: string[];
+};
+
+export type TResendOrgInviteDTO = {
+  organizationId: string;
+  membershipId: string;
+};
+
 export enum LoginMethod {
   EMAIL = "email",
   GOOGLE = "google",

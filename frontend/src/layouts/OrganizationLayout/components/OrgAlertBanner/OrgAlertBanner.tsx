@@ -27,11 +27,11 @@ export const OrgAlertBanner = ({ text, link }: Props) => {
             target="_blank"
             className="group flex items-center"
           >
-            <span className="cursor-pointer pl-1 text-yellow-500 underline underline-offset-2 duration-100 group-hover:text-mineshaft-100 group-hover:decoration-mineshaft-100">
+            <span className="cursor-pointer pl-1 underline underline-offset-2 duration-100 group-hover:text-mineshaft-100 group-hover:decoration-mineshaft-100">
               here
             </span>
             <FontAwesomeIcon
-              className="ml-0.5 mt-0.5 text-yellow group-hover:text-mineshaft-100"
+              className="ml-1 mt-[0.12rem] group-hover:text-mineshaft-100"
               icon={faArrowUpRightFromSquare}
               size="xs"
             />

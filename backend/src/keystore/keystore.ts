@@ -3,6 +3,7 @@ import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
 import { applyJitter } from "@app/lib/dates";
 import { delay as delayMs } from "@app/lib/delay";
 import { ExecutionResult, Redlock, Settings } from "@app/lib/red-lock";
+import { Redis, Cluster } from "ioredis";
 
 export const PgSqlLock = {
   BootUpMigration: 2023,
@@ -38,6 +39,7 @@ export const KeyStorePrefixes = {
   SyncSecretIntegrationLastRunTimestamp: (projectId: string, environmentSlug: string, secretPath: string) =>
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
   SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
+  AppConnectionConcurrentJobs: (connectionId: string) => `app-connection-concurrency-${connectionId}` as const,
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
   SecretScanningLock: (dataSourceId: string, resourceExternalId: string) =>
     `secret-scanning-v2-mutex-${dataSourceId}-${resourceExternalId}` as const,
@@ -101,30 +103,57 @@ export type TKeyStoreFactory = {
   getKeysByPattern: (pattern: string, limit?: number) => Promise<string[]>;
 };
 
-export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFactory => {
-  const redis = buildRedisFromConfig(redisConfigKeys);
-  const redisLock = new Redlock([redis], { retryCount: 2, retryDelay: 200 });
+const pickPrimaryOrSecondaryRedis = (primary: Redis | Cluster, secondaries?: Array<Redis | Cluster>) => {
+  if (!secondaries || !secondaries.length) return primary;
+  const selectedReplica = secondaries[Math.floor(Math.random() * secondaries.length)];
+  return selectedReplica;
+};
+
+interface TKeyStoreFactoryDTO extends TRedisConfigKeys {
+  REDIS_READ_REPLICAS?: { host: string; port: number }[];
+}
+
+export const keyStoreFactory = (redisConfigKeys: TKeyStoreFactoryDTO): TKeyStoreFactory => {
+  const primaryRedis = buildRedisFromConfig(redisConfigKeys);
+  const redisReadReplicas = redisConfigKeys.REDIS_READ_REPLICAS?.map((el) => {
+    if (redisConfigKeys.REDIS_URL) {
+      const primaryNode = new URL(redisConfigKeys?.REDIS_URL);
+      primaryNode.hostname = el.host;
+      primaryNode.port = String(el.port);
+      return buildRedisFromConfig({ ...redisConfigKeys, REDIS_URL: primaryNode.toString() });
+    }
+
+    if (redisConfigKeys.REDIS_SENTINEL_HOSTS) {
+      return buildRedisFromConfig({ ...redisConfigKeys, REDIS_SENTINEL_HOSTS: [el] });
+    }
+
+    return buildRedisFromConfig({ ...redisConfigKeys, REDIS_CLUSTER_HOSTS: [el] });
+  });
+  const redisLock = new Redlock([primaryRedis], { retryCount: 2, retryDelay: 200 });
 
   const setItem = async (key: string, value: string | number | Buffer, prefix?: string) =>
-    redis.set(prefix ? `${prefix}:${key}` : key, value);
+    primaryRedis.set(prefix ? `${prefix}:${key}` : key, value);
 
-  const getItem = async (key: string, prefix?: string) => redis.get(prefix ? `${prefix}:${key}` : key);
+  const getItem = async (key: string, prefix?: string) =>
+    pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).get(prefix ? `${prefix}:${key}` : key);
 
   const getItems = async (keys: string[], prefix?: string) =>
-    redis.mget(keys.map((key) => (prefix ? `${prefix}:${key}` : key)));
+    pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).mget(
+      keys.map((key) => (prefix ? `${prefix}:${key}` : key))
+    );
 
   const setItemWithExpiry = async (
     key: string,
     expiryInSeconds: number | string,
     value: string | number | Buffer,
     prefix?: string
-  ) => redis.set(prefix ? `${prefix}:${key}` : key, value, "EX", expiryInSeconds);
+  ) => primaryRedis.set(prefix ? `${prefix}:${key}` : key, value, "EX", expiryInSeconds);
 
-  const deleteItem = async (key: string) => redis.del(key);
+  const deleteItem = async (key: string) => primaryRedis.del(key);
 
   const deleteItemsByKeyIn = async (keys: string[]) => {
     if (keys.length === 0) return 0;
-    return redis.del(keys);
+    return primaryRedis.del(keys);
   };
 
   const deleteItems = async ({ pattern, batchSize = 500, delay = 1500, jitter = 200 }: TDeleteItems) => {
@@ -134,12 +163,12 @@ export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFac
     do {
       // Await in loop is needed so that Redis is not overwhelmed
       // eslint-disable-next-line no-await-in-loop
-      const [nextCursor, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 1000); // Count should be 1000 - 5000 for prod loads
+      const [nextCursor, keys] = await primaryRedis.scan(cursor, "MATCH", pattern, "COUNT", 1000); // Count should be 1000 - 5000 for prod loads
       cursor = nextCursor;
 
       for (let i = 0; i < keys.length; i += batchSize) {
         const batch = keys.slice(i, i + batchSize);
-        const pipeline = redis.pipeline();
+        const pipeline = primaryRedis.pipeline();
         for (const key of batch) {
           pipeline.unlink(key);
         }
@@ -155,9 +184,9 @@ export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFac
     return totalDeleted;
   };
 
-  const incrementBy = async (key: string, value: number) => redis.incrby(key, value);
+  const incrementBy = async (key: string, value: number) => primaryRedis.incrby(key, value);
 
-  const setExpiry = async (key: string, expiryInSeconds: number) => redis.expire(key, expiryInSeconds);
+  const setExpiry = async (key: string, expiryInSeconds: number) => primaryRedis.expire(key, expiryInSeconds);
 
   const waitTillReady = async ({
     key,
@@ -188,7 +217,13 @@ export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFac
 
     do {
       // eslint-disable-next-line no-await-in-loop
-      const [nextCursor, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 1000);
+      const [nextCursor, keys] = await pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).scan(
+        cursor,
+        "MATCH",
+        pattern,
+        "COUNT",
+        1000
+      );
       cursor = nextCursor;
       allKeys.push(...keys);
 

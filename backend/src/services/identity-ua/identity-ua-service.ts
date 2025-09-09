@@ -84,18 +84,20 @@ export const identityUaServiceFactory = ({
 
     const LOCKOUT_KEY = `lockout:identity:${identityUa.identityId}:${IdentityAuthMethod.UNIVERSAL_AUTH}:${clientId}`;
 
-    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
-    try {
-      lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(LOCKOUT_KEY)], 500, {
-        retryCount: 3,
-        retryDelay: 300,
-        retryJitter: 100
-      });
-    } catch (e) {
-      logger.info(
-        `identity login failed to acquire lock [identityId=${identityUa.identityId}] [authMethod=${IdentityAuthMethod.UNIVERSAL_AUTH}]`
-      );
-      throw new RateLimitError({ message: "Rate limit exceeded" });
+    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
+    if (identityUa.lockoutEnabled) {
+      try {
+        lock = await keyStore.acquireLock([KeyStorePrefixes.IdentityLockoutLock(LOCKOUT_KEY)], 500, {
+          retryCount: 3,
+          retryDelay: 300,
+          retryJitter: 100
+        });
+      } catch (e) {
+        logger.info(
+          `identity login failed to acquire lock [identityId=${identityUa.identityId}] [authMethod=${IdentityAuthMethod.UNIVERSAL_AUTH}]`
+        );
+        throw new RateLimitError({ message: "Failed to acquire lock: rate limit exceeded" });
+      }
     }
 
     try {
@@ -257,7 +259,7 @@ export const identityUaServiceFactory = ({
         ...accessTokenTTLParams
       };
     } finally {
-      await lock.release();
+      if (lock) await lock.release();
     }
   };
 

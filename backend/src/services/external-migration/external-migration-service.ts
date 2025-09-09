@@ -5,9 +5,20 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 
 import { TUserDALFactory } from "../user/user-dal";
-import { decryptEnvKeyDataFn, importVaultDataFn, parseEnvKeyDataFn } from "./external-migration-fns";
+import {
+  decryptEnvKeyDataFn,
+  importVaultDataFn,
+  parseEnvKeyDataFn,
+  vaultMigrationTransformMappings
+} from "./external-migration-fns";
 import { TExternalMigrationQueueFactory } from "./external-migration-queue";
-import { ExternalPlatforms, TImportEnvKeyDataDTO, TImportVaultDataDTO } from "./external-migration-types";
+import {
+  ExternalMigrationProviders,
+  ExternalPlatforms,
+  THasCustomVaultMigrationDTO,
+  TImportEnvKeyDataDTO,
+  TImportVaultDataDTO
+} from "./external-migration-types";
 
 type TExternalMigrationServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
@@ -101,7 +112,8 @@ export const externalMigrationServiceFactory = ({
         vaultNamespace,
         vaultUrl,
         mappingType,
-        gatewayId
+        gatewayId,
+        orgId: actorOrgId
       },
       {
         gatewayService
@@ -127,8 +139,37 @@ export const externalMigrationServiceFactory = ({
     });
   };
 
+  const hasCustomVaultMigration = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    provider
+  }: THasCustomVaultMigrationDTO) => {
+    const { membership } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    if (membership.role !== OrgMembershipRole.Admin) {
+      throw new ForbiddenRequestError({ message: "Only admins can check custom migration status" });
+    }
+
+    if (provider !== ExternalMigrationProviders.Vault) {
+      throw new BadRequestError({
+        message: "Invalid provider. Vault is the only supported provider for custom migrations."
+      });
+    }
+
+    return actorOrgId in vaultMigrationTransformMappings;
+  };
+
   return {
     importEnvKeyData,
-    importVaultData
+    importVaultData,
+    hasCustomVaultMigration
   };
 };

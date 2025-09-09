@@ -18,6 +18,7 @@ import {
   NewDeviceLoginTemplate,
   OrgAdminBreakglassAccessTemplate,
   OrgAdminProjectGrantAccessTemplate,
+  OrganizationAssignmentTemplate,
   OrganizationInvitationTemplate,
   PasswordResetTemplate,
   PasswordSetupTemplate,
@@ -61,6 +62,7 @@ export enum SmtpTemplates {
   // HistoricalSecretList = "historicalSecretLeakIncident", not used anymore?
   NewDeviceJoin = "newDevice",
   OrgInvite = "organizationInvitation",
+  OrgAssignment = "organizationAssignment",
   ResetPassword = "passwordReset",
   SetupPassword = "passwordSetup",
   SecretLeakIncident = "secretLeakIncident",
@@ -94,6 +96,7 @@ export enum SmtpHost {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.OrgInvite]: OrganizationInvitationTemplate,
+  [SmtpTemplates.OrgAssignment]: OrganizationAssignmentTemplate,
   [SmtpTemplates.NewDeviceJoin]: NewDeviceLoginTemplate,
   [SmtpTemplates.SignupEmailVerification]: SignupEmailVerificationTemplate,
   [SmtpTemplates.EmailMfa]: EmailMfaTemplate,

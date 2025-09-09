@@ -1,4 +1,5 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
+import { PackRule, unpackRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 
 import {
@@ -16,9 +17,11 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSet,
   ProjectPermissionSshHostActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -1852,9 +1855,52 @@ export const projectServiceFactory = ({
     if (projectMember) throw new BadRequestError({ message: "User already has access to the project" });
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
-    const filteredProjectMembers = projectMembers
+
+    let filteredProjectMembers = projectMembers
       .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
       .map((el) => el.user.email!);
+    if (filteredProjectMembers.length === 0) {
+      const customRolesWithMemberCreate = await projectRoleDAL.find({ projectId });
+      const customRoleSlugsCanCreate = customRolesWithMemberCreate
+        .filter((role) => {
+          try {
+            const permissions = (
+              typeof role.permissions === "string"
+                ? (JSON.parse(role.permissions) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[])
+                : role.permissions
+            ) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[];
+
+            const ability = createMongoAbility<MongoAbility<ProjectPermissionSet>>(
+              unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(permissions)
+            );
+            return ability.can(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
+          } catch {
+            return false;
+          }
+        })
+        .map((role) => role.slug);
+
+      if (customRoleSlugsCanCreate.length > 0) {
+        const usersWithCustomCreateMemberRole = projectMembers
+          .filter((member) =>
+            member.roles.some((role) => role.customRoleSlug && customRoleSlugsCanCreate.includes(role.customRoleSlug))
+          )
+          .map((el) => el.user.email!)
+          .filter(Boolean);
+
+        if (usersWithCustomCreateMemberRole.length > 0) {
+          filteredProjectMembers = usersWithCustomCreateMemberRole;
+        }
+      }
+    }
+
+    if (filteredProjectMembers.length === 0) {
+      throw new BadRequestError({
+        message:
+          "No users in this project have permission to grant you access. Please contact an organization administrator to assign the necessary permissions."
+      });
+    }
+
     const org = await orgDAL.findOne({ id: permission.orgId });
     const project = await projectDAL.findById(projectId);
     const userDetails = await userDAL.findById(permission.id);

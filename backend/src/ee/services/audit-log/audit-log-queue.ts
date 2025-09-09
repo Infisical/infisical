@@ -1,22 +1,14 @@
-import { AxiosError, RawAxiosRequestHeaders } from "axios";
-
-import { SecretKeyEncoding } from "@app/db/schemas";
-import { request } from "@app/lib/config/request";
-import { crypto } from "@app/lib/crypto/cryptography";
-import { logger } from "@app/lib/logger";
+import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { TAuditLogStreamDALFactory } from "../audit-log-stream/audit-log-stream-dal";
-import { providerSpecificPayload } from "../audit-log-stream/audit-log-stream-fns";
-import { LogStreamHeaders } from "../audit-log-stream/audit-log-stream-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TAuditLogDALFactory } from "./audit-log-dal";
 import { TCreateAuditLogDTO } from "./audit-log-types";
 
 type TAuditLogQueueServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
-  auditLogStreamDAL: Pick<TAuditLogStreamDALFactory, "find">;
+  auditLogStreamService: Pick<TAuditLogStreamServiceFactory, "streamLog">;
   queueService: TQueueServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -35,7 +27,7 @@ export const auditLogQueueServiceFactory = async ({
   queueService,
   projectDAL,
   licenseService,
-  auditLogStreamDAL
+  auditLogStreamService
 }: TAuditLogQueueServiceFactoryDep): Promise<TAuditLogQueueServiceFactory> => {
   const pushToLog = async (data: TCreateAuditLogDTO) => {
     await queueService.queue<QueueName.AuditLog>(QueueName.AuditLog, QueueJobs.AuditLog, data, {
@@ -86,60 +78,7 @@ export const auditLogQueueServiceFactory = async ({
         userAgentType
       });
 
-      const logStreams = orgId ? await auditLogStreamDAL.find({ orgId }) : [];
-      await Promise.allSettled(
-        logStreams.map(
-          async ({
-            url,
-            encryptedHeadersTag,
-            encryptedHeadersIV,
-            encryptedHeadersKeyEncoding,
-            encryptedHeadersCiphertext
-          }) => {
-            const streamHeaders =
-              encryptedHeadersIV && encryptedHeadersCiphertext && encryptedHeadersTag
-                ? (JSON.parse(
-                    crypto
-                      .encryption()
-                      .symmetric()
-                      .decryptWithRootEncryptionKey({
-                        keyEncoding: encryptedHeadersKeyEncoding as SecretKeyEncoding,
-                        iv: encryptedHeadersIV,
-                        tag: encryptedHeadersTag,
-                        ciphertext: encryptedHeadersCiphertext
-                      })
-                  ) as LogStreamHeaders[])
-                : [];
-
-            const headers: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
-
-            if (streamHeaders.length)
-              streamHeaders.forEach(({ key, value }) => {
-                headers[key] = value;
-              });
-
-            try {
-              const response = await request.post(
-                url,
-                { ...providerSpecificPayload(url), ...auditLog },
-                {
-                  headers,
-                  // request timeout
-                  timeout: AUDIT_LOG_STREAM_TIMEOUT,
-                  // connection timeout
-                  signal: AbortSignal.timeout(AUDIT_LOG_STREAM_TIMEOUT)
-                }
-              );
-              return response;
-            } catch (error) {
-              logger.error(
-                `Failed to stream audit log [url=${url}] for org [orgId=${orgId}] [error=${(error as AxiosError).message}]`
-              );
-              return error;
-            }
-          }
-        )
-      );
+      await auditLogStreamService.streamLog(orgId, auditLog);
     }
   });
 

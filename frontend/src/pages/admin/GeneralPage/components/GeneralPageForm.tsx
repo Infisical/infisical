@@ -103,7 +103,7 @@ export const GeneralPageForm = () => {
 
   return (
     <form
-      className="space-y-8 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+      className="space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
       onSubmit={handleSubmit(onFormSubmit)}
     >
       <div className="flex flex-col justify-start">
