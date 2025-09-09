@@ -19,7 +19,7 @@ const MAX_RETRY_ON_FAILURE = 3;
 export const keyValueStoreDALFactory = (db: TDbClient): TKeyValueStoreDALFactory => {
   const keyValueStoreOrm = ormify(db, TableName.KeyValueStore);
 
-  const incrementBy: TKeyValueStoreDALFactory["incrementBy"] = (key, { incr = 1, tx, expiresAt }) => {
+  const incrementBy: TKeyValueStoreDALFactory["incrementBy"] = async (key, { incr = 1, tx, expiresAt }) => {
     return (tx || db)(TableName.KeyValueStore)
       .insert({ key, integerValue: 1, expiresAt })
       .onConflict("key")
@@ -27,7 +27,8 @@ export const keyValueStoreDALFactory = (db: TDbClient): TKeyValueStoreDALFactory
         integerValue: db.raw(`"${TableName.KeyValueStore}"."integerValue" + ?`, [incr]),
         expiresAt
       })
-      .returning("integerValue");
+      .returning("integerValue")
+      .then((result) => Number(result[0]?.integerValue || 0));
   };
 
   const findOneInt: TKeyValueStoreDALFactory["findOneInt"] = async (key, tx) => {
@@ -44,7 +45,6 @@ export const keyValueStoreDALFactory = (db: TDbClient): TKeyValueStoreDALFactory
     return Number(doc?.integerValue || 0);
   };
 
-  // delete all audit log that have expired
   const pruneExpiredKeys: TKeyValueStoreDALFactory["pruneExpiredKeys"] = async () => {
     let deletedIds: { key: string }[] = [];
     let numberOfRetryOnFailure = 0;

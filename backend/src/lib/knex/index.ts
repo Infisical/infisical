@@ -278,7 +278,7 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
       }
       if ($decr) {
         Object.entries($decr).forEach(([incrementField, incrementValue]) => {
-          void query.increment(incrementField, incrementValue as number);
+          void query.decrement(incrementField, incrementValue as number);
         });
       }
       return (await query) as Tables[Tname]["base"][];

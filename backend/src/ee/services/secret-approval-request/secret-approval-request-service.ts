@@ -787,6 +787,7 @@ export const secretApprovalRequestServiceFactory = ({
           },
           tx
         );
+        await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
         return {
           secrets: { created: newSecrets, updated: updatedSecrets, deleted: deletedSecret },
           approval: updatedSecretApproval
