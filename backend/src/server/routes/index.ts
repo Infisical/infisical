@@ -739,6 +739,7 @@ export const registerRoutes = async (
 
   const userService = userServiceFactory({
     userDAL,
+    orgDAL,
     orgMembershipDAL,
     tokenService,
     permissionService,

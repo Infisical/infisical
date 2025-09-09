@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -7,6 +8,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { logger } from "@app/lib/logger";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
@@ -15,7 +17,7 @@ import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TUserDALFactory } from "./user-dal";
-import { TListUserGroupsDTO, TUpdateUserMfaDTO } from "./user-types";
+import { TListUserGroupsDTO, TUpdateUserEmailDTO, TUpdateUserMfaDTO } from "./user-types";
 
 type TUserServiceFactoryDep = {
   userDAL: Pick<
@@ -34,18 +36,20 @@ type TUserServiceFactoryDep = {
     | "findAllMyAccounts"
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "findByUserId">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "find">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
-  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
+  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser" | "revokeAllMySessions">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
   permissionService: TPermissionServiceFactory;
-  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
 
 export const userServiceFactory = ({
   userDAL,
+  orgDAL,
   orgMembershipDAL,
   projectMembershipDAL,
   groupProjectDAL,
@@ -176,6 +180,135 @@ export const userServiceFactory = ({
 
     const updatedUser = await userDAL.updateById(userId, { authMethods });
     return updatedUser;
+  };
+
+  const checkUserScimRestriction = async (userId: string, tx?: Knex) => {
+    const userOrgs = await orgMembershipDAL.find({ userId }, { tx });
+
+    if (userOrgs.length === 0) {
+      return false;
+    }
+
+    const orgIds = userOrgs.map((membership) => membership.orgId);
+    const organizations = await orgDAL.find({ $in: { id: orgIds } }, { tx });
+
+    return organizations.some((org) => org.scimEnabled);
+  };
+
+  const requestEmailChangeOTP = async ({ userId, newEmail }: TUpdateUserEmailDTO) => {
+    const changeEmailOTP = await userDAL.transaction(async (tx) => {
+      const user = await userDAL.findById(userId, tx);
+      if (!user)
+        throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "RequestEmailChangeOTP" });
+
+      if (user.authMethods?.includes(AuthMethod.LDAP)) {
+        throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "RequestEmailChangeOTP" });
+      }
+
+      const hasScimRestriction = await checkUserScimRestriction(userId, tx);
+      if (hasScimRestriction) {
+        throw new BadRequestError({
+          message: "Email changes are disabled because SCIM is enabled for one or more of your organizations",
+          name: "RequestEmailChangeOTP"
+        });
+      }
+
+      // Silently check if another user already has this email - don't send OTP if email is taken
+      const existingUsers = await userDAL.findUserByUsername(newEmail.toLowerCase(), tx);
+      const existingUser = existingUsers?.find((u) => u.id !== userId);
+      if (existingUser) {
+        // Don't reveal that email is taken - just don't send OTP
+        // Frontend will show generic "check your email" message
+        return { success: true, message: "Verification code sent to new email address" };
+      }
+
+      // Generate 8-digit OTP and store newEmail in aliasId field temporarily
+      const otpCode = await tokenService.createTokenForUser({
+        type: TokenType.TOKEN_EMAIL_CHANGE_OTP,
+        userId,
+        // Use aliasId to store the new email (we'll parse this back later)
+        aliasId: newEmail.toLowerCase()
+      });
+
+      // Send OTP to NEW email address
+      await smtpService.sendMail({
+        template: SmtpTemplates.EmailVerification,
+        subjectLine: "Infisical email change verification",
+        recipients: [newEmail.toLowerCase()],
+        substitutions: {
+          code: otpCode
+        }
+      });
+
+      return { success: true, message: "Verification code sent to new email address" };
+    });
+    return changeEmailOTP;
+  };
+
+  const updateUserEmail = async ({ userId, newEmail, otpCode }: TUpdateUserEmailDTO & { otpCode: string }) => {
+    const changedUser = await userDAL.transaction(async (tx) => {
+      const user = await userDAL.findById(userId, tx);
+      if (!user) throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "UpdateUserEmail" });
+
+      if (user.authMethods?.includes(AuthMethod.LDAP)) {
+        throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "UpdateUserEmail" });
+      }
+
+      const hasScimRestriction = await checkUserScimRestriction(userId, tx);
+      if (hasScimRestriction) {
+        throw new BadRequestError({
+          message: "Email changes are disabled because SCIM is enabled for one or more of your organizations",
+          name: "UpdateUserEmail"
+        });
+      }
+
+      // Validate OTP and get the new email from token aliasId field
+      let tokenData;
+      try {
+        tokenData = await tokenService.validateTokenForUser({
+          type: TokenType.TOKEN_EMAIL_CHANGE_OTP,
+          userId,
+          code: otpCode
+        });
+      } catch (error) {
+        // For security reasons, always return "Invalid verification code" regardless of the actual error
+        // This prevents information disclosure about existing emails
+        throw new BadRequestError({ message: "Invalid verification code", name: "UpdateUserEmail" });
+      }
+
+      // Verify the new email matches what was stored in aliasId
+      const tokenNewEmail = tokenData?.aliasId;
+      if (!tokenNewEmail || tokenNewEmail !== newEmail.toLowerCase()) {
+        throw new BadRequestError({ message: "Invalid verification code", name: "UpdateUserEmail" });
+      }
+
+      // Final check if another user has this email (in case it was taken between OTP request and verification)
+      const existingUsers = await userDAL.findUserByUsername(newEmail.toLowerCase(), tx);
+      const existingUser = existingUsers?.find((u) => u.id !== userId);
+      if (existingUser) {
+        throw new BadRequestError({ message: "Email is no longer available", name: "UpdateUserEmail" });
+      }
+
+      // Delete all user aliases since the email is changing
+      await userAliasDAL.delete({ userId }, tx);
+
+      // Update the user's email and KEEP email as verified (as requested)
+      const updatedUser = await userDAL.updateById(
+        userId,
+        {
+          email: newEmail.toLowerCase(),
+          username: newEmail.toLowerCase(),
+          isEmailVerified: true // Keep verified as per requirement
+        },
+        tx
+      );
+
+      // Revoke all sessions to force re-login
+      await tokenService.revokeAllMySessions(userId);
+
+      return updatedUser;
+    });
+    return changedUser;
   };
 
   const getAllMyAccounts = async (email: string, userId: string) => {
@@ -313,6 +446,8 @@ export const userServiceFactory = ({
     updateUserMfa,
     updateUserName,
     updateAuthMethods,
+    requestEmailChangeOTP,
+    updateUserEmail,
     deleteUser,
     getMe,
     createUserAction,
