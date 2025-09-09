@@ -9,6 +9,15 @@ import { useGetProjectFolders, useGetProjectSecrets } from "@app/hooks/api";
 
 import { SecretInput } from "../SecretInput";
 
+// Regex to find all secret references in the format ${reference}
+const REFERENCE_REGEX = /\${([^}]+)}/g;
+
+// Extract unique references from a value
+const extractReferences = (value: string): string[] => {
+  const matches = Array.from(value.matchAll(REFERENCE_REGEX));
+  return [...new Set(matches.map((match) => match[1]))];
+};
+
 const getIndexOfUnclosedRefToTheLeft = (value: string, pos: number) => {
   // take substring up to pos in order to consider edits for closed references
   for (let i = pos; i >= 1; i -= 1) {
@@ -83,7 +92,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
-    const inputRef = useRef<HTMLTextAreaElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement | null>(null);
     const popoverContentRef = useRef<HTMLDivElement>(null);
     const [isFocused, setIsFocused] = useToggle(false);
     const currentCursorPosition = inputRef.current?.selectionStart || 0;
@@ -139,6 +148,8 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       }
     });
 
+    const allReferences = useMemo(() => extractReferences(value), [value]);
+
     const suggestions = useMemo(() => {
       if (!isPopupOpen) return [];
       // reset highlight whenever recomputation happens
@@ -177,6 +188,44 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       });
       return suggestionsArr;
     }, [secrets, folders, currentWorkspace?.environments, isPopupOpen, suggestionSource.value]);
+
+    // Mark as invalid when editing and reference doesn't match any suggestion
+    const invalidReferences = useMemo(() => {
+      const invalid = new Set<string>();
+
+      if (!isPopupOpen) {
+        return invalid; // No validation when not editing
+      }
+
+      const suggestionsHaveLoaded = Boolean(secrets || folders || currentWorkspace?.environments);
+
+      if (!suggestionsHaveLoaded) {
+        return invalid;
+      }
+
+      // If we have an active suggestion context but no suggestions, it means the query returned empty
+      const suggestionsAreEmpty = suggestions.length === 0;
+
+      allReferences.forEach((reference) => {
+        const matchesAnySuggestion = suggestions.some((suggestion) => {
+          if (!reference.includes(".")) {
+            return suggestion.slug === reference;
+          }
+          const parts = reference.split(".");
+          const finalPart = parts[parts.length - 1];
+          return suggestion.slug === finalPart;
+        });
+
+        // Mark as invalid only if:
+        // 1. We have suggestions loaded AND none match, OR
+        // 2. The query returned empty results
+        if (!matchesAnySuggestion && (suggestions.length > 0 || suggestionsAreEmpty)) {
+          invalid.add(reference);
+        }
+      });
+
+      return invalid;
+    }, [isPopupOpen, allReferences, suggestions, secrets, folders, currentWorkspace?.environments]);
 
     const handleSuggestionSelect = (selectIndex?: number) => {
       const selectedSuggestion =
@@ -257,18 +306,20 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     };
 
     // to handle multiple ref for single component
-    const handleRef = useCallback((el: HTMLTextAreaElement) => {
-      // @ts-expect-error this is for multiple ref single component
-      inputRef.current = el;
-      if (ref) {
-        if (typeof ref === "function") {
-          ref(el);
-        } else {
-          // eslint-disable-next-line
-          ref.current = el;
+    const handleRef = useCallback(
+      (el: HTMLTextAreaElement) => {
+        inputRef.current = el;
+        if (ref) {
+          if (typeof ref === "function") {
+            ref(el);
+          } else {
+            // eslint-disable-next-line no-param-reassign
+            ref.current = el;
+          }
         }
-      }
-    }, []);
+      },
+      [ref]
+    );
 
     return (
       <Popover.Root open={isPopupOpen} onOpenChange={handlePopUpOpen}>
@@ -287,6 +338,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             }}
             onChange={(e) => onChange?.(e.target.value)}
             containerClassName={containerClassName}
+            invalidReferences={invalidReferences}
           />
         </Popover.Trigger>
         <Popover.Content

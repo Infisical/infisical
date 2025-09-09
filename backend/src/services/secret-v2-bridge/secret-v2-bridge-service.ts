@@ -148,7 +148,7 @@ export const secretV2BridgeServiceFactory = ({
   keyStore,
   reminderService
 }: TSecretV2BridgeServiceFactoryDep) => {
-  const $validateSecretReferences = async (
+  const validateSecretReferences = async (
     projectId: string,
     permission: MongoAbility<ProjectPermissionSet>,
     references: ReturnType<typeof getAllSecretReferences>["nestedReferences"],
@@ -312,12 +312,7 @@ export const secretV2BridgeServiceFactory = ({
       project.secretDetectionIgnoreValues || []
     );
 
-    const { nestedReferences, localReferences } = getAllSecretReferences(inputSecret.secretValue);
-    const allSecretReferences = nestedReferences.concat(
-      localReferences.map((el) => ({ secretKey: el, secretPath, environment }))
-    );
-
-    await $validateSecretReferences(projectId, permission, allSecretReferences);
+    const { nestedReferences } = getAllSecretReferences(inputSecret.secretValue);
 
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -557,14 +552,6 @@ export const secretV2BridgeServiceFactory = ({
             references: getAllSecretReferences(secretValue).nestedReferences
           }
         : {};
-
-    if (secretValue) {
-      const { nestedReferences, localReferences } = getAllSecretReferences(secretValue);
-      const allSecretReferences = nestedReferences.concat(
-        localReferences.map((el) => ({ secretKey: el, secretPath, environment }))
-      );
-      await $validateSecretReferences(projectId, permission, allSecretReferences);
-    }
 
     const updatedSecret = await secretDAL.transaction(async (tx) =>
       fnSecretBulkUpdate({
@@ -1686,7 +1673,6 @@ export const secretV2BridgeServiceFactory = ({
         });
       }
     });
-    await $validateSecretReferences(projectId, permission, secretReferences);
 
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -2000,7 +1986,6 @@ export const secretV2BridgeServiceFactory = ({
             });
           }
         });
-        await $validateSecretReferences(projectId, permission, secretReferences, tx);
 
         const project = await projectDAL.findById(projectId);
         await scanSecretPolicyViolations(
@@ -3150,6 +3135,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretById,
     getAccessibleSecrets,
     getSecretVersionsByIds,
-    findSecretIdsByFolderIdAndKeys
+    findSecretIdsByFolderIdAndKeys,
+    validateSecretReferences
   };
 };

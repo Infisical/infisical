@@ -7,7 +7,12 @@ import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPa
 
 const REGEX = /(\${([a-zA-Z0-9-_.]+)})/g;
 
-const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?: boolean) => {
+const syntaxHighlight = (
+  content?: string | null,
+  isVisible?: boolean,
+  isImport?: boolean,
+  invalidReferences?: Set<string>
+) => {
   if (isImport && !content) return "IMPORTED";
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";
@@ -18,9 +23,18 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?
     const isInterpolationSyntax = el.startsWith("${") && el.endsWith("}");
     if (isInterpolationSyntax) {
       skipNext = true;
+      const referenceContent = el.slice(2, -1);
+      const isInvalid = invalidReferences?.has(referenceContent) ?? false;
+
       return (
-        <span className="ph-no-capture text-yellow" key={`secret-value-${i + 1}`}>
-          &#36;&#123;<span className="ph-no-capture text-yellow-200/80">{el.slice(2, -1)}</span>
+        <span
+          className={`ph-no-capture ${isInvalid ? "text-red-500" : "text-yellow"}`}
+          key={`secret-value-${i + 1}`}
+        >
+          &#36;&#123;
+          <span className={`ph-no-capture ${isInvalid ? "text-red-300/80" : "text-yellow-200/80"}`}>
+            {referenceContent}
+          </span>
           &#125;
         </span>
       );
@@ -46,6 +60,7 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   isDisabled?: boolean;
   containerClassName?: string;
   canEditButNotView?: boolean;
+  invalidReferences?: Set<string>;
 };
 
 const commonClassName = "font-mono text-sm caret-white border-none outline-none w-full break-all";
@@ -63,6 +78,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       isReadOnly,
       onFocus,
       canEditButNotView,
+      invalidReferences,
       ...props
     },
     ref
@@ -81,7 +97,8 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
                 {syntaxHighlight(
                   value,
                   isVisible || (isSecretFocused && !valueAlwaysHidden),
-                  isImport
+                  isImport,
+                  invalidReferences
                 )}
               </span>
             </code>
