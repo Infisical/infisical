@@ -386,7 +386,8 @@ export const appConnectionServiceFactory = ({
 
       if (gatewayId) {
         const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
-        if (!gateway) {
+        const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
+        if (!gateway && !gatewayV2) {
           throw new NotFoundError({
             message: `Gateway with ID ${gatewayId} not found for org`
           });
