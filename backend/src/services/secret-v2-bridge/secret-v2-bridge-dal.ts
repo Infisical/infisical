@@ -50,15 +50,14 @@ interface TSecretV2DalArg {
 }
 
 export const SECRET_DAL_TTL = () => applyJitter(10 * 60, 2 * 60);
-export const SECRET_DAL_VERSION_TTL = 15 * 60;
+export const SECRET_DAL_VERSION_TTL = "15m";
 export const MAX_SECRET_CACHE_BYTES = 25 * 1024 * 1024;
 export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const secretOrm = ormify(db, TableName.SecretV2);
 
-  const invalidateSecretCacheByProjectId = async (projectId: string) => {
+  const invalidateSecretCacheByProjectId = async (projectId: string, tx?: Knex) => {
     const secretDalVersionKey = SecretServiceCacheKeys.getSecretDalVersion(projectId);
-    await keyStore.incrementBy(secretDalVersionKey, 1);
-    await keyStore.setExpiry(secretDalVersionKey, SECRET_DAL_VERSION_TTL);
+    await keyStore.pgIncrementBy(secretDalVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
   };
 
   const findOne = async (filter: Partial<TSecretsV2>, tx?: Knex) => {

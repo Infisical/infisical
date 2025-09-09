@@ -976,6 +976,7 @@ export const secretApprovalRequestServiceFactory = ({
           },
           tx
         );
+        await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
         return {
           secrets: { created: newSecrets, updated: updatedSecrets, deleted: deletedSecret },
           approval: updatedSecretApproval
@@ -983,7 +984,6 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     await snapshotService.performSnapshot(folderId);
     const [folder] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
     if (!folder) {

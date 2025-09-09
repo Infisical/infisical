@@ -250,12 +250,12 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
         .returning("*");
       if ($incr) {
         Object.entries($incr).forEach(([incrementField, incrementValue]) => {
-          void query.increment(incrementField, incrementValue);
+          void query.increment(incrementField, incrementValue as number);
         });
       }
       if ($decr) {
         Object.entries($decr).forEach(([incrementField, incrementValue]) => {
-          void query.decrement(incrementField, incrementValue);
+          void query.decrement(incrementField, incrementValue as number);
         });
       }
       const [docs] = await query;
@@ -273,12 +273,12 @@ export const ormify = <DbOps extends object, Tname extends keyof Tables>(
       // increment and decrement operation in update
       if ($incr) {
         Object.entries($incr).forEach(([incrementField, incrementValue]) => {
-          void query.increment(incrementField, incrementValue);
+          void query.increment(incrementField, incrementValue as number);
         });
       }
       if ($decr) {
         Object.entries($decr).forEach(([incrementField, incrementValue]) => {
-          void query.increment(incrementField, incrementValue);
+          void query.increment(incrementField, incrementValue as number);
         });
       }
       return (await query) as Tables[Tname]["base"][];
