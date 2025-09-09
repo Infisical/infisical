@@ -15,7 +15,7 @@ import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TUserDALFactory } from "./user-dal";
-import { TListUserGroupsDTO, TUpdateUserMfaDTO } from "./user-types";
+import { TListUserGroupsDTO, TUpdateUserEmailDTO, TUpdateUserMfaDTO } from "./user-types";
 
 type TUserServiceFactoryDep = {
   userDAL: Pick<
@@ -35,11 +35,11 @@ type TUserServiceFactoryDep = {
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "findByUserId">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
-  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
+  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser" | "revokeAllMySessions">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
   permissionService: TPermissionServiceFactory;
-  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -178,6 +178,44 @@ export const userServiceFactory = ({
     return updatedUser;
   };
 
+  const updateUserEmail = async ({ userId, newEmail }: TUpdateUserEmailDTO) => {
+    const changedUser = await userDAL.transaction(async (tx) => {
+      const user = await userDAL.findById(userId, tx);
+      if (!user) throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "UpdateUserEmail" });
+
+      if (user.authMethods?.includes(AuthMethod.LDAP)) {
+        throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "UpdateUserEmail" });
+      }
+
+      // Check if another user already has this email
+      const existingUsers = await userDAL.findUserByUsername(newEmail.toLowerCase(), tx);
+      const existingUser = existingUsers?.find((u) => u.id !== userId);
+      if (existingUser) {
+        throw new BadRequestError({ message: "Email is already in use by another user", name: "UpdateUserEmail" });
+      }
+
+      // Delete all user aliases since the email is changing
+      await userAliasDAL.delete({ userId }, tx);
+
+      // Update the user's email and set email as unverified
+      const updatedUser = await userDAL.updateById(
+        userId,
+        {
+          email: newEmail.toLowerCase(),
+          username: newEmail.toLowerCase(),
+          isEmailVerified: false
+        },
+        tx
+      );
+
+      // Revoke all sessions to force re-login
+      await tokenService.revokeAllMySessions(userId);
+
+      return updatedUser;
+    });
+    return changedUser;
+  };
+
   const getAllMyAccounts = async (email: string, userId: string) => {
     const users = await userDAL.findAllMyAccounts(email);
     return users?.map((el) => ({ ...el, isMyAccount: el.id === userId }));
@@ -313,6 +351,7 @@ export const userServiceFactory = ({
     updateUserMfa,
     updateUserName,
     updateAuthMethods,
+    updateUserEmail,
     deleteUser,
     getMe,
     createUserAction,

@@ -3,6 +3,7 @@ export {
   useRemoveMyDuplicateAccounts,
   useRevokeMySessionById,
   useSendEmailVerificationCode,
+  useUpdateUserEmail,
   useVerifyEmailVerificationCode
 } from "./mutation";
 export {

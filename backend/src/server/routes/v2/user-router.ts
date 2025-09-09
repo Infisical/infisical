@@ -130,6 +130,32 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "PATCH",
+    url: "/me/email",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        newEmail: z.string().email().trim()
+      }),
+      response: {
+        200: z.object({
+          user: UsersSchema
+        })
+      }
+    },
+    preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    handler: async (req) => {
+      const user = await server.services.user.updateUserEmail({
+        userId: req.permission.id,
+        newEmail: req.body.newEmail
+      });
+      return { user };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/me/organizations",
     config: {

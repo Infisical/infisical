@@ -299,6 +299,29 @@ export const authLoginServiceFactory = ({
     await userDAL.updateById(userEnc.userId, {
       consecutiveFailedPasswordAttempts: 0
     });
+
+    // Check if email verification is required
+    if (!userEnc.isEmailVerified) {
+      const verificationCode = await tokenService.createTokenForUser({
+        type: TokenType.TOKEN_EMAIL_VERIFICATION,
+        userId: userEnc.userId
+      });
+
+      await smtpService.sendMail({
+        template: SmtpTemplates.EmailVerification,
+        subjectLine: "Infisical email verification required",
+        recipients: [userEnc.email!],
+        substitutions: {
+          code: verificationCode
+        }
+      });
+
+      throw new BadRequestError({
+        message: "Email verification required. Please check your email for the verification code.",
+        name: "EmailVerificationRequired"
+      });
+    }
+
     // from password decrypt the private key
     if (password) {
       const privateKey = await getUserPrivateKey(password, userEnc).catch((err) => {
@@ -398,6 +421,28 @@ export const authLoginServiceFactory = ({
       );
 
       throw new BadRequestError({ message: "Invalid username or email" });
+    }
+
+    // Check if email verification is required
+    if (!userEnc.isEmailVerified) {
+      const verificationCode = await tokenService.createTokenForUser({
+        type: TokenType.TOKEN_EMAIL_VERIFICATION,
+        userId: userEnc.userId
+      });
+
+      await smtpService.sendMail({
+        template: SmtpTemplates.EmailVerification,
+        subjectLine: "Infisical confirmation code",
+        recipients: [userEnc.email!],
+        substitutions: {
+          code: verificationCode
+        }
+      });
+
+      throw new BadRequestError({
+        message: "Email verification required. Please check your email for the verification code.",
+        name: "EmailVerificationRequired"
+      });
     }
 
     const token = await generateUserTokens({

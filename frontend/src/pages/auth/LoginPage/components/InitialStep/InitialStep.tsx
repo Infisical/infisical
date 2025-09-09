@@ -155,6 +155,16 @@ export const InitialStep = ({
         return;
       }
 
+      if (err.response?.data?.error === "EmailVerificationRequired") {
+        setStep(4);
+        createNotification({
+          text: "Please verify your email address to continue.",
+          type: "info"
+        });
+        setIsLoading(false);
+        return;
+      }
+
       setLoginError(true);
       createNotification({
         text: "Login unsuccessful. Double-check your credentials and try again.",

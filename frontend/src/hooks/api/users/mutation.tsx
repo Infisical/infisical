@@ -152,3 +152,18 @@ export const useRemoveMyDuplicateAccounts = () => {
     }
   });
 };
+
+export const useUpdateUserEmail = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ newEmail }: { newEmail: string }) => {
+      const { data } = await apiRequest.patch("/api/v2/users/me/email", {
+        newEmail
+      });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.getUser });
+    }
+  });
+};

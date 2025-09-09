@@ -3,7 +3,11 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 
+import CodeInputStep from "@app/components/auth/CodeInputStep";
+import { createNotification } from "@app/components/notifications";
+import attemptLogin from "@app/components/utilities/attemptLogin";
 import { isLoggedIn } from "@app/hooks/api/reactQuery";
+import { useVerifyEmailVerificationCode } from "@app/hooks/api/users";
 
 import { InitialStep, SSOStep } from "./components";
 import { useNavigateToSelectOrganization } from "./Login.utils";
@@ -13,9 +17,83 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
   const [step, setStep] = useState<number | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [codeError, setCodeError] = useState(false);
+  const [isCodeInputCheckLoading, setIsCodeInputCheckLoading] = useState(false);
   const { navigateToSelectOrganization } = useNavigateToSelectOrganization();
+  const { mutateAsync: verifyEmailVerificationCode } = useVerifyEmailVerificationCode();
 
   const queryParams = new URLSearchParams(window.location.search);
+
+  const handleEmailVerification = async () => {
+    if (!verificationCode || verificationCode.length !== 6) {
+      setCodeError(true);
+      return;
+    }
+
+    setIsCodeInputCheckLoading(true);
+    setCodeError(false);
+
+    try {
+      // First verify the email
+      await verifyEmailVerificationCode({ username: email, code: verificationCode });
+
+      createNotification({
+        text: "Email verified successfully!",
+        type: "success"
+      });
+
+      // Now attempt login since email is verified
+      const callbackPort = queryParams.get("callback_port");
+
+      if (callbackPort) {
+        // CLI login flow
+        const isCliLoginSuccessful = await attemptLogin({
+          email: email.toLowerCase(),
+          password
+        });
+
+        if (isCliLoginSuccessful && isCliLoginSuccessful.success) {
+          navigateToSelectOrganization(callbackPort);
+        } else {
+          throw new Error("CLI login failed after email verification");
+        }
+      } else {
+        // Regular login flow
+        const isLoginSuccessful = await attemptLogin({
+          email: email.toLowerCase(),
+          password
+        });
+
+        if (isLoginSuccessful && isLoginSuccessful.success) {
+          navigateToSelectOrganization(undefined, isAdmin);
+          createNotification({
+            text: "Successfully logged in",
+            type: "success"
+          });
+        } else {
+          throw new Error("Login failed after email verification");
+        }
+      }
+    } catch (error: any) {
+      console.error(error);
+      if (error.message?.includes("after email verification")) {
+        createNotification({
+          text: "Email verified but login failed. Please try logging in again.",
+          type: "error"
+        });
+        setStep(0); // Go back to login
+      } else {
+        setCodeError(true);
+        createNotification({
+          text: "Invalid verification code. Please try again.",
+          type: "error"
+        });
+      }
+    } finally {
+      setIsCodeInputCheckLoading(false);
+    }
+  };
 
   useEffect(() => {
     // TODO(akhilmhdh): workspace will be controlled by a workspace context
@@ -58,6 +136,16 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
         return <SSOStep setStep={setStep} type="SAML" />;
       case 3:
         return <SSOStep setStep={setStep} type="OIDC" />;
+      case 4:
+        return (
+          <CodeInputStep
+            email={email}
+            incrementStep={handleEmailVerification}
+            setCode={setVerificationCode}
+            codeError={codeError}
+            isCodeInputCheckLoading={isCodeInputCheckLoading}
+          />
+        );
       default:
         return <div />;
     }
