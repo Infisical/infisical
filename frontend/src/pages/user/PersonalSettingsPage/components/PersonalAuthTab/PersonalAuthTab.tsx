@@ -17,7 +17,7 @@ export const PersonalAuthTab = () => {
         </>
       )}
       <ChangePasswordSection />
-      <ChangeEmailSection />
+      {user && !user.authMethods.includes(AuthMethod.LDAP) && <ChangeEmailSection />}
     </div>
   );
 };
