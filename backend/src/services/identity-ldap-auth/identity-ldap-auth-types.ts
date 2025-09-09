@@ -73,13 +73,3 @@ export type TCheckLdapAuthLockoutDTO = {
   identityId: string;
   username: string;
 };
-
-export type TIncrementLdapAuthLockoutDTO = {
-  identityId: string;
-  username: string;
-};
-
-export type TResetLdapAuthLockoutCounterDTO = {
-  identityId: string;
-  username: string;
-};

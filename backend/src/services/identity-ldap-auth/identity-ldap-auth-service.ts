@@ -43,9 +43,7 @@ import {
   TCheckLdapAuthLockoutDTO,
   TClearLdapAuthLockoutsDTO,
   TGetLdapAuthDTO,
-  TIncrementLdapAuthLockoutDTO,
   TLoginLdapAuthDTO,
-  TResetLdapAuthLockoutCounterDTO,
   TRevokeLdapAuthDTO,
   TUpdateLdapAuthDTO
 } from "./identity-ldap-auth-types";
@@ -653,7 +651,10 @@ export const identityLdapAuthServiceFactory = ({
     return revokedIdentityLdapAuth;
   };
 
-  const checkLdapLockout = async ({ identityId, username }: TCheckLdapAuthLockoutDTO) => {
+  const withLdapLockout = async <T>(
+    { identityId, username }: TCheckLdapAuthLockoutDTO,
+    authFn: () => Promise<T>
+  ): Promise<T> => {
     const LOCKOUT_KEY = `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:${username.trim().toLowerCase()}`;
 
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
@@ -667,63 +668,62 @@ export const identityLdapAuthServiceFactory = ({
       logger.info(
         `identity login failed to acquire lock [identityId=${identityId}] [authMethod=${IdentityAuthMethod.LDAP_AUTH}]`
       );
-      throw new RateLimitError({ message: "Rate limit exceeded" });
+      throw new RateLimitError({ message: "Failed to acquire lock: rate limit exceeded" });
     }
 
-    const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
-
-    if (lockoutRaw) {
-      const lockout = JSON.parse(lockoutRaw) as LockoutObject;
-
-      if (lockout.lockedOut) {
-        await lock.release();
-        throw new UnauthorizedError({
-          message: "This identity auth method is temporarily locked, please try again later"
-        });
-      }
-    }
-
-    return { lock };
-  };
-
-  const incrementLdapLockout = async ({ identityId, username }: TIncrementLdapAuthLockoutDTO) => {
-    const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
-    if (!identityLdapAuth) {
-      throw new UnauthorizedError({
-        message: "Invalid credentials"
-      });
-    }
-
-    if (identityLdapAuth.lockoutEnabled) {
-      const LOCKOUT_KEY = `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:${username.trim().toLowerCase()}`;
-
-      let lockout: LockoutObject = {
-        lockedOut: false,
-        failedAttempts: 0
-      };
-
+    try {
       const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
       if (lockoutRaw) {
-        lockout = JSON.parse(lockoutRaw) as LockoutObject;
+        const lockout = JSON.parse(lockoutRaw) as LockoutObject;
+        if (lockout.lockedOut) {
+          throw new UnauthorizedError({
+            message: "This identity auth method is temporarily locked, please try again later"
+          });
+        }
       }
 
-      lockout.failedAttempts += 1;
-      if (lockout.failedAttempts >= identityLdapAuth.lockoutThreshold) {
-        lockout.lockedOut = true;
-      }
+      const result = await authFn();
 
-      await keyStore.setItemWithExpiry(
-        LOCKOUT_KEY,
-        lockout.lockedOut ? identityLdapAuth.lockoutDurationSeconds : identityLdapAuth.lockoutCounterResetSeconds,
-        JSON.stringify(lockout)
-      );
+      await keyStore.deleteItem(LOCKOUT_KEY);
+
+      return result;
+    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+      if ((error as any).status === 401) {
+        const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
+        if (!identityLdapAuth) {
+          throw new UnauthorizedError({ message: "Invalid credentials" });
+        }
+
+        if (identityLdapAuth.lockoutEnabled) {
+          let lockout: LockoutObject = {
+            lockedOut: false,
+            failedAttempts: 0
+          };
+
+          const lockoutRaw = await keyStore.getItem(LOCKOUT_KEY);
+          if (lockoutRaw) {
+            lockout = JSON.parse(lockoutRaw) as LockoutObject;
+          }
+
+          lockout.failedAttempts += 1;
+          if (lockout.failedAttempts >= identityLdapAuth.lockoutThreshold) {
+            lockout.lockedOut = true;
+          }
+
+          await keyStore.setItemWithExpiry(
+            LOCKOUT_KEY,
+            lockout.lockedOut ? identityLdapAuth.lockoutDurationSeconds : identityLdapAuth.lockoutCounterResetSeconds,
+            JSON.stringify(lockout)
+          );
+        }
+
+        throw new UnauthorizedError({ message: "Invalid credentials" });
+      }
+      throw error;
+    } finally {
+      await lock.release();
     }
-  };
-
-  const resetLdapLockoutCounter = async ({ identityId, username }: TResetLdapAuthLockoutCounterDTO) => {
-    await keyStore.deleteItem(
-      `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:${username.trim().toLowerCase()}`
-    );
   };
 
   const clearLdapAuthLockouts = async ({
@@ -765,9 +765,7 @@ export const identityLdapAuthServiceFactory = ({
     login,
     revokeIdentityLdapAuth,
     getLdapAuth,
-    checkLdapLockout,
-    incrementLdapLockout,
-    resetLdapLockoutCounter,
+    withLdapLockout,
     clearLdapAuthLockouts
   };
 };

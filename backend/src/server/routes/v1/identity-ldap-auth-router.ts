@@ -8,7 +8,7 @@
 
 import { Authenticator } from "@fastify/passport";
 import fastifySession from "@fastify/session";
-import { FastifyRequest } from "fastify";
+import { FastifyReply, FastifyRequest } from "fastify";
 import { IncomingMessage } from "http";
 import LdapStrategy from "passport-ldapauth";
 import { z } from "zod";
@@ -136,40 +136,23 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
       }
     },
     preValidation: [
-      async (req, res) => {
-        const { lock } = await server.services.identityLdapAuth.checkLdapLockout({
-          identityId: req.body.identityId,
-          username: req.body.username
-        });
-
-        try {
-          const passportRes = await (
+      (req, res) => {
+        const passportAuth = (request: FastifyRequest, reply: FastifyReply) =>
+          (
             passport.authenticate("ldapauth", {
               failWithError: true,
               session: false
             }) as any
-          )(req, res);
+          )(request, reply);
 
-          await server.services.identityLdapAuth.resetLdapLockoutCounter({
-            identityId: req.body.identityId,
-            username: req.body.username
-          });
-
-          return passportRes;
-        } catch (error) {
-          if ((error as any).status === 401) {
-            await server.services.identityLdapAuth.incrementLdapLockout({
-              identityId: req.body.identityId,
-              username: req.body.username
-            });
-
-            throw new UnauthorizedError({ message: "Invalid credentials" });
-          }
-
-          throw error;
-        } finally {
-          await lock.release();
-        }
+        const { identityId, username } = req.body;
+        return server.services.identityLdapAuth.withLdapLockout(
+          {
+            identityId,
+            username
+          },
+          () => passportAuth(req, res)
+        );
       }
     ],
     handler: async (req) => {
