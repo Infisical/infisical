@@ -167,10 +167,9 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
       "user@<azure-server-name>" so Azure opens the correct logical server.
       Direct connections to the Azure FQDN usually don’t require this suffix.
     */
-    const isGatewayForwardedTraffic = providerInputs.host === "localhost";
     const isAzureSql = isMsSQLClient && new RE2(/\.database\.windows\.net$/i).test(providerInputs.originalHost);
     const azureServerLabel =
-      isAzureSql && isGatewayForwardedTraffic ? providerInputs.originalHost?.split(".")[0] : undefined;
+      isAzureSql && providerInputs.gatewayId ? providerInputs.originalHost?.split(".")[0] : undefined;
     const effectiveUser =
       isAzureSql && !providerInputs.username.includes("@")
         ? `${providerInputs.username}@${azureServerLabel}`
@@ -181,7 +180,10 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
       connection: {
         database: providerInputs.database,
         port: providerInputs.port,
-        host: providerInputs.client === SqlProviders.Postgres ? providerInputs.hostIp : providerInputs.host,
+        host:
+          providerInputs.client === SqlProviders.Postgres && !providerInputs.gatewayId
+            ? providerInputs.hostIp
+            : providerInputs.host,
         user: effectiveUser,
         password: providerInputs.password,
         ssl,
