@@ -99,6 +99,17 @@ export const licenseServiceFactory = ({
       const workspacesUsed = await projectDAL.countOfOrgProjects(null);
       currentPlan.workspacesUsed = workspacesUsed;
 
+      const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null);
+      if (usedIdentitySeats !== currentPlan.identitiesUsed) {
+        const usedSeats = await licenseDAL.countOfOrgMembers(null);
+        await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, {
+          usedSeats,
+          usedIdentitySeats
+        });
+        currentPlan.identitiesUsed = usedIdentitySeats;
+        currentPlan.membersUsed = usedSeats;
+      }
+
       onPremFeatures = currentPlan;
       logger.info("Successfully synchronized license key features");
     } catch (error) {
@@ -226,9 +237,12 @@ export const licenseServiceFactory = ({
   };
 
   const refreshPlan = async (orgId: string) => {
+    await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
     if (instanceType === InstanceType.Cloud) {
-      await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
       await getPlan(orgId);
+    }
+    if (instanceType === InstanceType.EnterpriseOnPrem) {
+      await syncLicenseKeyOnPremFeatures(true);
     }
   };
 
