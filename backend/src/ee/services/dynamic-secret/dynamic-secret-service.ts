@@ -190,7 +190,7 @@ export const dynamicSecretServiceFactory = ({
       return cfg;
     });
 
-    return dynamicSecretCfg;
+    return { ...dynamicSecretCfg, inputs };
   };
 
   const updateByName: TDynamicSecretServiceFactory["updateByName"] = async ({
@@ -355,7 +355,7 @@ export const dynamicSecretServiceFactory = ({
       return cfg;
     });
 
-    return updatedDynamicCfg;
+    return { ...updatedDynamicCfg, inputs: updatedInput };
   };
 
   const deleteByName: TDynamicSecretServiceFactory["deleteByName"] = async ({

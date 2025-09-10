@@ -509,9 +509,9 @@ export const secretReplicationServiceFactory = ({
                     tx
                   );
                 }
+                await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
               });
 
-              await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
               await secretQueueService.syncSecrets({
                 projectId,
                 orgId,

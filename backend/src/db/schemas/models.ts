@@ -186,7 +186,9 @@ export enum TableName {
   OrgRelayConfig = "org_relay_config",
   OrgGatewayConfigV2 = "org_gateway_config_v2",
   Relay = "relays",
-  GatewayV2 = "gateways_v2"
+  GatewayV2 = "gateways_v2",
+
+  KeyValueStore = "key_value_store"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

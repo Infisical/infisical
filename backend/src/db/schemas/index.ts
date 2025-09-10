@@ -63,6 +63,7 @@ export * from "./integration-auths";
 export * from "./integrations";
 export * from "./internal-certificate-authorities";
 export * from "./internal-kms";
+export * from "./key-value-store";
 export * from "./kmip-client-certificates";
 export * from "./kmip-clients";
 export * from "./kmip-org-configs";

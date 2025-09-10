@@ -119,7 +119,7 @@ export const secretSharingDALFactory = (db: TDbClient) => {
   const findActiveSharedSecrets = async (filters: Partial<TSecretSharing>, tx?: Knex) => {
     try {
       const now = new Date();
-      return await (tx || db)(TableName.SecretSharing)
+      return await (tx || db.replicaNode())(TableName.SecretSharing)
         .where(filters)
         .andWhere("expiresAt", ">", now)
         .andWhere("encryptedValue", "<>", "")

@@ -72,7 +72,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .where(`${TableName.SecretVersionV2}.folderId`, folderId)
         .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretVersionV2}.secretId`)
         .join<TSecretVersionsV2, TSecretVersionsV2 & { secretId: string; max: number }>(
-          (tx || db)(TableName.SecretVersionV2)
+          (tx || db.replicaNode())(TableName.SecretVersionV2)
             .where(`${TableName.SecretVersionV2}.folderId`, folderId)
             .groupBy("secretId")
             .max("version")
@@ -121,7 +121,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .where("folderId", folderId)
         .whereIn(`${TableName.SecretVersionV2}.secretId`, secretIds)
         .join(
-          (tx || db)(TableName.SecretVersionV2)
+          (tx || db.replicaNode())(TableName.SecretVersionV2)
             .groupBy("secretId")
             .max("version")
             .select("secretId")
@@ -189,7 +189,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
   }) => {
     try {
       const { offset, limit, sort = [["createdAt", "desc"]] } = findOpt;
-      const query = (tx || db)(TableName.SecretVersionV2)
+      const query = (tx || db.replicaNode())(TableName.SecretVersionV2)
         .leftJoin(TableName.Users, `${TableName.Users}.id`, `${TableName.SecretVersionV2}.userActorId`)
         .leftJoin(
           TableName.ProjectMembership,
