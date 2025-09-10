@@ -84,7 +84,9 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          dynamicSecret: SanitizedDynamicSecretSchema
+          dynamicSecret: SanitizedDynamicSecretSchema.extend({
+            inputs: z.unknown()
+          })
         })
       }
     },
@@ -151,7 +153,9 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          dynamicSecret: SanitizedDynamicSecretSchema
+          dynamicSecret: SanitizedDynamicSecretSchema.extend({
+            inputs: z.unknown()
+          })
         })
       }
     },
