@@ -68,26 +68,35 @@ Gateway ↔ Relay Server communication uses SSH certificate authentication:
   - Gateway validates certificate against appropriate SSH Server CA
   - Ensures gateway connects to legitimate relay infrastructure
 
-### 3. Application Traffic Security
+### 3. Platform-to-Gateway Direct Connection
 
-End-to-end encryption for application data:
+The platform establishes secure direct connections with gateways through a **TLS-pinned tunnel** mechanism:
 
-1. **mTLS Layer**:
+1. **TLS-Pinned Tunnel Establishment**:
 
-   - Infisical platform establishes mTLS connections directly with gateways
-   - Uses Organization Gateway certificates for authentication
-   - Application traffic is encrypted end-to-end between platform and gateway
+   - Gateway initiates outbound connection to platform through SSH reverse tunnel
+   - Platform establishes direct mTLS connection with gateway using Organization Gateway certificates
+   - TLS certificate pinning ensures the connection is bound to the specific gateway identity
+   - No inbound connections required - all communication flows through the outbound tunnel
 
-2. **SSH Tunnel Layer**:
+2. **Connection Flow**:
 
-   - mTLS-encrypted application traffic travels through SSH reverse tunnels
-   - Creates double encryption: mTLS payload within SSH tunnel
-   - Relay servers cannot decrypt either encryption layer
+   ```
+   Platform ←→ [SSH Reverse Tunnel] ←→ Gateway
+   ```
 
-3. **Traffic Isolation**:
-   - Each gateway maintains separate SSH tunnels
-   - Organization's private keys never leave their environment
-   - Complete cryptographic isolation between organizations
+   - Gateway maintains persistent outbound SSH tunnel to relay server
+   - Platform connects directly to gateway through this tunnel
+   - TLS handshake occurs over the SSH tunnel, establishing mTLS connection
+   - Application traffic flows through the TLS-pinned tunnel
+
+3. **Security Benefits**:
+
+   - **No inbound connections**: Gateway never needs to accept incoming connections
+   - **Certificate-based authentication**: Uses Organization Gateway certificates for mutual TLS
+   - **Double encryption**: TLS traffic within SSH tunnel provides layered security
+   - **Relay server isolation**: Relay cannot decrypt either TLS or application data
+   - **Tenant isolation**: Each organization's traffic flows through separate authenticated channels
 
 ## Tenant Isolation
 

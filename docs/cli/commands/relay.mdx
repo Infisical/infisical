@@ -1,6 +1,6 @@
 ---
 title: "infisical relay"
-description: "Relay-related commands for Infisical including proxy components"
+description: "Relay-related commands for Infisical"
 ---
 
 <Tabs>
@@ -33,7 +33,7 @@ infisical relay start --type=<type> --host=<host> --name=<name> --auth-method=<a
   <Accordion title="--type">
     The type of relay to run. Must be either 'instance' or 'org'.
     
-    - **`instance`**: Shared relay server that can be used by all organizations on your Infisical instance. Set up by the instance administrator. Uses `INFISICAL_PROXY_AUTH_SECRET` environment variable for authentication, which must be configured by the instance admin.
+    - **`instance`**: Shared relay server that can be used by all organizations on your Infisical instance. Set up by the instance administrator. Uses `INFISICAL_RELAY_AUTH_SECRET` environment variable for authentication, which must be configured by the instance admin.
     - **`org`**: Dedicated relay server that individual organizations deploy and manage in their own infrastructure. Provides enhanced security, custom geographic placement, and compliance benefits. Uses standard Infisical authentication methods.
 
     ```bash
@@ -41,7 +41,7 @@ infisical relay start --type=<type> --host=<host> --name=<name> --auth-method=<a
     infisical relay start --type=org --host=192.168.1.100 --name=my-org-relay
 
     # Instance relay (configured by instance admin)
-    INFISICAL_PROXY_AUTH_SECRET=<secret> infisical relay start --type=instance --host=10.0.1.50 --name=shared-relay
+    INFISICAL_RELAY_AUTH_SECRET=<secret> infisical relay start --type=instance --host=10.0.1.50 --name=shared-relay
     ```
 
   </Accordion>
@@ -75,14 +75,14 @@ infisical relay start --type=<type> --host=<host> --name=<name> --auth-method=<a
 Deploy your own relay server in your infrastructure for enhanced security and reduced latency. Supports all standard Infisical authentication methods documented below.
 
 **Instance Relays (`--type=instance`):**
-Shared relay servers that serve all organizations on your Infisical instance. For Infisical Cloud, these are already running and ready to use. For self-hosted deployments, they're set up by the instance administrator. Authentication is handled via the `INFISICAL_PROXY_AUTH_SECRET` environment variable.
+Shared relay servers that serve all organizations on your Infisical instance. For Infisical Cloud, these are already running and ready to use. For self-hosted deployments, they're set up by the instance administrator. Authentication is handled via the `INFISICAL_RELAY_AUTH_SECRET` environment variable.
 
 ```bash
 # Organization relay with Universal Auth (customer-deployed)
 infisical relay start --type=org --host=192.168.1.100 --name=my-org-relay --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret>
 
 # Instance relay (configured by instance admin)
-INFISICAL_PROXY_AUTH_SECRET=<secret> infisical relay start --type=instance --host=10.0.1.50 --name=shared-relay
+INFISICAL_RELAY_AUTH_SECRET=<secret> infisical relay start --type=instance --host=10.0.1.50 --name=shared-relay
 ```
 
 ### Authentication Methods

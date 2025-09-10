@@ -394,6 +394,7 @@ export const gatewayV2ServiceFactory = ({
     const relayCredentials = await relayService.getCredentialsForClient({
       relayId: gateway.relayId,
       orgId: gateway.orgId,
+      orgName: gateway.orgName,
       gatewayId
     });
 

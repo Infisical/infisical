@@ -2,6 +2,7 @@ import z from "zod";
 
 import { GatewaysV2Schema } from "@app/db/schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -20,8 +21,8 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     url: "/",
     schema: {
       body: z.object({
-        relayName: z.string(),
-        name: z.string()
+        relayName: slugSchema({ min: 1, max: 32, field: "relayName" }),
+        name: slugSchema({ min: 1, max: 32, field: "name" })
       }),
       response: {
         200: z.object({

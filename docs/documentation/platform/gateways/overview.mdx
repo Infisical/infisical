@@ -102,6 +102,13 @@ Once authenticated, the Gateway establishes an SSH reverse tunnel to the specifi
     <Tabs>
       <Tab title="Production (systemd)">
         For production deployments on Linux, install the Gateway as a systemd service:
+
+        <Warning>
+          **Gateway v2:** The `infisical gateway systemd install` command deploys the new Gateway v2 component.
+
+          If you are migrating from Gateway v1 (legacy `infisical gateway install` command), this is not in-place. Gateway v2 provisions new gateway instances with new gateway IDs. Update any resources that reference a gateway ID (for example: dynamic secret configs, app connections, or other gateway-bound resources) to use the new Gateway v2 gateway ID.
+        </Warning>
+
         ```bash
         sudo infisical gateway systemd install --token <your-machine-identity-token> --domain <your-infisical-domain> --name <gateway-name> --relay <relay-name>
         sudo systemctl start infisical-gateway
@@ -369,8 +376,13 @@ Once authenticated, the Gateway establishes an SSH reverse tunnel to the specifi
           </Accordion>
         </AccordionGroup>
 
-
         ### Install the Infisical Gateway Helm Chart
+        <Warning>
+          **Version mapping:** Helm chart versions `>= 1.0.0` contain the new Gateway v2 component. Helm chart versions `<= 0.0.5` contain the legacy Gateway v1 component.
+
+          If you are moving from Gateway v1 (chart `<= 0.0.5`) to Gateway v2 (chart `>= 1.0.0`), this is not in-place. Gateway v2 provisions new gateway instances with new gateway IDs. Update any resources that reference a gateway ID (for example: dynamic secret configs, app connections, or other gateway-bound resources) to use the new Gateway v2 gateway ID.
+        </Warning>
+
         ```bash
         helm install infisical-gateway infisical-helm-charts/infisical-gateway
         ```
@@ -385,11 +397,17 @@ Once authenticated, the Gateway establishes an SSH reverse tunnel to the specifi
         You should see the following output which indicates the gateway is running as expected.
         ```bash
         $ kubectl logs deployment/infisical-gateway
-        INF Starting gateway
-        INF Starting gateway certificate renewal goroutine
-        INF Successfully registered gateway and received certificates
-        INF Connecting to relay server infisical-start on 152.42.218.156:2222...
-        INF Relay connection established for gateway
+        12:43AM INF Starting gateway
+        12:43AM INF Starting gateway certificate renewal goroutine
+        12:43AM INF Successfully registered gateway and received certificates
+        12:43AM INF Connecting to relay server infisical-start on 152.42.218.156:2222...
+        12:43AM INF Relay connection established for gateway
+        12:43AM INF Received incoming connection, starting TLS handshake
+        12:43AM INF TLS handshake completed successfully
+        12:43AM INF Negotiated ALPN protocol: infisical-ping
+        12:43AM INF Starting ping handler
+        12:43AM INF Ping handler completed
+        12:43AM INF Gateway is reachable by Infisical
         ```
 
       </Tab>

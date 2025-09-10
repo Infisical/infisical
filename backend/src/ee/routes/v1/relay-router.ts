@@ -4,6 +4,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -19,7 +20,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         host: z.string(),
-        name: z.string()
+        name: slugSchema({ min: 1, max: 32, field: "name" })
       }),
       response: {
         200: z.object({
@@ -69,7 +70,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         host: z.string(),
-        name: z.string()
+        name: slugSchema({ min: 1, max: 32, field: "name" })
       }),
       response: {
         200: z.object({

@@ -13,6 +13,7 @@ import {
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
 import { createSshCert, createSshKeyPair } from "../ssh/ssh-certificate-authority-fns";
 import { SshCertType } from "../ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "../ssh-certificate/ssh-certificate-types";
@@ -689,6 +690,7 @@ export const relayServiceFactory = ({
   const $generateRelayClientCredentials = async ({
     gatewayId,
     orgId,
+    orgName,
     relayPkiClientCaCertificate,
     relayPkiClientCaPrivateKey,
     relayPkiServerCaCertificate,
@@ -696,6 +698,7 @@ export const relayServiceFactory = ({
   }: {
     gatewayId: string;
     orgId: string;
+    orgName: string;
     relayPkiClientCaCertificate: Buffer;
     relayPkiClientCaPrivateKey: Buffer;
     relayPkiServerCaCertificate: Buffer;
@@ -742,7 +745,7 @@ export const relayServiceFactory = ({
 
     const clientCert = await x509.X509CertificateGenerator.create({
       serialNumber: clientCertSerialNumber,
-      subject: `O=${orgId},OU=relay-client,CN=${gatewayId}`,
+      subject: `O=${orgName}-${orgId},OU=relay-client,CN=${gatewayId}`,
       issuer: relayClientCaCert.subject,
       notAfter: clientCertExpiration,
       notBefore: clientCertIssuedAt,
@@ -833,10 +836,12 @@ export const relayServiceFactory = ({
   const getCredentialsForClient = async ({
     relayId,
     orgId,
+    orgName,
     gatewayId
   }: {
     relayId: string;
     orgId: string;
+    orgName: string;
     gatewayId: string;
   }) => {
     const relay = await relayDAL.findOne({
@@ -849,11 +854,14 @@ export const relayServiceFactory = ({
       });
     }
 
+    await verifyHostInputValidity(relay.host);
+
     if (relay.orgId === null) {
       const instanceCAs = await $getInstanceCAs();
       const relayCertificateCredentials = await $generateRelayClientCredentials({
         gatewayId,
         orgId,
+        orgName,
         relayPkiClientCaCertificate: instanceCAs.instanceRelayPkiClientCaCertificate,
         relayPkiClientCaPrivateKey: instanceCAs.instanceRelayPkiClientCaPrivateKey,
         relayPkiServerCaCertificate: instanceCAs.instanceRelayPkiServerCaCertificate,
@@ -870,6 +878,7 @@ export const relayServiceFactory = ({
     const relayCertificateCredentials = await $generateRelayClientCredentials({
       gatewayId,
       orgId,
+      orgName,
       relayPkiClientCaCertificate: orgCAs.relayPkiClientCaCertificate,
       relayPkiClientCaPrivateKey: orgCAs.relayPkiClientCaPrivateKey,
       relayPkiServerCaCertificate: orgCAs.relayPkiServerCaCertificate,
@@ -896,6 +905,8 @@ export const relayServiceFactory = ({
     let relay: TRelays;
     const isOrgRelay = identityId && orgId;
 
+    await verifyHostInputValidity(host);
+
     if (isOrgRelay) {
       relay = await relayDAL.transaction(async (tx) => {
         const existingRelay = await relayDAL.findOne(
@@ -907,9 +918,7 @@ export const relayServiceFactory = ({
         );
 
         if (existingRelay && (existingRelay.host !== host || existingRelay.name !== name)) {
-          throw new BadRequestError({
-            message: "Org relay with this machine identity already exists."
-          });
+          return relayDAL.updateById(existingRelay.id, { host, name }, tx);
         }
 
         if (!existingRelay) {
@@ -937,9 +946,7 @@ export const relayServiceFactory = ({
         );
 
         if (existingRelay && existingRelay.host !== host) {
-          throw new BadRequestError({
-            message: "Instance relay with this name already exists with a different host"
-          });
+          return relayDAL.updateById(existingRelay.id, { host }, tx);
         }
 
         if (!existingRelay) {
