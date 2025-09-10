@@ -123,6 +123,7 @@ import { sshHostGroupMembershipDALFactory } from "@app/ee/services/ssh-host-grou
 import { sshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-service";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
+import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -507,6 +508,7 @@ export const registerRoutes = async (
   const microsoftTeamsIntegrationDAL = microsoftTeamsIntegrationDALFactory(db);
   const projectMicrosoftTeamsConfigDAL = projectMicrosoftTeamsConfigDALFactory(db);
   const secretScanningV2DAL = secretScanningV2DALFactory(db);
+  const keyValueStoreDAL = keyValueStoreDALFactory(db);
 
   const eventBusService = eventBusFactory(server.redis);
   const sseService = sseServiceFactory(eventBusService, server.redis);
@@ -643,6 +645,7 @@ export const registerRoutes = async (
   const folderTreeCheckpointDAL = folderTreeCheckpointDALFactory(db);
   const folderCommitDAL = folderCommitDALFactory(db);
   const folderTreeCheckpointResourcesDAL = folderTreeCheckpointResourcesDALFactory(db);
+
   const folderCommitQueueService = folderCommitQueueServiceFactory({
     queueService,
     folderTreeCheckpointDAL,
@@ -1682,6 +1685,7 @@ export const registerRoutes = async (
     userDAL,
     identityDAL
   });
+
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     auditLogDAL,
     queueService,
@@ -1694,7 +1698,8 @@ export const registerRoutes = async (
     identityUniversalAuthClientSecretDAL: identityUaClientSecretDAL,
     serviceTokenService,
     orgService,
-    userNotificationDAL
+    userNotificationDAL,
+    keyValueStoreDAL
   });
 
   const dailyReminderQueueService = dailyReminderQueueServiceFactory({

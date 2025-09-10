@@ -50,20 +50,19 @@ interface TSecretV2DalArg {
 }
 
 export const SECRET_DAL_TTL = () => applyJitter(10 * 60, 2 * 60);
-export const SECRET_DAL_VERSION_TTL = 15 * 60;
+export const SECRET_DAL_VERSION_TTL = "15m";
 export const MAX_SECRET_CACHE_BYTES = 25 * 1024 * 1024;
 export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const secretOrm = ormify(db, TableName.SecretV2);
 
-  const invalidateSecretCacheByProjectId = async (projectId: string) => {
+  const invalidateSecretCacheByProjectId = async (projectId: string, tx?: Knex) => {
     const secretDalVersionKey = SecretServiceCacheKeys.getSecretDalVersion(projectId);
-    await keyStore.incrementBy(secretDalVersionKey, 1);
-    await keyStore.setExpiry(secretDalVersionKey, SECRET_DAL_VERSION_TTL);
+    await keyStore.pgIncrementBy(secretDalVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
   };
 
   const findOne = async (filter: Partial<TSecretsV2>, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.SecretV2)
+      const docs = await (tx || db.replicaNode())(TableName.SecretV2)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter(filter, TableName.SecretV2))
         .leftJoin(
@@ -144,7 +143,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const find = async (filter: TFindFilter<TSecretsV2>, opts: TFindOpt<TSecretsV2> = {}) => {
     const { offset, limit, sort, tx } = opts;
     try {
-      const query = (tx || db)(TableName.SecretV2)
+      const query = (tx || db.replicaNode())(TableName.SecretV2)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter(filter))
         .leftJoin(
@@ -888,13 +887,13 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const findSecretsWithReminderRecipients = async (ids: string[], limit: number, tx?: Knex) => {
     try {
       // Create a subquery to get limited secret IDs
-      const limitedSecretIds = (tx || db)(TableName.SecretV2)
+      const limitedSecretIds = (tx || db.replicaNode())(TableName.SecretV2)
         .whereIn(`${TableName.SecretV2}.id`, ids)
         .limit(limit)
         .select("id");
 
       // Join with all recipients for the limited secrets
-      const docs = await (tx || db)(TableName.SecretV2)
+      const docs = await (tx || db.replicaNode())(TableName.SecretV2)
         .whereIn(`${TableName.SecretV2}.id`, limitedSecretIds)
         .leftJoin(TableName.Reminder, `${TableName.SecretV2}.id`, `${TableName.Reminder}.secretId`)
         .leftJoin(TableName.ReminderRecipient, `${TableName.Reminder}.id`, `${TableName.ReminderRecipient}.reminderId`)
@@ -926,13 +925,13 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const findSecretsWithReminderRecipientsOld = async (ids: string[], limit: number, tx?: Knex) => {
     try {
       // Create a subquery to get limited secret IDs
-      const limitedSecretIds = (tx || db)(TableName.SecretV2)
+      const limitedSecretIds = (tx || db.replicaNode())(TableName.SecretV2)
         .whereIn(`${TableName.SecretV2}.id`, ids)
         .limit(limit)
         .select("id");
 
       // Join with all recipients for the limited secrets
-      const docs = await (tx || db)(TableName.SecretV2)
+      const docs = await (tx || db.replicaNode())(TableName.SecretV2)
         .whereIn(`${TableName.SecretV2}.id`, limitedSecretIds)
         .leftJoin(TableName.Reminder, `${TableName.SecretV2}.id`, `${TableName.Reminder}.secretId`)
         .leftJoin(

@@ -191,6 +191,9 @@ import {
   TInternalKms,
   TInternalKmsInsert,
   TInternalKmsUpdate,
+  TKeyValueStore,
+  TKeyValueStoreInsert,
+  TKeyValueStoreUpdate,
   TKmipClientCertificates,
   TKmipClientCertificatesInsert,
   TKmipClientCertificatesUpdate,
@@ -1263,6 +1266,11 @@ declare module "knex/types/tables" {
       TUserNotifications,
       TUserNotificationsInsert,
       TUserNotificationsUpdate
+    >;
+    [TableName.KeyValueStore]: KnexOriginal.CompositeTableType<
+      TKeyValueStore,
+      TKeyValueStoreInsert,
+      TKeyValueStoreUpdate
     >;
   }
 }
