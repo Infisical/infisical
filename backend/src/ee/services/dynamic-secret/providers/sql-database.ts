@@ -1,4 +1,5 @@
 import handlebars from "handlebars";
+import RE2 from "re2";
 import knex from "knex";
 import { z } from "zod";
 
@@ -154,7 +155,15 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     const ssl = providerInputs.ca
       ? { rejectUnauthorized: false, ca: providerInputs.ca, servername: providerInputs.host }
       : undefined;
+
     const isMsSQLClient = providerInputs.client === SqlProviders.MsSQL;
+    const isAzureSql = isMsSQLClient && new RE2(/\.database\.windows\.net$/i).test(providerInputs.host);
+    const azureServerLabel = isAzureSql ? providerInputs.host.split(".")[0] : undefined;
+
+    const effectiveUser =
+      isAzureSql && !providerInputs.username.includes("@")
+        ? `${providerInputs.username}@${azureServerLabel}`
+        : providerInputs.username;
 
     const db = knex({
       client: providerInputs.client,
@@ -162,7 +171,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
         database: providerInputs.database,
         port: providerInputs.port,
         host: providerInputs.client === SqlProviders.Postgres ? providerInputs.hostIp : providerInputs.host,
-        user: providerInputs.username,
+        user: effectiveUser,
         password: providerInputs.password,
         ssl,
         // @ts-expect-error this is because of knexjs type signature issue. This is directly passed to driver
@@ -170,6 +179,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
         // https://github.com/tediousjs/tedious/blob/ebb023ed90969a7ec0e4b036533ad52739d921f7/test/config.ci.ts#L19
         options: isMsSQLClient
           ? {
+              ...(providerInputs.sslEnabled !== undefined ? { encrypt: providerInputs.sslEnabled } : {}),
               trustServerCertificate: !providerInputs.ca,
               cryptoCredentialsDetails: providerInputs.ca ? { ca: providerInputs.ca } : {}
             }
@@ -212,7 +222,12 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     const providerInputs = await validateProviderInputs(inputs);
     let isConnected = false;
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
-      const db = await $getClient({ ...providerInputs, port, host, hostIp: providerInputs.hostIp });
+      const db = await $getClient({
+        ...providerInputs,
+        port,
+        host,
+        hostIp: providerInputs.hostIp
+      });
       // oracle needs from keyword
       const testStatement = providerInputs.client === SqlProviders.Oracle ? "SELECT 1 FROM DUAL" : "SELECT 1";
 
@@ -253,7 +268,11 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
 
     const password = generatePassword(providerInputs.client, providerInputs.passwordRequirements);
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
-      const db = await $getClient({ ...providerInputs, port, host });
+      const db = await $getClient({
+        ...providerInputs,
+        port,
+        host
+      });
       try {
         const expiration = new Date(expireAt).toISOString();
 
@@ -296,7 +315,11 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     const username = entityId;
     const { database } = providerInputs;
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
-      const db = await $getClient({ ...providerInputs, port, host });
+      const db = await $getClient({
+        ...providerInputs,
+        port,
+        host
+      });
       try {
         const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, database });
         const queries = revokeStatement.toString().split(";").filter(Boolean);
@@ -331,7 +354,11 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     if (!providerInputs.renewStatement) return { entityId };
 
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
-      const db = await $getClient({ ...providerInputs, port, host });
+      const db = await $getClient({
+        ...providerInputs,
+        port,
+        host
+      });
       const expiration = new Date(expireAt).toISOString();
       const { database } = providerInputs;
 
