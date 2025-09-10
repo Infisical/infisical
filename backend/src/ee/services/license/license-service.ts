@@ -442,6 +442,62 @@ export const licenseServiceFactory = ({
     };
   };
 
+  const calculateUsageValue = (
+    rowName: string,
+    field: string,
+    projectCount: number,
+    totalIdentities: number
+  ): string => {
+    if (rowName === BillingPlanRows.WorkspaceLimit.name || field === BillingPlanRows.WorkspaceLimit.field) {
+      return projectCount.toString();
+    }
+    if (rowName === BillingPlanRows.IdentityLimit.name || field === BillingPlanRows.IdentityLimit.field) {
+      return totalIdentities.toString();
+    }
+    return "-";
+  };
+
+  const fetchPlanTableFromServer = async (customerId: string | null | undefined) => {
+    if (!customerId) {
+      throw new NotFoundError({ message: "Organization customer ID is required for plan table retrieval" });
+    }
+
+    const baseUrl = `/api/license-server/v1/customers/${customerId}`;
+
+    if (instanceType === InstanceType.Cloud) {
+      const { data } = await licenseServerCloudApi.request.get<{
+        head: { name: string }[];
+        rows: { name: string; allowed: boolean }[];
+      }>(`${baseUrl}/cloud-plan/table`);
+      return data;
+    }
+
+    if (instanceType === InstanceType.EnterpriseOnPrem) {
+      const { data } = await licenseServerOnPremApi.request.get<{
+        head: { name: string }[];
+        rows: { name: string; allowed: boolean }[];
+      }>(`${baseUrl}/on-prem-plan/table`);
+      return data;
+    }
+
+    throw new Error(`Unsupported instance type for server-based plan table: ${instanceType}`);
+  };
+
+  const getUsageMetrics = async (orgId: string) => {
+    const [orgMembersUsed, identityUsed, projectCount] = await Promise.all([
+      orgDAL.countAllOrgMembers(orgId),
+      identityOrgMembershipDAL.countAllOrgIdentities({ orgId }),
+      projectDAL.countOfOrgProjects(orgId)
+    ]);
+
+    return {
+      orgMembersUsed,
+      identityUsed,
+      projectCount,
+      totalIdentities: identityUsed + orgMembersUsed
+    };
+  };
+
   // returns org current plan feature table
   const getOrgPlanTable = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TGetOrgBillInfoDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
@@ -454,55 +510,25 @@ export const licenseServiceFactory = ({
       });
     }
 
-    const orgMembersUsed = await orgDAL.countAllOrgMembers(orgId);
-    const identityUsed = await identityOrgMembershipDAL.countAllOrgIdentities({ orgId });
-    const projects = await projectDAL.find({ orgId });
-    const projectCount = projects.length;
+    const { projectCount, totalIdentities } = await getUsageMetrics(orgId);
 
-    if (instanceType === InstanceType.Cloud) {
-      const { data } = await licenseServerCloudApi.request.get<{
-        head: { name: string }[];
-        rows: { name: string; allowed: boolean }[];
-      }>(`/api/license-server/v1/customers/${organization.customerId}/cloud-plan/table`);
+    if (instanceType === InstanceType.Cloud || instanceType === InstanceType.EnterpriseOnPrem) {
+      const tableResponse = await fetchPlanTableFromServer(organization.customerId);
 
-      const formattedData = {
-        head: data.head,
-        rows: data.rows.map((el) => {
-          let used = "-";
-
-          if (el.name === BillingPlanRows.WorkspaceLimit.name) {
-            used = projectCount.toString();
-          } else if (el.name === BillingPlanRows.IdentityLimit.name) {
-            used = (identityUsed + orgMembersUsed).toString();
-          }
-
-          return {
-            ...el,
-            used
-          };
-        })
+      return {
+        head: tableResponse.head,
+        rows: tableResponse.rows.map((row) => ({
+          ...row,
+          used: calculateUsageValue(row.name, "", projectCount, totalIdentities)
+        }))
       };
-      return formattedData;
     }
 
-    const mappedRows = await Promise.all(
-      Object.values(BillingPlanRows).map(async ({ name, field }: { name: string; field: string }) => {
-        const allowed = onPremFeatures[field as keyof TFeatureSet];
-        let used = "-";
-
-        if (field === BillingPlanRows.WorkspaceLimit.field) {
-          used = projectCount.toString();
-        } else if (field === BillingPlanRows.IdentityLimit.field) {
-          used = (identityUsed + orgMembersUsed).toString();
-        }
-
-        return {
-          name,
-          allowed,
-          used
-        };
-      })
-    );
+    const mappedRows = Object.values(BillingPlanRows).map(({ name, field }) => ({
+      name,
+      allowed: onPremFeatures[field as keyof TFeatureSet] || false,
+      used: calculateUsageValue(name, field, projectCount, totalIdentities)
+    }));
 
     return {
       head: Object.values(BillingPlanTableHead),
