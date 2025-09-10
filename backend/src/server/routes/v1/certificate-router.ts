@@ -35,7 +35,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           certificate: CertificatesSchema.extend({
-            collectionId: z.string().uuid().nullable().optional()
+            collectionIds: z.array(z.string().uuid()).optional()
           })
         })
       }
@@ -192,7 +192,10 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
             .trim()
             .optional()
             .describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.certificateTemplateId),
-          pkiCollectionId: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.pkiCollectionId),
+          pkiCollectionIds: z
+            .array(z.string().trim())
+            .optional()
+            .describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.pkiCollectionId),
           friendlyName: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.friendlyName),
           commonName: z.string().trim().min(1).describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.commonName),
           altNames: validateAltNamesField.describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.altNames),
@@ -306,7 +309,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         chainPem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.chainPem),
 
         friendlyName: z.string().trim().optional().describe(CERTIFICATES.IMPORT.friendlyName),
-        pkiCollectionId: z.string().trim().optional().describe(CERTIFICATES.IMPORT.pkiCollectionId)
+        pkiCollectionIds: z.array(z.string().trim()).optional().describe(CERTIFICATES.IMPORT.pkiCollectionId)
       }),
       response: {
         200: z.object({
@@ -368,7 +371,10 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
             .trim()
             .optional()
             .describe(CERTIFICATE_AUTHORITIES.ISSUE_CERT.certificateTemplateId),
-          pkiCollectionId: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.pkiCollectionId),
+          pkiCollectionIds: z
+            .array(z.string().trim())
+            .optional()
+            .describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.pkiCollectionId),
           csr: z.string().trim().min(1).describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.csr),
           friendlyName: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.friendlyName),
           commonName: z.string().trim().min(1).optional().describe(CERTIFICATE_AUTHORITIES.SIGN_CERT.commonName),

@@ -52,7 +52,7 @@ type TCertificateServiceFactoryDep = {
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "update">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
-  pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create">;
+  pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create" | "find">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -100,8 +100,15 @@ export const certificateServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
+    // Fetch collection associations
+    const collectionItems = await pkiCollectionItemDAL.find({ certId: cert.id });
+    const collectionIds = collectionItems.map((item) => item.pkiCollectionId);
+
     return {
-      cert
+      cert: {
+        ...cert,
+        collectionIds
+      }
     };
   };
 
@@ -336,7 +343,7 @@ export const certificateServiceFactory = ({
    */
   const importCert = async ({
     projectSlug,
-    pkiCollectionId,
+    pkiCollectionIds,
     actorId,
     actorAuthMethod,
     actor,
@@ -346,7 +353,7 @@ export const certificateServiceFactory = ({
     chainPem,
     privateKeyPem
   }: TImportCertDTO) => {
-    const collectionId = pkiCollectionId;
+    const collectionIds: string[] = pkiCollectionIds || [];
 
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
@@ -366,11 +373,17 @@ export const certificateServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
-    // Check PKI collection
-    if (collectionId) {
-      const pkiCollection = await pkiCollectionDAL.findById(collectionId);
-      if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
-      if (pkiCollection.projectId !== projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
+    // Check PKI collections
+    if (collectionIds.length > 0) {
+      const pkiCollections = await Promise.all(
+        collectionIds.map((collectionId) => pkiCollectionDAL.findById(collectionId))
+      );
+
+      for (let i = 0; i < pkiCollections.length; i += 1) {
+        const pkiCollection = pkiCollections[i];
+        if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+        if (pkiCollection.projectId !== projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
+      }
     }
 
     const leafCert = new x509.X509Certificate(certificatePem);
@@ -520,15 +533,18 @@ export const certificateServiceFactory = ({
           tx
         );
 
-        if (collectionId) {
-          await pkiCollectionItemDAL.create(
-            {
-              pkiCollectionId: collectionId,
-              certId: txCert.id
-            },
-            tx
-          );
-        }
+        // Create collection associations
+        await Promise.all(
+          collectionIds.map((collectionId) =>
+            pkiCollectionItemDAL.create(
+              {
+                pkiCollectionId: collectionId,
+                certId: txCert.id
+              },
+              tx
+            )
+          )
+        );
 
         return txCert;
       } catch (error) {

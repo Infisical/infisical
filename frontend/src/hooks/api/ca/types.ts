@@ -152,7 +152,7 @@ export type TCreateCertificateDTO = {
   projectSlug: string;
   caId?: string;
   certificateTemplateId?: string;
-  pkiCollectionId?: string;
+  pkiCollectionIds?: string[];
   friendlyName?: string;
   commonName: string;
   altNames: string; // sans

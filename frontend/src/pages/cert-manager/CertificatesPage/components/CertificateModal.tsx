@@ -13,6 +13,7 @@ import {
   AccordionTrigger,
   Button,
   Checkbox,
+  FilterableSelect,
   FormControl,
   FormLabel,
   Input,
@@ -45,7 +46,7 @@ import { CertificateContent } from "./CertificateContent";
 const schema = z.object({
   certificateTemplateId: z.string().optional(),
   caId: z.string(),
-  collectionId: z.string().optional(),
+  collectionIds: z.array(z.string()).optional(),
   friendlyName: z.string(),
   commonName: z.string().trim().min(1),
   altNames: z.string(),
@@ -143,7 +144,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         commonName: cert.commonName,
         altNames: cert.altNames,
         certificateTemplateId: cert.certificateTemplateId ?? CERT_TEMPLATE_NONE_VALUE,
-        collectionId: cert.collectionId,
+        collectionIds: cert.collectionIds || [],
         ttl: "",
         keyUsages: Object.fromEntries((cert.keyUsages || []).map((name) => [name, true])),
         extendedKeyUsages: Object.fromEntries(
@@ -158,6 +159,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         altNames: "",
         ttl: "",
         certificateTemplateId: CERT_TEMPLATE_NONE_VALUE,
+        collectionIds: [],
         keyUsages: {
           [CertKeyUsage.DIGITAL_SIGNATURE]: true,
           [CertKeyUsage.KEY_ENCIPHERMENT]: true
@@ -184,7 +186,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
   const onFormSubmit = async ({
     caId,
     friendlyName,
-    collectionId,
+    collectionIds,
     commonName,
     altNames,
     ttl,
@@ -198,7 +200,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         caId: !selectedCertTemplate ? caId : undefined,
         certificateTemplateId: selectedCertTemplate ? selectedCertTemplateId : undefined,
         projectSlug: currentWorkspace.slug,
-        pkiCollectionId: collectionId,
+        pkiCollectionIds: collectionIds,
         friendlyName,
         commonName,
         altNames,
@@ -334,27 +336,37 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                 />
                 <Controller
                   control={control}
-                  name="collectionId"
-                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                  name="collectionIds"
+                  render={({ field: { onChange, value }, fieldState: { error } }) => (
                     <FormControl
-                      label="Certificate Collection (Optional)"
+                      label="Certificate Collections (Optional)"
                       errorText={error?.message}
                       isError={Boolean(error)}
                       className="mt-4"
                     >
-                      <Select
-                        defaultValue={field.value}
-                        {...field}
-                        onValueChange={(e) => onChange(e)}
-                        className="w-full"
-                        isDisabled={Boolean(cert)}
-                      >
-                        {(data?.collections || []).map(({ id, name }) => (
-                          <SelectItem value={id} key={`pki-collection-${id}`}>
-                            {name}
-                          </SelectItem>
-                        ))}
-                      </Select>
+                      <FilterableSelect
+                        isMulti
+                        getOptionValue={(option) => option.id}
+                        value={(value || [])
+                          .map((id) => data?.collections?.find((col) => col.id === id))
+                          .filter((col): col is NonNullable<typeof col> => Boolean(col))}
+                        getOptionLabel={(option) => option.name}
+                        onChange={(selected) => {
+                          if (Array.isArray(selected)) {
+                            const selectedIds = selected.map((item) => item.id);
+                            onChange(selectedIds);
+                          } else {
+                            onChange([]);
+                          }
+                        }}
+                        options={data?.collections || []}
+                        placeholder={
+                          data?.collections?.length
+                            ? "Select collections..."
+                            : "No collections available..."
+                        }
+                        isDisabled={Boolean(cert) || !data?.collections?.length}
+                      />
                     </FormControl>
                   )}
                 />

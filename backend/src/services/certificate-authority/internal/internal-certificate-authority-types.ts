@@ -122,7 +122,7 @@ export type TImportCertToCaDTO = {
 export type TIssueCertFromCaDTO = {
   caId?: string;
   certificateTemplateId?: string;
-  pkiCollectionId?: string;
+  pkiCollectionIds?: string[];
   friendlyName?: string;
   commonName: string;
   altNames: string;
@@ -139,7 +139,7 @@ export type TSignCertFromCaDTO =
       caId?: string;
       csr: string;
       certificateTemplateId?: string;
-      pkiCollectionId?: string;
+      pkiCollectionIds?: string[];
       friendlyName?: string;
       commonName?: string;
       altNames?: string;
@@ -154,7 +154,7 @@ export type TSignCertFromCaDTO =
       caId?: string;
       csr: string;
       certificateTemplateId?: string;
-      pkiCollectionId?: string;
+      pkiCollectionIds?: string[];
       friendlyName?: string;
       commonName?: string;
       altNames: string;

@@ -14,6 +14,7 @@ export type TCertificate = {
   keyUsages: CertKeyUsage[];
   extendedKeyUsages: CertExtendedKeyUsage[];
   collectionId?: string;
+  collectionIds?: string[];
 };
 
 export type TDeleteCertDTO = {

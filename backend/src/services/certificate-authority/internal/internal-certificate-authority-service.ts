@@ -1162,7 +1162,7 @@ export const internalCertificateAuthorityServiceFactory = ({
   const issueCertFromCa = async ({
     caId,
     certificateTemplateId,
-    pkiCollectionId,
+    pkiCollectionIds,
     friendlyName,
     commonName,
     altNames,
@@ -1178,7 +1178,7 @@ export const internalCertificateAuthorityServiceFactory = ({
   }: TIssueCertFromCaDTO) => {
     let ca: TCertificateAuthorityWithAssociatedCa | undefined;
     let certificateTemplate: TCertificateTemplates | undefined;
-    let collectionId = pkiCollectionId;
+    let collectionIds: string[] = pkiCollectionIds || [];
 
     if (caId) {
       ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
@@ -1190,8 +1190,8 @@ export const internalCertificateAuthorityServiceFactory = ({
         });
       }
 
-      if (!collectionId) {
-        collectionId = certificateTemplate.pkiCollectionId as string;
+      if (collectionIds.length === 0 && certificateTemplate.pkiCollectionId) {
+        collectionIds = [certificateTemplate.pkiCollectionId];
       }
       ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateTemplate.caId);
     }
@@ -1232,10 +1232,17 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     // check PKI collection
-    if (collectionId) {
-      const pkiCollection = await pkiCollectionDAL.findById(collectionId);
-      if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
-      if (pkiCollection.projectId !== ca.projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
+    // Validate PKI collections
+    if (collectionIds.length > 0) {
+      const pkiCollections = await Promise.all(
+        collectionIds.map((collectionId) => pkiCollectionDAL.findById(collectionId))
+      );
+
+      for (let i = 0; i < pkiCollections.length; i += 1) {
+        const pkiCollection = pkiCollections[i];
+        if (!pkiCollection) throw new NotFoundError({ message: "PKI collection not found" });
+        if (pkiCollection.projectId !== ca.projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
+      }
     }
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
@@ -1473,15 +1480,18 @@ export const internalCertificateAuthorityServiceFactory = ({
         tx
       );
 
-      if (collectionId) {
-        await pkiCollectionItemDAL.create(
-          {
-            pkiCollectionId: collectionId,
-            certId: cert.id
-          },
-          tx
-        );
-      }
+      // Create collection associations
+      await Promise.all(
+        collectionIds.map((collectionId) =>
+          pkiCollectionItemDAL.create(
+            {
+              pkiCollectionId: collectionId,
+              certId: cert.id
+            },
+            tx
+          )
+        )
+      );
 
       return cert;
     });
@@ -1509,7 +1519,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId,
       certificateTemplateId,
       csr,
-      pkiCollectionId,
+      pkiCollectionIds,
       friendlyName,
       commonName,
       altNames,
@@ -1520,7 +1530,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       extendedKeyUsages
     } = dto;
 
-    let collectionId = pkiCollectionId;
+    let collectionIds: string[] = pkiCollectionIds || [];
 
     if (caId) {
       ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
@@ -1532,7 +1542,9 @@ export const internalCertificateAuthorityServiceFactory = ({
         });
       }
 
-      collectionId = certificateTemplate.pkiCollectionId as string;
+      if (collectionIds.length === 0 && certificateTemplate.pkiCollectionId) {
+        collectionIds = [certificateTemplate.pkiCollectionId];
+      }
       ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateTemplate.caId);
     }
 
@@ -1573,11 +1585,31 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "CA is expired" });
     }
 
-    // check PKI collection
-    if (pkiCollectionId) {
-      const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId);
-      if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${pkiCollectionId}' not found` });
-      if (pkiCollection.projectId !== ca.projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
+    // Validate PKI collections
+    if (collectionIds.length > 0) {
+      const pkiCollections = await Promise.all(
+        collectionIds.map((collectionId) => pkiCollectionDAL.findById(collectionId))
+      );
+
+      const invalidCollectionIds = pkiCollections
+        .filter((collection) => !collection)
+        .map((collection) => collection.id);
+
+      if (invalidCollectionIds.length > 0) {
+        throw new BadRequestError({
+          message: `PKI collections with IDs '${invalidCollectionIds.join(", ")}' not found`
+        });
+      }
+
+      const invalidProjectCollectionIds = pkiCollections
+        .filter((collection) => collection.projectId !== ca?.projectId)
+        .map((collection) => collection.id);
+
+      if (invalidProjectCollectionIds.length > 0) {
+        throw new BadRequestError({
+          message: `PKI collections with IDs '${invalidProjectCollectionIds.join(", ")}' not found`
+        });
+      }
     }
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
@@ -1870,15 +1902,18 @@ export const internalCertificateAuthorityServiceFactory = ({
         tx
       );
 
-      if (collectionId) {
-        await pkiCollectionItemDAL.create(
-          {
-            pkiCollectionId: collectionId,
-            certId: cert.id
-          },
-          tx
-        );
-      }
+      // Create collection associations
+      await Promise.all(
+        collectionIds.map((collectionId) =>
+          pkiCollectionItemDAL.create(
+            {
+              pkiCollectionId: collectionId,
+              certId: cert.id
+            },
+            tx
+          )
+        )
+      );
 
       return cert;
     });

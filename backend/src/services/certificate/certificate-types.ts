@@ -82,7 +82,7 @@ export type TImportCertDTO = {
   projectSlug: string;
 
   friendlyName?: string;
-  pkiCollectionId?: string;
+  pkiCollectionIds?: string[];
 
   certificatePem: string;
   privateKeyPem: string;
