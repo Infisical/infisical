@@ -180,6 +180,14 @@ export enum TableName {
   // reminders
   Reminder = "reminders",
   ReminderRecipient = "reminders_recipients",
+
+  // gateway v2
+  InstanceRelayConfig = "instance_relay_config",
+  OrgRelayConfig = "org_relay_config",
+  OrgGatewayConfigV2 = "org_gateway_config_v2",
+  Relay = "relays",
+  GatewayV2 = "gateways_v2",
+
   KeyValueStore = "key_value_store"
 }
 

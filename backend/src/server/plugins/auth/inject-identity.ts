@@ -122,6 +122,11 @@ export const injectIdentity = fp(
         return;
       }
 
+      // Authentication is handled on a route-level
+      if (req.url === "/api/v1/relays/register-instance-relay") {
+        return;
+      }
+
       // Authentication is handled on a route-level here.
       if (req.url.includes("/api/v1/workflow-integrations/microsoft-teams/message-endpoint")) {
         return;

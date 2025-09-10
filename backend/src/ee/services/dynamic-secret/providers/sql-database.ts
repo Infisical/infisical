@@ -7,10 +7,12 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
+import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretSqlDBSchema, PasswordRequirements, SqlProviders, TDynamicProviderFns } from "./models";
 import { compileUsernameTemplate } from "./templateUtils";
@@ -129,9 +131,13 @@ const generateUsername = (provider: SqlProviders, usernameTemplate?: string | nu
 
 type TSqlDatabaseProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 };
 
-export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO): TDynamicProviderFns => {
+export const SqlDatabaseProvider = ({
+  gatewayService,
+  gatewayV2Service
+}: TSqlDatabaseProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSqlDBSchema.parseAsync(inputs);
 
@@ -208,6 +214,26 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>,
     gatewayCallback: (host: string, port: number) => Promise<void>
   ) => {
+    const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId: providerInputs.gatewayId as string,
+      targetHost: providerInputs.host,
+      targetPort: providerInputs.port
+    });
+
+    if (gatewayV2ConnectionDetails) {
+      return withGatewayV2Proxy(
+        async (port) => {
+          await gatewayCallback("localhost", port);
+        },
+        {
+          relayHost: gatewayV2ConnectionDetails.relayHost,
+          gateway: gatewayV2ConnectionDetails.gateway,
+          relay: gatewayV2ConnectionDetails.relay,
+          protocol: GatewayProxyProtocol.Tcp
+        }
+      );
+    }
+
     const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(providerInputs.gatewayId as string);
     const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
     await withGatewayProxy(

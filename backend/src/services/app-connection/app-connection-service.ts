@@ -5,6 +5,8 @@ import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-c
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionAppConnectionActions,
@@ -110,7 +112,9 @@ export type TAppConnectionServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -162,7 +166,9 @@ export const appConnectionServiceFactory = ({
   kmsService,
   licenseService,
   gatewayService,
-  gatewayDAL
+  gatewayV2Service,
+  gatewayDAL,
+  gatewayV2DAL
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnectionsByOrg = async (actor: OrgServiceActor, app?: AppConnection) => {
     const { permission } = await permissionService.getOrgPermission(
@@ -266,7 +272,8 @@ export const appConnectionServiceFactory = ({
       );
 
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
-      if (!gateway) {
+      const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
+      if (!gateway && !gatewayV2) {
         throw new NotFoundError({
           message: `Gateway with ID ${gatewayId} not found for org`
         });
@@ -288,7 +295,8 @@ export const appConnectionServiceFactory = ({
         orgId: actor.orgId,
         gatewayId
       } as TAppConnectionConfig,
-      gatewayService
+      gatewayService,
+      gatewayV2Service
     );
 
     try {
@@ -321,7 +329,8 @@ export const appConnectionServiceFactory = ({
             gatewayId
           } as TAppConnectionConfig,
           (platformCredentials) => createConnection(platformCredentials),
-          gatewayService
+          gatewayService,
+          gatewayV2Service
         );
       } else {
         connection = await createConnection(validatedCredentials);
@@ -377,7 +386,8 @@ export const appConnectionServiceFactory = ({
 
       if (gatewayId) {
         const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
-        if (!gateway) {
+        const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
+        if (!gateway && !gatewayV2) {
           throw new NotFoundError({
             message: `Gateway with ID ${gatewayId} not found for org`
           });
@@ -417,7 +427,8 @@ export const appConnectionServiceFactory = ({
           method,
           gatewayId
         } as TAppConnectionConfig,
-        gatewayService
+        gatewayService,
+        gatewayV2Service
       );
 
       if (!updatedCredentials)
@@ -458,7 +469,8 @@ export const appConnectionServiceFactory = ({
             gatewayId
           } as TAppConnectionConfig,
           (platformCredentials) => updateConnection(platformCredentials),
-          gatewayService
+          gatewayService,
+          gatewayV2Service
         );
       } else {
         updatedConnection = await updateConnection(updatedCredentials);
@@ -588,7 +600,7 @@ export const appConnectionServiceFactory = ({
     deleteAppConnection,
     connectAppConnectionById,
     listAvailableAppConnectionsForUser,
-    github: githubConnectionService(connectAppConnectionById, gatewayService),
+    github: githubConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service),
     githubRadar: githubRadarConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),
     databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),

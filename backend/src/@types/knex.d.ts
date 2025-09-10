@@ -101,6 +101,9 @@ import {
   TGateways,
   TGatewaysInsert,
   TGatewaysUpdate,
+  TGatewaysV2,
+  TGatewaysV2Insert,
+  TGatewaysV2Update,
   TGitAppInstallSessions,
   TGitAppInstallSessionsInsert,
   TGitAppInstallSessionsUpdate,
@@ -179,6 +182,9 @@ import {
   TIncidentContacts,
   TIncidentContactsInsert,
   TIncidentContactsUpdate,
+  TInstanceRelayConfig,
+  TInstanceRelayConfigInsert,
+  TInstanceRelayConfigUpdate,
   TIntegrationAuths,
   TIntegrationAuthsInsert,
   TIntegrationAuthsUpdate,
@@ -233,9 +239,15 @@ import {
   TOrgGatewayConfig,
   TOrgGatewayConfigInsert,
   TOrgGatewayConfigUpdate,
+  TOrgGatewayConfigV2,
+  TOrgGatewayConfigV2Insert,
+  TOrgGatewayConfigV2Update,
   TOrgMemberships,
   TOrgMembershipsInsert,
   TOrgMembershipsUpdate,
+  TOrgRelayConfig,
+  TOrgRelayConfigInsert,
+  TOrgRelayConfigUpdate,
   TOrgRoles,
   TOrgRolesInsert,
   TOrgRolesUpdate,
@@ -293,6 +305,9 @@ import {
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
+  TRelays,
+  TRelaysInsert,
+  TRelaysUpdate,
   TResourceMetadata,
   TResourceMetadataInsert,
   TResourceMetadataUpdate,
@@ -1241,6 +1256,17 @@ declare module "knex/types/tables" {
       TSecretScanningResourcesInsert,
       TSecretScanningResourcesUpdate
     >;
+    [TableName.InstanceRelayConfig]: KnexOriginal.CompositeTableType<
+      TInstanceRelayConfig,
+      TInstanceRelayConfigInsert,
+      TInstanceRelayConfigUpdate
+    >;
+    [TableName.OrgRelayConfig]: KnexOriginal.CompositeTableType<
+      TOrgRelayConfig,
+      TOrgRelayConfigInsert,
+      TOrgRelayConfigUpdate
+    >;
+    [TableName.Relay]: KnexOriginal.CompositeTableType<TRelays, TRelaysInsert, TRelaysUpdate>;
     [TableName.SecretScanningScan]: KnexOriginal.CompositeTableType<
       TSecretScanningScans,
       TSecretScanningScansInsert,
@@ -1262,6 +1288,12 @@ declare module "knex/types/tables" {
       TRemindersRecipientsInsert,
       TRemindersRecipientsUpdate
     >;
+    [TableName.OrgGatewayConfigV2]: KnexOriginal.CompositeTableType<
+      TOrgGatewayConfigV2,
+      TOrgGatewayConfigV2Insert,
+      TOrgGatewayConfigV2Update
+    >;
+    [TableName.GatewayV2]: KnexOriginal.CompositeTableType<TGatewaysV2, TGatewaysV2Insert, TGatewaysV2Update>;
     [TableName.UserNotifications]: KnexOriginal.CompositeTableType<
       TUserNotifications,
       TUserNotificationsInsert,
