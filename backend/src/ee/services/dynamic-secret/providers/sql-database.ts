@@ -151,15 +151,26 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     return { ...providerInputs, hostIp };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSqlDBSchema> & { hostIp: string }) => {
+  const $getClient = async (
+    providerInputs: z.infer<typeof DynamicSecretSqlDBSchema> & { hostIp: string; originalHost: string }
+  ) => {
     const ssl = providerInputs.ca
       ? { rejectUnauthorized: false, ca: providerInputs.ca, servername: providerInputs.host }
       : undefined;
 
     const isMsSQLClient = providerInputs.client === SqlProviders.MsSQL;
-    const isAzureSql = isMsSQLClient && new RE2(/\.database\.windows\.net$/i).test(providerInputs.host);
-    const azureServerLabel = isAzureSql ? providerInputs.host.split(".")[0] : undefined;
 
+    /*
+      We route through the gateway by setting connection.host = "localhost".
+      Azure SQL identifies the logical server from the TDS login name when the host
+      isn’t the Azure FQDN. Therefore, when using the gateway, ensure username is
+      "user@<azure-server-name>" so Azure opens the correct logical server.
+      Direct connections to the Azure FQDN usually don’t require this suffix.
+    */
+    const isGatewayForwardedTraffic = providerInputs.host === "localhost";
+    const isAzureSql = isMsSQLClient && new RE2(/\.database\.windows\.net$/i).test(providerInputs.originalHost);
+    const azureServerLabel =
+      isAzureSql && isGatewayForwardedTraffic ? providerInputs.originalHost?.split(".")[0] : undefined;
     const effectiveUser =
       isAzureSql && !providerInputs.username.includes("@")
         ? `${providerInputs.username}@${azureServerLabel}`
@@ -226,7 +237,8 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
         ...providerInputs,
         port,
         host,
-        hostIp: providerInputs.hostIp
+        hostIp: providerInputs.hostIp,
+        originalHost: providerInputs.host
       });
       // oracle needs from keyword
       const testStatement = providerInputs.client === SqlProviders.Oracle ? "SELECT 1 FROM DUAL" : "SELECT 1";
@@ -271,7 +283,8 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
       const db = await $getClient({
         ...providerInputs,
         port,
-        host
+        host,
+        originalHost: providerInputs.host
       });
       try {
         const expiration = new Date(expireAt).toISOString();
@@ -318,7 +331,8 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
       const db = await $getClient({
         ...providerInputs,
         port,
-        host
+        host,
+        originalHost: providerInputs.host
       });
       try {
         const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, database });
@@ -357,7 +371,8 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
       const db = await $getClient({
         ...providerInputs,
         port,
-        host
+        host,
+        originalHost: providerInputs.host
       });
       const expiration = new Date(expireAt).toISOString();
       const { database } = providerInputs;
