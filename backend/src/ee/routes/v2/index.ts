@@ -7,9 +7,9 @@ import {
   SECRET_SCANNING_REGISTER_ROUTER_MAP
 } from "@app/ee/routes/v2/secret-scanning-v2-routers";
 
+import { registerGatewayV2Router } from "./gateway-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
 import { registerProjectRoleRouter } from "./project-role-router";
-import { registerGatewayV2Router } from "./gateway-router";
 
 export const registerV2EERoutes = async (server: FastifyZodProvider) => {
   // org role starts with organization
