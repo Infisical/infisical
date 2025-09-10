@@ -4,33 +4,53 @@ sidebarTitle: "Overview"
 description: "How to access private network resources from Infisical"
 ---
 
-![Alt text](/documentation/platform/gateways/images/gateway-highlevel-diagram.png)
+![Architecture Overview](../../../images/platform/gateways/gateway-highlevel-diagram.png)
 
-The Infisical Gateway provides secure access to private resources within your network without needing direct inbound connections to your environment.
-This method keeps your resources fully protected from external access while enabling Infisical to securely interact with resources like databases.
+The Infisical Gateway provides secure access to private resources within your network without needing direct inbound connections to your environment. This method keeps your resources fully protected from external access while enabling Infisical to securely interact with resources like databases.
+
+**Architecture Components:**
+
+- **Gateway**: Lightweight agent deployed within your VPCs that provides access to private resources
+- **Relay**: Infrastructure that routes encrypted traffic (instance-wide or organization-specific)
+
 Common use cases include generating dynamic credentials or rotating credentials for private databases.
 
 <Info>
-  **Note:** Gateway is a paid feature. - **Infisical Cloud users:** Gateway is
-  available under the **Enterprise Tier**. - **Self-Hosted Infisical:** Please
-  contact [sales@infisical.com](mailto:sales@infisical.com) to purchase an
-  enterprise license.
+  Gateway is a paid feature available under the Enterprise Tier for Infisical
+  Cloud users. Self-hosted Infisical users can contact
+  [sales@infisical.com](mailto:sales@infisical.com) to purchase an enterprise
+  license.
 </Info>
 
 ## How It Works
 
-The Gateway serves as a secure intermediary that facilitates direct communication between the Infisical server and your private network.
-It’s a lightweight daemon packaged within the Infisical CLI, making it easy to deploy and manage. Once set up, the Gateway establishes a connection with a relay server, ensuring that all communication between Infisical and your Gateway is fully end-to-end encrypted.
-This setup guarantees that only the platform and your Gateway can decrypt the transmitted information, keeping communication with your resources secure, private and isolated.
+The Gateway system uses SSH reverse tunnels for secure, firewall-friendly connectivity:
+
+1. **Gateway Registration**: The gateway establishes an outbound SSH reverse tunnel to a relay server using SSH certificates issued by Infisical
+2. **Relay Routing**: The relay server routes encrypted traffic between the Infisical platform and gateways
+3. **Resource Access**: The Infisical platform connects to your private resources through the established gateway connections
+
+**Key Benefits:**
+
+- **No inbound firewall rules needed** - all connections are outbound from your network
+- **Firewall-friendly** - uses standard SSH over TCP
+- **Certificate-based authentication** provides enhanced security
+- **Automatic reconnection** if connections are lost
 
 ## Deployment
 
-The Infisical Gateway is seamlessly integrated into the Infisical CLI under the `gateway` command, making it simple to deploy and manage.
+The Infisical Gateway is integrated into the Infisical CLI under the `gateway` command, making it simple to deploy and manage.
 You can install the Gateway in all the same ways you install the Infisical CLI—whether via npm, Docker, or a binary.
 For detailed installation instructions, refer to the Infisical [CLI Installation instructions](/cli/overview).
 
-To function, the Gateway must authenticate with Infisical. This requires a machine identity configured with the appropriate permissions to create and manage a Gateway.
-Once authenticated, the Gateway establishes a secure connection with Infisical to allow your private resources to be reachable.
+**Prerequisites:**
+
+1. **Relay Server**: Before deploying gateways, you need a running relay server:
+   - **Infisical Cloud**: Instance relays are already available - no setup needed
+   - **Self-hosted**: Instance admin must set up shared instance relays, or organizations can deploy their own
+2. **Machine Identity**: Configure a machine identity with appropriate permissions to create and manage gateways
+
+Once authenticated, the Gateway establishes an SSH reverse tunnel to the specified relay server, allowing secure access to your private resources.
 
 ### Get started
 
@@ -46,14 +66,51 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
     You'll need to choose an authentication method to initiate communication with Infisical. View the available machine identity authentication methods [here](/documentation/platform/identities/machine-identities).
   </Step>
 
+  <Step title="Choose Your Relay Setup">
+    You have two options for relay infrastructure:
+    
+    <Tabs>
+      <Tab title="Use Instance Relays (Easiest)">
+        **Infisical Cloud:** Instance relays are already running and available - **no setup required**. You can immediately proceed to deploy gateways using these shared relays.
+        
+        **Self-hosted:** If your instance admin has set up shared instance relays, you can use them directly. If not, the instance admin can set them up:
+        ```bash
+        # Instance admin sets up shared relay (one-time setup)
+        export INFISICAL_RELAY_AUTH_SECRET=<instance-relay-secret>
+        infisical relay start --type=instance --ip=<public-ip> --name=<relay-name>
+        ```
+      </Tab>
+      <Tab title="Deploy Your Own Organization Relay">
+        **Available for all users:** Deploy your own dedicated relay infrastructure for enhanced control:
+        ```bash
+        # Deploy organization-specific relay
+        infisical relay start --type=org --ip=<public-ip> --name=<relay-name> --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret>
+        ```
+        
+        **When to choose this:**
+        - You need lower latency (deploy closer to your resources)
+        - Enhanced security requirements
+        - Compliance needs (data sovereignty, air-gapped environments)
+        - Custom network policies
+      </Tab>
+    </Tabs>
+  </Step>
+
   <Step title="Deploy the Gateway">
     Use the Infisical CLI to deploy the Gateway. You can run it directly or install it as a systemd service for production:
 
     <Tabs>
       <Tab title="Production (systemd)">
         For production deployments on Linux, install the Gateway as a systemd service:
+
+        <Warning>
+          **Gateway v2:** The `infisical gateway systemd install` command deploys the new Gateway v2 component.
+
+          If you are migrating from Gateway v1 (legacy `infisical gateway install` command), this is not in-place. Gateway v2 provisions new gateway instances with new gateway IDs. Update any resources that reference a gateway ID (for example: dynamic secret configs, app connections, or other gateway-bound resources) to use the new Gateway v2 gateway ID.
+        </Warning>
+
         ```bash
-        sudo infisical gateway install --token <your-machine-identity-token> --domain <your-infisical-domain>
+        sudo infisical gateway systemd install --token <your-machine-identity-token> --domain <your-infisical-domain> --name <gateway-name> --relay <relay-name>
         sudo systemctl start infisical-gateway
         ```
         This will install and start the Gateway as a secure systemd service that:
@@ -81,7 +138,7 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
 
         ### Install the latest Helm Chart repository
         ```bash
-        helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/' 
+        helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
         ```
 
         ### Update the Helm Chart repository
@@ -116,7 +173,12 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
             </ParamField>
 
               ```bash
-                kubectl create secret generic infisical-gateway-environment --from-literal=INFISICAL_AUTH_METHOD=universal-auth --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id> --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
+                kubectl create secret generic infisical-gateway-environment \
+                  --from-literal=INFISICAL_AUTH_METHOD=universal-auth \
+                  --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id> \
+                  --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret> \
+                  --from-literal=INFISICAL_RELAY_NAME=<relay-name> \
+                  --from-literal=INFISICAL_GATEWAY_NAME=<gateway-name>
               ```
 
           </Accordion>
@@ -283,6 +345,29 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
         </AccordionGroup>
 
 
+        #### Required environment variables
+
+        In addition to the authentication method above, you **must** include these required variables:
+
+        <AccordionGroup>
+          <Accordion title="INFISICAL_RELAY_NAME">
+            The name of the relay server that this gateway should connect to.
+          </Accordion>
+          <Accordion title="INFISICAL_GATEWAY_NAME">
+            The name of this gateway instance.
+          </Accordion>
+        </AccordionGroup>
+
+        **Complete example with required variables:**
+        ```bash
+        kubectl create secret generic infisical-gateway-environment \
+          --from-literal=INFISICAL_AUTH_METHOD=universal-auth \
+          --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id> \
+          --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret> \
+          --from-literal=INFISICAL_RELAY_NAME=<relay-name> \
+          --from-literal=INFISICAL_GATEWAY_NAME=<gateway-name>
+        ```
+
         #### Other environment variables
 
         <AccordionGroup>
@@ -291,8 +376,13 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
           </Accordion>
         </AccordionGroup>
 
-
         ### Install the Infisical Gateway Helm Chart
+        <Warning>
+          **Version mapping:** Helm chart versions `>= 1.0.0` contain the new Gateway v2 component. Helm chart versions `<= 0.0.5` contain the legacy Gateway v1 component.
+
+          If you are moving from Gateway v1 (chart `<= 0.0.5`) to Gateway v2 (chart `>= 1.0.0`), this is not in-place. Gateway v2 provisions new gateway instances with new gateway IDs. Update any resources that reference a gateway ID (for example: dynamic secret configs, app connections, or other gateway-bound resources) to use the new Gateway v2 gateway ID.
+        </Warning>
+
         ```bash
         helm install infisical-gateway infisical-helm-charts/infisical-gateway
         ```
@@ -306,14 +396,18 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
 
         You should see the following output which indicates the gateway is running as expected.
         ```bash
-        $ kubectl logs deployment/infisical-gateway                  
-        INF Provided relay port 5349. Using TLS
-        INF Connected with relay
-        INF 10.0.101.112:56735
-        INF Starting relay connection health check
-        INF Gateway started successfully
-        INF New connection from: 10.0.1.8:34051
-        INF Gateway is reachable by Infisical
+        $ kubectl logs deployment/infisical-gateway
+        12:43AM INF Starting gateway
+        12:43AM INF Starting gateway certificate renewal goroutine
+        12:43AM INF Successfully registered gateway and received certificates
+        12:43AM INF Connecting to relay server infisical-start on 152.42.218.156:2222...
+        12:43AM INF Relay connection established for gateway
+        12:43AM INF Received incoming connection, starting TLS handshake
+        12:43AM INF TLS handshake completed successfully
+        12:43AM INF Negotiated ALPN protocol: infisical-ping
+        12:43AM INF Starting ping handler
+        12:43AM INF Ping handler completed
+        12:43AM INF Gateway is reachable by Infisical
         ```
 
       </Tab>
@@ -321,27 +415,31 @@ Once authenticated, the Gateway establishes a secure connection with Infisical t
       <Tab title="Local Installation (testing)">
         For development or testing, you can run the Gateway directly. Log in with your machine identity and start the Gateway in one command:
         ```bash
-        infisical gateway --token $(infisical login --method=universal-auth --client-id=<> --client-secret=<> --plain)
+        infisical gateway start --token $(infisical login --method=universal-auth --client-id=<> --client-secret=<> --plain) --relay=<relay-name> --name=<gateway-name>
         ```
 
         Alternatively, if you already have the token, use it directly with the `--token` flag:
         ```bash
-        infisical gateway --token <your-machine-identity-token>
+        infisical gateway start --token <your-machine-identity-token> --relay=<relay-name> --name=<gateway-name>
         ```
 
         Or set it as an environment variable:
         ```bash
         export INFISICAL_TOKEN=<your-machine-identity-token>
-        infisical gateway
+        infisical gateway start --relay=<relay-name> --name=<gateway-name>
         ```
       </Tab>
     </Tabs>
 
-    For detailed information about the gateway command and its options, see the [gateway command documentation](/cli/commands/gateway).
+    For detailed information about the gateway commands and their options, see the [gateway command documentation](/cli/commands/gateway).
 
     <Note>
-      Ensure the deployed Gateway has network access to the private resources you intend to connect with Infisical.
+      **Requirements:**
+      - Ensure the deployed Gateway has network access to the private resources you intend to connect with Infisical
+      - The gateway must be able to reach the relay server (outbound connection only)
+      - Replace `<relay-name>` with the name of your relay server and `<gateway-name>` with a unique name for this gateway
     </Note>
+
   </Step>
   
   <Step title="Verify Gateway Deployment">

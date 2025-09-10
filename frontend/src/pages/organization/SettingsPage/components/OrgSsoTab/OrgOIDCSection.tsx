@@ -83,6 +83,8 @@ export const OrgOIDCSection = (): JSX.Element => {
     }
   };
 
+  const isGoogleOAuthEnabled = currentOrg.googleSsoAuthEnforced;
+
   return (
     <div className="mb-4 rounded-lg border-mineshaft-600 bg-mineshaft-900">
       <div className="mb-4 flex items-center justify-between">
@@ -106,14 +108,29 @@ export const OrgOIDCSection = (): JSX.Element => {
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-md text-mineshaft-100">Enable OIDC</h2>
             {!isPending && (
-              <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+              <OrgPermissionCan
+                I={OrgPermissionActions.Edit}
+                a={OrgPermissionSubjects.Sso}
+                tooltipProps={{
+                  className: "max-w-sm",
+                  side: "left"
+                }}
+                allowedLabel={
+                  isGoogleOAuthEnabled
+                    ? "You cannot enable OIDC SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable OIDC SSO."
+                    : undefined
+                }
+                renderTooltip={isGoogleOAuthEnabled}
+              >
                 {(isAllowed) => (
-                  <Switch
-                    id="enable-oidc-sso"
-                    onCheckedChange={(value) => handleOIDCToggle(value)}
-                    isChecked={data ? data.isActive : false}
-                    isDisabled={!isAllowed}
-                  />
+                  <div>
+                    <Switch
+                      id="enable-oidc-sso"
+                      onCheckedChange={(value) => handleOIDCToggle(value)}
+                      isChecked={data ? data.isActive : false}
+                      isDisabled={!isAllowed || isGoogleOAuthEnabled}
+                    />
+                  </div>
                 )}
               </OrgPermissionCan>
             )}

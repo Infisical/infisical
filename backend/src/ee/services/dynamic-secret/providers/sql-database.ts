@@ -1,15 +1,18 @@
 import handlebars from "handlebars";
 import knex from "knex";
+import RE2 from "re2";
 import { z } from "zod";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
+import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretSqlDBSchema, PasswordRequirements, SqlProviders, TDynamicProviderFns } from "./models";
 import { compileUsernameTemplate } from "./templateUtils";
@@ -128,9 +131,13 @@ const generateUsername = (provider: SqlProviders, usernameTemplate?: string | nu
 
 type TSqlDatabaseProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 };
 
-export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO): TDynamicProviderFns => {
+export const SqlDatabaseProvider = ({
+  gatewayService,
+  gatewayV2Service
+}: TSqlDatabaseProviderDTO): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSqlDBSchema.parseAsync(inputs);
 
@@ -150,19 +157,40 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     return { ...providerInputs, hostIp };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSqlDBSchema> & { hostIp: string }) => {
+  const $getClient = async (
+    providerInputs: z.infer<typeof DynamicSecretSqlDBSchema> & { hostIp: string; originalHost: string }
+  ) => {
     const ssl = providerInputs.ca
       ? { rejectUnauthorized: false, ca: providerInputs.ca, servername: providerInputs.host }
       : undefined;
+
     const isMsSQLClient = providerInputs.client === SqlProviders.MsSQL;
+
+    /*
+      We route through the gateway by setting connection.host = "localhost".
+      Azure SQL identifies the logical server from the TDS login name when the host
+      isn’t the Azure FQDN. Therefore, when using the gateway, ensure username is
+      "user@<azure-server-name>" so Azure opens the correct logical server.
+      Direct connections to the Azure FQDN usually don’t require this suffix.
+    */
+    const isAzureSql = isMsSQLClient && new RE2(/\.database\.windows\.net$/i).test(providerInputs.originalHost);
+    const azureServerLabel =
+      isAzureSql && providerInputs.gatewayId ? providerInputs.originalHost?.split(".")[0] : undefined;
+    const effectiveUser =
+      isAzureSql && !providerInputs.username.includes("@") && azureServerLabel
+        ? `${providerInputs.username}@${azureServerLabel}`
+        : providerInputs.username;
 
     const db = knex({
       client: providerInputs.client,
       connection: {
         database: providerInputs.database,
         port: providerInputs.port,
-        host: providerInputs.client === SqlProviders.Postgres ? providerInputs.hostIp : providerInputs.host,
-        user: providerInputs.username,
+        host:
+          providerInputs.client === SqlProviders.Postgres && !providerInputs.gatewayId
+            ? providerInputs.hostIp
+            : providerInputs.host,
+        user: effectiveUser,
         password: providerInputs.password,
         ssl,
         // @ts-expect-error this is because of knexjs type signature issue. This is directly passed to driver
@@ -170,6 +198,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
         // https://github.com/tediousjs/tedious/blob/ebb023ed90969a7ec0e4b036533ad52739d921f7/test/config.ci.ts#L19
         options: isMsSQLClient
           ? {
+              ...(providerInputs.sslEnabled !== undefined ? { encrypt: providerInputs.sslEnabled } : {}),
               trustServerCertificate: !providerInputs.ca,
               cryptoCredentialsDetails: providerInputs.ca ? { ca: providerInputs.ca } : {}
             }
@@ -185,6 +214,26 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>,
     gatewayCallback: (host: string, port: number) => Promise<void>
   ) => {
+    const gatewayV2ConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId: providerInputs.gatewayId as string,
+      targetHost: providerInputs.host,
+      targetPort: providerInputs.port
+    });
+
+    if (gatewayV2ConnectionDetails) {
+      return withGatewayV2Proxy(
+        async (port) => {
+          await gatewayCallback("localhost", port);
+        },
+        {
+          relayHost: gatewayV2ConnectionDetails.relayHost,
+          gateway: gatewayV2ConnectionDetails.gateway,
+          relay: gatewayV2ConnectionDetails.relay,
+          protocol: GatewayProxyProtocol.Tcp
+        }
+      );
+    }
+
     const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(providerInputs.gatewayId as string);
     const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
     await withGatewayProxy(
@@ -212,7 +261,13 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     const providerInputs = await validateProviderInputs(inputs);
     let isConnected = false;
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
-      const db = await $getClient({ ...providerInputs, port, host, hostIp: providerInputs.hostIp });
+      const db = await $getClient({
+        ...providerInputs,
+        port,
+        host,
+        hostIp: providerInputs.hostIp,
+        originalHost: providerInputs.host
+      });
       // oracle needs from keyword
       const testStatement = providerInputs.client === SqlProviders.Oracle ? "SELECT 1 FROM DUAL" : "SELECT 1";
 
@@ -253,7 +308,12 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
 
     const password = generatePassword(providerInputs.client, providerInputs.passwordRequirements);
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
-      const db = await $getClient({ ...providerInputs, port, host });
+      const db = await $getClient({
+        ...providerInputs,
+        port,
+        host,
+        originalHost: providerInputs.host
+      });
       try {
         const expiration = new Date(expireAt).toISOString();
 
@@ -296,7 +356,12 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     const username = entityId;
     const { database } = providerInputs;
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
-      const db = await $getClient({ ...providerInputs, port, host });
+      const db = await $getClient({
+        ...providerInputs,
+        port,
+        host,
+        originalHost: providerInputs.host
+      });
       try {
         const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username, database });
         const queries = revokeStatement.toString().split(";").filter(Boolean);
@@ -331,7 +396,12 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     if (!providerInputs.renewStatement) return { entityId };
 
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
-      const db = await $getClient({ ...providerInputs, port, host });
+      const db = await $getClient({
+        ...providerInputs,
+        port,
+        host,
+        originalHost: providerInputs.host
+      });
       const expiration = new Date(expireAt).toISOString();
       const { database } = providerInputs;
 

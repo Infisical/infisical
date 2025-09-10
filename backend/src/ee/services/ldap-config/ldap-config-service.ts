@@ -127,6 +127,20 @@ export const ldapConfigServiceFactory = ({
         message:
           "Failed to create LDAP configuration due to plan restriction. Upgrade plan to create LDAP configuration."
       });
+
+    const org = await orgDAL.findOrgById(orgId);
+
+    if (!org) {
+      throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
+    }
+
+    if (org.googleSsoAuthEnforced && isActive) {
+      throw new BadRequestError({
+        message:
+          "You cannot enable LDAP SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable LDAP SSO."
+      });
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
@@ -232,6 +246,19 @@ export const ldapConfigServiceFactory = ({
         message:
           "Failed to update LDAP configuration due to plan restriction. Upgrade plan to update LDAP configuration."
       });
+
+    const org = await orgDAL.findOrgById(orgId);
+
+    if (!org) {
+      throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
+    }
+
+    if (org.googleSsoAuthEnforced && isActive) {
+      throw new BadRequestError({
+        message:
+          "You cannot enable LDAP SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable LDAP SSO."
+      });
+    }
 
     const updateQuery: TLdapConfigsUpdate = {
       isActive,

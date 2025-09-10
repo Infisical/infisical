@@ -424,7 +424,8 @@ const cryptographyFactory = () => {
       constants: crypto.constants,
       X509Certificate: crypto.X509Certificate,
       KeyObject: crypto.KeyObject,
-      Hash: crypto.Hash
+      Hash: crypto.Hash,
+      timingSafeEqual: crypto.timingSafeEqual
     }
   };
 };

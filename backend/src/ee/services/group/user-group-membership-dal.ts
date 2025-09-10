@@ -23,7 +23,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
         .whereIn(`${TableName.ProjectMembership}.projectId`, projectIds)
         .pluck(`${TableName.ProjectMembership}.projectId`);
 
-      const userGroupMemberships: string[] = await (tx || db)(TableName.UserGroupMembership)
+      const userGroupMemberships: string[] = await (tx || db.replicaNode())(TableName.UserGroupMembership)
         .where(`${TableName.UserGroupMembership}.userId`, userId)
         .whereNot(`${TableName.UserGroupMembership}.groupId`, groupId)
         .join(
@@ -79,7 +79,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
         .pluck(`${TableName.GroupProjectMembership}.groupId`);
 
       // main query
-      const members = await (tx || db)(TableName.UserGroupMembership)
+      const members = await (tx || db.replicaNode())(TableName.UserGroupMembership)
         .where(`${TableName.UserGroupMembership}.groupId`, groupId)
         .where(`${TableName.UserGroupMembership}.isPending`, false)
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)

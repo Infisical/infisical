@@ -377,7 +377,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
   // special query for migration to v2 secret
   const findByProjectId = async (projectId: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.SecretApprovalRequestSecret)
+      const docs = await (tx || db.replicaNode())(TableName.SecretApprovalRequestSecret)
         .join(
           TableName.SecretApprovalRequest,
           `${TableName.SecretApprovalRequest}.id`,
