@@ -1,6 +1,6 @@
 import handlebars from "handlebars";
-import RE2 from "re2";
 import knex from "knex";
+import RE2 from "re2";
 import { z } from "zod";
 
 import { crypto } from "@app/lib/crypto/cryptography";

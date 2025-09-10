@@ -8,6 +8,7 @@ import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/a
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -294,14 +295,7 @@ export const oidcConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          const plan = await licenseService.getPlan(orgId);
-          if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
-            // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
-            throw new BadRequestError({
-              message:
-                "Failed to create new member via OIDC due to member limit reached. Upgrade plan to add more members."
-            });
-          }
+          await throwOnPlanSeatLimitReached(licenseService, orgId, UserAliasType.OIDC);
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
