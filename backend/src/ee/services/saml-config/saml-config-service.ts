@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrgMembershipStatus, TableName, TSamlConfigs, TSamlConfigsUpdate, TUsers } from "@app/db/schemas";
+import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -336,14 +337,6 @@ export const samlConfigServiceFactory = ({
         return foundUser;
       });
     } else {
-      const plan = await licenseService.getPlan(orgId);
-      if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
-        // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
-        throw new BadRequestError({
-          message: "Failed to create new member via SAML due to member limit reached. Upgrade plan to add more members."
-        });
-      }
-
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         newUser = await userDAL.findOne(
@@ -391,6 +384,8 @@ export const samlConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
+          await throwOnPlanSeatLimitReached(licenseService, orgId, UserAliasType.SAML);
+
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
           await orgMembershipDAL.create(
