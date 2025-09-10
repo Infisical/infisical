@@ -8,12 +8,10 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 // TODO(akhilmhdh): rewrite this into module functions in lib
-import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, ContentLoader, FormControl, Input } from "@app/components/v2";
 import { useServerConfig } from "@app/context";
 import { useCreateAdminUser, useSelectOrganization } from "@app/hooks/api";
-import { generateUserPassKey } from "@app/lib/crypto";
 
 const formSchema = z
   .object({
@@ -49,27 +47,14 @@ export const SignUpPage = () => {
     // avoid multi submission
     if (isSubmitting) return;
     try {
-      const { privateKey, ...userPass } = await generateUserPassKey(
-        email,
-        password,
-        config.fipsEnabled
-      );
       const res = await createAdminUser({
         email,
         password,
         firstName,
-        lastName,
-        ...userPass
+        lastName
       });
 
       SecurityClient.setToken(res.token);
-      saveTokenToLocalStorage({
-        publicKey: userPass.publicKey,
-        encryptedPrivateKey: userPass.encryptedPrivateKey,
-        iv: userPass.encryptedPrivateKeyIV,
-        tag: userPass.encryptedPrivateKeyTag,
-        privateKey
-      });
       await selectOrganization({ organizationId: res.organization.id });
 
       // TODO(akhilmhdh): This is such a confusing pattern and too unreliable

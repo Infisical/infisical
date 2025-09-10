@@ -10,22 +10,59 @@ import {
 
 import { GitHubConnectionMethod } from "./github-connection-enums";
 
-export const GitHubConnectionOAuthInputCredentialsSchema = z.object({
-  code: z.string().trim().min(1, "OAuth code required")
-});
+export const GitHubConnectionOAuthInputCredentialsSchema = z.union([
+  z.object({
+    code: z.string().trim().min(1, "OAuth code required"),
+    instanceType: z.literal("server"),
+    host: z.string().trim().min(1, "Host is required for server instance type")
+  }),
+  z.object({
+    code: z.string().trim().min(1, "OAuth code required"),
+    instanceType: z.literal("cloud").optional(),
+    host: z.string().trim().optional()
+  })
+]);
 
-export const GitHubConnectionAppInputCredentialsSchema = z.object({
-  code: z.string().trim().min(1, "GitHub App code required"),
-  installationId: z.string().min(1, "GitHub App Installation ID required")
-});
+export const GitHubConnectionAppInputCredentialsSchema = z.union([
+  z.object({
+    code: z.string().trim().min(1, "GitHub App code required"),
+    installationId: z.string().min(1, "GitHub App Installation ID required"),
+    instanceType: z.literal("server"),
+    host: z.string().trim().min(1, "Host is required for server instance type")
+  }),
+  z.object({
+    code: z.string().trim().min(1, "GitHub App code required"),
+    installationId: z.string().min(1, "GitHub App Installation ID required"),
+    instanceType: z.literal("cloud").optional(),
+    host: z.string().trim().optional()
+  })
+]);
 
-export const GitHubConnectionOAuthOutputCredentialsSchema = z.object({
-  accessToken: z.string()
-});
+export const GitHubConnectionOAuthOutputCredentialsSchema = z.union([
+  z.object({
+    accessToken: z.string(),
+    instanceType: z.literal("server"),
+    host: z.string().trim().min(1)
+  }),
+  z.object({
+    accessToken: z.string(),
+    instanceType: z.literal("cloud").optional(),
+    host: z.string().trim().optional()
+  })
+]);
 
-export const GitHubConnectionAppOutputCredentialsSchema = z.object({
-  installationId: z.string()
-});
+export const GitHubConnectionAppOutputCredentialsSchema = z.union([
+  z.object({
+    installationId: z.string(),
+    instanceType: z.literal("server"),
+    host: z.string().trim().min(1)
+  }),
+  z.object({
+    installationId: z.string(),
+    instanceType: z.literal("cloud").optional(),
+    host: z.string().trim().optional()
+  })
+]);
 
 export const ValidateGitHubConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
@@ -43,7 +80,9 @@ export const ValidateGitHubConnectionCredentialsSchema = z.discriminatedUnion("m
 ]);
 
 export const CreateGitHubConnectionSchema = ValidateGitHubConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.GitHub)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.GitHub, {
+    supportsGateways: true
+  })
 );
 
 export const UpdateGitHubConnectionSchema = z
@@ -53,7 +92,11 @@ export const UpdateGitHubConnectionSchema = z
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.GitHub).credentials)
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.GitHub));
+  .and(
+    GenericUpdateAppConnectionFieldsSchema(AppConnection.GitHub, {
+      supportsGateways: true
+    })
+  );
 
 const BaseGitHubConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.GitHub) });
 
@@ -74,11 +117,17 @@ export const GitHubConnectionSchema = z.intersection(
 export const SanitizedGitHubConnectionSchema = z.discriminatedUnion("method", [
   BaseGitHubConnectionSchema.extend({
     method: z.literal(GitHubConnectionMethod.App),
-    credentials: GitHubConnectionAppOutputCredentialsSchema.pick({})
+    credentials: z.object({
+      instanceType: z.union([z.literal("server"), z.literal("cloud")]).optional(),
+      host: z.string().optional()
+    })
   }),
   BaseGitHubConnectionSchema.extend({
     method: z.literal(GitHubConnectionMethod.OAuth),
-    credentials: GitHubConnectionOAuthOutputCredentialsSchema.pick({})
+    credentials: z.object({
+      instanceType: z.union([z.literal("server"), z.literal("cloud")]).optional(),
+      host: z.string().optional()
+    })
   })
 ]);
 

@@ -5,10 +5,12 @@ import { OrgPermissionSubjects } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionAppConnectionActions,
+  OrgPermissionAuditLogsActions,
   OrgPermissionBillingActions,
   OrgPermissionGroupActions,
   OrgPermissionIdentityActions,
   OrgPermissionKmipActions,
+  OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSecretShareAction
 } from "@app/context/OrgPermissionContext/types";
 import { TPermission } from "@app/hooks/api/roles/types";
@@ -19,6 +21,12 @@ const generalPermissionSchema = z
     edit: z.boolean().optional(),
     delete: z.boolean().optional(),
     create: z.boolean().optional()
+  })
+  .optional();
+
+const auditLogsPermissionSchema = z
+  .object({
+    [OrgPermissionAuditLogsActions.Read]: z.boolean().optional()
   })
   .optional();
 
@@ -82,6 +90,17 @@ const orgGatewayPermissionSchema = z
   })
   .optional();
 
+const machineIdentityAuthTemplatePermissionSchema = z
+  .object({
+    [OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates]: z.boolean().optional(),
+    [OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates]: z.boolean().optional(),
+    [OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates]: z.boolean().optional(),
+    [OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates]: z.boolean().optional(),
+    [OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates]: z.boolean().optional(),
+    [OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates]: z.boolean().optional()
+  })
+  .optional();
+
 const adminConsolePermissionSchmea = z
   .object({
     "access-all-projects": z.boolean().optional()
@@ -109,7 +128,7 @@ export const formSchema = z.object({
         })
         .optional(),
 
-      "audit-logs": generalPermissionSchema,
+      "audit-logs": auditLogsPermissionSchema,
       member: generalPermissionSchema,
       groups: groupPermissionSchema,
       role: generalPermissionSchema,
@@ -129,6 +148,7 @@ export const formSchema = z.object({
       "app-connections": appConnectionsPermissionSchema,
       kmip: kmipPermissionSchema,
       gateway: orgGatewayPermissionSchema,
+      "machine-identity-auth-template": machineIdentityAuthTemplatePermissionSchema,
       "secret-share": secretSharingPermissionSchema
     })
     .optional()

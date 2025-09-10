@@ -18,7 +18,9 @@ export const AcmeCertificateAuthorityConfigurationSchema = z.object({
     hostedZoneId: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.hostedZoneId)
   }),
   directoryUrl: z.string().url().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.directoryUrl),
-  accountEmail: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.accountEmail)
+  accountEmail: z.string().trim().min(1).describe(CertificateAuthorities.CONFIGURATIONS.ACME.accountEmail),
+  eabKid: z.string().trim().max(64).optional().describe(CertificateAuthorities.CONFIGURATIONS.ACME.eabKid),
+  eabHmacKey: z.string().trim().max(512).optional().describe(CertificateAuthorities.CONFIGURATIONS.ACME.eabHmacKey)
 });
 
 export const AcmeCertificateAuthorityCredentialsSchema = z.object({

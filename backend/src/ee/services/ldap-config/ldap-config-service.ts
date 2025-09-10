@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import { OrgMembershipStatus, TableName, TLdapConfigsUpdate, TUsers } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
@@ -45,7 +46,7 @@ import { searchGroups, testLDAPConfig } from "./ldap-fns";
 import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
-  ldapConfigDAL: Pick<TLdapConfigDALFactory, "create" | "update" | "findOne">;
+  ldapConfigDAL: Pick<TLdapConfigDALFactory, "create" | "update" | "findOne" | "transaction">;
   ldapGroupMapDAL: Pick<TLdapGroupMapDALFactory, "find" | "create" | "delete" | "findLdapGroupMapsByLdapConfigId">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "create">;
   orgDAL: Pick<
@@ -55,7 +56,7 @@ type TLdapConfigServiceFactoryDep = {
   groupDAL: Pick<TGroupDALFactory, "find" | "findOne">;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
-  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
@@ -126,10 +127,37 @@ export const ldapConfigServiceFactory = ({
         message:
           "Failed to create LDAP configuration due to plan restriction. Upgrade plan to create LDAP configuration."
       });
+
+    const org = await orgDAL.findOrgById(orgId);
+
+    if (!org) {
+      throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
+    }
+
+    if (org.googleSsoAuthEnforced && isActive) {
+      throw new BadRequestError({
+        message:
+          "You cannot enable LDAP SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable LDAP SSO."
+      });
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
     });
+
+    const isConnected = await testLDAPConfig({
+      bindDN,
+      bindPass,
+      caCert,
+      url
+    });
+
+    if (!isConnected) {
+      throw new BadRequestError({
+        message: "Failed to establish connection to LDAP directory. Please verify that your credentials are correct."
+      });
+    }
 
     const ldapConfig = await ldapConfigDAL.create({
       orgId,
@@ -148,67 +176,8 @@ export const ldapConfigServiceFactory = ({
     return ldapConfig;
   };
 
-  const updateLdapCfg = async ({
-    actor,
-    actorId,
-    orgId,
-    actorOrgId,
-    isActive,
-    actorAuthMethod,
-    url,
-    bindDN,
-    bindPass,
-    uniqueUserAttribute,
-    searchBase,
-    searchFilter,
-    groupSearchBase,
-    groupSearchFilter,
-    caCert
-  }: TUpdateLdapCfgDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Ldap);
-
-    const plan = await licenseService.getPlan(orgId);
-    if (!plan.ldap)
-      throw new BadRequestError({
-        message:
-          "Failed to update LDAP configuration due to plan restriction. Upgrade plan to update LDAP configuration."
-      });
-
-    const updateQuery: TLdapConfigsUpdate = {
-      isActive,
-      url,
-      searchBase,
-      searchFilter,
-      groupSearchBase,
-      groupSearchFilter,
-      uniqueUserAttribute
-    };
-
-    const { encryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId
-    });
-
-    if (bindDN !== undefined) {
-      updateQuery.encryptedLdapBindDN = encryptor({ plainText: Buffer.from(bindDN) }).cipherTextBlob;
-    }
-
-    if (bindPass !== undefined) {
-      updateQuery.encryptedLdapBindPass = encryptor({ plainText: Buffer.from(bindPass) }).cipherTextBlob;
-    }
-
-    if (caCert !== undefined) {
-      updateQuery.encryptedLdapCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
-    }
-
-    const [ldapConfig] = await ldapConfigDAL.update({ orgId }, updateQuery);
-
-    return ldapConfig;
-  };
-
-  const getLdapCfg = async (filter: { orgId: string; isActive?: boolean; id?: string }) => {
-    const ldapConfig = await ldapConfigDAL.findOne(filter);
+  const getLdapCfg = async (filter: { orgId: string; isActive?: boolean; id?: string }, tx?: Knex) => {
+    const ldapConfig = await ldapConfigDAL.findOne(filter, tx);
     if (!ldapConfig) {
       throw new NotFoundError({
         message: `Failed to find organization LDAP data in organization with ID '${filter.orgId}'`
@@ -249,6 +218,94 @@ export const ldapConfigServiceFactory = ({
       groupSearchFilter: ldapConfig.groupSearchFilter,
       caCert
     };
+  };
+
+  const updateLdapCfg = async ({
+    actor,
+    actorId,
+    orgId,
+    actorOrgId,
+    isActive,
+    actorAuthMethod,
+    url,
+    bindDN,
+    bindPass,
+    uniqueUserAttribute,
+    searchBase,
+    searchFilter,
+    groupSearchBase,
+    groupSearchFilter,
+    caCert
+  }: TUpdateLdapCfgDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Ldap);
+
+    const plan = await licenseService.getPlan(orgId);
+    if (!plan.ldap)
+      throw new BadRequestError({
+        message:
+          "Failed to update LDAP configuration due to plan restriction. Upgrade plan to update LDAP configuration."
+      });
+
+    const org = await orgDAL.findOrgById(orgId);
+
+    if (!org) {
+      throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
+    }
+
+    if (org.googleSsoAuthEnforced && isActive) {
+      throw new BadRequestError({
+        message:
+          "You cannot enable LDAP SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable LDAP SSO."
+      });
+    }
+
+    const updateQuery: TLdapConfigsUpdate = {
+      isActive,
+      url,
+      searchBase,
+      searchFilter,
+      groupSearchBase,
+      groupSearchFilter,
+      uniqueUserAttribute
+    };
+
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId
+    });
+
+    if (bindDN !== undefined) {
+      updateQuery.encryptedLdapBindDN = encryptor({ plainText: Buffer.from(bindDN) }).cipherTextBlob;
+    }
+
+    if (bindPass !== undefined) {
+      updateQuery.encryptedLdapBindPass = encryptor({ plainText: Buffer.from(bindPass) }).cipherTextBlob;
+    }
+
+    if (caCert !== undefined) {
+      updateQuery.encryptedLdapCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
+    }
+
+    const config = await ldapConfigDAL.transaction(async (tx) => {
+      const [updatedLdapCfg] = await ldapConfigDAL.update({ orgId }, updateQuery, tx);
+      const decryptedLdapCfg = await getLdapCfg({ orgId }, tx);
+
+      const isSoftDeletion = !decryptedLdapCfg.url && !decryptedLdapCfg.bindDN && !decryptedLdapCfg.bindPass;
+      if (!isSoftDeletion) {
+        const isConnected = await testLDAPConfig(decryptedLdapCfg);
+        if (!isConnected) {
+          throw new BadRequestError({
+            message:
+              "Failed to establish connection to LDAP directory. Please verify that your credentials are correct."
+          });
+        }
+      }
+
+      return updatedLdapCfg;
+    });
+
+    return config;
   };
 
   const getLdapCfgWithPermissionCheck = async ({
@@ -370,15 +427,13 @@ export const ldapConfigServiceFactory = ({
 
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
-        if (serverCfg.trustLdapEmails) {
-          newUser = await userDAL.findOne(
-            {
-              email: email.toLowerCase(),
-              isEmailVerified: true
-            },
-            tx
-          );
-        }
+        newUser = await userDAL.findOne(
+          {
+            email: email.toLowerCase(),
+            isEmailVerified: true
+          },
+          tx
+        );
 
         if (!newUser) {
           const uniqueUsername = await normalizeUsername(username, userDAL);
@@ -403,7 +458,8 @@ export const ldapConfigServiceFactory = ({
             aliasType: UserAliasType.LDAP,
             externalId,
             emails: [email],
-            orgId
+            orgId,
+            isEmailVerified: serverCfg.trustLdapEmails
           },
           tx
         );
@@ -526,16 +582,14 @@ export const ldapConfigServiceFactory = ({
       return newUser;
     });
 
-    const isUserCompleted = Boolean(user.isAccepted);
-    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
-
+    const isUserCompleted = Boolean(user.isAccepted) && userAlias.isEmailVerified;
     const providerAuthToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
-        hasExchangedPrivateKey: Boolean(userEnc?.serverEncryptedPrivateKey),
-        ...(user.email && { email: user.email, isEmailVerified: user.isEmailVerified }),
+        hasExchangedPrivateKey: true,
+        ...(user.email && { email: user.email, isEmailVerified: userAlias.isEmailVerified }),
         firstName,
         lastName,
         organizationName: organization.name,
@@ -543,6 +597,7 @@ export const ldapConfigServiceFactory = ({
         organizationSlug: organization.slug,
         authMethod: AuthMethod.LDAP,
         authType: UserAliasType.LDAP,
+        aliasId: userAlias.id,
         isUserCompleted,
         ...(relayState
           ? {
@@ -556,10 +611,11 @@ export const ldapConfigServiceFactory = ({
       }
     );
 
-    if (user.email && !user.isEmailVerified) {
+    if (user.email && !userAlias.isEmailVerified) {
       const token = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
-        userId: user.id
+        userId: user.id,
+        aliasId: userAlias.id
       });
 
       await smtpService.sendMail({
@@ -694,7 +750,17 @@ export const ldapConfigServiceFactory = ({
     return deletedGroupMap;
   };
 
-  const testLDAPConnection = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TTestLdapConnectionDTO) => {
+  const testLDAPConnection = async ({
+    actor,
+    actorId,
+    orgId,
+    actorAuthMethod,
+    actorOrgId,
+    bindDN,
+    bindPass,
+    caCert,
+    url
+  }: TTestLdapConnectionDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
@@ -704,11 +770,12 @@ export const ldapConfigServiceFactory = ({
         message: "Failed to test LDAP connection due to plan restriction. Upgrade plan to test the LDAP connection."
       });
 
-    const ldapConfig = await getLdapCfg({
-      orgId
+    return testLDAPConfig({
+      bindDN,
+      bindPass,
+      caCert,
+      url
     });
-
-    return testLDAPConfig(ldapConfig);
   };
 
   return {

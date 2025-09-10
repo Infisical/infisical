@@ -1,4 +1,11 @@
-import { useInfiniteQuery, useQuery, UseQueryOptions } from "@tanstack/react-query";
+import {
+  DefaultError,
+  InfiniteData,
+  UndefinedInitialDataInfiniteOptions,
+  useInfiniteQuery,
+  useQuery,
+  UseQueryOptions
+} from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { Identity } from "@app/hooks/api/identities/types";
@@ -25,8 +32,8 @@ export const adminStandaloneKeys = {
 export const adminQueryKeys = {
   serverConfig: () => ["server-config"] as const,
   getUsers: (filters: AdminGetUsersFilters) => [adminStandaloneKeys.getUsers, { filters }] as const,
-  getOrganizations: (filters: AdminGetOrganizationsFilters) =>
-    [adminStandaloneKeys.getOrganizations, { filters }] as const,
+  getOrganizations: (filters?: AdminGetOrganizationsFilters) =>
+    [adminStandaloneKeys.getOrganizations, ...(filters ? [{ filters }] : [])] as const,
   getIdentities: (filters: AdminGetIdentitiesFilters) =>
     [adminStandaloneKeys.getIdentities, { filters }] as const,
   getAdminSlackConfig: () => ["admin-slack-config"] as const,
@@ -83,7 +90,18 @@ export const useGetServerConfig = ({
     enabled: options?.enabled ?? true
   });
 
-export const useAdminGetUsers = (filters: AdminGetUsersFilters) => {
+export const useAdminGetUsers = (
+  filters: AdminGetUsersFilters,
+  options?: Partial<
+    UndefinedInitialDataInfiniteOptions<
+      User[],
+      DefaultError,
+      InfiniteData<User[]>,
+      ReturnType<typeof adminQueryKeys.getUsers>,
+      number
+    >
+  >
+) => {
   return useInfiniteQuery({
     initialPageParam: 0,
     queryKey: adminQueryKeys.getUsers(filters),
@@ -101,7 +119,8 @@ export const useAdminGetUsers = (filters: AdminGetUsersFilters) => {
       return data.users;
     },
     getNextPageParam: (lastPage, pages) =>
-      lastPage.length !== 0 ? pages.length * filters.limit : undefined
+      lastPage.length !== 0 ? pages.length * filters.limit : undefined,
+    ...options
   });
 };
 

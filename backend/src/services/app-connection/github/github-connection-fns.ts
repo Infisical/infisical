@@ -1,12 +1,17 @@
-import { createAppAuth } from "@octokit/auth-app";
-import { Octokit } from "@octokit/rest";
-import { AxiosResponse } from "axios";
+import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import https from "https";
+import RE2 from "re2";
 
+import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { getConfig } from "@app/lib/config/env";
-import { request } from "@app/lib/config/request";
+import { request as httpRequest } from "@app/lib/config/request";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
+import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
-import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 import { AppConnection } from "../app-connection-enums";
 import { GitHubConnectionMethod } from "./github-connection-enums";
@@ -24,123 +29,340 @@ export const getGitHubConnectionListItem = () => {
   };
 };
 
-export const getGitHubClient = (appConnection: TGitHubConnection) => {
-  const appCfg = getConfig();
+export const getGitHubInstanceApiUrl = async (config: {
+  credentials: Pick<TGitHubConnectionConfig["credentials"], "host" | "instanceType">;
+}) => {
+  const host = config.credentials.host || "github.com";
 
-  const { method, credentials } = appConnection;
+  await blockLocalAndPrivateIpAddresses(`https://${host}`);
 
-  let client: Octokit;
-
-  const appId = appCfg.INF_APP_CONNECTION_GITHUB_APP_ID;
-  const appPrivateKey = appCfg.INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY;
-
-  switch (method) {
-    case GitHubConnectionMethod.App:
-      if (!appId || !appPrivateKey) {
-        throw new InternalServerError({
-          message: `GitHub ${getAppConnectionMethodName(method).replace("GitHub", "")} has not been configured`
-        });
-      }
-
-      client = new Octokit({
-        authStrategy: createAppAuth,
-        auth: {
-          appId,
-          privateKey: appPrivateKey,
-          installationId: credentials.installationId
-        }
-      });
-      break;
-    case GitHubConnectionMethod.OAuth:
-      client = new Octokit({
-        auth: credentials.accessToken
-      });
-      break;
-    default:
-      throw new InternalServerError({
-        message: `Unhandled GitHub connection method: ${method as GitHubConnectionMethod}`
-      });
+  let apiBase: string;
+  if (config.credentials.instanceType === "server") {
+    apiBase = `${host}/api/v3`;
+  } else {
+    apiBase = `api.${host}`;
   }
 
-  return client;
+  return apiBase;
+};
+
+export const requestWithGitHubGateway = async <T>(
+  appConnection: { gatewayId?: string | null },
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  requestConfig: AxiosRequestConfig
+): Promise<AxiosResponse<T>> => {
+  const { gatewayId } = appConnection;
+
+  // If gateway isn't set up, don't proxy request
+  if (!gatewayId) {
+    return httpRequest.request(requestConfig);
+  }
+
+  const url = new URL(requestConfig.url as string);
+
+  await blockLocalAndPrivateIpAddresses(url.toString());
+
+  const [targetHost] = await verifyHostInputValidity(url.host, true);
+  const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
+  const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
+
+  return withGatewayProxy(
+    async (proxyPort) => {
+      const httpsAgent = new https.Agent({
+        servername: targetHost
+      });
+
+      url.protocol = "https:";
+      url.host = `localhost:${proxyPort}`;
+
+      const finalRequestConfig: AxiosRequestConfig = {
+        ...requestConfig,
+        url: url.toString(),
+        httpsAgent,
+        headers: {
+          ...requestConfig.headers,
+          Host: targetHost
+        }
+      };
+
+      try {
+        return await httpRequest.request(finalRequestConfig);
+      } catch (error) {
+        const axiosError = error as AxiosError;
+        logger.error(
+          { message: axiosError.message, data: axiosError.response?.data },
+          "Error during GitHub gateway request:"
+        );
+        throw error;
+      }
+    },
+    {
+      protocol: GatewayProxyProtocol.Tcp,
+      targetHost,
+      targetPort: 443,
+      relayHost,
+      relayPort: Number(relayPort),
+      identityId: relayDetails.identityId,
+      orgId: relayDetails.orgId,
+      tlsOptions: {
+        ca: relayDetails.certChain,
+        cert: relayDetails.certificate,
+        key: relayDetails.privateKey.toString()
+      }
+    }
+  );
+};
+
+export const getGitHubAppAuthToken = async (
+  appConnection: TGitHubConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+) => {
+  const appCfg = getConfig();
+  const appId = appCfg.INF_APP_CONNECTION_GITHUB_APP_ID;
+  let appPrivateKey = appCfg.INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY;
+
+  if (!appId || !appPrivateKey) {
+    throw new InternalServerError({
+      message: `GitHub App keys are not configured.`
+    });
+  }
+
+  appPrivateKey = appPrivateKey
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n");
+
+  if (appConnection.method !== GitHubConnectionMethod.App) {
+    throw new InternalServerError({ message: "Cannot generate GitHub App token for non-app connection" });
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iat: now,
+    exp: now + 5 * 60,
+    iss: appId
+  };
+
+  const appJwt = crypto.jwt().sign(payload, appPrivateKey, { algorithm: "RS256" });
+
+  const apiBaseUrl = await getGitHubInstanceApiUrl(appConnection);
+  const { installationId } = appConnection.credentials;
+
+  const response = await requestWithGitHubGateway<{ token: string; expires_at: string }>(
+    appConnection,
+    gatewayService,
+    {
+      url: `https://${apiBaseUrl}/app/installations/${installationId}/access_tokens`,
+      method: "POST",
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${appJwt}`,
+        "X-GitHub-Api-Version": "2022-11-28"
+      }
+    }
+  );
+
+  return response.data.token;
+};
+
+const parseGitHubLinkHeader = (linkHeader: string | undefined): Record<string, string> => {
+  if (!linkHeader) return {};
+
+  const links: Record<string, string> = {};
+  const segments = linkHeader.split(",");
+  const re = new RE2(/<([^>]+)>;\s*rel="([^"]+)"/);
+
+  for (const segment of segments) {
+    const match = re.exec(segment.trim());
+    if (match) {
+      const url = match[1];
+      const rel = match[2];
+      links[rel] = url;
+    }
+  }
+  return links;
+};
+
+function extractNextPageUrl(linkHeader: string | undefined): string | null {
+  const links = parseGitHubLinkHeader(linkHeader);
+  return links.next || null;
+}
+
+export const makePaginatedGitHubRequest = async <T, R = T[]>(
+  appConnection: TGitHubConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  path: string,
+  dataMapper?: (data: R) => T[]
+): Promise<T[]> => {
+  const { credentials, method } = appConnection;
+
+  const token =
+    method === GitHubConnectionMethod.OAuth
+      ? credentials.accessToken
+      : await getGitHubAppAuthToken(appConnection, gatewayService);
+
+  const baseUrl = `https://${await getGitHubInstanceApiUrl(appConnection)}${path}`;
+  const initialUrlObj = new URL(baseUrl);
+  initialUrlObj.searchParams.set("per_page", "100");
+
+  let results: T[] = [];
+  const maxIterations = 1000;
+
+  // Make initial request to get link header
+  const firstResponse: AxiosResponse<R> = await requestWithGitHubGateway<R>(appConnection, gatewayService, {
+    url: initialUrlObj.toString(),
+    method: "GET",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28"
+    }
+  });
+
+  const firstPageItems = dataMapper ? dataMapper(firstResponse.data) : (firstResponse.data as unknown as T[]);
+  results = results.concat(firstPageItems);
+
+  const linkHeader = parseGitHubLinkHeader(firstResponse.headers.link as string | undefined);
+  const lastPageUrl = linkHeader.last;
+
+  // If there's a last page URL, get its page number and concurrently fetch every page starting from 2 to last
+  if (lastPageUrl) {
+    const lastPageParam = new URL(lastPageUrl).searchParams.get("page");
+    const totalPages = lastPageParam ? parseInt(lastPageParam, 10) : 1;
+
+    const pageRequests: Promise<AxiosResponse<R>>[] = [];
+
+    for (let pageNum = 2; pageNum <= totalPages && pageNum - 1 < maxIterations; pageNum += 1) {
+      const pageUrlObj = new URL(initialUrlObj.toString());
+      pageUrlObj.searchParams.set("page", pageNum.toString());
+
+      pageRequests.push(
+        requestWithGitHubGateway<R>(appConnection, gatewayService, {
+          url: pageUrlObj.toString(),
+          method: "GET",
+          headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Bearer ${token}`,
+            "X-GitHub-Api-Version": "2022-11-28"
+          }
+        })
+      );
+    }
+    const responses = await Promise.all(pageRequests);
+
+    for (const response of responses) {
+      const items = dataMapper ? dataMapper(response.data) : (response.data as unknown as T[]);
+      results = results.concat(items);
+    }
+  } else {
+    // Fallback in case last link isn't present
+    let url: string | null = extractNextPageUrl(firstResponse.headers.link as string | undefined);
+    let i = 1;
+
+    while (url && i < maxIterations) {
+      // eslint-disable-next-line no-await-in-loop
+      const response: AxiosResponse<R> = await requestWithGitHubGateway<R>(appConnection, gatewayService, {
+        url,
+        method: "GET",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "X-GitHub-Api-Version": "2022-11-28"
+        }
+      });
+
+      const items = dataMapper ? dataMapper(response.data) : (response.data as unknown as T[]);
+      results = results.concat(items);
+
+      url = extractNextPageUrl(response.headers.link as string | undefined);
+      i += 1;
+    }
+  }
+
+  return results;
 };
 
 type GitHubOrganization = {
   login: string;
   id: number;
+  type: string;
 };
 
 type GitHubRepository = {
   id: number;
   name: string;
   owner: GitHubOrganization;
+  permissions?: {
+    admin: boolean;
+    maintain: boolean;
+    push: boolean;
+    triage: boolean;
+    pull: boolean;
+  };
 };
 
-export const getGitHubRepositories = async (appConnection: TGitHubConnection) => {
-  const client = getGitHubClient(appConnection);
+type GitHubEnvironment = {
+  id: number;
+  name: string;
+};
 
-  let repositories: GitHubRepository[];
-
-  switch (appConnection.method) {
-    case GitHubConnectionMethod.App:
-      repositories = await client.paginate("GET /installation/repositories");
-      break;
-    case GitHubConnectionMethod.OAuth:
-    default:
-      repositories = (await client.paginate("GET /user/repos")).filter((repo) => repo.permissions?.admin);
-      break;
+export const getGitHubRepositories = async (
+  appConnection: TGitHubConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+) => {
+  if (appConnection.method === GitHubConnectionMethod.App) {
+    return makePaginatedGitHubRequest<GitHubRepository, { repositories: GitHubRepository[] }>(
+      appConnection,
+      gatewayService,
+      "/installation/repositories",
+      (data) => data.repositories
+    );
   }
 
-  return repositories;
+  const repos = await makePaginatedGitHubRequest<GitHubRepository>(appConnection, gatewayService, "/user/repos");
+  return repos.filter((repo) => repo.permissions?.admin);
 };
 
-export const getGitHubOrganizations = async (appConnection: TGitHubConnection) => {
-  const client = getGitHubClient(appConnection);
+export const getGitHubOrganizations = async (
+  appConnection: TGitHubConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+) => {
+  if (appConnection.method === GitHubConnectionMethod.App) {
+    const installationRepositories = await makePaginatedGitHubRequest<
+      GitHubRepository,
+      { repositories: GitHubRepository[] }
+    >(appConnection, gatewayService, "/installation/repositories", (data) => data.repositories);
 
-  let organizations: GitHubOrganization[];
-
-  switch (appConnection.method) {
-    case GitHubConnectionMethod.App: {
-      const installationRepositories = await client.paginate("GET /installation/repositories");
-
-      const organizationMap: Record<string, GitHubOrganization> = {};
-
-      installationRepositories.forEach((repo) => {
-        if (repo.owner.type === "Organization") {
-          organizationMap[repo.owner.id] = repo.owner;
-        }
-      });
-
-      organizations = Object.values(organizationMap);
-
-      break;
-    }
-    case GitHubConnectionMethod.OAuth:
-    default:
-      organizations = await client.paginate("GET /user/orgs");
-      break;
-  }
-
-  return organizations;
-};
-
-export const getGitHubEnvironments = async (appConnection: TGitHubConnection, owner: string, repo: string) => {
-  const client = getGitHubClient(appConnection);
-
-  try {
-    const environments = await client.paginate("GET /repos/{owner}/{repo}/environments", {
-      owner,
-      repo
+    const organizationMap: Record<string, GitHubOrganization> = {};
+    installationRepositories.forEach((repo) => {
+      if (repo.owner.type === "Organization") {
+        organizationMap[repo.owner.id] = repo.owner;
+      }
     });
 
-    return environments;
-  } catch (e) {
-    // repo doesn't have envs
-    if ((e as { status: number }).status === 404) {
-      return [];
-    }
+    return Object.values(organizationMap);
+  }
 
-    throw e;
+  return makePaginatedGitHubRequest<GitHubOrganization>(appConnection, gatewayService, "/user/orgs");
+};
+
+export const getGitHubEnvironments = async (
+  appConnection: TGitHubConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  owner: string,
+  repo: string
+) => {
+  try {
+    return await makePaginatedGitHubRequest<GitHubEnvironment, { environments: GitHubEnvironment[] }>(
+      appConnection,
+      gatewayService,
+      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/environments`,
+      (data) => data.environments
+    );
+  } catch (error) {
+    const axiosError = error as AxiosError;
+    if (axiosError.response?.status === 404) return [];
+    throw error;
   }
 };
 
@@ -159,9 +381,11 @@ export function isGithubErrorResponse(data: GithubTokenRespData): data is Github
   return "error" in data;
 }
 
-export const validateGitHubConnectionCredentials = async (config: TGitHubConnectionConfig) => {
+export const validateGitHubConnectionCredentials = async (
+  config: TGitHubConnectionConfig,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+) => {
   const { credentials, method } = config;
-
   const {
     INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID,
     INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET,
@@ -192,10 +416,13 @@ export const validateGitHubConnectionCredentials = async (config: TGitHubConnect
   }
 
   let tokenResp: AxiosResponse<GithubTokenRespData>;
+  const host = credentials.host || "github.com";
 
   try {
-    tokenResp = await request.get<GithubTokenRespData>("https://github.com/login/oauth/access_token", {
-      params: {
+    tokenResp = await requestWithGitHubGateway<GithubTokenRespData>(config, gatewayService, {
+      url: `https://${host}/login/oauth/access_token`,
+      method: "POST",
+      data: {
         client_id: clientId,
         client_secret: clientSecret,
         code: credentials.code,
@@ -203,7 +430,7 @@ export const validateGitHubConnectionCredentials = async (config: TGitHubConnect
       },
       headers: {
         Accept: "application/json",
-        "Accept-Encoding": "application/json"
+        "Content-Type": "application/json"
       }
     });
 
@@ -213,12 +440,14 @@ export const validateGitHubConnectionCredentials = async (config: TGitHubConnect
       });
     }
   } catch (e: unknown) {
+    logger.error(e, "Unable to verify GitHub connection");
+
     if (e instanceof BadRequestError) {
       throw e;
     }
 
     throw new BadRequestError({
-      message: `Unable to validate connection: verify credentials`
+      message: "Unable to validate connection: verify credentials"
     });
   }
 
@@ -233,7 +462,7 @@ export const validateGitHubConnectionCredentials = async (config: TGitHubConnect
       throw new InternalServerError({ message: `Missing access token: ${tokenResp.data.error}` });
     }
 
-    const installationsResp = await request.get<{
+    const installationsResp = await requestWithGitHubGateway<{
       installations: {
         id: number;
         account: {
@@ -242,7 +471,8 @@ export const validateGitHubConnectionCredentials = async (config: TGitHubConnect
           id: number;
         };
       }[];
-    }>(IntegrationUrls.GITHUB_USER_INSTALLATIONS, {
+    }>(config, gatewayService, {
+      url: `https://${await getGitHubInstanceApiUrl(config)}/user/installations`,
       headers: {
         Accept: "application/json",
         Authorization: `Bearer ${tokenResp.data.access_token}`,
@@ -264,11 +494,15 @@ export const validateGitHubConnectionCredentials = async (config: TGitHubConnect
   switch (method) {
     case GitHubConnectionMethod.App:
       return {
-        installationId: credentials.installationId
+        installationId: credentials.installationId,
+        instanceType: credentials.instanceType,
+        host: credentials.host
       };
     case GitHubConnectionMethod.OAuth:
       return {
-        accessToken: tokenResp.data.access_token
+        accessToken: tokenResp.data.access_token,
+        instanceType: credentials.instanceType,
+        host: credentials.host
       };
     default:
       throw new InternalServerError({

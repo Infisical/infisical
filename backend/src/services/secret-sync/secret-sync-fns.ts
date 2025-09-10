@@ -1,6 +1,7 @@
 import { AxiosError } from "axios";
 import handlebars from "handlebars";
 
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "@app/ee/services/secret-sync/oci-vault";
 import { BadRequestError } from "@app/lib/errors";
@@ -47,6 +48,7 @@ import { HC_VAULT_SYNC_LIST_OPTION, HCVaultSyncFns } from "./hc-vault";
 import { HEROKU_SYNC_LIST_OPTION, HerokuSyncFns } from "./heroku";
 import { HUMANITEC_SYNC_LIST_OPTION } from "./humanitec";
 import { HumanitecSyncFns } from "./humanitec/humanitec-sync-fns";
+import { NETLIFY_SYNC_LIST_OPTION, NetlifySyncFns } from "./netlify";
 import { RAILWAY_SYNC_LIST_OPTION } from "./railway/railway-sync-constants";
 import { RailwaySyncFns } from "./railway/railway-sync-fns";
 import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
@@ -87,6 +89,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Railway]: RAILWAY_SYNC_LIST_OPTION,
   [SecretSync.Checkly]: CHECKLY_SYNC_LIST_OPTION,
   [SecretSync.DigitalOceanAppPlatform]: DIGITAL_OCEAN_APP_PLATFORM_SYNC_LIST_OPTION,
+  [SecretSync.Netlify]: NETLIFY_SYNC_LIST_OPTION,
   [SecretSync.Bitbucket]: BITBUCKET_SYNC_LIST_OPTION
 };
 
@@ -97,6 +100,7 @@ export const listSecretSyncOptions = () => {
 type TSyncSecretDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
 };
 
 // Add schema to secret keys
@@ -191,7 +195,7 @@ export const SecretSyncFns = {
   syncSecrets: (
     secretSync: TSecretSyncWithCredentials,
     secretMap: TSecretMap,
-    { kmsService, appConnectionDAL }: TSyncSecretDeps
+    { kmsService, appConnectionDAL, gatewayService }: TSyncSecretDeps
   ): Promise<void> => {
     const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
 
@@ -201,7 +205,7 @@ export const SecretSyncFns = {
       case SecretSync.AWSSecretsManager:
         return AwsSecretsManagerSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitHub:
-        return GithubSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return GithubSyncFns.syncSecrets(secretSync, schemaSecretMap, gatewayService);
       case SecretSync.GCPSecretManager:
         return GcpSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureKeyVault:
@@ -240,7 +244,7 @@ export const SecretSyncFns = {
       case SecretSync.Windmill:
         return WindmillSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.HCVault:
-        return HCVaultSyncFns.syncSecrets(secretSync, schemaSecretMap);
+        return HCVaultSyncFns.syncSecrets(secretSync, schemaSecretMap, gatewayService);
       case SecretSync.TeamCity:
         return TeamCitySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.OCIVault:
@@ -267,6 +271,8 @@ export const SecretSyncFns = {
         return SupabaseSyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Netlify:
+        return NetlifySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Bitbucket:
         return BitbucketSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
@@ -277,7 +283,7 @@ export const SecretSyncFns = {
   },
   getSecrets: async (
     secretSync: TSecretSyncWithCredentials,
-    { kmsService, appConnectionDAL }: TSyncSecretDeps
+    { kmsService, appConnectionDAL, gatewayService }: TSyncSecretDeps
   ): Promise<TSecretMap> => {
     let secretMap: TSecretMap;
     switch (secretSync.destination) {
@@ -335,7 +341,7 @@ export const SecretSyncFns = {
         secretMap = await WindmillSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.HCVault:
-        secretMap = await HCVaultSyncFns.getSecrets(secretSync);
+        secretMap = await HCVaultSyncFns.getSecrets(secretSync, gatewayService);
         break;
       case SecretSync.TeamCity:
         secretMap = await TeamCitySyncFns.getSecrets(secretSync);
@@ -379,6 +385,9 @@ export const SecretSyncFns = {
       case SecretSync.DigitalOceanAppPlatform:
         secretMap = await DigitalOceanAppPlatformSyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Netlify:
+        secretMap = await NetlifySyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.Bitbucket:
         secretMap = await BitbucketSyncFns.getSecrets(secretSync);
         break;
@@ -395,7 +404,7 @@ export const SecretSyncFns = {
   removeSecrets: (
     secretSync: TSecretSyncWithCredentials,
     secretMap: TSecretMap,
-    { kmsService, appConnectionDAL }: TSyncSecretDeps
+    { kmsService, appConnectionDAL, gatewayService }: TSyncSecretDeps
   ): Promise<void> => {
     const schemaSecretMap = addSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
 
@@ -405,7 +414,7 @@ export const SecretSyncFns = {
       case SecretSync.AWSSecretsManager:
         return AwsSecretsManagerSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.GitHub:
-        return GithubSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return GithubSyncFns.removeSecrets(secretSync, schemaSecretMap, gatewayService);
       case SecretSync.GCPSecretManager:
         return GcpSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.AzureKeyVault:
@@ -442,7 +451,7 @@ export const SecretSyncFns = {
       case SecretSync.Windmill:
         return WindmillSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.HCVault:
-        return HCVaultSyncFns.removeSecrets(secretSync, schemaSecretMap);
+        return HCVaultSyncFns.removeSecrets(secretSync, schemaSecretMap, gatewayService);
       case SecretSync.TeamCity:
         return TeamCitySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.OCIVault:
@@ -471,6 +480,8 @@ export const SecretSyncFns = {
         return SupabaseSyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Netlify:
+        return NetlifySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Bitbucket:
         return BitbucketSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:

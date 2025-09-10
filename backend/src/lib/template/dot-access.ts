@@ -1,11 +1,11 @@
 /**
  * Safely retrieves a value from a nested object using dot notation path
  */
-export const getStringValueByDot = (
+export const getValueByDot = (
   obj: Record<string, unknown> | null | undefined,
   path: string,
-  defaultValue?: string
-): string | undefined => {
+  defaultValue?: string | number | boolean
+): string | number | boolean | undefined => {
   // Handle null or undefined input
   if (!obj) {
     return defaultValue;
@@ -26,7 +26,7 @@ export const getStringValueByDot = (
     current = (current as Record<string, unknown>)[part];
   }
 
-  if (typeof current !== "string") {
+  if (typeof current !== "string" && typeof current !== "number" && typeof current !== "boolean") {
     return defaultValue;
   }
 

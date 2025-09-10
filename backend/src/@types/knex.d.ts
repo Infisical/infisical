@@ -495,6 +495,11 @@ import {
   TAccessApprovalPoliciesEnvironmentsUpdate
 } from "@app/db/schemas/access-approval-policies-environments";
 import {
+  TIdentityAuthTemplates,
+  TIdentityAuthTemplatesInsert,
+  TIdentityAuthTemplatesUpdate
+} from "@app/db/schemas/identity-auth-templates";
+import {
   TIdentityLdapAuths,
   TIdentityLdapAuthsInsert,
   TIdentityLdapAuthsUpdate
@@ -525,6 +530,11 @@ import {
   TSecretReminderRecipientsInsert,
   TSecretReminderRecipientsUpdate
 } from "@app/db/schemas/secret-reminder-recipients";
+import {
+  TUserNotifications,
+  TUserNotificationsInsert,
+  TUserNotificationsUpdate
+} from "@app/db/schemas/user-notifications";
 
 declare module "knex" {
   namespace Knex {
@@ -877,6 +887,11 @@ declare module "knex/types/tables" {
       TIdentityProjectAdditionalPrivilege,
       TIdentityProjectAdditionalPrivilegeInsert,
       TIdentityProjectAdditionalPrivilegeUpdate
+    >;
+    [TableName.IdentityAuthTemplate]: KnexOriginal.CompositeTableType<
+      TIdentityAuthTemplates,
+      TIdentityAuthTemplatesInsert,
+      TIdentityAuthTemplatesUpdate
     >;
 
     [TableName.AccessApprovalPolicy]: KnexOriginal.CompositeTableType<
@@ -1243,6 +1258,11 @@ declare module "knex/types/tables" {
       TRemindersRecipients,
       TRemindersRecipientsInsert,
       TRemindersRecipientsUpdate
+    >;
+    [TableName.UserNotifications]: KnexOriginal.CompositeTableType<
+      TUserNotifications,
+      TUserNotificationsInsert,
+      TUserNotificationsUpdate
     >;
   }
 }

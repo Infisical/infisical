@@ -18,7 +18,11 @@ export const IdentityUniversalAuthsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   identityId: z.string().uuid(),
-  accessTokenPeriod: z.coerce.number().default(0)
+  accessTokenPeriod: z.coerce.number().default(0),
+  lockoutEnabled: z.boolean().default(true),
+  lockoutThreshold: z.number().default(3),
+  lockoutDurationSeconds: z.number().default(300),
+  lockoutCounterResetSeconds: z.number().default(30)
 });
 
 export type TIdentityUniversalAuths = z.infer<typeof IdentityUniversalAuthsSchema>;

@@ -31,6 +31,11 @@ import {
 } from "./app-connection-types";
 import { Auth0ConnectionMethod, getAuth0ConnectionListItem, validateAuth0ConnectionCredentials } from "./auth0";
 import { AwsConnectionMethod, getAwsConnectionListItem, validateAwsConnectionCredentials } from "./aws";
+import { AzureADCSConnectionMethod } from "./azure-adcs";
+import {
+  getAzureADCSConnectionListItem,
+  validateAzureADCSConnectionCredentials
+} from "./azure-adcs/azure-adcs-connection-fns";
 import {
   AzureAppConfigurationConnectionMethod,
   getAzureAppConfigurationConnectionListItem,
@@ -97,6 +102,7 @@ import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnection
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
 import { getMySqlConnectionListItem } from "./mysql/mysql-connection-fns";
+import { getNetlifyConnectionListItem, validateNetlifyConnectionCredentials } from "./netlify";
 import { getOktaConnectionListItem, OktaConnectionMethod, validateOktaConnectionCredentials } from "./okta";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
@@ -135,6 +141,7 @@ export const listAppConnectionOptions = () => {
     getAzureKeyVaultConnectionListItem(),
     getAzureAppConfigurationConnectionListItem(),
     getAzureDevopsConnectionListItem(),
+    getAzureADCSConnectionListItem(),
     getDatabricksConnectionListItem(),
     getHumanitecConnectionListItem(),
     getTerraformCloudConnectionListItem(),
@@ -163,6 +170,7 @@ export const listAppConnectionOptions = () => {
     getChecklyConnectionListItem(),
     getSupabaseConnectionListItem(),
     getDigitalOceanConnectionListItem(),
+    getNetlifyConnectionListItem(),
     getOktaConnectionListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
@@ -225,6 +233,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.AzureClientSecrets]:
       validateAzureClientSecretsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureDevOps]: validateAzureDevOpsConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureADCS]: validateAzureADCSConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Humanitec]: validateHumanitecConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Postgres]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -251,7 +260,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Checkly]: validateChecklyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Supabase]: validateSupabaseConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DigitalOcean]: validateDigitalOceanConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Netlify]: validateNetlifyConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService);
@@ -297,6 +307,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case MsSqlConnectionMethod.UsernameAndPassword:
     case MySqlConnectionMethod.UsernameAndPassword:
     case OracleDBConnectionMethod.UsernameAndPassword:
+    case AzureADCSConnectionMethod.UsernamePassword:
       return "Username & Password";
     case WindmillConnectionMethod.AccessToken:
     case HCVaultConnectionMethod.AccessToken:
@@ -354,6 +365,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.AzureKeyVault]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureAppConfiguration]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureDevOps]: platformManagedCredentialsNotSupported,
+  [AppConnection.AzureADCS]: platformManagedCredentialsNotSupported,
   [AppConnection.Humanitec]: platformManagedCredentialsNotSupported,
   [AppConnection.Postgres]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.MsSql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
@@ -381,6 +393,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Checkly]: platformManagedCredentialsNotSupported,
   [AppConnection.Supabase]: platformManagedCredentialsNotSupported,
   [AppConnection.DigitalOcean]: platformManagedCredentialsNotSupported,
+  [AppConnection.Netlify]: platformManagedCredentialsNotSupported,
   [AppConnection.Okta]: platformManagedCredentialsNotSupported
 };
 

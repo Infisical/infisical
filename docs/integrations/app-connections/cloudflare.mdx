@@ -50,6 +50,17 @@ Infisical supports connecting to Cloudflare using API tokens and Account ID for 
           </Accordion>
         </AccordionGroup>
       </Tab>
+      <Tab title="PKI">
+          Use the following permissions to grant Infisical access to verify certificates using DNS TXT records with ACME:
+
+          ![Configure Token](/images/app-connections/cloudflare/cloudflare-dns-configure-permissions.png)
+
+          **Required Permissions:**
+          - **Account** - **Account Settings** - **Read**
+          - **Zone** - **DNS** - **Edit**
+
+          Add these permissions to your API token and click **Continue to summary**, then **Create Token** to generate your API token.
+      </Tab>
     </Tabs>
 
   </Step>

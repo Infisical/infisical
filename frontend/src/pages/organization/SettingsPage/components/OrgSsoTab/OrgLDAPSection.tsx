@@ -94,23 +94,64 @@ export const OrgLDAPSection = (): JSX.Element => {
     handlePopUpOpen("ldapGroupMap");
   };
 
+  const isGoogleOAuthEnabled = currentOrg.googleSsoAuthEnforced;
+
   return (
-    <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+    <div className="mb-4">
       <div className="py-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-md text-mineshaft-100">LDAP</h2>
-          <div className="flex">
-            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Ldap}>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="text-xl font-semibold text-gray-200">LDAP</p>
+            <p className="mb-2 text-gray-400">Manage LDAP authentication configuration</p>
+          </div>
+          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Ldap}>
+            {(isAllowed) => (
+              <Button onClick={addLDAPBtnClick} colorSchema="secondary" isDisabled={!isAllowed}>
+                Manage
+              </Button>
+            )}
+          </OrgPermissionCan>
+        </div>
+      </div>
+
+      {data && (
+        <div className="pt-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-md text-mineshaft-100">Enable LDAP</h2>
+            <OrgPermissionCan
+              I={OrgPermissionActions.Edit}
+              a={OrgPermissionSubjects.Ldap}
+              tooltipProps={{
+                className: "max-w-sm",
+                side: "left"
+              }}
+              allowedLabel={
+                isGoogleOAuthEnabled
+                  ? "You cannot enable LDAP SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable LDAP SSO."
+                  : undefined
+              }
+              renderTooltip={isGoogleOAuthEnabled}
+            >
               {(isAllowed) => (
-                <Button onClick={addLDAPBtnClick} colorSchema="secondary" isDisabled={!isAllowed}>
-                  Manage
-                </Button>
+                <div>
+                  <Switch
+                    id="enable-ldap-sso"
+                    onCheckedChange={(value) => handleLDAPToggle(value)}
+                    isChecked={data ? data.isActive : false}
+                    isDisabled={!isAllowed || isGoogleOAuthEnabled}
+                  >
+                    Enable
+                  </Switch>
+                </div>
               )}
             </OrgPermissionCan>
           </div>
+          <p className="text-sm text-mineshaft-300">
+            Allow members to authenticate into Infisical with LDAP
+          </p>
         </div>
-        <p className="text-sm text-mineshaft-300">Manage LDAP authentication configuration</p>
-      </div>
+      )}
+
       <div className="py-4">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-md text-mineshaft-100">LDAP Group Mappings</h2>
@@ -121,7 +162,7 @@ export const OrgLDAPSection = (): JSX.Element => {
                 colorSchema="secondary"
                 isDisabled={!isAllowed}
               >
-                Manage
+                Configure
               </Button>
             )}
           </OrgPermissionCan>
@@ -130,28 +171,7 @@ export const OrgLDAPSection = (): JSX.Element => {
           Manage how LDAP groups are mapped to internal groups in Infisical
         </p>
       </div>
-      {data && (
-        <div className="py-4">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-md text-mineshaft-100">Enable LDAP</h2>
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Ldap}>
-              {(isAllowed) => (
-                <Switch
-                  id="enable-saml-sso"
-                  onCheckedChange={(value) => handleLDAPToggle(value)}
-                  isChecked={data ? data.isActive : false}
-                  isDisabled={!isAllowed}
-                >
-                  Enable
-                </Switch>
-              )}
-            </OrgPermissionCan>
-          </div>
-          <p className="text-sm text-mineshaft-300">
-            Allow members to authenticate into Infisical with LDAP
-          </p>
-        </div>
-      )}
+
       <LDAPModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}

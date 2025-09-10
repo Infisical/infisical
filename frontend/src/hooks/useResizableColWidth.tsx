@@ -1,12 +1,13 @@
-import { MouseEvent, useCallback, useEffect, useRef, useState } from "react";
+import { MouseEvent, RefObject, useCallback, useEffect, useRef, useState } from "react";
 
 type Params = {
   minWidth: number;
   maxWidth: number;
   initialWidth: number;
+  ref: RefObject<HTMLTableElement>;
 };
 
-export const useResizableColWidth = ({ minWidth, maxWidth, initialWidth }: Params) => {
+export const useResizableColWidth = ({ minWidth, maxWidth, initialWidth, ref }: Params) => {
   const [colWidth, setColWidth] = useState(initialWidth);
   const [isResizing, setIsResizing] = useState(false);
   const startX = useRef(0);
@@ -62,6 +63,28 @@ export const useResizableColWidth = ({ minWidth, maxWidth, initialWidth }: Param
       document.body.style.userSelect = "";
     };
   }, [isResizing, handleMouseMove, handleMouseUp]);
+
+  useEffect(() => {
+    const element = ref?.current;
+    if (!element) return;
+
+    const handleResize = () => {
+      if (colWidth > maxWidth) {
+        setColWidth(Math.max(maxWidth, minWidth));
+      } else if (ref.current?.clientWidth && colWidth > ref.current.clientWidth * 0.9) {
+        // this else is a fallback to ensure col is always visible
+        setColWidth(initialWidth);
+      }
+    };
+
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(element);
+
+    // eslint-disable-next-line consistent-return
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [ref, maxWidth, colWidth]);
 
   return {
     colWidth,

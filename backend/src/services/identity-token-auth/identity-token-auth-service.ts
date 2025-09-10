@@ -35,7 +35,7 @@ type TIdentityTokenAuthServiceFactoryDep = {
     TIdentityTokenAuthDALFactory,
     "transaction" | "create" | "findOne" | "updateById" | "delete"
   >;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
   identityAccessTokenDAL: Pick<
     TIdentityAccessTokenDALFactory,
     "create" | "find" | "update" | "findById" | "findOne" | "updateById" | "delete"
@@ -345,6 +345,14 @@ export const identityTokenAuthServiceFactory = ({
     const identityTokenAuth = await identityTokenAuthDAL.findOne({ identityId });
 
     const identityAccessToken = await identityTokenAuthDAL.transaction(async (tx) => {
+      await identityOrgMembershipDAL.updateById(
+        identityMembershipOrg.id,
+        {
+          lastLoginAuthMethod: IdentityAuthMethod.TOKEN_AUTH,
+          lastLoginTime: new Date()
+        },
+        tx
+      );
       const newToken = await identityAccessTokenDAL.create(
         {
           identityId: identityTokenAuth.identityId,

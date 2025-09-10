@@ -16,6 +16,7 @@ rules:
   - ""
   resources:
   - configmaps
+  - secrets
   verbs:
   - create
   - delete
@@ -30,17 +31,6 @@ rules:
   verbs:
   - get
   - list
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - update
-  - watch
 - apiGroups:
   - ""
   resources:
@@ -67,15 +57,6 @@ rules:
   - update
   - watch
 - apiGroups:
-  - apps
-  resources:
-  - deployments
-  verbs:
-  - get
-  - list
-  - update
-  - watch
-- apiGroups:
   - authentication.k8s.io
   resources:
   - tokenreviews
@@ -85,69 +66,8 @@ rules:
   - secrets.infisical.com
   resources:
   - clustergenerators
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - secrets.infisical.com
-  resources:
   - infisicaldynamicsecrets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - secrets.infisical.com
-  resources:
-  - infisicaldynamicsecrets/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - secrets.infisical.com
-  resources:
-  - infisicaldynamicsecrets/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - secrets.infisical.com
-  resources:
   - infisicalpushsecrets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - secrets.infisical.com
-  resources:
-  - infisicalpushsecrets/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - secrets.infisical.com
-  resources:
-  - infisicalpushsecrets/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - secrets.infisical.com
-  resources:
   - infisicalsecrets
   verbs:
   - create
@@ -160,12 +80,16 @@ rules:
 - apiGroups:
   - secrets.infisical.com
   resources:
+  - infisicaldynamicsecrets/finalizers
+  - infisicalpushsecrets/finalizers
   - infisicalsecrets/finalizers
   verbs:
   - update
 - apiGroups:
   - secrets.infisical.com
   resources:
+  - infisicaldynamicsecrets/status
+  - infisicalpushsecrets/status
   - infisicalsecrets/status
   verbs:
   - get
@@ -184,9 +108,7 @@ metadata:
   namespace: {{ .Values.scopedNamespace | quote }}
   {{- end }}
   labels:
-    app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: k8-operator
-    app.kubernetes.io/part-of: k8-operator
+
   {{- include "secrets-operator.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io

@@ -11,16 +11,14 @@ const adminRoute = route("/admin", [
     route("/environment", "admin/EnvironmentPage/route.tsx"),
     route("/integrations", "admin/IntegrationsPage/route.tsx"),
     route("/caching", "admin/CachingPage/route.tsx"),
-    route("/resources/organizations", "admin/OrganizationResourcesPage/route.tsx"),
-    route("/resources/user-identities", "admin/UserIdentitiesResourcesPage/route.tsx"),
-    route("/resources/machine-identities", "admin/MachineIdentitiesResourcesPage/route.tsx")
+    route("/resources/overview", "admin/ResourceOverviewPage/route.tsx"),
+    route("/access-management", "admin/AccessManagementPage/route.tsx")
   ])
 ]);
 
 const organizationRoutes = route("/organization", [
   route("/projects", "organization/ProjectsPage/route.tsx"),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
-  route("/admin", "organization/AdminPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
   route("/billing", "organization/BillingPage/route.tsx"),
   route("/secret-sharing", [

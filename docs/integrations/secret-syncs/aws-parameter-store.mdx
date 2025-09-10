@@ -7,6 +7,11 @@ description: "Learn how to configure an AWS Parameter Store Sync for Infisical."
 
         - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
         - Create an [AWS Connection](/integrations/app-connections/aws) with the required **Secret Sync** permissions
+        - Ensure your network security policies allow incoming requests from Infisical to this secret sync provider, if network restrictions apply.
+
+<Note>
+  For workflows involving large amounts of secrets or frequent syncs, we recommend increasing your [AWS Parameter Store throughput quota](https://docs.aws.amazon.com/systems-manager/latest/userguide/parameter-store-throughput.html) to avoid rate limiting.
+</Note>
 
 <Tabs>
     <Tab title="Infisical UI">

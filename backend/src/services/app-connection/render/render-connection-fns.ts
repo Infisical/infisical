@@ -8,9 +8,11 @@ import { IntegrationUrls } from "@app/services/integration-auth/integration-list
 import { AppConnection } from "../app-connection-enums";
 import { RenderConnectionMethod } from "./render-connection-enums";
 import {
+  TRawRenderEnvironmentGroup,
   TRawRenderService,
   TRenderConnection,
   TRenderConnectionConfig,
+  TRenderEnvironmentGroup,
   TRenderService
 } from "./render-connection-types";
 
@@ -32,7 +34,11 @@ export const listRenderServices = async (appConnection: TRenderConnection): Prom
   const perPage = 100;
   let cursor;
 
+  let maxIterations = 10;
+
   while (hasMorePages) {
+    if (maxIterations <= 0) break;
+
     const res: TRawRenderService[] = (
       await request.get<TRawRenderService[]>(`${IntegrationUrls.RENDER_API_URL}/v1/services`, {
         params: new URLSearchParams({
@@ -59,6 +65,8 @@ export const listRenderServices = async (appConnection: TRenderConnection): Prom
     } else {
       cursor = res[res.length - 1].cursor;
     }
+
+    maxIterations -= 1;
   }
 
   return services;
@@ -85,4 +93,53 @@ export const validateRenderConnectionCredentials = async (config: TRenderConnect
   }
 
   return inputCredentials;
+};
+
+export const listRenderEnvironmentGroups = async (
+  appConnection: TRenderConnection
+): Promise<TRenderEnvironmentGroup[]> => {
+  const {
+    credentials: { apiKey }
+  } = appConnection;
+
+  const groups: TRenderEnvironmentGroup[] = [];
+  let hasMorePages = true;
+  const perPage = 100;
+  let cursor;
+  let maxIterations = 10;
+
+  while (hasMorePages) {
+    if (maxIterations <= 0) break;
+
+    const res: TRawRenderEnvironmentGroup[] = (
+      await request.get<TRawRenderEnvironmentGroup[]>(`${IntegrationUrls.RENDER_API_URL}/v1/env-groups`, {
+        params: new URLSearchParams({
+          ...(cursor ? { cursor: String(cursor) } : {}),
+          limit: String(perPage)
+        }),
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          Accept: "application/json",
+          "Accept-Encoding": "application/json"
+        }
+      })
+    ).data;
+
+    res.forEach((item) => {
+      groups.push({
+        name: item.envGroup.name,
+        id: item.envGroup.id
+      });
+    });
+
+    if (res.length < perPage) {
+      hasMorePages = false;
+    } else {
+      cursor = res[res.length - 1].cursor;
+    }
+
+    maxIterations -= 1;
+  }
+
+  return groups;
 };

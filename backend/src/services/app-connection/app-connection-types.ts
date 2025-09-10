@@ -34,6 +34,12 @@ import {
   TValidateAwsConnectionCredentialsSchema
 } from "./aws";
 import {
+  TAzureADCSConnection,
+  TAzureADCSConnectionConfig,
+  TAzureADCSConnectionInput,
+  TValidateAzureADCSConnectionCredentialsSchema
+} from "./azure-adcs/azure-adcs-connection-types";
+import {
   TAzureAppConfigurationConnection,
   TAzureAppConfigurationConnectionConfig,
   TAzureAppConfigurationConnectionInput,
@@ -150,6 +156,12 @@ import {
 import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { TMySqlConnection, TMySqlConnectionInput, TValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import {
+  TNetlifyConnection,
+  TNetlifyConnectionConfig,
+  TNetlifyConnectionInput,
+  TValidateNetlifyConnectionCredentialsSchema
+} from "./netlify";
+import {
   TOktaConnection,
   TOktaConnectionConfig,
   TOktaConnectionInput,
@@ -217,6 +229,7 @@ export type TAppConnection = { id: string } & (
   | TAzureKeyVaultConnection
   | TAzureAppConfigurationConnection
   | TAzureDevOpsConnection
+  | TAzureADCSConnection
   | TDatabricksConnection
   | THumanitecConnection
   | TTerraformCloudConnection
@@ -245,6 +258,7 @@ export type TAppConnection = { id: string } & (
   | TChecklyConnection
   | TSupabaseConnection
   | TDigitalOceanConnection
+  | TNetlifyConnection
   | TOktaConnection
 );
 
@@ -260,6 +274,7 @@ export type TAppConnectionInput = { id: string } & (
   | TAzureKeyVaultConnectionInput
   | TAzureAppConfigurationConnectionInput
   | TAzureDevOpsConnectionInput
+  | TAzureADCSConnectionInput
   | TDatabricksConnectionInput
   | THumanitecConnectionInput
   | TTerraformCloudConnectionInput
@@ -288,6 +303,7 @@ export type TAppConnectionInput = { id: string } & (
   | TChecklyConnectionInput
   | TSupabaseConnectionInput
   | TDigitalOceanConnectionInput
+  | TNetlifyConnectionInput
   | TOktaConnectionInput
 );
 
@@ -314,6 +330,7 @@ export type TAppConnectionConfig =
   | TAzureKeyVaultConnectionConfig
   | TAzureAppConfigurationConnectionConfig
   | TAzureDevOpsConnectionConfig
+  | TAzureADCSConnectionConfig
   | TAzureClientSecretsConnectionConfig
   | TDatabricksConnectionConfig
   | THumanitecConnectionConfig
@@ -339,6 +356,7 @@ export type TAppConnectionConfig =
   | TChecklyConnectionConfig
   | TSupabaseConnectionConfig
   | TDigitalOceanConnectionConfig
+  | TNetlifyConnectionConfig
   | TOktaConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -350,6 +368,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateAzureAppConfigurationConnectionCredentialsSchema
   | TValidateAzureClientSecretsConnectionCredentialsSchema
   | TValidateAzureDevOpsConnectionCredentialsSchema
+  | TValidateAzureADCSConnectionCredentialsSchema
   | TValidateDatabricksConnectionCredentialsSchema
   | TValidateHumanitecConnectionCredentialsSchema
   | TValidatePostgresConnectionCredentialsSchema
@@ -377,6 +396,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateChecklyConnectionCredentialsSchema
   | TValidateSupabaseConnectionCredentialsSchema
   | TValidateDigitalOceanCredentialsSchema
+  | TValidateNetlifyConnectionCredentialsSchema
   | TValidateOktaConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

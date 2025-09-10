@@ -32,6 +32,7 @@ import { GitLabSyncReviewFields } from "./GitLabSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
+import { NetlifySyncReviewFields } from "./NetlifySyncReviewFields";
 import { OCIVaultSyncReviewFields } from "./OCIVaultSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
@@ -149,6 +150,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.DigitalOceanAppPlatform:
       DestinationFieldsComponent = <DigitalOceanAppPlatformSyncReviewFields />;
+      break;
+    case SecretSync.Netlify:
+      DestinationFieldsComponent = <NetlifySyncReviewFields />;
       break;
     case SecretSync.Bitbucket:
       DestinationFieldsComponent = <BitbucketSyncReviewFields />;

@@ -44,7 +44,8 @@ const getConnectionConfig = ({
           ? {
               trustServerCertificate: !sslRejectUnauthorized,
               encrypt: true,
-              cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {}
+              cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {},
+              servername: host
             }
           : { encrypt: false }
       };
@@ -55,7 +56,7 @@ const getConnectionConfig = ({
           ? {
               rejectUnauthorized: sslRejectUnauthorized,
               ca: sslCertificate,
-              servername: host
+              serverName: host
             }
           : false
       };
@@ -89,7 +90,7 @@ export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection,
     connection: {
       database,
       port,
-      host,
+      host: app === AppConnection.Postgres ? host : baseHost,
       user: username,
       password,
       connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
@@ -134,7 +135,7 @@ export const executeWithPotentialGateway = async <T>(
       },
       {
         protocol: GatewayProxyProtocol.Tcp,
-        targetHost,
+        targetHost: app === AppConnection.Postgres ? targetHost : credentials.host,
         targetPort: credentials.port,
         relayHost,
         relayPort: Number(relayPort),

@@ -1,4 +1,5 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
+import { PackRule, unpackRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 
 import {
@@ -16,9 +17,11 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSet,
   ProjectPermissionSshHostActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -55,13 +58,10 @@ import { validateMicrosoftTeamsChannelsSchema } from "../microsoft-teams/microso
 import { TMicrosoftTeamsIntegrationDALFactory } from "../microsoft-teams/microsoft-teams-integration-dal";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "../microsoft-teams/project-microsoft-teams-config-dal";
 import { TOrgDALFactory } from "../org/org-dal";
-import { TOrgServiceFactory } from "../org/org-service";
 import { TPkiAlertDALFactory } from "../pki-alert/pki-alert-dal";
 import { TPkiCollectionDALFactory } from "../pki-collection/pki-collection-dal";
-import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
-import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
@@ -78,7 +78,7 @@ import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { WorkflowIntegration, WorkflowIntegrationStatus } from "../workflow-integration/workflow-integration-types";
 import { TProjectDALFactory } from "./project-dal";
-import { assignWorkspaceKeysToMembers, bootstrapSshProject, createProjectKey } from "./project-fns";
+import { bootstrapSshProject } from "./project-fns";
 import { TProjectQueueFactory } from "./project-queue";
 import { TProjectSshConfigDALFactory } from "./project-ssh-config-dal";
 import {
@@ -123,6 +123,7 @@ export const DEFAULT_PROJECT_ENVS = [
 
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
+  identityProjectDAL: Pick<TIdentityProjectDALFactory, "create">;
   projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "transaction" | "create" | "findOne" | "updateById">;
   projectQueue: TProjectQueueFactory;
   userDAL: TUserDALFactory;
@@ -132,9 +133,7 @@ type TProjectServiceFactoryDep = {
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "insertMany" | "find">;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
-  identityProjectDAL: TIdentityProjectDALFactory;
   identityProjectMembershipRoleDAL: Pick<TIdentityProjectMembershipRoleDALFactory, "create">;
-  projectKeyDAL: Pick<TProjectKeyDALFactory, "create" | "findLatestProjectKey" | "delete" | "find" | "insertMany">;
   projectMembershipDAL: Pick<
     TProjectMembershipDALFactory,
     "create" | "findProjectGhostUser" | "findOne" | "delete" | "findAllProjectMembers"
@@ -167,12 +166,10 @@ type TProjectServiceFactoryDep = {
   sshHostDAL: Pick<TSshHostDALFactory, "find" | "findSshHostsWithLoginMappings">;
   sshHostGroupDAL: Pick<TSshHostGroupDALFactory, "find" | "findSshHostGroupsWithLoginMappings">;
   permissionService: TPermissionServiceFactory;
-  orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
-  projectBotDAL: Pick<TProjectBotDALFactory, "create">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find" | "insertMany" | "delete">;
   kmsService: Pick<
     TKmsServiceFactory,
@@ -196,27 +193,25 @@ export const projectServiceFactory = ({
   secretDAL,
   secretV2BridgeDAL,
   projectQueue,
-  projectKeyDAL,
   permissionService,
   projectBotService,
   orgDAL,
   userDAL,
   folderDAL,
-  orgService,
-  identityProjectDAL,
   identityOrgMembershipDAL,
   projectMembershipDAL,
   projectEnvDAL,
   licenseService,
   projectUserMembershipRoleDAL,
   projectRoleDAL,
-  identityProjectMembershipRoleDAL,
   certificateAuthorityDAL,
   certificateDAL,
   certificateTemplateDAL,
   pkiCollectionDAL,
   pkiAlertDAL,
   pkiSubscriberDAL,
+  identityProjectDAL,
+  identityProjectMembershipRoleDAL,
   sshCertificateAuthorityDAL,
   sshCertificateAuthoritySecretDAL,
   sshCertificateDAL,
@@ -225,7 +220,6 @@ export const projectServiceFactory = ({
   sshHostGroupDAL,
   keyStore,
   kmsService,
-  projectBotDAL,
   projectSlackConfigDAL,
   projectMicrosoftTeamsConfigDAL,
   slackIntegrationDAL,
@@ -253,7 +247,7 @@ export const projectServiceFactory = ({
     type = ProjectType.SecretManager
   }: TCreateProjectDTO) => {
     const organization = await orgDAL.findOne({ id: actorOrgId });
-    const { permission, membership: orgMembership } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
       organization.id,
@@ -277,7 +271,6 @@ export const projectServiceFactory = ({
           message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
         });
       }
-      const ghostUser = await orgService.addGhostUser(organization.id, tx);
 
       if (kmsKeyId) {
         const kms = await kmsService.getKmsById(kmsKeyId, tx);
@@ -329,19 +322,6 @@ export const projectServiceFactory = ({
         });
       }
 
-      // set ghost user as admin of project
-      const projectMembership = await projectMembershipDAL.create(
-        {
-          userId: ghostUser.user.id,
-          projectId: project.id
-        },
-        tx
-      );
-      await projectUserMembershipRoleDAL.create(
-        { projectMembershipId: projectMembership.id, role: ProjectMembershipRole.Admin },
-        tx
-      );
-
       // set default environments and root folder for provided environments
       let envs: TProjectEnvironments[] = [];
       if (projectTemplate) {
@@ -374,55 +354,6 @@ export const projectServiceFactory = ({
         );
       }
 
-      // 3. Create a random key that we'll use as the project key.
-      const { key: encryptedProjectKey, iv: encryptedProjectKeyIv } = createProjectKey({
-        publicKey: ghostUser.keys.publicKey,
-        privateKey: ghostUser.keys.plainPrivateKey
-      });
-
-      // 4. Save the project key for the ghost user.
-      await projectKeyDAL.create(
-        {
-          projectId: project.id,
-          receiverId: ghostUser.user.id,
-          encryptedKey: encryptedProjectKey,
-          nonce: encryptedProjectKeyIv,
-          senderId: ghostUser.user.id
-        },
-        tx
-      );
-
-      const { iv, tag, ciphertext, encoding, algorithm } = crypto
-        .encryption()
-        .symmetric()
-        .encryptWithRootEncryptionKey(ghostUser.keys.plainPrivateKey);
-
-      // 5. Create & a bot for the project
-      await projectBotDAL.create(
-        {
-          name: "Infisical Bot (Ghost)",
-          projectId: project.id,
-          tag,
-          iv,
-          encryptedProjectKey,
-          encryptedProjectKeyNonce: encryptedProjectKeyIv,
-          encryptedPrivateKey: ciphertext,
-          isActive: true,
-          publicKey: ghostUser.keys.publicKey,
-          senderId: ghostUser.user.id,
-          algorithm,
-          keyEncoding: encoding
-        },
-        tx
-      );
-
-      // Find the ghost users latest key
-      const latestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.user.id, project.id, tx);
-
-      if (!latestKey) {
-        throw new Error("Latest key not found for user");
-      }
-
       // If the project is being created by a user, add the user to the project as an admin
       if (actor === ActorType.USER) {
         // Find public key of user
@@ -431,17 +362,6 @@ export const projectServiceFactory = ({
         if (!user) {
           throw new Error("User not found");
         }
-
-        const [projectAdmin] = assignWorkspaceKeysToMembers({
-          decryptKey: latestKey,
-          userPrivateKey: ghostUser.keys.plainPrivateKey,
-          members: [
-            {
-              userPublicKey: user.publicKey,
-              orgMembershipId: orgMembership.id
-            }
-          ]
-        });
 
         // Create a membership for the user
         const userProjectMembership = await projectMembershipDAL.create(
@@ -453,18 +373,6 @@ export const projectServiceFactory = ({
         );
         await projectUserMembershipRoleDAL.create(
           { projectMembershipId: userProjectMembership.id, role: ProjectMembershipRole.Admin },
-          tx
-        );
-
-        // Create a project key for the user
-        await projectKeyDAL.create(
-          {
-            encryptedKey: projectAdmin.workspaceEncryptedKey,
-            nonce: projectAdmin.workspaceEncryptedNonce,
-            senderId: ghostUser.user.id,
-            receiverId: user.id,
-            projectId: project.id
-          },
           tx
         );
       }
@@ -1947,9 +1855,52 @@ export const projectServiceFactory = ({
     if (projectMember) throw new BadRequestError({ message: "User already has access to the project" });
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
-    const filteredProjectMembers = projectMembers
+
+    let filteredProjectMembers = projectMembers
       .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
       .map((el) => el.user.email!);
+    if (filteredProjectMembers.length === 0) {
+      const customRolesWithMemberCreate = await projectRoleDAL.find({ projectId });
+      const customRoleSlugsCanCreate = customRolesWithMemberCreate
+        .filter((role) => {
+          try {
+            const permissions = (
+              typeof role.permissions === "string"
+                ? (JSON.parse(role.permissions) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[])
+                : role.permissions
+            ) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[];
+
+            const ability = createMongoAbility<MongoAbility<ProjectPermissionSet>>(
+              unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(permissions)
+            );
+            return ability.can(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
+          } catch {
+            return false;
+          }
+        })
+        .map((role) => role.slug);
+
+      if (customRoleSlugsCanCreate.length > 0) {
+        const usersWithCustomCreateMemberRole = projectMembers
+          .filter((member) =>
+            member.roles.some((role) => role.customRoleSlug && customRoleSlugsCanCreate.includes(role.customRoleSlug))
+          )
+          .map((el) => el.user.email!)
+          .filter(Boolean);
+
+        if (usersWithCustomCreateMemberRole.length > 0) {
+          filteredProjectMembers = usersWithCustomCreateMemberRole;
+        }
+      }
+    }
+
+    if (filteredProjectMembers.length === 0) {
+      throw new BadRequestError({
+        message:
+          "No users in this project have permission to grant you access. Please contact an organization administrator to assign the necessary permissions."
+      });
+    }
+
     const org = await orgDAL.findOne({ id: permission.orgId });
     const project = await projectDAL.findById(projectId);
     const userDetails = await userDAL.findById(permission.id);

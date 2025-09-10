@@ -1,0 +1,87 @@
+version: "3.8"
+
+services:
+  redis-node-1:
+    image: redis:7
+    container_name: redis-node-1
+    ports:
+      - "7001:7001"
+      - "17001:17001"
+    volumes:
+      - redis-node-1-data:/data
+    command: >
+      redis-server
+      --port 7001
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --bind 0.0.0.0
+      --cluster-announce-ip 192.168.1.33
+      --cluster-announce-port 7001
+      --cluster-announce-bus-port 17001
+
+  redis-node-2:
+    image: redis:7
+    container_name: redis-node-2
+    ports:
+      - "7002:7002"
+      - "17002:17002"
+    volumes:
+      - redis-node-2-data:/data
+    command: >
+      redis-server
+      --port 7002
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --bind 0.0.0.0
+      --cluster-announce-ip 192.168.1.33
+      --cluster-announce-port 7002
+      --cluster-announce-bus-port 17002
+
+  redis-node-3:
+    image: redis:7
+    container_name: redis-node-3
+    ports:
+      - "7003:7003"
+      - "17003:17003"
+    volumes:
+      - redis-node-3-data:/data
+    command: >
+      redis-server
+      --port 7003
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --bind 0.0.0.0
+      --cluster-announce-ip 192.168.1.33
+      --cluster-announce-port 7003
+      --cluster-announce-bus-port 17003
+
+  redis-insight:
+    container_name: redis-insight
+    image: redis/redisinsight
+    ports:
+      - "5540:5540"
+
+  redis-cluster-init:
+    image: redis:7
+    depends_on:
+      - redis-node-1
+      - redis-node-2
+      - redis-node-3
+    restart: "no"
+    command: >
+      sh -c "
+        sleep 10
+        redis-cli --cluster create 192.168.1.33:7001 192.168.1.33:7002 192.168.1.33:7003 --cluster-yes
+        echo 'Cluster initialized'
+      "
+
+volumes:
+  redis-node-1-data:
+  redis-node-2-data:
+  redis-node-3-data:

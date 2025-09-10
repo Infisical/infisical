@@ -6,3 +6,8 @@ export type TCloudflarePagesProject = {
 export type TCloudflareWorkersScript = {
   id: string;
 };
+
+export type TCloudflareZone = {
+  id: string;
+  name: string;
+};

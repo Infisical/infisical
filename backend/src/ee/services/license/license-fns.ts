@@ -32,6 +32,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   auditLogStreams: false,
   auditLogStreamLimit: 3,
   samlSSO: false,
+  enforceGoogleSSO: false,
   hsm: false,
   oidcSSO: false,
   scim: false,
@@ -59,7 +60,9 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   secretScanning: false,
   enterpriseSecretSyncs: false,
   enterpriseAppConnections: false,
-  fips: false
+  fips: false,
+  eventSubscriptions: false,
+  machineIdentityAuthTemplates: false
 });
 
 export const setupLicenseRequestWithStore = (

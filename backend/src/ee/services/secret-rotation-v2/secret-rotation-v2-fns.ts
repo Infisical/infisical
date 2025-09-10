@@ -2,6 +2,7 @@ import { AxiosError } from "axios";
 
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./auth0-client-secret";
@@ -13,9 +14,11 @@ import { MYSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mysql-credentials";
 import { OKTA_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./okta-client-secret";
 import { ORACLEDB_CREDENTIALS_ROTATION_LIST_OPTION } from "./oracledb-credentials";
 import { POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION } from "./postgres-credentials";
+import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 import { SecretRotation, SecretRotationStatus } from "./secret-rotation-v2-enums";
-import { TSecretRotationV2ServiceFactoryDep } from "./secret-rotation-v2-service";
+import { TSecretRotationV2ServiceFactory, TSecretRotationV2ServiceFactoryDep } from "./secret-rotation-v2-service";
 import {
+  TSecretRotationRotateSecretsJobPayload,
   TSecretRotationV2,
   TSecretRotationV2GeneratedCredentials,
   TSecretRotationV2ListItem,
@@ -74,6 +77,10 @@ export const getNextUtcRotationInterval = (rotateAtUtc?: TSecretRotationV2["rota
   const appCfg = getConfig();
 
   if (appCfg.isRotationDevelopmentMode) {
+    if (appCfg.isTestMode) {
+      // if its test mode, it should always rotate
+      return new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // Current time + 1 year
+    }
     return getNextUTCMinuteInterval(rotateAtUtc);
   }
 
@@ -261,5 +268,53 @@ export const throwOnImmutableParameterUpdate = (
       break;
     default:
     // do nothing
+  }
+};
+
+export const rotateSecretsFns = async ({
+  job,
+  secretRotationV2DAL,
+  secretRotationV2Service
+}: {
+  job: {
+    data: TSecretRotationRotateSecretsJobPayload;
+    id: string;
+    retryCount: number;
+    retryLimit: number;
+  };
+  secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "findById">;
+  secretRotationV2Service: Pick<TSecretRotationV2ServiceFactory, "rotateGeneratedCredentials">;
+}) => {
+  const { rotationId, queuedAt, isManualRotation } = job.data;
+  const { retryCount, retryLimit } = job;
+
+  const logDetails = `[rotationId=${rotationId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
+
+  try {
+    const secretRotation = await secretRotationV2DAL.findById(rotationId);
+
+    if (!secretRotation) throw new Error(`Secret rotation ${rotationId} not found`);
+
+    if (!secretRotation.isAutoRotationEnabled) {
+      logger.info(`secretRotationV2Queue: Skipping Rotation - Auto-Rotation Disabled Since Queue ${logDetails}`);
+    }
+
+    if (new Date(secretRotation.lastRotatedAt).getTime() >= new Date(queuedAt).getTime()) {
+      // rotated since being queued, skip rotation
+      logger.info(`secretRotationV2Queue: Skipping Rotation - Rotated Since Queue ${logDetails}`);
+      return;
+    }
+
+    await secretRotationV2Service.rotateGeneratedCredentials(secretRotation, {
+      jobId: job.id,
+      shouldSendNotification: true,
+      isFinalAttempt: retryCount === retryLimit,
+      isManualRotation
+    });
+
+    logger.info(`secretRotationV2Queue: Secrets Rotated ${logDetails}`);
+  } catch (error) {
+    logger.error(error, `secretRotationV2Queue: Failed to Rotate Secrets ${logDetails}`);
+    throw error;
   }
 };

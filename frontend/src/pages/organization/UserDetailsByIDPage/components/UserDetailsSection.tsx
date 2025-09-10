@@ -7,6 +7,7 @@ import {
   faPencil
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -120,7 +121,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Username</p>
           <div className="group flex align-top">
-            <p className="text-sm text-mineshaft-300">{membership.user.username}</p>
+            <p className="break-all text-sm text-mineshaft-300">{membership.user.username}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
               <Tooltip content={copyTextUsername}>
                 <IconButton
@@ -141,19 +142,38 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Email</p>
           <div className="flex items-center">
-            <p className="mr-2 text-sm text-mineshaft-300">{membership.user.email ?? "-"}</p>
-            <Tooltip
-              content={
-                membership.user.isEmailVerified
-                  ? "Email has been verified"
-                  : "Email has not been verified"
-              }
-            >
-              <FontAwesomeIcon
-                size="sm"
-                icon={membership.user.isEmailVerified ? faCheckCircle : faCircleXmark}
-              />
-            </Tooltip>
+            <p className="mr-2 break-all text-sm text-mineshaft-300">
+              {membership.user.email ?? "-"}{" "}
+              <Tooltip
+                content={
+                  membership.user.isEmailVerified
+                    ? "Email has been verified"
+                    : "Email has not been verified"
+                }
+              >
+                <FontAwesomeIcon
+                  size="sm"
+                  icon={membership.user.isEmailVerified ? faCheckCircle : faCircleXmark}
+                  className={membership.user.isEmailVerified ? "text-green" : "text-red"}
+                />
+              </Tooltip>
+            </p>
+          </div>
+        </div>
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Last Login Auth Method</p>
+          <div className="group flex align-top">
+            <p className="break-all text-sm text-mineshaft-300">
+              {membership.lastLoginAuthMethod || "-"}
+            </p>
+          </div>
+        </div>
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Last Login Time</p>
+          <div className="group flex align-top">
+            <p className="break-all text-sm text-mineshaft-300">
+              {membership.lastLoginTime ? format(membership.lastLoginTime, "PPpp") : "-"}
+            </p>
           </div>
         </div>
         <div className="mb-4">

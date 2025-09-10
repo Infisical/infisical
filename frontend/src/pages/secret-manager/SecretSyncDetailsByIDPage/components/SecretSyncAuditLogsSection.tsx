@@ -2,7 +2,7 @@ import { faFingerprint } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
-import { useSubscription } from "@app/context";
+import { useSubscription, useWorkspace } from "@app/context";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { TSecretSync } from "@app/hooks/api/secretSyncs";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components/LogsSection";
@@ -19,6 +19,7 @@ type Props = {
 
 export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
   const { subscription } = useSubscription();
+  const { currentWorkspace } = useWorkspace();
 
   const auditLogsRetentionDays = subscription?.auditLogsRetentionDays ?? 30;
 
@@ -28,7 +29,7 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
         <h3 className="font-semibold text-mineshaft-100">Sync Logs</h3>
         {subscription.auditLogs && (
           <p className="text-xs text-bunker-300">
-            Displaying audit logs from the last {auditLogsRetentionDays} days
+            Displaying audit logs from the last {Math.min(auditLogsRetentionDays, 60)} days
           </p>
         )}
       </div>
@@ -36,9 +37,12 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
         <LogsSection
           refetchInterval={4000}
           showFilters={false}
+          project={currentWorkspace}
           presets={{
             eventMetadata: { syncId: secretSync.id },
-            startDate: new Date(new Date().setDate(new Date().getDate() - auditLogsRetentionDays)),
+            startDate: new Date(
+              new Date().setDate(new Date().getDate() - Math.min(auditLogsRetentionDays, 60))
+            ),
             eventType: INTEGRATION_EVENTS
           }}
         />

@@ -5,6 +5,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { registerOnePassConnectionRouter } from "./1password-connection-router";
 import { registerAuth0ConnectionRouter } from "./auth0-connection-router";
 import { registerAwsConnectionRouter } from "./aws-connection-router";
+import { registerAzureADCSConnectionRouter } from "./azure-adcs-connection-router";
 import { registerAzureAppConfigurationConnectionRouter } from "./azure-app-configuration-connection-router";
 import { registerAzureClientSecretsConnectionRouter } from "./azure-client-secrets-connection-router";
 import { registerAzureDevOpsConnectionRouter } from "./azure-devops-connection-router";
@@ -26,6 +27,7 @@ import { registerHumanitecConnectionRouter } from "./humanitec-connection-router
 import { registerLdapConnectionRouter } from "./ldap-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerMySqlConnectionRouter } from "./mysql-connection-router";
+import { registerNetlifyConnectionRouter } from "./netlify-connection-router";
 import { registerOktaConnectionRouter } from "./okta-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
@@ -49,6 +51,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.AzureAppConfiguration]: registerAzureAppConfigurationConnectionRouter,
     [AppConnection.AzureClientSecrets]: registerAzureClientSecretsConnectionRouter,
     [AppConnection.AzureDevOps]: registerAzureDevOpsConnectionRouter,
+    [AppConnection.AzureADCS]: registerAzureADCSConnectionRouter,
     [AppConnection.Databricks]: registerDatabricksConnectionRouter,
     [AppConnection.Humanitec]: registerHumanitecConnectionRouter,
     [AppConnection.TerraformCloud]: registerTerraformCloudConnectionRouter,
@@ -76,5 +79,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Checkly]: registerChecklyConnectionRouter,
     [AppConnection.Supabase]: registerSupabaseConnectionRouter,
     [AppConnection.DigitalOcean]: registerDigitalOceanConnectionRouter,
+    [AppConnection.Netlify]: registerNetlifyConnectionRouter,
     [AppConnection.Okta]: registerOktaConnectionRouter
   };

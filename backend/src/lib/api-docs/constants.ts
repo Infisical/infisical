@@ -18,6 +18,7 @@ import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/
 
 export enum ApiDocsTags {
   Identities = "Identities",
+  IdentityTemplates = "Identity Templates",
   TokenAuth = "Token Auth",
   UniversalAuth = "Universal Auth",
   GcpAuth = "GCP Auth",
@@ -69,7 +70,8 @@ export enum ApiDocsTags {
   SecretScanning = "Secret Scanning",
   OidcSso = "OIDC SSO",
   SamlSso = "SAML SSO",
-  LdapSso = "LDAP SSO"
+  LdapSso = "LDAP SSO",
+  Events = "Event Subscriptions"
 }
 
 export const GROUPS = {
@@ -164,7 +166,12 @@ export const UNIVERSAL_AUTH = {
     accessTokenNumUsesLimit:
       "The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses.",
     accessTokenPeriod:
-      "The period for an access token in seconds. This value will be referenced at renewal time. Default value is 0."
+      "The period for an access token in seconds. This value will be referenced at renewal time. Default value is 0.",
+    lockoutEnabled: "Whether the lockout feature is enabled.",
+    lockoutThreshold: "The amount of times login must fail before locking the identity auth method.",
+    lockoutDurationSeconds: "How long an identity auth method lockout lasts.",
+    lockoutCounterResetSeconds:
+      "How long to wait from the most recent failed login until resetting the lockout counter."
   },
   RETRIEVE: {
     identityId: "The ID of the identity to retrieve the auth method for."
@@ -179,7 +186,12 @@ export const UNIVERSAL_AUTH = {
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
-    accessTokenPeriod: "The new period for an access token in seconds."
+    accessTokenPeriod: "The new period for an access token in seconds.",
+    lockoutEnabled: "Whether the lockout feature is enabled.",
+    lockoutThreshold: "The amount of times login must fail before locking the identity auth method.",
+    lockoutDurationSeconds: "How long an identity auth method lockout lasts.",
+    lockoutCounterResetSeconds:
+      "How long to wait from the most recent failed login until resetting the lockout counter."
   },
   CREATE_CLIENT_SECRET: {
     identityId: "The ID of the identity to create a client secret for.",
@@ -199,6 +211,9 @@ export const UNIVERSAL_AUTH = {
     identityId: "The ID of the identity to revoke the client secret from.",
     clientSecretId: "The ID of the client secret to revoke."
   },
+  CLEAR_CLIENT_LOCKOUTS: {
+    identityId: "The ID of the identity to clear the client lockouts from."
+  },
   RENEW_ACCESS_TOKEN: {
     accessToken: "The access token to renew."
   },
@@ -214,6 +229,7 @@ export const LDAP_AUTH = {
     password: "The password of the LDAP user to login."
   },
   ATTACH: {
+    templateId: "The ID of the identity auth template to attach the configuration onto.",
     identityId: "The ID of the identity to attach the configuration onto.",
     url: "The URL of the LDAP server.",
     allowedFields:
@@ -240,7 +256,8 @@ export const LDAP_AUTH = {
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
-    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
+    accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
+    templateId: "The ID of the identity auth template to update the configuration to."
   },
   RETRIEVE: {
     identityId: "The ID of the identity to retrieve the configuration for."
@@ -663,6 +680,10 @@ export const ORGANIZATIONS = {
   DELETE_USER_MEMBERSHIP: {
     organizationId: "The ID of the organization to delete the membership from.",
     membershipId: "The ID of the membership to delete."
+  },
+  BULK_DELETE_USER_MEMBERSHIPS: {
+    organizationId: "The ID of the organization to delete the memberships from.",
+    membershipIds: "The IDs of the memberships to delete."
   },
   LIST_IDENTITY_MEMBERSHIPS: {
     orgId: "The ID of the organization to get identity memberships from.",
@@ -2140,7 +2161,9 @@ export const CertificateAuthorities = {
       directoryUrl: `The directory URL for the ACME Certificate Authority.`,
       accountEmail: `The email address for the ACME Certificate Authority.`,
       provider: `The DNS provider for the ACME Certificate Authority.`,
-      hostedZoneId: `The hosted zone ID for the ACME Certificate Authority.`
+      hostedZoneId: `The hosted zone ID for the ACME Certificate Authority.`,
+      eabKid: `The External Account Binding (EAB) Key ID for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
+      eabHmacKey: `The External Account Binding (EAB) HMAC key for the ACME Certificate Authority. Required if the ACME provider uses EAB.`
     },
     INTERNAL: {
       type: "The type of CA to create.",
@@ -2253,7 +2276,9 @@ export const AppConnections = {
     AZURE_DEVOPS: {
       code: "The OAuth code to use to connect with Azure DevOps.",
       tenantId: "The Tenant ID to use to connect with Azure DevOps.",
-      orgName: "The Organization name to use to connect with Azure DevOps."
+      orgName: "The Organization name to use to connect with Azure DevOps.",
+      clientId: "The Client ID to use to connect with Azure Client Secrets.",
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
     },
     OCI: {
       userOcid: "The OCID (Oracle Cloud Identifier) of the user making the request.",
@@ -2296,9 +2321,21 @@ export const AppConnections = {
     DIGITAL_OCEAN_APP_PLATFORM: {
       apiToken: "The API token used to authenticate with Digital Ocean App Platform."
     },
+    NETLIFY: {
+      accessToken: "The Access token used to authenticate with Netlify."
+    },
     OKTA: {
       instanceUrl: "The URL used to access your Okta organization.",
       apiToken: "The API token used to authenticate with Okta."
+    },
+    AZURE_ADCS: {
+      adcsUrl:
+        "The HTTPS URL of the Azure ADCS instance to connect with (e.g., 'https://adcs.yourdomain.com/certsrv').",
+      username: "The username used to access Azure ADCS (format: 'DOMAIN\\username' or 'username@domain.com').",
+      password: "The password used to access Azure ADCS.",
+      sslRejectUnauthorized:
+        "Whether or not to reject unauthorized SSL certificates (true/false). Set to false only in test environments with self-signed certificates.",
+      sslCertificate: "The SSL certificate (PEM format) to use for secure connection."
     }
   }
 };
@@ -2400,12 +2437,18 @@ export const SecretSyncs = {
       env: "The name of the GitHub environment."
     },
     AZURE_KEY_VAULT: {
-      vaultBaseUrl: "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/"
+      vaultBaseUrl: "The base URL of the Azure Key Vault to sync secrets to. Example: https://example.vault.azure.net/",
+      tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
+      clientId: "The Client ID to use to connect with Azure Client Secrets.",
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
     },
     AZURE_APP_CONFIGURATION: {
       configurationUrl:
         "The URL of the Azure App Configuration to sync secrets to. Example: https://example.azconfig.io/",
-      label: "An optional label to assign to secrets created in Azure App Configuration."
+      label: "An optional label to assign to secrets created in Azure App Configuration.",
+      tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
+      clientId: "The Client ID to use to connect with Azure Client Secrets.",
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
     },
     AZURE_DEVOPS: {
       devopsProjectId: "The ID of the Azure DevOps project to sync secrets to.",
@@ -2472,6 +2515,7 @@ export const SecretSyncs = {
     },
     RENDER: {
       serviceId: "The ID of the Render service to sync secrets to.",
+      environmentGroupId: "The ID of the Render environment group to sync secrets to.",
       scope: "The Render scope that secrets should be synced to.",
       type: "The Render resource type to sync secrets to."
     },
@@ -2521,6 +2565,13 @@ export const SecretSyncs = {
       workspaceSlug: "The Bitbucket Workspace slug to sync secrets to.",
       repositorySlug: "The Bitbucket Repository slug to sync secrets to.",
       environmentId: "The Bitbucket Deployment Environment uuid to sync secrets to."
+    },
+    NETLIFY: {
+      accountId: "The ID of the Netlify account to sync secrets to.",
+      accountName: "The name of the Netlify account to sync secrets to.",
+      siteName: "The name of the Netlify site to sync secrets to.",
+      siteId: "The ID of the Netlify site to sync secrets to.",
+      context: "The Netlify context to sync secrets to."
     }
   }
 };
@@ -2702,6 +2753,14 @@ export const SecretScanningDataSources = {
     GITHUB: {
       includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
     },
+    GITLAB: {
+      includeProjects: 'The projects to include when scanning. Defaults to all projects (["*"]).',
+      scope: "The GitLab scope scanning should occur at (project or group level).",
+      projectId: "The ID of the project to scan.",
+      projectName: "The name of the project to scan.",
+      groupId: "The ID of the group to scan projects from.",
+      groupName: "The name of the group to scan projects from."
+    },
     BITBUCKET: {
       workspaceSlug: "The workspace to scan.",
       includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
@@ -2837,5 +2896,12 @@ export const LdapSso = {
     groupSearchFilter:
       "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
     caCert: "The CA certificate to use when verifying the LDAP server certificate."
+  }
+};
+
+export const EventSubscriptions = {
+  SUBSCRIBE_PROJECT_EVENTS: {
+    projectId: "The ID of the project to subscribe to events for.",
+    register: "List of events you want to subscribe to"
   }
 };

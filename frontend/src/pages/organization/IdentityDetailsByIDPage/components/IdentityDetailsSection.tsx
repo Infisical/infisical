@@ -7,6 +7,7 @@ import {
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -22,7 +23,7 @@ import {
 } from "@app/components/v2";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
 import { useTimedReset } from "@app/hooks";
-import { useGetIdentityById } from "@app/hooks/api";
+import { identityAuthToNameMap, useGetIdentityById } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -137,6 +138,18 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Name</p>
           <p className="text-sm text-mineshaft-300">{data.identity.name}</p>
+        </div>
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Last Login Auth Method</p>
+          <p className="text-sm text-mineshaft-300">
+            {data.lastLoginAuthMethod ? identityAuthToNameMap[data.lastLoginAuthMethod] : "-"}
+          </p>
+        </div>
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Last Login Time</p>
+          <p className="text-sm text-mineshaft-300">
+            {data.lastLoginTime ? format(data.lastLoginTime, "PPpp") : "-"}
+          </p>
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Delete Protection</p>

@@ -55,11 +55,18 @@ export const HCVaultConnectionSchema = z.intersection(
 export const SanitizedHCVaultConnectionSchema = z.discriminatedUnion("method", [
   BaseHCVaultConnectionSchema.extend({
     method: z.literal(HCVaultConnectionMethod.AccessToken),
-    credentials: HCVaultConnectionAccessTokenCredentialsSchema.pick({})
+    credentials: HCVaultConnectionAccessTokenCredentialsSchema.pick({
+      namespace: true,
+      instanceUrl: true
+    })
   }),
   BaseHCVaultConnectionSchema.extend({
     method: z.literal(HCVaultConnectionMethod.AppRole),
-    credentials: HCVaultConnectionAppRoleCredentialsSchema.pick({})
+    credentials: HCVaultConnectionAppRoleCredentialsSchema.pick({
+      namespace: true,
+      instanceUrl: true,
+      roleId: true
+    })
   })
 ]);
 
@@ -81,7 +88,7 @@ export const ValidateHCVaultConnectionCredentialsSchema = z.discriminatedUnion("
 ]);
 
 export const CreateHCVaultConnectionSchema = ValidateHCVaultConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.HCVault)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.HCVault, { supportsGateways: true })
 );
 
 export const UpdateHCVaultConnectionSchema = z
@@ -91,7 +98,7 @@ export const UpdateHCVaultConnectionSchema = z
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.HCVault).credentials)
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.HCVault));
+  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.HCVault, { supportsGateways: true }));
 
 export const HCVaultConnectionListItemSchema = z.object({
   name: z.literal("HCVault"),

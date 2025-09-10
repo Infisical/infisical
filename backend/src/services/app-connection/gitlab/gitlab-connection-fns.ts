@@ -222,6 +222,37 @@ export const validateGitLabConnectionCredentials = async (config: TGitLabConnect
   return inputCredentials;
 };
 
+export const getGitLabConnectionClient = async (
+  appConnection: TGitLabConnection,
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
+) => {
+  let { accessToken } = appConnection.credentials;
+
+  if (
+    appConnection.method === GitLabConnectionMethod.OAuth &&
+    appConnection.credentials.refreshToken &&
+    new Date(appConnection.credentials.expiresAt) < new Date()
+  ) {
+    accessToken = await refreshGitLabToken(
+      appConnection.credentials.refreshToken,
+      appConnection.id,
+      appConnection.orgId,
+      appConnectionDAL,
+      kmsService,
+      appConnection.credentials.instanceUrl
+    );
+  }
+
+  const client = await getGitLabClient(
+    accessToken,
+    appConnection.credentials.instanceUrl,
+    appConnection.method === GitLabConnectionMethod.OAuth
+  );
+
+  return client;
+};
+
 export const listGitLabProjects = async ({
   appConnection,
   appConnectionDAL,

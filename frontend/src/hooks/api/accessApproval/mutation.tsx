@@ -6,10 +6,12 @@ import { apiRequest } from "@app/config/request";
 import { accessApprovalKeys } from "./queries";
 import {
   TAccessApproval,
+  TAccessApprovalRequest,
   TCreateAccessPolicyDTO,
   TCreateAccessRequestDTO,
   TDeleteSecretPolicyDTO,
-  TUpdateAccessPolicyDTO
+  TUpdateAccessPolicyDTO,
+  TUpdateAccessRequestDTO
 } from "./types";
 
 export const useCreateAccessApprovalPolicy = () => {
@@ -26,7 +28,8 @@ export const useCreateAccessApprovalPolicy = () => {
       secretPath,
       enforcementLevel,
       allowedSelfApprovals,
-      approvalsRequired
+      approvalsRequired,
+      maxTimePeriod
     }) => {
       const { data } = await apiRequest.post("/api/v1/access-approvals/policies", {
         environments,
@@ -38,7 +41,8 @@ export const useCreateAccessApprovalPolicy = () => {
         name,
         enforcementLevel,
         allowedSelfApprovals,
-        approvalsRequired
+        approvalsRequired,
+        maxTimePeriod
       });
       return data;
     },
@@ -64,7 +68,8 @@ export const useUpdateAccessApprovalPolicy = () => {
       enforcementLevel,
       allowedSelfApprovals,
       approvalsRequired,
-      environments
+      environments,
+      maxTimePeriod
     }) => {
       const { data } = await apiRequest.patch(`/api/v1/access-approvals/policies/${id}`, {
         approvals,
@@ -75,7 +80,8 @@ export const useUpdateAccessApprovalPolicy = () => {
         enforcementLevel,
         allowedSelfApprovals,
         approvalsRequired,
-        environments
+        environments,
+        maxTimePeriod
       });
       return data;
     },
@@ -125,6 +131,25 @@ export const useCreateAccessRequest = () => {
     onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries({
         queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
+      });
+    }
+  });
+};
+
+export const useUpdateAccessRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TAccessApprovalRequest, object, TUpdateAccessRequestDTO>({
+    mutationFn: async ({ requestId, ...payload }) => {
+      const { data } = await apiRequest.patch<{ approval: TAccessApprovalRequest }>(
+        `/api/v1/access-approvals/requests/${requestId}`,
+        payload
+      );
+
+      return data.approval;
+    },
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequests(projectSlug)
       });
     }
   });

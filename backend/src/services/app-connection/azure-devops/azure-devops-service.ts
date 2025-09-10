@@ -52,6 +52,11 @@ const getAuthHeaders = (appConnection: TAzureDevOpsConnection, accessToken: stri
         Authorization: `Basic ${basicAuthToken}`,
         Accept: "application/json"
       };
+    case AzureDevOpsConnectionMethod.ClientSecret:
+      return {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json"
+      };
     default:
       throw new BadRequestError({ message: "Unsupported connection method" });
   }

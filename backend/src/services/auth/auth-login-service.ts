@@ -4,7 +4,6 @@ import { OrgMembershipRole, OrgMembershipStatus, TableName, TUsers, UserDeviceSc
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
-import { request } from "@app/lib/config/request";
 import { crypto, generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -22,7 +21,8 @@ import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { LoginMethod } from "../super-admin/super-admin-types";
 import { TTotpServiceFactory } from "../totp/totp-service";
 import { TUserDALFactory } from "../user/user-dal";
-import { enforceUserLockStatus, validateProviderAuthToken } from "./auth-fns";
+import { UserEncryption } from "../user/user-types";
+import { enforceUserLockStatus, getAuthMethodAndOrgId, validateProviderAuthToken, verifyCaptcha } from "./auth-fns";
 import {
   TLoginClientProofDTO,
   TLoginGenServerPublicKeyDTO,
@@ -148,9 +148,15 @@ export const authLoginServiceFactory = ({
 
     if (organizationId) {
       const org = await orgDAL.findById(organizationId);
-      if (org && org.userTokenExpiration) {
-        tokenSessionExpiresIn = getMinExpiresIn(cfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);
-        refreshTokenExpiresIn = org.userTokenExpiration;
+      if (org) {
+        await orgMembershipDAL.update(
+          { userId: user.id, orgId: org.id },
+          { lastLoginAuthMethod: authMethod, lastLoginTime: new Date() }
+        );
+        if (org.userTokenExpiration) {
+          tokenSessionExpiresIn = getMinExpiresIn(cfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);
+          refreshTokenExpiresIn = org.userTokenExpiration;
+        }
       }
     }
 
@@ -208,6 +214,10 @@ export const authLoginServiceFactory = ({
       throw new Error("Failed to find user");
     }
 
+    if (!userEnc.salt || !userEnc.verifier) {
+      throw new BadRequestError({ message: "Salt or verifier not found" });
+    }
+
     if (
       serverCfg.enabledLoginMethods &&
       !serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL) &&
@@ -247,8 +257,6 @@ export const authLoginServiceFactory = ({
     captchaToken,
     password
   }: TLoginClientProofDTO) => {
-    const appCfg = getConfig();
-
     // akhilmhdh: case sensitive email resolution
     const usersByUsername = await userDAL.findUserEncKeyByUsername({
       username: email
@@ -259,44 +267,11 @@ export const authLoginServiceFactory = ({
     const user = await userDAL.findById(userEnc.userId);
     const cfg = getConfig();
 
-    let authMethod = AuthMethod.EMAIL;
-    let organizationId: string | undefined;
+    const { authMethod, organizationId } = getAuthMethodAndOrgId(email, providerAuthToken);
+    await verifyCaptcha(user, captchaToken);
 
-    if (providerAuthToken) {
-      const decodedProviderToken = validateProviderAuthToken(providerAuthToken, email);
-
-      authMethod = decodedProviderToken.authMethod;
-      if (
-        (isAuthMethodSaml(authMethod) || [AuthMethod.LDAP, AuthMethod.OIDC].includes(authMethod)) &&
-        decodedProviderToken.orgId
-      ) {
-        organizationId = decodedProviderToken.orgId;
-      }
-    }
-
-    if (
-      user.consecutiveFailedPasswordAttempts &&
-      user.consecutiveFailedPasswordAttempts >= 10 &&
-      Boolean(appCfg.CAPTCHA_SECRET)
-    ) {
-      if (!captchaToken) {
-        throw new BadRequestError({
-          name: "Captcha Required",
-          message: "Accomplish the required captcha by logging in via Web"
-        });
-      }
-
-      // validate captcha token
-      const response = await request.postForm<{ success: boolean }>("https://api.hcaptcha.com/siteverify", {
-        response: captchaToken,
-        secret: appCfg.CAPTCHA_SECRET
-      });
-
-      if (!response.data.success) {
-        throw new BadRequestError({
-          name: "Invalid Captcha"
-        });
-      }
+    if (!userEnc.salt || !userEnc.verifier) {
+      throw new BadRequestError({ message: "Salt or verifier not found" });
     }
 
     if (!userEnc.serverPrivateKey || !userEnc.clientPublicKey) throw new Error("Failed to authenticate. Try again?");
@@ -371,6 +346,80 @@ export const authLoginServiceFactory = ({
     return { token, user: userEnc } as const;
   };
 
+  const login = async ({
+    email,
+    password,
+    ip,
+    userAgent,
+    providerAuthToken,
+    captchaToken
+  }: {
+    email: string;
+    password: string;
+    ip: string;
+    userAgent: string;
+    providerAuthToken?: string;
+    captchaToken?: string;
+  }) => {
+    const usersByUsername = await userDAL.findUserEncKeyByUsername({
+      username: email
+    });
+    const userEnc =
+      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
+
+    if (!userEnc) throw new BadRequestError({ message: "User not found" });
+
+    if (userEnc.encryptionVersion !== UserEncryption.V2) {
+      throw new BadRequestError({ message: "Legacy encryption scheme not supported", name: "LegacyEncryptionScheme" });
+    }
+
+    if (!userEnc.hashedPassword) {
+      if (userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
+        throw new BadRequestError({
+          message: "Legacy encryption scheme not supported",
+          name: "LegacyEncryptionScheme"
+        });
+      }
+
+      throw new BadRequestError({ message: "No password found" });
+    }
+
+    const { authMethod, organizationId } = getAuthMethodAndOrgId(email, providerAuthToken);
+    await verifyCaptcha(userEnc, captchaToken);
+
+    if (!(await crypto.hashing().compareHash(password, userEnc.hashedPassword))) {
+      await userDAL.update(
+        { id: userEnc.userId },
+        {
+          $incr: {
+            consecutiveFailedPasswordAttempts: 1
+          }
+        }
+      );
+
+      throw new BadRequestError({ message: "Invalid username or email" });
+    }
+
+    const token = await generateUserTokens({
+      user: {
+        ...userEnc,
+        id: userEnc.userId
+      },
+      ip,
+      userAgent,
+      authMethod,
+      organizationId
+    });
+
+    return {
+      tokens: {
+        accessToken: token.access,
+        refreshToken: token.refresh
+      },
+      user: userEnc
+    } as const;
+  };
+
   const selectOrganization = async ({
     userAgent,
     authJwtToken,
@@ -399,12 +448,43 @@ export const authLoginServiceFactory = ({
 
     // Check if the user actually has access to the specified organization.
     const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
-    const hasOrganizationMembership = userOrgs.some((org) => org.id === organizationId && org.userStatus !== "invited");
+
+    const selectedOrgMembership = userOrgs.find((org) => org.id === organizationId && org.userStatus !== "invited");
+
     const selectedOrg = await orgDAL.findById(organizationId);
 
-    if (!hasOrganizationMembership) {
+    if (!selectedOrgMembership) {
       throw new ForbiddenRequestError({
         message: `User does not have access to the organization named ${selectedOrg?.name}`
+      });
+    }
+
+    // Check if authEnforced is true and the current auth method is not an enforced method
+    if (
+      selectedOrg.authEnforced &&
+      !isAuthMethodSaml(decodedToken.authMethod) &&
+      decodedToken.authMethod !== AuthMethod.OIDC &&
+      !(selectedOrg.bypassOrgAuthEnabled && selectedOrgMembership.userRole === OrgMembershipRole.Admin)
+    ) {
+      throw new BadRequestError({
+        message: "Login with the auth method required by your organization."
+      });
+    }
+
+    if (selectedOrg.googleSsoAuthEnforced && decodedToken.authMethod !== AuthMethod.GOOGLE) {
+      const canBypass = selectedOrg.bypassOrgAuthEnabled && selectedOrgMembership.userRole === OrgMembershipRole.Admin;
+
+      if (!canBypass) {
+        throw new ForbiddenRequestError({
+          message: "Google SSO is enforced for this organization. Please use Google SSO to login.",
+          error: "GoogleSsoEnforced"
+        });
+      }
+    }
+
+    if (decodedToken.authMethod === AuthMethod.GOOGLE) {
+      await orgDAL.updateById(selectedOrg.id, {
+        googleSsoAuthLastUsed: new Date()
       });
     }
 
@@ -453,7 +533,8 @@ export const authLoginServiceFactory = ({
       selectedOrg.authEnforced &&
       selectedOrg.bypassOrgAuthEnabled &&
       !isAuthMethodSaml(decodedToken.authMethod) &&
-      decodedToken.authMethod !== AuthMethod.OIDC
+      decodedToken.authMethod !== AuthMethod.OIDC &&
+      decodedToken.authMethod !== AuthMethod.GOOGLE
     ) {
       await auditLogService.createAuditLog({
         orgId: organizationId,
@@ -656,7 +737,7 @@ export const authLoginServiceFactory = ({
   /*
    * OAuth2 login for google,github, and other oauth2 provider
    * */
-  const oauth2Login = async ({ email, firstName, lastName, authMethod, callbackPort }: TOauthLoginDTO) => {
+  const oauth2Login = async ({ email, firstName, lastName, authMethod, callbackPort, orgSlug }: TOauthLoginDTO) => {
     // akhilmhdh: case sensitive email resolution
     const usersByUsername = await userDAL.findUserByUsername(email);
     let user = usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
@@ -710,6 +791,8 @@ export const authLoginServiceFactory = ({
 
     const appCfg = getConfig();
 
+    let orgId = "";
+    let orgName: undefined | string;
     if (!user) {
       // Create a new user based on oAuth
       if (!serverCfg?.allowSignUp) throw new BadRequestError({ message: "Sign up disabled", name: "Oauth 2 login" });
@@ -735,7 +818,6 @@ export const authLoginServiceFactory = ({
       });
 
       if (authMethod === AuthMethod.GITHUB && serverCfg.defaultAuthOrgId && !appCfg.isCloud) {
-        let orgId = "";
         const defaultOrg = await orgDAL.findOrgById(serverCfg.defaultAuthOrgId);
         if (!defaultOrg) {
           throw new BadRequestError({
@@ -775,18 +857,45 @@ export const authLoginServiceFactory = ({
       }
     }
 
-    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
+    if (!orgId && orgSlug) {
+      const org = await orgDAL.findOrgBySlug(orgSlug);
+
+      if (org) {
+        // checks for the membership and only sets the orgId / orgName if the user is a member of the specified org
+        const orgMembership = await orgDAL.findMembership({
+          [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
+          [`${TableName.OrgMembership}.orgId` as "orgId"]: org.id,
+          [`${TableName.OrgMembership}.isActive` as "isActive"]: true,
+          [`${TableName.OrgMembership}.status` as "status"]: OrgMembershipStatus.Accepted
+        });
+
+        if (orgMembership) {
+          orgId = org.id;
+          orgName = org.name;
+        }
+      }
+    }
+
     const isUserCompleted = user.isAccepted;
     const providerAuthToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
+
+        ...(orgId && orgSlug && orgName !== undefined
+          ? {
+              organizationId: orgId,
+              organizationName: orgName,
+              organizationSlug: orgSlug
+            }
+          : {}),
+
         username: user.username,
         email: user.email,
         isEmailVerified: user.isEmailVerified,
         firstName: user.firstName,
         lastName: user.lastName,
-        hasExchangedPrivateKey: Boolean(userEnc?.serverEncryptedPrivateKey),
+        hasExchangedPrivateKey: true,
         authMethod,
         isUserCompleted,
         ...(callbackPort
@@ -831,8 +940,7 @@ export const authLoginServiceFactory = ({
     const userEnc =
       usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
 
-    if (!userEnc?.serverEncryptedPrivateKey)
-      throw new BadRequestError({ message: "Key handoff incomplete. Please try logging in again." });
+    if (!userEnc) throw new BadRequestError({ message: "User encryption not found" });
 
     const token = await generateUserTokens({
       user: { ...userEnc, id: userEnc.userId },
@@ -862,6 +970,7 @@ export const authLoginServiceFactory = ({
     resendMfaToken,
     verifyMfaToken,
     selectOrganization,
-    generateUserTokens
+    generateUserTokens,
+    login
   };
 };

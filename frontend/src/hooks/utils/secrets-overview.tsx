@@ -130,7 +130,11 @@ export const useSecretOverview = (secrets: DashboardProjectSecretsOverview["secr
 
   const getEnvSecretKeyCount = useCallback(
     (env: string) => {
-      return secrets?.filter((secret) => secret.env === env).length ?? 0;
+      return (
+        secrets?.filter((secret) =>
+          secret.sourceEnv ? secret.sourceEnv === env : secret.env === env
+        ).length ?? 0
+      );
     },
     [secrets]
   );

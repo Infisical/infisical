@@ -93,7 +93,7 @@ export const AccessApprovalRequest = ({
 }) => {
   const [selectedRequest, setSelectedRequest] = useState<
     | (TAccessApprovalRequest & {
-        user: { firstName?: string; lastName?: string; email?: string } | null;
+        user: { firstName?: string | null; lastName?: string | null; email?: string | null } | null;
         isRequestedByCurrentUser: boolean;
         isSelfApproveAllowed: boolean;
         isApprover: boolean;
@@ -591,6 +591,16 @@ export const AccessApprovalRequest = ({
               handlePopUpClose("reviewRequest");
               setSelectedRequest(null);
               refetchRequests();
+            }}
+            onUpdate={(request) => {
+              // scott: this isn't ideal but our current use of state makes this complicated...
+              // we shouldn't be using state like this...
+              handleSelectRequest({
+                ...selectedRequest,
+                isTemporary: request.isTemporary,
+                temporaryRange: request.temporaryRange,
+                reviewers: []
+              });
             }}
             canBypass={generateRequestDetails(selectedRequest).canBypass}
           />

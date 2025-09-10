@@ -24,7 +24,19 @@ export const checklyConnectionService = (getAppConnection: TGetAppConnectionFunc
     }
   };
 
+  const listGroups = async (connectionId: string, accountId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.Checkly, connectionId, actor);
+    try {
+      const groups = await ChecklyPublicAPI.getCheckGroups(appConnection, accountId);
+      return groups!;
+    } catch (error) {
+      logger.error(error, "Failed to list accounts on Checkly");
+      return [];
+    }
+  };
+
   return {
-    listAccounts
+    listAccounts,
+    listGroups
   };
 };

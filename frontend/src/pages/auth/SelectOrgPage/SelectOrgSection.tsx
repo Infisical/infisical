@@ -12,7 +12,7 @@ import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import { IsCliLoginSuccessful } from "@app/components/utilities/attemptCliLogin";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, Spinner } from "@app/components/v2";
+import { Button, ContentLoader, Spinner } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
 import { OrgMembershipRole } from "@app/helpers/roles";
 import { useToggle } from "@app/hooks";
@@ -28,15 +28,6 @@ import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 
 import { navigateUserToOrg } from "../LoginPage/Login.utils";
-
-const LoadingScreen = () => {
-  return (
-    <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-      <Spinner />
-      <p className="text-white opacity-80">Loading, please wait</p>
-    </div>
-  );
-};
 
 export const SelectOrganizationSection = () => {
   const navigate = useNavigate();
@@ -91,16 +82,25 @@ export const SelectOrganizationSection = () => {
         }
       }
 
-      if (organization.authEnforced && !canBypassOrgAuth) {
+      if ((organization.authEnforced || organization.googleSsoAuthEnforced) && !canBypassOrgAuth) {
+        const authToken = jwtDecode(getAuthToken()) as { authMethod: AuthMethod };
+
         // org has an org-level auth method enabled (e.g. SAML)
         // -> logout + redirect to SAML SSO
-        await logout.mutateAsync();
         let url = "";
-        if (organization.orgAuthMethod === AuthMethod.OIDC) {
+        if (organization.googleSsoAuthEnforced) {
+          if (authToken.authMethod !== AuthMethod.GOOGLE) {
+            url = `/api/v1/sso/redirect/google?org_slug=${organization.slug}`;
+
+            if (callbackPort) {
+              url += `&callback_port=${callbackPort}`;
+            }
+          }
+        } else if (organization.orgAuthMethod === AuthMethod.OIDC) {
           url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${
             callbackPort ? `&callbackPort=${callbackPort}` : ""
           }`;
-        } else {
+        } else if (organization.orgAuthMethod === AuthMethod.SAML) {
           url = `/api/v1/sso/redirect/saml2/organizations/${organization.slug}`;
 
           if (callbackPort) {
@@ -108,8 +108,13 @@ export const SelectOrganizationSection = () => {
           }
         }
 
-        window.location.href = url;
-        return;
+        // we are conditionally checking if the url is set because it may not be set if google SSO is enforced, but the user is already logged in with google SSO
+        // see line 103-106
+        if (url) {
+          await logout.mutateAsync();
+          window.location.href = url;
+          return;
+        }
       }
 
       const { token, isMfaEnabled, mfaMethod } = await selectOrg
@@ -132,11 +137,8 @@ export const SelectOrganizationSection = () => {
       }
 
       if (callbackPort) {
-        const privateKey = localStorage.getItem("PRIVATE_KEY");
-
         let error: string | null = null;
 
-        if (!privateKey) error = "Private key not found";
         if (!user?.email) error = "User email not found";
         if (!token) error = "No token found";
 
@@ -151,7 +153,7 @@ export const SelectOrganizationSection = () => {
         const payload = {
           JTWToken: token,
           email: user?.email,
-          privateKey
+          privateKey: ""
         } as IsCliLoginSuccessful["loginResponse"];
 
         // send request to server endpoint
@@ -228,7 +230,11 @@ export const SelectOrganizationSection = () => {
     !user ||
     ((isInitialOrgCheckLoading || defaultSelectedOrg) && !shouldShowMfa)
   ) {
-    return <LoadingScreen />;
+    return (
+      <div className="h-screen w-screen bg-bunker-800">
+        <ContentLoader />
+      </div>
+    );
   }
 
   return (

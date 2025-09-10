@@ -33,3 +33,15 @@ export type TChecklyAccount = {
   name: string;
   runtimeId: string;
 };
+
+export type TChecklyGroupEnvironmentVariable = {
+  key: string;
+  value: string;
+  locked: boolean;
+};
+
+export type TChecklyGroup = {
+  id: string;
+  name: string;
+  environmentVariables?: TChecklyGroupEnvironmentVariable[];
+};

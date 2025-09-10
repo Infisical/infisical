@@ -6,10 +6,12 @@ import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 import { TSecretScanningDataSourceForm } from "../schemas";
 import { BitbucketDataSourceReviewFields } from "./BitbucketDataSourceReviewFields";
 import { GitHubDataSourceReviewFields } from "./GitHubDataSourceReviewFields";
+import { GitLabDataSourceReviewFields } from "./GitLabDataSourceReviewFields";
 
 const COMPONENT_MAP: Record<SecretScanningDataSource, React.FC> = {
   [SecretScanningDataSource.GitHub]: GitHubDataSourceReviewFields,
-  [SecretScanningDataSource.Bitbucket]: BitbucketDataSourceReviewFields
+  [SecretScanningDataSource.Bitbucket]: BitbucketDataSourceReviewFields,
+  [SecretScanningDataSource.GitLab]: GitLabDataSourceReviewFields
 };
 
 export const SecretScanningDataSourceReviewFields = () => {

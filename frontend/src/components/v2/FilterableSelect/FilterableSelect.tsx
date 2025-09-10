@@ -67,7 +67,7 @@ export const FilterableSelect = <T,>({
         }),
         menuPortal: (provided) => ({
           ...provided,
-          zIndex: 9999
+          zIndex: 99999
         })
       }}
       tabSelectsValue={tabSelectsValue}
@@ -91,7 +91,7 @@ export const FilterableSelect = <T,>({
           ),
         placeholder: () =>
           `${isMulti ? "py-[0.22rem]" : "leading-7"} text-mineshaft-400 text-sm pl-1`,
-        input: () => "pl-1",
+        input: () => `pl-1 ${isMulti ? "py-[0.22rem]" : ""}`,
         valueContainer: () =>
           `px-1 max-h-[8.2rem] ${
             isMulti ? "!overflow-y-auto thin-scrollbar py-1" : "py-[0.1rem]"
@@ -114,7 +114,8 @@ export const FilterableSelect = <T,>({
             isSelected && "text-mineshaft-200",
             "rounded px-3 py-2 text-xs hover:cursor-pointer"
           ),
-        noOptionsMessage: () => "text-mineshaft-400 p-2 rounded-md"
+        noOptionsMessage: () => "text-mineshaft-400 p-2 rounded-md",
+        loadingMessage: () => "text-mineshaft-400 p-2 rounded-md"
       }}
       {...props}
     />

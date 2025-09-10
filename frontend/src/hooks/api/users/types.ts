@@ -19,10 +19,10 @@ export type User = {
   createdAt: Date;
   updatedAt: Date;
   username: string;
-  email?: string;
+  email?: string | null;
   superAdmin: boolean;
-  firstName?: string;
-  lastName?: string;
+  firstName?: string | null;
+  lastName?: string | null;
   authProvider?: AuthMethod;
   authMethods: AuthMethod[];
   isMfaEnabled: boolean;
@@ -68,6 +68,8 @@ export type OrgUser = {
   deniedPermissions: any[];
   roleId: string;
   isActive: boolean;
+  lastLoginAuthMethod?: AuthMethod;
+  lastLoginTime?: string;
 };
 
 export type TProjectMembership = {
@@ -81,6 +83,7 @@ export type TProjectMembership = {
 export type TWorkspaceUser = {
   id: string;
   user: {
+    isOrgMembershipActive: boolean;
     email: string;
     username: string;
     firstName: string;
@@ -143,8 +146,13 @@ export type UpdateOrgMembershipDTO = {
   metadata?: { key: string; value: string }[];
 };
 
-export type DeletOrgMembershipDTO = {
+export type DeleteOrgMembershipDTO = {
   membershipId: string;
+  orgId: string;
+};
+
+export type DeleteOrgMembershipBatchDTO = {
+  membershipIds: string[];
   orgId: string;
 };
 

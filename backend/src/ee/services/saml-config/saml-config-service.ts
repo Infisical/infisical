@@ -82,6 +82,19 @@ export const samlConfigServiceFactory = ({
           "Failed to create SAML SSO configuration due to plan restriction. Upgrade plan to create SSO configuration."
       });
 
+    const org = await orgDAL.findOrgById(orgId);
+
+    if (!org) {
+      throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
+    }
+
+    if (org.googleSsoAuthEnforced && isActive) {
+      throw new BadRequestError({
+        message:
+          "You cannot enable SAML SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable SAML SSO."
+      });
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
@@ -119,6 +132,19 @@ export const samlConfigServiceFactory = ({
         message:
           "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
       });
+
+    const org = await orgDAL.findOrgById(orgId);
+
+    if (!org) {
+      throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
+    }
+
+    if (org.googleSsoAuthEnforced && isActive) {
+      throw new BadRequestError({
+        message:
+          "Cannot enable SAML SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable SAML SSO."
+      });
+    }
 
     const updateQuery: TSamlConfigsUpdate = { authProvider, isActive, lastUsed: null };
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
@@ -246,7 +272,7 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    const userAlias = await userAliasDAL.findOne({
+    let userAlias = await userAliasDAL.findOne({
       externalId,
       orgId,
       aliasType: UserAliasType.SAML
@@ -320,15 +346,13 @@ export const samlConfigServiceFactory = ({
 
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
-        if (serverCfg.trustSamlEmails) {
-          newUser = await userDAL.findOne(
-            {
-              email,
-              isEmailVerified: true
-            },
-            tx
-          );
-        }
+        newUser = await userDAL.findOne(
+          {
+            email,
+            isEmailVerified: true
+          },
+          tx
+        );
 
         if (!newUser) {
           const uniqueUsername = await normalizeUsername(`${firstName ?? ""}-${lastName ?? ""}`, userDAL);
@@ -346,13 +370,14 @@ export const samlConfigServiceFactory = ({
           );
         }
 
-        await userAliasDAL.create(
+        userAlias = await userAliasDAL.create(
           {
             userId: newUser.id,
             aliasType: UserAliasType.SAML,
             externalId,
             emails: email ? [email] : [],
-            orgId
+            orgId,
+            isEmailVerified: serverCfg.trustSamlEmails
           },
           tx
         );
@@ -410,21 +435,21 @@ export const samlConfigServiceFactory = ({
     }
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
-    const isUserCompleted = Boolean(user.isAccepted && user.isEmailVerified);
-    const userEnc = await userDAL.findUserEncKeyByUserId(user.id);
+    const isUserCompleted = Boolean(user.isAccepted && user.isEmailVerified && userAlias.isEmailVerified);
     const providerAuthToken = crypto.jwt().sign(
       {
         authTokenType: AuthTokenType.PROVIDER_TOKEN,
         userId: user.id,
         username: user.username,
-        ...(user.email && { email: user.email, isEmailVerified: user.isEmailVerified }),
+        ...(user.email && { email: user.email, isEmailVerified: userAlias.isEmailVerified }),
         firstName,
         lastName,
         organizationName: organization.name,
         organizationId: organization.id,
         organizationSlug: organization.slug,
         authMethod: authProvider,
-        hasExchangedPrivateKey: Boolean(userEnc?.serverEncryptedPrivateKey),
+        hasExchangedPrivateKey: true,
+        aliasId: userAlias.id,
         authType: UserAliasType.SAML,
         isUserCompleted,
         ...(relayState
@@ -441,10 +466,11 @@ export const samlConfigServiceFactory = ({
 
     await samlConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
-    if (user.email && !user.isEmailVerified) {
+    if (user.email && !userAlias.isEmailVerified) {
       const token = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_VERIFICATION,
-        userId: user.id
+        userId: user.id,
+        aliasId: userAlias.id
       });
 
       await smtpService.sendMail({

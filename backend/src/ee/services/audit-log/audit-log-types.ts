@@ -161,6 +161,9 @@ export enum EventType {
   CREATE_IDENTITY = "create-identity",
   UPDATE_IDENTITY = "update-identity",
   DELETE_IDENTITY = "delete-identity",
+  MACHINE_IDENTITY_AUTH_TEMPLATE_CREATE = "machine-identity-auth-template-create",
+  MACHINE_IDENTITY_AUTH_TEMPLATE_UPDATE = "machine-identity-auth-template-update",
+  MACHINE_IDENTITY_AUTH_TEMPLATE_DELETE = "machine-identity-auth-template-delete",
   LOGIN_IDENTITY_UNIVERSAL_AUTH = "login-identity-universal-auth",
   ADD_IDENTITY_UNIVERSAL_AUTH = "add-identity-universal-auth",
   UPDATE_IDENTITY_UNIVERSAL_AUTH = "update-identity-universal-auth",
@@ -195,6 +198,7 @@ export enum EventType {
 
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
+  CLEAR_IDENTITY_UNIVERSAL_AUTH_LOCKOUTS = "clear-identity-universal-auth-lockouts",
 
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID = "get-identity-universal-auth-client-secret-by-id",
@@ -278,6 +282,7 @@ export enum EventType {
   UPDATE_SSH_CERTIFICATE_TEMPLATE = "update-ssh-certificate-template",
   DELETE_SSH_CERTIFICATE_TEMPLATE = "delete-ssh-certificate-template",
   GET_SSH_CERTIFICATE_TEMPLATE = "get-ssh-certificate-template",
+  GET_AZURE_AD_TEMPLATES = "get-azure-ad-templates",
   GET_SSH_HOST = "get-ssh-host",
   CREATE_SSH_HOST = "create-ssh-host",
   UPDATE_SSH_HOST = "update-ssh-host",
@@ -830,6 +835,30 @@ interface LoginIdentityUniversalAuthEvent {
   };
 }
 
+interface MachineIdentityAuthTemplateCreateEvent {
+  type: EventType.MACHINE_IDENTITY_AUTH_TEMPLATE_CREATE;
+  metadata: {
+    templateId: string;
+    name: string;
+  };
+}
+
+interface MachineIdentityAuthTemplateUpdateEvent {
+  type: EventType.MACHINE_IDENTITY_AUTH_TEMPLATE_UPDATE;
+  metadata: {
+    templateId: string;
+    name: string;
+  };
+}
+
+interface MachineIdentityAuthTemplateDeleteEvent {
+  type: EventType.MACHINE_IDENTITY_AUTH_TEMPLATE_DELETE;
+  metadata: {
+    templateId: string;
+    name: string;
+  };
+}
+
 interface AddIdentityUniversalAuthEvent {
   type: EventType.ADD_IDENTITY_UNIVERSAL_AUTH;
   metadata: {
@@ -839,6 +868,10 @@ interface AddIdentityUniversalAuthEvent {
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
     accessTokenTrustedIps: Array<TIdentityTrustedIp>;
+    lockoutEnabled: boolean;
+    lockoutThreshold: number;
+    lockoutDurationSeconds: number;
+    lockoutCounterResetSeconds: number;
   };
 }
 
@@ -851,6 +884,10 @@ interface UpdateIdentityUniversalAuthEvent {
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
     accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
+    lockoutEnabled?: boolean;
+    lockoutThreshold?: number;
+    lockoutDurationSeconds?: number;
+    lockoutCounterResetSeconds?: number;
   };
 }
 
@@ -1007,6 +1044,13 @@ interface RevokeIdentityUniversalAuthClientSecretEvent {
   metadata: {
     identityId: string;
     clientSecretId: string;
+  };
+}
+
+interface ClearIdentityUniversalAuthLockoutsEvent {
+  type: EventType.CLEAR_IDENTITY_UNIVERSAL_AUTH_LOCKOUTS;
+  metadata: {
+    identityId: string;
   };
 }
 
@@ -1325,6 +1369,7 @@ interface AddIdentityLdapAuthEvent {
     accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
     allowedFields?: TAllowedFields[];
     url: string;
+    templateId?: string | null;
   };
 }
 
@@ -1338,6 +1383,7 @@ interface UpdateIdentityLdapAuthEvent {
     accessTokenTrustedIps?: Array<TIdentityTrustedIp>;
     allowedFields?: TAllowedFields[];
     url?: string;
+    templateId?: string | null;
   };
 }
 
@@ -2468,6 +2514,14 @@ interface CreateCertificateTemplateEstConfig {
   };
 }
 
+interface GetAzureAdCsTemplatesEvent {
+  type: EventType.GET_AZURE_AD_TEMPLATES;
+  metadata: {
+    caId: string;
+    amount: number;
+  };
+}
+
 interface UpdateCertificateTemplateEstConfig {
   type: EventType.UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG;
   metadata: {
@@ -3439,6 +3493,9 @@ export type Event =
   | UpdateIdentityEvent
   | DeleteIdentityEvent
   | LoginIdentityUniversalAuthEvent
+  | MachineIdentityAuthTemplateCreateEvent
+  | MachineIdentityAuthTemplateUpdateEvent
+  | MachineIdentityAuthTemplateDeleteEvent
   | AddIdentityUniversalAuthEvent
   | UpdateIdentityUniversalAuthEvent
   | DeleteIdentityUniversalAuthEvent
@@ -3459,6 +3516,7 @@ export type Event =
   | GetIdentityUniversalAuthClientSecretsEvent
   | GetIdentityUniversalAuthClientSecretByIdEvent
   | RevokeIdentityUniversalAuthClientSecretEvent
+  | ClearIdentityUniversalAuthLockoutsEvent
   | LoginIdentityGcpAuthEvent
   | AddIdentityGcpAuthEvent
   | DeleteIdentityGcpAuthEvent
@@ -3604,6 +3662,7 @@ export type Event =
   | CreateCertificateTemplateEstConfig
   | UpdateCertificateTemplateEstConfig
   | GetCertificateTemplateEstConfig
+  | GetAzureAdCsTemplatesEvent
   | AttemptCreateSlackIntegration
   | AttemptReinstallSlackIntegration
   | UpdateSlackIntegration

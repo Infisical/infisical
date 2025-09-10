@@ -1,8 +1,10 @@
 // weird commonjs-related error in the CI requires us to do the import like this
 import knex from "knex";
+import { v4 as uuidv4 } from "uuid";
 
 import { TDbClient } from "@app/db";
 import { TableName, TAuditLogs } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { DatabaseError, GatewayTimeoutError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
@@ -12,7 +14,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { EventType, filterableSecretEvents } from "./audit-log-types";
 
 export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "find"> {
-  pruneAuditLog: (tx?: knex.Knex) => Promise<void>;
+  pruneAuditLog: () => Promise<void>;
   find: (
     arg: Omit<TFindQuery, "actor" | "eventType"> & {
       actorId?: string | undefined;
@@ -38,6 +40,10 @@ type TFindQuery = {
   limit?: number;
   offset?: number;
 };
+
+const QUERY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const AUDIT_LOG_PRUNE_BATCH_SIZE = 10000;
+const MAX_RETRY_ON_FAILURE = 3;
 
 export const auditLogDALFactory = (db: TDbClient) => {
   const auditLogOrm = ormify(db, TableName.AuditLog);
@@ -149,10 +155,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
   };
 
   // delete all audit log that have expired
-  const pruneAuditLog: TAuditLogDALFactory["pruneAuditLog"] = async (tx) => {
-    const AUDIT_LOG_PRUNE_BATCH_SIZE = 10000;
-    const MAX_RETRY_ON_FAILURE = 3;
-
+  const pruneAuditLog: TAuditLogDALFactory["pruneAuditLog"] = async () => {
     const today = new Date();
     let deletedAuditLogIds: { id: string }[] = [];
     let numberOfRetryOnFailure = 0;
@@ -161,21 +164,27 @@ export const auditLogDALFactory = (db: TDbClient) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: audit log started`);
     do {
       try {
-        const findExpiredLogSubQuery = (tx || db)(TableName.AuditLog)
-          .where("expiresAt", "<", today)
-          .where("createdAt", "<", today) // to use audit log partition
-          .orderBy(`${TableName.AuditLog}.createdAt`, "desc")
-          .select("id")
-          .limit(AUDIT_LOG_PRUNE_BATCH_SIZE);
-
         // eslint-disable-next-line no-await-in-loop
-        deletedAuditLogIds = await (tx || db)(TableName.AuditLog)
-          .whereIn("id", findExpiredLogSubQuery)
-          .del()
-          .returning("id");
+        deletedAuditLogIds = await db.transaction(async (trx) => {
+          await trx.raw(`SET statement_timeout = ${QUERY_TIMEOUT_MS}`);
+
+          const findExpiredLogSubQuery = trx(TableName.AuditLog)
+            .where("expiresAt", "<", today)
+            .where("createdAt", "<", today) // to use audit log partition
+            .orderBy(`${TableName.AuditLog}.createdAt`, "desc")
+            .select("id")
+            .limit(AUDIT_LOG_PRUNE_BATCH_SIZE);
+
+          // eslint-disable-next-line no-await-in-loop
+          const results = await trx(TableName.AuditLog).whereIn("id", findExpiredLogSubQuery).del().returning("id");
+
+          return results;
+        });
+
         numberOfRetryOnFailure = 0; // reset
       } catch (error) {
         numberOfRetryOnFailure += 1;
+        deletedAuditLogIds = [];
         logger.error(error, "Failed to delete audit log on pruning");
       } finally {
         // eslint-disable-next-line no-await-in-loop
@@ -188,5 +197,20 @@ export const auditLogDALFactory = (db: TDbClient) => {
     logger.info(`${QueueName.DailyResourceCleanUp}: audit log completed`);
   };
 
-  return { ...auditLogOrm, pruneAuditLog, find };
+  const create: TAuditLogDALFactory["create"] = async (tx) => {
+    const config = getConfig();
+
+    if (config.DISABLE_AUDIT_LOG_STORAGE) {
+      return {
+        ...tx,
+        id: uuidv4(),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+    }
+
+    return auditLogOrm.create(tx);
+  };
+
+  return { ...auditLogOrm, create, pruneAuditLog, find };
 };

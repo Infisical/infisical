@@ -1,3 +1,4 @@
 export enum AzureKeyVaultConnectionMethod {
-  OAuth = "oauth"
+  OAuth = "oauth",
+  ClientSecret = "client-secret"
 }

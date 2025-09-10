@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { cva, VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 
@@ -24,13 +25,16 @@ const badgeVariants = cva(
 
 export type BadgeProps = VariantProps<typeof badgeVariants> & IProps;
 
-export const Badge = ({ children, className, variant, ...props }: BadgeProps) => {
-  return (
-    <div
-      className={twMerge(badgeVariants({ variant: variant || "primary" }), className)}
-      {...props}
-    >
-      {children}
-    </div>
-  );
-};
+export const Badge = forwardRef<HTMLDivElement, BadgeProps>(
+  ({ children, className, variant, ...props }, ref) => {
+    return (
+      <div
+        className={twMerge(badgeVariants({ variant: variant || "primary" }), className)}
+        {...props}
+        ref={ref}
+      >
+        {children}
+      </div>
+    );
+  }
+);

@@ -16,11 +16,13 @@ import {
   TFormSchema
 } from "../OrgRoleModifySection.utils";
 import { OrgPermissionAdminConsoleRow } from "./OrgPermissionAdminConsoleRow";
+import { OrgPermissionAuditLogsRow } from "./OrgPermissionAuditLogsRow";
 import { OrgPermissionBillingRow } from "./OrgPermissionBillingRow";
 import { OrgGatewayPermissionRow } from "./OrgPermissionGatewayRow";
 import { OrgPermissionGroupRow } from "./OrgPermissionGroupRow";
 import { OrgPermissionIdentityRow } from "./OrgPermissionIdentityRow";
 import { OrgPermissionKmipRow } from "./OrgPermissionKmipRow";
+import { OrgPermissionMachineIdentityAuthTemplateRow } from "./OrgPermissionMachineIdentityAuthTemplateRow";
 import { OrgPermissionSecretShareRow } from "./OrgPermissionSecretShareRow";
 import { OrgRoleWorkspaceRow } from "./OrgRoleWorkspaceRow";
 import { RolePermissionRow } from "./RolePermissionRow";
@@ -37,10 +39,6 @@ const SIMPLE_PERMISSION_OPTIONS = [
   {
     title: "Incident Contacts",
     formName: "incident-contact"
-  },
-  {
-    title: "Audit Logs",
-    formName: "audit-logs"
   },
   {
     title: "Organization Profile",
@@ -165,6 +163,11 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                   />
                 );
               })}
+              <OrgPermissionAuditLogsRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
               <OrgPermissionIdentityRow
                 control={control}
                 setValue={setValue}
@@ -201,6 +204,11 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                 isEditable={isCustomRole}
               />
               <OrgPermissionAdminConsoleRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
+              <OrgPermissionMachineIdentityAuthTemplateRow
                 control={control}
                 setValue={setValue}
                 isEditable={isCustomRole}

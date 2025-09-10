@@ -4,6 +4,7 @@ import { Job } from "bullmq";
 
 import { ProjectMembershipRole, SecretType } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -79,8 +80,8 @@ type TSecretSyncQueueFactoryDep = {
     | "deleteMany"
     | "invalidateSecretCacheByProjectId"
   >;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds">;
-  secretSyncDAL: Pick<TSecretSyncDALFactory, "findById" | "find" | "updateById" | "deleteById">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
+  secretSyncDAL: Pick<TSecretSyncDALFactory, "findById" | "find" | "updateById" | "deleteById" | "update">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: TProjectDALFactory;
@@ -96,23 +97,22 @@ type TSecretSyncQueueFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
 };
 
 type SecretSyncActionJob = Job<
   TQueueSecretSyncSyncSecretsByIdDTO | TQueueSecretSyncImportSecretsByIdDTO | TQueueSecretSyncRemoveSecretsByIdDTO
 >;
 
+const JITTER_MS = 10 * 1000;
+const REQUEUE_MS = 30 * 1000;
+const REQUEUE_LIMIT = 30;
+const CONNECTION_CONCURRENCY_LIMIT = 3;
+
 const getRequeueDelay = (failureCount?: number) => {
-  if (!failureCount) return 0;
-
-  const baseDelay = 1000;
-  const maxDelay = 30000;
-
-  const delay = Math.min(baseDelay * 2 ** failureCount, maxDelay);
-
-  const jitter = delay * (0.5 + Math.random() * 0.5);
-
-  return jitter;
+  const jitter = Math.random() * JITTER_MS;
+  if (!failureCount) return jitter;
+  return REQUEUE_MS + jitter;
 };
 
 export const secretSyncQueueFactory = ({
@@ -138,7 +138,8 @@ export const secretSyncQueueFactory = ({
   secretVersionTagV2BridgeDAL,
   resourceMetadataDAL,
   folderCommitService,
-  licenseService
+  licenseService,
+  gatewayService
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -189,6 +190,46 @@ export const secretSyncQueueFactory = ({
     resourceMetadataDAL,
     folderCommitService
   });
+
+  const $isConnectionConcurrencyLimitReached = async (connectionId: string) => {
+    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
+
+    if (!concurrencyCount) return false;
+
+    const count = Number.parseInt(concurrencyCount, 10);
+
+    if (Number.isNaN(count)) return false;
+
+    return count >= CONNECTION_CONCURRENCY_LIMIT;
+  };
+
+  const $incrementConnectionConcurrencyCount = async (connectionId: string) => {
+    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
+
+    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
+
+    const incrementedCount = Number.isNaN(currentCount) ? 1 : currentCount + 1;
+
+    await keyStore.setItemWithExpiry(
+      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
+      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
+      incrementedCount
+    );
+  };
+
+  const $decrementConnectionConcurrencyCount = async (connectionId: string) => {
+    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
+
+    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
+
+    const decrementedCount = Math.max(0, Number.isNaN(currentCount) ? 0 : currentCount - 1);
+
+    await keyStore.setItemWithExpiry(
+      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
+      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
+      decrementedCount
+    );
+  };
 
   const $getInfisicalSecrets = async (
     secretSync: TSecretSyncRaw | TSecretSyncWithCredentials,
@@ -353,7 +394,8 @@ export const secretSyncQueueFactory = ({
 
     const importedSecrets = await SecretSyncFns.getSecrets(secretSync, {
       appConnectionDAL,
-      kmsService
+      kmsService,
+      gatewayService
     });
 
     if (!Object.keys(importedSecrets).length) return {};
@@ -412,14 +454,10 @@ export const secretSyncQueueFactory = ({
     return importedSecretMap;
   };
 
-  const $handleSyncSecretsJob = async (job: TSecretSyncSyncSecretsDTO) => {
+  const $handleSyncSecretsJob = async (job: TSecretSyncSyncSecretsDTO, secretSync: TSecretSyncRaw) => {
     const {
       data: { syncId, auditLogInfo }
     } = job;
-
-    const secretSync = await secretSyncDAL.findById(syncId);
-
-    if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
 
     await enterpriseSyncCheck(
       licenseService,
@@ -481,7 +519,8 @@ export const secretSyncQueueFactory = ({
 
       await SecretSyncFns.syncSecrets(secretSyncWithCredentials, secretMap, {
         appConnectionDAL,
-        kmsService
+        kmsService,
+        gatewayService
       });
 
       isSynced = true;
@@ -561,14 +600,10 @@ export const secretSyncQueueFactory = ({
     logger.info("SecretSync Sync Job with ID %s Completed", job.id);
   };
 
-  const $handleImportSecretsJob = async (job: TSecretSyncImportSecretsDTO) => {
+  const $handleImportSecretsJob = async (job: TSecretSyncImportSecretsDTO, secretSync: TSecretSyncRaw) => {
     const {
       data: { syncId, auditLogInfo, importBehavior }
     } = job;
-
-    const secretSync = await secretSyncDAL.findById(syncId);
-
-    if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
 
     await secretSyncDAL.updateById(syncId, {
       importStatus: SecretSyncStatus.Running
@@ -678,14 +713,10 @@ export const secretSyncQueueFactory = ({
     logger.info("SecretSync Import Job with ID %s Completed", job.id);
   };
 
-  const $handleRemoveSecretsJob = async (job: TSecretSyncRemoveSecretsDTO) => {
+  const $handleRemoveSecretsJob = async (job: TSecretSyncRemoveSecretsDTO, secretSync: TSecretSyncRaw) => {
     const {
       data: { syncId, auditLogInfo, deleteSyncOnComplete }
     } = job;
-
-    const secretSync = await secretSyncDAL.findById(syncId);
-
-    if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
 
     await enterpriseSyncCheck(
       licenseService,
@@ -730,7 +761,8 @@ export const secretSyncQueueFactory = ({
         secretMap,
         {
           appConnectionDAL,
-          kmsService
+          kmsService,
+          gatewayService
         }
       );
 
@@ -888,6 +920,17 @@ export const secretSyncQueueFactory = ({
 
     const secretSyncs = await secretSyncDAL.find({ folderId: folder.id, isAutoSyncEnabled: true });
 
+    await secretSyncDAL.update(
+      {
+        $in: {
+          id: secretSyncs.map((sync) => sync.id)
+        }
+      },
+      {
+        syncStatus: SecretSyncStatus.Pending
+      }
+    );
+
     await Promise.all(secretSyncs.map((secretSync) => queueSecretSyncSyncSecretsById({ syncId: secretSync.id })));
   };
 
@@ -898,7 +941,7 @@ export const secretSyncQueueFactory = ({
       case QueueJobs.SecretSyncSyncSecrets: {
         const { failedToAcquireLockCount = 0, ...rest } = job.data as TQueueSecretSyncSyncSecretsByIdDTO;
 
-        if (failedToAcquireLockCount < 10) {
+        if (failedToAcquireLockCount < REQUEUE_LIMIT) {
           await queueSecretSyncSyncSecretsById({ ...rest, failedToAcquireLockCount: failedToAcquireLockCount + 1 });
           return;
         }
@@ -968,6 +1011,26 @@ export const secretSyncQueueFactory = ({
       | TQueueSecretSyncImportSecretsByIdDTO
       | TQueueSecretSyncRemoveSecretsByIdDTO;
 
+    const secretSync = await secretSyncDAL.findById(syncId);
+
+    if (!secretSync) throw new Error(`Cannot find secret sync with ID ${syncId}`);
+
+    const { connectionId } = secretSync;
+
+    if (job.name === QueueJobs.SecretSyncSyncSecrets) {
+      const isConcurrentLimitReached = await $isConnectionConcurrencyLimitReached(connectionId);
+
+      if (isConcurrentLimitReached) {
+        logger.info(
+          `SecretSync Concurrency limit reached [syncId=${syncId}] [job=${job.name}] [connectionId=${connectionId}]`
+        );
+
+        await $handleAcquireLockFailure(job as SecretSyncActionJob);
+
+        return;
+      }
+    }
+
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
 
     try {
@@ -987,20 +1050,26 @@ export const secretSyncQueueFactory = ({
 
     try {
       switch (job.name) {
-        case QueueJobs.SecretSyncSyncSecrets:
-          await $handleSyncSecretsJob(job as TSecretSyncSyncSecretsDTO);
+        case QueueJobs.SecretSyncSyncSecrets: {
+          await $incrementConnectionConcurrencyCount(connectionId);
+          await $handleSyncSecretsJob(job as TSecretSyncSyncSecretsDTO, secretSync);
           break;
+        }
         case QueueJobs.SecretSyncImportSecrets:
-          await $handleImportSecretsJob(job as TSecretSyncImportSecretsDTO);
+          await $handleImportSecretsJob(job as TSecretSyncImportSecretsDTO, secretSync);
           break;
         case QueueJobs.SecretSyncRemoveSecrets:
-          await $handleRemoveSecretsJob(job as TSecretSyncRemoveSecretsDTO);
+          await $handleRemoveSecretsJob(job as TSecretSyncRemoveSecretsDTO, secretSync);
           break;
         default:
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           throw new Error(`Unhandled Secret Sync Job ${job.name}`);
       }
     } finally {
+      if (job.name === QueueJobs.SecretSyncSyncSecrets) {
+        await $decrementConnectionConcurrencyCount(connectionId);
+      }
+
       await lock.release();
     }
   });

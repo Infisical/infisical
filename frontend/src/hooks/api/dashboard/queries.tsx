@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import {
@@ -273,6 +274,12 @@ export const useGetProjectSecretsDetails = (
     ...options,
     // wait for all values to be available
     enabled: Boolean(projectId) && (options?.enabled ?? true),
+    retry: (count, error) => {
+      // don't retry 404s
+      if (error instanceof AxiosError && error.status === 404) return false;
+
+      return count <= 5;
+    },
     queryKey: dashboardKeys.getProjectSecretsDetails({
       secretPath,
       search,

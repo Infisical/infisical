@@ -21,7 +21,7 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
-import { getStringValueByDot } from "@app/lib/template/dot-access";
+import { getValueByDot } from "@app/lib/template/dot-access";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
@@ -43,7 +43,7 @@ import {
 
 type TIdentityJwtAuthServiceFactoryDep = {
   identityJwtAuthDAL: TIdentityJwtAuthDALFactory;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -189,7 +189,7 @@ export const identityJwtAuthServiceFactory = ({
     if (identityJwtAuth.boundClaims) {
       Object.keys(identityJwtAuth.boundClaims).forEach((claimKey) => {
         const claimValue = (identityJwtAuth.boundClaims as Record<string, string>)[claimKey];
-        const value = getStringValueByDot(tokenData, claimKey) || "";
+        const value = getValueByDot(tokenData, claimKey);
 
         if (!value) {
           throw new UnauthorizedError({
@@ -198,9 +198,7 @@ export const identityJwtAuthServiceFactory = ({
         }
 
         // handle both single and multi-valued claims
-        if (
-          !claimValue.split(", ").some((claimEntry) => doesFieldValueMatchJwtPolicy(tokenData[claimKey], claimEntry))
-        ) {
+        if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchJwtPolicy(value, claimEntry))) {
           throw new UnauthorizedError({
             message: `Access denied: claim mismatch for field ${claimKey}`
           });
@@ -209,6 +207,14 @@ export const identityJwtAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityJwtAuthDAL.transaction(async (tx) => {
+      await identityOrgMembershipDAL.updateById(
+        identityMembershipOrg.id,
+        {
+          lastLoginAuthMethod: IdentityAuthMethod.JWT_AUTH,
+          lastLoginTime: new Date()
+        },
+        tx
+      );
       const newToken = await identityAccessTokenDAL.create(
         {
           identityId: identityJwtAuth.identityId,

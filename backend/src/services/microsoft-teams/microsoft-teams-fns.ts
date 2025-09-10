@@ -462,6 +462,54 @@ export const buildTeamsPayload = (notification: TNotification) => {
       };
     }
 
+    case TriggerFeature.ACCESS_REQUEST_UPDATED: {
+      const { payload } = notification;
+
+      const adaptiveCard = {
+        type: "AdaptiveCard",
+        $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+        version: "1.5",
+        body: [
+          {
+            type: "TextBlock",
+            text: "Updated access approval request pending for review",
+            weight: "Bolder",
+            size: "Large"
+          },
+          {
+            type: "TextBlock",
+            text: `${payload.editorFullName} (${payload.editorEmail}) has updated the ${
+              payload.isTemporary ? "temporary" : "permanent"
+            } access request from ${payload.requesterFullName} (${payload.requesterEmail}) to ${payload.secretPath} in the ${payload.environment} environment of ${payload.projectName}.`,
+            wrap: true
+          },
+          {
+            type: "TextBlock",
+            text: `The following permissions are requested: ${payload.permissions.join(", ")}`,
+            wrap: true
+          },
+          payload.editNote
+            ? {
+                type: "TextBlock",
+                text: `**Editor Note**: ${payload.editNote}`,
+                wrap: true
+              }
+            : null
+        ].filter(Boolean),
+        actions: [
+          {
+            type: "Action.OpenUrl",
+            title: "View request in Infisical",
+            url: payload.approvalUrl
+          }
+        ]
+      };
+
+      return {
+        adaptiveCard
+      };
+    }
+
     default: {
       throw new BadRequestError({
         message: "Teams notification type not supported."

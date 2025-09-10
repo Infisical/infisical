@@ -82,7 +82,11 @@ export const SecretDetectionIgnoreValuesSection = () => {
       <div className="flex w-full items-center justify-between">
         <p className="text-xl font-semibold">Secret Detection</p>
       </div>
-      <p className="mb-4 mt-2 max-w-2xl text-sm text-gray-400">Define secret values to ignore when scanning designated parameter folders. Add values here to prevent false positives or allow approved sensitive data. These ignored values will not trigger policy violation alerts.</p>
+      <p className="mb-4 mt-2 max-w-2xl text-sm text-gray-400">
+        Define secret values to ignore when scanning designated parameter folders. Add values here
+        to prevent false positives or allow approved sensitive data. These ignored values will not
+        trigger policy violation alerts.
+      </p>
 
       <form onSubmit={handleSubmit(handleIgnoreValuesSubmit)} autoComplete="off">
         <div className="mb-4">

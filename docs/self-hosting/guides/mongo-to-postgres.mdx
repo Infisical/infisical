@@ -196,6 +196,17 @@ The first deployment of Postgres based Infisical must be deployed with Docker im
 After deploying this version, you can proceed to update to any subsequent versions.
 </Warning>
 
-## Additional discussion 
-- When you visit Infisical's [docker hub](https://hub.docker.com/r/infisical/infisical) page, you will notice that image tags end with `-postgres`. 
-This is to indicate that this version of Infisical runs on the new Postgres backend. Any image tag that does not end in `postgres` runs on MongoDB.
+## Important Notes 
+
+Infisical's [Docker Hub repository](https://hub.docker.com/r/infisical/infisical) uses different tagging conventions to indicate which database backend is used:
+
+- **Before v0.46.11**
+  - Infisical ran on MongoDB backend
+
+- **After v0.46.11** 
+  - Version tags started to be suffixed with `-postgres`
+  - Infisical transitioned to PostgreSQL backend
+
+- **After v0.147.0**
+  - Infisical remains on PostgreSQL backend
+  - The `-postgres` suffix was removed from tags for brevity

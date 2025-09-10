@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -99,6 +99,11 @@ export const SecretListView = ({
     }
   });
   const { addPendingChange } = useBatchModeActions();
+
+  const pendingChangesRef = useRef(pendingChanges);
+  useEffect(() => {
+    pendingChangesRef.current = pendingChanges;
+  }, [pendingChanges]);
 
   const handleSecretOperation = async (
     operation: "create" | "update" | "delete",
@@ -337,37 +342,27 @@ export const SecretListView = ({
                 secretPath
               });
             } else {
-              const trueOriginalSecret = getTrueOriginalSecret(orgSecret, pendingChanges.secrets);
+              const trueOriginalSecret = getTrueOriginalSecret(
+                orgSecret,
+                pendingChangesRef.current.secrets
+              );
 
               const updateChange: PendingSecretUpdate = {
                 id: orgSecret.id,
                 type: PendingAction.Update,
                 secretKey: trueOriginalSecret.key,
-                ...(key !== trueOriginalSecret.key && { newSecretName: key }),
-                ...(value !== trueOriginalSecret.value && {
-                  originalValue: trueOriginalSecret.value,
-                  secretValue: value
-                }),
-                ...(comment !== trueOriginalSecret.comment && {
-                  originalComment: trueOriginalSecret.comment,
-                  secretComment: comment
-                }),
-                ...(modSecret.skipMultilineEncoding !==
-                  trueOriginalSecret.skipMultilineEncoding && {
-                  originalSkipMultilineEncoding: trueOriginalSecret.skipMultilineEncoding,
-                  skipMultilineEncoding: modSecret.skipMultilineEncoding
-                }),
-                ...(!isSameTags && {
-                  originalTags:
-                    trueOriginalSecret.tags?.map((tag) => ({ id: tag.id, slug: tag.slug })) || [],
-                  tags: tags?.map((tag) => ({ id: tag.id, slug: tag.name || tag.slug || "" })) || []
-                }),
-                ...(JSON.stringify(secretMetadata) !==
-                  JSON.stringify(trueOriginalSecret.secretMetadata) && {
-                  originalSecretMetadata: trueOriginalSecret.secretMetadata || [],
-                  secretMetadata: secretMetadata || []
-                }),
-
+                newSecretName: key,
+                originalValue: trueOriginalSecret.value,
+                secretValue: value,
+                originalComment: trueOriginalSecret.comment,
+                secretComment: comment,
+                originalSkipMultilineEncoding: trueOriginalSecret.skipMultilineEncoding,
+                skipMultilineEncoding: modSecret.skipMultilineEncoding,
+                originalTags:
+                  trueOriginalSecret.tags?.map((tag) => ({ id: tag.id, slug: tag.slug })) || [],
+                tags: tags?.map((tag) => ({ id: tag.id, slug: tag.name || tag.slug || "" })) || [],
+                originalSecretMetadata: trueOriginalSecret.secretMetadata || [],
+                secretMetadata: secretMetadata || [],
                 timestamp: Date.now(),
                 resourceType: "secret",
                 existingSecret: orgSecret
@@ -455,15 +450,7 @@ export const SecretListView = ({
         });
       }
     },
-    [
-      environment,
-      secretPath,
-      isProtectedBranch,
-      isBatchMode,
-      workspaceId,
-      addPendingChange,
-      pendingChanges.secrets
-    ]
+    [environment, secretPath, isProtectedBranch, isBatchMode, workspaceId, addPendingChange]
   );
 
   const handleSecretDelete = useCallback(async () => {
@@ -548,6 +535,13 @@ export const SecretListView = ({
     (sec: SecretV3RawSanitized) => handlePopUpOpen("secretDetail", sec),
     []
   );
+  const onShareSecret = useCallback(
+    (sec: SecretV3RawSanitized) =>
+      handlePopUpOpen("createSharedSecret", {
+        value: sec.valueOverride ?? sec.value
+      }),
+    []
+  );
 
   return (
     <>
@@ -570,11 +564,7 @@ export const SecretListView = ({
           onDetailViewSecret={onDetailViewSecret}
           importedBy={importedBy}
           onCreateTag={onCreateTag}
-          handleSecretShare={() =>
-            handlePopUpOpen("createSharedSecret", {
-              value: secret.valueOverride ?? secret.value
-            })
-          }
+          onShareSecret={onShareSecret}
           isPending={secret.isPending}
           pendingAction={secret.pendingAction}
         />

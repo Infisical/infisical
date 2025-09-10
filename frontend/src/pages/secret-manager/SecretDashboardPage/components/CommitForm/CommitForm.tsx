@@ -1,7 +1,14 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import React, { useCallback, useState } from "react";
-import { faCodeCommit, faEye, faFolder, faKey } from "@fortawesome/free-solid-svg-icons";
+import {
+  faClipboardCheck,
+  faCodeCommit,
+  faFolder,
+  faKey,
+  faSave
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { Badge, Button, Input, Modal, ModalContent } from "@app/components/v2";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
@@ -296,47 +303,61 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     <>
       {/* Floating Panel */}
       {!isModalOpen && (
-        <div className="fixed bottom-4 left-1/2 z-40 w-full max-w-3xl -translate-x-1/2 self-center rounded-lg border border-yellow/30 bg-mineshaft-800 shadow-2xl lg:left-auto lg:translate-x-0">
-          <div className="flex items-center justify-between p-4">
-            {/* Left Content */}
-            <div className="flex-1">
-              {/* Header */}
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-yellow-500" />
-                <span className="font-medium text-mineshaft-100">Pending Changes</span>
-                <Badge variant="primary" className="text-xs">
-                  {totalChangesCount} Change{totalChangesCount !== 1 ? "s" : ""}
-                </Badge>
+        <div className="fixed bottom-4 left-1/2 z-40 w-full max-w-3xl -translate-x-1/2 self-center lg:left-auto lg:translate-x-0">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key="commit-panel"
+              transition={{ duration: 0.3 }}
+              initial={{ opacity: 0, translateY: 30 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              exit={{ opacity: 0, translateY: -30 }}
+            >
+              <div className="rounded-lg border border-yellow/30 bg-mineshaft-800 shadow-2xl">
+                <div className="flex items-center justify-between p-4">
+                  {/* Left Content */}
+                  <div className="flex-1">
+                    {/* Header */}
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-yellow-500" />
+                      <span className="font-medium text-mineshaft-100">Pending Changes</span>
+                      <Badge variant="primary" className="text-xs">
+                        {totalChangesCount} Change{totalChangesCount !== 1 ? "s" : ""}
+                      </Badge>
+                    </div>
+
+                    {/* Description */}
+                    <p className="text-sm leading-5 text-mineshaft-400">
+                      Review pending changes and commit them to apply the updates.
+                    </p>
+                  </div>
+
+                  {/* Right Buttons */}
+                  <div className="ml-6 mt-0.5 flex items-center gap-3">
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        clearAllPendingChanges({ workspaceId, environment, secretPath })
+                      }
+                      isDisabled={totalChangesCount === 0}
+                      variant="outline_bg"
+                      className="px-4 hover:border-red/40 hover:bg-red/[0.1]"
+                    >
+                      Discard
+                    </Button>
+                    <Button
+                      variant="solid"
+                      leftIcon={<FontAwesomeIcon icon={faSave} />}
+                      onClick={() => setIsModalOpen(true)}
+                      isDisabled={totalChangesCount === 0}
+                      className="px-6"
+                    >
+                      Save Changes
+                    </Button>
+                  </div>
+                </div>
               </div>
-
-              {/* Description */}
-              <p className="text-sm leading-5 text-mineshaft-400">
-                Review pending changes and commit them to apply the updates.
-              </p>
-            </div>
-
-            {/* Right Buttons */}
-            <div className="ml-6 mt-0.5 flex items-center gap-3">
-              <Button
-                size="sm"
-                onClick={() => clearAllPendingChanges({ workspaceId, environment, secretPath })}
-                isDisabled={totalChangesCount === 0}
-                variant="outline_bg"
-                className="px-4 hover:border-red/40 hover:bg-red/[0.1]"
-              >
-                Discard
-              </Button>
-              <Button
-                variant="solid"
-                leftIcon={<FontAwesomeIcon icon={faEye} />}
-                onClick={() => setIsModalOpen(true)}
-                isDisabled={totalChangesCount === 0}
-                className="px-6"
-              >
-                Review Changes
-              </Button>
-            </div>
-          </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
       )}
 
@@ -345,14 +366,14 @@ export const CommitForm: React.FC<CommitFormProps> = ({
         <ModalContent
           title={
             <div className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faCodeCommit} className="text-mineshaft-400" />
-              Commit Changes
+              <FontAwesomeIcon icon={faClipboardCheck} className="text-mineshaft-400" />
+              Review Changes
               <Badge variant="primary" className="mt-[0.05rem]">
                 {totalChangesCount} Change{totalChangesCount !== 1 ? "s" : ""}
               </Badge>
             </div>
           }
-          subTitle={"Write a commit message and review the changes you&apos;re about to commit."}
+          subTitle="Write a commit message and review the changes you're about to save."
           className="max-h-[90vh] max-w-[95%] md:max-w-7xl"
         >
           <div className="space-y-6">
@@ -413,6 +434,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 onChange={(e) => setCommitMessage(e.target.value)}
                 placeholder="Describe your changes..."
                 className="w-full"
+                autoFocus
                 required
               />
             </div>
@@ -435,7 +457,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 colorSchema="primary"
                 variant="outline_bg"
               >
-                {isCommitting ? "Committing..." : "Commit Changes"}
+                {isCommitting ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </div>

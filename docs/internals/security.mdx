@@ -92,12 +92,11 @@ Infisical Cloud utilizes several strategies to ensure high availability, leverag
 
 ## Cross-Region Replication for Disaster Recovery (Infisical Cloud)
 
-To handle regional failures, Infisical Cloud keeps standby regions updated and ready to take over when needed.
+To handle regional failures, Infisical Cloud keeps backups both within AWS and across cloud providers in GCP updated and ready to take over when needed.
 
 - ElastiCache (Redis): Data is replicated across regions using AWS Global Datastore, keeping cached data consistent and available even if a primary region goes down.
-- RDS (PostgreSQL): Cross-region read replicas ensure database data is available in multiple locations, allowing for failover in case of a regional outage.
+- RDS (PostgreSQL): Cross-region read replicas ensure database data is available in multiple AWS locations, with additional replication to GCP for multi-cloud disaster recovery, allowing for failover in case of a regional outage or cloud provider issues.
 
-With standby regions and automated failovers in place, Infisical Cloud faces minimal service disruptions even during large-scale outages.
 
 ## Penetration testing
 

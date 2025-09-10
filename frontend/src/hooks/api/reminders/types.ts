@@ -2,6 +2,7 @@ export type CreateReminderDTO = {
   message?: string | null;
   repeatDays?: number | null;
   nextReminderDate?: Date | null;
+  fromDate?: Date | null;
   secretId: string;
   recipients?: string[];
 };

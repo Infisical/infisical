@@ -3,6 +3,8 @@ import knex from "knex";
 import { z } from "zod";
 
 import { crypto } from "@app/lib/crypto/cryptography";
+import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
@@ -148,8 +150,10 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     return { ...providerInputs, hostIp };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSqlDBSchema>) => {
-    const ssl = providerInputs.ca ? { rejectUnauthorized: false, ca: providerInputs.ca } : undefined;
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSqlDBSchema> & { hostIp: string }) => {
+    const ssl = providerInputs.ca
+      ? { rejectUnauthorized: false, ca: providerInputs.ca, servername: providerInputs.host }
+      : undefined;
     const isMsSQLClient = providerInputs.client === SqlProviders.MsSQL;
 
     const db = knex({
@@ -157,7 +161,10 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
       connection: {
         database: providerInputs.database,
         port: providerInputs.port,
-        host: providerInputs.host,
+        host:
+          providerInputs.client === SqlProviders.Postgres && !providerInputs.gatewayId
+            ? providerInputs.hostIp
+            : providerInputs.host,
         user: providerInputs.username,
         password: providerInputs.password,
         ssl,
@@ -207,13 +214,24 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
     let isConnected = false;
-    const gatewayCallback = async (host = providerInputs.hostIp, port = providerInputs.port) => {
-      const db = await $getClient({ ...providerInputs, port, host });
+    const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
+      const db = await $getClient({ ...providerInputs, port, host, hostIp: providerInputs.hostIp });
       // oracle needs from keyword
       const testStatement = providerInputs.client === SqlProviders.Oracle ? "SELECT 1 FROM DUAL" : "SELECT 1";
 
-      isConnected = await db.raw(testStatement).then(() => true);
-      await db.destroy();
+      try {
+        isConnected = await db.raw(testStatement).then(() => true);
+      } catch (err) {
+        const sanitizedErrorMessage = sanitizeString({
+          unsanitizedString: (err as Error)?.message,
+          tokens: [providerInputs.username]
+        });
+        throw new BadRequestError({
+          message: `Failed to connect with provider: ${sanitizedErrorMessage}`
+        });
+      } finally {
+        await db.destroy();
+      }
     };
 
     if (providerInputs.gatewayId) {
@@ -233,13 +251,13 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     const { inputs, expireAt, usernameTemplate, identity } = data;
 
     const providerInputs = await validateProviderInputs(inputs);
+    const { database } = providerInputs;
     const username = generateUsername(providerInputs.client, usernameTemplate, identity);
 
     const password = generatePassword(providerInputs.client, providerInputs.passwordRequirements);
     const gatewayCallback = async (host = providerInputs.host, port = providerInputs.port) => {
       const db = await $getClient({ ...providerInputs, port, host });
       try {
-        const { database } = providerInputs;
         const expiration = new Date(expireAt).toISOString();
 
         const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
@@ -255,6 +273,14 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
             // eslint-disable-next-line
             await tx.raw(query);
           }
+        });
+      } catch (err) {
+        const sanitizedErrorMessage = sanitizeString({
+          unsanitizedString: (err as Error)?.message,
+          tokens: [username, password, database]
+        });
+        throw new BadRequestError({
+          message: `Failed to create lease from provider: ${sanitizedErrorMessage}`
         });
       } finally {
         await db.destroy();
@@ -282,6 +308,14 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
             // eslint-disable-next-line
             await tx.raw(query);
           }
+        });
+      } catch (err) {
+        const sanitizedErrorMessage = sanitizeString({
+          unsanitizedString: (err as Error)?.message,
+          tokens: [username, database]
+        });
+        throw new BadRequestError({
+          message: `Failed to revoke lease from provider: ${sanitizedErrorMessage}`
         });
       } finally {
         await db.destroy();
@@ -319,6 +353,14 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
             }
           });
         }
+      } catch (err) {
+        const sanitizedErrorMessage = sanitizeString({
+          unsanitizedString: (err as Error)?.message,
+          tokens: [database]
+        });
+        throw new BadRequestError({
+          message: `Failed to renew lease from provider: ${sanitizedErrorMessage}`
+        });
       } finally {
         await db.destroy();
       }

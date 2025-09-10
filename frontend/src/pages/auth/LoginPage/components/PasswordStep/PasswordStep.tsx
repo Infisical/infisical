@@ -11,14 +11,14 @@ import { createNotification } from "@app/components/notifications";
 import attemptCliLogin from "@app/components/utilities/attemptCliLogin";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, Input, Spinner } from "@app/components/v2";
+import { Button, ContentLoader, Input } from "@app/components/v2";
 import { envConfig } from "@app/config/env";
 import { SessionStorageKeys } from "@app/const";
 import { useToggle } from "@app/hooks";
 import { useOauthTokenExchange, useSelectOrganization } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
-import { fetchMyPrivateKey, fetchUserDuplicateAccounts } from "@app/hooks/api/users/queries";
+import { fetchUserDuplicateAccounts } from "@app/hooks/api/users/queries";
 import { EmailDuplicationConfirmation } from "@app/pages/auth/SelectOrgPage/EmailDuplicationConfirmation";
 
 import { navigateUserToOrg, useNavigateToSelectOrganization } from "../../Login.utils";
@@ -70,9 +70,6 @@ export const PasswordStep = ({
       // set JWT token
       SecurityClient.setToken(oauthLogin.token);
 
-      const privateKey = await fetchMyPrivateKey();
-      localStorage.setItem("PRIVATE_KEY", privateKey);
-
       // case: organization ID is present from the provider auth token -- select the org and use the new jwt token in the CLI, then navigate to the org
       if (organizationId) {
         const finishWithOrgWorkflow = async () => {
@@ -92,7 +89,7 @@ export const PasswordStep = ({
             console.log("organization id was present. new JWT token to be used in CLI:", token);
             const instance = axios.create();
             const payload = {
-              privateKey,
+              privateKey: "", // note(daniel): no longer needed by the CLI, because the CLI only uses the private key to create service tokens, and the private key isn't used anymore when creating service tokens.
               email,
               JTWToken: token
             };
@@ -329,9 +326,8 @@ export const PasswordStep = ({
 
   if (hasExchangedPrivateKey) {
     return (
-      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-        <Spinner />
-        <p className="text-white opacity-80">Loading, please wait</p>
+      <div className="fixed left-0 top-0 h-screen w-screen bg-bunker-800">
+        <ContentLoader />
       </div>
     );
   }

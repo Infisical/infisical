@@ -119,7 +119,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="mt-4 py-4">
+      <DropdownMenuContent align="end" className="mt-4 overflow-visible py-4">
         <form onSubmit={handleSubmit(setFilter)}>
           <div className="flex min-w-64 flex-col font-inter">
             <div className="mb-3 flex items-center border-b border-b-mineshaft-500 px-3 pb-2">
@@ -176,7 +176,8 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                           </div>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
-                          align="start"
+                          align="end"
+                          sideOffset={2}
                           className="thin-scrollbar z-[100] max-h-80 overflow-hidden"
                         >
                           <div className="max-h-80 overflow-y-auto">
@@ -258,6 +259,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                           else setValue("userAgentType", e as UserAgentType, { shouldDirty: true });
                         }}
                         className={twMerge("w-full border border-mineshaft-500 bg-mineshaft-700")}
+                        position="popper"
                       >
                         <SelectItem value="all" key="all">
                           All sources
@@ -319,7 +321,6 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
               <AnimatePresence initial={false}>
                 {showSecretsSection && (
                   <motion.div
-                    className="overflow-hidden"
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
@@ -352,6 +353,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                           >
                             <FilterableSelect
                               value={value}
+                              menuPlacement="top"
                               key={value?.name || "filter-environment"}
                               isClearable
                               isDisabled={!selectedProject}

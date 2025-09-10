@@ -2,14 +2,10 @@ import { TOrgPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
-export enum ImportType {
-  EnvKey = "envkey",
-  Vault = "vault"
-}
-
 export enum VaultMappingType {
   Namespace = "namespace",
-  KeyVault = "key-vault"
+  KeyVault = "key-vault",
+  Custom = "custom"
 }
 
 export type InfisicalImportData = {
@@ -31,11 +27,16 @@ export type TImportEnvKeyDataDTO = {
   encryptedJson: { nonce: string; data: string };
 } & Omit<TOrgPermission, "orgId">;
 
+export type THasCustomVaultMigrationDTO = {
+  provider: ExternalMigrationProviders;
+} & Omit<TOrgPermission, "orgId">;
+
 export type TImportVaultDataDTO = {
   vaultAccessToken: string;
   vaultNamespace?: string;
   mappingType: VaultMappingType;
   vaultUrl: string;
+  gatewayId?: string;
 } & Omit<TOrgPermission, "orgId">;
 
 export type TImportInfisicalDataCreate = {
@@ -112,5 +113,11 @@ export type TEnvKeyExportJSON = {
 };
 
 export enum ExternalPlatforms {
-  EnvKey = "EnvKey"
+  EnvKey = "EnvKey",
+  Vault = "Vault"
+}
+
+export enum ExternalMigrationProviders {
+  Vault = "vault",
+  EnvKey = "env-key"
 }

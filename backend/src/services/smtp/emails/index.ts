@@ -1,4 +1,5 @@
 export * from "./AccessApprovalRequestTemplate";
+export * from "./AccessApprovalRequestUpdatedTemplate";
 export * from "./EmailMfaTemplate";
 export * from "./EmailVerificationTemplate";
 export * from "./ExternalImportFailedTemplate";
@@ -8,6 +9,7 @@ export * from "./IntegrationSyncFailedTemplate";
 export * from "./NewDeviceLoginTemplate";
 export * from "./OrgAdminBreakglassAccessTemplate";
 export * from "./OrgAdminProjectGrantAccessTemplate";
+export * from "./OrganizationAssignmentTemplate";
 export * from "./OrganizationInvitationTemplate";
 export * from "./PasswordResetTemplate";
 export * from "./PasswordSetupTemplate";

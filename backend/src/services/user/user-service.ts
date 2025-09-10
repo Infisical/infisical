@@ -1,9 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { SecretKeyEncoding } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { crypto } from "@app/lib/crypto/cryptography";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -11,9 +10,10 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { AuthMethod } from "../auth/auth-type";
+import { AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TUserDALFactory } from "./user-dal";
 import { TListUserGroupsDTO, TUpdateUserMfaDTO } from "./user-types";
 
@@ -39,6 +39,7 @@ type TUserServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
   permissionService: TPermissionServiceFactory;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -50,22 +51,38 @@ export const userServiceFactory = ({
   groupProjectDAL,
   tokenService,
   smtpService,
-  permissionService
+  permissionService,
+  userAliasDAL
 }: TUserServiceFactoryDep) => {
-  const sendEmailVerificationCode = async (username: string) => {
+  const sendEmailVerificationCode = async (token: string) => {
+    const { authType, aliasId, username, authTokenType } = crypto.jwt().decode(token) as {
+      authType: string;
+      aliasId?: string;
+      username: string;
+      authTokenType: AuthTokenType;
+    };
+    if (authTokenType !== AuthTokenType.PROVIDER_TOKEN) throw new BadRequestError({ name: "Invalid auth token type" });
+
     // akhilmhdh: case sensitive email resolution
     const users = await userDAL.findUserByUsername(username);
     const user = users?.length > 1 ? users.find((el) => el.username === username) : users?.[0];
     if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
+    let { isEmailVerified } = user;
+    if (aliasId) {
+      const userAlias = await userAliasDAL.findOne({ userId: user.id, aliasType: authType, id: aliasId });
+      if (!userAlias) throw new NotFoundError({ name: `User alias with ID '${aliasId}' not found` });
+      isEmailVerified = userAlias.isEmailVerified;
+    }
 
     if (!user.email)
       throw new BadRequestError({ name: "Failed to send email verification code due to no email on user" });
-    if (user.isEmailVerified)
+    if (isEmailVerified)
       throw new BadRequestError({ name: "Failed to send email verification code due to email already verified" });
 
-    const token = await tokenService.createTokenForUser({
+    const userToken = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_VERIFICATION,
-      userId: user.id
+      userId: user.id,
+      aliasId
     });
 
     await smtpService.sendMail({
@@ -73,7 +90,7 @@ export const userServiceFactory = ({
       subjectLine: "Infisical confirmation code",
       recipients: [user.email],
       substitutions: {
-        code: token
+        code: userToken
       }
     });
   };
@@ -97,15 +114,21 @@ export const userServiceFactory = ({
     if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
     if (!user.email)
       throw new BadRequestError({ name: "Failed to verify email verification code due to no email on user" });
-    if (user.isEmailVerified)
-      throw new BadRequestError({ name: "Failed to verify email verification code due to email already verified" });
 
-    await tokenService.validateTokenForUser({
+    const token = await tokenService.validateTokenForUser({
       type: TokenType.TOKEN_EMAIL_VERIFICATION,
       userId: user.id,
       code
     });
 
+    if (token?.aliasId) {
+      const userAlias = await userAliasDAL.findOne({ userId: user.id, id: token.aliasId });
+      if (!userAlias) throw new NotFoundError({ name: `User alias with ID '${token.aliasId}' not found` });
+      if (userAlias?.isEmailVerified)
+        throw new BadRequestError({ name: "Failed to verify email verification code due to email already verified" });
+
+      await userAliasDAL.updateById(token.aliasId, { isEmailVerified: true });
+    }
     const userEmails = user?.email ? await userDAL.find({ email: user.email }) : [];
 
     await userDAL.updateById(user.id, {
@@ -175,7 +198,11 @@ export const userServiceFactory = ({
   const getMe = async (userId: string) => {
     const user = await userDAL.findUserEncKeyByUserId(userId);
     if (!user) throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "GetMe" });
-    return user;
+
+    return {
+      ...user,
+      encryptionVersion: user.encryptionVersion!
+    };
   };
 
   const deleteUser = async (userId: string) => {
@@ -210,25 +237,6 @@ export const userServiceFactory = ({
       { id: userId },
       { consecutiveFailedMfaAttempts: 0, isLocked: false, temporaryLockDateEnd: null }
     );
-  };
-
-  const getUserPrivateKey = async (userId: string) => {
-    const user = await userDAL.findUserEncKeyByUserId(userId);
-    if (!user?.serverEncryptedPrivateKey || !user.serverEncryptedPrivateKeyIV || !user.serverEncryptedPrivateKeyTag) {
-      throw new NotFoundError({ message: `Private key for user with ID '${userId}' not found` });
-    }
-
-    const privateKey = crypto
-      .encryption()
-      .symmetric()
-      .decryptWithRootEncryptionKey({
-        ciphertext: user.serverEncryptedPrivateKey,
-        tag: user.serverEncryptedPrivateKeyTag,
-        iv: user.serverEncryptedPrivateKeyIV,
-        keyEncoding: user.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
-      });
-
-    return privateKey;
   };
 
   const getUserProjectFavorites = async (userId: string, orgId: string) => {
@@ -311,7 +319,6 @@ export const userServiceFactory = ({
     listUserGroups,
     getUserAction,
     unlockUser,
-    getUserPrivateKey,
     getAllMyAccounts,
     getUserProjectFavorites,
     removeMyDuplicateAccounts,

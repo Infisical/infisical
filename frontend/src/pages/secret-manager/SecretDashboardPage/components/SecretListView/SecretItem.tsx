@@ -12,11 +12,9 @@ import {
   DropdownMenuTrigger,
   FontAwesomeSymbol,
   FormControl,
+  GenericFieldLabel,
   IconButton,
   Input,
-  Modal,
-  ModalContent,
-  ModalTrigger,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -41,16 +39,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { memo, useCallback, useEffect, useRef } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { twMerge } from "tailwind-merge";
-import {
-  hasSecretReference,
-  SecretReferenceTree
-} from "@app/components/secrets/SecretReferenceDetails";
 
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEyeSlash, faKey, faRotate } from "@fortawesome/free-solid-svg-icons";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { format } from "date-fns";
+import { CreateReminderForm } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CreateReminderForm";
 import {
   FontAwesomeSpriteName,
   formSchema,
@@ -60,7 +56,7 @@ import {
 import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 import { useBatchModeActions } from "../../SecretMainPage.store";
 
-export const HIDDEN_SECRET_VALUE = "******";
+export const HIDDEN_SECRET_VALUE = "*****************************";
 export const HIDDEN_SECRET_VALUE_API_MASK = "<hidden-by-infisical>";
 
 type Props = {
@@ -79,7 +75,7 @@ type Props = {
   onCreateTag: () => void;
   environment: string;
   secretPath: string;
-  handleSecretShare: () => void;
+  onShareSecret: (sec: SecretV3RawSanitized) => void;
   importedBy?: {
     environment: { name: string; slug: string };
     folders: {
@@ -106,14 +102,15 @@ export const SecretItem = memo(
     onToggleSecretSelect,
     environment,
     secretPath,
-    handleSecretShare,
+    onShareSecret,
     importedBy,
     isPending,
     pendingAction,
     colWidth
   }: Props) => {
     const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
-      "editSecret"
+      "editSecret",
+      "reminder"
     ] as const);
     const { currentWorkspace } = useWorkspace();
     const { permission } = useProjectPermission();
@@ -142,7 +139,7 @@ export const SecretItem = memo(
     );
 
     const getDefaultValue = () => {
-      if (secret.secretValueHidden) {
+      if (secret.secretValueHidden && !isPending) {
         return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
       }
       return secret.valueOverride || secret.value || "";
@@ -186,7 +183,7 @@ export const SecretItem = memo(
       name: "tags"
     });
 
-    const isOverriden =
+    const isOverridden =
       overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
     const hasTagsApplied = Boolean(fields.length);
 
@@ -222,7 +219,7 @@ export const SecretItem = memo(
       }
 
       if (isDirty && !isSubmitting && !isAutoSavingRef.current) {
-        const debounceTime = 600;
+        const debounceTime = 200;
 
         autoSaveTimeoutRef.current = setTimeout(() => {
           autoSaveChanges(formValues);
@@ -272,7 +269,7 @@ export const SecretItem = memo(
     }, [isSecValueCopied]);
 
     const handleOverrideClick = () => {
-      if (isOverriden) {
+      if (isOverridden) {
         // override need not be flagged delete if it was never saved in server
         // meaning a new unsaved personal secret but user toggled back later
         const isUnsavedOverride = !secret.idOverride;
@@ -327,7 +324,7 @@ export const SecretItem = memo(
 
     const copyTokenToClipboard = () => {
       const [overrideValue, value] = getValues(["value", "valueOverride"]);
-      if (isOverriden) {
+      if (isOverridden) {
         navigator.clipboard.writeText(value as string);
       } else {
         navigator.clipboard.writeText(overrideValue as string);
@@ -335,7 +332,7 @@ export const SecretItem = memo(
       setIsSecValueCopied.on();
     };
 
-    const isInAutoSaveMode = isDirty && !isSubmitting && !isOverriden;
+    const isInAutoSaveMode = isDirty && !isSubmitting && !isOverridden;
 
     return (
       <form onSubmit={handleSubmit(handleFormSubmit)}>
@@ -398,7 +395,7 @@ export const SecretItem = memo(
                     isReadOnly={isReadOnly || isRotatedSecret}
                     autoCapitalization={currentWorkspace?.autoCapitalization}
                     variant="plain"
-                    isDisabled={isOverriden}
+                    isDisabled={isOverridden}
                     placeholder={error?.message}
                     isError={Boolean(error)}
                     onKeyUp={() => trigger("key")}
@@ -413,14 +410,14 @@ export const SecretItem = memo(
               tabIndex={0}
               role="button"
             >
-              {secretValueHidden && !isOverriden && (
+              {secretValueHidden && !isOverridden && !isPending && (
                 <Tooltip
                   content={`You do not have access to view the current value${canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}`}
                 >
                   <FontAwesomeIcon className="pr-2" size="sm" icon={faEyeSlash} />
                 </Tooltip>
               )}
-              {isOverriden ? (
+              {isOverridden ? (
                 <Controller
                   name="valueOverride"
                   key="value-overriden"
@@ -444,12 +441,14 @@ export const SecretItem = memo(
                     <InfisicalSecretInput
                       isReadOnly={isReadOnlySecret}
                       key="secret-value"
-                      isVisible={isVisible && !secretValueHidden}
-                      canEditButNotView={secretValueHidden && !isOverriden}
+                      isVisible={isVisible && (!secretValueHidden || isPending)}
+                      canEditButNotView={secretValueHidden && !isOverridden && !isPending}
                       environment={environment}
                       secretPath={secretPath}
                       {...field}
-                      defaultValue={secretValueHidden ? HIDDEN_SECRET_VALUE : undefined}
+                      defaultValue={
+                        secretValueHidden && !isPending ? HIDDEN_SECRET_VALUE : undefined
+                      }
                       containerClassName="py-1.5 rounded-md transition-all"
                     />
                   )}
@@ -460,15 +459,15 @@ export const SecretItem = memo(
                   key="actions"
                   className="flex h-full flex-shrink-0 self-start transition-all group-hover:gap-x-2"
                 >
-                  <Tooltip content="Copy secret">
-                    <IconButton
-                      isDisabled={secret.secretValueHidden}
-                      ariaLabel="copy-value"
-                      variant="plain"
-                      size="sm"
-                      className="w-0 overflow-hidden p-0 group-hover:w-5"
-                      onClick={copyTokenToClipboard}
-                    >
+                  <IconButton
+                    isDisabled={secret.secretValueHidden}
+                    ariaLabel="copy-value"
+                    variant="plain"
+                    size="sm"
+                    className="w-0 overflow-hidden p-0 group-hover:w-5"
+                    onClick={copyTokenToClipboard}
+                  >
+                    <Tooltip content="Copy secret">
                       <FontAwesomeSymbol
                         className="h-3.5 w-3"
                         symbolName={
@@ -477,8 +476,8 @@ export const SecretItem = memo(
                             : FontAwesomeSpriteName.ClipboardCopy
                         }
                       />
-                    </IconButton>
-                  </Tooltip>
+                    </Tooltip>
+                  </IconButton>
                   <ProjectPermissionCan
                     I={ProjectPermissionActions.Edit}
                     a={subject(ProjectPermissionSub.Secrets, {
@@ -489,41 +488,47 @@ export const SecretItem = memo(
                     })}
                   >
                     {(isAllowed) => (
-                      <Modal>
-                        <ModalTrigger asChild>
-                          <IconButton
-                            className="w-0 overflow-hidden p-0 group-hover:w-5"
-                            variant="plain"
-                            size="md"
-                            ariaLabel="reference-tree"
-                            isDisabled={!isAllowed || !hasSecretReference(secret?.value)}
-                          >
-                            <Tooltip
-                              content={
-                                hasSecretReference(secret?.value)
-                                  ? "Secret Reference Tree"
-                                  : "Secret does not contain references"
-                              }
-                            >
-                              <FontAwesomeSymbol
-                                className="h-3.5 w-3.5"
-                                symbolName={FontAwesomeSpriteName.SecretReferenceTree}
-                              />
-                            </Tooltip>
-                          </IconButton>
-                        </ModalTrigger>
-                        <ModalContent
-                          title="Secret Reference Details"
-                          subTitle="Visual breakdown of secrets referenced by this secret."
-                          onOpenAutoFocus={(e) => e.preventDefault()}
+                      <IconButton
+                        className={twMerge(
+                          "w-0 overflow-hidden p-0 group-hover:w-5",
+                          secret.reminder && "w-5 text-primary"
+                        )}
+                        onClick={() => handlePopUpOpen("reminder")}
+                        variant="plain"
+                        size="md"
+                        ariaLabel="Secret reminder"
+                        isDisabled={!isAllowed || isOverridden}
+                      >
+                        <Tooltip
+                          className="max-w-2xl"
+                          content={
+                            isOverridden ? (
+                              "Unavailable with override"
+                            ) : secret.reminder ? (
+                              <div className="flex flex-col gap-y-1">
+                                <GenericFieldLabel label="Reminder Date">
+                                  {secret.reminder.nextReminderDate
+                                    ? format(
+                                        new Date(secret.reminder.nextReminderDate),
+                                        "h:mm aa - MMM d yyyy"
+                                      )
+                                    : undefined}
+                                </GenericFieldLabel>
+                                <GenericFieldLabel label="Message">
+                                  {secret.reminder.message}
+                                </GenericFieldLabel>
+                              </div>
+                            ) : (
+                              "Set Secret Reminder"
+                            )
+                          }
                         >
-                          <SecretReferenceTree
-                            secretPath={secretPath}
-                            environment={environment}
-                            secretKey={secret?.key}
+                          <FontAwesomeSymbol
+                            className="h-3.5 w-3.5"
+                            symbolName={FontAwesomeSpriteName.Reminder}
                           />
-                        </ModalContent>
-                      </Modal>
+                        </Tooltip>
+                      </IconButton>
                     )}
                   </ProjectPermissionCan>
                   <DropdownMenu>
@@ -537,7 +542,7 @@ export const SecretItem = memo(
                       })}
                     >
                       {(isAllowed) => (
-                        <DropdownMenuTrigger asChild disabled={!isAllowed}>
+                        <DropdownMenuTrigger asChild disabled={!isAllowed || isOverridden}>
                           <IconButton
                             ariaLabel="tags"
                             variant="plain"
@@ -546,9 +551,9 @@ export const SecretItem = memo(
                               "w-0 overflow-hidden p-0 group-hover:w-5 data-[state=open]:w-5",
                               hasTagsApplied && "w-5 text-primary"
                             )}
-                            isDisabled={!isAllowed}
+                            isDisabled={!isAllowed || isOverridden}
                           >
-                            <Tooltip content="Tags">
+                            <Tooltip content={isOverridden ? "Unavailable with override" : "Tags"}>
                               <FontAwesomeSymbol
                                 className="h-3.5 w-3.5"
                                 symbolName={FontAwesomeSpriteName.Tags}
@@ -615,8 +620,6 @@ export const SecretItem = memo(
                       secretName,
                       secretTags: selectedTagSlugs
                     })}
-                    renderTooltip
-                    allowedLabel="Override"
                   >
                     {(isAllowed) => (
                       <IconButton
@@ -627,13 +630,15 @@ export const SecretItem = memo(
                         onClick={handleOverrideClick}
                         className={twMerge(
                           "w-0 overflow-hidden p-0 group-hover:w-5",
-                          isOverriden && "w-5 text-primary"
+                          isOverridden && "w-5 text-primary"
                         )}
                       >
-                        <FontAwesomeSymbol
-                          symbolName={FontAwesomeSpriteName.Override}
-                          className="h-3.5 w-3.5"
-                        />
+                        <Tooltip content={`${isOverridden ? "Remove" : "Add"} Override`}>
+                          <FontAwesomeSymbol
+                            symbolName={FontAwesomeSpriteName.Override}
+                            className="h-3.5 w-3.5"
+                          />
+                        </Tooltip>
                       </IconButton>
                     )}
                   </ProjectPermissionCan>
@@ -648,7 +653,7 @@ export const SecretItem = memo(
                       })}
                     >
                       {(isAllowed) => (
-                        <PopoverTrigger asChild disabled={!isAllowed}>
+                        <PopoverTrigger asChild disabled={!isAllowed || isOverridden}>
                           <IconButton
                             className={twMerge(
                               "w-0 overflow-hidden p-0 group-hover:w-5",
@@ -657,9 +662,11 @@ export const SecretItem = memo(
                             variant="plain"
                             size="md"
                             ariaLabel="add-comment"
-                            isDisabled={!isAllowed}
+                            isDisabled={!isAllowed || isOverridden}
                           >
-                            <Tooltip content="Comment">
+                            <Tooltip
+                              content={isOverridden ? "Unavailable with override" : "Comment"}
+                            >
                               <FontAwesomeSymbol
                                 className="h-3.5 w-3.5"
                                 symbolName={FontAwesomeSpriteName.Comment}
@@ -675,7 +682,7 @@ export const SecretItem = memo(
                       variant="plain"
                       size="md"
                       ariaLabel="share-secret"
-                      onClick={handleSecretShare}
+                      onClick={() => onShareSecret(secret)}
                     >
                       <Tooltip content="Share Secret">
                         <FontAwesomeSymbol
@@ -849,12 +856,13 @@ export const SecretItem = memo(
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 10, opacity: 0 }}
                   >
-                    <Tooltip content="More">
+                    <Tooltip content={isOverridden ? "Unavailable with override" : "More"}>
                       <IconButton
                         ariaLabel="more"
                         variant="plain"
                         size="md"
                         className="h-5 w-4 p-0 opacity-0 group-hover:opacity-100"
+                        isDisabled={isOverridden}
                         onClick={() => onDetailViewSecret(secret)}
                       >
                         <FontAwesomeSymbol
@@ -872,7 +880,13 @@ export const SecretItem = memo(
                         secretTags: selectedTagSlugs
                       })}
                       renderTooltip
-                      allowedLabel={isRotatedSecret ? "Cannot Delete Rotated Secret" : "Delete"}
+                      allowedLabel={
+                        isOverridden
+                          ? "Unavailable with override"
+                          : isRotatedSecret
+                            ? "Cannot Delete Rotated Secret"
+                            : "Delete"
+                      }
                     >
                       {(isAllowed) => (
                         <IconButton
@@ -882,7 +896,7 @@ export const SecretItem = memo(
                           size="md"
                           className="p-0 opacity-0 group-hover:opacity-100"
                           onClick={() => onDeleteSecret(secret)}
-                          isDisabled={!isAllowed || isRotatedSecret}
+                          isDisabled={!isAllowed || isRotatedSecret || isOverridden}
                         >
                           <FontAwesomeSymbol
                             symbolName={FontAwesomeSpriteName.Trash}
@@ -957,6 +971,15 @@ export const SecretItem = memo(
             </AnimatePresence>
           </div>
         </div>
+        <CreateReminderForm
+          isOpen={popUp.reminder.isOpen}
+          onOpenChange={() => handlePopUpToggle("reminder")}
+          workspaceId={currentWorkspace.id}
+          environment={environment}
+          secretPath={secretPath}
+          secretId={secret?.id}
+          reminder={secret.reminder}
+        />
         <DeleteActionModal
           isOpen={popUp.editSecret.isOpen}
           deleteKey="confirm"

@@ -16,6 +16,7 @@ export type TooltipProps = Omit<TooltipPrimitive.TooltipContentProps, "open" | "
   center?: boolean;
   size?: "sm" | "md";
   rootProps?: RootProps;
+  delayDuration?: number;
 };
 
 export const Tooltip = ({
@@ -31,12 +32,13 @@ export const Tooltip = ({
   position = "top",
   size = "md",
   rootProps,
+  delayDuration = 50,
   ...props
 }: TooltipProps) =>
   // just render children if tooltip content is empty
   content ? (
     <TooltipPrimitive.Root
-      delayDuration={50}
+      delayDuration={delayDuration}
       {...rootProps}
       open={isOpen}
       defaultOpen={defaultOpen}
