@@ -8,6 +8,7 @@ export async function up(knex: Knex): Promise<void> {
       t.text("key").primary();
       t.bigint("integerValue");
       t.datetime("expiresAt");
+      t.timestamps(true, true, true);
     });
   }
 }

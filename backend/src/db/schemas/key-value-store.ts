@@ -10,7 +10,9 @@ import { TImmutableDBKeys } from "./models";
 export const KeyValueStoreSchema = z.object({
   key: z.string(),
   integerValue: z.coerce.number().nullable().optional(),
-  expiresAt: z.date().nullable().optional()
+  expiresAt: z.date().nullable().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TKeyValueStore = z.infer<typeof KeyValueStoreSchema>;
