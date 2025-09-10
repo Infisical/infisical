@@ -294,6 +294,15 @@ export const oidcConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
+          const plan = await licenseService.getPlan(orgId);
+          if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+            // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
+            throw new BadRequestError({
+              message:
+                "Failed to create new member via OIDC due to member limit reached. Upgrade plan to add more members."
+            });
+          }
+
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
           await orgMembershipDAL.create(

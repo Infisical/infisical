@@ -336,14 +336,6 @@ export const samlConfigServiceFactory = ({
         return foundUser;
       });
     } else {
-      const plan = await licenseService.getPlan(orgId);
-      if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
-        // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
-        throw new BadRequestError({
-          message: "Failed to create new member via SAML due to member limit reached. Upgrade plan to add more members."
-        });
-      }
-
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         newUser = await userDAL.findOne(
@@ -391,6 +383,15 @@ export const samlConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
+          const plan = await licenseService.getPlan(orgId);
+          if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+            // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
+            throw new BadRequestError({
+              message:
+                "Failed to create new member via SAML due to member limit reached. Upgrade plan to add more members."
+            });
+          }
+
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
           await orgMembershipDAL.create(
