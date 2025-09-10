@@ -1,11 +1,12 @@
 import { useState } from "react";
+import ReactCodeInput from "react-code-input";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
+import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useUser } from "@app/context";
 import { useRequestEmailChangeOTP, useUpdateUserEmail } from "@app/hooks/api/users";
 import { clearSession } from "@app/hooks/api/users/queries";
@@ -16,29 +17,38 @@ const emailSchema = z
   })
   .required();
 
-const otpSchema = z
-  .object({
-    otpCode: z.string().length(8, "OTP code must be exactly 8 digits")
-  })
-  .required();
-
 export type EmailFormData = z.infer<typeof emailSchema>;
-export type OTPFormData = z.infer<typeof otpSchema>;
+
+const otpInputProps = {
+  inputStyle: {
+    fontFamily: "monospace",
+    margin: "4px",
+    MozAppearance: "textfield" as const,
+    width: "45px",
+    borderRadius: "6px",
+    fontSize: "18px",
+    height: "45px",
+    padding: "0",
+    paddingLeft: "0",
+    paddingRight: "0",
+    backgroundColor: "#262626",
+    color: "white",
+    border: "1px solid #404040",
+    textAlign: "center" as const,
+    outlineColor: "#8ca542",
+    borderColor: "#404040"
+  }
+};
 
 export const ChangeEmailSection = () => {
   const navigate = useNavigate();
   const { user } = useUser();
-  const [step, setStep] = useState<"email" | "otp">("email");
+  const [isOTPModalOpen, setIsOTPModalOpen] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
 
   const emailForm = useForm<EmailFormData>({
     defaultValues: { newEmail: "" },
     resolver: zodResolver(emailSchema)
-  });
-
-  const otpForm = useForm<OTPFormData>({
-    defaultValues: { otpCode: "" },
-    resolver: zodResolver(otpSchema)
   });
 
   const { mutateAsync: requestEmailChangeOTP, isPending: isRequestingOTP } =
@@ -74,7 +84,7 @@ export const ChangeEmailSection = () => {
     try {
       await requestEmailChangeOTP({ newEmail });
       setPendingEmail(newEmail);
-      setStep("otp");
+      setIsOTPModalOpen(true);
 
       createNotification({
         text: "Verification code sent to your new email address. Check your inbox!",
@@ -90,20 +100,30 @@ export const ChangeEmailSection = () => {
     }
   };
 
-  const handleOTPSubmit = async ({ otpCode }: OTPFormData) => {
+  const [typedOTP, setTypedOTP] = useState("");
+
+  const handleOTPSubmit = async () => {
+    if (typedOTP.length !== 8) {
+      createNotification({
+        text: "Please enter the complete 8-digit verification code",
+        type: "error"
+      });
+      return;
+    }
+
     try {
-      await updateUserEmail({ newEmail: pendingEmail, otpCode });
+      await updateUserEmail({ newEmail: pendingEmail, otpCode: typedOTP });
 
       createNotification({
         text: "Email updated successfully. You will be redirected to login.",
         type: "success"
       });
 
-      // Reset forms
+      // Reset forms and close modal
       emailForm.reset();
-      otpForm.reset();
-      setStep("email");
+      setIsOTPModalOpen(false);
       setPendingEmail("");
+      setTypedOTP("");
 
       // Clear frontend session/token to ensure proper logout
       clearSession(true);
@@ -118,10 +138,10 @@ export const ChangeEmailSection = () => {
       const errorMessage = err?.response?.data?.message || "Invalid verification code";
       if (errorMessage.includes("Invalid verification code")) {
         // Reset to email step so user must request new OTP
-        setStep("email");
+        setIsOTPModalOpen(false);
         setPendingEmail("");
+        setTypedOTP("");
         emailForm.reset();
-        otpForm.reset();
 
         createNotification({
           text: "Invalid verification code. Please request a new one.",
@@ -136,11 +156,17 @@ export const ChangeEmailSection = () => {
     }
   };
 
-  return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <h2 className="mb-8 flex-1 text-xl font-semibold text-mineshaft-100">Change email</h2>
+  const handleOTPModalClose = () => {
+    setIsOTPModalOpen(false);
+    setPendingEmail("");
+    setTypedOTP("");
+  };
 
-      {step === "email" ? (
+  return (
+    <>
+      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+        <h2 className="mb-8 flex-1 text-xl font-semibold text-mineshaft-100">Change email</h2>
+
         <form onSubmit={emailForm.handleSubmit(handleEmailSubmit)}>
           <div className="max-w-md">
             <Controller
@@ -174,64 +200,46 @@ export const ChangeEmailSection = () => {
             We&apos;ll send an 8-digit verification code to your new email address.
           </p>
         </form>
-      ) : (
-        <div>
-          <div className="mb-4">
-            <p className="text-sm text-mineshaft-300">
-              Enter the 8-digit verification code sent to: <b>{pendingEmail}</b>
-            </p>
-          </div>
+      </div>
 
-          <form onSubmit={otpForm.handleSubmit(handleOTPSubmit)}>
-            <div className="max-w-md">
-              <Controller
-                control={otpForm.control}
-                name="otpCode"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Verification code"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input
-                      {...field}
-                      placeholder="Enter 8-digit code"
-                      maxLength={8}
-                      className="bg-mineshaft-800 text-center font-mono"
-                    />
-                  </FormControl>
-                )}
+      <Modal
+        isOpen={isOTPModalOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) handleOTPModalClose();
+        }}
+      >
+        <ModalContent
+          title="Email Verification"
+          subTitle={`Enter the 8-digit verification code sent to: ${pendingEmail}`}
+        >
+          <div className="flex flex-col items-center space-y-4">
+            <div className="flex justify-center">
+              <ReactCodeInput
+                name="otp-input"
+                inputMode="tel"
+                type="text"
+                fields={8}
+                onChange={setTypedOTP}
+                value={typedOTP}
+                {...otpInputProps}
+                className="mb-4"
               />
             </div>
-
-            <div className="mt-4 flex gap-2">
-              <Button
-                type="button"
-                variant="outline_bg"
-                onClick={() => {
-                  setStep("email");
-                  setPendingEmail("");
-                  otpForm.reset();
-                }}
-              >
+            <div className="flex gap-2">
+              <Button colorSchema="secondary" variant="outline" onClick={handleOTPModalClose}>
                 Cancel
               </Button>
               <Button
-                type="submit"
-                colorSchema="primary"
+                onClick={handleOTPSubmit}
                 isLoading={isUpdatingEmail}
-                isDisabled={isUpdatingEmail}
+                isDisabled={typedOTP.length !== 8}
               >
                 Confirm Email Change
               </Button>
             </div>
-          </form>
-
-          <p className="mt-2 font-inter text-sm text-mineshaft-400">
-            After confirming, you&apos;ll be logged out and need to sign in again.
-          </p>
-        </div>
-      )}
-    </div>
+          </div>
+        </ModalContent>
+      </Modal>
+    </>
   );
 };
