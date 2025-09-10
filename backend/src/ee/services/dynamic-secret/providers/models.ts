@@ -276,11 +276,11 @@ export const DynamicSecretMongoAtlasSchema = z.object({
 
 export const DynamicSecretMongoDBSchema = z.object({
   host: z.string().min(1).trim().toLowerCase(),
-  port: z.number().optional(),
+  port: z.number().optional().nullable(),
   username: z.string().min(1).trim(),
   password: z.string().min(1).trim(),
   database: z.string().min(1).trim(),
-  ca: z.string().min(1).optional(),
+  ca: z.string().trim().optional().nullable(),
   roles: z
     .string()
     .array()
