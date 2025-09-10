@@ -161,7 +161,10 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
       connection: {
         database: providerInputs.database,
         port: providerInputs.port,
-        host: providerInputs.client === SqlProviders.Postgres ? providerInputs.hostIp : providerInputs.host,
+        host:
+          providerInputs.client === SqlProviders.Postgres && !providerInputs.gatewayId
+            ? providerInputs.hostIp
+            : providerInputs.host,
         user: providerInputs.username,
         password: providerInputs.password,
         ssl,
