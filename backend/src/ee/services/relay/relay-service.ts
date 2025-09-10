@@ -625,7 +625,7 @@ export const relayServiceFactory = ({
 
     const relayServerKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const relayServerCertIssuedAt = new Date();
-    const relayServerCertExpireAt = new Date(new Date().setMonth(new Date().getMonth() + 1));
+    const relayServerCertExpireAt = new Date(new Date().setDate(new Date().getDate() + 1));
     const relayServerCertPrivateKey = crypto.nativeCrypto.KeyObject.from(relayServerKeys.privateKey);
 
     const relayServerCertExtensions: x509.Extension[] = [
@@ -804,7 +804,7 @@ export const relayServiceFactory = ({
         keyId: `client-${relayName}`,
         principals: [gatewayId],
         certType: SshCertType.USER,
-        requestedTtl: "30d"
+        requestedTtl: "1d"
       });
 
       return {

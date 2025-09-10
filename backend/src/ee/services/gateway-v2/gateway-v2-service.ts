@@ -471,7 +471,7 @@ export const gatewayV2ServiceFactory = ({
 
       const gatewayServerKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
       const gatewayServerCertIssuedAt = new Date();
-      const gatewayServerCertExpireAt = new Date(new Date().setMonth(new Date().getMonth() + 1));
+      const gatewayServerCertExpireAt = new Date(new Date().setDate(new Date().getDate() + 1));
       const gatewayServerCertPrivateKey = crypto.nativeCrypto.KeyObject.from(gatewayServerKeys.privateKey);
 
       const gatewayServerCertExtensions: x509.Extension[] = [
