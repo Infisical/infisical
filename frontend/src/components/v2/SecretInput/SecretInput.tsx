@@ -28,11 +28,11 @@ const syntaxHighlight = (
 
       return (
         <span
-          className={`ph-no-capture ${isInvalid ? "text-red-500" : "text-yellow"}`}
+          className={`ph-no-capture ${isInvalid ? "" : "text-yellow"}`}
           key={`secret-value-${i + 1}`}
         >
           &#36;&#123;
-          <span className={`ph-no-capture ${isInvalid ? "text-red-300/80" : "text-yellow-200/80"}`}>
+          <span className={`ph-no-capture ${isInvalid ? "" : "text-yellow-200/80"}`}>
             {referenceContent}
           </span>
           &#125;

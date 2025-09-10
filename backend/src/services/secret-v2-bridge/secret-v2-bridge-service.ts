@@ -148,7 +148,7 @@ export const secretV2BridgeServiceFactory = ({
   keyStore,
   reminderService
 }: TSecretV2BridgeServiceFactoryDep) => {
-  const validateSecretReferences = async (
+  const $validateSecretReferences = async (
     projectId: string,
     permission: MongoAbility<ProjectPermissionSet>,
     references: ReturnType<typeof getAllSecretReferences>["nestedReferences"],
@@ -177,58 +177,71 @@ export const secretV2BridgeServiceFactory = ({
     );
 
     const referencesFolderGroupByPath = groupBy(referredFolders.filter(Boolean), (i) => `${i?.envId}-${i?.path}`);
+
+    // Find only references that have valid folders (don't throw for missing paths)
+    const validReferences = references.filter((el) => {
+      const folderId =
+        referencesFolderGroupByPath[`${referencesEnvironmentGroupBySlug[el.environment][0].id}-${el.secretPath}`]?.[0]
+          ?.id;
+      return folderId;
+    });
+
+    if (validReferences.length === 0) return;
+
     const referredSecrets = await secretDAL.find(
       {
         $complex: {
           operator: "or",
-          value: references.map((el) => {
-            const folderId =
-              referencesFolderGroupByPath[
-                `${referencesEnvironmentGroupBySlug[el.environment][0].id}-${el.secretPath}`
-              ][0]?.id;
-            if (!folderId) throw new BadRequestError({ message: `Referenced path ${el.secretPath} doesn't exist` });
+          value: validReferences
+            .map((el) => {
+              const folderGroup =
+                referencesFolderGroupByPath[
+                  `${referencesEnvironmentGroupBySlug[el.environment][0].id}-${el.secretPath}`
+                ];
+              if (!folderGroup || !folderGroup[0]) return null;
 
-            return {
-              operator: "and",
-              value: [
-                {
-                  operator: "eq",
-                  field: "folderId",
-                  value: folderId
-                },
-                {
-                  operator: "eq",
-                  field: `${TableName.SecretV2}.key` as "key",
-                  value: el.secretKey
-                }
-              ]
-            };
-          })
+              const folderId = folderGroup[0].id;
+
+              return {
+                operator: "and",
+                value: [
+                  {
+                    operator: "eq",
+                    field: "folderId",
+                    value: folderId
+                  },
+                  {
+                    operator: "eq",
+                    field: `${TableName.SecretV2}.key` as "key",
+                    value: el.secretKey
+                  }
+                ]
+              };
+            })
+            .filter((query) => query !== null) as Array<{
+            operator: "and";
+            value: Array<{
+              operator: "eq";
+              field: "folderId" | "key";
+              value: string;
+            }>;
+          }>
         }
       },
       { tx }
     );
 
-    if (
-      referredSecrets.length !==
-      new Set(references.map(({ secretKey, secretPath, environment }) => `${secretKey}.${secretPath}.${environment}`))
-        .size // only count unique references
-    )
-      throw new BadRequestError({
-        message: `Referenced secret(s) not found: ${diff(
-          references.map((el) => el.secretKey),
-          referredSecrets.map((el) => el.key)
-        ).join(",")}`
-      });
-
-    const referredSecretsGroupBySecretKey = groupBy(referredSecrets, (i) => i.key);
-    references.forEach((el) => {
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-        environment: el.environment,
-        secretPath: el.secretPath,
-        secretName: el.secretKey,
-        secretTags: referredSecretsGroupBySecretKey[el.secretKey][0]?.tags?.map((i) => i.slug)
-      });
+    // Only check permissions for secrets that actually exist
+    referredSecrets.forEach((secret) => {
+      const reference = validReferences.find((ref) => ref.secretKey === secret.key);
+      if (reference) {
+        throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment: reference.environment,
+          secretPath: reference.secretPath,
+          secretName: reference.secretKey,
+          secretTags: secret.tags?.map((i) => i.slug)
+        });
+      }
     });
 
     return referredSecrets;
@@ -312,7 +325,12 @@ export const secretV2BridgeServiceFactory = ({
       project.secretDetectionIgnoreValues || []
     );
 
-    const { nestedReferences } = getAllSecretReferences(inputSecret.secretValue);
+    const { nestedReferences, localReferences } = getAllSecretReferences(inputSecret.secretValue);
+    const allSecretReferences = nestedReferences.concat(
+      localReferences.map((el) => ({ secretKey: el, secretPath, environment }))
+    );
+
+    await $validateSecretReferences(projectId, permission, allSecretReferences);
 
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -539,6 +557,14 @@ export const secretV2BridgeServiceFactory = ({
         ],
         project.secretDetectionIgnoreValues || []
       );
+    }
+
+    if (secretValue) {
+      const { nestedReferences, localReferences } = getAllSecretReferences(secretValue);
+      const allSecretReferences = nestedReferences.concat(
+        localReferences.map((el) => ({ secretKey: el, secretPath, environment }))
+      );
+      await $validateSecretReferences(projectId, permission, allSecretReferences);
     }
 
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
@@ -1673,6 +1699,7 @@ export const secretV2BridgeServiceFactory = ({
         });
       }
     });
+    await $validateSecretReferences(projectId, permission, secretReferences);
 
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -1986,6 +2013,7 @@ export const secretV2BridgeServiceFactory = ({
             });
           }
         });
+        await $validateSecretReferences(projectId, permission, secretReferences, tx);
 
         const project = await projectDAL.findById(projectId);
         await scanSecretPolicyViolations(
@@ -3136,6 +3164,6 @@ export const secretV2BridgeServiceFactory = ({
     getAccessibleSecrets,
     getSecretVersionsByIds,
     findSecretIdsByFolderIdAndKeys,
-    validateSecretReferences
+    $validateSecretReferences
   };
 };
