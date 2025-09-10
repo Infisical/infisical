@@ -171,7 +171,7 @@ export const SqlDatabaseProvider = ({ gatewayService }: TSqlDatabaseProviderDTO)
     const azureServerLabel =
       isAzureSql && providerInputs.gatewayId ? providerInputs.originalHost?.split(".")[0] : undefined;
     const effectiveUser =
-      isAzureSql && !providerInputs.username.includes("@")
+      isAzureSql && !providerInputs.username.includes("@") && azureServerLabel
         ? `${providerInputs.username}@${azureServerLabel}`
         : providerInputs.username;
 
