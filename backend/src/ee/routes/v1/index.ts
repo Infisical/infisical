@@ -22,6 +22,7 @@ import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
 import { registerPITRouter } from "./pit-router";
 import { registerProjectRoleRouter } from "./project-role-router";
+import { registerDepreciatedProjectRoleRouter } from "./depreciated-project-role-router";
 import { registerProjectRouter } from "./project-router";
 import { registerRateLimitRouter } from "./rate-limit-router";
 import { registerRelayRouter } from "./relay-router";
@@ -49,13 +50,21 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerLicenseRouter, { prefix: "/organizations" });
   await server.register(
     async (projectRouter) => {
-      await projectRouter.register(registerProjectRoleRouter);
+      await projectRouter.register(registerDepreciatedProjectRoleRouter);
       await projectRouter.register(registerProjectRouter);
       await projectRouter.register(registerTrustedIpRouter);
       await projectRouter.register(registerAssumePrivilegeRouter);
     },
     { prefix: "/workspace" }
   );
+
+  await server.register(
+    async (projectRouter) => {
+      await projectRouter.register(registerProjectRoleRouter);
+    },
+    { prefix: "/projects" }
+  );
+
   await server.register(registerSnapshotRouter, { prefix: "/secret-snapshot" });
   await server.register(registerPITRouter, { prefix: "/pit" });
   await server.register(registerSecretApprovalPolicyRouter, { prefix: "/secret-approvals" });

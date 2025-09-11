@@ -2,26 +2,26 @@ import { packRules } from "@casl/ability/extra";
 import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
-import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
-import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
-import { ApiDocsTags, PROJECT_ROLE } from "@app/lib/api-docs";
+import {
+  backfillPermissionV1SchemaToV2Schema,
+  ProjectPermissionV1Schema
+} from "@app/ee/services/permission/project-permission";
+import { PROJECT_ROLE } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedRoleSchema } from "@app/server/routes/sanitizedSchemas";
+import { SanitizedRoleSchemaV1 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectRoleServiceIdentifierType } from "@app/services/project-role/project-role-types";
 
-export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
+export const registerDepreciatedProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
-    url: "/:projectId/roles",
+    url: "/:projectSlug/roles",
     config: {
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
-      tags: [ApiDocsTags.ProjectRoles],
       description: "Create a project role",
       security: [
         {
@@ -29,10 +29,10 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        projectId: z.string().trim().describe(PROJECT_ROLE.CREATE.projectId)
+        projectSlug: z.string().trim().describe(PROJECT_ROLE.CREATE.projectSlug)
       }),
       body: z.object({
-        slug: slugSchema({ min: 1, max: 64 })
+        slug: slugSchema({ max: 64 })
           .refine(
             (val) => !Object.values(ProjectMembershipRole).includes(val as ProjectMembershipRole),
             "Please choose a different slug, the slug you have entered is reserved"
@@ -40,13 +40,11 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
           .describe(PROJECT_ROLE.CREATE.slug),
         name: z.string().min(1).trim().describe(PROJECT_ROLE.CREATE.name),
         description: z.string().trim().nullish().describe(PROJECT_ROLE.CREATE.description),
-        permissions: ProjectPermissionV2Schema.array()
-          .describe(PROJECT_ROLE.CREATE.permissions)
-          .refine(checkForInvalidPermissionCombination)
+        permissions: ProjectPermissionV1Schema.array().describe(PROJECT_ROLE.CREATE.permissions)
       }),
       response: {
         200: z.object({
-          role: SanitizedRoleSchema
+          role: SanitizedRoleSchemaV1
         })
       }
     },
@@ -58,27 +56,26 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
         filter: {
-          type: ProjectRoleServiceIdentifierType.ID,
-          projectId: req.params.projectId
+          type: ProjectRoleServiceIdentifierType.SLUG,
+          projectSlug: req.params.projectSlug
         },
         data: {
           ...req.body,
-          permissions: JSON.stringify(packRules(req.body.permissions))
+          permissions: JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions, true)))
         }
       });
+
       return { role };
     }
   });
 
   server.route({
     method: "PATCH",
-    url: "/:projectId/roles/:roleId",
+    url: "/:projectSlug/roles/:roleId",
     config: {
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
-      tags: [ApiDocsTags.ProjectRoles],
       description: "Update a project role",
       security: [
         {
@@ -86,27 +83,24 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        projectId: z.string().trim().describe(PROJECT_ROLE.UPDATE.projectId),
+        projectSlug: z.string().trim().describe(PROJECT_ROLE.UPDATE.projectSlug),
         roleId: z.string().trim().describe(PROJECT_ROLE.UPDATE.roleId)
       }),
       body: z.object({
-        slug: slugSchema({ min: 1, max: 64 })
+        slug: slugSchema({ max: 64 })
           .refine(
             (val) => !Object.values(ProjectMembershipRole).includes(val as ProjectMembershipRole),
             "Please choose a different slug, the slug you have entered is reserved"
           )
-          .optional()
-          .describe(PROJECT_ROLE.UPDATE.slug),
+          .describe(PROJECT_ROLE.UPDATE.slug)
+          .optional(),
         name: z.string().trim().optional().describe(PROJECT_ROLE.UPDATE.name),
         description: z.string().trim().nullish().describe(PROJECT_ROLE.UPDATE.description),
-        permissions: ProjectPermissionV2Schema.array()
-          .describe(PROJECT_ROLE.UPDATE.permissions)
-          .optional()
-          .superRefine(checkForInvalidPermissionCombination)
+        permissions: ProjectPermissionV1Schema.array().describe(PROJECT_ROLE.UPDATE.permissions).optional()
       }),
       response: {
         200: z.object({
-          role: SanitizedRoleSchema
+          role: SanitizedRoleSchemaV1
         })
       }
     },
@@ -120,7 +114,9 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         roleId: req.params.roleId,
         data: {
           ...req.body,
-          permissions: req.body.permissions ? JSON.stringify(packRules(req.body.permissions)) : undefined
+          permissions: req.body.permissions
+            ? JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions, true)))
+            : undefined
         }
       });
       return { role };
@@ -129,13 +125,11 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "DELETE",
-    url: "/:projectId/roles/:roleId",
+    url: "/:projectSlug/roles/:roleId",
     config: {
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
-      tags: [ApiDocsTags.ProjectRoles],
       description: "Delete a project role",
       security: [
         {
@@ -143,12 +137,12 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        projectId: z.string().trim().describe(PROJECT_ROLE.DELETE.projectId),
+        projectSlug: z.string().trim().describe(PROJECT_ROLE.DELETE.projectSlug),
         roleId: z.string().trim().describe(PROJECT_ROLE.DELETE.roleId)
       }),
       response: {
         200: z.object({
-          role: SanitizedRoleSchema
+          role: SanitizedRoleSchemaV1
         })
       }
     },
@@ -167,13 +161,11 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:projectId/roles",
+    url: "/:projectSlug/roles",
     config: {
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
-      tags: [ApiDocsTags.ProjectRoles],
       description: "List project role",
       security: [
         {
@@ -181,7 +173,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        projectId: z.string().trim().describe(PROJECT_ROLE.LIST.projectId)
+        projectSlug: z.string().trim().describe(PROJECT_ROLE.LIST.projectSlug)
       }),
       response: {
         200: z.object({
@@ -197,8 +189,8 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
         filter: {
-          type: ProjectRoleServiceIdentifierType.ID,
-          projectId: req.params.projectId
+          type: ProjectRoleServiceIdentifierType.SLUG,
+          projectSlug: req.params.projectSlug
         }
       });
       return { roles };
@@ -207,20 +199,18 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:projectId/roles/slug/:roleSlug",
+    url: "/:projectSlug/roles/slug/:slug",
     config: {
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
-      tags: [ApiDocsTags.ProjectRoles],
       params: z.object({
-        projectId: z.string().trim().describe(PROJECT_ROLE.GET_ROLE_BY_SLUG.projectId),
-        roleSlug: z.string().trim().describe(PROJECT_ROLE.GET_ROLE_BY_SLUG.roleSlug)
+        projectSlug: z.string().trim().describe(PROJECT_ROLE.GET_ROLE_BY_SLUG.projectSlug),
+        slug: z.string().trim().describe(PROJECT_ROLE.GET_ROLE_BY_SLUG.roleSlug)
       }),
       response: {
         200: z.object({
-          role: SanitizedRoleSchema.omit({ version: true })
+          role: SanitizedRoleSchemaV1.omit({ version: true })
         })
       }
     },
@@ -232,11 +222,12 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
         filter: {
-          type: ProjectRoleServiceIdentifierType.ID,
-          projectId: req.params.projectId
+          type: ProjectRoleServiceIdentifierType.SLUG,
+          projectSlug: req.params.projectSlug
         },
-        roleSlug: req.params.roleSlug
+        roleSlug: req.params.slug
       });
+
       return { role };
     }
   });
