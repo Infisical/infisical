@@ -52,8 +52,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     async (projectRouter) => {
       await projectRouter.register(registerDepreciatedProjectRoleRouter);
       await projectRouter.register(registerProjectRouter);
-      await projectRouter.register(registerTrustedIpRouter);
-      await projectRouter.register(registerAssumePrivilegeRouter);
     },
     { prefix: "/workspace" }
   );
@@ -61,6 +59,8 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(
     async (projectRouter) => {
       await projectRouter.register(registerProjectRoleRouter);
+      await projectRouter.register(registerTrustedIpRouter);
+      await projectRouter.register(registerAssumePrivilegeRouter);
     },
     { prefix: "/projects" }
   );
