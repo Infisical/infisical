@@ -103,9 +103,9 @@ export const ChangeEmailSection = () => {
   const [typedOTP, setTypedOTP] = useState("");
 
   const handleOTPSubmit = async () => {
-    if (typedOTP.length !== 8) {
+    if (typedOTP.length !== 6) {
       createNotification({
-        text: "Please enter the complete 8-digit verification code",
+        text: "Please enter the complete 6-digit verification code",
         type: "error"
       });
       return;
@@ -197,7 +197,7 @@ export const ChangeEmailSection = () => {
             Send Verification Code
           </Button>
           <p className="mt-2 font-inter text-sm text-mineshaft-400">
-            We&apos;ll send an 8-digit verification code to your new email address.
+            We&apos;ll send an 6-digit verification code to your new email address.
           </p>
         </form>
       </div>
@@ -210,7 +210,7 @@ export const ChangeEmailSection = () => {
       >
         <ModalContent
           title="Email Verification"
-          subTitle={`Enter the 8-digit verification code sent to: ${pendingEmail}`}
+          subTitle={`Enter the 6-digit verification code sent to: ${pendingEmail}`}
         >
           <div className="flex flex-col items-center space-y-4">
             <div className="flex justify-center">
@@ -218,7 +218,7 @@ export const ChangeEmailSection = () => {
                 name="otp-input"
                 inputMode="tel"
                 type="text"
-                fields={8}
+                fields={6}
                 onChange={setTypedOTP}
                 value={typedOTP}
                 {...otpInputProps}
@@ -232,7 +232,7 @@ export const ChangeEmailSection = () => {
               <Button
                 onClick={handleOTPSubmit}
                 isLoading={isUpdatingEmail}
-                isDisabled={typedOTP.length !== 8}
+                isDisabled={typedOTP.length !== 6}
               >
                 Confirm Email Change
               </Button>

@@ -217,17 +217,18 @@ export const userServiceFactory = ({
       const existingUsers = await userDAL.findUserByUsername(newEmail.toLowerCase(), tx);
       const existingUser = existingUsers?.find((u) => u.id !== userId);
       if (existingUser) {
-        // Don't reveal that email is taken - just don't send OTP
-        // Frontend will show generic "check your email" message
+        // Don't reveal that email is taken - just don't send OTP.
+        await new Promise((resolve) => {
+          setTimeout(resolve, 2000);
+        });
         return { success: true, message: "Verification code sent to new email address" };
       }
 
-      // Generate 8-digit OTP and store newEmail in aliasId field temporarily
+      // Generate 6-digit OTP
       const otpCode = await tokenService.createTokenForUser({
         type: TokenType.TOKEN_EMAIL_CHANGE_OTP,
         userId,
-        // Use aliasId to store the new email (we'll parse this back later)
-        aliasId: newEmail.toLowerCase()
+        payload: newEmail.toLowerCase()
       });
 
       // Send OTP to NEW email address
@@ -271,18 +272,16 @@ export const userServiceFactory = ({
           code: otpCode
         });
       } catch (error) {
-        // For security reasons, always return "Invalid verification code" regardless of the actual error
-        // This prevents information disclosure about existing emails
         throw new BadRequestError({ message: "Invalid verification code", name: "UpdateUserEmail" });
       }
 
-      // Verify the new email matches what was stored in aliasId
-      const tokenNewEmail = tokenData?.aliasId;
+      // Verify the new email matches what was stored in payload
+      const tokenNewEmail = tokenData?.payload;
       if (!tokenNewEmail || tokenNewEmail !== newEmail.toLowerCase()) {
         throw new BadRequestError({ message: "Invalid verification code", name: "UpdateUserEmail" });
       }
 
-      // Final check if another user has this email (in case it was taken between OTP request and verification)
+      // Final check if another user has this email
       const existingUsers = await userDAL.findUserByUsername(newEmail.toLowerCase(), tx);
       const existingUser = existingUsers?.find((u) => u.id !== userId);
       if (existingUser) {
@@ -292,13 +291,11 @@ export const userServiceFactory = ({
       // Delete all user aliases since the email is changing
       await userAliasDAL.delete({ userId }, tx);
 
-      // Update the user's email and KEEP email as verified (as requested)
       const updatedUser = await userDAL.updateById(
         userId,
         {
           email: newEmail.toLowerCase(),
-          username: newEmail.toLowerCase(),
-          isEmailVerified: true // Keep verified as per requirement
+          username: newEmail.toLowerCase()
         },
         tx
       );

@@ -131,7 +131,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/me/email/otp",
+    url: "/me/email-change/otp",
     config: {
       rateLimit: smtpRateLimit({
         keyGenerator: (req) => req.permission.id
@@ -167,7 +167,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         newEmail: z.string().email().trim(),
-        otpCode: z.string().trim().length(8)
+        otpCode: z.string().trim().length(6)
       }),
       response: {
         200: z.object({

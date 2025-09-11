@@ -156,7 +156,7 @@ export const useRemoveMyDuplicateAccounts = () => {
 export const useRequestEmailChangeOTP = () => {
   return useMutation({
     mutationFn: async ({ newEmail }: { newEmail: string }) => {
-      const { data } = await apiRequest.post("/api/v2/users/me/email/otp", {
+      const { data } = await apiRequest.post("/api/v2/users/me/email-change/otp", {
         newEmail
       });
       return data;
