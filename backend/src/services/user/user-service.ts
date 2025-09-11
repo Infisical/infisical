@@ -196,8 +196,8 @@ export const userServiceFactory = ({
   };
 
   const requestEmailChangeOTP = async ({ userId, newEmail }: TUpdateUserEmailDTO) => {
+    const startTime = new Date();
     const changeEmailOTP = await userDAL.transaction(async (tx) => {
-      const startTime = new Date();
       const user = await userDAL.findById(userId, tx);
       if (!user)
         throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "RequestEmailChangeOTP" });
@@ -236,17 +236,16 @@ export const userServiceFactory = ({
         });
       }
 
-      // Force this function to have a minimum execution time of 2 seconds to avoid possible information disclosure about existing users
-      const endTime = new Date();
-      const timeDiff = endTime.getTime() - startTime.getTime();
-      if (timeDiff < 2000) {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 2000 - timeDiff);
-        });
-      }
-
       return { success: true, message: "Verification code sent to new email address" };
     });
+    // Force this function to have a minimum execution time of 2 seconds to avoid possible information disclosure about existing users
+    const endTime = new Date();
+    const timeDiff = endTime.getTime() - startTime.getTime();
+    if (timeDiff < 2000) {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 2000 - timeDiff);
+      });
+    }
     return changeEmailOTP;
   };
 
