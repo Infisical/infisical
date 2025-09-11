@@ -197,6 +197,7 @@ export const userServiceFactory = ({
 
   const requestEmailChangeOTP = async ({ userId, newEmail }: TUpdateUserEmailDTO) => {
     const changeEmailOTP = await userDAL.transaction(async (tx) => {
+      const startTime = new Date();
       const user = await userDAL.findById(userId, tx);
       if (!user)
         throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "RequestEmailChangeOTP" });
@@ -216,30 +217,33 @@ export const userServiceFactory = ({
       // Silently check if another user already has this email - don't send OTP if email is taken
       const existingUsers = await userDAL.findUserByUsername(newEmail.toLowerCase(), tx);
       const existingUser = existingUsers?.find((u) => u.id !== userId);
-      if (existingUser) {
-        // Don't reveal that email is taken - just don't send OTP.
-        await new Promise((resolve) => {
-          setTimeout(resolve, 2000);
+      if (!existingUser) {
+        // Generate 6-digit OTP
+        const otpCode = await tokenService.createTokenForUser({
+          type: TokenType.TOKEN_EMAIL_CHANGE_OTP,
+          userId,
+          payload: newEmail.toLowerCase()
         });
-        return { success: true, message: "Verification code sent to new email address" };
+
+        // Send OTP to NEW email address
+        await smtpService.sendMail({
+          template: SmtpTemplates.EmailVerification,
+          subjectLine: "Infisical email change verification",
+          recipients: [newEmail.toLowerCase()],
+          substitutions: {
+            code: otpCode
+          }
+        });
       }
 
-      // Generate 6-digit OTP
-      const otpCode = await tokenService.createTokenForUser({
-        type: TokenType.TOKEN_EMAIL_CHANGE_OTP,
-        userId,
-        payload: newEmail.toLowerCase()
-      });
-
-      // Send OTP to NEW email address
-      await smtpService.sendMail({
-        template: SmtpTemplates.EmailVerification,
-        subjectLine: "Infisical email change verification",
-        recipients: [newEmail.toLowerCase()],
-        substitutions: {
-          code: otpCode
-        }
-      });
+      // Force this function to have a minimum execution time of 2 seconds to avoid possible information disclosure about existing users
+      const endTime = new Date();
+      const timeDiff = endTime.getTime() - startTime.getTime();
+      if (timeDiff < 2000) {
+        await new Promise((resolve) => {
+          setTimeout(resolve, 2000 - timeDiff);
+        });
+      }
 
       return { success: true, message: "Verification code sent to new email address" };
     });
@@ -258,7 +262,7 @@ export const userServiceFactory = ({
       const hasScimRestriction = await checkUserScimRestriction(userId, tx);
       if (hasScimRestriction) {
         throw new BadRequestError({
-          message: "Email changes are disabled because SCIM is enabled for one or more of your organizations",
+          message: "You are part of an organization that has SCIM enabled, and email changes are not allowed",
           name: "UpdateUserEmail"
         });
       }
