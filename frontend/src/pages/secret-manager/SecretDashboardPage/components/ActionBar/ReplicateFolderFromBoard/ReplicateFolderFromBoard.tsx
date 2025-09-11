@@ -224,7 +224,6 @@ export const ReplicateFolderFromBoard = ({
       }}
     >
       <ModalContent
-        bodyClassName="overflow-visible"
         className="max-w-2xl"
         title="Replicate Folder Content From An Environment"
         subTitle="Replicate folder content from other environments into this context"

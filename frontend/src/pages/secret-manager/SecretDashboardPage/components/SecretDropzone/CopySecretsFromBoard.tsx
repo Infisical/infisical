@@ -153,7 +153,6 @@ export const CopySecretsFromBoard = ({
         </div>
       </ModalTrigger>
       <ModalContent
-        bodyClassName="overflow-visible"
         className="max-w-2xl"
         title="Copy Secret From An Environment"
         subTitle="Copy/paste secrets from other environments into this context"

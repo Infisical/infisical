@@ -195,7 +195,7 @@ const Content = ({ onClose }: ContentProps) => {
 export const AddOrganizationModal = ({ isOpen, onOpenChange }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent bodyClassName="overflow-visible" title="Add Organization">
+      <ModalContent title="Add Organization">
         <Content onClose={() => onOpenChange(false)} />
       </ModalContent>
     </Modal>

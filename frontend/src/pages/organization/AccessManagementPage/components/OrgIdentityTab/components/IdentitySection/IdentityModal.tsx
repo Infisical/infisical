@@ -193,7 +193,6 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
       }}
     >
       <ModalContent
-        bodyClassName="overflow-visible"
         title={`${popUp?.identity?.data ? "Update" : "Create"} Identity`}
       >
         <form onSubmit={handleSubmit(onFormSubmit)}>
