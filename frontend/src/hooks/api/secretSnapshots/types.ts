@@ -3,7 +3,7 @@ import { WorkspaceEnv } from "../types";
 
 export type TSecretSnapshot = {
   id: string;
-  workspace: string;
+  projectId: string;
   secretVersions: string[];
   createdAt: string;
   updatedAt: string;
@@ -22,7 +22,7 @@ export type TSnapshotDataProps = {
 };
 
 export type TGetSecretSnapshotsDTO = {
-  workspaceId: string;
+  projectId: string;
   limit: number;
   environment: string;
   directory?: string;
@@ -30,7 +30,7 @@ export type TGetSecretSnapshotsDTO = {
 
 export type TSecretRollbackDTO = {
   snapshotId: string;
-  workspaceId: string;
+  projectId: string;
   environment: string;
   directory?: string;
 };

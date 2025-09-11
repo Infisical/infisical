@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { userKeys } from "../users/query-keys";
-import { workspaceKeys } from "./query-keys";
+import { workspaceKeys as projectKeys } from "./query-keys";
 import {
   TProjectSshConfig,
   TUpdateProjectSshConfigDTO,
@@ -32,7 +32,7 @@ export const useAddGroupToWorkspace = () => {
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceGroupMemberships(projectId)
+        queryKey: projectKeys.getWorkspaceGroupMemberships(projectId)
       });
     }
   });
@@ -52,10 +52,10 @@ export const useUpdateGroupWorkspaceRole = () => {
     },
     onSuccess: (_, { projectId, groupId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceGroupMemberships(projectId)
+        queryKey: projectKeys.getWorkspaceGroupMemberships(projectId)
       });
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceGroupMembershipDetails(projectId, groupId)
+        queryKey: projectKeys.getWorkspaceGroupMembershipDetails(projectId, groupId)
       });
     }
   });
@@ -79,7 +79,7 @@ export const useDeleteGroupFromWorkspace = () => {
     },
     onSuccess: (_, { projectId, username }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceGroupMemberships(projectId)
+        queryKey: projectKeys.getWorkspaceGroupMemberships(projectId)
       });
 
       if (username) {
@@ -96,20 +96,20 @@ export const useLeaveProject = () => {
       return apiRequest.delete(`/api/v1/workspace/${workspaceId}/leave`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserWorkspace() });
     }
   });
 };
 
 export const useMigrateProjectToV3 = () => {
   const queryClient = useQueryClient();
-  return useMutation<object, object, { workspaceId: string }>({
-    mutationFn: ({ workspaceId }) => {
-      return apiRequest.post(`/api/v1/workspace/${workspaceId}/migrate-v3`);
+  return useMutation<object, object, { projectId: string }>({
+    mutationFn: ({ projectId }) => {
+      return apiRequest.post(`/api/v1/projects/${projectId}/migrate-v3`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace()
+        queryKey: projectKeys.getAllUserWorkspace()
       });
     }
   });
@@ -136,7 +136,7 @@ export const useUpdateProjectSshConfig = () => {
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getProjectSshConfig(projectId)
+        queryKey: projectKeys.getProjectSshConfig(projectId)
       });
     }
   });

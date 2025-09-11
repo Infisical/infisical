@@ -75,7 +75,7 @@ export const useUpdateProjectKms = (projectId: string) => {
     mutationFn: async (
       updatedData: { type: KmsType.Internal } | { type: KmsType.External; kmsId: string }
     ) => {
-      const { data } = await apiRequest.patch(`/api/v1/workspace/${projectId}/kms`, {
+      const { data } = await apiRequest.patch(`/api/v1/projects/${projectId}/kms`, {
         kms: updatedData
       });
 
@@ -91,7 +91,7 @@ export const useLoadProjectKmsBackup = (projectId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (backup: string) => {
-      const { data } = await apiRequest.post(`/api/v1/workspace/${projectId}/kms/backup`, {
+      const { data } = await apiRequest.post(`/api/v1/projects/${projectId}/kms/backup`, {
         backup
       });
 

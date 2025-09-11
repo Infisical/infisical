@@ -732,7 +732,7 @@ export const PROJECTS = {
     workspaceId: "The ID of the project to get the key from."
   },
   GET_SNAPSHOTS: {
-    workspaceId: "The ID of the project to get snapshots from.",
+    projectId: "The ID of the project to get snapshots from.",
     environment: "The environment to get snapshots from.",
     path: "The secret path to get snapshots from.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th snapshot.",

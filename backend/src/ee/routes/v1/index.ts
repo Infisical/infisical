@@ -24,6 +24,7 @@ import { registerPITRouter } from "./pit-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerDepreciatedProjectRoleRouter } from "./depreciated-project-role-router";
 import { registerProjectRouter } from "./project-router";
+import { registerDepreciatedProjectRouter } from "./depreciated-project-router";
 import { registerRateLimitRouter } from "./rate-limit-router";
 import { registerRelayRouter } from "./relay-router";
 import { registerSamlRouter } from "./saml-router";
@@ -48,10 +49,12 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   // org role starts with organization
   await server.register(registerOrgRoleRouter, { prefix: "/organization" });
   await server.register(registerLicenseRouter, { prefix: "/organizations" });
+
+  // depreciated in favour of infisical workspace
   await server.register(
     async (projectRouter) => {
       await projectRouter.register(registerDepreciatedProjectRoleRouter);
-      await projectRouter.register(registerProjectRouter);
+      await projectRouter.register(registerDepreciatedProjectRouter);
     },
     { prefix: "/workspace" }
   );
@@ -61,6 +64,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await projectRouter.register(registerProjectRoleRouter);
       await projectRouter.register(registerTrustedIpRouter);
       await projectRouter.register(registerAssumePrivilegeRouter);
+      await projectRouter.register(registerProjectRouter);
     },
     { prefix: "/projects" }
   );

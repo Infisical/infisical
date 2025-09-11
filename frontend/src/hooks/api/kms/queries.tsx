@@ -49,7 +49,7 @@ export const useGetActiveProjectKms = (projectId: string) => {
           name: string;
           isExternal: string;
         };
-      }>(`/api/v1/workspace/${projectId}/kms`);
+      }>(`/api/v1/projects/${projectId}/kms`);
       return secretManagerKmsKey;
     }
   });
@@ -58,7 +58,7 @@ export const useGetActiveProjectKms = (projectId: string) => {
 export const fetchProjectKmsBackup = async (projectId: string) => {
   const { data } = await apiRequest.get<{
     secretManager: string;
-  }>(`/api/v1/workspace/${projectId}/kms/backup`);
+  }>(`/api/v1/projects/${projectId}/kms/backup`);
 
   return data;
 };
