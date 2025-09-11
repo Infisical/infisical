@@ -1,21 +1,20 @@
 ---
-title: "Networking"
-description: "Network configuration and firewall requirements for Infisical Gateway"
+title: "Networking Requirements"
+description: "Network configuration and firewall requirements for Infisical Gateways and Relays"
 ---
 
-The Infisical Gateway requires outbound network connectivity to establish secure SSH reverse tunnels with relay servers.
-This page outlines the required ports, protocols, and firewall configurations needed for optimal gateway usage.
+This page outlines the required ports, protocols, and firewall configurations needed for optimal gateway and relay usage.
 
 ## Network Architecture
 
-The gateway uses SSH reverse tunnels to establish secure connections with end-to-end encryption:
+The gateway system uses SSH reverse tunnels to establish secure connections with end-to-end encryption:
 
 1. **Gateway** connects outbound to **Relay Servers** using SSH over TCP
 2. **Infisical platform** establishes mTLS connections with gateways for application traffic
 3. **Relay Servers** route the doubly-encrypted traffic (mTLS payload within SSH tunnels) between the platform and gateways
 4. **Double encryption** ensures relay servers cannot access application data - only the platform and gateway can decrypt traffic
 
-## Required Network Connectivity
+## Gateway Network Requirements
 
 ### Outbound Connections (Required)
 
@@ -55,6 +54,141 @@ The gateway requires the following outbound connectivity:
   </Tab>
 </Tabs>
 
+## Relay Server Network Requirements
+
+### Inbound Connections (Required)
+
+The relay server must accept the following inbound connections:
+
+| Protocol | Source             | Port | Purpose                          |
+| -------- | ------------------ | ---- | -------------------------------- |
+| TCP      | Gateways           | 2222 | SSH reverse tunnel establishment |
+| TCP      | Infisical Platform | 8443 | Platform-to-relay communication  |
+
+### Outbound Connections (Required)
+
+The relay server requires outbound connectivity to:
+
+| Protocol | Destination                          | Port | Purpose                                    |
+| -------- | ------------------------------------ | ---- | ------------------------------------------ |
+| TCP      | app.infisical.com / eu.infisical.com | 443  | API communication and certificate requests |
+
+## Firewall Configuration
+
+### Gateway Firewall Rules
+
+Since gateways only make outbound connections, you only need simple outbound rules:
+
+1. **Allow outbound TCP** to relay servers (IP addresses or hostnames) on port 2222
+2. **Allow outbound HTTPS** to Infisical API endpoints on port 443
+3. **No inbound rules required** - all connections are outbound only
+
+### Relay Firewall Rules
+
+Configure your firewall to allow:
+
+1. **SSH on port 2222** - For gateway connections
+
+   ```bash
+   # Example iptables rule
+   iptables -A INPUT -p tcp --dport 2222 -j ACCEPT
+   ```
+
+2. **TCP with TLS on port 8443** - For platform connections
+
+   ```bash
+   # Example iptables rule
+   iptables -A INPUT -p tcp --dport 8443 -j ACCEPT
+   ```
+
+3. **HTTPS to Infisical API** - For certificate requests and API communication
+   ```bash
+   # Example iptables rule
+   iptables -A OUTPUT -p tcp --dport 443 -d app.infisical.com -j ACCEPT
+   ```
+
+## Cloud Provider Configuration
+
+### AWS EC2
+
+Configure security groups:
+
+```json
+{
+  "SecurityGroupRules": [
+    {
+      "IpProtocol": "tcp",
+      "FromPort": 2222,
+      "ToPort": 2222,
+      "CidrIpv4": "0.0.0.0/0",
+      "Description": "SSH for gateway connections"
+    },
+    {
+      "IpProtocol": "tcp",
+      "FromPort": 8443,
+      "ToPort": 8443,
+      "CidrIpv4": "0.0.0.0/0",
+      "Description": "TCP with TLS for platform connections"
+    }
+  ]
+}
+```
+
+### Google Cloud Platform
+
+Configure firewall rules:
+
+```bash
+# Allow SSH from gateways
+gcloud compute firewall-rules create allow-gateway-ssh \
+  --allow tcp:2222 \
+  --source-ranges 0.0.0.0/0 \
+  --description "Allow SSH from gateways"
+
+# Allow TCP with TLS from platform
+gcloud compute firewall-rules create allow-platform-tls \
+  --allow tcp:8443 \
+  --source-ranges 0.0.0.0/0 \
+  --description "Allow TCP with TLS from platform"
+```
+
+### Azure
+
+Configure Network Security Groups:
+
+```json
+{
+  "securityRules": [
+    {
+      "name": "AllowGatewaySSH",
+      "properties": {
+        "protocol": "Tcp",
+        "sourcePortRange": "*",
+        "destinationPortRange": "2222",
+        "sourceAddressPrefix": "*",
+        "destinationAddressPrefix": "*",
+        "access": "Allow",
+        "priority": 100,
+        "direction": "Inbound"
+      }
+    },
+    {
+      "name": "AllowPlatformTLS",
+      "properties": {
+        "protocol": "Tcp",
+        "sourcePortRange": "*",
+        "destinationPortRange": "8443",
+        "sourceAddressPrefix": "*",
+        "destinationAddressPrefix": "*",
+        "access": "Allow",
+        "priority": 110,
+        "direction": "Inbound"
+      }
+    }
+  ]
+}
+```
+
 ## Protocol Details
 
 ### SSH over TCP
@@ -65,10 +199,6 @@ The gateway uses SSH reverse tunnels for primary communication:
 - **Built-in features**: Automatic reconnection, certificate-based authentication, encrypted tunneling
 - **Encryption**: SSH with certificate-based authentication and key exchange
 
-## Firewall Configuration for SSH
-
-The gateway uses standard SSH over TCP, making firewall configuration straightforward.
-
 ### TCP Connection Handling
 
 SSH connections over TCP are stateful and handled seamlessly by all modern firewalls:
@@ -77,14 +207,6 @@ SSH connections over TCP are stateful and handled seamlessly by all modern firew
 - **Return traffic** is allowed for established outbound connections
 - **No special configuration** needed for connection tracking
 - **Standard SSH protocol** that enterprise firewalls handle well
-
-### Simplified Firewall Rules
-
-Since SSH uses TCP, you only need simple outbound rules:
-
-1. **Allow outbound TCP** to relay servers (IP addresses or hostnames) on port 2222
-2. **Allow outbound HTTPS** to Infisical API endpoints on port 443
-3. **No inbound rules required** - all connections are outbound only
 
 ## Common Network Scenarios
 
@@ -104,6 +226,15 @@ Configure security groups to allow:
 - **Outbound TCP** to relay servers (IP addresses or hostnames) on port 2222
 - **Outbound HTTPS** to app.infisical.com/eu.infisical.com on port 443
 - **No inbound rules required** - SSH reverse tunnels are outbound only
+
+## Performance Considerations
+
+### Network Optimization
+
+- **Deploy close to gateways** - Reduce latency by placing relay servers geographically close to your gateways
+- **Use high-bandwidth connections** - Ensure adequate bandwidth for encrypted traffic
+- **Monitor network performance** - Track latency and throughput metrics
+- **Consider multiple relays** - Deploy multiple relay servers for redundancy and load distribution
 
 ## Frequently Asked Questions
 
@@ -134,7 +265,7 @@ TCP's reliability and firewall compatibility make it ideal for enterprise enviro
 </Accordion>
 
 <Accordion title="Do I need to open any inbound ports on my firewall?">
-No inbound ports need to be opened. The gateway only makes outbound connections:
+No inbound ports need to be opened for gateways. The gateway only makes outbound connections:
 
 - **Outbound SSH** to relay servers on port 2222
 - **Outbound HTTPS** to Infisical API endpoints on port 443
@@ -163,6 +294,7 @@ The gateway connects to **one relay server**:
 - **Certificate-based authentication**: Each connection uses SSH certificates issued by Infisical for secure authentication
 
 </Accordion>
+
 <Accordion title="Can the relay servers decrypt traffic going through them?">
 No, relay servers cannot decrypt any traffic passing through them due to end-to-end encryption:
 

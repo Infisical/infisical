@@ -9,6 +9,15 @@ description: "Relay-related commands for Infisical"
     infisical relay start --type=<type> --host=<host> --name=<name> --auth-method=<auth-method>
     ```
   </Tab>
+  <Tab title="Systemd service">
+    ```bash
+    # Install systemd service
+    sudo infisical relay systemd install --type=<type> --host=<host> --name=<name> --token=<token>
+    
+    # Uninstall systemd service
+    sudo infisical relay systemd uninstall
+    ```
+  </Tab>
 </Tabs>
 
 ## Description
@@ -302,5 +311,156 @@ The Infisical CLI supports multiple authentication methods for organization rela
 - You need custom network policies or specific networking configurations
 - You have high-scale performance requirements that shared infrastructure can't meet
 - You want full control over your relay infrastructure and its configuration
+
+</Accordion>
+
+<Accordion title="infisical relay systemd" defaultOpen="false">
+  Manage systemd service for Infisical relay. This allows you to install and run the relay as a systemd service on Linux systems.
+  ### Requirements
+  - **Operating System**: Linux only (systemd is not supported on other operating systems)
+  - **Privileges**: Root/sudo privileges required for both install and uninstall operations
+  - **Systemd**: The system must be running systemd as the init system
+
+```bash
+infisical relay systemd <subcommand>
+```
+
+### Subcommands
+
+<Accordion title="install">
+  Install and enable systemd service for the relay. Must be run with sudo on Linux systems.
+
+```bash
+sudo infisical relay systemd install --type=<type> --host=<host> --name=<name> [flags]
+```
+
+#### Flags
+
+<Accordion title="--type">
+  The type of relay to run. Must be either 'instance' or 'org'.
+  
+  - **`instance`**: Shared relay server that can be used by all organizations on your Infisical instance. Requires `--relay-auth-secret` flag or `INFISICAL_RELAY_AUTH_SECRET` environment variable.
+  - **`org`**: Dedicated relay server that individual organizations deploy and manage in their own infrastructure. Requires `--token` flag.
+
+```bash
+# Organization relay
+sudo infisical relay systemd install --type=org --host=192.168.1.100 --name=my-org-relay --token=<token>
+
+# Instance relay
+sudo infisical relay systemd install --type=instance --host=10.0.1.50 --name=shared-relay --relay-auth-secret=<secret>
+```
+
+</Accordion>
+
+<Accordion title="--host">
+  The host (IP address or hostname) of the instance where the relay is deployed. This must be a static public IP or resolvable hostname that gateways can reach.
+
+```bash
+# Example with IP address
+sudo infisical relay systemd install --host=203.0.113.100 --type=org --name=my-relay --token=<token>
+
+# Example with hostname
+sudo infisical relay systemd install --host=relay.example.com --type=org --name=my-relay --token=<token>
+```
+
+</Accordion>
+
+<Accordion title="--name">
+  The name of the relay.
+
+```bash
+# Example
+sudo infisical relay systemd install --name=my-relay --type=org --host=192.168.1.100 --token=<token>
+```
+
+</Accordion>
+
+<Accordion title="--token">
+  Connect with Infisical using machine identity access token. Required for organization relays (`--type=org`).
+
+```bash
+# Example
+sudo infisical relay systemd install --token=<machine-identity-token> --type=org --host=<host> --name=<name>
+```
+
+</Accordion>
+
+<Accordion title="--domain">
+  Domain of your self-hosted Infisical instance. Optional flag for specifying a custom domain.
+
+```bash
+# Example
+sudo infisical relay systemd install --domain=http://localhost:8080 --token=<token> --type=org --host=<host> --name=<name>
+```
+
+</Accordion>
+
+<Accordion title="--relay-auth-secret">
+  Relay auth secret. Required for instance relays (`--type=instance`) if the `INFISICAL_RELAY_AUTH_SECRET` environment variable is not set.
+
+```bash
+# Example
+sudo infisical relay systemd install --relay-auth-secret=<secret> --type=instance --host=<host> --name=<name>
+```
+
+</Accordion>
+
+#### Examples
+
+```bash
+# Install organization relay with token authentication
+sudo infisical relay systemd install --type=org --host=192.168.1.100 --name=my-org-relay --token=<machine-identity-token>
+
+# Install instance relay with auth secret
+sudo infisical relay systemd install --type=instance --host=10.0.1.50 --name=shared-relay --relay-auth-secret=<secret>
+
+# Install with custom domain
+sudo infisical relay systemd install --domain=http://localhost:8080 --token=<token> --type=org --host=<host> --name=<name>
+```
+
+#### Post-installation
+
+After successful installation, the service will be enabled but not started. To start the service:
+
+```bash
+sudo systemctl start infisical-relay
+```
+
+To check the service status:
+
+```bash
+sudo systemctl status infisical-relay
+```
+
+To view service logs:
+
+```bash
+sudo journalctl -u infisical-relay -f
+```
+
+</Accordion>
+
+<Accordion title="uninstall">
+  Uninstall and remove systemd service for the relay. Must be run with sudo on Linux systems.
+
+```bash
+sudo infisical relay systemd uninstall
+```
+
+#### Examples
+
+```bash
+# Uninstall the relay systemd service
+sudo infisical relay systemd uninstall
+```
+
+#### What it does
+
+- Stops the `infisical-relay` systemd service if it's running
+- Disables the service from starting on boot
+- Removes the systemd service file
+- Cleans up the service configuration
+
+</Accordion>
 
 </Accordion>

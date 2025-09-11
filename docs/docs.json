@@ -173,8 +173,9 @@
                 "group": "Gateway",
                 "pages": [
                   "documentation/platform/gateways/overview",
-                  "documentation/platform/gateways/gateway-security",
+                  "documentation/platform/gateways/deployment",
                   "documentation/platform/gateways/networking",
+                  "documentation/platform/gateways/security",
                   {
                     "group": "Gateway (Deprecated)",
                     "pages": [
