@@ -62,7 +62,7 @@ export const WebhooksTab = withProjectPermission(
       try {
         await createWebhook({
           ...data,
-          workspaceId
+          projectId: workspaceId
         });
         handlePopUpClose("addWebhook");
         createNotification({
@@ -82,7 +82,7 @@ export const WebhooksTab = withProjectPermission(
       try {
         await updateWebhook({
           webhookId,
-          workspaceId,
+          projectId: workspaceId,
           isDisabled
         });
         createNotification({
@@ -103,7 +103,7 @@ export const WebhooksTab = withProjectPermission(
         const webhookId = popUp?.deleteWebhook?.data as string;
         await deleteWebhook({
           webhookId,
-          workspaceId
+          projectId: workspaceId
         });
         handlePopUpClose("deleteWebhook");
         createNotification({
@@ -123,7 +123,7 @@ export const WebhooksTab = withProjectPermission(
       try {
         await testWebhook({
           webhookId,
-          workspaceId
+          projectId: workspaceId
         });
         createNotification({
           type: "success",

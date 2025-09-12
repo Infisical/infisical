@@ -30,10 +30,10 @@ export const folderQueryKeys = {
     ["secret-folders", "environment", projectId] as const
 };
 
-const fetchProjectFolders = async (workspaceId: string, environment: string, path = "/") => {
-  const { data } = await apiRequest.get<{ folders: TSecretFolder[] }>("/api/v1/folders", {
+const fetchProjectFolders = async (projectId: string, environment: string, path = "/") => {
+  const { data } = await apiRequest.get<{ folders: TSecretFolder[] }>("/api/v2/folders", {
     params: {
-      workspaceId,
+      projectId,
       environment,
       path
     }
@@ -145,9 +145,9 @@ export const useCreateFolder = () => {
 
   return useMutation<object, object, TCreateFolderDTO>({
     mutationFn: async (dto) => {
-      const { data } = await apiRequest.post("/api/v1/folders", {
+      const { data } = await apiRequest.post("/api/v2/folders", {
         ...dto,
-        workspaceId: dto.projectId
+        projectId: dto.projectId
       });
       return data;
     },
@@ -179,10 +179,10 @@ export const useUpdateFolder = () => {
 
   return useMutation<object, object, TUpdateFolderDTO>({
     mutationFn: async ({ path = "/", folderId, name, environment, projectId, description }) => {
-      const { data } = await apiRequest.patch(`/api/v1/folders/${folderId}`, {
+      const { data } = await apiRequest.patch(`/api/v2/folders/${folderId}`, {
         name,
         environment,
-        workspaceId: projectId,
+        projectId,
         path,
         description
       });
@@ -219,10 +219,10 @@ export const useDeleteFolder = () => {
 
   return useMutation<object, object, TDeleteFolderDTO>({
     mutationFn: async ({ path = "/", folderId, environment, projectId }) => {
-      const { data } = await apiRequest.delete(`/api/v1/folders/${folderId}`, {
+      const { data } = await apiRequest.delete(`/api/v2/folders/${folderId}`, {
         data: {
           environment,
-          workspaceId: projectId,
+          projectId,
           path
         }
       });
@@ -259,7 +259,7 @@ export const useUpdateFolderBatch = () => {
 
   return useMutation<object, object, TUpdateFolderBatchDTO>({
     mutationFn: async ({ projectSlug, folders }) => {
-      const { data } = await apiRequest.patch("/api/v1/folders/batch", {
+      const { data } = await apiRequest.patch("/api/v2/folders/batch", {
         projectSlug,
         folders
       });

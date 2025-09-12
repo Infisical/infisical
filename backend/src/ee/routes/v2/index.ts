@@ -10,6 +10,7 @@ import {
 import { registerGatewayV2Router } from "./gateway-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
 import { registerDepreciatedProjectRoleRouter } from "./depreciated-project-role-router";
+import { registerSecretApprovalPolicyRouter } from "./secret-approval-policy-router";
 
 export const registerV2EERoutes = async (server: FastifyZodProvider) => {
   await server.register(
@@ -25,6 +26,8 @@ export const registerV2EERoutes = async (server: FastifyZodProvider) => {
   });
 
   await server.register(registerGatewayV2Router, { prefix: "/gateways" });
+
+  await server.register(registerSecretApprovalPolicyRouter, { prefix: "/secret-approvals" });
 
   await server.register(
     async (secretRotationV2Router) => {

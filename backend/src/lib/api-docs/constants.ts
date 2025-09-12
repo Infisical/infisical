@@ -901,7 +901,7 @@ export const ENVIRONMENTS = {
 
 export const FOLDERS = {
   LIST: {
-    workspaceId: "The ID of the project to list folders from.",
+    projectId: "The ID of the project to list folders from.",
     environment: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
     directory: "The directory to list folders from. (Deprecated in favor of path)",
@@ -913,7 +913,7 @@ export const FOLDERS = {
     folderId: "The ID of the folder to get details."
   },
   CREATE: {
-    workspaceId: "The ID of the project to create the folder in.",
+    projectId: "The ID of the project to create the folder in.",
     environment: "The slug of the environment to create the folder in.",
     name: "The name of the folder to create.",
     path: "The path of the folder to create.",
@@ -927,12 +927,12 @@ export const FOLDERS = {
     path: "The path of the folder to update.",
     directory: "The new directory of the folder to update. (Deprecated in favor of path)",
     projectSlug: "The slug of the project where the folder is located.",
-    workspaceId: "The ID of the project where the folder is located.",
+    projectId: "The ID of the project where the folder is located.",
     description: "An optional description label for the folder."
   },
   DELETE: {
     folderIdOrName: "The ID or name of the folder to delete.",
-    workspaceId: "The ID of the project to delete the folder from.",
+    projectId: "The ID of the project to delete the folder from.",
     environment: "The slug of the environment where the folder is located.",
     directory: "The directory of the folder to delete. (Deprecated in favor of path)",
     path: "The path of the folder to delete."
@@ -1043,7 +1043,7 @@ export const RAW_SECRETS = {
 
 export const SECRET_IMPORTS = {
   LIST: {
-    workspaceId: "The ID of the project to list secret imports from.",
+    projectId: "The ID of the project to list secret imports from.",
     environment: "The slug of the environment to list secret imports from.",
     path: "The path to list secret imports from."
   },
@@ -1053,7 +1053,7 @@ export const SECRET_IMPORTS = {
   CREATE: {
     environment: "The slug of the environment to import into.",
     path: "The path to import into.",
-    workspaceId: "The ID of the project you are working in.",
+    projectId: "The ID of the project you are working in.",
     isReplication:
       "When true, secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately.",
     import: {
@@ -1070,10 +1070,10 @@ export const SECRET_IMPORTS = {
       position: "The new position of the secret import. The lowest number will be displayed as the first import."
     },
     path: "The path of the secret import to update.",
-    workspaceId: "The ID of the project where the secret import is located."
+    projectId: "The ID of the project where the secret import is located."
   },
   DELETE: {
-    workspaceId: "The ID of the project to delete the secret import from.",
+    projectId: "The ID of the project to delete the secret import from.",
     secretImportId: "The ID of the secret import to delete.",
     environment: "The slug of the environment where the secret import is located.",
     path: "The path of the secret import to delete."

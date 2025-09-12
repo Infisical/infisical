@@ -3,7 +3,7 @@ import { WorkspaceEnv } from "../workspace/types";
 
 export type TSecretApprovalPolicy = {
   id: string;
-  workspace: string;
+  project: string;
   name: string;
   environments: WorkspaceEnv[];
   secretPath?: string;
@@ -36,17 +36,17 @@ export type Bypasser = {
 };
 
 export type TGetSecretApprovalPoliciesDTO = {
-  workspaceId: string;
+  projectId: string;
 };
 
 export type TGetSecretApprovalPolicyOfBoardDTO = {
-  workspaceId: string;
+  projectId: string;
   environment: string;
   secretPath: string;
 };
 
 export type TCreateSecretPolicyDTO = {
-  workspaceId: string;
+  projectId: string;
   name?: string;
   environments: string[];
   secretPath: string;
@@ -67,12 +67,12 @@ export type TUpdateSecretPolicyDTO = {
   allowedSelfApprovals?: boolean;
   enforcementLevel?: EnforcementLevel;
   // for invalidating list
-  workspaceId: string;
+  projectId: string;
   environments?: string[];
 };
 
 export type TDeleteSecretPolicyDTO = {
   id: string;
   // for invalidating list
-  workspaceId: string;
+  projectId: string;
 };

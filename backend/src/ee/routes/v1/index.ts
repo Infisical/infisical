@@ -29,7 +29,7 @@ import { registerRateLimitRouter } from "./rate-limit-router";
 import { registerRelayRouter } from "./relay-router";
 import { registerSamlRouter } from "./saml-router";
 import { registerScimRouter } from "./scim-router";
-import { registerSecretApprovalPolicyRouter } from "./secret-approval-policy-router";
+import { registerDepreciatedSecretApprovalPolicyRouter } from "./depreciated-secret-approval-policy-router";
 import { registerSecretApprovalRequestRouter } from "./secret-approval-request-router";
 import { registerSecretRotationProviderRouter } from "./secret-rotation-provider-router";
 import { registerSecretRotationRouter } from "./secret-rotation-router";
@@ -71,7 +71,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(registerSnapshotRouter, { prefix: "/secret-snapshot" });
   await server.register(registerPITRouter, { prefix: "/pit" });
-  await server.register(registerSecretApprovalPolicyRouter, { prefix: "/secret-approvals" });
+  await server.register(registerDepreciatedSecretApprovalPolicyRouter, { prefix: "/secret-approvals" });
   await server.register(registerSecretApprovalRequestRouter, {
     prefix: "/secret-approval-requests"
   });

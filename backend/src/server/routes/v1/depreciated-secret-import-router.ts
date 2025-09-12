@@ -10,7 +10,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 
 import { secretRawSchema } from "../sanitizedSchemas";
 
-export const registerSecretImportRouter = async (server: FastifyZodProvider) => {
+export const registerDepreciatedSecretImportRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/",
@@ -27,7 +27,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         }
       ],
       body: z.object({
-        workspaceId: z.string().trim().describe(SECRET_IMPORTS.CREATE.workspaceId),
+        workspaceId: z.string().trim().describe(SECRET_IMPORTS.CREATE.projectId),
         environment: z.string().trim().describe(SECRET_IMPORTS.CREATE.environment),
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(SECRET_IMPORTS.CREATE.path),
         import: z.object({
@@ -97,7 +97,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         secretImportId: z.string().trim().describe(SECRET_IMPORTS.UPDATE.secretImportId)
       }),
       body: z.object({
-        workspaceId: z.string().trim().describe(SECRET_IMPORTS.UPDATE.workspaceId),
+        workspaceId: z.string().trim().describe(SECRET_IMPORTS.UPDATE.projectId),
         environment: z.string().trim().describe(SECRET_IMPORTS.UPDATE.environment),
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(SECRET_IMPORTS.UPDATE.path),
         import: z.object({
@@ -173,7 +173,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         secretImportId: z.string().trim().describe(SECRET_IMPORTS.DELETE.secretImportId)
       }),
       body: z.object({
-        workspaceId: z.string().trim().describe(SECRET_IMPORTS.DELETE.workspaceId),
+        workspaceId: z.string().trim().describe(SECRET_IMPORTS.DELETE.projectId),
         environment: z.string().trim().describe(SECRET_IMPORTS.DELETE.environment),
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(SECRET_IMPORTS.DELETE.path)
       }),
@@ -236,7 +236,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         secretImportId: z.string().trim().describe(SECRET_IMPORTS.UPDATE.secretImportId)
       }),
       body: z.object({
-        workspaceId: z.string().trim().describe(SECRET_IMPORTS.UPDATE.workspaceId),
+        workspaceId: z.string().trim().describe(SECRET_IMPORTS.UPDATE.projectId),
         environment: z.string().trim().describe(SECRET_IMPORTS.UPDATE.environment),
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(SECRET_IMPORTS.UPDATE.path)
       }),
@@ -278,7 +278,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         }
       ],
       querystring: z.object({
-        workspaceId: z.string().trim().describe(SECRET_IMPORTS.LIST.workspaceId),
+        workspaceId: z.string().trim().describe(SECRET_IMPORTS.LIST.projectId),
         environment: z.string().trim().describe(SECRET_IMPORTS.LIST.environment),
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(SECRET_IMPORTS.LIST.path)
       }),

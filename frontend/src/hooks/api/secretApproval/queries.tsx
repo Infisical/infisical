@@ -10,54 +10,53 @@ import {
 } from "./types";
 
 export const secretApprovalKeys = {
-  getApprovalPolicies: (workspaceId: string) =>
-    [{ workspaceId }, "secret-approval-policies"] as const,
-  getApprovalPolicyOfABoard: (workspaceId: string, environment: string, secretPath: string) => [
-    { workspaceId, environment, secretPath },
+  getApprovalPolicies: (projectId: string) => [{ projectId }, "secret-approval-policies"] as const,
+  getApprovalPolicyOfABoard: (projectId: string, environment: string, secretPath: string) => [
+    { projectId, environment, secretPath },
     "Secret-approval-policy"
   ]
 };
 
-const fetchApprovalPolicies = async (workspaceId: string) => {
+const fetchApprovalPolicies = async (projectId: string) => {
   const { data } = await apiRequest.get<{ approvals: TSecretApprovalPolicy[] }>(
-    "/api/v1/secret-approvals",
-    { params: { workspaceId } }
+    "/api/v2/secret-approvals",
+    { params: { projectId } }
   );
   return data.approvals;
 };
 
 export const useGetSecretApprovalPolicies = ({
-  workspaceId,
+  projectId,
   options = {}
 }: TGetSecretApprovalPoliciesDTO & TReactQueryOptions) =>
   useQuery({
-    queryKey: secretApprovalKeys.getApprovalPolicies(workspaceId),
-    queryFn: () => fetchApprovalPolicies(workspaceId),
+    queryKey: secretApprovalKeys.getApprovalPolicies(projectId),
+    queryFn: () => fetchApprovalPolicies(projectId),
     ...options,
-    enabled: Boolean(workspaceId) && (options?.enabled ?? true)
+    enabled: Boolean(projectId) && (options?.enabled ?? true)
   });
 
 const fetchApprovalPolicyOfABoard = async (
-  workspaceId: string,
+  projectId: string,
   environment: string,
   secretPath: string
 ) => {
   const { data } = await apiRequest.get<{ policy: TSecretApprovalPolicy }>(
-    "/api/v1/secret-approvals/board",
-    { params: { workspaceId, environment, secretPath } }
+    "/api/v2/secret-approvals/board",
+    { params: { projectId, environment, secretPath } }
   );
   return data.policy || "";
 };
 
 export const useGetSecretApprovalPolicyOfABoard = ({
-  workspaceId,
+  projectId,
   secretPath = "/",
   environment,
   options = {}
 }: TGetSecretApprovalPolicyOfBoardDTO & TReactQueryOptions) =>
   useQuery({
-    queryKey: secretApprovalKeys.getApprovalPolicyOfABoard(workspaceId, environment, secretPath),
-    queryFn: () => fetchApprovalPolicyOfABoard(workspaceId, environment, secretPath),
+    queryKey: secretApprovalKeys.getApprovalPolicyOfABoard(projectId, environment, secretPath),
+    queryFn: () => fetchApprovalPolicyOfABoard(projectId, environment, secretPath),
     ...options,
-    enabled: Boolean(workspaceId && secretPath && environment) && (options?.enabled ?? true)
+    enabled: Boolean(projectId && secretPath && environment) && (options?.enabled ?? true)
   });

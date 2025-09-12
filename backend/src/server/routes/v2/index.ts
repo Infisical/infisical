@@ -10,6 +10,8 @@ import { registerDepreciatedProjectMembershipRouter } from "./depreciated-projec
 import { registerDepreciatedProjectRouter } from "./depreciated-project-router";
 import { registerServiceTokenRouter } from "./service-token-router";
 import { registerUserRouter } from "./user-router";
+import { registerSecretFolderRouter } from "./secret-folder-router";
+import { registerSecretImportRouter } from "./secret-import-router";
 
 export const registerV2Routes = async (server: FastifyZodProvider) => {
   await server.register(registerMfaRouter, { prefix: "/auth" });
@@ -32,6 +34,9 @@ export const registerV2Routes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/organizations" }
   );
+
+  await server.register(registerSecretFolderRouter, { prefix: "/folders" });
+  await server.register(registerSecretImportRouter, { prefix: "/secret-imports" });
 
   // moved to v1/projects
   await server.register(
