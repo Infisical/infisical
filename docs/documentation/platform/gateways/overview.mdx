@@ -50,78 +50,49 @@ The Gateway system uses SSH reverse tunnels for secure, firewall-friendly connec
 - **Certificate-based authentication** provides enhanced security
 - **Automatic reconnection** if connections are lost
 
-## Relay Types
+## Understanding Relay Types
 
-### Instance Relays (Shared Infrastructure)
+Relays are the routing infrastructure that enables secure communication between Infisical and your gateways. There are two main approaches to relay deployment:
 
-**Infisical Cloud:**
+**Managed Relays** - Use Infisical's hosted relay infrastructure in US/EU regions for quick setup with minimal operational overhead.
 
-- Pre-configured and ready to use
-- No setup required
-- Shared across all organizations
-- Managed by Infisical
+**Self-Deployed Relays** - Deploy your own relay servers for regional proximity, enhanced control, and custom network policies.
 
-**Self-hosted:**
+### Managed Relays (Recommended for Most Users)
 
-- Set up by instance administrators
-- Shared across all organizations on the instance
-- Uses `INFISICAL_RELAY_AUTH_SECRET` for authentication
+Managed relays are pre-configured relay servers hosted by Infisical that can serve multiple organizations with minimal operational overhead.
 
-### Organization Relays (Customer-Deployed)
+**Infisical Cloud (US/EU Regions):**
 
-**Benefits:**
+- Pre-configured relays in US and EU regions
+- No setup or maintenance required
+- Shared across all Infisical Cloud organizations
+- Managed and monitored by Infisical
+- Best for getting started quickly
 
-- Full control over infrastructure
-- Lower latency (deploy closer to resources)
-- Enhanced security and compliance
-- Custom network policies
+**Self-Hosted Instance Relays:**
 
-**Authentication:**
+- Instance administrators can deploy shared relays for their entire instance
+- All organizations on the instance can use these relays
+- Reduces operational burden for individual Organizations
+- Ideal for self-hosted instances wanting shared relay infrastructure
 
+### Self-Deployed Relays (Organization-Specific)
+
+Organizations can deploy and manage their own dedicated relay servers for regional proximity, network control, compliance requirements, or enhanced security.
+
+**Key Benefits:**
+
+- Deploy in any region or cloud provider for lower latency
+- Custom network configurations and security policies
+- Dedicated resources not shared with other organizations
+- Full control over relay infrastructure
 - Uses standard Infisical authentication methods
-- Organization-specific credentials
-- Full control over access and permissions
-
-## When to Use Each
-
-**Use Instance Relays when:**
-
-- You want minimal operational overhead
-- You don't need custom network policies
-- You're okay with shared infrastructure
-- You want to get started quickly
-
-**Use Organization Relays when:**
-
-- You need lower latency
-- You have security or compliance requirements
-- You need custom network policies
-- You want full control over infrastructure
-
-## Common Use Cases
-
-- **Database credential rotation** - Automatically rotate database passwords
-- **Dynamic secret generation** - Generate temporary credentials for services
-- **Private API access** - Connect to internal APIs and services
-- **Compliance requirements** - Meet data sovereignty and air-gapped environment needs
-
-## Quick Start
-
-The Infisical Gateway is integrated into the Infisical CLI under the `gateway` command, making it simple to deploy and manage.
-You can install the Gateway in all the same ways you install the Infisical CLI—whether via npm, Docker, or a binary.
-For detailed installation instructions, refer to the Infisical [CLI Installation instructions](/cli/overview).
-
-**Prerequisites:**
-
-1. **Relay Server**: Before deploying gateways, you need a running relay server
-2. **Machine Identity**: Configure a machine identity with appropriate permissions to create and manage gateways
-
-Once authenticated, the Gateway establishes an SSH reverse tunnel to the specified relay server, allowing secure access to your private resources.
 
 ## Next Steps
 
 Ready to get started? Follow these guides:
 
-1. **[Deployment Guide](/documentation/platform/gateways/deployment)** - Complete deployment instructions
-2. **[Networking Requirements](/documentation/platform/gateways/networking)** - Network configuration and firewall setup
+1. **[Gateway Deployment](/documentation/platform/gateways/gateway-deployment)** - Complete gateway deployment and network configuration
+2. **[Relay Deployment](/documentation/platform/gateways/relay-deployment)** - Complete relay deployment and network configuration
 3. **[Security Architecture](/documentation/platform/gateways/security)** - Security model and best practices
