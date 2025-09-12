@@ -41,7 +41,7 @@ const ORACLE_PASSWORD_REQUIREMENTS = {
 export const sqlCredentialsRotationFactory: TRotationFactory<
   TSqlCredentialsRotationWithConnection,
   TSqlCredentialsRotationGeneratedCredentials
-> = (secretRotation, _appConnectionDAL, _kmsService, gatewayService) => {
+> = (secretRotation, _appConnectionDAL, _kmsService, gatewayService, gatewayV2Service) => {
   const {
     connection,
     parameters: { username1, username2 },
@@ -67,6 +67,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
         credentials: finalCredentials
       },
       gatewayService,
+      gatewayV2Service,
       (client) => operation(client)
     );
   };

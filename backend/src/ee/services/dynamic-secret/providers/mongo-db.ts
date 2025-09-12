@@ -44,7 +44,7 @@ export const MongoDBProvider = (): TDynamicProviderFns => {
         password: providerInputs.password
       },
       directConnection: !isSrv,
-      ca: providerInputs.ca
+      ca: providerInputs.ca || undefined
     });
     return client;
   };

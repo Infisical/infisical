@@ -6,7 +6,8 @@ export type TGatewayTlsOptions = { ca: string; cert: string; key: string };
 
 export enum GatewayProxyProtocol {
   Http = "http",
-  Tcp = "tcp"
+  Tcp = "tcp",
+  Ping = "ping"
 }
 
 export enum GatewayHttpProxyActions {

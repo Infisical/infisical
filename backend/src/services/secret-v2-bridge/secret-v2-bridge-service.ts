@@ -118,7 +118,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   >;
   snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setExpiry" | "setItemWithExpiry" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setExpiry" | "setItemWithExpiry" | "deleteItem" | "pgGetIntItem">;
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder">;
 };
 
@@ -373,6 +373,7 @@ export const secretV2BridgeServiceFactory = ({
         tx
       });
 
+      await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
       return createdSecret;
     });
 
@@ -390,7 +391,6 @@ export const secretV2BridgeServiceFactory = ({
       });
     }
 
-    await secretDAL.invalidateSecretCacheByProjectId(projectId);
     if (inputSecret.type === SecretType.Shared) {
       await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
@@ -579,8 +579,16 @@ export const secretV2BridgeServiceFactory = ({
           }
         : {};
 
-    const updatedSecret = await secretDAL.transaction(async (tx) =>
-      fnSecretBulkUpdate({
+    if (secretValue) {
+      const { nestedReferences, localReferences } = getAllSecretReferences(secretValue);
+      const allSecretReferences = nestedReferences.concat(
+        localReferences.map((el) => ({ secretKey: el, secretPath, environment }))
+      );
+      await $validateSecretReferences(projectId, permission, allSecretReferences);
+    }
+
+    const updatedSecret = await secretDAL.transaction(async (tx) => {
+      const modifiedSecretsInDB = await fnSecretBulkUpdate({
         folderId,
         orgId: actorOrgId,
         resourceMetadataDAL,
@@ -611,8 +619,11 @@ export const secretV2BridgeServiceFactory = ({
           actorId
         },
         tx
-      })
-    );
+      });
+
+      await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
+      return modifiedSecretsInDB;
+    });
     if (inputSecret.secretReminderRepeatDays) {
       await reminderService.createReminder({
         actor,
@@ -628,7 +639,6 @@ export const secretV2BridgeServiceFactory = ({
       });
     }
 
-    await secretDAL.invalidateSecretCacheByProjectId(projectId);
     if (inputSecret.type === SecretType.Shared) {
       await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
@@ -728,8 +738,8 @@ export const secretV2BridgeServiceFactory = ({
     );
 
     try {
-      const deletedSecret = await secretDAL.transaction(async (tx) =>
-        fnSecretBulkDelete({
+      const deletedSecret = await secretDAL.transaction(async (tx) => {
+        const modifiedSecretsInDB = await fnSecretBulkDelete({
           projectId,
           folderId,
           actorId,
@@ -745,10 +755,11 @@ export const secretV2BridgeServiceFactory = ({
             }
           ],
           tx
-        })
-      );
+        });
+        await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
+        return modifiedSecretsInDB;
+      });
 
-      await secretDAL.invalidateSecretCacheByProjectId(projectId);
       if (inputSecret.type === SecretType.Shared) {
         await snapshotService.performSnapshot(folderId);
         await secretQueueService.syncSecrets({
@@ -1040,7 +1051,7 @@ export const secretV2BridgeServiceFactory = ({
     });
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
 
-    const cachedSecretDalVersion = await keyStore.getItem(SecretServiceCacheKeys.getSecretDalVersion(projectId));
+    const cachedSecretDalVersion = await keyStore.pgGetIntItem(SecretServiceCacheKeys.getSecretDalVersion(projectId));
     const secretDalVersion = Number(cachedSecretDalVersion || 0);
     const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer(projectId, secretDalVersion, {
       ...dto,
@@ -1705,7 +1716,7 @@ export const secretV2BridgeServiceFactory = ({
       await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
     const executeBulkInsert = async (tx: Knex) => {
-      return fnSecretBulkInsert({
+      const modifiedSecretsInDB = await fnSecretBulkInsert({
         inputSecrets: inputSecrets.map((el) => {
           const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
 
@@ -1741,13 +1752,14 @@ export const secretV2BridgeServiceFactory = ({
         },
         tx
       });
+      await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
+      return modifiedSecretsInDB;
     };
 
     const newSecrets = providedTx
       ? await executeBulkInsert(providedTx)
       : await secretDAL.transaction(executeBulkInsert);
 
-    await secretDAL.invalidateSecretCacheByProjectId(projectId);
     await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
       actor,
@@ -2112,6 +2124,7 @@ export const secretV2BridgeServiceFactory = ({
         }
       }
 
+      await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
       return updatedSecrets;
     };
 
@@ -2119,7 +2132,6 @@ export const secretV2BridgeServiceFactory = ({
       ? await executeBulkUpdate(providedTx)
       : await secretDAL.transaction(executeBulkUpdate);
 
-    await secretDAL.invalidateSecretCacheByProjectId(projectId);
     await Promise.allSettled(folders.map((el) => (el?.id ? snapshotService.performSnapshot(el.id) : undefined)));
     await Promise.allSettled(
       folders.map((el) =>
@@ -2246,7 +2258,7 @@ export const secretV2BridgeServiceFactory = ({
     });
 
     const executeBulkDelete = async (tx: Knex) => {
-      return fnSecretBulkDelete({
+      const modifiedSecretsInDB = await fnSecretBulkDelete({
         secretDAL,
         secretQueueService,
         folderCommitService,
@@ -2262,6 +2274,8 @@ export const secretV2BridgeServiceFactory = ({
         commitChanges,
         tx
       });
+      await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
+      return modifiedSecretsInDB;
     };
 
     try {
@@ -2269,7 +2283,6 @@ export const secretV2BridgeServiceFactory = ({
         ? await executeBulkDelete(providedTx)
         : await secretDAL.transaction(executeBulkDelete);
 
-      await secretDAL.invalidateSecretCacheByProjectId(projectId);
       await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         actor,

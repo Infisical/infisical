@@ -1,6 +1,7 @@
 import { FunctionComponent, ReactNode } from "react";
 import { BoundCanProps, Can } from "@casl/react";
 
+import { TooltipProps } from "@app/components/v2/Tooltip/Tooltip";
 import { TOrgPermission, useOrgPermission } from "@app/context/OrgPermissionContext";
 
 import { AccessRestrictedBanner, Tooltip } from "../v2";
@@ -20,6 +21,7 @@ type Props = {
   renderTooltip?: boolean;
   allowedLabel?: string;
   renderGuardBanner?: boolean;
+  tooltipProps?: Omit<TooltipProps, "children">;
 } & BoundCanProps<TOrgPermission>;
 
 export const OrgPermissionCan: FunctionComponent<Props> = ({
@@ -29,6 +31,7 @@ export const OrgPermissionCan: FunctionComponent<Props> = ({
   renderTooltip,
   allowedLabel,
   renderGuardBanner,
+  tooltipProps,
   ...props
 }) => {
   const { permission } = useOrgPermission();
@@ -43,11 +46,19 @@ export const OrgPermissionCan: FunctionComponent<Props> = ({
             : children;
 
         if (!isAllowed && passThrough) {
-          return <Tooltip content={label}>{finalChild}</Tooltip>;
+          return (
+            <Tooltip content={label} {...tooltipProps}>
+              {finalChild}
+            </Tooltip>
+          );
         }
 
         if (isAllowed && renderTooltip && allowedLabel) {
-          return <Tooltip content={allowedLabel}>{finalChild}</Tooltip>;
+          return (
+            <Tooltip content={allowedLabel} {...tooltipProps}>
+              {finalChild}
+            </Tooltip>
+          );
         }
 
         if (!isAllowed && renderGuardBanner) {

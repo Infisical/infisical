@@ -1,9 +1,14 @@
+import { Cluster, Redis } from "ioredis";
+import { Knex } from "knex";
+
 import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
 import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
 import { applyJitter } from "@app/lib/dates";
 import { delay as delayMs } from "@app/lib/delay";
+import { ms } from "@app/lib/ms";
 import { ExecutionResult, Redlock, Settings } from "@app/lib/red-lock";
-import { Redis, Cluster } from "ioredis";
+
+import { TKeyValueStoreDALFactory } from "./key-value-store-dal";
 
 export const PgSqlLock = {
   BootUpMigration: 2023,
@@ -15,6 +20,9 @@ export const PgSqlLock = {
   CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`),
   CreateFolder: (envId: string, projectId: string) => pgAdvisoryLockHashText(`create-folder:${envId}-${projectId}`),
   SshInit: (projectId: string) => pgAdvisoryLockHashText(`ssh-bootstrap:${projectId}`),
+  InstanceRelayConfigInit: () => pgAdvisoryLockHashText("instance-relay-config-init"),
+  OrgGatewayV2Init: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-v2-init:${orgId}`),
+  OrgRelayConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-relay-config-init:${orgId}`),
   IdentityLogin: (identityId: string, nonce: string) => pgAdvisoryLockHashText(`identity-login:${identityId}:${nonce}`)
 } as const;
 
@@ -94,13 +102,17 @@ export type TKeyStoreFactory = {
   deleteItemsByKeyIn: (keys: string[]) => Promise<number>;
   deleteItems: (arg: TDeleteItems) => Promise<number>;
   incrementBy: (key: string, value: number) => Promise<number>;
+  getKeysByPattern: (pattern: string, limit?: number) => Promise<string[]>;
+  // pg
+  pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
+  pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
+  // locks
   acquireLock(
     resources: string[],
     duration: number,
     settings?: Partial<Settings>
   ): Promise<{ release: () => Promise<ExecutionResult> }>;
   waitTillReady: ({ key, waitingCb, keyCheckCb, waitIteration, delay, jitter }: TWaitTillReady) => Promise<void>;
-  getKeysByPattern: (pattern: string, limit?: number) => Promise<string[]>;
 };
 
 const pickPrimaryOrSecondaryRedis = (primary: Redis | Cluster, secondaries?: Array<Redis | Cluster>) => {
@@ -113,7 +125,10 @@ interface TKeyStoreFactoryDTO extends TRedisConfigKeys {
   REDIS_READ_REPLICAS?: { host: string; port: number }[];
 }
 
-export const keyStoreFactory = (redisConfigKeys: TKeyStoreFactoryDTO): TKeyStoreFactory => {
+export const keyStoreFactory = (
+  redisConfigKeys: TKeyStoreFactoryDTO,
+  keyValueStoreDAL: TKeyValueStoreDALFactory
+): TKeyStoreFactory => {
   const primaryRedis = buildRedisFromConfig(redisConfigKeys);
   const redisReadReplicas = redisConfigKeys.REDIS_READ_REPLICAS?.map((el) => {
     if (redisConfigKeys.REDIS_URL) {
@@ -188,29 +203,6 @@ export const keyStoreFactory = (redisConfigKeys: TKeyStoreFactoryDTO): TKeyStore
 
   const setExpiry = async (key: string, expiryInSeconds: number) => primaryRedis.expire(key, expiryInSeconds);
 
-  const waitTillReady = async ({
-    key,
-    waitingCb,
-    keyCheckCb,
-    waitIteration = 10,
-    delay = 1000,
-    jitter = 200
-  }: TWaitTillReady) => {
-    let attempts = 0;
-    let isReady = keyCheckCb(await getItem(key));
-    while (!isReady) {
-      if (attempts > waitIteration) return;
-      // eslint-disable-next-line
-      await new Promise((resolve) => {
-        waitingCb?.();
-        setTimeout(resolve, Math.max(0, applyJitter(delay, jitter)));
-      });
-      attempts += 1;
-      // eslint-disable-next-line
-      isReady = keyCheckCb(await getItem(key));
-    }
-  };
-
   const getKeysByPattern = async (pattern: string, limit?: number) => {
     let cursor = "0";
     const allKeys: string[] = [];
@@ -235,6 +227,37 @@ export const keyStoreFactory = (redisConfigKeys: TKeyStoreFactoryDTO): TKeyStore
     return allKeys;
   };
 
+  const pgIncrementBy: TKeyStoreFactory["pgIncrementBy"] = async (key, { incr = 1, tx, expiry }) => {
+    const expiresAt = expiry ? new Date(Date.now() + ms(expiry)) : undefined;
+    return keyValueStoreDAL.incrementBy(key, { incr, expiresAt, tx });
+  };
+
+  const pgGetIntItem = async (key: string, prefix?: string) =>
+    keyValueStoreDAL.findOneInt(prefix ? `${prefix}:${key}` : key);
+
+  const waitTillReady = async ({
+    key,
+    waitingCb,
+    keyCheckCb,
+    waitIteration = 10,
+    delay = 1000,
+    jitter = 200
+  }: TWaitTillReady) => {
+    let attempts = 0;
+    let isReady = keyCheckCb(await getItem(key));
+    while (!isReady) {
+      if (attempts > waitIteration) return;
+      // eslint-disable-next-line
+      await new Promise((resolve) => {
+        waitingCb?.();
+        setTimeout(resolve, Math.max(0, applyJitter(delay, jitter)));
+      });
+      attempts += 1;
+      // eslint-disable-next-line
+      isReady = keyCheckCb(await getItem(key));
+    }
+  };
+
   return {
     setItem,
     getItem,
@@ -249,6 +272,8 @@ export const keyStoreFactory = (redisConfigKeys: TKeyStoreFactoryDTO): TKeyStore
     waitTillReady,
     getKeysByPattern,
     deleteItemsByKeyIn,
-    getItems
+    getItems,
+    pgGetIntItem,
+    pgIncrementBy
   };
 };

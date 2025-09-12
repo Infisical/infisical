@@ -1,5 +1,10 @@
 import { LogProvider } from "@app/ee/services/audit-log-stream/audit-log-stream-enums";
 import {
+  CreateCriblProviderLogStreamSchema,
+  SanitizedCriblProviderSchema,
+  UpdateCriblProviderLogStreamSchema
+} from "@app/ee/services/audit-log-stream/cribl/cribl-provider-schemas";
+import {
   CreateCustomProviderLogStreamSchema,
   SanitizedCustomProviderSchema,
   UpdateCustomProviderLogStreamSchema
@@ -46,6 +51,15 @@ export const AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP: Record<LogProvider, (server: 
         sanitizedResponseSchema: SanitizedSplunkProviderSchema,
         createSchema: CreateSplunkProviderLogStreamSchema,
         updateSchema: UpdateSplunkProviderLogStreamSchema
+      });
+    },
+    [LogProvider.Cribl]: async (server: FastifyZodProvider) => {
+      registerAuditLogStreamEndpoints({
+        server,
+        provider: LogProvider.Cribl,
+        sanitizedResponseSchema: SanitizedCriblProviderSchema,
+        createSchema: CreateCriblProviderLogStreamSchema,
+        updateSchema: UpdateCriblProviderLogStreamSchema
       });
     }
   };

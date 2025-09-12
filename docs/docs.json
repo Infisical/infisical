@@ -174,7 +174,15 @@
                 "pages": [
                   "documentation/platform/gateways/overview",
                   "documentation/platform/gateways/gateway-security",
-                  "documentation/platform/gateways/networking"
+                  "documentation/platform/gateways/networking",
+                  {
+                    "group": "Gateway (Deprecated)",
+                    "pages": [
+                      "documentation/platform/gateways-deprecated/overview",
+                      "documentation/platform/gateways-deprecated/gateway-security",
+                      "documentation/platform/gateways-deprecated/networking"
+                    ]
+                  }
                 ]
               }
             ]
@@ -346,7 +354,10 @@
               },
               {
                 "group": "Architecture",
-                "pages": ["internals/architecture/components", "internals/architecture/cloud"]
+                "pages": [
+                  "internals/architecture/components",
+                  "internals/architecture/cloud"
+                ]
               },
               "internals/security",
               "internals/service-tokens"
@@ -564,7 +575,10 @@
                   "integrations/cloud/gcp-secret-manager",
                   {
                     "group": "Cloudflare",
-                    "pages": ["integrations/cloud/cloudflare-pages", "integrations/cloud/cloudflare-workers"]
+                    "pages": [
+                      "integrations/cloud/cloudflare-pages",
+                      "integrations/cloud/cloudflare-workers"
+                    ]
                   },
                   "integrations/cloud/terraform-cloud",
                   "integrations/cloud/databricks",
@@ -659,7 +673,9 @@
                   "documentation/platform/secret-scanning/overview",
                   {
                     "group": "Concepts",
-                    "pages": ["documentation/platform/secret-scanning/concepts/secret-scanning"]
+                    "pages": [
+                      "documentation/platform/secret-scanning/concepts/secret-scanning"
+                    ]
                   }
                 ]
               },
@@ -709,13 +725,18 @@
                   "documentation/platform/ssh/overview",
                   {
                     "group": "Concepts",
-                    "pages": ["documentation/platform/ssh/concepts/ssh-certificates"]
+                    "pages": [
+                      "documentation/platform/ssh/concepts/ssh-certificates"
+                    ]
                   }
                 ]
               },
               {
                 "group": "Platform Reference",
-                "pages": ["documentation/platform/ssh/usage", "documentation/platform/ssh/host-groups"]
+                "pages": [
+                  "documentation/platform/ssh/usage",
+                  "documentation/platform/ssh/host-groups"
+                ]
               }
             ]
           },
@@ -753,6 +774,7 @@
                   "cli/commands/dynamic-secrets",
                   "cli/commands/ssh",
                   "cli/commands/gateway",
+                  "cli/commands/relay",
                   "cli/commands/bootstrap",
                   "cli/commands/export",
                   "cli/commands/token",
@@ -762,7 +784,11 @@
                   "cli/commands/reset",
                   {
                     "group": "infisical scan",
-                    "pages": ["cli/commands/scan", "cli/commands/scan-git-changes", "cli/commands/scan-install"]
+                    "pages": [
+                      "cli/commands/scan",
+                      "cli/commands/scan-git-changes",
+                      "cli/commands/scan-install"
+                    ]
                   }
                 ]
               },
@@ -1096,7 +1122,9 @@
                 "pages": [
                   {
                     "group": "Kubernetes",
-                    "pages": ["api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"]
+                    "pages": [
+                      "api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"
+                    ]
                   },
                   "api-reference/endpoints/dynamic-secrets/create",
                   "api-reference/endpoints/dynamic-secrets/update",

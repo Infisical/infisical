@@ -48,7 +48,9 @@ const syntaxHighlight = (
 
   // akhilmhdh: Dont remove this br. I am still clueless how this works but weirdly enough
   // when break is added a line break works properly
-  return formattedContent.concat(<br key={`secret-value-${formattedContent.length + 1}`} />);
+  return formattedContent.concat(
+    <br key={`secret-value-linebreak-${formattedContent.length + 1}`} />
+  );
 };
 
 type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
