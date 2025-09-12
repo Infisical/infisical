@@ -5,6 +5,10 @@ import {
   SanitizedAzureProviderSchema
 } from "@app/ee/services/audit-log-stream/azure/azure-provider-schemas";
 import {
+  CriblProviderListItemSchema,
+  SanitizedCriblProviderSchema
+} from "@app/ee/services/audit-log-stream/cribl/cribl-provider-schemas";
+import {
   CustomProviderListItemSchema,
   SanitizedCustomProviderSchema
 } from "@app/ee/services/audit-log-stream/custom/custom-provider-schemas";
@@ -24,14 +28,16 @@ const SanitizedAuditLogStreamSchema = z.union([
   SanitizedCustomProviderSchema,
   SanitizedDatadogProviderSchema,
   SanitizedSplunkProviderSchema,
-  SanitizedAzureProviderSchema
+  SanitizedAzureProviderSchema,
+  SanitizedCriblProviderSchema
 ]);
 
 const ProviderOptionsSchema = z.discriminatedUnion("provider", [
   CustomProviderListItemSchema,
   DatadogProviderListItemSchema,
   SplunkProviderListItemSchema,
-  AzureProviderListItemSchema
+  AzureProviderListItemSchema,
+  CriblProviderListItemSchema
 ]);
 
 export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) => {

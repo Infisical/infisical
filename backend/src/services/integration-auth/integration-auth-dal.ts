@@ -30,7 +30,7 @@ export const integrationAuthDALFactory = (db: TDbClient) => {
 
   const getByOrg = async (orgId: string, tx?: Knex) => {
     try {
-      const integrationAuths = await (tx || db)(TableName.IntegrationAuth)
+      const integrationAuths = await (tx || db.replicaNode())(TableName.IntegrationAuth)
         .join(TableName.Project, `${TableName.Project}.id`, `${TableName.IntegrationAuth}.projectId`)
         .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)
         .where(`${TableName.Organization}.id`, "=", orgId)

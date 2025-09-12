@@ -265,7 +265,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
   // then joins with respective secrets and folder
   const findRecursivelySnapshots = async (snapshotId: string, tx?: Knex) => {
     try {
-      const data = await (tx || db)
+      const data = await (tx || db.replicaNode())
         .withRecursive("parent", (qb) => {
           void qb
             .from(TableName.Snapshot)
@@ -419,7 +419,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
   // then joins with respective secrets and folder
   const findRecursivelySnapshotsV2Bridge = async (snapshotId: string, tx?: Knex) => {
     try {
-      const data = await (tx || db)
+      const data = await (tx || db.replicaNode())
         .withRecursive("parent", (qb) => {
           void qb
             .from(TableName.Snapshot)
@@ -581,7 +581,11 @@ export const snapshotDALFactory = (db: TDbClient) => {
       const docs = await (tx || db.replicaNode())(TableName.Snapshot)
         .where(`${TableName.Snapshot}.folderId`, folderId)
         .join<TSecretSnapshots>(
-          (tx || db)(TableName.Snapshot).groupBy("folderId").max("createdAt").select("folderId").as("latestVersion"),
+          (tx || db.replicaNode())(TableName.Snapshot)
+            .groupBy("folderId")
+            .max("createdAt")
+            .select("folderId")
+            .as("latestVersion"),
           (bd) => {
             bd.on(`${TableName.Snapshot}.folderId`, "latestVersion.folderId").andOn(
               `${TableName.Snapshot}.createdAt`,
@@ -766,7 +770,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
         )
         .orderBy(`${TableName.Snapshot}.createdAt`, "desc")
         .where(`${TableName.Snapshot}.folderId`, folderId);
-      const data = await (tx || db)
+      const data = await (tx || db.replicaNode())
         .with("w", query)
         .select("*")
         .from<Awaited<typeof query>[number]>("w")

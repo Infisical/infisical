@@ -152,3 +152,30 @@ export const useRemoveMyDuplicateAccounts = () => {
     }
   });
 };
+
+export const useRequestEmailChangeOTP = () => {
+  return useMutation({
+    mutationFn: async ({ newEmail }: { newEmail: string }) => {
+      const { data } = await apiRequest.post("/api/v2/users/me/email-change/otp", {
+        newEmail
+      });
+      return data;
+    }
+  });
+};
+
+export const useUpdateUserEmail = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ newEmail, otpCode }: { newEmail: string; otpCode: string }) => {
+      const { data } = await apiRequest.patch("/api/v2/users/me/email", {
+        newEmail,
+        otpCode
+      });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.getUser });
+    }
+  });
+};

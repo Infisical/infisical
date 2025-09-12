@@ -184,6 +184,9 @@ export const OrgSsoTab = withPermission(
               isSamlConfigured={isSamlConfigured}
               isOidcConfigured={isOidcConfigured}
               isGoogleConfigured={isGoogleConfigured}
+              isSamlActive={Boolean(samlConfig?.isActive)}
+              isOidcActive={Boolean(oidcConfig?.isActive)}
+              isLdapActive={Boolean(ldapConfig?.isActive)}
             />
           )}
 

@@ -182,6 +182,48 @@ Infisical Audit Log Streaming enables you to transmit your organization's audit 
       		  </Step>
         </Steps>
     </Accordion>
+    <Accordion title="Cribl">
+        Stream Infisical audit logs to Cribl Stream for centralized processing and routing. Infisical supports Cribl as a provider for seamless integration.
+
+        <Steps>
+            <Step title="Create Infisical Data Source">
+                In Cribl Stream, navigate to **Worker Groups** and select your Worker Group. Take note of the **Ingress Address** for later steps.
+
+        				![cribl ingress address](/images/platform/audit-log-streams/cribl-ingress-address.png)
+
+                Within your Worker Group, navigate to **Data > Sources > HTTP** and click **Add Source**.
+
+        				![cribl add source](/images/platform/audit-log-streams/cribl-add-source.png)
+
+                Configure the **Input ID**, **Port**, and **Cribl HTTP event API** path (e.g., `/infisical`). Then, generate an **Auth Token**.
+
+                You can optionally configure TLS in the **TLS Settings** tab and add a pipeline in the **Pre-Processing** tab.
+
+                <Warning>
+                    Ensure that you're using a port that's open on your instance.
+                </Warning>
+
+        				![cribl general settings](/images/platform/audit-log-streams/cribl-general-settings.png)
+
+                Once you've configured the Data Source, click **Save** and deploy your changes.
+        		</Step>
+            <Step title="Create Audit Log Stream on Infisical">
+                On Infisical, create a new audit log stream and select the **Cribl** provider option.
+
+                Input the following credentials:
+                - **Cribl Stream URL**: Your HTTP source endpoint composed of `http://<ingress-address>:<port>/<http-event-api-path>/_bulk`
+                - **Cribl Stream Token**: The authentication token from Step 1
+
+                <Info>
+                    If you configured TLS for your Data Source, use the `https://` protocol.
+                </Info>
+
+        				![cribl details](/images/platform/audit-log-streams/cribl-details.png)
+
+                Once you're finished, click **Create Log Stream**.
+        		</Step>
+        </Steps>
+    </Accordion>
     <Accordion title="Datadog">
         You can stream to Datadog using the **Datadog** provider log stream.
 

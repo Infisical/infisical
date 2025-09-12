@@ -661,7 +661,7 @@ describe("folderCommitServiceFactory", () => {
 
       // Assert
       expect(mockFolderCommitDAL.create).toHaveBeenCalled();
-      expect(mockSecretV2BridgeDAL.invalidateSecretCacheByProjectId).toHaveBeenCalledWith(projectId);
+      expect(mockSecretV2BridgeDAL.invalidateSecretCacheByProjectId).toHaveBeenCalledWith(projectId, {});
 
       // Check that we got the right counts
       expect(result.totalChanges).toEqual(2);

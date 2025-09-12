@@ -36,11 +36,23 @@ jobs:
           
           echo "Latest production tag: $LATEST_STABLE_TAG"
           
+          # Extract version numbers and increment minor version
+          VERSION_NUMBERS=$(echo "$LATEST_STABLE_TAG" | sed 's/^v//')
+          MAJOR=$(echo "$VERSION_NUMBERS" | cut -d'.' -f1)
+          MINOR=$(echo "$VERSION_NUMBERS" | cut -d'.' -f2)
+          PATCH=$(echo "$VERSION_NUMBERS" | cut -d'.' -f3)
+          
+          # Increment minor version, reset patch to 0
+          NEXT_MINOR=$((MINOR + 1))
+          NEXT_VERSION="v${MAJOR}.${NEXT_MINOR}.0"
+          
+          echo "Next version for nightly: $NEXT_VERSION"
+          
           # Get current date in YYYYMMDD format
           DATE=$(date +%Y%m%d)
           
-          # Base nightly tag name
-          BASE_TAG="${LATEST_STABLE_TAG}-nightly-${DATE}"
+          # Base nightly tag name using next version
+          BASE_TAG="${NEXT_VERSION}-nightly-${DATE}"
           
           # Check if this exact tag already exists
           if git tag --list | grep -q "^${BASE_TAG}$"; then
@@ -65,7 +77,6 @@ jobs:
           
           echo "Generated nightly tag: $NIGHTLY_TAG"
           echo "NIGHTLY_TAG=$NIGHTLY_TAG" >> $GITHUB_ENV
-          echo "LATEST_PRODUCTION_TAG=$LATEST_STABLE_TAG" >> $GITHUB_ENV
 
           git tag "$NIGHTLY_TAG"
           git push origin "$NIGHTLY_TAG"

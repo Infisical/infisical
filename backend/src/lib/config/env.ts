@@ -259,6 +259,8 @@ const envSchema = z
     GATEWAY_RELAY_REALM: zpStr(z.string().optional()),
     GATEWAY_RELAY_AUTH_SECRET: zpStr(z.string().optional()),
 
+    RELAY_AUTH_SECRET: zpStr(z.string().optional()),
+
     DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
     DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).default(
       process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
@@ -410,6 +412,7 @@ const envSchema = z
       Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID) &&
       Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET) &&
       Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET),
+    isSecondaryInstance: Boolean(data.INFISICAL_PRIMARY_INSTANCE_URL),
     isHsmConfigured:
       Boolean(data.HSM_LIB_PATH) && Boolean(data.HSM_PIN) && Boolean(data.HSM_KEY_LABEL) && data.HSM_SLOT !== undefined,
     samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,

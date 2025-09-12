@@ -4,6 +4,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TAuditLogStream, TAuditLogStreamCredentials } from "./audit-log-stream-types";
 import { getAzureProviderListItem } from "./azure/azure-provider-fns";
+import { getCriblProviderListItem } from "./cribl/cribl-provider-fns";
 import { getCustomProviderListItem } from "./custom/custom-provider-fns";
 import { getDatadogProviderListItem } from "./datadog/datadog-provider-fns";
 import { getSplunkProviderListItem } from "./splunk/splunk-provider-fns";
@@ -13,7 +14,8 @@ export const listProviderOptions = () => {
     getDatadogProviderListItem(),
     getSplunkProviderListItem(),
     getCustomProviderListItem(),
-    getAzureProviderListItem()
+    getAzureProviderListItem(),
+    getCriblProviderListItem()
   ].sort((a, b) => a.name.localeCompare(b.name));
 };
 

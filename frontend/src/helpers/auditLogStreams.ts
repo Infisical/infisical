@@ -9,6 +9,7 @@ export const AUDIT_LOG_STREAM_PROVIDER_MAP: Record<
   { name: string; image?: string; icon?: IconDefinition; size?: number }
 > = {
   [LogProvider.Azure]: { name: "Azure", image: "Microsoft Azure.png", size: 60 },
+  [LogProvider.Cribl]: { name: "Cribl", image: "Cribl.png", size: 60 },
   [LogProvider.Custom]: { name: "Custom", icon: faCode },
   [LogProvider.Datadog]: { name: "Datadog", image: "Datadog.png" },
   [LogProvider.Splunk]: { name: "Splunk", image: "Splunk.png", size: 65 }
@@ -21,6 +22,7 @@ export function getProviderUrl(
   switch (logStream.provider) {
     case LogProvider.Custom:
     case LogProvider.Datadog:
+    case LogProvider.Cribl:
       return logStream.credentials.url;
     case LogProvider.Splunk:
       return `https://${logStream.credentials.hostname}:8088/services/collector/event`;

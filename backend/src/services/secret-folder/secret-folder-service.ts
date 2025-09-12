@@ -47,7 +47,7 @@ type TSecretFolderServiceFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderIds">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderIds" | "invalidateSecretCacheByProjectId">;
 };
 
 export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceFactory>;
@@ -398,6 +398,7 @@ export const secretFolderServiceFactory = ({
 
     await Promise.all(result.map(async (res) => snapshotService.performSnapshot(res.newFolder.parentId as string)));
 
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     return {
       projectId,
       newFolders: result.map((res) => res.newFolder),
@@ -522,6 +523,7 @@ export const secretFolderServiceFactory = ({
     }
 
     await snapshotService.performSnapshot(newFolder.parentId as string);
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     return {
       folder: { ...newFolder, path: newFolderWithFullPath.path },
       old: { ...folder, path: folderWithFullPath.path }
@@ -724,6 +726,7 @@ export const secretFolderServiceFactory = ({
     });
 
     await snapshotService.performSnapshot(folder.parentId as string);
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     return folder;
   };
 
