@@ -73,6 +73,7 @@ type TSecretSyncQueueFactoryDep = {
   secretV2BridgeDAL: Pick<
     TSecretV2BridgeDALFactory,
     | "findByFolderId"
+    | "findByFolderIds"
     | "find"
     | "insertMany"
     | "upsertSecretReferences"
@@ -265,7 +266,7 @@ export const secretSyncQueueFactory = ({
       canExpandValue: () => true
     });
 
-    const secrets = await secretV2BridgeDAL.findByFolderId({ folderId });
+    const secrets = await secretV2BridgeDAL.findByFolderIds({ folderIds: folderId });
 
     await Promise.allSettled(
       secrets.map(async (secret) => {
@@ -292,7 +293,7 @@ export const secretSyncQueueFactory = ({
 
     if (!includeImports) return secretMap;
 
-    const secretImports = await secretImportDAL.find({ folderId, isReplication: false });
+    const secretImports = await secretImportDAL.findByFolderIds(folderId);
 
     if (secretImports.length) {
       const importedSecrets = await fnSecretsV2FromImports({
@@ -475,7 +476,7 @@ export const secretSyncQueueFactory = ({
     });
 
     logger.info(
-      `SecretSync Sync [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
+      `SecretSync Sync [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [connectionId=${secretSync.connectionId}]`
     );
 
     let isSynced = false;
@@ -532,7 +533,7 @@ export const secretSyncQueueFactory = ({
     } catch (err) {
       logger.error(
         err,
-        `SecretSync Sync Error [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
+        `SecretSync Sync Error [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [connectionId=${secretSync.connectionId}]`
       );
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -615,7 +616,7 @@ export const secretSyncQueueFactory = ({
     });
 
     logger.info(
-      `SecretSync Import [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
+      `SecretSync Import [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [connectionId=${secretSync.connectionId}]`
     );
 
     let isSuccess = false;
@@ -648,7 +649,7 @@ export const secretSyncQueueFactory = ({
     } catch (err) {
       logger.error(
         err,
-        `SecretSync Import Error [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
+        `SecretSync Import Error [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [connectionId=${secretSync.connectionId}]`
       );
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -735,7 +736,7 @@ export const secretSyncQueueFactory = ({
     });
 
     logger.info(
-      `SecretSync Remove [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
+      `SecretSync Remove [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [connectionId=${secretSync.connectionId}]`
     );
 
     let isSuccess = false;
@@ -776,7 +777,7 @@ export const secretSyncQueueFactory = ({
     } catch (err) {
       logger.error(
         err,
-        `SecretSync Remove Error [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
+        `SecretSync Remove Error [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [connectionId=${secretSync.connectionId}]`
       );
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
