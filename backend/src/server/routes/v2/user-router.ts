@@ -18,14 +18,14 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        username: z.string().trim()
+        token: z.string().trim()
       }),
       response: {
         200: z.object({})
       }
     },
     handler: async (req) => {
-      await server.services.user.sendEmailVerificationCode(req.body.username);
+      await server.services.user.sendEmailVerificationCode(req.body.token);
       return {};
     }
   });
@@ -125,6 +125,63 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY], { requireOrg: false }),
     handler: async (req) => {
       const user = await server.services.user.updateAuthMethods(req.permission.id, req.body.authMethods);
+      return { user };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/me/email-change/otp",
+    config: {
+      rateLimit: smtpRateLimit({
+        keyGenerator: (req) => req.permission.id
+      })
+    },
+    schema: {
+      body: z.object({
+        newEmail: z.string().email().trim()
+      }),
+      response: {
+        200: z.object({
+          success: z.boolean(),
+          message: z.string()
+        })
+      }
+    },
+    preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    handler: async (req) => {
+      const result = await server.services.user.requestEmailChangeOTP({
+        userId: req.permission.id,
+        newEmail: req.body.newEmail
+      });
+      return result;
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/me/email",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        newEmail: z.string().email().trim(),
+        otpCode: z.string().trim().length(6)
+      }),
+      response: {
+        200: z.object({
+          user: UsersSchema
+        })
+      }
+    },
+    preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
+    handler: async (req) => {
+      const user = await server.services.user.updateUserEmail({
+        userId: req.permission.id,
+        newEmail: req.body.newEmail,
+        otpCode: req.body.otpCode
+      });
       return { user };
     }
   });

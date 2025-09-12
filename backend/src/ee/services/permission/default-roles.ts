@@ -2,6 +2,7 @@ import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability"
 
 import {
   ProjectPermissionActions,
+  ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCmekActions,
   ProjectPermissionCommitsActions,
@@ -13,6 +14,7 @@ import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSecretEventActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSecretScanningDataSourceActions,
@@ -252,6 +254,16 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SecretScanningConfigs
   );
 
+  can(
+    [
+      ProjectPermissionSecretEventActions.SubscribeCreated,
+      ProjectPermissionSecretEventActions.SubscribeDeleted,
+      ProjectPermissionSecretEventActions.SubscribeUpdated,
+      ProjectPermissionSecretEventActions.SubscribeImportMutations
+    ],
+    ProjectPermissionSub.SecretEvents
+  );
+
   return rules;
 };
 
@@ -383,7 +395,7 @@ const buildMemberPermissionRules = () => {
   );
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.Role);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.AuditLogs);
+  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.IpAllowList);
 
   // double check if all CRUD are needed for CA and Certificates
@@ -455,6 +467,16 @@ const buildMemberPermissionRules = () => {
 
   can([ProjectPermissionSecretScanningConfigActions.Read], ProjectPermissionSub.SecretScanningConfigs);
 
+  can(
+    [
+      ProjectPermissionSecretEventActions.SubscribeCreated,
+      ProjectPermissionSecretEventActions.SubscribeDeleted,
+      ProjectPermissionSecretEventActions.SubscribeUpdated,
+      ProjectPermissionSecretEventActions.SubscribeImportMutations
+    ],
+    ProjectPermissionSub.SecretEvents
+  );
+
   return rules;
 };
 
@@ -481,7 +503,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
+  can(ProjectPermissionAuditLogsActions.Read, ProjectPermissionSub.AuditLogs);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
   can(ProjectPermissionCertificateActions.Read, ProjectPermissionSub.Certificates);
@@ -504,6 +526,16 @@ const buildViewerPermissionRules = () => {
   can([ProjectPermissionSecretScanningFindingActions.Read], ProjectPermissionSub.SecretScanningFindings);
 
   can([ProjectPermissionSecretScanningConfigActions.Read], ProjectPermissionSub.SecretScanningConfigs);
+
+  can(
+    [
+      ProjectPermissionSecretEventActions.SubscribeCreated,
+      ProjectPermissionSecretEventActions.SubscribeDeleted,
+      ProjectPermissionSecretEventActions.SubscribeUpdated,
+      ProjectPermissionSecretEventActions.SubscribeImportMutations
+    ],
+    ProjectPermissionSub.SecretEvents
+  );
 
   return rules;
 };

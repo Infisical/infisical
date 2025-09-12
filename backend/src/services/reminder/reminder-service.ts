@@ -42,7 +42,7 @@ export const reminderServiceFactory = ({
   const $manageReminderRecipients = async (reminderId: string, newRecipients?: string[] | null): Promise<void> => {
     if (!newRecipients || newRecipients.length === 0) {
       // If no recipients provided, remove all existing recipients
-      await reminderRecipientDAL.deleteById(reminderId);
+      await reminderRecipientDAL.delete({ reminderId });
       return;
     }
 
@@ -79,25 +79,33 @@ export const reminderServiceFactory = ({
     repeatDays,
     nextReminderDate: nextReminderDateInput,
     recipients,
-    projectId
+    projectId,
+    fromDate: fromDateInput
   }: {
     secretId?: string;
     message?: string | null;
     repeatDays?: number | null;
     nextReminderDate?: string | null;
     recipients?: string[] | null;
+    fromDate?: string | null;
     projectId: string;
   }) => {
     if (!secretId) {
       throw new BadRequestError({ message: "secretId is required" });
     }
     let nextReminderDate;
+    let fromDate;
     if (nextReminderDateInput) {
       nextReminderDate = new Date(nextReminderDateInput);
     }
 
-    if (repeatDays && repeatDays > 0) {
-      nextReminderDate = $addDays(repeatDays);
+    if (repeatDays) {
+      if (fromDateInput) {
+        fromDate = new Date(fromDateInput);
+        nextReminderDate = fromDate;
+      } else {
+        nextReminderDate = $addDays(repeatDays);
+      }
     }
 
     if (!nextReminderDate) {
@@ -112,7 +120,8 @@ export const reminderServiceFactory = ({
       await reminderDAL.updateById(existingReminder.id, {
         message,
         repeatDays,
-        nextReminderDate
+        nextReminderDate,
+        fromDate
       });
       reminderId = existingReminder.id;
     } else {
@@ -121,7 +130,8 @@ export const reminderServiceFactory = ({
         secretId,
         message,
         repeatDays,
-        nextReminderDate
+        nextReminderDate,
+        fromDate
       });
       reminderId = newReminder.id;
     }
@@ -280,14 +290,28 @@ export const reminderServiceFactory = ({
     }
 
     const processedReminders = remindersData.map(
-      ({ secretId, message, repeatDays, nextReminderDate: nextReminderDateInput, recipients, projectId }) => {
+      ({
+        secretId,
+        message,
+        repeatDays,
+        nextReminderDate: nextReminderDateInput,
+        recipients,
+        projectId,
+        fromDate: fromDateInput
+      }) => {
         let nextReminderDate;
+        let fromDate;
         if (nextReminderDateInput) {
           nextReminderDate = new Date(nextReminderDateInput);
         }
 
-        if (repeatDays && repeatDays > 0 && !nextReminderDate) {
-          nextReminderDate = $addDays(repeatDays);
+        if (repeatDays && !nextReminderDate) {
+          if (fromDateInput) {
+            fromDate = new Date(fromDateInput);
+            nextReminderDate = fromDate;
+          } else {
+            nextReminderDate = $addDays(repeatDays);
+          }
         }
 
         if (!nextReminderDate) {
@@ -302,17 +326,19 @@ export const reminderServiceFactory = ({
           repeatDays,
           nextReminderDate,
           recipients: recipients ? [...new Set(recipients)] : [],
-          projectId
+          projectId,
+          fromDate
         };
       }
     );
 
     const newReminders = await reminderDAL.insertMany(
-      processedReminders.map(({ secretId, message, repeatDays, nextReminderDate }) => ({
+      processedReminders.map(({ secretId, message, repeatDays, nextReminderDate, fromDate }) => ({
         secretId,
         message,
         repeatDays,
-        nextReminderDate
+        nextReminderDate,
+        fromDate
       })),
       tx
     );
@@ -346,6 +372,21 @@ export const reminderServiceFactory = ({
     };
   };
 
+  const getRemindersForDashboard: TReminderServiceFactory["getRemindersForDashboard"] = async (secretIds) => {
+    // scott we don't need to check permissions/secret existence because these are the
+    // secrets from the dashboard that have already gone through these checks
+
+    const reminders = await reminderDAL.findSecretReminders(secretIds);
+
+    const reminderMap: Record<string, (typeof reminders)[number]> = {};
+
+    reminders.forEach((reminder) => {
+      if (reminder.secretId) reminderMap[reminder.secretId] = reminder;
+    });
+
+    return reminderMap;
+  };
+
   return {
     createReminder,
     getReminder,
@@ -353,6 +394,7 @@ export const reminderServiceFactory = ({
     deleteReminder,
     deleteReminderBySecretId,
     batchCreateReminders,
-    createReminderInternal
+    createReminderInternal,
+    getRemindersForDashboard
   };
 };

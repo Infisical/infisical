@@ -6,12 +6,16 @@ import { twMerge } from "tailwind-merge";
 
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { Banner } from "@app/components/page-frames/Banner";
-import { useServerConfig } from "@app/context";
+import { useServerConfig, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
+import { useFetchServerStatus } from "@app/hooks/api";
 
+import { AuditLogBanner } from "./components/AuditLogBanner";
 import { InsecureConnectionBanner } from "./components/InsecureConnectionBanner";
 import { Navbar } from "./components/NavBar";
 import { OrgSidebar } from "./components/OrgSidebar";
+import { RedisBanner } from "./components/RedisBanner";
+import { SmtpBanner } from "./components/SmtpBanner";
 
 export const OrganizationLayout = () => {
   const { config } = useServerConfig();
@@ -27,6 +31,9 @@ export const OrganizationLayout = () => {
 
   const containerHeight = config.pageFrameContent ? "h-[94vh]" : "h-screen";
 
+  const { data: serverDetails, isLoading } = useFetchServerStatus();
+  const { subscription } = useSubscription();
+
   return (
     <>
       <Banner />
@@ -34,6 +41,9 @@ export const OrganizationLayout = () => {
         className={`dark hidden ${containerHeight} w-full flex-col overflow-x-hidden bg-bunker-800 transition-all md:flex`}
       >
         <Navbar />
+        {!isLoading && !serverDetails?.redisConfigured && <RedisBanner />}
+        {!isLoading && !serverDetails?.emailConfigured && <SmtpBanner />}
+        {!isLoading && subscription.auditLogs && <AuditLogBanner />}
         {!window.isSecureContext && <InsecureConnectionBanner />}
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
           <OrgSidebar isHidden={isInsideProject} />

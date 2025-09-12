@@ -16,6 +16,10 @@ import {
 import { Auth0ConnectionListItemSchema, SanitizedAuth0ConnectionSchema } from "@app/services/app-connection/auth0";
 import { AwsConnectionListItemSchema, SanitizedAwsConnectionSchema } from "@app/services/app-connection/aws";
 import {
+  AzureADCSConnectionListItemSchema,
+  SanitizedAzureADCSConnectionSchema
+} from "@app/services/app-connection/azure-adcs/azure-adcs-connection-schemas";
+import {
   AzureAppConfigurationConnectionListItemSchema,
   SanitizedAzureAppConfigurationConnectionSchema
 } from "@app/services/app-connection/azure-app-configuration";
@@ -75,6 +79,10 @@ import {
 import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
 import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
 import { MySqlConnectionListItemSchema, SanitizedMySqlConnectionSchema } from "@app/services/app-connection/mysql";
+import {
+  NetlifyConnectionListItemSchema,
+  SanitizedNetlifyConnectionSchema
+} from "@app/services/app-connection/netlify";
 import { OktaConnectionListItemSchema, SanitizedOktaConnectionSchema } from "@app/services/app-connection/okta";
 import {
   PostgresConnectionListItemSchema,
@@ -145,7 +153,9 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedChecklyConnectionSchema.options,
   ...SanitizedSupabaseConnectionSchema.options,
   ...SanitizedDigitalOceanConnectionSchema.options,
-  ...SanitizedOktaConnectionSchema.options
+  ...SanitizedNetlifyConnectionSchema.options,
+  ...SanitizedOktaConnectionSchema.options,
+  ...SanitizedAzureADCSConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -184,7 +194,9 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ChecklyConnectionListItemSchema,
   SupabaseConnectionListItemSchema,
   DigitalOceanConnectionListItemSchema,
-  OktaConnectionListItemSchema
+  NetlifyConnectionListItemSchema,
+  OktaConnectionListItemSchema,
+  AzureADCSConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

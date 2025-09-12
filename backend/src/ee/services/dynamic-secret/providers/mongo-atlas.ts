@@ -3,6 +3,8 @@ import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
 import { createDigestAuthRequestInterceptor } from "@app/lib/axios/digest-auth";
+import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { DynamicSecretMongoAtlasSchema, TDynamicProviderFns } from "./models";
@@ -49,19 +51,25 @@ export const MongoAtlasProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     const client = await $getClient(providerInputs);
 
-    const isConnected = await client({
-      method: "GET",
-      url: `v2/groups/${providerInputs.groupId}/databaseUsers`,
-      params: { itemsPerPage: 1 }
-    })
-      .then(() => true)
-      .catch((error) => {
-        if ((error as AxiosError).response) {
-          throw new Error(JSON.stringify((error as AxiosError).response?.data));
-        }
-        throw error;
+    try {
+      const isConnected = await client({
+        method: "GET",
+        url: `v2/groups/${providerInputs.groupId}/databaseUsers`,
+        params: { itemsPerPage: 1 }
+      }).then(() => true);
+      return isConnected;
+    } catch (error) {
+      const errorMessage = (error as AxiosError).response
+        ? JSON.stringify((error as AxiosError).response?.data)
+        : (error as Error)?.message;
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: errorMessage,
+        tokens: [providerInputs.adminPublicKey, providerInputs.adminPrivateKey, providerInputs.groupId]
       });
-    return isConnected;
+      throw new BadRequestError({
+        message: `Failed to connect with provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const create = async (data: {
@@ -77,25 +85,39 @@ export const MongoAtlasProvider = (): TDynamicProviderFns => {
     const username = generateUsername(usernameTemplate, identity);
     const password = generatePassword();
     const expiration = new Date(expireAt).toISOString();
-    await client({
-      method: "POST",
-      url: `/v2/groups/${providerInputs.groupId}/databaseUsers`,
-      data: {
-        roles: providerInputs.roles,
-        scopes: providerInputs.scopes,
-        deleteAfterDate: expiration,
-        username,
-        password,
-        databaseName: "admin",
-        groupId: providerInputs.groupId
-      }
-    }).catch((error) => {
-      if ((error as AxiosError).response) {
-        throw new Error(JSON.stringify((error as AxiosError).response?.data));
-      }
-      throw error;
-    });
-    return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
+    try {
+      await client({
+        method: "POST",
+        url: `/v2/groups/${providerInputs.groupId}/databaseUsers`,
+        data: {
+          roles: providerInputs.roles,
+          scopes: providerInputs.scopes,
+          deleteAfterDate: expiration,
+          username,
+          password,
+          databaseName: "admin",
+          groupId: providerInputs.groupId
+        }
+      });
+      return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
+    } catch (error) {
+      const errorMessage = (error as AxiosError).response
+        ? JSON.stringify((error as AxiosError).response?.data)
+        : (error as Error)?.message;
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: errorMessage,
+        tokens: [
+          username,
+          password,
+          providerInputs.adminPublicKey,
+          providerInputs.adminPrivateKey,
+          providerInputs.groupId
+        ]
+      });
+      throw new BadRequestError({
+        message: `Failed to create lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const revoke = async (inputs: unknown, entityId: string) => {
@@ -111,15 +133,23 @@ export const MongoAtlasProvider = (): TDynamicProviderFns => {
       throw err;
     });
     if (isExisting) {
-      await client({
-        method: "DELETE",
-        url: `/v2/groups/${providerInputs.groupId}/databaseUsers/admin/${username}`
-      }).catch((error) => {
-        if ((error as AxiosError).response) {
-          throw new Error(JSON.stringify((error as AxiosError).response?.data));
-        }
-        throw error;
-      });
+      try {
+        await client({
+          method: "DELETE",
+          url: `/v2/groups/${providerInputs.groupId}/databaseUsers/admin/${username}`
+        });
+      } catch (error) {
+        const errorMessage = (error as AxiosError).response
+          ? JSON.stringify((error as AxiosError).response?.data)
+          : (error as Error)?.message;
+        const sanitizedErrorMessage = sanitizeString({
+          unsanitizedString: errorMessage,
+          tokens: [username, providerInputs.adminPublicKey, providerInputs.adminPrivateKey, providerInputs.groupId]
+        });
+        throw new BadRequestError({
+          message: `Failed to revoke lease from provider: ${sanitizedErrorMessage}`
+        });
+      }
     }
 
     return { entityId: username };
@@ -132,21 +162,29 @@ export const MongoAtlasProvider = (): TDynamicProviderFns => {
     const username = entityId;
     const expiration = new Date(expireAt).toISOString();
 
-    await client({
-      method: "PATCH",
-      url: `/v2/groups/${providerInputs.groupId}/databaseUsers/admin/${username}`,
-      data: {
-        deleteAfterDate: expiration,
-        databaseName: "admin",
-        groupId: providerInputs.groupId
-      }
-    }).catch((error) => {
-      if ((error as AxiosError).response) {
-        throw new Error(JSON.stringify((error as AxiosError).response?.data));
-      }
-      throw error;
-    });
-    return { entityId: username };
+    try {
+      await client({
+        method: "PATCH",
+        url: `/v2/groups/${providerInputs.groupId}/databaseUsers/admin/${username}`,
+        data: {
+          deleteAfterDate: expiration,
+          databaseName: "admin",
+          groupId: providerInputs.groupId
+        }
+      });
+      return { entityId: username };
+    } catch (error) {
+      const errorMessage = (error as AxiosError).response
+        ? JSON.stringify((error as AxiosError).response?.data)
+        : (error as Error)?.message;
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: errorMessage,
+        tokens: [username, providerInputs.adminPublicKey, providerInputs.adminPrivateKey, providerInputs.groupId]
+      });
+      throw new BadRequestError({
+        message: `Failed to renew lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   return {

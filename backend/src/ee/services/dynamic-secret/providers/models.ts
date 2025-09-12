@@ -165,6 +165,7 @@ export const DynamicSecretSqlDBSchema = z.object({
   revocationStatement: z.string().trim(),
   renewStatement: z.string().trim().optional(),
   ca: z.string().optional(),
+  sslEnabled: z.boolean().optional(),
   gatewayId: z.string().nullable().optional()
 });
 
@@ -275,11 +276,11 @@ export const DynamicSecretMongoAtlasSchema = z.object({
 
 export const DynamicSecretMongoDBSchema = z.object({
   host: z.string().min(1).trim().toLowerCase(),
-  port: z.number().optional(),
+  port: z.number().optional().nullable(),
   username: z.string().min(1).trim(),
   password: z.string().min(1).trim(),
   database: z.string().min(1).trim(),
-  ca: z.string().min(1).optional(),
+  ca: z.string().trim().optional().nullable(),
   roles: z
     .string()
     .array()
@@ -505,6 +506,91 @@ export const DynamicSecretGithubSchema = z.object({
     .describe("The private key generated for your GitHub App.")
 });
 
+export const DynamicSecretCouchbaseSchema = z.object({
+  url: z.string().url().trim().min(1).describe("Couchbase Cloud API URL"),
+  orgId: z.string().trim().min(1).describe("Organization ID"),
+  projectId: z.string().trim().min(1).describe("Project ID"),
+  clusterId: z.string().trim().min(1).describe("Cluster ID"),
+  roles: z.array(z.string().trim().min(1)).min(1).describe("Roles to assign to the user"),
+  buckets: z
+    .union([
+      z
+        .string()
+        .trim()
+        .min(1)
+        .default("*")
+        .refine((val) => {
+          if (val.includes(",")) {
+            const buckets = val
+              .split(",")
+              .map((b) => b.trim())
+              .filter((b) => b.length > 0);
+            if (buckets.includes("*") && buckets.length > 1) {
+              return false;
+            }
+          }
+          return true;
+        }, "Cannot combine '*' with other bucket names"),
+      z
+        .array(
+          z.object({
+            name: z.string().trim().min(1).describe("Bucket name"),
+            scopes: z
+              .array(
+                z.object({
+                  name: z.string().trim().min(1).describe("Scope name"),
+                  collections: z.array(z.string().trim().min(1)).optional().describe("Collection names")
+                })
+              )
+              .optional()
+              .describe("Scopes within the bucket")
+          })
+        )
+        .refine((buckets) => {
+          const hasWildcard = buckets.some((bucket) => bucket.name === "*");
+          if (hasWildcard && buckets.length > 1) {
+            return false;
+          }
+          return true;
+        }, "Cannot combine '*' bucket with other buckets")
+    ])
+    .default("*")
+    .describe(
+      "Bucket configuration: '*' for all buckets, scopes, and collections or array of bucket objects with specific scopes and collections"
+    ),
+  passwordRequirements: z
+    .object({
+      length: z.number().min(8, "Password must be at least 8 characters").max(128),
+      required: z
+        .object({
+          lowercase: z.number().min(1, "At least 1 lowercase character required"),
+          uppercase: z.number().min(1, "At least 1 uppercase character required"),
+          digits: z.number().min(1, "At least 1 digit required"),
+          symbols: z.number().min(1, "At least 1 special character required")
+        })
+        .refine((data) => {
+          const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+          return total <= 128;
+        }, "Sum of required characters cannot exceed 128"),
+      allowedSymbols: z
+        .string()
+        .refine((symbols) => {
+          const forbiddenChars = ["<", ">", ";", ".", "*", "&", "|", "£"];
+          return !forbiddenChars.some((char) => symbols?.includes(char));
+        }, "Cannot contain: < > ; . * & | £")
+        .optional()
+    })
+    .refine((data) => {
+      const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
+      return total <= data.length;
+    }, "Sum of required characters cannot exceed the total length")
+    .optional()
+    .describe("Password generation requirements for Couchbase"),
+  auth: z.object({
+    apiKey: z.string().trim().min(1).describe("Couchbase Cloud API Key")
+  })
+});
+
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",
   Cassandra = "cassandra",
@@ -524,7 +610,8 @@ export enum DynamicSecretProviders {
   Kubernetes = "kubernetes",
   Vertica = "vertica",
   GcpIam = "gcp-iam",
-  Github = "github"
+  Github = "github",
+  Couchbase = "couchbase"
 }
 
 export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
@@ -546,7 +633,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.Kubernetes), inputs: DynamicSecretKubernetesSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Vertica), inputs: DynamicSecretVerticaSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.GcpIam), inputs: DynamicSecretGcpIamSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Github), inputs: DynamicSecretGithubSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Github), inputs: DynamicSecretGithubSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Couchbase), inputs: DynamicSecretCouchbaseSchema })
 ]);
 
 export type TDynamicProviderFns = {

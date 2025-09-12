@@ -15,6 +15,7 @@ import { z } from "zod";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { DynamicSecretAwsElastiCacheSchema, TDynamicProviderFns } from "./models";
@@ -170,14 +171,29 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
   };
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    await ElastiCacheUserManager(
-      {
-        accessKeyId: providerInputs.accessKeyId,
-        secretAccessKey: providerInputs.secretAccessKey
-      },
-      providerInputs.region
-    ).verifyCredentials(providerInputs.clusterName);
-    return true;
+    try {
+      await ElastiCacheUserManager(
+        {
+          accessKeyId: providerInputs.accessKeyId,
+          secretAccessKey: providerInputs.secretAccessKey
+        },
+        providerInputs.region
+      ).verifyCredentials(providerInputs.clusterName);
+      return true;
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [
+          providerInputs.accessKeyId,
+          providerInputs.secretAccessKey,
+          providerInputs.clusterName,
+          providerInputs.region
+        ]
+      });
+      throw new BadRequestError({
+        message: `Failed to connect with provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const create = async (data: {
@@ -206,21 +222,37 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
 
     const parsedStatement = CreateElastiCacheUserSchema.parse(JSON.parse(creationStatement));
 
-    await ElastiCacheUserManager(
-      {
-        accessKeyId: providerInputs.accessKeyId,
-        secretAccessKey: providerInputs.secretAccessKey
-      },
-      providerInputs.region
-    ).createUser(parsedStatement, providerInputs.clusterName);
+    try {
+      await ElastiCacheUserManager(
+        {
+          accessKeyId: providerInputs.accessKeyId,
+          secretAccessKey: providerInputs.secretAccessKey
+        },
+        providerInputs.region
+      ).createUser(parsedStatement, providerInputs.clusterName);
 
-    return {
-      entityId: leaseUsername,
-      data: {
-        DB_USERNAME: leaseUsername,
-        DB_PASSWORD: leasePassword
-      }
-    };
+      return {
+        entityId: leaseUsername,
+        data: {
+          DB_USERNAME: leaseUsername,
+          DB_PASSWORD: leasePassword
+        }
+      };
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [
+          leaseUsername,
+          leasePassword,
+          providerInputs.accessKeyId,
+          providerInputs.secretAccessKey,
+          providerInputs.clusterName
+        ]
+      });
+      throw new BadRequestError({
+        message: `Failed to create lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const revoke = async (inputs: unknown, entityId: string) => {
@@ -229,15 +261,25 @@ export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
     const revokeStatement = handlebars.compile(providerInputs.revocationStatement)({ username: entityId });
     const parsedStatement = DeleteElasticCacheUserSchema.parse(JSON.parse(revokeStatement));
 
-    await ElastiCacheUserManager(
-      {
-        accessKeyId: providerInputs.accessKeyId,
-        secretAccessKey: providerInputs.secretAccessKey
-      },
-      providerInputs.region
-    ).deleteUser(parsedStatement);
+    try {
+      await ElastiCacheUserManager(
+        {
+          accessKeyId: providerInputs.accessKeyId,
+          secretAccessKey: providerInputs.secretAccessKey
+        },
+        providerInputs.region
+      ).deleteUser(parsedStatement);
 
-    return { entityId };
+      return { entityId };
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [entityId, providerInputs.accessKeyId, providerInputs.secretAccessKey, providerInputs.clusterName]
+      });
+      throw new BadRequestError({
+        message: `Failed to revoke lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const renew = async (_inputs: unknown, entityId: string) => {

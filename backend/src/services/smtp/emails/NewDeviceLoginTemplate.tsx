@@ -1,7 +1,8 @@
-import { Heading, Link, Section, Text } from "@react-email/components";
+import { Heading, Section, Text } from "@react-email/components";
 import React from "react";
 
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
+import { BaseLink } from "./BaseLink";
 
 interface NewDeviceLoginTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   email: string;
@@ -42,9 +43,7 @@ export const NewDeviceLoginTemplate = ({
         <Text className="mb-[0px]">
           If you believe that this login is suspicious, please contact{" "}
           {isCloud ? (
-            <Link href="mailto:support@infisical.com" className="text-slate-700 no-underline">
-              support@infisical.com
-            </Link>
+            <BaseLink href="mailto:support@infisical.com">support@infisical.com</BaseLink>
           ) : (
             "your administrator"
           )}{" "}

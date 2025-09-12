@@ -1,7 +1,6 @@
 /* eslint-disable no-bitwise */
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
-import { z } from "zod";
 
 import { TCertificateTemplates, TPkiSubscribers } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
@@ -9,7 +8,6 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
-import { isFQDN } from "@app/lib/validator/validate-url";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -17,7 +15,8 @@ import {
   CertExtendedKeyUsage,
   CertKeyAlgorithm,
   CertKeyUsage,
-  CertStatus
+  CertStatus,
+  TAltNameMapping
 } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -33,15 +32,22 @@ import {
   keyAlgorithmToAlgCfg
 } from "../certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority-secret-dal";
+import { validateAndMapAltNameType } from "../certificate-authority-validators";
 import { TIssueCertWithTemplateDTO } from "./internal-certificate-authority-types";
 
 type TInternalCertificateAuthorityFnsDeps = {
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa" | "findById">;
+  certificateAuthorityDAL: Pick<
+    TCertificateAuthorityDALFactory,
+    "findByIdWithAssociatedCa" | "findById" | "create" | "transaction" | "updateById" | "findWithAssociatedCa"
+  >;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "transaction" | "findOne" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "encryptWithKmsKey" | "generateKmsKey">;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    "decryptWithKmsKey" | "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey"
+  >;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
@@ -152,19 +158,15 @@ export const InternalCertificateAuthorityFns = ({
       extensions.push(extendedKeyUsagesExtension);
     }
 
-    let altNamesArray: { type: "email" | "dns"; value: string }[] = [];
+    let altNamesArray: TAltNameMapping[] = [];
 
     if (subscriber.subjectAlternativeNames?.length) {
       altNamesArray = subscriber.subjectAlternativeNames.map((altName) => {
-        if (z.string().email().safeParse(altName).success) {
-          return { type: "email", value: altName };
+        const altNameType = validateAndMapAltNameType(altName);
+        if (!altNameType) {
+          throw new BadRequestError({ message: `Invalid SAN entry: ${altName}` });
         }
-
-        if (isFQDN(altName, { allow_wildcard: true })) {
-          return { type: "dns", value: altName };
-        }
-
-        throw new BadRequestError({ message: `Invalid SAN entry: ${altName}` });
+        return altNameType;
       });
 
       const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);
@@ -418,19 +420,15 @@ export const InternalCertificateAuthorityFns = ({
       );
     }
 
-    let altNamesArray: { type: "email" | "dns"; value: string }[] = [];
+    let altNamesArray: TAltNameMapping[] = [];
 
     if (altNames) {
       altNamesArray = altNames.split(",").map((altName) => {
-        if (z.string().email().safeParse(altName).success) {
-          return { type: "email", value: altName };
+        const altNameType = validateAndMapAltNameType(altName);
+        if (!altNameType) {
+          throw new BadRequestError({ message: `Invalid SAN entry: ${altName}` });
         }
-
-        if (isFQDN(altName, { allow_wildcard: true })) {
-          return { type: "dns", value: altName };
-        }
-
-        throw new BadRequestError({ message: `Invalid SAN entry: ${altName}` });
+        return altNameType;
       });
 
       const altNamesExtension = new x509.SubjectAlternativeNameExtension(altNamesArray, false);

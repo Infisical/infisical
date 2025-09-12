@@ -19,6 +19,7 @@ import {
   SecretInput,
   Select,
   SelectItem,
+  Switch,
   TextArea,
   Tooltip
 } from "@app/components/v2";
@@ -66,6 +67,7 @@ const formSchema = z.object({
     creationStatement: z.string().min(1),
     revocationStatement: z.string().min(1),
     renewStatement: z.string().optional(),
+    sslEnabled: z.boolean().optional(),
     ca: z.string().optional(),
     gatewayId: z.string().optional()
   }),
@@ -200,6 +202,7 @@ export const SqlDatabaseInputForm = ({
 
   const createDynamicSecret = useCreateDynamicSecret();
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
+  const selectedClient = watch("provider.client");
 
   const handleCreateDynamicSecret = async ({
     name,
@@ -458,13 +461,34 @@ export const SqlDatabaseInputForm = ({
                 />
               </div>
               <div>
+                {selectedClient === SqlProviders.MsSQL && (
+                  <div className="mb-2 mt-2">
+                    <Controller
+                      control={control}
+                      name="provider.sslEnabled"
+                      render={({ field: { value, onChange }, fieldState: { error } }) => (
+                        <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
+                          <Switch
+                            className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                            id="sql-ds-ssl-enabled"
+                            thumbClassName="bg-mineshaft-800"
+                            isChecked={value}
+                            onCheckedChange={onChange}
+                          >
+                            Encrypt Connection (SSL)
+                          </Switch>
+                        </FormControl>
+                      )}
+                    />
+                  </div>
+                )}
                 <Controller
                   control={control}
                   name="provider.ca"
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       isOptional
-                      label="CA(SSL)"
+                      label="CA (SSL)"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >

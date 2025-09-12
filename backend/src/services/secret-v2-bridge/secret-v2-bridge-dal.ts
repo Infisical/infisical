@@ -50,20 +50,19 @@ interface TSecretV2DalArg {
 }
 
 export const SECRET_DAL_TTL = () => applyJitter(10 * 60, 2 * 60);
-export const SECRET_DAL_VERSION_TTL = 15 * 60;
+export const SECRET_DAL_VERSION_TTL = "15m";
 export const MAX_SECRET_CACHE_BYTES = 25 * 1024 * 1024;
 export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const secretOrm = ormify(db, TableName.SecretV2);
 
-  const invalidateSecretCacheByProjectId = async (projectId: string) => {
+  const invalidateSecretCacheByProjectId = async (projectId: string, tx?: Knex) => {
     const secretDalVersionKey = SecretServiceCacheKeys.getSecretDalVersion(projectId);
-    await keyStore.incrementBy(secretDalVersionKey, 1);
-    await keyStore.setExpiry(secretDalVersionKey, SECRET_DAL_VERSION_TTL);
+    await keyStore.pgIncrementBy(secretDalVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
   };
 
   const findOne = async (filter: Partial<TSecretsV2>, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.SecretV2)
+      const docs = await (tx || db.replicaNode())(TableName.SecretV2)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter(filter, TableName.SecretV2))
         .leftJoin(
@@ -144,7 +143,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const find = async (filter: TFindFilter<TSecretsV2>, opts: TFindOpt<TSecretsV2> = {}) => {
     const { offset, limit, sort, tx } = opts;
     try {
-      const query = (tx || db)(TableName.SecretV2)
+      const query = (tx || db.replicaNode())(TableName.SecretV2)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter(filter))
         .leftJoin(
@@ -684,9 +683,9 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
               throw new BadRequestError({ message: "Missing personal user id" });
             }
             void bd.orWhere({
-              key: el.key,
-              type: el.type,
-              userId: el.type === SecretType.Personal ? el.userId : null
+              [`${TableName.SecretV2}.key` as "key"]: el.key,
+              [`${TableName.SecretV2}.type` as "type"]: el.type,
+              [`${TableName.SecretV2}.userId` as "userId"]: el.type === SecretType.Personal ? el.userId : null
             });
           });
         })
@@ -695,12 +694,60 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.SecretV2}.id`,
           `${TableName.SecretRotationV2SecretMapping}.secretId`
         )
+
+        .leftJoin(
+          TableName.SecretV2JnTag,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
+        .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
+        .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
+        .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
+        .select(
+          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue")
+        )
         .select(selectAllTableCols(TableName.SecretV2))
         .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping));
-      return secrets.map((secret) => ({
-        ...secret,
-        isRotatedSecret: Boolean(secret.rotationId)
-      }));
+
+      const docs = sqlNestRelationships({
+        data: secrets,
+        key: "id",
+        parentMapper: (secret) => ({
+          ...secret,
+          isRotatedSecret: Boolean(secret.rotationId)
+        }),
+        childrenMapper: [
+          {
+            key: "tagId",
+            label: "tags" as const,
+            mapper: ({ tagId: id, tagColor: color, tagSlug: slug }) => ({
+              id,
+              color,
+              slug,
+              name: slug
+            })
+          },
+          {
+            key: "metadataId",
+            label: "secretMetadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
+            })
+          }
+        ]
+      });
+
+      return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "find by secret keys" });
     }
@@ -840,13 +887,13 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const findSecretsWithReminderRecipients = async (ids: string[], limit: number, tx?: Knex) => {
     try {
       // Create a subquery to get limited secret IDs
-      const limitedSecretIds = (tx || db)(TableName.SecretV2)
+      const limitedSecretIds = (tx || db.replicaNode())(TableName.SecretV2)
         .whereIn(`${TableName.SecretV2}.id`, ids)
         .limit(limit)
         .select("id");
 
       // Join with all recipients for the limited secrets
-      const docs = await (tx || db)(TableName.SecretV2)
+      const docs = await (tx || db.replicaNode())(TableName.SecretV2)
         .whereIn(`${TableName.SecretV2}.id`, limitedSecretIds)
         .leftJoin(TableName.Reminder, `${TableName.SecretV2}.id`, `${TableName.Reminder}.secretId`)
         .leftJoin(TableName.ReminderRecipient, `${TableName.Reminder}.id`, `${TableName.ReminderRecipient}.reminderId`)
@@ -878,13 +925,13 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const findSecretsWithReminderRecipientsOld = async (ids: string[], limit: number, tx?: Knex) => {
     try {
       // Create a subquery to get limited secret IDs
-      const limitedSecretIds = (tx || db)(TableName.SecretV2)
+      const limitedSecretIds = (tx || db.replicaNode())(TableName.SecretV2)
         .whereIn(`${TableName.SecretV2}.id`, ids)
         .limit(limit)
         .select("id");
 
       // Join with all recipients for the limited secrets
-      const docs = await (tx || db)(TableName.SecretV2)
+      const docs = await (tx || db.replicaNode())(TableName.SecretV2)
         .whereIn(`${TableName.SecretV2}.id`, limitedSecretIds)
         .leftJoin(TableName.Reminder, `${TableName.SecretV2}.id`, `${TableName.Reminder}.secretId`)
         .leftJoin(

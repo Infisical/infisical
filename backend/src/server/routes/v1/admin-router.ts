@@ -13,6 +13,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
+import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -53,7 +54,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             defaultAuthOrgAuthMethod: z.string().nullish(),
             isSecretScanningDisabled: z.boolean(),
             kubernetesAutoFetchServiceAccountToken: z.boolean(),
-            paramsFolderSecretDetectionEnabled: z.boolean()
+            paramsFolderSecretDetectionEnabled: z.boolean(),
+            isOfflineUsageReportsEnabled: z.boolean()
           })
         })
       }
@@ -69,7 +71,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           isMigrationModeOn: serverEnvs.MAINTENANCE_MODE,
           isSecretScanningDisabled: serverEnvs.DISABLE_SECRET_SCANNING,
           kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN,
-          paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED
+          paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
+          isOfflineUsageReportsEnabled: !!serverEnvs.LICENSE_KEY_OFFLINE
         }
       };
     }
@@ -215,7 +218,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
                 }),
                 membershipId: z.string(),
                 role: z.string(),
-                roleId: z.string().nullish()
+                roleId: z.string().nullish(),
+                status: z.string().nullish()
               })
               .array(),
             projects: z
@@ -465,6 +469,42 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "DELETE",
+    url: "/user-management/users",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        userIds: z.string().array()
+      }),
+      response: {
+        200: z.object({
+          users: UsersSchema.pick({
+            username: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            id: true
+          }).array()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const users = await server.services.superAdmin.deleteUsers(req.body.userIds);
+
+      return {
+        users
+      };
+    }
+  });
+
+  server.route({
     method: "PATCH",
     url: "/user-management/users/:userId/admin-access",
     config: {
@@ -547,16 +587,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         email: z.string().email().trim(),
         password: z.string().trim(),
         firstName: z.string().trim(),
-        lastName: z.string().trim().optional(),
-        protectedKey: z.string().trim(),
-        protectedKeyIV: z.string().trim(),
-        protectedKeyTag: z.string().trim(),
-        publicKey: z.string().trim(),
-        encryptedPrivateKey: z.string().trim(),
-        encryptedPrivateKeyIV: z.string().trim(),
-        encryptedPrivateKeyTag: z.string().trim(),
-        salt: z.string().trim(),
-        verifier: z.string().trim()
+        lastName: z.string().trim().optional()
       }),
       response: {
         200: z.object({
@@ -687,6 +718,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
       body: z.object({
         email: z.string().email().trim().min(1),
         password: z.string().trim().min(1),
@@ -807,6 +839,123 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
       return {
         invalidating
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/organization-management/organizations",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        name: GenericResourceNameSchema,
+        inviteAdminEmails: z.string().email().array().min(1)
+      }),
+      response: {
+        200: z.object({
+          organization: OrganizationsSchema
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const organization = await server.services.superAdmin.createOrganization(req.body, req.permission);
+      return { organization };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/organization-management/organizations/:organizationId/memberships/:membershipId/resend-invite",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        organizationId: z.string(),
+        membershipId: z.string()
+      }),
+      response: {
+        200: z.object({
+          organizationMembership: OrgMembershipsSchema
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const organizationMembership = await server.services.superAdmin.resendOrgInvite(req.params, req.permission);
+      return { organizationMembership };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/organization-management/organizations/:organizationId/access",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        organizationId: z.string()
+      }),
+      response: {
+        200: z.object({
+          organizationMembership: OrgMembershipsSchema
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async (req) => {
+      const organizationMembership = await server.services.superAdmin.joinOrganization(
+        req.params.organizationId,
+        req.permission
+      );
+      return { organizationMembership };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/usage-report/generate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          csvContent: z.string(),
+          signature: z.string(),
+          filename: z.string()
+        })
+      }
+    },
+    onRequest: (req, res, done) => {
+      verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN])(req, res, () => {
+        verifySuperAdmin(req, res, done);
+      });
+    },
+    handler: async () => {
+      const result = await server.services.offlineUsageReport.generateUsageReportCSV();
+
+      return {
+        csvContent: result.csvContent,
+        signature: result.signature,
+        filename: result.filename
       };
     }
   });

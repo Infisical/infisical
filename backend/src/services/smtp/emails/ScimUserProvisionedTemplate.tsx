@@ -1,6 +1,7 @@
-import { Button, Heading, Section, Text } from "@react-email/components";
+import { Heading, Section, Text } from "@react-email/components";
 import React from "react";
 
+import { BaseButton } from "./BaseButton";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 
 interface ScimUserProvisionedTemplateProps extends Omit<BaseEmailWrapperProps, "preview" | "title"> {
@@ -24,18 +25,13 @@ export const ScimUserProvisionedTemplate = ({
         <br />
         <strong>{organizationName}</strong> on <strong>Infisical</strong>
       </Heading>
-      <Section className="px-[24px] mt-[36px] pt-[12px] pb-[8px] border text-center border-solid border-gray-200 rounded-md bg-gray-50">
+      <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border text-center border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-black text-[14px] leading-[24px]">
           You've been invited to collaborate on <strong>{organizationName}</strong>.
         </Text>
       </Section>
-      <Section className="text-center mt-[28px]">
-        <Button
-          href={callback_url}
-          className="rounded-md p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
-        >
-          Accept Invite
-        </Button>
+      <Section className="text-center">
+        <BaseButton href={callback_url}>Accept Invite</BaseButton>
       </Section>
       <Section className="mt-[24px] bg-gray-50 pt-[2px] pb-[16px] border border-solid border-gray-200 px-[24px] rounded-md text-gray-800">
         <Text className="mb-[0px]">

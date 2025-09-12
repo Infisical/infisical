@@ -1,10 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, Modal, ModalContent, Skeleton, Spinner, Switch } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
-import { githubOrgSyncConfigQueryKeys, useUpdateGithubSyncOrgConfig } from "@app/hooks/api";
+import {
+  githubOrgSyncConfigQueryKeys,
+  useSyncAllGithubTeams,
+  useUpdateGithubSyncOrgConfig
+} from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { GithubOrgSyncConfigModal } from "./GithubOrgSyncConfigModal";
@@ -24,9 +29,72 @@ export const OrgGithubSyncSection = () => {
   });
 
   const updateGithubSyncOrgConfig = useUpdateGithubSyncOrgConfig();
+  const syncAllTeamsMutation = useSyncAllGithubTeams();
 
   const isPending = subscription.githubOrgSync && githubOrgSyncConfig.isPending;
   const data = !isPending && !githubOrgSyncConfig?.isError ? githubOrgSyncConfig?.data : undefined;
+
+  const handleBulkSync = async () => {
+    try {
+      const result = await syncAllTeamsMutation.mutateAsync();
+      let message = "Successfully synced teams";
+
+      const details = [];
+      if (result.createdTeams.length > 0) {
+        details.push(
+          `${result.createdTeams.length} new team${result.createdTeams.length === 1 ? "" : "s"} created`
+        );
+      }
+      if (result.updatedTeams.length > 0) {
+        details.push(
+          `${result.updatedTeams.length} team${result.updatedTeams.length === 1 ? "" : "s"} updated`
+        );
+      }
+      if (result.removedMemberships > 0) {
+        details.push(
+          `${result.removedMemberships} membership${result.removedMemberships === 1 ? "" : "s"} removed`
+        );
+      }
+
+      if (details.length > 0) {
+        message += `. ${details.join(", ")}`;
+      }
+
+      createNotification({
+        text: message,
+        type: "success"
+      });
+
+      if (result.errors && result.errors.length > 0) {
+        createNotification({
+          text: `Sync completed with ${result.errors.length} warnings. Check the console for details.`,
+          type: "warning"
+        });
+        console.warn("Sync errors:", result.errors);
+      }
+    } catch (error) {
+      const errorMessage =
+        (error as any)?.response?.data?.message || (error as Error)?.message || "Unknown error";
+
+      if (
+        errorMessage.includes("token") &&
+        (errorMessage.includes("required") ||
+          errorMessage.includes("invalid") ||
+          errorMessage.includes("expired") ||
+          errorMessage.includes("set a token first"))
+      ) {
+        createNotification({
+          text: "Please set a GitHub access token in the configuration modal to continue with the sync",
+          type: "error"
+        });
+      } else {
+        createNotification({
+          text: `Failed to sync GitHub teams: ${errorMessage}`,
+          type: "error"
+        });
+      }
+    }
+  };
 
   return (
     <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
@@ -83,6 +151,33 @@ export const OrgGithubSyncSection = () => {
           </div>
           <p className="text-sm text-mineshaft-300">
             Allow group provisioning/deprovisioning with GitHub
+          </p>
+        </div>
+      )}
+      {data && data.isActive && (
+        <div className="py-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-md text-mineshaft-100">Sync Now</h2>
+            <OrgPermissionCan
+              I={OrgPermissionActions.Edit}
+              a={OrgPermissionSubjects.GithubOrgSyncManual}
+            >
+              {(isAllowed) => (
+                <Button
+                  onClick={() => handleBulkSync()}
+                  colorSchema="primary"
+                  variant="outline_bg"
+                  isDisabled={!isAllowed || syncAllTeamsMutation.isPending}
+                  isLoading={syncAllTeamsMutation.isPending}
+                >
+                  Sync Now
+                </Button>
+              )}
+            </OrgPermissionCan>
+          </div>
+          <p className="text-sm text-mineshaft-300">
+            Manually sync GitHub teams for all organization members. This will update team
+            memberships for users who have previously logged in with GitHub.
           </p>
         </div>
       )}

@@ -59,7 +59,7 @@ type TScimServiceFactoryDep = {
     TOrgMembershipDALFactory,
     "find" | "findOne" | "create" | "updateById" | "findById" | "update"
   >;
-  projectDAL: Pick<TProjectDALFactory, "find" | "findProjectGhostUser">;
+  projectDAL: Pick<TProjectDALFactory, "find" | "findProjectGhostUser" | "findById">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "delete" | "findProjectMembershipsByUserId">;
   groupDAL: Pick<
     TGroupDALFactory,
@@ -579,6 +579,9 @@ export const scimServiceFactory = ({
       });
 
     const serverCfg = await getServerCfg();
+    const hasEmailChanged = email?.toLowerCase() !== membership.email;
+    const defaultEmailVerified =
+      org.orgAuthMethod === OrgAuthMethod.OIDC ? serverCfg.trustOidcEmails : serverCfg.trustSamlEmails;
     await userDAL.transaction(async (tx) => {
       await userAliasDAL.update(
         {
@@ -605,8 +608,7 @@ export const scimServiceFactory = ({
           firstName,
           email: email?.toLowerCase(),
           lastName,
-          isEmailVerified:
-            org.orgAuthMethod === OrgAuthMethod.OIDC ? serverCfg.trustOidcEmails : serverCfg.trustSamlEmails
+          isEmailVerified: hasEmailChanged ? defaultEmailVerified : undefined
         },
         tx
       );

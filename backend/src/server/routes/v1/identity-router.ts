@@ -250,7 +250,8 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
               description: true
             }).optional(),
             identity: IdentitiesSchema.pick({ name: true, id: true, hasDeleteProtection: true }).extend({
-              authMethods: z.array(z.string())
+              authMethods: z.array(z.string()),
+              activeLockoutAuthMethods: z.array(z.string())
             })
           })
         })
@@ -476,6 +477,32 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       });
 
       return { identityMemberships };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/details",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          identityDetails: z.object({
+            organization: z.object({
+              id: z.string(),
+              name: z.string(),
+              slug: z.string()
+            })
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN], { requireOrg: false }),
+    handler: async (req) => {
+      const organization = await server.services.org.findIdentityOrganization(req.permission.id);
+      return { identityDetails: { organization } };
     }
   });
 };

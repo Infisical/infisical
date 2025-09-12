@@ -7,6 +7,7 @@ export enum AppConnection {
   AzureAppConfiguration = "azure-app-configuration",
   AzureClientSecrets = "azure-client-secrets",
   AzureDevOps = "azure-devops",
+  AzureADCS = "azure-adcs",
   Databricks = "databricks",
   Humanitec = "humanitec",
   TerraformCloud = "terraform-cloud",
@@ -26,7 +27,7 @@ export enum AppConnection {
   Heroku = "heroku",
   Render = "render",
   Flyio = "flyio",
-  Gitlab = "gitlab",
+  GitLab = "gitlab",
   Cloudflare = "cloudflare",
   Bitbucket = "bitbucket",
   Zabbix = "zabbix",
@@ -34,5 +35,6 @@ export enum AppConnection {
   Checkly = "checkly",
   Supabase = "supabase",
   DigitalOcean = "digital-ocean",
+  Netlify = "netlify",
   Okta = "okta"
 }

@@ -1,6 +1,9 @@
 import { Knex } from "knex";
 
+import { initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { initLogger, logger } from "@app/lib/logger";
+import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { IdentityAuthMethod, OrgMembershipRole, ProjectMembershipRole, TableName } from "../schemas";
 import { seedData1 } from "../seed-data";
@@ -9,6 +12,11 @@ export async function seed(knex: Knex): Promise<void> {
   // Deletes ALL existing entries
   await knex(TableName.Identity).del();
   await knex(TableName.IdentityOrgMembership).del();
+
+  initLogger();
+
+  const superAdminDAL = superAdminDALFactory(knex);
+  await initEnvConfig(superAdminDAL, logger);
 
   // Inserts seed entries
   await knex(TableName.Identity).insert([

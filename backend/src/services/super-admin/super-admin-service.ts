@@ -1,6 +1,13 @@
 import { CronJob } from "cron";
 
-import { IdentityAuthMethod, OrgMembershipRole, TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
+import {
+  IdentityAuthMethod,
+  OrgMembershipRole,
+  OrgMembershipStatus,
+  TSuperAdmin,
+  TSuperAdminUpdate,
+  TUsers
+} from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import {
@@ -11,10 +18,14 @@ import {
   validateOverrides
 } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { generateUserSrpKeys, getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { OrgServiceActor } from "@app/lib/types";
+import { isDisposableEmail } from "@app/lib/validator";
+import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
@@ -44,7 +55,9 @@ import {
   TAdminGetUsersDTO,
   TAdminIntegrationConfig,
   TAdminSignUpDTO,
-  TGetOrganizationsDTO
+  TCreateOrganizationDTO,
+  TGetOrganizationsDTO,
+  TResendOrgInviteDTO
 } from "./super-admin-types";
 
 type TSuperAdminServiceFactoryDep = {
@@ -60,11 +73,13 @@ type TSuperAdminServiceFactoryDep = {
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
-  orgService: Pick<TOrgServiceFactory, "createOrganization">;
+  orgService: Pick<TOrgServiceFactory, "createOrganization" | "inviteUserToOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
-  licenseService: Pick<TLicenseServiceFactory, "onPremFeatures">;
+  licenseService: Pick<TLicenseServiceFactory, "onPremFeatures" | "updateSubscriptionOrgMemberCount">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
   invalidateCacheQueue: TInvalidateCacheQueueFactory;
+  smtpService: Pick<TSmtpService, "sendMail">;
+  tokenService: TAuthTokenServiceFactory;
 };
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
@@ -124,7 +139,9 @@ export const superAdminServiceFactory = ({
   identityTokenAuthDAL,
   identityOrgMembershipDAL,
   microsoftTeamsService,
-  invalidateCacheQueue
+  invalidateCacheQueue,
+  smtpService,
+  tokenService
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
@@ -465,43 +482,15 @@ export const superAdminServiceFactory = ({
     return updatedServerCfg;
   };
 
-  const adminSignUp = async ({
-    lastName,
-    firstName,
-    email,
-    salt,
-    password,
-    verifier,
-    publicKey,
-    protectedKey,
-    protectedKeyIV,
-    protectedKeyTag,
-    encryptedPrivateKey,
-    encryptedPrivateKeyIV,
-    encryptedPrivateKeyTag,
-    ip,
-    userAgent
-  }: TAdminSignUpDTO) => {
+  const adminSignUp = async ({ lastName, firstName, email, password, ip, userAgent }: TAdminSignUpDTO) => {
     const appCfg = getConfig();
 
     const sanitizedEmail = email.trim().toLowerCase();
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });
     if (existingUser) throw new BadRequestError({ name: "Admin sign up", message: "User already exists" });
 
-    const privateKey = await getUserPrivateKey(password, {
-      encryptionVersion: 2,
-      salt,
-      protectedKey,
-      protectedKeyIV,
-      protectedKeyTag,
-      encryptedPrivateKey,
-      iv: encryptedPrivateKeyIV,
-      tag: encryptedPrivateKeyTag
-    });
-
     const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
 
-    const { iv, tag, ciphertext, encoding } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(privateKey);
     const userInfo = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.create(
         {
@@ -519,25 +508,13 @@ export const superAdminServiceFactory = ({
       );
       const userEnc = await userDAL.createUserEncryption(
         {
-          salt,
           encryptionVersion: 2,
-          protectedKey,
-          protectedKeyIV,
-          protectedKeyTag,
-          publicKey,
-          encryptedPrivateKey,
-          iv: encryptedPrivateKeyIV,
-          tag: encryptedPrivateKeyTag,
-          verifier,
           userId: newUser.id,
-          hashedPassword,
-          serverEncryptedPrivateKey: ciphertext,
-          serverEncryptedPrivateKeyIV: iv,
-          serverEncryptedPrivateKeyTag: tag,
-          serverEncryptedPrivateKeyEncoding: encoding
+          hashedPassword
         },
         tx
       );
+
       return { user: newUser, enc: userEnc };
     });
 
@@ -587,26 +564,14 @@ export const superAdminServiceFactory = ({
         },
         tx
       );
-      const { tag, encoding, ciphertext, iv } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(password);
-      const encKeys = await generateUserSrpKeys(sanitizedEmail, password);
+
+      const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
 
       const userEnc = await userDAL.createUserEncryption(
         {
           userId: newUser.id,
           encryptionVersion: 2,
-          protectedKey: encKeys.protectedKey,
-          protectedKeyIV: encKeys.protectedKeyIV,
-          protectedKeyTag: encKeys.protectedKeyTag,
-          publicKey: encKeys.publicKey,
-          encryptedPrivateKey: encKeys.encryptedPrivateKey,
-          iv: encKeys.encryptedPrivateKeyIV,
-          tag: encKeys.encryptedPrivateKeyTag,
-          salt: encKeys.salt,
-          verifier: encKeys.verifier,
-          serverEncryptedPrivateKeyEncoding: encoding,
-          serverEncryptedPrivateKeyTag: tag,
-          serverEncryptedPrivateKeyIV: iv,
-          serverEncryptedPrivateKey: ciphertext
+          hashedPassword
         },
         tx
       );
@@ -704,8 +669,37 @@ export const superAdminServiceFactory = ({
   };
 
   const deleteUser = async (userId: string) => {
+    const superAdmins = await userDAL.find({
+      superAdmin: true
+    });
+
+    if (superAdmins.length === 1 && superAdmins[0].id === userId) {
+      throw new BadRequestError({
+        message: "Cannot delete the only server admin on this instance. Add another server admin to delete this user."
+      });
+    }
+
     const user = await userDAL.deleteById(userId);
     return user;
+  };
+
+  const deleteUsers = async (userIds: string[]) => {
+    const superAdmins = await userDAL.find({
+      superAdmin: true
+    });
+
+    if (superAdmins.every((superAdmin) => userIds.includes(superAdmin.id))) {
+      throw new BadRequestError({
+        message: "Instance must have at least one server admin. Add another server admin to delete these users."
+      });
+    }
+
+    const users = await userDAL.delete({
+      $in: {
+        id: userIds
+      }
+    });
+    return users;
   };
 
   const deleteIdentitySuperAdminAccess = async (identityId: string, actorId: string) => {
@@ -730,6 +724,17 @@ export const superAdminServiceFactory = ({
       throw new NotFoundError({ name: "User", message: "User not found" });
     }
 
+    const superAdmins = await userDAL.find({
+      superAdmin: true
+    });
+
+    if (superAdmins.length === 1 && superAdmins[0].id === userId) {
+      throw new BadRequestError({
+        message:
+          "Cannot remove the only server admin on this instance. Add another server admin to remove status for this user."
+      });
+    }
+
     const updatedUser = userDAL.updateById(userId, { superAdmin: false });
 
     return updatedUser;
@@ -743,6 +748,159 @@ export const superAdminServiceFactory = ({
       limit
     });
     return organizations;
+  };
+
+  const createOrganization = async (
+    { name, inviteAdminEmails: emails }: TCreateOrganizationDTO,
+    actor: OrgServiceActor
+  ) => {
+    const appCfg = getConfig();
+
+    const inviteAdminEmails = [...new Set(emails)];
+
+    if (!appCfg.isDevelopmentMode && appCfg.isCloud)
+      throw new BadRequestError({ message: "This endpoint is not supported for cloud instances" });
+
+    const serverAdmin = await userDAL.findById(actor.id);
+    const plan = licenseService.onPremFeatures;
+
+    const isEmailInvalid = await isDisposableEmail(inviteAdminEmails);
+    if (isEmailInvalid) {
+      throw new BadRequestError({
+        message: "Disposable emails are not allowed",
+        name: "InviteUser"
+      });
+    }
+
+    const { organization, users: usersToEmail } = await orgDAL.transaction(async (tx) => {
+      const org = await orgService.createOrganization(
+        {
+          orgName: name,
+          userEmail: serverAdmin?.email ?? serverAdmin?.username // identities can be server admins so we can't require this
+        },
+        tx
+      );
+
+      const users: Pick<TUsers, "id" | "firstName" | "lastName" | "email" | "username" | "isAccepted">[] = [];
+
+      for await (const inviteeEmail of inviteAdminEmails) {
+        const usersByUsername = await userDAL.findUserByUsername(inviteeEmail, tx);
+        let inviteeUser =
+          usersByUsername?.length > 1
+            ? usersByUsername.find((el) => el.username === inviteeEmail)
+            : usersByUsername?.[0];
+
+        // if the user doesn't exist we create the user with the email
+        if (!inviteeUser) {
+          // TODO(carlos): will be removed once the function receives usernames instead of emails
+          const usersByEmail = await userDAL.findUserByEmail(inviteeEmail, tx);
+          if (usersByEmail?.length === 1) {
+            [inviteeUser] = usersByEmail;
+          } else {
+            inviteeUser = await userDAL.create(
+              {
+                isAccepted: false,
+                email: inviteeEmail,
+                username: inviteeEmail,
+                authMethods: [AuthMethod.EMAIL],
+                isGhost: false
+              },
+              tx
+            );
+          }
+        }
+
+        const inviteeUserId = inviteeUser?.id;
+        const existingEncryptionKey = await userDAL.findUserEncKeyByUserId(inviteeUserId, tx);
+
+        // when user is missing the encrytion keys
+        // this could happen either if user doesn't exist or user didn't find step 3 of generating the encryption keys of srp
+        // So what we do is we generate a random secure password and then encrypt it with a random pub-private key
+        // Then when user sign in (as login is not possible as isAccepted is false) we rencrypt the private key with the user password
+        if (!inviteeUser || (inviteeUser && !inviteeUser?.isAccepted && !existingEncryptionKey)) {
+          await userDAL.createUserEncryption(
+            {
+              userId: inviteeUserId,
+              encryptionVersion: 2
+            },
+            tx
+          );
+        }
+
+        if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+          // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
+          throw new BadRequestError({
+            name: "InviteUser",
+            message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
+          });
+        }
+
+        await orgDAL.createMembership(
+          {
+            userId: inviteeUser.id,
+            inviteEmail: inviteeEmail,
+            orgId: org.id,
+            role: OrgMembershipRole.Admin,
+            status: inviteeUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited,
+            isActive: true
+          },
+          tx
+        );
+
+        users.push(inviteeUser);
+      }
+
+      return { organization: org, users };
+    });
+
+    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
+
+    await Promise.allSettled(
+      usersToEmail.map(async (user) => {
+        if (!user.email) return;
+
+        if (user.isAccepted) {
+          return smtpService.sendMail({
+            template: SmtpTemplates.OrgAssignment,
+            subjectLine: "You've been added to an Infisical organization",
+            recipients: [user.email],
+            substitutions: {
+              inviterFirstName: serverAdmin?.firstName,
+              inviterUsername: serverAdmin?.email,
+              organizationName: organization.name,
+              email: user.email,
+              organizationId: organization.id,
+              callback_url: `${appCfg.SITE_URL}/login?org_id=${organization.id}`
+            }
+          });
+        }
+
+        // new user, send regular invite
+
+        const token = await tokenService.createTokenForUser({
+          type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
+          userId: user.id,
+          orgId: organization.id
+        });
+
+        return smtpService.sendMail({
+          template: SmtpTemplates.OrgInvite,
+          subjectLine: "Infisical organization invitation",
+          recipients: [user.email],
+          substitutions: {
+            inviterFirstName: serverAdmin?.firstName,
+            inviterUsername: serverAdmin?.email,
+            organizationName: organization.name,
+            email: user.email,
+            organizationId: organization.id,
+            token,
+            callback_url: `${appCfg.SITE_URL}/signupinvite`
+          }
+        });
+      })
+    );
+
+    return organization;
   };
 
   const deleteOrganization = async (organizationId: string) => {
@@ -774,6 +932,86 @@ export const superAdminServiceFactory = ({
       id: membershipId
     });
     return organizationMembership;
+  };
+
+  const joinOrganization = async (orgId: string, actor: OrgServiceActor) => {
+    const serverAdmin = await userDAL.findById(actor.id);
+
+    if (!serverAdmin) {
+      throw new NotFoundError({ message: "Could not find server admin user" });
+    }
+
+    const org = await orgDAL.findById(orgId);
+
+    if (!org) {
+      throw new NotFoundError({ message: `Could not organization with ID "${orgId}"` });
+    }
+
+    const existingOrgMembership = await orgMembershipDAL.findOne({ userId: serverAdmin.id, orgId });
+
+    if (existingOrgMembership) {
+      throw new BadRequestError({ message: `You are already a part of the organization with ID ${orgId}` });
+    }
+
+    const orgMembership = await orgDAL.createMembership({
+      userId: serverAdmin.id,
+      orgId: org.id,
+      role: OrgMembershipRole.Admin,
+      status: OrgMembershipStatus.Accepted,
+      isActive: true
+    });
+
+    return orgMembership;
+  };
+
+  const resendOrgInvite = async ({ organizationId, membershipId }: TResendOrgInviteDTO, actor: OrgServiceActor) => {
+    const orgMembership = await orgMembershipDAL.findOne({ id: membershipId, orgId: organizationId });
+
+    if (!orgMembership) {
+      throw new NotFoundError({ name: "Organization Membership", message: "Organization membership not found" });
+    }
+
+    if (orgMembership.status === OrgMembershipStatus.Accepted) {
+      throw new BadRequestError({
+        message: "This user has already accepted their invitation."
+      });
+    }
+
+    if (!orgMembership.userId) {
+      throw new NotFoundError({ message: "Cannot find user associated with Org Membership." });
+    }
+
+    if (!orgMembership.inviteEmail) {
+      throw new BadRequestError({ message: "No invite email associated with user." });
+    }
+
+    const org = await orgDAL.findOrgById(orgMembership.orgId);
+
+    const appCfg = getConfig();
+    const serverAdmin = await userDAL.findById(actor.id);
+
+    const token = await tokenService.createTokenForUser({
+      type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
+      userId: orgMembership.userId,
+      orgId: orgMembership.orgId
+    });
+
+    await smtpService.sendMail({
+      template: SmtpTemplates.OrgInvite,
+      subjectLine: "Infisical organization invitation",
+      recipients: [orgMembership.inviteEmail],
+      substitutions: {
+        inviterFirstName: serverAdmin?.firstName,
+        inviterUsername: serverAdmin?.email,
+        organizationName: org?.name,
+        email: orgMembership.inviteEmail,
+        organizationId: orgMembership.orgId,
+        token,
+        callback_url: `${appCfg.SITE_URL}/signupinvite`
+      }
+    });
+
+    return orgMembership;
   };
 
   const getIdentities = async ({ offset, limit, searchTerm }: TAdminGetIdentitiesDTO) => {
@@ -913,6 +1151,10 @@ export const superAdminServiceFactory = ({
     initializeAdminIntegrationConfigSync,
     initializeEnvConfigSync,
     getEnvOverrides,
-    getEnvOverridesOrganized
+    getEnvOverridesOrganized,
+    deleteUsers,
+    createOrganization,
+    joinOrganization,
+    resendOrgInvite
   };
 };

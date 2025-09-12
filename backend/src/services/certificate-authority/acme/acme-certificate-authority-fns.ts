@@ -1,19 +1,17 @@
-import { ChangeResourceRecordSetsCommand, Route53Client } from "@aws-sdk/client-route-53";
 import * as x509 from "@peculiar/x509";
 import acme from "acme-client";
 
 import { TableName } from "@app/db/schemas";
-import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, CryptographyError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
-import { TAwsConnection, TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
+import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
+import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -39,6 +37,8 @@ import {
   TCreateAcmeCertificateAuthorityDTO,
   TUpdateAcmeCertificateAuthorityDTO
 } from "./acme-certificate-authority-types";
+import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
+import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route54";
 
 type TAcmeCertificateAuthorityFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
@@ -64,6 +64,8 @@ type DBConfigurationColumn = {
   directoryUrl: string;
   accountEmail: string;
   hostedZoneId: string;
+  eabKid?: string;
+  eabHmacKey?: string;
 };
 
 export const castDbEntryToAcmeCertificateAuthority = (
@@ -89,78 +91,12 @@ export const castDbEntryToAcmeCertificateAuthority = (
         hostedZoneId: dbConfigurationCol.hostedZoneId
       },
       directoryUrl: dbConfigurationCol.directoryUrl,
-      accountEmail: dbConfigurationCol.accountEmail
+      accountEmail: dbConfigurationCol.accountEmail,
+      eabKid: dbConfigurationCol.eabKid,
+      eabHmacKey: dbConfigurationCol.eabHmacKey
     },
     status: ca.status as CaStatus
   };
-};
-
-export const route53InsertTxtRecord = async (
-  connection: TAwsConnectionConfig,
-  hostedZoneId: string,
-  domain: string,
-  value: string
-) => {
-  const config = await getAwsConnectionConfig(connection, AWSRegion.US_WEST_1); // REGION is irrelevant because Route53 is global
-  const route53Client = new Route53Client({
-    sha256: CustomAWSHasher,
-    useFipsEndpoint: crypto.isFipsModeEnabled(),
-    credentials: config.credentials!,
-    region: config.region
-  });
-
-  const command = new ChangeResourceRecordSetsCommand({
-    HostedZoneId: hostedZoneId,
-    ChangeBatch: {
-      Comment: "Set ACME challenge TXT record",
-      Changes: [
-        {
-          Action: "UPSERT",
-          ResourceRecordSet: {
-            Name: domain,
-            Type: "TXT",
-            TTL: 30,
-            ResourceRecords: [{ Value: value }]
-          }
-        }
-      ]
-    }
-  });
-
-  await route53Client.send(command);
-};
-
-export const route53DeleteTxtRecord = async (
-  connection: TAwsConnectionConfig,
-  hostedZoneId: string,
-  domain: string,
-  value: string
-) => {
-  const config = await getAwsConnectionConfig(connection, AWSRegion.US_WEST_1); // REGION is irrelevant because Route53 is global
-  const route53Client = new Route53Client({
-    credentials: config.credentials!,
-    region: config.region
-  });
-
-  const command = new ChangeResourceRecordSetsCommand({
-    HostedZoneId: hostedZoneId,
-    ChangeBatch: {
-      Comment: "Delete ACME challenge TXT record",
-      Changes: [
-        {
-          Action: "DELETE",
-          ResourceRecordSet: {
-            Name: domain,
-            Type: "TXT",
-            TTL: 30,
-            ResourceRecords: [{ Value: value }]
-          }
-        }
-      ]
-    }
-  });
-
-  await route53Client.send(command);
 };
 
 export const AcmeCertificateAuthorityFns = ({
@@ -196,7 +132,7 @@ export const AcmeCertificateAuthorityFns = ({
       });
     }
 
-    const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig } = configuration;
+    const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig, eabKid, eabHmacKey } = configuration;
     const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
 
     if (!appConnection) {
@@ -206,6 +142,12 @@ export const AcmeCertificateAuthorityFns = ({
     if (dnsProviderConfig.provider === AcmeDnsProvider.Route53 && appConnection.app !== AppConnection.AWS) {
       throw new BadRequestError({
         message: `App connection with ID '${dnsAppConnectionId}' is not an AWS connection`
+      });
+    }
+
+    if (dnsProviderConfig.provider === AcmeDnsProvider.Cloudflare && appConnection.app !== AppConnection.Cloudflare) {
+      throw new BadRequestError({
+        message: `App connection with ID '${dnsAppConnectionId}' is not a Cloudflare connection`
       });
     }
 
@@ -233,7 +175,9 @@ export const AcmeCertificateAuthorityFns = ({
               directoryUrl,
               accountEmail,
               dnsProvider: dnsProviderConfig.provider,
-              hostedZoneId: dnsProviderConfig.hostedZoneId
+              hostedZoneId: dnsProviderConfig.hostedZoneId,
+              eabKid,
+              eabHmacKey
             }
           },
           tx
@@ -276,7 +220,7 @@ export const AcmeCertificateAuthorityFns = ({
   }) => {
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
-        const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig } = configuration;
+        const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig, eabKid, eabHmacKey } = configuration;
         const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
 
         if (!appConnection) {
@@ -286,6 +230,15 @@ export const AcmeCertificateAuthorityFns = ({
         if (dnsProviderConfig.provider === AcmeDnsProvider.Route53 && appConnection.app !== AppConnection.AWS) {
           throw new BadRequestError({
             message: `App connection with ID '${dnsAppConnectionId}' is not an AWS connection`
+          });
+        }
+
+        if (
+          dnsProviderConfig.provider === AcmeDnsProvider.Cloudflare &&
+          appConnection.app !== AppConnection.Cloudflare
+        ) {
+          throw new BadRequestError({
+            message: `App connection with ID '${dnsAppConnectionId}' is not a Cloudflare connection`
           });
         }
 
@@ -307,7 +260,9 @@ export const AcmeCertificateAuthorityFns = ({
               directoryUrl,
               accountEmail,
               dnsProvider: dnsProviderConfig.provider,
-              hostedZoneId: dnsProviderConfig.hostedZoneId
+              hostedZoneId: dnsProviderConfig.hostedZoneId,
+              eabKid,
+              eabHmacKey
             }
           },
           tx
@@ -407,10 +362,19 @@ export const AcmeCertificateAuthorityFns = ({
 
     await blockLocalAndPrivateIpAddresses(acmeCa.configuration.directoryUrl);
 
-    const acmeClient = new acme.Client({
+    const acmeClientOptions: acme.ClientOptions = {
       directoryUrl: acmeCa.configuration.directoryUrl,
       accountKey
-    });
+    };
+
+    if (acmeCa.configuration.eabKid && acmeCa.configuration.eabHmacKey) {
+      acmeClientOptions.externalAccountBinding = {
+        kid: acmeCa.configuration.eabKid,
+        hmacKey: acmeCa.configuration.eabHmacKey
+      };
+    }
+
+    const acmeClient = new acme.Client(acmeClientOptions);
 
     const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
 
@@ -443,26 +407,56 @@ export const AcmeCertificateAuthorityFns = ({
         const recordName = `_acme-challenge.${authz.identifier.value}`; // e.g., "_acme-challenge.example.com"
         const recordValue = `"${keyAuthorization}"`; // must be double quoted
 
-        if (acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.Route53) {
-          await route53InsertTxtRecord(
-            connection as TAwsConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
+        switch (acmeCa.configuration.dnsProviderConfig.provider) {
+          case AcmeDnsProvider.Route53: {
+            await route53InsertTxtRecord(
+              connection as TAwsConnection,
+              acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+              recordName,
+              recordValue
+            );
+            break;
+          }
+          case AcmeDnsProvider.Cloudflare: {
+            await cloudflareInsertTxtRecord(
+              connection as TCloudflareConnection,
+              acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+              recordName,
+              recordValue
+            );
+            break;
+          }
+          default: {
+            throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
+          }
         }
       },
       challengeRemoveFn: async (authz, challenge, keyAuthorization) => {
         const recordName = `_acme-challenge.${authz.identifier.value}`; // e.g., "_acme-challenge.example.com"
         const recordValue = `"${keyAuthorization}"`; // must be double quoted
 
-        if (acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.Route53) {
-          await route53DeleteTxtRecord(
-            connection as TAwsConnection,
-            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
-            recordName,
-            recordValue
-          );
+        switch (acmeCa.configuration.dnsProviderConfig.provider) {
+          case AcmeDnsProvider.Route53: {
+            await route53DeleteTxtRecord(
+              connection as TAwsConnection,
+              acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+              recordName,
+              recordValue
+            );
+            break;
+          }
+          case AcmeDnsProvider.Cloudflare: {
+            await cloudflareDeleteTxtRecord(
+              connection as TCloudflareConnection,
+              acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+              recordName,
+              recordValue
+            );
+            break;
+          }
+          default: {
+            throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
+          }
         }
       }
     });

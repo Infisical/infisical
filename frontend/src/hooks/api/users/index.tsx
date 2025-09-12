@@ -1,8 +1,10 @@
 export {
   useAddUserToWsNonE2EE,
   useRemoveMyDuplicateAccounts,
+  useRequestEmailChangeOTP,
   useRevokeMySessionById,
   useSendEmailVerificationCode,
+  useUpdateUserEmail,
   useVerifyEmailVerificationCode
 } from "./mutation";
 export {

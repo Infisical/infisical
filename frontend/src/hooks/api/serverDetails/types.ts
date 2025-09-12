@@ -5,4 +5,5 @@ export type ServerStatus = {
   secretScanningConfigured: boolean;
   redisConfigured: boolean;
   samlDefaultOrgSlug: string;
+  auditLogStorageDisabled: boolean;
 };

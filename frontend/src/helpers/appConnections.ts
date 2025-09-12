@@ -13,6 +13,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   Auth0ConnectionMethod,
   AwsConnectionMethod,
+  AzureADCSConnectionMethod,
   AzureAppConfigurationConnectionMethod,
   AzureClientSecretsConnectionMethod,
   AzureDevOpsConnectionMethod,
@@ -45,6 +46,7 @@ import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/b
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
+import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
@@ -75,6 +77,7 @@ export const APP_CONNECTION_MAP: Record<
     image: "Microsoft Azure.png"
   },
   [AppConnection.AzureDevOps]: { name: "Azure DevOps", image: "Microsoft Azure.png" },
+  [AppConnection.AzureADCS]: { name: "Azure ADCS", image: "Microsoft Azure.png" },
   [AppConnection.Databricks]: { name: "Databricks", image: "Databricks.png" },
   [AppConnection.Humanitec]: { name: "Humanitec", image: "Humanitec.png" },
   [AppConnection.TerraformCloud]: { name: "Terraform Cloud", image: "Terraform Cloud.png" },
@@ -94,7 +97,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Heroku]: { name: "Heroku", image: "Heroku.png" },
   [AppConnection.Render]: { name: "Render", image: "Render.png" },
   [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" },
-  [AppConnection.Gitlab]: { name: "GitLab", image: "GitLab.png" },
+  [AppConnection.GitLab]: { name: "GitLab", image: "GitLab.png" },
   [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" },
   [AppConnection.Zabbix]: { name: "Zabbix", image: "Zabbix.png" },
   [AppConnection.Railway]: { name: "Railway", image: "Railway.png" },
@@ -104,6 +107,10 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.DigitalOcean]: {
     name: "Digital Ocean",
     image: "Digital Ocean.png"
+  },
+  [AppConnection.Netlify]: {
+    name: "Netlify",
+    image: "Netlify.png"
   },
   [AppConnection.Okta]: { name: "Okta", image: "Okta.png" }
 };
@@ -146,12 +153,14 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case MsSqlConnectionMethod.UsernameAndPassword:
     case MySqlConnectionMethod.UsernameAndPassword:
     case OracleDBConnectionMethod.UsernameAndPassword:
+    case AzureADCSConnectionMethod.UsernamePassword:
       return { name: "Username & Password", icon: faLock };
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
     case AzureDevOpsConnectionMethod.AccessToken:
     case WindmillConnectionMethod.AccessToken:
     case FlyioConnectionMethod.AccessToken:
+    case NetlifyConnectionMethod.AccessToken:
       return { name: "Access Token", icon: faKey };
     case Auth0ConnectionMethod.ClientCredentials:
       return { name: "Client Credentials", icon: faServer };
@@ -172,6 +181,9 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case ChecklyConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case AzureClientSecretsConnectionMethod.ClientSecret:
+    case AzureAppConfigurationConnectionMethod.ClientSecret:
+    case AzureKeyVaultConnectionMethod.ClientSecret:
+    case AzureDevOpsConnectionMethod.ClientSecret:
       return { name: "Client Secret", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);

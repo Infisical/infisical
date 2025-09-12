@@ -9,6 +9,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.AzureAppConfiguration]: "Azure App Configuration",
   [AppConnection.AzureClientSecrets]: "Azure Client Secrets",
   [AppConnection.AzureDevOps]: "Azure DevOps",
+  [AppConnection.AzureADCS]: "Azure ADCS",
   [AppConnection.Databricks]: "Databricks",
   [AppConnection.Humanitec]: "Humanitec",
   [AppConnection.TerraformCloud]: "Terraform Cloud",
@@ -36,6 +37,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Checkly]: "Checkly",
   [AppConnection.Supabase]: "Supabase",
   [AppConnection.DigitalOcean]: "DigitalOcean App Platform",
+  [AppConnection.Netlify]: "Netlify",
   [AppConnection.Okta]: "Okta"
 };
 
@@ -48,6 +50,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.AzureAppConfiguration]: AppConnectionPlanType.Regular,
   [AppConnection.AzureClientSecrets]: AppConnectionPlanType.Regular,
   [AppConnection.AzureDevOps]: AppConnectionPlanType.Regular,
+  [AppConnection.AzureADCS]: AppConnectionPlanType.Regular,
   [AppConnection.Databricks]: AppConnectionPlanType.Regular,
   [AppConnection.Humanitec]: AppConnectionPlanType.Regular,
   [AppConnection.TerraformCloud]: AppConnectionPlanType.Regular,
@@ -75,5 +78,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Checkly]: AppConnectionPlanType.Regular,
   [AppConnection.Supabase]: AppConnectionPlanType.Regular,
   [AppConnection.DigitalOcean]: AppConnectionPlanType.Regular,
+  [AppConnection.Netlify]: AppConnectionPlanType.Regular,
   [AppConnection.Okta]: AppConnectionPlanType.Regular
 };

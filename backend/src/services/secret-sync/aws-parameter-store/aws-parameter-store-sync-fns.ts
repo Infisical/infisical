@@ -1,4 +1,5 @@
 import AWS, { AWSError } from "aws-sdk";
+import handlebars from "handlebars";
 
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -11,7 +12,7 @@ type TAWSParameterStoreRecord = Record<string, AWS.SSM.Parameter>;
 type TAWSParameterStoreMetadataRecord = Record<string, AWS.SSM.ParameterMetadata>;
 type TAWSParameterStoreTagsRecord = Record<string, Record<string, string>>;
 
-const MAX_RETRIES = 5;
+const MAX_RETRIES = 10;
 const BATCH_SIZE = 10;
 
 const getSSM = async (secretSync: TAwsParameterStoreSyncWithCredentials) => {
@@ -34,18 +35,51 @@ const sleep = async () =>
     setTimeout(resolve, 1000);
   });
 
-const getParametersByPath = async (ssm: AWS.SSM, path: string): Promise<TAWSParameterStoreRecord> => {
+const getFullPath = ({ path, keySchema, environment }: { path: string; keySchema?: string; environment: string }) => {
+  if (!keySchema || !keySchema.includes("/")) return path;
+
+  if (keySchema.startsWith("/")) {
+    throw new SecretSyncError({ message: `Key schema cannot contain leading '/'`, shouldRetry: false });
+  }
+
+  const keySchemaSegments = handlebars
+    .compile(keySchema)({
+      environment,
+      secretKey: "{{secretKey}}"
+    })
+    .split("/");
+
+  const pathSegments = keySchemaSegments.slice(0, keySchemaSegments.length - 1);
+
+  if (pathSegments.some((segment) => segment.includes("{{secretKey}}"))) {
+    throw new SecretSyncError({
+      message: "Key schema cannot contain '/' after {{secretKey}}",
+      shouldRetry: false
+    });
+  }
+
+  return `${path}${pathSegments.join("/")}/`;
+};
+
+const getParametersByPath = async (
+  ssm: AWS.SSM,
+  path: string,
+  keySchema: string | undefined,
+  environment: string
+): Promise<TAWSParameterStoreRecord> => {
   const awsParameterStoreSecretsRecord: TAWSParameterStoreRecord = {};
   let hasNext = true;
   let nextToken: string | undefined;
   let attempt = 0;
+
+  const fullPath = getFullPath({ path, keySchema, environment });
 
   while (hasNext) {
     try {
       // eslint-disable-next-line no-await-in-loop
       const parameters = await ssm
         .getParametersByPath({
-          Path: path,
+          Path: fullPath,
           Recursive: false,
           WithDecryption: true,
           MaxResults: BATCH_SIZE,
@@ -59,7 +93,7 @@ const getParametersByPath = async (ssm: AWS.SSM, path: string): Promise<TAWSPara
         parameters.Parameters.forEach((parameter) => {
           if (parameter.Name) {
             // no leading slash if path is '/'
-            const secKey = path.length > 1 ? parameter.Name.substring(path.length) : parameter.Name;
+            const secKey = fullPath.length > 1 ? parameter.Name.substring(path.length) : parameter.Name;
             awsParameterStoreSecretsRecord[secKey] = parameter;
           }
         });
@@ -83,11 +117,18 @@ const getParametersByPath = async (ssm: AWS.SSM, path: string): Promise<TAWSPara
   return awsParameterStoreSecretsRecord;
 };
 
-const getParameterMetadataByPath = async (ssm: AWS.SSM, path: string): Promise<TAWSParameterStoreMetadataRecord> => {
+const getParameterMetadataByPath = async (
+  ssm: AWS.SSM,
+  path: string,
+  keySchema: string | undefined,
+  environment: string
+): Promise<TAWSParameterStoreMetadataRecord> => {
   const awsParameterStoreMetadataRecord: TAWSParameterStoreMetadataRecord = {};
   let hasNext = true;
   let nextToken: string | undefined;
   let attempt = 0;
+
+  const fullPath = getFullPath({ path, keySchema, environment });
 
   while (hasNext) {
     try {
@@ -100,7 +141,7 @@ const getParameterMetadataByPath = async (ssm: AWS.SSM, path: string): Promise<T
             {
               Key: "Path",
               Option: "OneLevel",
-              Values: [path]
+              Values: [fullPath]
             }
           ]
         })
@@ -112,7 +153,7 @@ const getParameterMetadataByPath = async (ssm: AWS.SSM, path: string): Promise<T
         parameters.Parameters.forEach((parameter) => {
           if (parameter.Name) {
             // no leading slash if path is '/'
-            const secKey = path.length > 1 ? parameter.Name.substring(path.length) : parameter.Name;
+            const secKey = fullPath.length > 1 ? parameter.Name.substring(path.length) : parameter.Name;
             awsParameterStoreMetadataRecord[secKey] = parameter;
           }
         });
@@ -298,9 +339,19 @@ export const AwsParameterStoreSyncFns = {
 
     const ssm = await getSSM(secretSync);
 
-    const awsParameterStoreSecretsRecord = await getParametersByPath(ssm, destinationConfig.path);
+    const awsParameterStoreSecretsRecord = await getParametersByPath(
+      ssm,
+      destinationConfig.path,
+      syncOptions.keySchema,
+      environment!.slug
+    );
 
-    const awsParameterStoreMetadataRecord = await getParameterMetadataByPath(ssm, destinationConfig.path);
+    const awsParameterStoreMetadataRecord = await getParameterMetadataByPath(
+      ssm,
+      destinationConfig.path,
+      syncOptions.keySchema,
+      environment!.slug
+    );
 
     const { shouldManageTags, awsParameterStoreTagsRecord } = await getParameterStoreTagsRecord(
       ssm,
@@ -400,22 +451,32 @@ export const AwsParameterStoreSyncFns = {
     await deleteParametersBatch(ssm, parametersToDelete);
   },
   getSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials): Promise<TSecretMap> => {
-    const { destinationConfig } = secretSync;
+    const { destinationConfig, syncOptions, environment } = secretSync;
 
     const ssm = await getSSM(secretSync);
 
-    const awsParameterStoreSecretsRecord = await getParametersByPath(ssm, destinationConfig.path);
+    const awsParameterStoreSecretsRecord = await getParametersByPath(
+      ssm,
+      destinationConfig.path,
+      syncOptions.keySchema,
+      environment!.slug
+    );
 
     return Object.fromEntries(
       Object.entries(awsParameterStoreSecretsRecord).map(([key, value]) => [key, { value: value.Value ?? "" }])
     );
   },
   removeSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, secretMap: TSecretMap) => {
-    const { destinationConfig } = secretSync;
+    const { destinationConfig, syncOptions, environment } = secretSync;
 
     const ssm = await getSSM(secretSync);
 
-    const awsParameterStoreSecretsRecord = await getParametersByPath(ssm, destinationConfig.path);
+    const awsParameterStoreSecretsRecord = await getParametersByPath(
+      ssm,
+      destinationConfig.path,
+      syncOptions.keySchema,
+      environment!.slug
+    );
 
     const parametersToDelete: AWS.SSM.Parameter[] = [];
 

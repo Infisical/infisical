@@ -1,8 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { AxiosError } from "axios";
 
-import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
+import { onRequestError } from "@app/hooks/api/reactQuery";
 import { TReactQueryOptions } from "@app/types/reactQuery";
 
 import { Actor, AuditLog, TGetAuditLogsFilter } from "./types";
@@ -46,12 +45,7 @@ export const useGetAuditLogs = (
         );
         return data.auditLogs;
       } catch (error) {
-        if (error instanceof AxiosError) {
-          createNotification({
-            type: "error",
-            text: error.response?.data.message
-          });
-        }
+        onRequestError(error);
         return [];
       }
     },

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { DiRedis } from "react-icons/di";
 import {
   SiApachecassandra,
+  SiCouchbase,
   SiElasticsearch,
   SiFiles,
   SiKubernetes,
@@ -29,6 +30,7 @@ import { AwsElastiCacheInputForm } from "./AwsElastiCacheInputForm";
 import { AwsIamInputForm } from "./AwsIamInputForm";
 import { AzureEntraIdInputForm } from "./AzureEntraIdInputForm";
 import { CassandraInputForm } from "./CassandraInputForm";
+import { CouchbaseInputForm } from "./CouchbaseInputForm";
 import { ElasticSearchInputForm } from "./ElasticSearchInputForm";
 import { GcpIamInputForm } from "./GcpIamInputForm";
 import { GithubInputForm } from "./GithubInputForm";
@@ -154,6 +156,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: <FontAwesomeIcon icon={faGithub} size="lg" />,
     provider: DynamicSecretProviders.Github,
     title: "GitHub"
+  },
+  {
+    icon: <SiCouchbase size="1.5rem" />,
+    provider: DynamicSecretProviders.Couchbase,
+    title: "Couchbase"
   }
 ];
 
@@ -599,6 +606,25 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <GithubInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.Couchbase && (
+              <motion.div
+                key="dynamic-couchbase-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <CouchbaseInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}

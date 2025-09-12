@@ -1,106 +1,40 @@
 ---
 title: "What is Infisical?"
 sidebarTitle: "What is Infisical?"
-description: "An Introduction to the Infisical secret management platform."
+description: "The open source platform for managing secrets, certificates, and secure infrastructure access."
 ---
 
-**[Infisical](https://infisical.com)** is the open source secret management platform that developers use to centralize their application configuration and secrets like API keys and database credentials as well as manage their internal PKI. Additionally, developers use Infisical to prevent secrets leaks to git and securely share secrets amongst engineers.
+## What is Infisical?
+
+[Infisical](https://infisical.com) is the [open source](https://github.com/Infisical/infisical), all-in-one platform for secrets, certificates, and privileged access management.
+
+It provides modern security workflows — including secrets rotation, dynamic credentials, access approvals, and SSH certificate-based access — all within one platform designed for developers, infrastructure, and security teams.
 
 Start managing secrets securely with [Infisical Cloud](https://app.infisical.com) or learn how to [host Infisical](/self-hosting/overview) yourself.
 
-<CardGroup cols={2}>
-  <Card
-    title="Infisical Cloud"
-    href="https://app.infisical.com/signup"
-    icon="cloud"
-    color="#000000"
-  >
-    Get started with Infisical Cloud in just a few minutes.
-  </Card>
-  <Card
-    href="/self-hosting/overview"
-    title="Self-hosting"
-    icon="server"
-    color="#000000"
-  >
-    Self-host Infisical on your own infrastructure.
-  </Card>
-</CardGroup>
+## Why use Infisical?
 
-## Why Infisical?
+Managing secrets, credentials, and infrastructure access is a critical concern for engineering teams. As infrastructure scales and environments become more complex, [secrets start to sprawl](https://infisical.com/blog/what-is-secret-sprawl) — across codebases, CI/CD pipelines, configuration files, and cloud services. This makes them difficult to track, rotate, and secure.
 
-Infisical helps developers achieve secure centralized secret management and provides all the tools to easily manage secrets in various environments and infrastructure components. In particular, here are some of the most common points that developers mention after adopting Infisical:
+Without proper management, secret sprawl turns into risk: hardcoded credentials, unrotated keys, fragmented access controls that attackers can exploit amongst other things.
 
-- Streamlined **local development** processes (switching .env files to [Infisical CLI](/cli/commands/run) and removing secrets from developer machines).
-- **Best-in-class developer experience** with an easy-to-use [Web Dashboard](/documentation/platform/project).
-- Simple secret management inside **[CI/CD pipelines](/integrations/cicd/githubactions)** and staging environments.
-- Secure and compliant secret management practices in **[production environments](/sdks/overview)**.
-- **Facilitated workflows** around [secret change management](/documentation/platform/pr-workflows), [access requests](/documentation/platform/access-controls/access-requests), [temporary access provisioning](/documentation/platform/access-controls/temporary-access), and more.
-- **Improved security posture** thanks to [secret scanning](/cli/scanning-overview), [granular access control policies](/documentation/platform/access-controls/overview), [automated secret rotation](https://infisical.com/docs/documentation/platform/secret-rotation/overview), and [dynamic secrets](/documentation/platform/dynamic-secrets/overview) capabilities.
+Infisical addresses this challenge by providing an all-in-one platform and workflows to:
 
-## How does Infisical work?
+- Securely store and manage application secrets from development to production.
+- Scan code and pipelines for exposed credentials.
+- Automate X.509 certificate issuance and renewal.
+- Manage SSH access using short-lived, policy-driven certificates.
+- Encrypt and decrypt sensitive data with centralized key control.
+- Audit every access, credential use, and change.
 
-To make secret management effortless and secure, Infisical follows a certain structure for enabling secret management workflows as defined below.
+Infisical is designed to integrate cleanly into your stack—improving security without adding complexity.
 
-**Identities** in Infisical are users or machine which have a certain set of roles and permissions assigned to them. Such identities are able to manage secrets in various **Clients** throughout the entire infrastructure. To do that, identities have to verify themselves through one of the available **Authentication Methods**.
+## What does Infisical include?
 
-As a result, the 3 main concepts that are important to understand are:
+Infisical consists of several tightly integrated products, each designed to solve a specific part of the infrastructure security surface:
 
-- **[Identities](/documentation/platform/identities/overview)**: users or machines with a set permissions assigned to them.
-- **[Clients](/integrations/platforms/kubernetes)**: Infisical-developed tools for managing secrets in various infrastructure components (e.g., [Kubernetes Operator](/integrations/platforms/kubernetes), [Infisical Agent](/integrations/platforms/infisical-agent), [CLI](/cli/usage), [SDKs](/sdks/overview), [API](/api-reference/overview/introduction), [Web Dashboard](/documentation/platform/organization)).
-- **[Authentication Methods](/documentation/platform/identities/universal-auth)**: ways for Identities to authenticate inside different clients (e.g., SAML SSO for Web Dashboard, Universal Auth for Infisical Agent, AWS Auth etc.).
-
-## How to get started with Infisical?
-
-Depending on your use case, it might be helpful to look into some of the resources and guides provided below.
-
-<CardGroup cols={2}>
-  <Card
-    href="../../cli/overview"
-    title="Command Line Interface (CLI)"
-    icon="square-terminal"
-    color="#000000"
-  >
-    Inject secrets into any application process/environment.
-  </Card>
-  <Card
-    title="SDKs"
-    href="/documentation/getting-started/sdks"
-    icon="boxes-stacked"
-    color="#000000"
-  >
-    Fetch secrets with any programming language on demand.
-  </Card>
-  <Card
-    href="../../integrations/platforms/docker-intro"
-    title="Docker"
-    icon="docker"
-    color="#000000"
-  >
-    Inject secrets into Docker containers.
-  </Card>
-  <Card
-    href="../../integrations/platforms/kubernetes"
-    title="Kubernetes"
-    icon="server"
-    color="#000000"
-  >
-    Fetch and save secrets as native Kubernetes secrets.
-  </Card>
-  <Card
-    href="/documentation/getting-started/api"
-    title="REST API"
-    icon="cloud"
-    color="#000000"
-  >
-    Fetch secrets via HTTP request.
-  </Card>
-  <Card
-    href="/integrations/overview"
-    title="Native Integrations"
-    icon="clouds"
-    color="#000000"
-  >
-    Explore integrations for GitHub, Vercel, AWS, and more.
-  </Card>
-</CardGroup>
+- [Secrets Management](/documentation/platform/secrets-mgmt/overview): Securely store, access, and distribute secrets across environments with fine-grained controls, automatic rotation, and audit logging.
+- [Secrets Scanning](/documentation/platform/secret-scanning/overview): Detect hardcoded secrets in code, CI pipelines, and infrastructure—integrated with GitHub, GitLab, Bitbucket, and more.
+- [Infisical PKI](/documentation/platform/pki/overview): Issue and manage X.509 certificates using protocols like EST, with support for internal and external CAs.
+- [Infisical SSH](/documentation/platform/ssh/overview): Provide short-lived SSH access to servers using certificate-based authentication, replacing static keys with policy-driven, time-bound control.
+- [Infisical KMS](/documentation/platform/kms/overview): Encrypt and decrypt data using centrally managed keys with enforced access policies and full audit visibility.

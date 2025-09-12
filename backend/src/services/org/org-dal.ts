@@ -83,6 +83,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(db.ref("id").withSchema(TableName.OrgMembership).as("orgMembershipId"))
         .select(db.ref("role").withSchema(TableName.OrgMembership).as("orgMembershipRole"))
         .select(db.ref("roleId").withSchema(TableName.OrgMembership).as("orgMembershipRoleId"))
+        .select(db.ref("status").withSchema(TableName.OrgMembership).as("orgMembershipStatus"))
         .select(db.ref("name").withSchema(TableName.OrgRoles).as("orgMembershipRoleName"));
 
       const formattedDocs = sqlNestRelationships({
@@ -112,7 +113,8 @@ export const orgDALFactory = (db: TDbClient) => {
               orgMembershipId,
               orgMembershipRole,
               orgMembershipRoleName,
-              orgMembershipRoleId
+              orgMembershipRoleId,
+              orgMembershipStatus
             }) => ({
               user: {
                 id: userId,
@@ -121,6 +123,7 @@ export const orgDALFactory = (db: TDbClient) => {
                 firstName,
                 lastName
               },
+              status: orgMembershipStatus,
               membershipId: orgMembershipId,
               role: orgMembershipRoleName || orgMembershipRole, // custom role name or pre-defined role name
               roleId: orgMembershipRoleId
@@ -285,6 +288,8 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("roleId").withSchema(TableName.OrgMembership),
           db.ref("status").withSchema(TableName.OrgMembership),
           db.ref("isActive").withSchema(TableName.OrgMembership),
+          db.ref("lastLoginAuthMethod").withSchema(TableName.OrgMembership),
+          db.ref("lastLoginTime").withSchema(TableName.OrgMembership),
           db.ref("email").withSchema(TableName.Users),
           db.ref("isEmailVerified").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
@@ -486,6 +491,15 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const bulkCreateMemberships = async (data: TOrgMembershipsInsert[], tx?: Knex) => {
+    try {
+      const memberships = await (tx || db)(TableName.OrgMembership).insert(data).returning("*");
+      return memberships;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Create org memberships" });
+    }
+  };
+
   const updateMembershipById = async (id: string, data: TOrgMembershipsUpdate, tx?: Knex) => {
     try {
       const [membership] = await (tx || db)(TableName.OrgMembership).where({ id }).update(data).returning("*");
@@ -510,6 +524,21 @@ export const orgDALFactory = (db: TDbClient) => {
       return membership;
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete org membership" });
+    }
+  };
+
+  const deleteMembershipsById = async (ids: string[], orgId: string, tx?: Knex) => {
+    try {
+      const memberships = await (tx || db)(TableName.OrgMembership)
+        .where({
+          orgId
+        })
+        .whereIn("id", ids)
+        .delete()
+        .returning("*");
+      return memberships;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete org memberships" });
     }
   };
 
@@ -613,6 +642,25 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findIdentityOrganization = async (
+    identityId: string
+  ): Promise<{ id: string; name: string; slug: string; role: string }> => {
+    try {
+      const org = await db
+        .replicaNode()(TableName.IdentityOrgMembership)
+        .where({ identityId })
+        .join(TableName.Organization, `${TableName.IdentityOrgMembership}.orgId`, `${TableName.Organization}.id`)
+        .select(db.ref("id").withSchema(TableName.Organization).as("id"))
+        .select(db.ref("name").withSchema(TableName.Organization).as("name"))
+        .select(db.ref("slug").withSchema(TableName.Organization).as("slug"))
+        .select(db.ref("role").withSchema(TableName.IdentityOrgMembership).as("role"));
+
+      return org?.[0];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find identity organization" });
+    }
+  };
+
   return withTransaction(db, {
     ...orgOrm,
     findOrgByProjectId,
@@ -632,8 +680,11 @@ export const orgDALFactory = (db: TDbClient) => {
     findMembership,
     findMembershipWithScimFilter,
     createMembership,
+    bulkCreateMemberships,
     updateMembershipById,
     deleteMembershipById,
-    updateMembership
+    deleteMembershipsById,
+    updateMembership,
+    findIdentityOrganization
   });
 };

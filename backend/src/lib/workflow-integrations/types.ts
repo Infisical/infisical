@@ -6,7 +6,8 @@ import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack
 
 export enum TriggerFeature {
   SECRET_APPROVAL = "secret-approval",
-  ACCESS_REQUEST = "access-request"
+  ACCESS_REQUEST = "access-request",
+  ACCESS_REQUEST_UPDATED = "access-request-updated"
 }
 
 export type TNotification =
@@ -33,6 +34,22 @@ export type TNotification =
         permissions: string[];
         approvalUrl: string;
         note?: string;
+      };
+    }
+  | {
+      type: TriggerFeature.ACCESS_REQUEST_UPDATED;
+      payload: {
+        requesterFullName: string;
+        requesterEmail: string;
+        isTemporary: boolean;
+        secretPath: string;
+        environment: string;
+        projectName: string;
+        permissions: string[];
+        approvalUrl: string;
+        editNote?: string;
+        editorFullName?: string;
+        editorEmail?: string;
       };
     };
 

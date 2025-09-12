@@ -18,6 +18,7 @@ import {
   AddIdentityTlsCertAuthDTO,
   AddIdentityTokenAuthDTO,
   AddIdentityUniversalAuthDTO,
+  ClearIdentityUniversalAuthLockoutsDTO,
   ClientSecretData,
   CreateIdentityDTO,
   CreateIdentityUniversalAuthClientSecretDTO,
@@ -148,7 +149,11 @@ export const useAddIdentityUniversalAuth = () => {
       accessTokenTTL,
       accessTokenMaxTTL,
       accessTokenNumUsesLimit,
-      accessTokenTrustedIps
+      accessTokenTrustedIps,
+      lockoutEnabled,
+      lockoutThreshold,
+      lockoutDurationSeconds,
+      lockoutCounterResetSeconds
     }) => {
       const {
         data: { identityUniversalAuth }
@@ -157,7 +162,11 @@ export const useAddIdentityUniversalAuth = () => {
         accessTokenTTL,
         accessTokenMaxTTL,
         accessTokenNumUsesLimit,
-        accessTokenTrustedIps
+        accessTokenTrustedIps,
+        lockoutEnabled,
+        lockoutThreshold,
+        lockoutDurationSeconds,
+        lockoutCounterResetSeconds
       });
       return identityUniversalAuth;
     },
@@ -183,7 +192,11 @@ export const useUpdateIdentityUniversalAuth = () => {
       accessTokenMaxTTL,
       accessTokenNumUsesLimit,
       accessTokenTrustedIps,
-      accessTokenPeriod
+      accessTokenPeriod,
+      lockoutEnabled,
+      lockoutThreshold,
+      lockoutDurationSeconds,
+      lockoutCounterResetSeconds
     }) => {
       const {
         data: { identityUniversalAuth }
@@ -193,7 +206,11 @@ export const useUpdateIdentityUniversalAuth = () => {
         accessTokenMaxTTL,
         accessTokenNumUsesLimit,
         accessTokenTrustedIps,
-        accessTokenPeriod
+        accessTokenPeriod,
+        lockoutEnabled,
+        lockoutThreshold,
+        lockoutDurationSeconds,
+        lockoutCounterResetSeconds
       });
       return identityUniversalAuth;
     },
@@ -270,6 +287,25 @@ export const useRevokeIdentityUniversalAuthClientSecret = () => {
     onSuccess: (_, { identityId }) => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityUniversalAuthClientSecrets(identityId)
+      });
+    }
+  });
+};
+
+export const useClearIdentityUniversalAuthLockouts = () => {
+  const queryClient = useQueryClient();
+  return useMutation<number, object, ClearIdentityUniversalAuthLockoutsDTO>({
+    mutationFn: async ({ identityId }) => {
+      const {
+        data: { deleted }
+      } = await apiRequest.post<{ deleted: number }>(
+        `/api/v1/auth/universal-auth/identities/${identityId}/clear-lockouts`
+      );
+      return deleted;
+    },
+    onSuccess: (_, { identityId }) => {
+      queryClient.invalidateQueries({
+        queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
       });
     }
   });
@@ -1385,6 +1421,7 @@ export const useAddIdentityLdapAuth = () => {
   return useMutation<IdentityLdapAuth, object, AddIdentityLdapAuthDTO>({
     mutationFn: async ({
       identityId,
+      templateId,
       url,
       bindDN,
       bindPass,
@@ -1400,6 +1437,7 @@ export const useAddIdentityLdapAuth = () => {
       const { data } = await apiRequest.post<{ identityLdapAuth: IdentityLdapAuth }>(
         `/api/v1/auth/ldap-auth/identities/${identityId}`,
         {
+          templateId,
           url,
           bindDN,
           bindPass,
@@ -1432,6 +1470,7 @@ export const useUpdateIdentityLdapAuth = () => {
   return useMutation<IdentityLdapAuth, object, UpdateIdentityLdapAuthDTO>({
     mutationFn: async ({
       identityId,
+      templateId,
       url,
       bindDN,
       bindPass,
@@ -1447,6 +1486,7 @@ export const useUpdateIdentityLdapAuth = () => {
       const { data } = await apiRequest.patch<{ identityLdapAuth: IdentityLdapAuth }>(
         `/api/v1/auth/ldap-auth/identities/${identityId}`,
         {
+          templateId,
           url,
           bindDN,
           bindPass,

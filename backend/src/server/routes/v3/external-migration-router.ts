@@ -2,10 +2,13 @@ import fastifyMultipart from "@fastify/multipart";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
-import { writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { VaultMappingType } from "@app/services/external-migration/external-migration-types";
+import {
+  ExternalMigrationProviders,
+  VaultMappingType
+} from "@app/services/external-migration/external-migration-types";
 
 const MB25_IN_BYTES = 26214400;
 
@@ -19,7 +22,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const data = await req.file({
         limits: {
@@ -66,10 +69,11 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         vaultAccessToken: z.string(),
         vaultNamespace: z.string().trim().optional(),
         vaultUrl: z.string(),
-        mappingType: z.nativeEnum(VaultMappingType)
+        mappingType: z.nativeEnum(VaultMappingType),
+        gatewayId: z.string().optional()
       })
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await server.services.migration.importVaultData({
         actorId: req.permission.id,
@@ -78,6 +82,35 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         actorAuthMethod: req.permission.authMethod,
         ...req.body
       });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/custom-migration-enabled/:provider",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        provider: z.nativeEnum(ExternalMigrationProviders)
+      }),
+      response: {
+        200: z.object({
+          enabled: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const enabled = await server.services.migration.hasCustomVaultMigration({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        provider: req.params.provider
+      });
+      return { enabled };
     }
   });
 };

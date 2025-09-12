@@ -5,11 +5,13 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const AuditLogStreamsSchema = z.object({
   id: z.string().uuid(),
-  url: z.string(),
+  url: z.string().nullable().optional(),
   encryptedHeadersCiphertext: z.string().nullable().optional(),
   encryptedHeadersIV: z.string().nullable().optional(),
   encryptedHeadersTag: z.string().nullable().optional(),
@@ -17,7 +19,9 @@ export const AuditLogStreamsSchema = z.object({
   encryptedHeadersKeyEncoding: z.string().nullable().optional(),
   orgId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  provider: z.string().default("custom"),
+  encryptedCredentials: zodBuffer
 });
 
 export type TAuditLogStreams = z.infer<typeof AuditLogStreamsSchema>;

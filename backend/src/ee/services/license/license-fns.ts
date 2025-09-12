@@ -1,8 +1,11 @@
 import axios, { AxiosError } from "axios";
 
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TFeatureSet } from "./license-types";
 
@@ -32,6 +35,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   auditLogStreams: false,
   auditLogStreamLimit: 3,
   samlSSO: false,
+  enforceGoogleSSO: false,
   hsm: false,
   oidcSSO: false,
   scim: false,
@@ -59,7 +63,9 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   secretScanning: false,
   enterpriseSecretSyncs: false,
   enterpriseAppConnections: false,
-  fips: false
+  fips: false,
+  eventSubscriptions: false,
+  machineIdentityAuthTemplates: false
 });
 
 export const setupLicenseRequestWithStore = (
@@ -129,4 +135,19 @@ export const setupLicenseRequestWithStore = (
   );
 
   return { request: licenseReq, refreshLicense };
+};
+
+export const throwOnPlanSeatLimitReached = async (
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">,
+  orgId: string,
+  type?: UserAliasType
+) => {
+  const plan = await licenseService.getPlan(orgId);
+
+  if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+    // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
+    throw new BadRequestError({
+      message: `Failed to create new member${type ? ` via ${type.toUpperCase()}` : ""} due to member limit reached. Upgrade plan to add more members.`
+    });
+  }
 };

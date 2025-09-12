@@ -1,15 +1,16 @@
 import { useMemo } from "react";
 import { subject } from "@casl/ability";
-import { faAnglesRight, faMinusSquare, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faAnglesRight, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, DeleteActionModal, IconButton, Tooltip } from "@app/components/v2";
+import { Button, DeleteActionModal, Tooltip } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useProjectPermission,
+  useSubscription,
   useWorkspace
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
@@ -51,6 +52,7 @@ export const SelectionPanel = ({
   usedBySecretSyncs = []
 }: Props) => {
   const { permission } = useProjectPermission();
+  const { subscription } = useSubscription();
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "bulkDeleteEntries",
@@ -99,6 +101,16 @@ export const SelectionPanel = ({
       return "Do you want to delete the selected secrets across environments?";
     }
     return "Do you want to delete the selected folders across environments?";
+  };
+
+  const getDeleteModalSubTitle = () => {
+    if (selectedFolderCount > 0) {
+      if (subscription?.pitRecovery) {
+        return "All selected folders and their contents will be removed. You can reverse this action by rolling back to a previous commit.";
+      }
+      return "All selected folders and their contents will be removed. Rolling back to a previous commit isn't available on your current plan. Upgrade to enable this feature.";
+    }
+    return undefined;
   };
 
   const handleBulkDelete = async () => {
@@ -221,12 +233,14 @@ export const SelectionPanel = ({
         )}
       >
         <div className="mt-3.5 flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
-          <Tooltip content="Clear">
-            <IconButton variant="plain" ariaLabel="clear-selection" onClick={resetSelectedEntries}>
-              <FontAwesomeIcon icon={faMinusSquare} size="lg" />
-            </IconButton>
-          </Tooltip>
-          <div className="ml-1 flex-grow px-2 text-sm">{selectedCount} Selected</div>
+          <div className="mr-2 text-sm">{selectedCount} Selected</div>
+          <button
+            type="button"
+            className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
+            onClick={resetSelectedEntries}
+          >
+            Unselect All
+          </button>
           {isRotatedSecretSelected && (
             <span className="text-sm text-mineshaft-400">
               Rotated Secrets will not be affected by action.
@@ -277,6 +291,7 @@ export const SelectionPanel = ({
         isOpen={popUp.bulkDeleteEntries.isOpen}
         deleteKey="delete"
         title={getDeleteModalTitle()}
+        subTitle={getDeleteModalSubTitle()}
         onChange={(isOpen) => handlePopUpToggle("bulkDeleteEntries", isOpen)}
         onDeleteApproved={handleBulkDelete}
         formContent={

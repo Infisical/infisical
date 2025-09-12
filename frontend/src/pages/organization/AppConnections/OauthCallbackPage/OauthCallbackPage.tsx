@@ -30,12 +30,14 @@ type BaseFormData = {
   isUpdate?: boolean;
 };
 
-type GithubFormData = BaseFormData & Pick<TGitHubConnection, "name" | "method" | "description">;
+type GithubFormData = BaseFormData &
+  Pick<TGitHubConnection, "name" | "method" | "description" | "gatewayId" | "credentials">;
 
 type GithubRadarFormData = BaseFormData &
   Pick<TGitHubRadarConnection, "name" | "method" | "description">;
 
-type GitLabFormData = BaseFormData & Pick<TGitLabConnection, "name" | "method" | "description">;
+type GitLabFormData = BaseFormData &
+  Pick<TGitLabConnection, "name" | "method" | "description" | "credentials">;
 
 type AzureKeyVaultFormData = BaseFormData &
   Pick<TAzureKeyVaultConnection, "name" | "method" | "description"> &
@@ -65,7 +67,7 @@ type AzureDevOpsFormData = BaseFormData &
 type FormDataMap = {
   [AppConnection.GitHub]: GithubFormData & { app: AppConnection.GitHub };
   [AppConnection.GitHubRadar]: GithubRadarFormData & { app: AppConnection.GitHubRadar };
-  [AppConnection.Gitlab]: GitLabFormData & { app: AppConnection.Gitlab };
+  [AppConnection.GitLab]: GitLabFormData & { app: AppConnection.GitLab };
   [AppConnection.AzureKeyVault]: AzureKeyVaultFormData & { app: AppConnection.AzureKeyVault };
   [AppConnection.AzureAppConfiguration]: AzureAppConfigurationFormData & {
     app: AppConnection.AzureAppConfiguration;
@@ -81,7 +83,7 @@ type FormDataMap = {
 const formDataStorageFieldMap: Partial<Record<AppConnection, string>> = {
   [AppConnection.GitHub]: "githubConnectionFormData",
   [AppConnection.GitHubRadar]: "githubRadarConnectionFormData",
-  [AppConnection.Gitlab]: "gitlabConnectionFormData",
+  [AppConnection.GitLab]: "gitlabConnectionFormData",
   [AppConnection.AzureKeyVault]: "azureKeyVaultConnectionFormData",
   [AppConnection.AzureAppConfiguration]: "azureAppConfigurationConnectionFormData",
   [AppConnection.AzureClientSecrets]: "azureClientSecretsConnectionFormData",
@@ -141,30 +143,32 @@ export const OAuthCallbackPage = () => {
   };
 
   const handleGitlab = useCallback(async () => {
-    const formData = getFormData(AppConnection.Gitlab);
+    const formData = getFormData(AppConnection.GitLab);
     if (formData === null) return null;
 
-    clearState(AppConnection.Gitlab);
+    clearState(AppConnection.GitLab);
 
-    const { connectionId, name, description, returnUrl, isUpdate } = formData;
+    const { connectionId, name, description, returnUrl, isUpdate, credentials } = formData;
 
     try {
       if (isUpdate && connectionId) {
         await updateAppConnection.mutateAsync({
-          app: AppConnection.Gitlab,
+          app: AppConnection.GitLab,
           connectionId,
           credentials: {
-            code: code as string
+            code: code as string,
+            instanceUrl: credentials.instanceUrl as string
           }
         });
       } else {
         await createAppConnection.mutateAsync({
-          app: AppConnection.Gitlab,
+          app: AppConnection.GitLab,
           name,
           description,
           method: GitLabConnectionMethod.OAuth,
           credentials: {
-            code: code as string
+            code: code as string,
+            instanceUrl: credentials.instanceUrl as string
           }
         });
       }
@@ -395,7 +399,7 @@ export const OAuthCallbackPage = () => {
 
     clearState(AppConnection.GitHub);
 
-    const { connectionId, name, description, returnUrl } = formData;
+    const { connectionId, name, description, returnUrl, gatewayId, credentials } = formData;
 
     try {
       if (connectionId) {
@@ -406,14 +410,20 @@ export const OAuthCallbackPage = () => {
                 connectionId,
                 credentials: {
                   code: code as string,
-                  installationId: installationId as string
-                }
+                  installationId: installationId as string,
+                  ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
+                  ...(credentials?.host && { host: credentials.host })
+                },
+                gatewayId
               }
             : {
                 connectionId,
                 credentials: {
-                  code: code as string
-                }
+                  code: code as string,
+                  ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
+                  ...(credentials?.host && { host: credentials.host })
+                },
+                gatewayId
               })
         });
       } else {
@@ -426,14 +436,20 @@ export const OAuthCallbackPage = () => {
                 method: GitHubConnectionMethod.App,
                 credentials: {
                   code: code as string,
-                  installationId: installationId as string
-                }
+                  ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
+                  installationId: installationId as string,
+                  ...(credentials?.host && { host: credentials.host })
+                },
+                gatewayId
               }
             : {
                 method: GitHubConnectionMethod.OAuth,
                 credentials: {
-                  code: code as string
-                }
+                  code: code as string,
+                  ...(credentials?.instanceType && { instanceType: credentials.instanceType }),
+                  ...(credentials?.host && { host: credentials.host })
+                },
+                gatewayId
               })
         });
       }
@@ -521,7 +537,7 @@ export const OAuthCallbackPage = () => {
         data = await handleGithub();
       } else if (appConnection === AppConnection.GitHubRadar) {
         data = await handleGithubRadar();
-      } else if (appConnection === AppConnection.Gitlab) {
+      } else if (appConnection === AppConnection.GitLab) {
         data = await handleGitlab();
       } else if (appConnection === AppConnection.AzureKeyVault) {
         data = await handleAzureKeyVault();

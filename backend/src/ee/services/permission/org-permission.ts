@@ -23,9 +23,22 @@ export enum OrgPermissionAppConnectionActions {
   Connect = "connect"
 }
 
+export enum OrgPermissionAuditLogsActions {
+  Read = "read"
+}
+
 export enum OrgPermissionKmipActions {
   Proxy = "proxy",
   Setup = "setup"
+}
+
+export enum OrgPermissionMachineIdentityAuthTemplateActions {
+  ListTemplates = "list-templates",
+  EditTemplates = "edit-templates",
+  CreateTemplates = "create-templates",
+  DeleteTemplates = "delete-templates",
+  UnlinkTemplates = "unlink-templates",
+  AttachTemplates = "attach-templates"
 }
 
 export enum OrgPermissionAdminConsoleAction {
@@ -81,6 +94,7 @@ export enum OrgPermissionSubjects {
   Sso = "sso",
   Scim = "scim",
   GithubOrgSync = "github-org-sync",
+  GithubOrgSyncManual = "github-org-sync-manual",
   Ldap = "ldap",
   Groups = "groups",
   Billing = "billing",
@@ -88,6 +102,7 @@ export enum OrgPermissionSubjects {
   Identity = "identity",
   Kms = "kms",
   AdminConsole = "organization-admin-console",
+  MachineIdentityAuthTemplate = "machine-identity-auth-template",
   AuditLogs = "audit-logs",
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
@@ -109,13 +124,14 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Sso]
   | [OrgPermissionActions, OrgPermissionSubjects.Scim]
   | [OrgPermissionActions, OrgPermissionSubjects.GithubOrgSync]
+  | [OrgPermissionActions, OrgPermissionSubjects.GithubOrgSyncManual]
   | [OrgPermissionActions, OrgPermissionSubjects.Ldap]
   | [OrgPermissionGroupActions, OrgPermissionSubjects.Groups]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
   | [OrgPermissionBillingActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionIdentityActions, OrgPermissionSubjects.Identity]
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]
-  | [OrgPermissionActions, OrgPermissionSubjects.AuditLogs]
+  | [OrgPermissionAuditLogsActions, OrgPermissionSubjects.AuditLogs]
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
   | [OrgPermissionGatewayActions, OrgPermissionSubjects.Gateway]
   | [
@@ -126,6 +142,7 @@ export type OrgPermissionSet =
       )
     ]
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole]
+  | [OrgPermissionMachineIdentityAuthTemplateActions, OrgPermissionSubjects.MachineIdentityAuthTemplate]
   | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip]
   | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare];
 
@@ -178,6 +195,10 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
   }),
   z.object({
+    subject: z.literal(OrgPermissionSubjects.GithubOrgSyncManual).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
     subject: z.literal(OrgPermissionSubjects.Ldap).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
   }),
@@ -203,7 +224,9 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.AuditLogs).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionAuditLogsActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.ProjectTemplates).describe("The entity this permission pertains to."),
@@ -234,6 +257,14 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(OrgPermissionSubjects.Kmip).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionKmipActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z
+      .literal(OrgPermissionSubjects.MachineIdentityAuthTemplate)
+      .describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionMachineIdentityAuthTemplateActions).describe(
       "Describe what action an entity can take."
     )
   }),
@@ -290,6 +321,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.GithubOrgSync);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.GithubOrgSync);
 
+  can(OrgPermissionActions.Read, OrgPermissionSubjects.GithubOrgSyncManual);
+  can(OrgPermissionActions.Create, OrgPermissionSubjects.GithubOrgSyncManual);
+  can(OrgPermissionActions.Edit, OrgPermissionSubjects.GithubOrgSyncManual);
+  can(OrgPermissionActions.Delete, OrgPermissionSubjects.GithubOrgSyncManual);
+
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Ldap);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Ldap);
@@ -321,10 +357,7 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Kms);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
-  can(OrgPermissionActions.Create, OrgPermissionSubjects.AuditLogs);
-  can(OrgPermissionActions.Edit, OrgPermissionSubjects.AuditLogs);
-  can(OrgPermissionActions.Delete, OrgPermissionSubjects.AuditLogs);
+  can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
 
   can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.ProjectTemplates);
@@ -349,6 +382,25 @@ const buildAdminPermission = () => {
 
   // the proxy assignment is temporary in order to prevent "more privilege" error during role assignment to MI
   can(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
+
+  can(OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates, OrgPermissionSubjects.MachineIdentityAuthTemplate);
+  can(OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates, OrgPermissionSubjects.MachineIdentityAuthTemplate);
+  can(
+    OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
+  can(
+    OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
+  can(
+    OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
+  can(
+    OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
 
   can(OrgPermissionSecretShareAction.ManageSettings, OrgPermissionSubjects.SecretShare);
 
@@ -378,12 +430,22 @@ const buildMemberPermission = () => {
   can(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
   can(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
 
-  can(OrgPermissionActions.Read, OrgPermissionSubjects.AuditLogs);
+  can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
 
   can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
   can(OrgPermissionGatewayActions.ListGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.CreateGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.AttachGateways, OrgPermissionSubjects.Gateway);
+
+  can(OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates, OrgPermissionSubjects.MachineIdentityAuthTemplate);
+  can(
+    OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
+  can(
+    OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+    OrgPermissionSubjects.MachineIdentityAuthTemplate
+  );
 
   return rules;
 };

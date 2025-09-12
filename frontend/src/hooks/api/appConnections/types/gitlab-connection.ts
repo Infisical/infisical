@@ -8,7 +8,7 @@ export enum GitLabConnectionMethod {
   OAuth = "oauth"
 }
 
-export type TGitLabConnection = TRootAppConnection & { app: AppConnection.Gitlab } & (
+export type TGitLabConnection = TRootAppConnection & { app: AppConnection.GitLab } & (
     | {
         method: GitLabConnectionMethod.AccessToken;
         credentials: {

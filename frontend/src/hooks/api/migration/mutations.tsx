@@ -46,18 +46,21 @@ export const useImportVault = () => {
       vaultAccessToken,
       vaultNamespace,
       vaultUrl,
-      mappingType
+      mappingType,
+      gatewayId
     }: {
       vaultAccessToken: string;
       vaultNamespace?: string;
       vaultUrl: string;
       mappingType: string;
+      gatewayId?: string;
     }) => {
       await apiRequest.post("/api/v3/external-migration/vault/", {
         vaultAccessToken,
         vaultNamespace,
         vaultUrl,
-        mappingType
+        mappingType,
+        gatewayId
       });
     }
   });

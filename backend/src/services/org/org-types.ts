@@ -25,6 +25,14 @@ export type TDeleteOrgMembershipDTO = {
   actorAuthMethod: ActorAuthMethod;
 };
 
+export type TDeleteOrgMembershipsDTO = {
+  userId: string;
+  orgId: string;
+  membershipIds: string[];
+  actorOrgId: string | undefined;
+  actorAuthMethod: ActorAuthMethod;
+};
+
 export type TInviteUserToOrgDTO = {
   inviteeEmails: string[];
   organizationRoleSlug: string;
@@ -66,6 +74,7 @@ export type TUpdateOrgDTO = {
     name: string;
     slug: string;
     authEnforced: boolean;
+    googleSsoAuthEnforced: boolean;
     scimEnabled: boolean;
     defaultMembershipRoleSlug: string;
     enforceMfa: boolean;

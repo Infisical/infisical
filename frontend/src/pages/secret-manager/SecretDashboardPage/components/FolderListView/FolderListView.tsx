@@ -16,7 +16,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, IconButton, Modal, ModalContent } from "@app/components/v2";
 import { Tooltip } from "@app/components/v2/Tooltip/Tooltip";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteFolder, useUpdateFolder } from "@app/hooks/api";
 import { PendingAction, TSecretFolder } from "@app/hooks/api/secretFolders/types";
@@ -36,6 +36,7 @@ type Props = {
   workspaceId: string;
   secretPath?: string;
   onNavigateToFolder: (path: string) => void;
+  canNavigate: boolean;
 };
 
 export const FolderListView = ({
@@ -43,7 +44,8 @@ export const FolderListView = ({
   environment,
   workspaceId,
   secretPath = "/",
-  onNavigateToFolder
+  onNavigateToFolder,
+  canNavigate
 }: Props) => {
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "updateFolder",
@@ -54,6 +56,7 @@ export const FolderListView = ({
     from: ROUTE_PATHS.SecretManager.SecretDashboardPage.id,
     select: (el) => el.secretPath
   });
+  const { subscription } = useSubscription();
 
   const { mutateAsync: updateFolder } = useUpdateFolder();
   const { mutateAsync: deleteFolder } = useDeleteFolder();
@@ -189,7 +192,7 @@ export const FolderListView = ({
   };
 
   const handleFolderClick = (name: string, isPending?: boolean) => {
-    if (isPending) {
+    if (isPending || !canNavigate) {
       return;
     }
     const path = `${secretPathQueryparam === "/" ? "" : secretPathQueryparam}/${name}`;
@@ -319,6 +322,11 @@ export const FolderListView = ({
         isOpen={popUp.deleteFolder.isOpen}
         deleteKey={(popUp.deleteFolder?.data as TSecretFolder)?.name}
         title="Do you want to delete this folder?"
+        subTitle={`This folder and all its contents will be removed. ${
+          subscription?.pitRecovery
+            ? "You can reverse this action by rolling back to a previous commit."
+            : "Rolling back to a previous commit isn't available on your current plan. Upgrade to enable this feature."
+        }`}
         onChange={(isOpen) => handlePopUpToggle("deleteFolder", isOpen)}
         onDeleteApproved={handleFolderDelete}
       />

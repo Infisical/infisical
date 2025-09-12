@@ -39,7 +39,7 @@ export const reminderDALFactory = (db: TDbClient) => {
   const findSecretDailyReminders = async (tx?: Knex) => {
     const { startOfDay, endOfDay } = getTodayDateRange();
 
-    const rawReminders = await (tx || db)(TableName.Reminder)
+    const rawReminders = await (tx || db.replicaNode())(TableName.Reminder)
       .whereBetween("nextReminderDate", [startOfDay, endOfDay])
       .leftJoin(TableName.ReminderRecipient, `${TableName.Reminder}.id`, `${TableName.ReminderRecipient}.reminderId`)
       .leftJoin<TUsers>(TableName.Users, `${TableName.ReminderRecipient}.userId`, `${TableName.Users}.id`)
@@ -90,7 +90,7 @@ export const reminderDALFactory = (db: TDbClient) => {
     const futureDate = new Date(startOfDay);
     futureDate.setDate(futureDate.getDate() + daysAhead);
 
-    const reminders = await (tx || db)(TableName.Reminder)
+    const reminders = await (tx || db.replicaNode())(TableName.Reminder)
       .where("nextReminderDate", ">=", startOfDay)
       .where("nextReminderDate", "<=", futureDate)
       .orderBy("nextReminderDate", "asc")
@@ -101,7 +101,7 @@ export const reminderDALFactory = (db: TDbClient) => {
   };
 
   const findSecretReminder = async (secretId: string, tx?: Knex) => {
-    const rawReminders = await (tx || db)(TableName.Reminder)
+    const rawReminders = await (tx || db.replicaNode())(TableName.Reminder)
       .where(`${TableName.Reminder}.secretId`, secretId)
       .leftJoin(TableName.ReminderRecipient, `${TableName.Reminder}.id`, `${TableName.ReminderRecipient}.reminderId`)
       .select(selectAllTableCols(TableName.Reminder))
@@ -124,10 +124,35 @@ export const reminderDALFactory = (db: TDbClient) => {
     return reminders[0] || null;
   };
 
+  const findSecretReminders = async (secretIds: string[], tx?: Knex) => {
+    const rawReminders = await (tx || db.replicaNode())(TableName.Reminder)
+      .whereIn(`${TableName.Reminder}.secretId`, secretIds)
+      .leftJoin(TableName.ReminderRecipient, `${TableName.Reminder}.id`, `${TableName.ReminderRecipient}.reminderId`)
+      .select(selectAllTableCols(TableName.Reminder))
+      .select(db.ref("userId").withSchema(TableName.ReminderRecipient));
+    const reminders = sqlNestRelationships({
+      data: rawReminders,
+      key: "id",
+      parentMapper: (el) => ({
+        _id: el.id,
+        ...RemindersSchema.parse(el)
+      }),
+      childrenMapper: [
+        {
+          key: "userId",
+          label: "recipients" as const,
+          mapper: ({ userId }) => userId
+        }
+      ]
+    });
+    return reminders;
+  };
+
   return {
     ...reminderOrm,
     findSecretDailyReminders,
     findUpcomingReminders,
-    findSecretReminder
+    findSecretReminder,
+    findSecretReminders
   };
 };

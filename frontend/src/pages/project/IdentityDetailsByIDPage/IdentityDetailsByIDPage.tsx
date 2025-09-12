@@ -67,7 +67,7 @@ const Page = () => {
             type: "success",
             text: "Identity privilege assumption has started"
           });
-          const url = getProjectHomePage(currentWorkspace.type);
+          const url = getProjectHomePage(currentWorkspace.type, currentWorkspace.environments);
           window.location.href = url.replace("$projectId", currentWorkspace.id);
         }
       }

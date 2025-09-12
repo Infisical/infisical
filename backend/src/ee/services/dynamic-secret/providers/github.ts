@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -89,26 +90,46 @@ export const GithubProvider = (): TDynamicProviderFns => {
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
-    await $generateGitHubInstallationAccessToken(providerInputs);
-    return true;
+    try {
+      await $generateGitHubInstallationAccessToken(providerInputs);
+      return true;
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [providerInputs.privateKey, String(providerInputs.appId), String(providerInputs.installationId)]
+      });
+      throw new BadRequestError({
+        message: `Failed to connect with provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const create = async (data: { inputs: unknown }) => {
     const { inputs } = data;
     const providerInputs = await validateProviderInputs(inputs);
 
-    const ghTokenData = await $generateGitHubInstallationAccessToken(providerInputs);
-    const entityId = alphaNumericNanoId(32);
+    try {
+      const ghTokenData = await $generateGitHubInstallationAccessToken(providerInputs);
+      const entityId = alphaNumericNanoId(32);
 
-    return {
-      entityId,
-      data: {
-        TOKEN: ghTokenData.token,
-        EXPIRES_AT: ghTokenData.expires_at,
-        PERMISSIONS: ghTokenData.permissions,
-        REPOSITORY_SELECTION: ghTokenData.repository_selection
-      }
-    };
+      return {
+        entityId,
+        data: {
+          TOKEN: ghTokenData.token,
+          EXPIRES_AT: ghTokenData.expires_at,
+          PERMISSIONS: ghTokenData.permissions,
+          REPOSITORY_SELECTION: ghTokenData.repository_selection
+        }
+      };
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [providerInputs.privateKey, String(providerInputs.appId), String(providerInputs.installationId)]
+      });
+      throw new BadRequestError({
+        message: `Failed to create lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const revoke = async () => {

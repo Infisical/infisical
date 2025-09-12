@@ -10,6 +10,10 @@ interface TAuthOptions {
 export const verifyAuth =
   <T extends FastifyRequest>(authStrategies: AuthMode[], options: TAuthOptions = { requireOrg: true }) =>
   (req: T, _res: FastifyReply, done: HookHandlerDoneFunction) => {
+    if (req.shouldForwardWritesToPrimaryInstance && req.method !== "GET") {
+      return done();
+    }
+
     if (!Array.isArray(authStrategies)) throw new Error("Auth strategy must be array");
     if (!req.auth) throw new UnauthorizedError({ message: "Token missing" });
 

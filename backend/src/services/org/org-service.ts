@@ -8,13 +8,15 @@ import {
   OrgMembershipStatus,
   ProjectMembershipRole,
   ProjectVersion,
-  SecretKeyEncoding,
   TableName,
+  TOidcConfigs,
   TProjectMemberships,
   TProjectUserMembershipRolesInsert,
+  TSamlConfigs,
   TUsers
 } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import {
@@ -58,8 +60,6 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TProjectDALFactory } from "../project/project-dal";
-import { assignWorkspaceKeysToMembers, createProjectKey } from "../project/project-fns";
-import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
@@ -75,10 +75,11 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgBotDALFactory } from "./org-bot-dal";
 import { TOrgDALFactory } from "./org-dal";
-import { deleteOrgMembershipFn } from "./org-fns";
+import { deleteOrgMembershipFn, deleteOrgMembershipsFn } from "./org-fns";
 import { TOrgRoleDALFactory } from "./org-role-dal";
 import {
   TDeleteOrgMembershipDTO,
+  TDeleteOrgMembershipsDTO,
   TFindAllWorkspacesDTO,
   TFindOrgMembersByEmailDTO,
   TGetOrgGroupsDTO,
@@ -106,7 +107,13 @@ type TOrgServiceFactoryDep = {
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
   projectMembershipDAL: Pick<
     TProjectMembershipDALFactory,
-    "findProjectMembershipsByUserId" | "delete" | "create" | "find" | "insertMany" | "transaction"
+    | "findProjectMembershipsByUserId"
+    | "delete"
+    | "create"
+    | "find"
+    | "insertMany"
+    | "transaction"
+    | "findProjectMembershipsByUserIds"
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "insertMany" | "findLatestProjectKey" | "create">;
   orgMembershipDAL: Pick<
@@ -121,6 +128,7 @@ type TOrgServiceFactoryDep = {
   incidentContactDAL: TIncidentContactsDALFactory;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
+  ldapConfigDAL: Pick<TLdapConfigDALFactory, "findOne">;
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
   permissionService: TPermissionServiceFactory;
@@ -130,7 +138,6 @@ type TOrgServiceFactoryDep = {
   >;
   projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
-  projectBotDAL: Pick<TProjectBotDALFactory, "findOne" | "updateById">;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany" | "create">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
@@ -162,7 +169,7 @@ export const orgServiceFactory = ({
   projectRoleDAL,
   samlConfigDAL,
   oidcConfigDAL,
-  projectBotDAL,
+  ldapConfigDAL,
   projectUserMembershipRoleDAL,
   identityMetadataDAL,
   projectBotService,
@@ -195,6 +202,15 @@ export const orgServiceFactory = ({
 
     // Filter out orgs where the membership object is an invitation
     return orgs.filter((org) => org.userStatus !== "invited");
+  };
+
+  /*
+   * Get all organization an identity is part of
+   * */
+  const findIdentityOrganization = async (identityId: string) => {
+    const org = await orgDAL.findIdentityOrganization(identityId);
+
+    return org;
   };
   /*
    * Get all workspace members
@@ -280,15 +296,7 @@ export const orgServiceFactory = ({
       user.id,
       {
         encryptionVersion: 2,
-        protectedKey: encKeys.protectedKey,
-        protectedKeyIV: encKeys.protectedKeyIV,
-        protectedKeyTag: encKeys.protectedKeyTag,
-        publicKey: encKeys.publicKey,
-        encryptedPrivateKey: encKeys.encryptedPrivateKey,
-        iv: encKeys.encryptedPrivateKeyIV,
-        tag: encKeys.encryptedPrivateKeyTag,
-        salt: encKeys.salt,
-        verifier: encKeys.verifier
+        publicKey: encKeys.publicKey
       },
       tx
     );
@@ -361,6 +369,7 @@ export const orgServiceFactory = ({
       name,
       slug,
       authEnforced,
+      googleSsoAuthEnforced,
       scimEnabled,
       defaultMembershipRoleSlug,
       enforceMfa,
@@ -427,16 +436,35 @@ export const orgServiceFactory = ({
       }
     }
 
-    if (authEnforced) {
-      const samlCfg = await samlConfigDAL.findOne({
-        orgId,
-        isActive: true
-      });
-      const oidcCfg = await oidcConfigDAL.findOne({
-        orgId,
-        isActive: true
-      });
+    if (googleSsoAuthEnforced !== undefined) {
+      if (!plan.enforceGoogleSSO) {
+        throw new BadRequestError({
+          message: "Failed to enforce Google SSO due to plan restriction. Upgrade plan to enforce Google SSO."
+        });
+      }
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
+    }
 
+    if (authEnforced && googleSsoAuthEnforced) {
+      throw new BadRequestError({
+        message: "SAML/OIDC auth enforcement and Google SSO auth enforcement cannot be enabled at the same time."
+      });
+    }
+
+    let samlCfg: TSamlConfigs | undefined;
+    let oidcCfg: TOidcConfigs | undefined;
+    if (authEnforced || googleSsoAuthEnforced) {
+      samlCfg = await samlConfigDAL.findOne({
+        orgId,
+        isActive: true
+      });
+      oidcCfg = await oidcConfigDAL.findOne({
+        orgId,
+        isActive: true
+      });
+    }
+
+    if (authEnforced) {
       if (!samlCfg && !oidcCfg)
         throw new NotFoundError({
           message: `SAML or OIDC configuration for organization with ID '${orgId}' not found`
@@ -457,6 +485,47 @@ export const orgServiceFactory = ({
       }
     }
 
+    if (googleSsoAuthEnforced) {
+      if (googleSsoAuthEnforced && currentOrg.authEnforced) {
+        throw new BadRequestError({
+          message: "Google SSO auth enforcement cannot be enabled when SAML/OIDC auth enforcement is enabled."
+        });
+      }
+
+      if (samlCfg) {
+        throw new BadRequestError({
+          message:
+            "Cannot enable Google OAuth enforcement while SAML SSO is configured. Disable SAML SSO to enforce Google OAuth."
+        });
+      }
+
+      if (oidcCfg) {
+        throw new BadRequestError({
+          message:
+            "Cannot enable Google OAuth enforcement while OIDC SSO is configured. Disable OIDC SSO to enforce Google OAuth."
+        });
+      }
+
+      const ldapCfg = await ldapConfigDAL.findOne({
+        orgId,
+        isActive: true
+      });
+
+      if (ldapCfg) {
+        throw new BadRequestError({
+          message:
+            "Cannot enable Google OAuth enforcement while LDAP SSO is configured. Disable LDAP SSO to enforce Google OAuth."
+        });
+      }
+
+      if (!currentOrg.googleSsoAuthLastUsed) {
+        throw new BadRequestError({
+          message:
+            "Google SSO auth enforcement cannot be enabled because Google SSO has not been used yet. Please log in via Google SSO at least once before enforcing it for your organization."
+        });
+      }
+    }
+
     let defaultMembershipRole: string | undefined;
     if (defaultMembershipRoleSlug) {
       defaultMembershipRole = await getDefaultOrgMembershipRoleForUpdateOrg({
@@ -471,6 +540,7 @@ export const orgServiceFactory = ({
       name,
       slug: slug ? slugify(slug) : undefined,
       authEnforced,
+      googleSsoAuthEnforced,
       scimEnabled,
       defaultMembershipRole,
       enforceMfa,
@@ -493,15 +563,18 @@ export const orgServiceFactory = ({
   /*
    * Create organization
    * */
-  const createOrganization = async ({
-    userId,
-    userEmail,
-    orgName
-  }: {
-    userId: string;
-    orgName: string;
-    userEmail?: string | null;
-  }) => {
+  const createOrganization = async (
+    {
+      userId,
+      userEmail,
+      orgName
+    }: {
+      userId?: string;
+      orgName: string;
+      userEmail?: string | null;
+    },
+    trx?: Knex
+  ) => {
     const { privateKey, publicKey } = await crypto.encryption().asymmetric().generateKeyPair();
     const key = crypto.randomBytes(32).toString("base64");
     const {
@@ -520,22 +593,25 @@ export const orgServiceFactory = ({
     } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(key);
 
     const customerId = await licenseService.generateOrgCustomerId(orgName, userEmail);
-    const organization = await orgDAL.transaction(async (tx) => {
+
+    const createOrg = async (tx: Knex) => {
       // akhilmhdh: for now this is auto created. in future we can input from user and for previous users just modifiy
       const org = await orgDAL.create(
         { name: orgName, customerId, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) },
         tx
       );
-      await orgDAL.createMembership(
-        {
-          userId,
-          orgId: org.id,
-          role: OrgMembershipRole.Admin,
-          status: OrgMembershipStatus.Accepted,
-          isActive: true
-        },
-        tx
-      );
+      if (userId) {
+        await orgDAL.createMembership(
+          {
+            userId,
+            orgId: org.id,
+            role: OrgMembershipRole.Admin,
+            status: OrgMembershipStatus.Accepted,
+            isActive: true
+          },
+          tx
+        );
+      }
       await orgBotDAL.create(
         {
           name: org.name,
@@ -555,7 +631,9 @@ export const orgServiceFactory = ({
         tx
       );
       return org;
-    });
+    };
+
+    const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
     return organization;
@@ -878,29 +956,10 @@ export const orgServiceFactory = ({
         // So what we do is we generate a random secure password and then encrypt it with a random pub-private key
         // Then when user sign in (as login is not possible as isAccepted is false) we rencrypt the private key with the user password
         if (!inviteeUser || (inviteeUser && !inviteeUser?.isAccepted && !existingEncrytionKey)) {
-          const serverGeneratedPassword = crypto.randomBytes(32).toString("hex");
-          const { tag, encoding, ciphertext, iv } = crypto
-            .encryption()
-            .symmetric()
-            .encryptWithRootEncryptionKey(serverGeneratedPassword);
-          const encKeys = await generateUserSrpKeys(inviteeEmail, serverGeneratedPassword);
           await userDAL.createUserEncryption(
             {
               userId: inviteeUserId,
-              encryptionVersion: 2,
-              protectedKey: encKeys.protectedKey,
-              protectedKeyIV: encKeys.protectedKeyIV,
-              protectedKeyTag: encKeys.protectedKeyTag,
-              publicKey: encKeys.publicKey,
-              encryptedPrivateKey: encKeys.encryptedPrivateKey,
-              iv: encKeys.encryptedPrivateKeyIV,
-              tag: encKeys.encryptedPrivateKeyTag,
-              salt: encKeys.salt,
-              verifier: encKeys.verifier,
-              serverEncryptedPrivateKeyEncoding: encoding,
-              serverEncryptedPrivateKeyTag: tag,
-              serverEncryptedPrivateKeyIV: iv,
-              serverEncryptedPrivateKey: ciphertext
+              encryptionVersion: 2
             },
             tx
           );
@@ -1062,106 +1121,6 @@ export const orgServiceFactory = ({
 
         const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
-        // this will auto generate bot
-        const { botKey, bot: autoGeneratedBot } = await projectBotService.getBotKey(projectId, true);
-
-        const ghostUser = await projectDAL.findProjectGhostUser(projectId, tx);
-        let ghostUserId = ghostUser?.id;
-
-        //  backfill missing ghost user
-        if (!ghostUserId) {
-          const newGhostUser = await addGhostUser(project.orgId, tx);
-          const projectMembership = await projectMembershipDAL.create(
-            {
-              userId: newGhostUser.user.id,
-              projectId: project.id
-            },
-            tx
-          );
-          await projectUserMembershipRoleDAL.create(
-            { projectMembershipId: projectMembership.id, role: ProjectMembershipRole.Admin },
-            tx
-          );
-
-          const { key: encryptedProjectKey, iv: encryptedProjectKeyIv } = createProjectKey({
-            publicKey: newGhostUser.keys.publicKey,
-            privateKey: newGhostUser.keys.plainPrivateKey,
-            plainProjectKey: botKey
-          });
-
-          // 4. Save the project key for the ghost user.
-          await projectKeyDAL.create(
-            {
-              projectId: project.id,
-              receiverId: newGhostUser.user.id,
-              encryptedKey: encryptedProjectKey,
-              nonce: encryptedProjectKeyIv,
-              senderId: newGhostUser.user.id
-            },
-            tx
-          );
-
-          const { iv, tag, ciphertext, encoding, algorithm } = crypto
-            .encryption()
-            .symmetric()
-            .encryptWithRootEncryptionKey(newGhostUser.keys.plainPrivateKey);
-          if (autoGeneratedBot) {
-            await projectBotDAL.updateById(
-              autoGeneratedBot.id,
-              {
-                tag,
-                iv,
-                encryptedProjectKey,
-                encryptedProjectKeyNonce: encryptedProjectKeyIv,
-                encryptedPrivateKey: ciphertext,
-                isActive: true,
-                publicKey: newGhostUser.keys.publicKey,
-                senderId: newGhostUser.user.id,
-                algorithm,
-                keyEncoding: encoding
-              },
-              tx
-            );
-          }
-          ghostUserId = newGhostUser.user.id;
-        }
-
-        const bot = await projectBotDAL.findOne({ projectId }, tx);
-        if (!bot) {
-          throw new NotFoundError({
-            name: "InviteUser",
-            message: `Failed to find project bot for project with ID '${projectId}'`
-          });
-        }
-
-        const ghostUserLatestKey = await projectKeyDAL.findLatestProjectKey(ghostUserId, projectId, tx);
-        if (!ghostUserLatestKey) {
-          throw new NotFoundError({
-            name: "InviteUser",
-            message: `Failed to find project owner's latest key for project with ID '${projectId}'`
-          });
-        }
-
-        const botPrivateKey = crypto
-          .encryption()
-          .symmetric()
-          .decryptWithRootEncryptionKey({
-            keyEncoding: bot.keyEncoding as SecretKeyEncoding,
-            iv: bot.iv,
-            tag: bot.tag,
-            ciphertext: bot.encryptedPrivateKey
-          });
-
-        const newWsMembers = assignWorkspaceKeysToMembers({
-          decryptKey: ghostUserLatestKey,
-          userPrivateKey: botPrivateKey,
-          members: userWithEncryptionKeyInvitedToProject.map((userEnc) => ({
-            orgMembershipId: userEnc.userId,
-            projectMembershipRole: ProjectMembershipRole.Admin,
-            userPublicKey: userEnc.publicKey
-          }))
-        });
-
         const projectMemberships = await projectMembershipDAL.insertMany(
           userWithEncryptionKeyInvitedToProject.map((userEnc) => ({
             projectId,
@@ -1184,16 +1143,6 @@ export const orgServiceFactory = ({
         });
         await projectUserMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
 
-        await projectKeyDAL.insertMany(
-          newWsMembers.map((el) => ({
-            encryptedKey: el.workspaceEncryptedKey,
-            nonce: el.workspaceEncryptedNonce,
-            senderId: ghostUserId,
-            receiverId: el.orgMembershipId,
-            projectId
-          })),
-          tx
-        );
         mailsForProjectInvitation.push({
           email: userWithEncryptionKeyInvitedToProject
             .filter((el) => !userIdsWithOrgInvitation.has(el.userId))
@@ -1369,10 +1318,40 @@ export const orgServiceFactory = ({
       projectUserAdditionalPrivilegeDAL,
       projectKeyDAL,
       userAliasDAL,
-      licenseService
+      licenseService,
+      userId
     });
 
     return deletedMembership;
+  };
+
+  const bulkDeleteOrgMemberships = async ({
+    orgId,
+    userId,
+    membershipIds,
+    actorAuthMethod,
+    actorOrgId
+  }: TDeleteOrgMembershipsDTO) => {
+    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
+
+    if (membershipIds.includes(userId)) {
+      throw new BadRequestError({ message: "You cannot delete your own organization membership" });
+    }
+
+    const deletedMemberships = await deleteOrgMembershipsFn({
+      orgMembershipIds: membershipIds,
+      orgId,
+      orgDAL,
+      projectMembershipDAL,
+      projectUserAdditionalPrivilegeDAL,
+      projectKeyDAL,
+      userAliasDAL,
+      licenseService,
+      userId
+    });
+
+    return deletedMemberships;
   };
 
   const listProjectMembershipsByOrgMembershipId = async ({
@@ -1508,6 +1487,7 @@ export const orgServiceFactory = ({
     findOrganizationById,
     findAllOrgMembers,
     findAllOrganizationOfUser,
+    findIdentityOrganization,
     inviteUserToOrganization,
     verifyUserToOrg,
     updateOrg,
@@ -1528,6 +1508,7 @@ export const orgServiceFactory = ({
     findOrgBySlug,
     resendOrgMemberInvitation,
     upgradePrivilegeSystem,
-    notifyInvitedUsers
+    notifyInvitedUsers,
+    bulkDeleteOrgMemberships
   };
 };

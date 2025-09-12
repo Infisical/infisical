@@ -54,6 +54,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
           try {
             // @ts-expect-error this is because this is express type and not fastify
             const callbackPort = req.session.get("callbackPort");
+            // @ts-expect-error this is because this is express type and not fastify
+            const orgSlug = req.session.get("orgSlug");
 
             const email = profile?.emails?.[0]?.value;
             if (!email)
@@ -67,7 +69,8 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
               firstName: profile?.name?.givenName || "",
               lastName: profile?.name?.familyName || "",
               authMethod: AuthMethod.GOOGLE,
-              callbackPort
+              callbackPort,
+              orgSlug
             });
             cb(null, { isUserCompleted, providerAuthToken });
           } catch (error) {
@@ -215,6 +218,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     schema: {
       querystring: z.object({
         callback_port: z.string().optional(),
+        org_slug: z.string().optional(),
         is_admin_login: z
           .string()
           .optional()
@@ -223,11 +227,14 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       async (req, res) => {
-        const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query;
+        const { callback_port: callbackPort, is_admin_login: isAdminLogin, org_slug: orgSlug } = req.query;
         // ensure fresh session state per login attempt
         await req.session.regenerate();
         if (callbackPort) {
           req.session.set("callbackPort", callbackPort);
+        }
+        if (orgSlug) {
+          req.session.set("orgSlug", orgSlug);
         }
         if (isAdminLogin) {
           req.session.set("isAdminLogin", isAdminLogin);

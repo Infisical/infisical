@@ -314,8 +314,8 @@ describe("Secret expansion", () => {
       expect(listSecrets.imports).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            secretPath: `/__reserve_replication_${secretImportFromProdToDev.id}`,
-            environment: seedData1.environment.slug,
+            secretPath: "/deep/nested",
+            environment: "prod",
             secrets: expect.arrayContaining([
               expect.objectContaining({
                 secretKey: "NESTED_KEY_1",

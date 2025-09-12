@@ -254,6 +254,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("role").withSchema("paginatedIdentity"),
           db.ref("roleId").withSchema("paginatedIdentity"),
           db.ref("orgId").withSchema("paginatedIdentity"),
+          db.ref("lastLoginAuthMethod").withSchema("paginatedIdentity"),
+          db.ref("lastLoginTime").withSchema("paginatedIdentity"),
           db.ref("createdAt").withSchema("paginatedIdentity"),
           db.ref("updatedAt").withSchema("paginatedIdentity"),
           db.ref("identityId").withSchema("paginatedIdentity").as("identityId"),
@@ -319,7 +321,9 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           ldapId,
           tlsCertId,
           createdAt,
-          updatedAt
+          updatedAt,
+          lastLoginAuthMethod,
+          lastLoginTime
         }) => ({
           role,
           roleId,
@@ -328,6 +332,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           orgId,
           createdAt,
           updatedAt,
+          lastLoginAuthMethod,
+          lastLoginTime,
           customRole: roleId
             ? {
                 id: crId,
@@ -497,6 +503,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("orgId").withSchema(TableName.IdentityOrgMembership),
           db.ref("createdAt").withSchema(TableName.IdentityOrgMembership),
           db.ref("updatedAt").withSchema(TableName.IdentityOrgMembership),
+          db.ref("lastLoginAuthMethod").withSchema(TableName.IdentityOrgMembership),
+          db.ref("lastLoginTime").withSchema(TableName.IdentityOrgMembership),
           db.ref("identityId").withSchema(TableName.IdentityOrgMembership).as("identityId"),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity),
@@ -531,10 +539,10 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       } else if (orderBy === OrgIdentityOrderBy.Role) {
         void query.orderByRaw(
           `
-          CASE 
-            WHEN ??.role = ? 
-            THEN ??.slug 
-            ELSE ??.role 
+          CASE
+            WHEN ??.role = ?
+            THEN ??.slug
+            ELSE ??.role
           END ?
           `,
           [
@@ -576,7 +584,9 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           tokenId,
           ldapId,
           createdAt,
-          updatedAt
+          updatedAt,
+          lastLoginTime,
+          lastLoginAuthMethod
         }) => ({
           role,
           roleId,
@@ -586,6 +596,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           orgId,
           createdAt,
           updatedAt,
+          lastLoginTime,
+          lastLoginAuthMethod,
           customRole: roleId
             ? {
                 id: crId,

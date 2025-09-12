@@ -32,7 +32,7 @@ export type TAzureKeyVaultConnectionOption = TAppConnectionOptionBase & {
 };
 
 export type TAzureAppConfigurationConnectionOption = TAppConnectionOptionBase & {
-  app: AppConnection.AzureKeyVault;
+  app: AppConnection.AzureAppConfiguration;
   oauthClientId?: string;
 };
 
@@ -124,7 +124,7 @@ export type TFlyioConnectionOption = TAppConnectionOptionBase & {
 };
 
 export type TGitlabConnectionOption = TAppConnectionOptionBase & {
-  app: AppConnection.Gitlab;
+  app: AppConnection.GitLab;
   oauthClientId?: string;
 };
 
@@ -156,13 +156,22 @@ export type TDigitalOceanConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.DigitalOcean;
 };
 
+export type TNetlifyConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Netlify;
+};
+
 export type TOktaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Okta;
+};
+
+export type TAzureAdCsConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.AzureADCS;
 };
 
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
+  | TGitHubRadarConnectionOption
   | TGcpConnectionOption
   | TAzureAppConfigurationConnectionOption
   | TAzureKeyVaultConnectionOption
@@ -180,6 +189,7 @@ export type TAppConnectionOption =
   | TWindmillConnectionOption
   | TAuth0ConnectionOption
   | THCVaultConnectionOption
+  | TLdapConnectionOption
   | TTeamCityConnectionOption
   | TOCIConnectionOption
   | TOnePassConnectionOption
@@ -192,8 +202,11 @@ export type TAppConnectionOption =
   | TZabbixConnectionOption
   | TRailwayConnectionOption
   | TChecklyConnectionOption
+  | TSupabaseConnectionOption
   | TDigitalOceanConnectionOption
-  | TOktaConnectionOption;
+  | TNetlifyConnectionOption
+  | TOktaConnectionOption
+  | TAzureAdCsConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -223,7 +236,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Heroku]: THerokuConnectionOption;
   [AppConnection.Render]: TRenderConnectionOption;
   [AppConnection.Flyio]: TFlyioConnectionOption;
-  [AppConnection.Gitlab]: TGitlabConnectionOption;
+  [AppConnection.GitLab]: TGitlabConnectionOption;
   [AppConnection.Cloudflare]: TCloudflareConnectionOption;
   [AppConnection.Bitbucket]: TBitbucketConnectionOption;
   [AppConnection.Zabbix]: TZabbixConnectionOption;
@@ -231,5 +244,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Checkly]: TChecklyConnectionOption;
   [AppConnection.Supabase]: TSupabaseConnectionOption;
   [AppConnection.DigitalOcean]: TDigitalOceanConnectionOption;
+  [AppConnection.Netlify]: TNetlifyConnectionOption;
   [AppConnection.Okta]: TOktaConnectionOption;
+  [AppConnection.AzureADCS]: TAzureAdCsConnectionOption;
 };

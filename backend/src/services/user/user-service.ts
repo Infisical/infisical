@@ -1,21 +1,23 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
-import { SecretKeyEncoding } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { crypto } from "@app/lib/crypto/cryptography";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { AuthMethod } from "../auth/auth-type";
+import { AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TUserDALFactory } from "./user-dal";
-import { TListUserGroupsDTO, TUpdateUserMfaDTO } from "./user-types";
+import { TListUserGroupsDTO, TUpdateUserEmailDTO, TUpdateUserMfaDTO } from "./user-types";
 
 type TUserServiceFactoryDep = {
   userDAL: Pick<
@@ -34,38 +36,57 @@ type TUserServiceFactoryDep = {
     | "findAllMyAccounts"
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "findByUserId">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "find">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
-  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
+  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser" | "revokeAllMySessions">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
   permissionService: TPermissionServiceFactory;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
 
 export const userServiceFactory = ({
   userDAL,
+  orgDAL,
   orgMembershipDAL,
   projectMembershipDAL,
   groupProjectDAL,
   tokenService,
   smtpService,
-  permissionService
+  permissionService,
+  userAliasDAL
 }: TUserServiceFactoryDep) => {
-  const sendEmailVerificationCode = async (username: string) => {
+  const sendEmailVerificationCode = async (token: string) => {
+    const { authType, aliasId, username, authTokenType } = crypto.jwt().decode(token) as {
+      authType: string;
+      aliasId?: string;
+      username: string;
+      authTokenType: AuthTokenType;
+    };
+    if (authTokenType !== AuthTokenType.PROVIDER_TOKEN) throw new BadRequestError({ name: "Invalid auth token type" });
+
     // akhilmhdh: case sensitive email resolution
     const users = await userDAL.findUserByUsername(username);
     const user = users?.length > 1 ? users.find((el) => el.username === username) : users?.[0];
     if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
+    let { isEmailVerified } = user;
+    if (aliasId) {
+      const userAlias = await userAliasDAL.findOne({ userId: user.id, aliasType: authType, id: aliasId });
+      if (!userAlias) throw new NotFoundError({ name: `User alias with ID '${aliasId}' not found` });
+      isEmailVerified = userAlias.isEmailVerified;
+    }
 
     if (!user.email)
       throw new BadRequestError({ name: "Failed to send email verification code due to no email on user" });
-    if (user.isEmailVerified)
+    if (isEmailVerified)
       throw new BadRequestError({ name: "Failed to send email verification code due to email already verified" });
 
-    const token = await tokenService.createTokenForUser({
+    const userToken = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_VERIFICATION,
-      userId: user.id
+      userId: user.id,
+      aliasId
     });
 
     await smtpService.sendMail({
@@ -73,7 +94,7 @@ export const userServiceFactory = ({
       subjectLine: "Infisical confirmation code",
       recipients: [user.email],
       substitutions: {
-        code: token
+        code: userToken
       }
     });
   };
@@ -97,15 +118,21 @@ export const userServiceFactory = ({
     if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
     if (!user.email)
       throw new BadRequestError({ name: "Failed to verify email verification code due to no email on user" });
-    if (user.isEmailVerified)
-      throw new BadRequestError({ name: "Failed to verify email verification code due to email already verified" });
 
-    await tokenService.validateTokenForUser({
+    const token = await tokenService.validateTokenForUser({
       type: TokenType.TOKEN_EMAIL_VERIFICATION,
       userId: user.id,
       code
     });
 
+    if (token?.aliasId) {
+      const userAlias = await userAliasDAL.findOne({ userId: user.id, id: token.aliasId });
+      if (!userAlias) throw new NotFoundError({ name: `User alias with ID '${token.aliasId}' not found` });
+      if (userAlias?.isEmailVerified)
+        throw new BadRequestError({ name: "Failed to verify email verification code due to email already verified" });
+
+      await userAliasDAL.updateById(token.aliasId, { isEmailVerified: true });
+    }
     const userEmails = user?.email ? await userDAL.find({ email: user.email }) : [];
 
     await userDAL.updateById(user.id, {
@@ -155,6 +182,135 @@ export const userServiceFactory = ({
     return updatedUser;
   };
 
+  const checkUserScimRestriction = async (userId: string, tx?: Knex) => {
+    const userOrgs = await orgMembershipDAL.find({ userId }, { tx });
+
+    if (userOrgs.length === 0) {
+      return false;
+    }
+
+    const orgIds = userOrgs.map((membership) => membership.orgId);
+    const organizations = await orgDAL.find({ $in: { id: orgIds } }, { tx });
+
+    return organizations.some((org) => org.scimEnabled);
+  };
+
+  const requestEmailChangeOTP = async ({ userId, newEmail }: TUpdateUserEmailDTO) => {
+    const startTime = new Date();
+    const changeEmailOTP = await userDAL.transaction(async (tx) => {
+      const user = await userDAL.findById(userId, tx);
+      if (!user)
+        throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "RequestEmailChangeOTP" });
+
+      if (user.authMethods?.includes(AuthMethod.LDAP)) {
+        throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "RequestEmailChangeOTP" });
+      }
+
+      const hasScimRestriction = await checkUserScimRestriction(userId, tx);
+      if (hasScimRestriction) {
+        throw new BadRequestError({
+          message: "Email changes are disabled because SCIM is enabled for one or more of your organizations",
+          name: "RequestEmailChangeOTP"
+        });
+      }
+
+      // Silently check if another user already has this email - don't send OTP if email is taken
+      const existingUsers = await userDAL.findUserByUsername(newEmail.toLowerCase(), tx);
+      const existingUser = existingUsers?.find((u) => u.id !== userId);
+      if (!existingUser) {
+        // Generate 6-digit OTP
+        const otpCode = await tokenService.createTokenForUser({
+          type: TokenType.TOKEN_EMAIL_CHANGE_OTP,
+          userId,
+          payload: newEmail.toLowerCase()
+        });
+
+        // Send OTP to NEW email address
+        await smtpService.sendMail({
+          template: SmtpTemplates.EmailVerification,
+          subjectLine: "Infisical email change verification",
+          recipients: [newEmail.toLowerCase()],
+          substitutions: {
+            code: otpCode
+          }
+        });
+      }
+
+      return { success: true, message: "Verification code sent to new email address" };
+    });
+    // Force this function to have a minimum execution time of 2 seconds to avoid possible information disclosure about existing users
+    const endTime = new Date();
+    const timeDiff = endTime.getTime() - startTime.getTime();
+    if (timeDiff < 2000) {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 2000 - timeDiff);
+      });
+    }
+    return changeEmailOTP;
+  };
+
+  const updateUserEmail = async ({ userId, newEmail, otpCode }: TUpdateUserEmailDTO & { otpCode: string }) => {
+    const changedUser = await userDAL.transaction(async (tx) => {
+      const user = await userDAL.findById(userId, tx);
+      if (!user) throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "UpdateUserEmail" });
+
+      if (user.authMethods?.includes(AuthMethod.LDAP)) {
+        throw new BadRequestError({ message: "Cannot update email for LDAP users", name: "UpdateUserEmail" });
+      }
+
+      const hasScimRestriction = await checkUserScimRestriction(userId, tx);
+      if (hasScimRestriction) {
+        throw new BadRequestError({
+          message: "You are part of an organization that has SCIM enabled, and email changes are not allowed",
+          name: "UpdateUserEmail"
+        });
+      }
+
+      // Validate OTP and get the new email from token aliasId field
+      let tokenData;
+      try {
+        tokenData = await tokenService.validateTokenForUser({
+          type: TokenType.TOKEN_EMAIL_CHANGE_OTP,
+          userId,
+          code: otpCode
+        });
+      } catch (error) {
+        throw new BadRequestError({ message: "Invalid verification code", name: "UpdateUserEmail" });
+      }
+
+      // Verify the new email matches what was stored in payload
+      const tokenNewEmail = tokenData?.payload;
+      if (!tokenNewEmail || tokenNewEmail !== newEmail.toLowerCase()) {
+        throw new BadRequestError({ message: "Invalid verification code", name: "UpdateUserEmail" });
+      }
+
+      // Final check if another user has this email
+      const existingUsers = await userDAL.findUserByUsername(newEmail.toLowerCase(), tx);
+      const existingUser = existingUsers?.find((u) => u.id !== userId);
+      if (existingUser) {
+        throw new BadRequestError({ message: "Email is no longer available", name: "UpdateUserEmail" });
+      }
+
+      // Delete all user aliases since the email is changing
+      await userAliasDAL.delete({ userId }, tx);
+
+      const updatedUser = await userDAL.updateById(
+        userId,
+        {
+          email: newEmail.toLowerCase(),
+          username: newEmail.toLowerCase()
+        },
+        tx
+      );
+
+      // Revoke all sessions to force re-login
+      await tokenService.revokeAllMySessions(userId);
+
+      return updatedUser;
+    });
+    return changedUser;
+  };
+
   const getAllMyAccounts = async (email: string, userId: string) => {
     const users = await userDAL.findAllMyAccounts(email);
     return users?.map((el) => ({ ...el, isMyAccount: el.id === userId }));
@@ -175,7 +331,11 @@ export const userServiceFactory = ({
   const getMe = async (userId: string) => {
     const user = await userDAL.findUserEncKeyByUserId(userId);
     if (!user) throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "GetMe" });
-    return user;
+
+    return {
+      ...user,
+      encryptionVersion: user.encryptionVersion!
+    };
   };
 
   const deleteUser = async (userId: string) => {
@@ -210,25 +370,6 @@ export const userServiceFactory = ({
       { id: userId },
       { consecutiveFailedMfaAttempts: 0, isLocked: false, temporaryLockDateEnd: null }
     );
-  };
-
-  const getUserPrivateKey = async (userId: string) => {
-    const user = await userDAL.findUserEncKeyByUserId(userId);
-    if (!user?.serverEncryptedPrivateKey || !user.serverEncryptedPrivateKeyIV || !user.serverEncryptedPrivateKeyTag) {
-      throw new NotFoundError({ message: `Private key for user with ID '${userId}' not found` });
-    }
-
-    const privateKey = crypto
-      .encryption()
-      .symmetric()
-      .decryptWithRootEncryptionKey({
-        ciphertext: user.serverEncryptedPrivateKey,
-        tag: user.serverEncryptedPrivateKeyTag,
-        iv: user.serverEncryptedPrivateKeyIV,
-        keyEncoding: user.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
-      });
-
-    return privateKey;
   };
 
   const getUserProjectFavorites = async (userId: string, orgId: string) => {
@@ -305,13 +446,14 @@ export const userServiceFactory = ({
     updateUserMfa,
     updateUserName,
     updateAuthMethods,
+    requestEmailChangeOTP,
+    updateUserEmail,
     deleteUser,
     getMe,
     createUserAction,
     listUserGroups,
     getUserAction,
     unlockUser,
-    getUserPrivateKey,
     getAllMyAccounts,
     getUserProjectFavorites,
     removeMyDuplicateAccounts,

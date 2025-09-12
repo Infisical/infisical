@@ -43,6 +43,8 @@ import {
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
+import { PolicyMemberOption } from "./PolicyMemberOption";
+
 type Props = {
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
@@ -59,7 +61,11 @@ const formSchema = z
     secretPath: z.string().trim().min(1),
     approvals: z.number().min(1).default(1),
     userApprovers: z
-      .object({ type: z.literal(ApproverType.User), id: z.string() })
+      .object({
+        type: z.literal(ApproverType.User),
+        id: z.string(),
+        isOrgMembershipActive: z.boolean().optional()
+      })
       .array()
       .default([]),
     groupApprovers: z
@@ -67,7 +73,11 @@ const formSchema = z
       .array()
       .default([]),
     userBypassers: z
-      .object({ type: z.literal(BypasserType.User), id: z.string() })
+      .object({
+        type: z.literal(BypasserType.User),
+        id: z.string(),
+        isOrgMembershipActive: z.boolean().optional()
+      })
       .array()
       .default([]),
     groupBypassers: z
@@ -80,7 +90,11 @@ const formSchema = z
     sequenceApprovers: z
       .object({
         user: z
-          .object({ type: z.literal(ApproverType.User), id: z.string() })
+          .object({
+            type: z.literal(ApproverType.User),
+            id: z.string(),
+            isOrgMembershipActive: z.boolean().optional()
+          })
           .array()
           .default([]),
         group: z
@@ -91,7 +105,8 @@ const formSchema = z
       })
       .array()
       .default([])
-      .optional()
+      .optional(),
+    maxTimePeriod: z.string().trim().nullish()
   })
   .superRefine((data, ctx) => {
     if (data.policyType === PolicyType.ChangePolicy) {
@@ -138,7 +153,11 @@ const Form = ({
           userApprovers:
             editValues?.approvers
               ?.filter((approver) => approver.type === ApproverType.User)
-              .map(({ id, type }) => ({ id, type: type as ApproverType.User })) || [],
+              .map(({ id, type, isOrgMembershipActive }) => ({
+                id,
+                type: type as ApproverType.User,
+                isOrgMembershipActive
+              })) || [],
           groupApprovers:
             editValues?.approvers
               ?.filter((approver) => approver.type === ApproverType.Group)
@@ -234,7 +253,9 @@ const Form = ({
           ...data,
           approvers: sequenceApprovers?.flatMap((approvers, index) =>
             approvers.user
-              .map((el) => ({ ...el, sequence: index + 1 }) as Approver)
+              .map(
+                (el) => ({ ...el, sequence: index + 1 }) as Omit<Approver, "isOrgMembershipActive">
+              )
               .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
           ),
           approvalsRequired: sequenceApprovers?.map((el, index) => ({
@@ -290,7 +311,9 @@ const Form = ({
           ...data,
           approvers: sequenceApprovers?.flatMap((approvers, index) =>
             approvers.user
-              .map((el) => ({ ...el, sequence: index + 1 }) as Approver)
+              .map(
+                (el) => ({ ...el, sequence: index + 1 }) as Omit<Approver, "isOrgMembershipActive">
+              )
               .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
           ),
           approvalsRequired: sequenceApprovers?.map((el, index) => ({
@@ -328,7 +351,8 @@ const Form = ({
     () =>
       members.map((member) => ({
         id: member.user.id,
-        type: ApproverType.User
+        type: ApproverType.User,
+        isOrgMembershipActive: member.user.isOrgMembershipActive
       })),
     [members]
   );
@@ -346,7 +370,8 @@ const Form = ({
     () =>
       members.map((member) => ({
         id: member.user.id,
-        type: BypasserType.User
+        type: BypasserType.User,
+        isOrgMembershipActive: member.user.isOrgMembershipActive
       })),
     [members]
   );
@@ -440,6 +465,25 @@ const Form = ({
               </FormControl>
             )}
           />
+
+          {isAccessPolicyType && (
+            <Controller
+              control={control}
+              name="maxTimePeriod"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Max. Time Period"
+                  tooltipText="The maximum amount of time someone can request access for. Ex: 1h, 3w, 30d"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  className="flex-shrink"
+                >
+                  <Input {...field} value={field.value || ""} placeholder="permanent" />
+                </FormControl>
+              )}
+            />
+          )}
+
           {!isAccessPolicyType && (
             <Controller
               control={control}
@@ -588,6 +632,7 @@ const Form = ({
                             isMulti
                             placeholder="Select members..."
                             options={memberOptions}
+                            components={{ Option: PolicyMemberOption }}
                             getOptionValue={(option) => option.id}
                             getOptionLabel={(option) => {
                               const member = members?.find((m) => m.user.id === option.id);
@@ -665,6 +710,7 @@ const Form = ({
                     menuPlacement="top"
                     isMulti
                     placeholder="Select members..."
+                    components={{ Option: PolicyMemberOption }}
                     options={memberOptions}
                     getOptionValue={(option) => option.id}
                     getOptionLabel={(option) => {
@@ -763,6 +809,7 @@ const Form = ({
                       menuPlacement="top"
                       isMulti
                       placeholder="Select members..."
+                      components={{ Option: PolicyMemberOption }}
                       options={bypasserMemberOptions}
                       getOptionValue={(option) => option.id}
                       getOptionLabel={(option) => {

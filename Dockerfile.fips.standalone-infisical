@@ -34,6 +34,8 @@ ENV VITE_INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
 ARG CAPTCHA_SITE_KEY
 ENV VITE_CAPTCHA_SITE_KEY $CAPTCHA_SITE_KEY
 
+ENV NODE_OPTIONS="--max-old-space-size=8192"
+
 # Build
 RUN npm run build
 
@@ -208,6 +210,11 @@ EXPOSE 443
 # Remove telemetry. dd-trace uses BullMQ with MD5 hashing, which breaks when FIPS mode is enabled.
 RUN grep -v 'import "./lib/telemetry/instrumentation.mjs";' dist/main.mjs > dist/main.mjs.tmp && \
     mv dist/main.mjs.tmp dist/main.mjs
+
+# The OpenSSL library is installed in different locations in different architectures (x86_64 and arm64).
+# This is a workaround to avoid errors when the library is not found.
+RUN ln -sf /usr/local/lib64/ossl-modules /usr/local/lib/ossl-modules || \
+    ln -sf /usr/local/lib/ossl-modules /usr/local/lib64/ossl-modules
 
 USER non-root-user
 

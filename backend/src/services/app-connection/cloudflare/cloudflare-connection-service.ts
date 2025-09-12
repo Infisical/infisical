@@ -2,7 +2,11 @@ import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
-import { listCloudflarePagesProjects, listCloudflareWorkersScripts } from "./cloudflare-connection-fns";
+import {
+  listCloudflarePagesProjects,
+  listCloudflareWorkersScripts,
+  listCloudflareZones
+} from "./cloudflare-connection-fns";
 import { TCloudflareConnection } from "./cloudflare-connection-types";
 
 type TGetAppConnectionFunc = (
@@ -16,7 +20,6 @@ export const cloudflareConnectionService = (getAppConnection: TGetAppConnectionF
     const appConnection = await getAppConnection(AppConnection.Cloudflare, connectionId, actor);
     try {
       const projects = await listCloudflarePagesProjects(appConnection);
-
       return projects;
     } catch (error) {
       logger.error(
@@ -30,9 +33,8 @@ export const cloudflareConnectionService = (getAppConnection: TGetAppConnectionF
   const listWorkersScripts = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.Cloudflare, connectionId, actor);
     try {
-      const projects = await listCloudflareWorkersScripts(appConnection);
-
-      return projects;
+      const scripts = await listCloudflareWorkersScripts(appConnection);
+      return scripts;
     } catch (error) {
       logger.error(
         error,
@@ -42,8 +44,20 @@ export const cloudflareConnectionService = (getAppConnection: TGetAppConnectionF
     }
   };
 
+  const listZones = async (connectionId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.Cloudflare, connectionId, actor);
+    try {
+      const zones = await listCloudflareZones(appConnection);
+      return zones;
+    } catch (error) {
+      logger.error(error, `Failed to list Cloudflare Zones for Cloudflare connection [connectionId=${connectionId}]`);
+      return [];
+    }
+  };
+
   return {
     listPagesProjects,
-    listWorkersScripts
+    listWorkersScripts,
+    listZones
   };
 };

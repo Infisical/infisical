@@ -1,8 +1,5 @@
-import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
-import { generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
@@ -16,8 +13,6 @@ import { UserEncryption } from "../user/user-types";
 import { TAuthDALFactory } from "./auth-dal";
 import {
   ResetPasswordV2Type,
-  TChangePasswordDTO,
-  TCreateBackupPrivateKeyDTO,
   TResetPasswordV2DTO,
   TResetPasswordViaBackupKeyDTO,
   TSetupPasswordViaBackupKeyDTO
@@ -40,79 +35,6 @@ export const authPaswordServiceFactory = ({
   smtpService,
   totpConfigDAL
 }: TAuthPasswordServiceFactoryDep) => {
-  /*
-   * Pre setup for pass change with srp protocol
-   * Gets srp server user salt and server public key
-   */
-  const generateServerPubKey = async (userId: string, clientPublicKey: string) => {
-    const userEnc = await userDAL.findUserEncKeyByUserId(userId);
-    if (!userEnc) throw new Error("Failed to find user");
-
-    const serverSrpKey = await generateSrpServerKey(userEnc.salt, userEnc.verifier);
-    const userEncKeys = await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
-      clientPublicKey,
-      serverPrivateKey: serverSrpKey.privateKey
-    });
-    if (!userEncKeys) throw new Error("Failed  to update encryption key");
-    return { salt: userEncKeys.salt, serverPublicKey: serverSrpKey.pubKey };
-  };
-
-  /*
-   * Change password to new pass
-   * */
-  const changePassword = async ({
-    userId,
-    clientProof,
-    protectedKey,
-    protectedKeyIV,
-    protectedKeyTag,
-    encryptedPrivateKey,
-    encryptedPrivateKeyIV,
-    encryptedPrivateKeyTag,
-    salt,
-    verifier,
-    tokenVersionId,
-    password
-  }: TChangePasswordDTO) => {
-    const userEnc = await userDAL.findUserEncKeyByUserId(userId);
-    if (!userEnc) throw new Error("Failed to find user");
-
-    await userDAL.updateUserEncryptionByUserId(userEnc.userId, {
-      serverPrivateKey: null,
-      clientPublicKey: null
-    });
-    if (!userEnc.serverPrivateKey || !userEnc.clientPublicKey) throw new Error("Failed to authenticate. Try again?");
-    const isValidClientProof = await srpCheckClientProof(
-      userEnc.salt,
-      userEnc.verifier,
-      userEnc.serverPrivateKey,
-      userEnc.clientPublicKey,
-      clientProof
-    );
-    if (!isValidClientProof) throw new Error("Failed to authenticate. Try again?");
-
-    const appCfg = getConfig();
-    const hashedPassword = await crypto.hashing().createHash(password, appCfg.SALT_ROUNDS);
-    await userDAL.updateUserEncryptionByUserId(userId, {
-      encryptionVersion: 2,
-      protectedKey,
-      protectedKeyIV,
-      protectedKeyTag,
-      encryptedPrivateKey,
-      iv: encryptedPrivateKeyIV,
-      tag: encryptedPrivateKeyTag,
-      salt,
-      verifier,
-      serverPrivateKey: null,
-      clientPublicKey: null,
-      hashedPassword
-    });
-
-    if (tokenVersionId) {
-      await tokenService.clearTokenSessionById(userEnc.userId, tokenVersionId);
-    }
-  };
-
   /*
    * Email password reset flow via email. Step 1 send email
    */
@@ -193,6 +115,10 @@ export const authPaswordServiceFactory = ({
     }
 
     if (!user.authMethods?.includes(AuthMethod.EMAIL)) {
+      logger.error(
+        { authMethods: user.authMethods },
+        "Unable to reset password, no email authentication method is configured"
+      );
       throw new BadRequestError({ message: "Unable to reset password, no email authentication method is configured" });
     }
 
@@ -211,58 +137,17 @@ export const authPaswordServiceFactory = ({
       }
     }
 
-    const newHashedPassword = await crypto.hashing().createHash(newPassword, cfg.SALT_ROUNDS);
-
-    // we need to get the original private key first for v2
-    let privateKey: string;
-    if (
-      user.serverEncryptedPrivateKey &&
-      user.serverEncryptedPrivateKeyTag &&
-      user.serverEncryptedPrivateKeyIV &&
-      user.serverEncryptedPrivateKeyEncoding &&
-      user.encryptionVersion === UserEncryption.V2
-    ) {
-      privateKey = crypto
-        .encryption()
-        .symmetric()
-        .decryptWithRootEncryptionKey({
-          iv: user.serverEncryptedPrivateKeyIV,
-          tag: user.serverEncryptedPrivateKeyTag,
-          ciphertext: user.serverEncryptedPrivateKey,
-          keyEncoding: user.serverEncryptedPrivateKeyEncoding as SecretKeyEncoding
-        });
-    } else {
+    if (user.encryptionVersion !== UserEncryption.V2) {
       throw new BadRequestError({
         message: "Cannot reset password without current credentials or recovery method",
         name: "Reset password"
       });
     }
 
-    const encKeys = await generateUserSrpKeys(user.username, newPassword, {
-      publicKey: user.publicKey,
-      privateKey
-    });
-
-    const { tag, iv, ciphertext, encoding } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(privateKey);
+    const newHashedPassword = await crypto.hashing().createHash(newPassword, cfg.SALT_ROUNDS);
 
     await userDAL.updateUserEncryptionByUserId(userId, {
-      hashedPassword: newHashedPassword,
-
-      // srp params
-      salt: encKeys.salt,
-      verifier: encKeys.verifier,
-
-      protectedKey: encKeys.protectedKey,
-      protectedKeyIV: encKeys.protectedKeyIV,
-      protectedKeyTag: encKeys.protectedKeyTag,
-      encryptedPrivateKey: encKeys.encryptedPrivateKey,
-      iv: encKeys.encryptedPrivateKeyIV,
-      tag: encKeys.encryptedPrivateKeyTag,
-
-      serverEncryptedPrivateKey: ciphertext,
-      serverEncryptedPrivateKeyIV: iv,
-      serverEncryptedPrivateKeyTag: tag,
-      serverEncryptedPrivateKeyEncoding: encoding
+      hashedPassword: newHashedPassword
     });
 
     await tokenService.revokeAllMySessions(userId);
@@ -313,66 +198,6 @@ export const authPaswordServiceFactory = ({
     });
   };
 
-  /*
-   * backup key creation to give user's their access back when lost their password
-   * this also needs to do the generateServerPubKey function to be executed first
-   * then only client proof can be verified
-   * */
-  const createBackupPrivateKey = async ({
-    clientProof,
-    encryptedPrivateKey,
-    salt,
-    verifier,
-    iv,
-    tag,
-    userId
-  }: TCreateBackupPrivateKeyDTO) => {
-    const userEnc = await userDAL.findUserEncKeyByUserId(userId);
-    if (!userEnc || (userEnc && !userEnc.isAccepted)) {
-      throw new Error("Failed to find user");
-    }
-
-    if (!userEnc.clientPublicKey || !userEnc.serverPrivateKey) throw new Error("failed to create backup key");
-    const isValidClientProff = await srpCheckClientProof(
-      userEnc.salt,
-      userEnc.verifier,
-      userEnc.serverPrivateKey,
-      userEnc.clientPublicKey,
-      clientProof
-    );
-    if (!isValidClientProff) throw new Error("failed to create backup key");
-    const backup = await authDAL.transaction(async (tx) => {
-      const backupKey = await authDAL.upsertBackupKey(
-        userEnc.userId,
-        {
-          encryptedPrivateKey,
-          iv,
-          tag,
-          salt,
-          verifier,
-          algorithm: SecretEncryptionAlgo.AES_256_GCM,
-          keyEncoding: SecretKeyEncoding.UTF8
-        },
-        tx
-      );
-
-      await userDAL.updateUserEncryptionByUserId(
-        userEnc.userId,
-        {
-          serverPrivateKey: null,
-          clientPublicKey: null
-        },
-        tx
-      );
-      return backupKey;
-    });
-
-    return backup;
-  };
-
-  /*
-   * Return user back up
-   * */
   const getBackupPrivateKeyOfUser = async (userId: string) => {
     const user = await userDAL.findUserEncKeyByUserId(userId);
     if (!user || (user && !user.isAccepted)) {
@@ -416,21 +241,7 @@ export const authPaswordServiceFactory = ({
     });
   };
 
-  const setupPassword = async (
-    {
-      encryptedPrivateKey,
-      protectedKeyTag,
-      protectedKey,
-      protectedKeyIV,
-      salt,
-      verifier,
-      encryptedPrivateKeyIV,
-      encryptedPrivateKeyTag,
-      password,
-      token
-    }: TSetupPasswordViaBackupKeyDTO,
-    actor: OrgServiceActor
-  ) => {
+  const setupPassword = async ({ password, token }: TSetupPasswordViaBackupKeyDTO, actor: OrgServiceActor) => {
     try {
       await tokenService.validateTokenForUser({
         type: TokenType.TOKEN_EMAIL_PASSWORD_SETUP,
@@ -466,15 +277,7 @@ export const authPaswordServiceFactory = ({
       await userDAL.updateUserEncryptionByUserId(
         actor.id,
         {
-          encryptionVersion: 2,
-          protectedKey,
-          protectedKeyIV,
-          protectedKeyTag,
-          encryptedPrivateKey,
-          iv: encryptedPrivateKeyIV,
-          tag: encryptedPrivateKeyTag,
-          salt,
-          verifier,
+          encryptionVersion: UserEncryption.V2,
           hashedPassword,
           serverPrivateKey: null,
           clientPublicKey: null
@@ -487,12 +290,9 @@ export const authPaswordServiceFactory = ({
   };
 
   return {
-    generateServerPubKey,
-    changePassword,
     resetPasswordByBackupKey,
     sendPasswordResetEmail,
     verifyPasswordResetEmail,
-    createBackupPrivateKey,
     getBackupPrivateKeyOfUser,
     sendPasswordSetupEmail,
     setupPassword,

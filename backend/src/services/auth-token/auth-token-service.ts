@@ -36,6 +36,12 @@ export const getTokenConfig = (tokenType: TokenType) => {
       const expiresAt = new Date(new Date().getTime() + 86400000);
       return { token, triesLeft, expiresAt };
     }
+    case TokenType.TOKEN_EMAIL_CHANGE_OTP: {
+      const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
+      const triesLeft = 1;
+      const expiresAt = new Date(new Date().getTime() + 600000);
+      return { token, triesLeft, expiresAt };
+    }
     case TokenType.TOKEN_EMAIL_MFA: {
       // generate random 6-digit code
       const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
@@ -75,7 +81,7 @@ export const getTokenConfig = (tokenType: TokenType) => {
 };
 
 export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAuthTokenServiceFactoryDep) => {
-  const createTokenForUser = async ({ type, userId, orgId }: TCreateTokenForUserDTO) => {
+  const createTokenForUser = async ({ type, userId, orgId, aliasId, payload }: TCreateTokenForUserDTO) => {
     const { token, ...tkCfg } = getTokenConfig(type);
     const appCfg = getConfig();
     const tokenHash = await crypto.hashing().createHash(token, appCfg.SALT_ROUNDS);
@@ -88,7 +94,9 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
           type,
           userId,
           orgId,
-          triesLeft: tkCfg?.triesLeft
+          triesLeft: tkCfg?.triesLeft,
+          aliasId,
+          payload
         },
         tx
       );

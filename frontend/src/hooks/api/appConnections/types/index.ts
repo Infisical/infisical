@@ -3,6 +3,7 @@ import { TOnePassConnection } from "./1password-connection";
 import { TAppConnectionOption } from "./app-options";
 import { TAuth0Connection } from "./auth0-connection";
 import { TAwsConnection } from "./aws-connection";
+import { TAzureADCSConnection } from "./azure-adcs-connection";
 import { TAzureAppConfigurationConnection } from "./azure-app-configuration-connection";
 import { TAzureClientSecretsConnection } from "./azure-client-secrets-connection";
 import { TAzureDevOpsConnection } from "./azure-devops-connection";
@@ -24,6 +25,7 @@ import { THumanitecConnection } from "./humanitec-connection";
 import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TMySqlConnection } from "./mysql-connection";
+import { TNetlifyConnection } from "./netlify-connection";
 import { TOCIConnection } from "./oci-connection";
 import { TOktaConnection } from "./okta-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
@@ -40,6 +42,7 @@ import { TZabbixConnection } from "./zabbix-connection";
 export * from "./1password-connection";
 export * from "./auth0-connection";
 export * from "./aws-connection";
+export * from "./azure-adcs-connection";
 export * from "./azure-app-configuration-connection";
 export * from "./azure-client-secrets-connection";
 export * from "./azure-devops-connection";
@@ -82,6 +85,7 @@ export type TAppConnection =
   | TAzureAppConfigurationConnection
   | TAzureClientSecretsConnection
   | TAzureDevOpsConnection
+  | TAzureADCSConnection
   | TDatabricksConnection
   | THumanitecConnection
   | TTerraformCloudConnection
@@ -109,6 +113,7 @@ export type TAppConnection =
   | TChecklyConnection
   | TSupabaseConnection
   | TDigitalOceanConnection
+  | TNetlifyConnection
   | TOktaConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id">;
@@ -154,6 +159,7 @@ export type TAppConnectionMap = {
   [AppConnection.AzureAppConfiguration]: TAzureAppConfigurationConnection;
   [AppConnection.AzureClientSecrets]: TAzureClientSecretsConnection;
   [AppConnection.AzureDevOps]: TAzureDevOpsConnection;
+  [AppConnection.AzureADCS]: TAzureADCSConnection;
   [AppConnection.Databricks]: TDatabricksConnection;
   [AppConnection.Humanitec]: THumanitecConnection;
   [AppConnection.TerraformCloud]: TTerraformCloudConnection;
@@ -173,7 +179,7 @@ export type TAppConnectionMap = {
   [AppConnection.Heroku]: THerokuConnection;
   [AppConnection.Render]: TRenderConnection;
   [AppConnection.Flyio]: TFlyioConnection;
-  [AppConnection.Gitlab]: TGitLabConnection;
+  [AppConnection.GitLab]: TGitLabConnection;
   [AppConnection.Cloudflare]: TCloudflareConnection;
   [AppConnection.Bitbucket]: TBitbucketConnection;
   [AppConnection.Zabbix]: TZabbixConnection;
@@ -181,5 +187,6 @@ export type TAppConnectionMap = {
   [AppConnection.Checkly]: TChecklyConnection;
   [AppConnection.Supabase]: TSupabaseConnection;
   [AppConnection.DigitalOcean]: TDigitalOceanConnection;
+  [AppConnection.Netlify]: TNetlifyConnection;
   [AppConnection.Okta]: TOktaConnection;
 };

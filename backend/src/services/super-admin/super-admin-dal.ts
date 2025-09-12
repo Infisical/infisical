@@ -11,7 +11,7 @@ export const superAdminDALFactory = (db: TDbClient) => {
   const superAdminOrm = ormify(db, TableName.SuperAdmin);
 
   const findById = async (id: string, tx?: Knex) => {
-    const config = await (tx || db)(TableName.SuperAdmin)
+    const config = await (tx || db.replicaNode())(TableName.SuperAdmin)
       .where(`${TableName.SuperAdmin}.id`, id)
       .leftJoin(TableName.Organization, `${TableName.SuperAdmin}.defaultAuthOrgId`, `${TableName.Organization}.id`)
       .leftJoin(TableName.SamlConfig, (qb) => {

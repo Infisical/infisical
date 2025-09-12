@@ -32,6 +32,13 @@ export const PmtMethodsTable = () => {
 
   const handleDeletePmtMethodBtnClick = async () => {
     if (!currentOrg?.id || !pmtMethodToRemove) return;
+    if (data?.length === 1) {
+      createNotification({
+        type: "error",
+        text: "You must have at least one payment method"
+      });
+      return;
+    }
     try {
       await deleteOrgPmtMethod.mutateAsync({
         organizationId: currentOrg.id,

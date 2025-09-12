@@ -3,7 +3,7 @@ import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-templat
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
-import { registerAuditLogStreamRouter } from "./audit-log-stream-router";
+import { AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP, registerAuditLogStreamRouter } from "./audit-log-stream-routers";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerKubernetesDynamicSecretLeaseRouter } from "./dynamic-secret-lease-routers/kubernetes-lease-router";
@@ -13,6 +13,7 @@ import { registerGatewayRouter } from "./gateway-router";
 import { registerGithubOrgSyncRouter } from "./github-org-sync-router";
 import { registerGroupRouter } from "./group-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
+import { registerIdentityTemplateRouter } from "./identity-template-router";
 import { registerKmipRouter } from "./kmip-router";
 import { registerKmipSpecRouter } from "./kmip-spec-router";
 import { registerLdapRouter } from "./ldap-router";
@@ -23,6 +24,7 @@ import { registerPITRouter } from "./pit-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
 import { registerRateLimitRouter } from "./rate-limit-router";
+import { registerRelayRouter } from "./relay-router";
 import { registerSamlRouter } from "./saml-router";
 import { registerScimRouter } from "./scim-router";
 import { registerSecretApprovalPolicyRouter } from "./secret-approval-policy-router";
@@ -78,6 +80,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   );
 
   await server.register(registerGatewayRouter, { prefix: "/gateways" });
+  await server.register(registerRelayRouter, { prefix: "/relays" });
   await server.register(registerGithubOrgSyncRouter, { prefix: "/github-org-sync-config" });
 
   await server.register(
@@ -113,7 +116,21 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerSecretRouter, { prefix: "/secrets" });
   await server.register(registerSecretVersionRouter, { prefix: "/secret" });
   await server.register(registerGroupRouter, { prefix: "/groups" });
-  await server.register(registerAuditLogStreamRouter, { prefix: "/audit-log-streams" });
+
+  await server.register(
+    async (auditLogStreamRouter) => {
+      await auditLogStreamRouter.register(registerAuditLogStreamRouter);
+
+      // Provider-specific endpoints
+      await Promise.all(
+        Object.entries(AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP).map(([provider, router]) =>
+          auditLogStreamRouter.register(router, { prefix: `/${provider}` })
+        )
+      );
+    },
+    { prefix: "/audit-log-streams" }
+  );
+
   await server.register(registerUserAdditionalPrivilegeRouter, { prefix: "/user-project-additional-privilege" });
   await server.register(
     async (privilegeRouter) => {
@@ -125,6 +142,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerExternalKmsRouter, {
     prefix: "/external-kms"
   });
+  await server.register(registerIdentityTemplateRouter, { prefix: "/identity-templates" });
 
   await server.register(registerProjectTemplateRouter, { prefix: "/project-templates" });
 

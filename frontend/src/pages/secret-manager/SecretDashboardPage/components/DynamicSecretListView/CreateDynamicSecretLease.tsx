@@ -384,6 +384,24 @@ const renderOutputForm = (
     );
   }
 
+  if (provider === DynamicSecretProviders.Couchbase) {
+    const { username, password } = data as {
+      username: string;
+      password: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Username" value={username} />
+        <OutputDisplay
+          label="Password"
+          value={password}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
   return null;
 };
 

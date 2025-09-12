@@ -1,8 +1,14 @@
+import { Cluster, Redis } from "ioredis";
+import { Knex } from "knex";
+
 import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
 import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
 import { applyJitter } from "@app/lib/dates";
 import { delay as delayMs } from "@app/lib/delay";
+import { ms } from "@app/lib/ms";
 import { ExecutionResult, Redlock, Settings } from "@app/lib/red-lock";
+
+import { TKeyValueStoreDALFactory } from "./key-value-store-dal";
 
 export const PgSqlLock = {
   BootUpMigration: 2023,
@@ -13,7 +19,11 @@ export const PgSqlLock = {
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
   CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`),
   CreateFolder: (envId: string, projectId: string) => pgAdvisoryLockHashText(`create-folder:${envId}-${projectId}`),
-  SshInit: (projectId: string) => pgAdvisoryLockHashText(`ssh-bootstrap:${projectId}`)
+  SshInit: (projectId: string) => pgAdvisoryLockHashText(`ssh-bootstrap:${projectId}`),
+  InstanceRelayConfigInit: () => pgAdvisoryLockHashText("instance-relay-config-init"),
+  OrgGatewayV2Init: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-v2-init:${orgId}`),
+  OrgRelayConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-relay-config-init:${orgId}`),
+  IdentityLogin: (identityId: string, nonce: string) => pgAdvisoryLockHashText(`identity-login:${identityId}:${nonce}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -37,16 +47,22 @@ export const KeyStorePrefixes = {
   SyncSecretIntegrationLastRunTimestamp: (projectId: string, environmentSlug: string, secretPath: string) =>
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
   SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
+  AppConnectionConcurrentJobs: (connectionId: string) => `app-connection-concurrency-${connectionId}` as const,
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
   SecretScanningLock: (dataSourceId: string, resourceExternalId: string) =>
     `secret-scanning-v2-mutex-${dataSourceId}-${resourceExternalId}` as const,
+  IdentityLockoutLock: (lockoutKey: string) => `identity-lockout-lock-${lockoutKey}` as const,
   CaOrderCertificateForSubscriberLock: (subscriberId: string) =>
     `ca-order-certificate-for-subscriber-lock-${subscriberId}` as const,
   SecretSyncLastRunTimestamp: (syncId: string) => `secret-sync-last-run-${syncId}` as const,
   IdentityAccessTokenStatusUpdate: (identityAccessTokenId: string) =>
     `identity-access-token-status:${identityAccessTokenId}`,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
-  GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`
+  GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
+  ActiveSSEConnectionsSet: (projectId: string, identityId: string) =>
+    `sse-connections:${projectId}:${identityId}` as const,
+  ActiveSSEConnections: (projectId: string, identityId: string, connectionId: string) =>
+    `sse-connections:${projectId}:${identityId}:${connectionId}` as const
 };
 
 export const KeyStoreTtls = {
@@ -86,39 +102,73 @@ export type TKeyStoreFactory = {
   deleteItemsByKeyIn: (keys: string[]) => Promise<number>;
   deleteItems: (arg: TDeleteItems) => Promise<number>;
   incrementBy: (key: string, value: number) => Promise<number>;
+  getKeysByPattern: (pattern: string, limit?: number) => Promise<string[]>;
+  // pg
+  pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
+  pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
+  // locks
   acquireLock(
     resources: string[],
     duration: number,
     settings?: Partial<Settings>
   ): Promise<{ release: () => Promise<ExecutionResult> }>;
   waitTillReady: ({ key, waitingCb, keyCheckCb, waitIteration, delay, jitter }: TWaitTillReady) => Promise<void>;
-  getKeysByPattern: (pattern: string, limit?: number) => Promise<string[]>;
 };
 
-export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFactory => {
-  const redis = buildRedisFromConfig(redisConfigKeys);
-  const redisLock = new Redlock([redis], { retryCount: 2, retryDelay: 200 });
+const pickPrimaryOrSecondaryRedis = (primary: Redis | Cluster, secondaries?: Array<Redis | Cluster>) => {
+  if (!secondaries || !secondaries.length) return primary;
+  const selectedReplica = secondaries[Math.floor(Math.random() * secondaries.length)];
+  return selectedReplica;
+};
+
+interface TKeyStoreFactoryDTO extends TRedisConfigKeys {
+  REDIS_READ_REPLICAS?: { host: string; port: number }[];
+}
+
+export const keyStoreFactory = (
+  redisConfigKeys: TKeyStoreFactoryDTO,
+  keyValueStoreDAL: TKeyValueStoreDALFactory
+): TKeyStoreFactory => {
+  const primaryRedis = buildRedisFromConfig(redisConfigKeys);
+  const redisReadReplicas = redisConfigKeys.REDIS_READ_REPLICAS?.map((el) => {
+    if (redisConfigKeys.REDIS_URL) {
+      const primaryNode = new URL(redisConfigKeys?.REDIS_URL);
+      primaryNode.hostname = el.host;
+      primaryNode.port = String(el.port);
+      return buildRedisFromConfig({ ...redisConfigKeys, REDIS_URL: primaryNode.toString() });
+    }
+
+    if (redisConfigKeys.REDIS_SENTINEL_HOSTS) {
+      return buildRedisFromConfig({ ...redisConfigKeys, REDIS_SENTINEL_HOSTS: [el] });
+    }
+
+    return buildRedisFromConfig({ ...redisConfigKeys, REDIS_CLUSTER_HOSTS: [el] });
+  });
+  const redisLock = new Redlock([primaryRedis], { retryCount: 2, retryDelay: 200 });
 
   const setItem = async (key: string, value: string | number | Buffer, prefix?: string) =>
-    redis.set(prefix ? `${prefix}:${key}` : key, value);
+    primaryRedis.set(prefix ? `${prefix}:${key}` : key, value);
 
-  const getItem = async (key: string, prefix?: string) => redis.get(prefix ? `${prefix}:${key}` : key);
+  const getItem = async (key: string, prefix?: string) =>
+    pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).get(prefix ? `${prefix}:${key}` : key);
 
   const getItems = async (keys: string[], prefix?: string) =>
-    redis.mget(keys.map((key) => (prefix ? `${prefix}:${key}` : key)));
+    pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).mget(
+      keys.map((key) => (prefix ? `${prefix}:${key}` : key))
+    );
 
   const setItemWithExpiry = async (
     key: string,
     expiryInSeconds: number | string,
     value: string | number | Buffer,
     prefix?: string
-  ) => redis.set(prefix ? `${prefix}:${key}` : key, value, "EX", expiryInSeconds);
+  ) => primaryRedis.set(prefix ? `${prefix}:${key}` : key, value, "EX", expiryInSeconds);
 
-  const deleteItem = async (key: string) => redis.del(key);
+  const deleteItem = async (key: string) => primaryRedis.del(key);
 
   const deleteItemsByKeyIn = async (keys: string[]) => {
     if (keys.length === 0) return 0;
-    return redis.del(keys);
+    return primaryRedis.del(keys);
   };
 
   const deleteItems = async ({ pattern, batchSize = 500, delay = 1500, jitter = 200 }: TDeleteItems) => {
@@ -128,12 +178,12 @@ export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFac
     do {
       // Await in loop is needed so that Redis is not overwhelmed
       // eslint-disable-next-line no-await-in-loop
-      const [nextCursor, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 1000); // Count should be 1000 - 5000 for prod loads
+      const [nextCursor, keys] = await primaryRedis.scan(cursor, "MATCH", pattern, "COUNT", 1000); // Count should be 1000 - 5000 for prod loads
       cursor = nextCursor;
 
       for (let i = 0; i < keys.length; i += batchSize) {
         const batch = keys.slice(i, i + batchSize);
-        const pipeline = redis.pipeline();
+        const pipeline = primaryRedis.pipeline();
         for (const key of batch) {
           pipeline.unlink(key);
         }
@@ -149,9 +199,41 @@ export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFac
     return totalDeleted;
   };
 
-  const incrementBy = async (key: string, value: number) => redis.incrby(key, value);
+  const incrementBy = async (key: string, value: number) => primaryRedis.incrby(key, value);
 
-  const setExpiry = async (key: string, expiryInSeconds: number) => redis.expire(key, expiryInSeconds);
+  const setExpiry = async (key: string, expiryInSeconds: number) => primaryRedis.expire(key, expiryInSeconds);
+
+  const getKeysByPattern = async (pattern: string, limit?: number) => {
+    let cursor = "0";
+    const allKeys: string[] = [];
+
+    do {
+      // eslint-disable-next-line no-await-in-loop
+      const [nextCursor, keys] = await pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).scan(
+        cursor,
+        "MATCH",
+        pattern,
+        "COUNT",
+        1000
+      );
+      cursor = nextCursor;
+      allKeys.push(...keys);
+
+      if (limit && allKeys.length >= limit) {
+        return allKeys.slice(0, limit);
+      }
+    } while (cursor !== "0");
+
+    return allKeys;
+  };
+
+  const pgIncrementBy: TKeyStoreFactory["pgIncrementBy"] = async (key, { incr = 1, tx, expiry }) => {
+    const expiresAt = expiry ? new Date(Date.now() + ms(expiry)) : undefined;
+    return keyValueStoreDAL.incrementBy(key, { incr, expiresAt, tx });
+  };
+
+  const pgGetIntItem = async (key: string, prefix?: string) =>
+    keyValueStoreDAL.findOneInt(prefix ? `${prefix}:${key}` : key);
 
   const waitTillReady = async ({
     key,
@@ -176,24 +258,6 @@ export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFac
     }
   };
 
-  const getKeysByPattern = async (pattern: string, limit?: number) => {
-    let cursor = "0";
-    const allKeys: string[] = [];
-
-    do {
-      // eslint-disable-next-line no-await-in-loop
-      const [nextCursor, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 1000);
-      cursor = nextCursor;
-      allKeys.push(...keys);
-
-      if (limit && allKeys.length >= limit) {
-        return allKeys.slice(0, limit);
-      }
-    } while (cursor !== "0");
-
-    return allKeys;
-  };
-
   return {
     setItem,
     getItem,
@@ -208,6 +272,8 @@ export const keyStoreFactory = (redisConfigKeys: TRedisConfigKeys): TKeyStoreFac
     waitTillReady,
     getKeysByPattern,
     deleteItemsByKeyIn,
-    getItems
+    getItems,
+    pgGetIntItem,
+    pgIncrementBy
   };
 };

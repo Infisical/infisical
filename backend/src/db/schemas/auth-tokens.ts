@@ -17,7 +17,9 @@ export const AuthTokensSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   userId: z.string().uuid().nullable().optional(),
-  orgId: z.string().uuid().nullable().optional()
+  orgId: z.string().uuid().nullable().optional(),
+  aliasId: z.string().nullable().optional(),
+  payload: z.string().nullable().optional()
 });
 
 export type TAuthTokens = z.infer<typeof AuthTokensSchema>;

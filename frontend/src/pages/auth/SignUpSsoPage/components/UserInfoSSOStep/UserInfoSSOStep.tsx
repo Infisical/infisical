@@ -3,23 +3,15 @@ import crypto from "crypto";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
-import jsrp from "jsrp";
 
 import { Mfa } from "@app/components/auth/Mfa";
-import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
-import { deriveArgonKey, generateKeyPair } from "@app/components/utilities/cryptography/crypto";
-import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Input } from "@app/components/v2";
-import { useServerConfig } from "@app/context";
 import { initProjectHelper } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { completeAccountSignup, useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
-
-// eslint-disable-next-line new-cap
-const client = new jsrp.client();
 
 type Props = {
   username: string;
@@ -64,7 +56,6 @@ export const UserInfoSSOStep = ({
   const { mutateAsync: selectOrganization } = useSelectOrganization();
   const [mfaSuccessCallback, setMfaSuccessCallback] = useState<() => void>(() => {});
   const navigate = useNavigate();
-  const { config } = useServerConfig();
 
   useEffect(() => {
     const randomPassword = crypto.randomBytes(32).toString("hex");
@@ -93,131 +84,64 @@ export const UserInfoSSOStep = ({
     }
 
     if (!errorCheck) {
-      // Generate a random pair of a public and a private key
-      const { publicKey, privateKey } = await generateKeyPair(config.fipsEnabled);
-      localStorage.setItem("PRIVATE_KEY", privateKey);
+      try {
+        const response = await completeAccountSignup({
+          email: username,
+          password,
+          firstName: name.split(" ")[0],
+          lastName: name.split(" ").slice(1).join(" "),
+          providerAuthToken,
+          organizationName,
+          attributionSource,
+          useDefaultOrg: forceDefaultOrg
+        });
 
-      client.init(
-        {
-          username,
-          password
-        },
-        async () => {
-          client.createVerifier(async (_err: any, result: { salt: string; verifier: string }) => {
-            try {
-              // TODO: moduralize into KeyService
-              const derivedKey = await deriveArgonKey({
-                password,
-                salt: result.salt,
-                mem: 65536,
-                time: 3,
-                parallelism: 1,
-                hashLen: 32
-              });
+        // unset signup JWT token and set JWT token
+        SecurityClient.setSignupToken("");
+        SecurityClient.setToken(response.token);
+        SecurityClient.setProviderAuthToken("");
 
-              if (!derivedKey) throw new Error("Failed to derive key from password");
+        const userOrgs = await fetchOrganizations();
+        const orgId = userOrgs[0]?.id;
 
-              const key = crypto.randomBytes(32);
+        const completeSignupFlow = async () => {
+          try {
+            const { isMfaEnabled, token, mfaMethod } = await selectOrganization({
+              organizationId: orgId
+            });
 
-              // create encrypted private key by encrypting the private
-              // key with the symmetric key [key]
-              const {
-                ciphertext: encryptedPrivateKey,
-                iv: encryptedPrivateKeyIV,
-                tag: encryptedPrivateKeyTag
-              } = Aes256Gcm.encrypt({
-                text: privateKey,
-                secret: key
-              });
-
-              // create the protected key by encrypting the symmetric key
-              // [key] with the derived key
-              const {
-                ciphertext: protectedKey,
-                iv: protectedKeyIV,
-                tag: protectedKeyTag
-              } = Aes256Gcm.encrypt({
-                text: key.toString("hex"),
-                secret: Buffer.from(derivedKey.hash)
-              });
-
-              const response = await completeAccountSignup({
-                email: username,
-                password,
-                firstName: name.split(" ")[0],
-                lastName: name.split(" ").slice(1).join(" "),
-                protectedKey,
-                protectedKeyIV,
-                protectedKeyTag,
-                publicKey,
-                encryptedPrivateKey,
-                encryptedPrivateKeyIV,
-                encryptedPrivateKeyTag,
-                providerAuthToken,
-                salt: result.salt,
-                verifier: result.verifier,
-                organizationName,
-                attributionSource,
-                useDefaultOrg: forceDefaultOrg
-              });
-
-              // unset signup JWT token and set JWT token
-              SecurityClient.setSignupToken("");
-              SecurityClient.setToken(response.token);
-              SecurityClient.setProviderAuthToken("");
-
-              saveTokenToLocalStorage({
-                publicKey,
-                encryptedPrivateKey,
-                iv: encryptedPrivateKeyIV,
-                tag: encryptedPrivateKeyTag,
-                privateKey
-              });
-
-              const userOrgs = await fetchOrganizations();
-              const orgId = userOrgs[0]?.id;
-
-              const completeSignupFlow = async () => {
-                try {
-                  const { isMfaEnabled, token, mfaMethod } = await selectOrganization({
-                    organizationId: orgId
-                  });
-
-                  if (isMfaEnabled) {
-                    SecurityClient.setMfaToken(token);
-                    if (mfaMethod) {
-                      setRequiredMfaMethod(mfaMethod);
-                    }
-                    toggleShowMfa.on();
-                    setMfaSuccessCallback(() => completeSignupFlow);
-                    return;
-                  }
-
-                  // only create example project if not joining existing org
-                  if (!providerOrganizationName) {
-                    await initProjectHelper({
-                      projectName: "Example Project"
-                    });
-                  }
-
-                  localStorage.setItem("orgData.id", orgId);
-                  navigate({
-                    to: "/organization/projects"
-                  });
-                } catch (error) {
-                  setIsLoading(false);
-                  console.error(error);
-                }
-              };
-
-              await completeSignupFlow();
-            } catch (error) {
-              setIsLoading(false);
-              console.error(error);
+            if (isMfaEnabled) {
+              SecurityClient.setMfaToken(token);
+              if (mfaMethod) {
+                setRequiredMfaMethod(mfaMethod);
+              }
+              toggleShowMfa.on();
+              setMfaSuccessCallback(() => completeSignupFlow);
+              return;
             }
-          });
-        }
-      );
+
+            // only create example project if not joining existing org
+            if (!providerOrganizationName) {
+              await initProjectHelper({
+                projectName: "Example Project"
+              });
+            }
+
+            localStorage.setItem("orgData.id", orgId);
+            navigate({
+              to: "/organization/projects"
+            });
+          } catch (error) {
+            setIsLoading(false);
+            console.error(error);
+          }
+        };
+
+        await completeSignupFlow();
+      } catch (error) {
+        setIsLoading(false);
+        console.error(error);
+      }
     } else {
       setIsLoading(false);
     }

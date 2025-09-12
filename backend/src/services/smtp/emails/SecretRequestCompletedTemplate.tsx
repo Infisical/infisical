@@ -1,6 +1,7 @@
-import { Button, Heading, Section, Text } from "@react-email/components";
+import { Heading, Section, Text } from "@react-email/components";
 import React from "react";
 
+import { BaseButton } from "./BaseButton";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 
 interface SecretRequestCompletedTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
@@ -20,7 +21,7 @@ export const SecretRequestCompletedTemplate = ({
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
         <strong>A secret has been shared with you</strong>
       </Heading>
-      <Section className="px-[24px] mt-[36px] pt-[12px] text-center pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
+      <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] text-center pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-[14px]">
           {respondentUsername ? <strong>{respondentUsername}</strong> : "Someone"} shared a secret{" "}
           {name && (
@@ -31,13 +32,8 @@ export const SecretRequestCompletedTemplate = ({
           with you.
         </Text>
       </Section>
-      <Section className="text-center mt-[28px]">
-        <Button
-          href={secretRequestUrl}
-          className="rounded-md p-3 px-[28px] my-[8px] text-center text-[16px] bg-[#EBF852] border-solid border border-[#d1e309] text-black font-medium"
-        >
-          View Secret
-        </Button>
+      <Section className="text-center">
+        <BaseButton href={secretRequestUrl}>View Secret</BaseButton>
       </Section>
     </BaseEmailWrapper>
   );

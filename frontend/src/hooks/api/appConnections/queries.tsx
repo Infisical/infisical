@@ -54,13 +54,13 @@ export const useAppConnectionOptions = (
 export const useGetAppConnectionOption = <T extends AppConnection>(app: T) => {
   const { data: options = [], isPending } = useAppConnectionOptions();
 
-  return useMemo(
-    () => ({
-      option: (options.find((opt) => opt.app === app) as TAppConnectionOptionMap[T]) ?? {},
+  return useMemo(() => {
+    const foundOption = options.find((opt) => opt.app === app);
+    return {
+      option: (foundOption as TAppConnectionOptionMap[T]) ?? {},
       isLoading: isPending
-    }),
-    [options, app, isPending]
-  );
+    };
+  }, [options, app, isPending]);
 };
 
 export const useListAppConnections = (

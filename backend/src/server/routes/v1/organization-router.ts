@@ -247,7 +247,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
                 lastName: true,
                 id: true,
                 superAdmin: true
-              }).merge(z.object({ publicKey: z.string().nullable() }))
+              }).merge(z.object({ publicKey: z.string().nullable().optional() }))
             })
           )
             .omit({ createdAt: true, updatedAt: true })
@@ -279,6 +279,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         name: GenericResourceNameSchema.optional(),
         slug: slugSchema({ max: 64 }).optional(),
         authEnforced: z.boolean().optional(),
+        googleSsoAuthEnforced: z.boolean().optional(),
         scimEnabled: z.boolean().optional(),
         defaultMembershipRoleSlug: slugSchema({ max: 64, field: "Default Membership Role" }).optional(),
         enforceMfa: z.boolean().optional(),

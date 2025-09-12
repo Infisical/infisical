@@ -157,6 +157,17 @@ export enum ProjectPermissionSecretScanningConfigActions {
   Update = "update-configs"
 }
 
+export enum ProjectPermissionSecretEventActions {
+  SubscribeCreated = "subscribe-on-created",
+  SubscribeUpdated = "subscribe-on-updated",
+  SubscribeDeleted = "subscribe-on-deleted",
+  SubscribeImportMutations = "subscribe-on-import-mutations"
+}
+
+export enum ProjectPermissionAuditLogsActions {
+  Read = "read"
+}
+
 export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
@@ -196,10 +207,18 @@ export enum ProjectPermissionSub {
   Kmip = "kmip",
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
-  SecretScanningConfigs = "secret-scanning-configs"
+  SecretScanningConfigs = "secret-scanning-configs",
+  SecretEvents = "secret-events"
 }
 
 export type SecretSubjectFields = {
+  environment: string;
+  secretPath: string;
+  secretName?: string;
+  secretTags?: string[];
+};
+
+export type SecretEventSubjectFields = {
   environment: string;
   secretPath: string;
   secretName?: string;
@@ -289,7 +308,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionGroupActions, ProjectPermissionSub.Groups]
   | [ProjectPermissionActions, ProjectPermissionSub.Integrations]
   | [ProjectPermissionActions, ProjectPermissionSub.Webhooks]
-  | [ProjectPermissionActions, ProjectPermissionSub.AuditLogs]
+  | [ProjectPermissionAuditLogsActions, ProjectPermissionSub.AuditLogs]
   | [ProjectPermissionActions, ProjectPermissionSub.Environments]
   | [ProjectPermissionActions, ProjectPermissionSub.IpAllowList]
   | [ProjectPermissionActions, ProjectPermissionSub.Settings]
@@ -342,7 +361,11 @@ export type ProjectPermissionSet =
   | [ProjectPermissionCommitsActions, ProjectPermissionSub.Commits]
   | [ProjectPermissionSecretScanningDataSourceActions, ProjectPermissionSub.SecretScanningDataSources]
   | [ProjectPermissionSecretScanningFindingActions, ProjectPermissionSub.SecretScanningFindings]
-  | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs];
+  | [ProjectPermissionSecretScanningConfigActions, ProjectPermissionSub.SecretScanningConfigs]
+  | [
+      ProjectPermissionSecretEventActions,
+      ProjectPermissionSub.SecretEvents | (ForcedSubject<ProjectPermissionSub.SecretEvents> & SecretEventSubjectFields)
+    ];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
 const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
@@ -483,7 +506,17 @@ const SecretConditionV2Schema = z
       .object({
         [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
       })
-      .partial()
+      .partial(),
+    eventType: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
   })
   .partial();
 
@@ -616,7 +649,7 @@ const GeneralPermissionSchema = [
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.AuditLogs).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAuditLogsActions).describe(
       "Describe what action an entity can take."
     )
   }),
@@ -865,7 +898,16 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),
-
+  z.object({
+    subject: z.literal(ProjectPermissionSub.SecretEvents).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionSecretEventActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: SecretSyncConditionV2Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
   ...GeneralPermissionSchema
 ]);
 

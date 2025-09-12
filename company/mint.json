@@ -5,7 +5,7 @@
     "light": "/logo/light.svg",
     "href": "https://infisical.com"
   },
-  "favicon": "/favicon.png",
+  "favicon": "/favicon.ico",
   "colors": {
     "primary": "#26272b",
     "light": "#97b31d",

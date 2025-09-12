@@ -64,7 +64,10 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import { throwIfMissingSecretReadValueOrDescribePermission } from "../permission/permission-fns";
+import {
+  hasSecretReadValueOrDescribePermission,
+  throwIfMissingSecretReadValueOrDescribePermission
+} from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
@@ -254,6 +257,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(id);
+
     if (!secretApprovalRequest)
       throw new NotFoundError({ message: `Secret approval request with ID '${id}' not found` });
 
@@ -276,13 +280,28 @@ export const secretApprovalRequestServiceFactory = ({
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
+    const getHasSecretReadAccess = (
+      shouldCheckSecretPermission: boolean | null | undefined,
+      environment: string,
+      tags: { slug: string }[],
+      secretPath?: string
+    ) => {
+      if (shouldCheckSecretPermission) {
+        const canRead = hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+          environment,
+          secretPath: secretPath || "/",
+          secretTags: tags.map((i) => i.slug)
+        });
+        return canRead;
+      }
 
-    const hasSecretReadAccess = permission.can(
-      ProjectPermissionSecretActions.DescribeAndReadValue,
-      ProjectPermissionSub.Secrets
-    );
+      return true;
+    };
 
     let secrets;
+    const secretPath = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
+      secretApprovalRequest.folderId
+    ]);
     if (shouldUseSecretV2Bridge) {
       const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
@@ -298,8 +317,18 @@ export const secretApprovalRequestServiceFactory = ({
         version: el.version,
         secretMetadata: el.secretMetadata as ResourceMetadataDTO,
         isRotatedSecret: el.secret?.isRotatedSecret ?? false,
-        secretValueHidden: !hasSecretReadAccess,
-        secretValue: !hasSecretReadAccess
+        secretValueHidden: !getHasSecretReadAccess(
+          secretApprovalRequest.policy.shouldCheckSecretPermission,
+          secretApprovalRequest.environment,
+          el.tags,
+          secretPath?.[0]?.path
+        ),
+        secretValue: !getHasSecretReadAccess(
+          secretApprovalRequest.policy.shouldCheckSecretPermission,
+          secretApprovalRequest.environment,
+          el.tags,
+          secretPath?.[0]?.path
+        )
           ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
           : el.secret && el.secret.isRotatedSecret
             ? undefined
@@ -314,8 +343,18 @@ export const secretApprovalRequestServiceFactory = ({
               secretKey: el.secret.key,
               id: el.secret.id,
               version: el.secret.version,
-              secretValueHidden: !hasSecretReadAccess,
-              secretValue: !hasSecretReadAccess
+              secretValueHidden: !getHasSecretReadAccess(
+                secretApprovalRequest.policy.shouldCheckSecretPermission,
+                secretApprovalRequest.environment,
+                el.tags,
+                secretPath?.[0]?.path
+              ),
+              secretValue: !getHasSecretReadAccess(
+                secretApprovalRequest.policy.shouldCheckSecretPermission,
+                secretApprovalRequest.environment,
+                el.tags,
+                secretPath?.[0]?.path
+              )
                 ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
                 : el.secret.encryptedValue
                   ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedValue }).toString()
@@ -330,8 +369,18 @@ export const secretApprovalRequestServiceFactory = ({
               secretKey: el.secretVersion.key,
               id: el.secretVersion.id,
               version: el.secretVersion.version,
-              secretValueHidden: !hasSecretReadAccess,
-              secretValue: !hasSecretReadAccess
+              secretValueHidden: !getHasSecretReadAccess(
+                secretApprovalRequest.policy.shouldCheckSecretPermission,
+                secretApprovalRequest.environment,
+                el.tags,
+                secretPath?.[0]?.path
+              ),
+              secretValue: !getHasSecretReadAccess(
+                secretApprovalRequest.policy.shouldCheckSecretPermission,
+                secretApprovalRequest.environment,
+                el.tags,
+                secretPath?.[0]?.path
+              )
                 ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
                 : el.secretVersion.encryptedValue
                   ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedValue }).toString()
@@ -349,7 +398,12 @@ export const secretApprovalRequestServiceFactory = ({
       const encryptedSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
       secrets = encryptedSecrets.map((el) => ({
         ...el,
-        secretValueHidden: !hasSecretReadAccess,
+        secretValueHidden: !getHasSecretReadAccess(
+          secretApprovalRequest.policy.shouldCheckSecretPermission,
+          secretApprovalRequest.environment,
+          el.tags,
+          secretPath?.[0]?.path
+        ),
         ...decryptSecretWithBot(el, botKey),
         secret: el.secret
           ? {
@@ -369,9 +423,6 @@ export const secretApprovalRequestServiceFactory = ({
           : undefined
       }));
     }
-    const secretPath = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
-      secretApprovalRequest.folderId
-    ]);
 
     return { ...secretApprovalRequest, secretPath: secretPath?.[0]?.path || "/", commits: secrets };
   };
@@ -735,6 +786,7 @@ export const secretApprovalRequestServiceFactory = ({
           },
           tx
         );
+        await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
         return {
           secrets: { created: newSecrets, updated: updatedSecrets, deleted: deletedSecret },
           approval: updatedSecretApproval
@@ -924,6 +976,7 @@ export const secretApprovalRequestServiceFactory = ({
           },
           tx
         );
+        await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
         return {
           secrets: { created: newSecrets, updated: updatedSecrets, deleted: deletedSecret },
           approval: updatedSecretApproval
@@ -931,19 +984,44 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     await snapshotService.performSnapshot(folderId);
     const [folder] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
     if (!folder) {
       throw new NotFoundError({ message: `Folder with ID '${folderId}' not found in project with ID '${projectId}'` });
     }
+
+    const { secrets } = mergeStatus;
+
     await secretQueueService.syncSecrets({
       projectId,
       orgId: actorOrgId,
       secretPath: folder.path,
       environmentSlug: folder.environmentSlug,
       actorId,
-      actor
+      actor,
+      event: {
+        created: secrets.created.map((el) => ({
+          environment: folder.environmentSlug,
+          secretPath: folder.path,
+          secretId: el.id,
+          // @ts-expect-error - not present on V1 secrets
+          secretKey: el.key as string
+        })),
+        updated: secrets.updated.map((el) => ({
+          environment: folder.environmentSlug,
+          secretPath: folder.path,
+          secretId: el.id,
+          // @ts-expect-error - not present on V1 secrets
+          secretKey: el.key as string
+        })),
+        deleted: secrets.deleted.map((el) => ({
+          environment: folder.environmentSlug,
+          secretPath: folder.path,
+          secretId: el.id,
+          // @ts-expect-error - not present on V1 secrets
+          secretKey: el.key as string
+        }))
+      }
     });
 
     if (isSoftEnforcement) {
@@ -1406,6 +1484,7 @@ export const secretApprovalRequestServiceFactory = ({
 
     const commits: Omit<TSecretApprovalRequestsSecretsV2Insert, "requestId">[] = [];
     const commitTagIds: Record<string, string[]> = {};
+    const existingTagIds: Record<string, string[]> = {};
 
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -1471,6 +1550,11 @@ export const secretApprovalRequestServiceFactory = ({
           type: SecretType.Shared
         }))
       );
+
+      secretsToUpdateStoredInDB.forEach((el) => {
+        if (el.tags?.length) existingTagIds[el.key] = el.tags.map((i) => i.id);
+      });
+
       if (secretsToUpdateStoredInDB.length !== secretsToUpdate.length)
         throw new NotFoundError({
           message: `Secret does not exist: ${secretsToUpdateStoredInDB.map((el) => el.key).join(",")}`
@@ -1514,7 +1598,10 @@ export const secretApprovalRequestServiceFactory = ({
             secretMetadata
           }) => {
             const secretId = updatingSecretsGroupByKey[secretKey][0].id;
-            if (tagIds?.length) commitTagIds[newSecretName ?? secretKey] = tagIds;
+            if (tagIds?.length || existingTagIds[secretKey]?.length) {
+              commitTagIds[newSecretName ?? secretKey] = tagIds || existingTagIds[secretKey];
+            }
+
             return {
               ...latestSecretVersions[secretId],
               secretMetadata,

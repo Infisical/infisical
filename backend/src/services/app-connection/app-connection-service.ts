@@ -5,6 +5,8 @@ import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-c
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionAppConnectionActions,
@@ -45,6 +47,7 @@ import {
 import { ValidateAuth0ConnectionCredentialsSchema } from "./auth0";
 import { ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
+import { ValidateAzureADCSConnectionCredentialsSchema } from "./azure-adcs/azure-adcs-connection-schemas";
 import { ValidateAzureAppConfigurationConnectionCredentialsSchema } from "./azure-app-configuration";
 import { ValidateAzureClientSecretsConnectionCredentialsSchema } from "./azure-client-secrets";
 import { azureClientSecretsConnectionService } from "./azure-client-secrets/azure-client-secrets-service";
@@ -81,6 +84,8 @@ import { humanitecConnectionService } from "./humanitec/humanitec-connection-ser
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
+import { ValidateNetlifyConnectionCredentialsSchema } from "./netlify";
+import { netlifyConnectionService } from "./netlify/netlify-connection-service";
 import { ValidateOktaConnectionCredentialsSchema } from "./okta";
 import { oktaConnectionService } from "./okta/okta-connection-service";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
@@ -107,7 +112,9 @@ export type TAppConnectionServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -120,6 +127,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.AzureKeyVault]: ValidateAzureKeyVaultConnectionCredentialsSchema,
   [AppConnection.AzureAppConfiguration]: ValidateAzureAppConfigurationConnectionCredentialsSchema,
   [AppConnection.AzureDevOps]: ValidateAzureDevOpsConnectionCredentialsSchema,
+  [AppConnection.AzureADCS]: ValidateAzureADCSConnectionCredentialsSchema,
   [AppConnection.Databricks]: ValidateDatabricksConnectionCredentialsSchema,
   [AppConnection.Humanitec]: ValidateHumanitecConnectionCredentialsSchema,
   [AppConnection.TerraformCloud]: ValidateTerraformCloudConnectionCredentialsSchema,
@@ -148,6 +156,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Checkly]: ValidateChecklyConnectionCredentialsSchema,
   [AppConnection.Supabase]: ValidateSupabaseConnectionCredentialsSchema,
   [AppConnection.DigitalOcean]: ValidateDigitalOceanConnectionCredentialsSchema,
+  [AppConnection.Netlify]: ValidateNetlifyConnectionCredentialsSchema,
   [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema
 };
 
@@ -157,7 +166,9 @@ export const appConnectionServiceFactory = ({
   kmsService,
   licenseService,
   gatewayService,
-  gatewayDAL
+  gatewayV2Service,
+  gatewayDAL,
+  gatewayV2DAL
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnectionsByOrg = async (actor: OrgServiceActor, app?: AppConnection) => {
     const { permission } = await permissionService.getOrgPermission(
@@ -261,7 +272,8 @@ export const appConnectionServiceFactory = ({
       );
 
       const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
-      if (!gateway) {
+      const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
+      if (!gateway && !gatewayV2) {
         throw new NotFoundError({
           message: `Gateway with ID ${gatewayId} not found for org`
         });
@@ -283,7 +295,8 @@ export const appConnectionServiceFactory = ({
         orgId: actor.orgId,
         gatewayId
       } as TAppConnectionConfig,
-      gatewayService
+      gatewayService,
+      gatewayV2Service
     );
 
     try {
@@ -316,7 +329,8 @@ export const appConnectionServiceFactory = ({
             gatewayId
           } as TAppConnectionConfig,
           (platformCredentials) => createConnection(platformCredentials),
-          gatewayService
+          gatewayService,
+          gatewayV2Service
         );
       } else {
         connection = await createConnection(validatedCredentials);
@@ -372,7 +386,8 @@ export const appConnectionServiceFactory = ({
 
       if (gatewayId) {
         const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: actor.orgId });
-        if (!gateway) {
+        const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
+        if (!gateway && !gatewayV2) {
           throw new NotFoundError({
             message: `Gateway with ID ${gatewayId} not found for org`
           });
@@ -412,7 +427,8 @@ export const appConnectionServiceFactory = ({
           method,
           gatewayId
         } as TAppConnectionConfig,
-        gatewayService
+        gatewayService,
+        gatewayV2Service
       );
 
       if (!updatedCredentials)
@@ -453,7 +469,8 @@ export const appConnectionServiceFactory = ({
             gatewayId
           } as TAppConnectionConfig,
           (platformCredentials) => updateConnection(platformCredentials),
-          gatewayService
+          gatewayService,
+          gatewayV2Service
         );
       } else {
         updatedConnection = await updateConnection(updatedCredentials);
@@ -583,7 +600,7 @@ export const appConnectionServiceFactory = ({
     deleteAppConnection,
     connectAppConnectionById,
     listAvailableAppConnectionsForUser,
-    github: githubConnectionService(connectAppConnectionById),
+    github: githubConnectionService(connectAppConnectionById, gatewayService, gatewayV2Service),
     githubRadar: githubRadarConnectionService(connectAppConnectionById),
     gcp: gcpConnectionService(connectAppConnectionById),
     databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
@@ -595,7 +612,7 @@ export const appConnectionServiceFactory = ({
     azureClientSecrets: azureClientSecretsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     azureDevOps: azureDevOpsConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
-    hcvault: hcVaultConnectionService(connectAppConnectionById),
+    hcvault: hcVaultConnectionService(connectAppConnectionById, gatewayService),
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),
@@ -611,6 +628,7 @@ export const appConnectionServiceFactory = ({
     checkly: checklyConnectionService(connectAppConnectionById),
     supabase: supabaseConnectionService(connectAppConnectionById),
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
+    netlify: netlifyConnectionService(connectAppConnectionById),
     okta: oktaConnectionService(connectAppConnectionById)
   };
 };

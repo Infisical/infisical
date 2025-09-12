@@ -1,6 +1,7 @@
 import {
   faCheck,
   faExclamationTriangle,
+  faHourglass,
   faRotate,
   IconDefinition
 } from "@fortawesome/free-solid-svg-icons";
@@ -29,7 +30,11 @@ export const SecretSyncStatusBadge = ({ status }: Props) => {
       text = "Synced";
       icon = faCheck;
       break;
-    case SecretSyncStatus.Pending: // no need to differentiate from user perspective
+    case SecretSyncStatus.Pending:
+      variant = "primary";
+      text = "Queued";
+      icon = faHourglass;
+      break;
     case SecretSyncStatus.Running:
     default:
       variant = "primary";
@@ -42,11 +47,7 @@ export const SecretSyncStatusBadge = ({ status }: Props) => {
     <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap" variant={variant}>
       <FontAwesomeIcon
         icon={icon}
-        className={
-          [SecretSyncStatus.Pending, SecretSyncStatus.Running].includes(status)
-            ? "animate-spin"
-            : ""
-        }
+        className={[SecretSyncStatus.Running].includes(status) ? "animate-spin" : ""}
       />
       <span>{text}</span>
     </Badge>

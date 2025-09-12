@@ -11,6 +11,8 @@ export type TGitHubConnection = TRootAppConnection & { app: AppConnection.GitHub
         method: GitHubConnectionMethod.OAuth;
         credentials: {
           code: string;
+          instanceType?: "cloud" | "server";
+          host?: string;
         };
       }
     | {
@@ -18,6 +20,8 @@ export type TGitHubConnection = TRootAppConnection & { app: AppConnection.GitHub
         credentials: {
           code: string;
           installationId: string;
+          instanceType?: "cloud" | "server";
+          host?: string;
         };
       }
   );

@@ -13,6 +13,7 @@ export type DrawerContentProps = DialogPrimitive.DialogContentProps & {
   subTitle?: ReactNode;
   footerContent?: ReactNode;
   onClose?: () => void;
+  cardBodyClassName?: string;
 } & VariantProps<typeof drawerContentVariation>;
 
 const drawerContentVariation = cva(
@@ -32,7 +33,17 @@ const drawerContentVariation = cva(
 
 export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
   (
-    { children, title, subTitle, className, footerContent, direction = "right", onClose, ...props },
+    {
+      children,
+      title,
+      subTitle,
+      className,
+      footerContent,
+      direction = "right",
+      onClose,
+      cardBodyClassName,
+      ...props
+    },
     forwardedRef
   ) => (
     <DialogPrimitive.Portal>
@@ -47,11 +58,16 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
       >
         <Card isRounded={false} className="dark h-full w-full">
           {title && (
-            <CardTitle subTitle={subTitle} className="px-4">
+            <CardTitle subTitle={subTitle} className="mb-0 px-4">
               {title}
             </CardTitle>
           )}
-          <CardBody className="flex-grow overflow-y-auto overflow-x-hidden px-4 dark:[color-scheme:dark]">
+          <CardBody
+            className={twMerge(
+              "flex-grow overflow-y-auto overflow-x-hidden px-4 pt-4 dark:[color-scheme:dark]",
+              cardBodyClassName
+            )}
+          >
             {children}
           </CardBody>
           {footerContent && <CardFooter>{footerContent}</CardFooter>}{" "}

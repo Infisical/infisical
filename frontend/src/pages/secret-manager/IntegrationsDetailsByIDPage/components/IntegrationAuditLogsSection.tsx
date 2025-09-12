@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
 import { EmptyState } from "@app/components/v2";
-import { useSubscription } from "@app/context";
+import { useSubscription, useWorkspace } from "@app/context";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components/LogsSection";
@@ -15,6 +15,7 @@ type Props = {
 
 export const IntegrationAuditLogsSection = ({ integration }: Props) => {
   const { subscription } = useSubscription();
+  const { currentWorkspace } = useWorkspace();
 
   const auditLogsRetentionDays = subscription?.auditLogsRetentionDays ?? 30;
 
@@ -24,15 +25,18 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
       <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <p className="text-lg font-semibold text-gray-200">Integration Logs</p>
         <p className="text-xs text-gray-400">
-          Displaying audit logs from the last {auditLogsRetentionDays} days
+          Displaying audit logs from the last {Math.min(auditLogsRetentionDays, 60)} days
         </p>
       </div>
       <LogsSection
         refetchInterval={4000}
         showFilters={false}
+        project={currentWorkspace}
         presets={{
           eventMetadata: { integrationId: integration.id },
-          startDate: new Date(new Date().setDate(new Date().getDate() - auditLogsRetentionDays)),
+          startDate: new Date(
+            new Date().setDate(new Date().getDate() - Math.min(auditLogsRetentionDays, 60))
+          ),
           eventType: INTEGRATION_EVENTS
         }}
       />

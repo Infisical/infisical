@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, ProjectMembershipRole, SecretKeyEncoding, TGroups } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, ProjectVersion, SecretKeyEncoding, TGroups } from "@app/db/schemas";
 import { TListProjectGroupUsersDTO } from "@app/ee/services/group/group-types";
 import {
   constructPermissionErrorMessage,
@@ -188,7 +188,7 @@ export const groupProjectServiceFactory = ({
       // other groups that are in the project
       const groupMembers = await userGroupMembershipDAL.findGroupMembersNotInProject(group!.id, project.id, tx);
 
-      if (groupMembers.length) {
+      if (groupMembers.length && (project.version === ProjectVersion.V1 || project.version === ProjectVersion.V2)) {
         const ghostUser = await projectDAL.findProjectGhostUser(project.id, tx);
 
         if (!ghostUser) {
@@ -200,6 +200,12 @@ export const groupProjectServiceFactory = ({
         const ghostUserLatestKey = await projectKeyDAL.findLatestProjectKey(ghostUser.id, project.id, tx);
 
         if (!ghostUserLatestKey) {
+          throw new NotFoundError({
+            message: `Failed to find project owner's latest key in project with name ${project.name}`
+          });
+        }
+
+        if (!ghostUserLatestKey.sender.publicKey) {
           throw new NotFoundError({
             message: `Failed to find project owner's latest key in project with name ${project.name}`
           });
@@ -231,6 +237,12 @@ export const groupProjectServiceFactory = ({
         });
 
         const projectKeyData = groupMembers.map(({ user: { publicKey, id } }) => {
+          if (!publicKey) {
+            throw new NotFoundError({
+              message: `Failed to find user's public key in project with name ${project.name}`
+            });
+          }
+
           const { ciphertext: encryptedKey, nonce } = crypto
             .encryption()
             .asymmetric()

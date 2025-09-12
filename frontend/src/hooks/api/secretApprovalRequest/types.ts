@@ -53,6 +53,7 @@ export type TSecretApprovalRequest = {
     firstName: string;
     lastName: string;
     username: string;
+    isOrgMembershipActive: boolean;
   }[];
   workspace: string;
   environment: string;
@@ -62,6 +63,7 @@ export type TSecretApprovalRequest = {
   status: "open" | "close";
   policy: Omit<TSecretApprovalPolicy, "approvers" | "bypassers"> & {
     approvers: {
+      isOrgMembershipActive: boolean;
       userId: string;
       email: string;
       firstName: string;

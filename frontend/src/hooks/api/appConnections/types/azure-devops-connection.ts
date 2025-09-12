@@ -3,7 +3,8 @@ import { TRootAppConnection } from "@app/hooks/api/appConnections/types/root-con
 
 export enum AzureDevOpsConnectionMethod {
   OAuth = "oauth",
-  AccessToken = "access-token"
+  AccessToken = "access-token",
+  ClientSecret = "client-secret"
 }
 
 export type TAzureDevOpsConnection = TRootAppConnection & {
@@ -21,6 +22,15 @@ export type TAzureDevOpsConnection = TRootAppConnection & {
         method: AzureDevOpsConnectionMethod.AccessToken;
         credentials: {
           accessToken: string;
+          orgName: string;
+        };
+      }
+    | {
+        method: AzureDevOpsConnectionMethod.ClientSecret;
+        credentials: {
+          clientSecret: string;
+          tenantId: string;
+          clientId: string;
           orgName: string;
         };
       }

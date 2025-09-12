@@ -22,6 +22,8 @@ import { crypto } from "@app/lib/crypto";
 import { logger } from "@app/lib/logger";
 import { QueueWorkerProfile } from "@app/lib/types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { ExternalPlatforms } from "@app/services/external-migration/external-migration-types";
+import { TCreateUserNotificationDTO } from "@app/services/notification/notification-types";
 import {
   TFailedIntegrationSyncEmailsPayload,
   TIntegrationSyncPayload,
@@ -66,7 +68,8 @@ export enum QueueName {
   SecretScanningV2 = "secret-scanning-v2",
   TelemetryAggregatedEvents = "telemetry-aggregated-events",
   DailyReminders = "daily-reminders",
-  SecretReminderMigration = "secret-reminder-migration"
+  SecretReminderMigration = "secret-reminder-migration",
+  UserNotification = "user-notification"
 }
 
 export enum QueueJobs {
@@ -108,7 +111,8 @@ export enum QueueJobs {
   PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal",
   TelemetryAggregatedEvents = "telemetry-aggregated-events",
   DailyReminders = "daily-reminders",
-  SecretReminderMigration = "secret-reminder-migration"
+  SecretReminderMigration = "secret-reminder-migration",
+  UserNotification = "user-notification-job"
 }
 
 export type TQueueJobTypes = {
@@ -228,6 +232,7 @@ export type TQueueJobTypes = {
     name: QueueJobs.ImportSecretsFromExternalSource;
     payload: {
       actorEmail: string;
+      importType: ExternalPlatforms;
       data: {
         iv: string;
         tag: string;
@@ -310,6 +315,10 @@ export type TQueueJobTypes = {
   [QueueName.TelemetryAggregatedEvents]: {
     name: QueueJobs.TelemetryAggregatedEvents;
     payload: undefined;
+  };
+  [QueueName.UserNotification]: {
+    name: QueueJobs.UserNotification;
+    payload: { notifications: TCreateUserNotificationDTO[] };
   };
 };
 
@@ -413,6 +422,7 @@ export const queueServiceFactory = (
   redisCfg: TRedisConfigKeys,
   { dbConnectionUrl, dbRootCert }: { dbConnectionUrl: string; dbRootCert?: string }
 ): TQueueServiceFactory => {
+  const isClusterMode = Boolean(redisCfg?.REDIS_CLUSTER_HOSTS);
   const connection = buildRedisFromConfig(redisCfg);
   const queueContainer = {} as Record<
     QueueName,
@@ -455,6 +465,8 @@ export const queueServiceFactory = (
     }
 
     queueContainer[name] = new Queue(name as string, {
+      // ref: docs.bullmq.io/bull/patterns/redis-cluster
+      prefix: isClusterMode ? `{${name}}` : undefined,
       ...queueSettings,
       ...(crypto.isFipsModeEnabled()
         ? {
@@ -470,6 +482,7 @@ export const queueServiceFactory = (
     const appCfg = getConfig();
     if (appCfg.QUEUE_WORKERS_ENABLED && isQueueEnabled(name)) {
       workerContainer[name] = new Worker(name, jobFn, {
+        prefix: isClusterMode ? `{${name}}` : undefined,
         ...queueSettings,
         ...(crypto.isFipsModeEnabled()
           ? {

@@ -2,6 +2,8 @@ import { Client as ElasticSearchClient } from "@elastic/elasticsearch";
 import { customAlphabet } from "nanoid";
 import { z } from "zod";
 
+import { BadRequestError } from "@app/lib/errors";
+import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
@@ -26,14 +28,14 @@ const generateUsername = (usernameTemplate?: string | null, identity?: { name: s
 export const ElasticSearchProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretElasticSearchSchema.parseAsync(inputs);
-    const [hostIp] = await verifyHostInputValidity(providerInputs.host);
-    return { ...providerInputs, hostIp };
+    await verifyHostInputValidity(providerInputs.host);
+    return { ...providerInputs };
   };
 
-  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretElasticSearchSchema> & { hostIp: string }) => {
+  const $getClient = async (providerInputs: z.infer<typeof DynamicSecretElasticSearchSchema>) => {
     const connection = new ElasticSearchClient({
       node: {
-        url: new URL(`${providerInputs.hostIp}:${providerInputs.port}`),
+        url: new URL(`${providerInputs.host}:${providerInputs.port}`),
         ...(providerInputs.ca && {
           ssl: {
             rejectUnauthorized: false,
@@ -63,12 +65,24 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     const connection = await $getClient(providerInputs);
 
-    const infoResponse = await connection
-      .info()
-      .then(() => true)
-      .catch(() => false);
-
-    return infoResponse;
+    try {
+      const infoResponse = await connection.info().then(() => true);
+      return infoResponse;
+    } catch (err) {
+      const tokens = [];
+      if (providerInputs.auth.type === ElasticSearchAuthTypes.ApiKey) {
+        tokens.push(providerInputs.auth.apiKey, providerInputs.auth.apiKeyId);
+      } else {
+        tokens.push(providerInputs.auth.username, providerInputs.auth.password);
+      }
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens
+      });
+      throw new BadRequestError({
+        message: `Failed to connect with provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const create = async (data: { inputs: unknown; usernameTemplate?: string | null; identity?: { name: string } }) => {
@@ -79,27 +93,49 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
     const username = generateUsername(usernameTemplate, identity);
     const password = generatePassword();
 
-    await connection.security.putUser({
-      username,
-      password,
-      full_name: "Managed by Infisical.com",
-      roles: providerInputs.roles
-    });
+    try {
+      await connection.security.putUser({
+        username,
+        password,
+        full_name: "Managed by Infisical.com",
+        roles: providerInputs.roles
+      });
 
-    await connection.close();
-    return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
+      await connection.close();
+      return { entityId: username, data: { DB_USERNAME: username, DB_PASSWORD: password } };
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [username, password]
+      });
+      await connection.close();
+      throw new BadRequestError({
+        message: `Failed to create lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const revoke = async (inputs: unknown, entityId: string) => {
     const providerInputs = await validateProviderInputs(inputs);
     const connection = await $getClient(providerInputs);
 
-    await connection.security.deleteUser({
-      username: entityId
-    });
+    try {
+      await connection.security.deleteUser({
+        username: entityId
+      });
 
-    await connection.close();
-    return { entityId };
+      await connection.close();
+      return { entityId };
+    } catch (err) {
+      const sanitizedErrorMessage = sanitizeString({
+        unsanitizedString: (err as Error)?.message,
+        tokens: [entityId]
+      });
+      await connection.close();
+      throw new BadRequestError({
+        message: `Failed to revoke lease from provider: ${sanitizedErrorMessage}`
+      });
+    }
   };
 
   const renew = async (_inputs: unknown, entityId: string) => {

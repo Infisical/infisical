@@ -55,6 +55,8 @@ USER non-root-user
 ##
 FROM base AS backend-build
 
+ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
+
 WORKDIR /app
 
 # Install all required dependencies for build
@@ -84,6 +86,8 @@ RUN npm run build
 # Production stage
 FROM base AS backend-runner
 
+ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
+
 WORKDIR /app
 
 # Install all required dependencies for runtime
@@ -112,6 +116,11 @@ RUN mkdir frontend-build
 FROM base AS production
 
 RUN apt-get update && apt-get install -y \
+    build-essential \
+    autoconf \
+    automake \
+    libtool \
+    libssl-dev \
     ca-certificates \
     bash \
     curl \
@@ -171,6 +180,7 @@ ENV NODE_ENV production
 ENV STANDALONE_BUILD true
 ENV STANDALONE_MODE true
 ENV NODE_OPTIONS="--max-old-space-size=1024"
+ENV ChrystokiConfigurationPath=/usr/safenet/lunaclient/
 
 WORKDIR /backend
 

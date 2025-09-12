@@ -29,6 +29,7 @@ import {
   useWorkspace
 } from "@app/context";
 import {
+  ProjectPermissionCommitsActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
@@ -52,6 +53,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { SecretV3RawSanitized } from "@app/hooks/api/types";
+import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import { usePathAccessPolicies } from "@app/hooks/usePathAccessPolicies";
 import { useResizableColWidth } from "@app/hooks/useResizableColWidth";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
@@ -64,6 +66,8 @@ import { ActionBar } from "./components/ActionBar";
 import { CommitForm } from "./components/CommitForm";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { DynamicSecretListView } from "./components/DynamicSecretListView";
+import { EnvironmentTabs } from "./components/EnvironmentTabs";
+import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { FolderListView } from "./components/FolderListView";
 import { PitDrawer } from "./components/PitDrawer";
 import { SecretDropzone } from "./components/SecretDropzone";
@@ -103,9 +107,9 @@ const Page = () => {
   });
 
   const { permission } = useProjectPermission();
-  const { mutateAsync: createCommit } = useCreateCommit();
+  const { mutateAsync: createCommit, isPending: isCommitPending } = useCreateCommit();
 
-  const tableRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
 
   const [isVisible, setIsVisible] = useState(false);
   const { isBatchMode, pendingChanges } = useBatchMode();
@@ -210,6 +214,11 @@ const Page = () => {
     ProjectPermissionSub.SecretRollback
   );
 
+  const canReadCommits = permission.can(
+    ProjectPermissionCommitsActions.Read,
+    ProjectPermissionSub.Commits
+  );
+
   const defaultFilterState = {
     tags: {},
     searchFilter: (routerQueryParams.search as string) || "",
@@ -249,7 +258,8 @@ const Page = () => {
   const {
     data,
     isPending: isDetailsLoading,
-    isFetching: isDetailsFetching
+    isFetching: isDetailsFetching,
+    isFetched
   } = useGetProjectSecretsDetails({
     environment,
     projectId: workspaceId,
@@ -269,6 +279,18 @@ const Page = () => {
       canReadSecretRotations && (isResourceTypeFiltered ? filter.include.rotation : true),
     tags: filter.tags
   });
+
+  useEffect(() => {
+    // if switching tabs in a folder path that doesn't exist in a separate env we navigate to the root
+    if (!data && isFetched) {
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          secretPath: "/"
+        })
+      });
+    }
+  }, [data, isFetched]);
 
   const {
     imports,
@@ -328,12 +350,12 @@ const Page = () => {
       createNotification({
         text: isProtectedBranch
           ? "Requested changes have been sent for review"
-          : "Changes committed successfully",
+          : "Changes saved successfully",
         type: "success"
       });
     } catch (error) {
       createNotification({
-        text: "Failed to commit changes",
+        text: "Failed to save changes",
         type: "error"
       });
       console.error(error);
@@ -361,7 +383,7 @@ const Page = () => {
     directory: secretPath,
     workspaceId,
     environment,
-    isPaused: !canDoReadRollback
+    isPaused: !canReadCommits
   });
 
   const {
@@ -491,7 +513,8 @@ const Page = () => {
     minWidth: 100,
     maxWidth: tableRef.current
       ? tableRef.current.clientWidth - 148 // ensure value column can't collapse completely
-      : 800
+      : 800,
+    ref: tableRef
   });
 
   useEffect(() => {
@@ -710,12 +733,18 @@ const Page = () => {
 
   const mergedSecrets = getMergedSecretsWithPending();
   const mergedFolders = getMergedFoldersWithPending();
+
+  if (!(currentWorkspace?.version === ProjectVersion.V3))
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+        <SecretV2MigrationSection />
+      </div>
+    );
+
   return (
     <div className="container mx-auto flex max-w-7xl flex-col text-mineshaft-50 dark:[color-scheme:dark]">
       <PageHeader
-        title={
-          currentWorkspace.environments.find((env) => env.slug === environment)?.name ?? environment
-        }
+        title="Secrets Management"
         description={
           <p className="text-md text-bunker-300">
             Inject your secrets using
@@ -759,6 +788,8 @@ const Page = () => {
         }
       />
       <SecretV2MigrationSection />
+      <FolderBreadCrumbs secretPath={secretPath} />
+      <EnvironmentTabs secretPath={secretPath} />
       {!isRollbackMode ? (
         <>
           <ActionBar
@@ -938,6 +969,7 @@ const Page = () => {
                   workspaceId={workspaceId}
                   secretPath={secretPath}
                   onNavigateToFolder={handleResetFilter}
+                  canNavigate={isFetched}
                 />
               )}
               {canReadDynamicSecret && Boolean(dynamicSecrets?.length) && (
@@ -971,7 +1003,7 @@ const Page = () => {
                   environment={environment}
                   workspaceId={workspaceId}
                   secretPath={secretPath}
-                  isCommitting={false}
+                  isCommitting={isCommitPending}
                 />
               )}
               {noAccessSecretCount > 0 && <SecretNoAccessListView count={noAccessSecretCount} />}

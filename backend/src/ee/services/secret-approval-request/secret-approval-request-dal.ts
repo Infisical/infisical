@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import {
   SecretApprovalRequestsSchema,
   TableName,
+  TOrgMemberships,
   TSecretApprovalRequests,
   TSecretApprovalRequestsSecrets,
   TUserGroupMembership,
@@ -107,11 +108,32 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         `${TableName.SecretApprovalRequestReviewer}.reviewerUserId`,
         `secretApprovalReviewerUser.id`
       )
+
+      .leftJoin<TOrgMemberships>(
+        db(TableName.OrgMembership).as("approverOrgMembership"),
+        `${TableName.SecretApprovalPolicyApprover}.approverUserId`,
+        `approverOrgMembership.userId`
+      )
+
+      .leftJoin<TOrgMemberships>(
+        db(TableName.OrgMembership).as("approverGroupOrgMembership"),
+        `secretApprovalPolicyGroupApproverUser.id`,
+        `approverGroupOrgMembership.userId`
+      )
+
+      .leftJoin<TOrgMemberships>(
+        db(TableName.OrgMembership).as("reviewerOrgMembership"),
+        `${TableName.SecretApprovalRequestReviewer}.reviewerUserId`,
+        `reviewerOrgMembership.userId`
+      )
+
       .select(selectAllTableCols(TableName.SecretApprovalRequest))
       .select(
         tx.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
         tx.ref("userId").withSchema("approverUserGroupMembership").as("approverGroupUserId"),
         tx.ref("email").withSchema("secretApprovalPolicyApproverUser").as("approverEmail"),
+        tx.ref("isActive").withSchema("approverOrgMembership").as("approverIsOrgMembershipActive"),
+        tx.ref("isActive").withSchema("approverGroupOrgMembership").as("approverGroupIsOrgMembershipActive"),
         tx.ref("email").withSchema("secretApprovalPolicyGroupApproverUser").as("approverGroupEmail"),
         tx.ref("username").withSchema("secretApprovalPolicyApproverUser").as("approverUsername"),
         tx.ref("username").withSchema("secretApprovalPolicyGroupApproverUser").as("approverGroupUsername"),
@@ -148,6 +170,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("username").withSchema("secretApprovalReviewerUser").as("reviewerUsername"),
         tx.ref("firstName").withSchema("secretApprovalReviewerUser").as("reviewerFirstName"),
         tx.ref("lastName").withSchema("secretApprovalReviewerUser").as("reviewerLastName"),
+        tx.ref("isActive").withSchema("reviewerOrgMembership").as("reviewerIsOrgMembershipActive"),
         tx.ref("id").withSchema(TableName.SecretApprovalPolicy).as("policyId"),
         tx.ref("name").withSchema(TableName.SecretApprovalPolicy).as("policyName"),
         tx.ref("projectId").withSchema(TableName.Environment),
@@ -157,7 +180,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("enforcementLevel").withSchema(TableName.SecretApprovalPolicy).as("policyEnforcementLevel"),
         tx.ref("allowedSelfApprovals").withSchema(TableName.SecretApprovalPolicy).as("policyAllowedSelfApprovals"),
         tx.ref("approvals").withSchema(TableName.SecretApprovalPolicy).as("policyApprovals"),
-        tx.ref("deletedAt").withSchema(TableName.SecretApprovalPolicy).as("policyDeletedAt")
+        tx.ref("deletedAt").withSchema(TableName.SecretApprovalPolicy).as("policyDeletedAt"),
+        tx
+          .ref("shouldCheckSecretPermission")
+          .withSchema(TableName.SecretApprovalPolicy)
+          .as("policySecretReadAccessCompat")
       );
 
   const findById = async (id: string, tx?: Knex) => {
@@ -197,7 +224,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             enforcementLevel: el.policyEnforcementLevel,
             envId: el.policyEnvId,
             deletedAt: el.policyDeletedAt,
-            allowedSelfApprovals: el.policyAllowedSelfApprovals
+            allowedSelfApprovals: el.policyAllowedSelfApprovals,
+            shouldCheckSecretPermission: el.policySecretReadAccessCompat
           }
         }),
         childrenMapper: [
@@ -211,9 +239,21 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               reviewerLastName: lastName,
               reviewerUsername: username,
               reviewerFirstName: firstName,
-              reviewerComment: comment
+              reviewerComment: comment,
+              reviewerIsOrgMembershipActive: isOrgMembershipActive
             }) =>
-              userId ? { userId, status, email, firstName, lastName, username, comment: comment ?? "" } : undefined
+              userId
+                ? {
+                    userId,
+                    status,
+                    email,
+                    firstName,
+                    lastName,
+                    username,
+                    comment: comment ?? "",
+                    isOrgMembershipActive
+                  }
+                : undefined
           },
           {
             key: "approverUserId",
@@ -223,13 +263,15 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               approverEmail: email,
               approverUsername: username,
               approverLastName: lastName,
-              approverFirstName: firstName
+              approverFirstName: firstName,
+              approverIsOrgMembershipActive: isOrgMembershipActive
             }) => ({
               userId,
               email,
               firstName,
               lastName,
-              username
+              username,
+              isOrgMembershipActive
             })
           },
           {
@@ -240,13 +282,15 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               approverGroupEmail: email,
               approverGroupUsername: username,
               approverGroupLastName: lastName,
-              approverGroupFirstName: firstName
+              approverGroupFirstName: firstName,
+              approverGroupIsOrgMembershipActive: isOrgMembershipActive
             }) => ({
               userId,
               email,
               firstName,
               lastName,
-              username
+              username,
+              isOrgMembershipActive
             })
           },
           {
@@ -301,7 +345,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
 
   const findProjectRequestCount = async (projectId: string, userId: string, policyId?: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db)
+      const docs = await (tx || db.replicaNode())
         .with(
           "temp",
           (tx || db.replicaNode())(TableName.SecretApprovalRequest)
@@ -450,7 +494,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .distinctOn(`${TableName.SecretApprovalRequest}.id`)
         .as("inner");
 
-      const query = (tx || db)
+      const query = (tx || db.replicaNode())
         .select("*")
         .select(db.raw("count(*) OVER() as total_count"))
         .from(innerQuery)
@@ -653,14 +697,15 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
           db.ref("lastName").withSchema("committerUser").as("committerUserLastName")
         )
-        .distinctOn(`${TableName.SecretApprovalRequest}.id`)
         .as("inner");
 
-      const query = (tx || db)
-        .select("*")
+      const countQuery = (await (tx || db)
         .select(db.raw("count(*) OVER() as total_count"))
-        .from(innerQuery)
-        .orderBy("createdAt", "desc") as typeof innerQuery;
+        .from(innerQuery.clone().distinctOn(`${TableName.SecretApprovalRequest}.id`))) as Array<{
+        total_count: number;
+      }>;
+
+      const query = (tx || db).select("*").from(innerQuery).orderBy("createdAt", "desc") as typeof innerQuery;
 
       if (search) {
         void query.where((qb) => {
@@ -686,8 +731,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .where("w.rank", ">=", rankOffset)
         .andWhere("w.rank", "<", rankOffset + limit);
 
-      // @ts-expect-error knex does not infer
-      const totalCount = Number(docs[0]?.total_count || 0);
+      const totalCount = Number(countQuery[0]?.total_count || 0);
 
       const formattedDoc = sqlNestRelationships({
         data: docs,

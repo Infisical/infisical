@@ -22,7 +22,7 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
-import { getStringValueByDot } from "@app/lib/template/dot-access";
+import { getValueByDot } from "@app/lib/template/dot-access";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
@@ -43,7 +43,7 @@ import {
 
 type TIdentityOidcAuthServiceFactoryDep = {
   identityOidcAuthDAL: TIdentityOidcAuthDALFactory;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -146,7 +146,7 @@ export const identityOidcAuthServiceFactory = ({
     if (identityOidcAuth.boundClaims) {
       Object.keys(identityOidcAuth.boundClaims).forEach((claimKey) => {
         const claimValue = (identityOidcAuth.boundClaims as Record<string, string>)[claimKey];
-        const value = getStringValueByDot(tokenData, claimKey) || "";
+        const value = getValueByDot(tokenData, claimKey);
 
         if (!value) {
           throw new UnauthorizedError({
@@ -167,17 +167,25 @@ export const identityOidcAuthServiceFactory = ({
     if (identityOidcAuth.claimMetadataMapping) {
       Object.keys(identityOidcAuth.claimMetadataMapping).forEach((permissionKey) => {
         const claimKey = (identityOidcAuth.claimMetadataMapping as Record<string, string>)[permissionKey];
-        const value = getStringValueByDot(tokenData, claimKey) || "";
+        const value = getValueByDot(tokenData, claimKey);
         if (!value) {
           throw new UnauthorizedError({
             message: `Access denied: token has no ${claimKey} field`
           });
         }
-        filteredClaims[permissionKey] = value;
+        filteredClaims[permissionKey] = value.toString();
       });
     }
 
     const identityAccessToken = await identityOidcAuthDAL.transaction(async (tx) => {
+      await identityOrgMembershipDAL.updateById(
+        identityMembershipOrg.id,
+        {
+          lastLoginAuthMethod: IdentityAuthMethod.OIDC_AUTH,
+          lastLoginTime: new Date()
+        },
+        tx
+      );
       const newToken = await identityAccessTokenDAL.create(
         {
           identityId: identityOidcAuth.identityId,

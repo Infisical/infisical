@@ -6,84 +6,175 @@ description: "Learn how to stream Infisical Audit Logs to external logging provi
 <Info>
     Audit log streams is a paid feature.
 
-    If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical,
-    then you should contact team@infisical.com to purchase an enterprise license to use it.
+    If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical, then you should contact team@infisical.com to purchase an enterprise license to use it.
 </Info>
 
-Infisical Audit Log Streaming enables you to transmit your organization's Audit Logs to external logging providers for monitoring and analysis.
-
-The logs are formatted in JSON, requiring your logging provider to support JSON-based log parsing.
-
+Infisical Audit Log Streaming enables you to transmit your organization's audit logs to external logging providers for monitoring and analysis.
 
 ## Overview
 
 <Steps>
-    <Step title="Navigate to Organization Settings in your sidebar." />
-    <Step title="Select Audit Log Streams Tab.">
-				![stream create](/images/platform/audit-log-streams/stream-create.png)
-		</Step>
-		<Step title="Click on Create">
-		 ![stream create](/images/platform/audit-log-streams/stream-inputs.png)
+    <Step title="Create Stream">
+        1. Navigate to **Organization Settings**
+        2. Select the **Audit Log Streams** tab
+        3. Click **Add Log Stream**
 
-		 Provide the following values
-		 <ParamField path="Endpoint URL" type="string" required>
-				The HTTPS endpoint URL of the logging provider that collects the JSON stream.
-     </ParamField>
-		 <ParamField path="Headers" type="string" >
-				The HTTP headers for the logging provider for identification and authentication.
-     </ParamField>
+        ![stream create](/images/platform/audit-log-streams/stream-create.png)
+    </Step>
+		<Step title="Select Provider">
+		    If your log provider is included in this list, select it. Otherwise click on **Custom** to input your own Endpoint URL and headers.
+
+		    ![select provider](/images/platform/audit-log-streams/select-provider.png)
+		</Step>
+		<Step title="Input Credentials">
+		    Depending on your chosen provider, you'll be asked to input different credentials.
+
+				For **Custom**, you need to input an endpoint URL and headers.
+
+		    ![custom provider](/images/platform/audit-log-streams/custom-provider.png)
+
+				Once you're finished, click **Create Log Stream**.
+		</Step>
+		<Step title="Log Stream Created">
+		    Your audit logs are now ready to be streamed.
+
+        ![stream list](/images/platform/audit-log-streams/stream-list.png)
 		</Step>
 </Steps>
-
-![stream listt](/images/platform/audit-log-streams/stream-list.png)
-Your Audit Logs are now ready to be streamed.
 
 ## Example Providers
 
-### Better Stack
+<AccordionGroup>
+    <Accordion title="Better Stack">
+        You can stream to Better Stack using a **Custom** log stream.
 
-<Steps>
-    <Step title="Select Connect Source">
-				![better stack connect source](/images/platform/audit-log-streams/betterstack-create-source.png)
-		</Step>
-    <Step title="Provide a name and select platform"/>
-   <Step title="Provide Audit Log Stream inputs">
-				![better stack connect](/images/platform/audit-log-streams/betterstack-source-details.png)
+        <Steps>
+            <Step title="Connect Source">
+                On Better Stack, select **Connect Source** and click **Create source** after providing a name.
 
-				1. Copy the **endpoint** from Better Stack to the **Endpoint URL** field.
-				3. Create a new header with key **Authorization** and set the value as **Bearer \<source token from betterstack\>**.
-		</Step>
-</Steps>
+                ![better stack connect source](/images/platform/audit-log-streams/betterstack-create-source.png)
 
-### Datadog
+                Once your source is created, take note of the **endpoint** and **Source token** for the next step.
 
-<Steps>
-    <Step title="Navigate to API Keys section">
-				![api key create](/images/platform/audit-log-streams/datadog-api-sidebar.png)
-		</Step>
-    <Step title="Select New Key and provide a key name">
-				![api key form](/images/platform/audit-log-streams/data-create-api-key.png)
-				![api key form](/images/platform/audit-log-streams/data-dog-api-key.png)
-		</Step>
-   <Step title="Find your Datadog region specific logging endpoint.">
-				![datadog url](/images/platform/audit-log-streams/datadog-logging-endpoint.png)
+        				![better stack connect](/images/platform/audit-log-streams/betterstack-source-details.png)
+            </Step>
+            <Step title="Create Audit Log Stream on Infisical">
+        				On Infisical, create a new audit log stream and select the **Custom** option.
 
-				1. Navigate to the [Datadog Send Logs API documentation](https://docs.datadoghq.com/api/latest/logs/?code-lang=curl&site=us5#send-logs).
-				2. Pick your Datadog account region.
-				3. Obtain your Datadog logging endpoint URL.
-	 </Step>
-   <Step title="Provide audit log stream inputs">
-				![datadog api key details](/images/platform/audit-log-streams/datadog-source-details.png)
+        				![select custom](/images/platform/audit-log-streams/select-custom.png)
 
-				1. Copy the **logging endpoint** from Datadog to the **Endpoint URL** field.
-				2. Copy the **API Key** from previous step
-				3. Create a new header with key **DD-API-KEY** and set the value as **API Key**.
-		</Step>
-</Steps>
+                1. Fill in the endpoint URL with your Better Stack source endpoint
+                2. Create a new header with key `Authorization` and set the value as `Bearer <betterstack-src-token>`
 
-## Audit Log Stream Data
+                ![custom provider](/images/platform/audit-log-streams/custom-provider.png)
 
-Each log entry sent to the external logging provider will follow the same structure.
+                Once you're finished, click **Create Log Stream**.
+      		  </Step>
+        </Steps>
+    </Accordion>
+    <Accordion title="Cribl">
+        Stream Infisical audit logs to Cribl Stream for centralized processing and routing. Infisical supports Cribl as a provider for seamless integration.
+
+        <Steps>
+            <Step title="Create Infisical Data Source">
+                In Cribl Stream, navigate to **Worker Groups** and select your Worker Group. Take note of the **Ingress Address** for later steps.
+
+        				![cribl ingress address](/images/platform/audit-log-streams/cribl-ingress-address.png)
+
+                Within your Worker Group, navigate to **Data > Sources > HTTP** and click **Add Source**.
+
+        				![cribl add source](/images/platform/audit-log-streams/cribl-add-source.png)
+
+                Configure the **Input ID**, **Port**, and **Cribl HTTP event API** path (e.g., `/infisical`). Then, generate an **Auth Token**.
+
+                You can optionally configure TLS in the **TLS Settings** tab and add a pipeline in the **Pre-Processing** tab.
+
+                <Warning>
+                    Ensure that you're using a port that's open on your instance.
+                </Warning>
+
+        				![cribl general settings](/images/platform/audit-log-streams/cribl-general-settings.png)
+
+                Once you've configured the Data Source, click **Save** and deploy your changes.
+        		</Step>
+            <Step title="Create Audit Log Stream on Infisical">
+                On Infisical, create a new audit log stream and select the **Cribl** provider option.
+
+                Input the following credentials:
+                - **Cribl Stream URL**: Your HTTP source endpoint composed of `http://<ingress-address>:<port>/<http-event-api-path>/_bulk`
+                - **Cribl Stream Token**: The authentication token from Step 1
+
+                <Info>
+                    If you configured TLS for your Data Source, use the `https://` protocol.
+                </Info>
+
+        				![cribl details](/images/platform/audit-log-streams/cribl-details.png)
+
+                Once you're finished, click **Create Log Stream**.
+        		</Step>
+        </Steps>
+    </Accordion>
+    <Accordion title="Datadog">
+        You can stream to Datadog using the **Datadog** provider log stream.
+
+        <Steps>
+            <Step title="Navigate to API Keys section">
+        				![api key create](/images/platform/audit-log-streams/datadog-api-sidebar.png)
+        		</Step>
+            <Step title="Select New Key and provide a key name">
+        				![api key form](/images/platform/audit-log-streams/data-create-api-key.png)
+        				![api key form](/images/platform/audit-log-streams/data-dog-api-key.png)
+        		</Step>
+            <Step title="Create Audit Log Stream on Infisical">
+                On Infisical, create a new audit log stream and select the **Datadog** provider option.
+
+                Input your **Datadog Region** and the **Token** obtained from step 2.
+
+        				![datadog details](/images/platform/audit-log-streams/datadog-details.png)
+
+                Once you're finished, click **Create Log Stream**.
+        		</Step>
+        </Steps>
+    </Accordion>
+    <Accordion title="Splunk">
+        You can stream to Splunk using the **Splunk** provider log stream.
+
+        <Steps>
+            <Step title="Obtain Splunk Token">
+                Navigate to **Settings** > **Data Inputs**.
+
+        				![splunk data inputs](/images/platform/audit-log-streams/splunk-data-inputs.png)
+
+                Click on **HTTP Event Collector**.
+
+        				![splunk http collector](/images/platform/audit-log-streams/splunk-http-collector.png)
+
+                Click on **New Token** in the top left.
+
+        				![splunk new token](/images/platform/audit-log-streams/splunk-new-token.png)
+
+                Provide a name and click **Next**.
+
+        				![splunk name](/images/platform/audit-log-streams/splunk-name.png)
+
+                On the next page, click **Review** and then **Submit** at the top. On the final page you'll see your token.
+
+                Copy the **Token Value** and your Splunk hostname from the URL to be used for later.
+
+        				![splunk credentials](/images/platform/audit-log-streams/splunk-credentials.png)
+        		</Step>
+            <Step title="Create Audit Log Stream on Infisical">
+                On Infisical, create a new audit log stream and select the **Splunk** provider option.
+
+                Input your **Splunk Hostname** and the **Token** obtained from step 1.
+
+        				![splunk details](/images/platform/audit-log-streams/splunk-details.png)
+
+                Once you're finished, click **Create Log Stream**.
+            </Step>
+        </Steps>
+    </Accordion>
+</AccordionGroup>
 
 ### Example Log Entry
 
@@ -117,106 +208,109 @@ Each log entry sent to the external logging provider will follow the same struct
 ```
 
 ### Audit Logs Structure
+
+<Warning>
+    Streamed audit log structure **varies based on provider**, but they all share the audit log fields shown below.
+</Warning>
+
 <ParamField path="id" type="string" required>
-  The unique identifier for the log entry.
+    The unique identifier for the log entry.
 </ParamField>
 
 <ParamField path="actor" type="platform | user | service | identity | scimClient | unknownUser" required>
-  The entity responsible for performing or causing the event; this can be a user or service.
+    The entity responsible for performing or causing the event; this can be a user or service.
 </ParamField>
 
 <ParamField path="actorMetadata" type="object" required>
-  The metadata associated with the actor. This varies based on the actor type.
+    The metadata associated with the actor. This varies based on the actor type.
 
-  <Accordion title="User Metadata">
-    This metadata is present when the `actor` field is set to `user`.
+    <AccordionGroup>
+        <Accordion title="User Metadata">
+            This metadata is present when the `actor` field is set to `user`.
 
-    <ParamField path="userId" type="string" required>
-      The unique identifier for the actor.
-    </ParamField>
-    <ParamField path="email" type="string" required>
-      The email address of the actor.
-    </ParamField>
-     <ParamField path="username" type="string" required>
-      The username of the actor.
-    </ParamField>
-  </Accordion>
+            <ParamField path="userId" type="string" required>
+                The unique identifier for the actor.
+            </ParamField>
+            <ParamField path="email" type="string" required>
+                The email address of the actor.
+            </ParamField>
+            <ParamField path="username" type="string" required>
+                The username of the actor.
+            </ParamField>
+        </Accordion>
+        <Accordion title="Identity Metadata">
+            This metadata is present when the `actor` field is set to `identity`.
 
-  <Accordion title="Identity Metadata">
-    This metadata is present when the `actor` field is set to `identity`.
+            <ParamField path="identityId" type="string" required>
+                The unique identifier for the identity.
+            </ParamField>
+            <ParamField path="name" type="string" required>
+                The name of the identity.
+            </ParamField>
+        </Accordion>
+        <Accordion title="Service Token Metadata">
+            This metadata is present when the `actor` field is set to `service`.
 
-    <ParamField path="identityId" type="string" required>
-      The unique identifier for the identity.
-    </ParamField>
-    <ParamField path="name" type="string" required>
-      The name of the identity.
-    </ParamField>
-  </Accordion>
+            <ParamField path="serviceId" type="string" required>
+                The unique identifier for the service.
+            </ParamField>
+            <ParamField path="name" type="string" required>
+                The name of the service.
+            </ParamField>
+        </Accordion>
+    </AccordionGroup>
 
-  <Accordion title="Service Token Metadata">
-    This metadata is present when the `actor` field is set to `service`.
-
-    <ParamField path="serviceId" type="string" required>
-      The unique identifier for the service.
-    </ParamField>
-    <ParamField path="name" type="string" required>
-      The name of the service.
-    </ParamField>
-  </Accordion>
-
-
-  <Note>
-    If the `actor` field is set to `platform`, `scimClient`, or `unknownUser`, the `actorMetadata` field will be an empty object.
-  </Note>
-
+    <Note>
+        If the `actor` field is set to `platform`, `scimClient`, or `unknownUser`, the `actorMetadata` field will be an empty object.
+    </Note>
 </ParamField>
 
 <ParamField path="ipAddress" type="string" required>
-  The IP address of the actor.
+    The IP address of the actor.
 </ParamField>
 
 <ParamField path="eventType" type="string" required>
-  The type of event that occurred. Below you can see a list of possible event types. More event types will be added in the future as we expand our audit logs further.
+    The type of event that occurred. Below you can see a list of possible event types. More event types will be added in the future as we expand our audit logs further.
 
-  `get-secrets`, `delete-secrets`, `get-secret`, `create-secret`, `update-secret`, `delete-secret`, `get-workspace-key`, `authorize-integration`, `update-integration-auth`, `unauthorize-integration`, `create-integration`, `delete-integration`, `add-trusted-ip`, `update-trusted-ip`, `delete-trusted-ip`, `create-service-token`, `delete-service-token`, `create-identity`, `update-identity`, `delete-identity`, `login-identity-universal-auth`, `add-identity-universal-auth`, `update-identity-universal-auth`, `get-identity-universal-auth`, `create-identity-universal-auth-client-secret`, `revoke-identity-universal-auth-client-secret`, `get-identity-universal-auth-client-secret`, `create-environment`, `update-environment`, `delete-environment`, `add-workspace-member`, `remove-workspace-member`, `create-folder`, `update-folder`, `delete-folder`, `create-webhook`, `update-webhook-status`, `delete-webhook`, `webhook-triggered`, `get-secret-imports`, `create-secret-import`, `update-secret-import`, `delete-secret-import`, `update-user-workspace-role`, `update-user-workspace-denied-permissions`, `create-certificate-authority`, `get-certificate-authority`, `update-certificate-authority`, `delete-certificate-authority`, `get-certificate-authority-csr`, `get-certificate-authority-cert`, `sign-intermediate`, `import-certificate-authority-cert`, `get-certificate-authority-crl`, `issue-cert`, `get-cert`, `delete-cert`, `revoke-cert`, `get-cert-body`, `create-pki-alert`, `get-pki-alert`, `update-pki-alert`, `delete-pki-alert`, `create-pki-collection`, `get-pki-collection`, `update-pki-collection`, `delete-pki-collection`, `get-pki-collection-items`, `add-pki-collection-item`, `delete-pki-collection-item`, `org-admin-accessed-project`, `create-certificate-template`, `update-certificate-template`, `delete-certificate-template`, `get-certificate-template`, `create-certificate-template-est-config`, `update-certificate-template-est-config`, `get-certificate-template-est-config`, `update-project-slack-config`, `get-project-slack-config`, `integration-synced`, `create-shared-secret`, `delete-shared-secret`, `read-shared-secret`.
+    `get-secrets`, `delete-secrets`, `get-secret`, `create-secret`, `update-secret`, `delete-secret`, `get-workspace-key`, `authorize-integration`, `update-integration-auth`, `unauthorize-integration`, `create-integration`, `delete-integration`, `add-trusted-ip`, `update-trusted-ip`, `delete-trusted-ip`, `create-service-token`, `delete-service-token`, `create-identity`, `update-identity`, `delete-identity`, `login-identity-universal-auth`, `add-identity-universal-auth`, `update-identity-universal-auth`, `get-identity-universal-auth`, `create-identity-universal-auth-client-secret`, `revoke-identity-universal-auth-client-secret`, `get-identity-universal-auth-client-secret`, `create-environment`, `update-environment`, `delete-environment`, `add-workspace-member`, `remove-workspace-member`, `create-folder`, `update-folder`, `delete-folder`, `create-webhook`, `update-webhook-status`, `delete-webhook`, `webhook-triggered`, `get-secret-imports`, `create-secret-import`, `update-secret-import`, `delete-secret-import`, `update-user-workspace-role`, `update-user-workspace-denied-permissions`, `create-certificate-authority`, `get-certificate-authority`, `update-certificate-authority`, `delete-certificate-authority`, `get-certificate-authority-csr`, `get-certificate-authority-cert`, `sign-intermediate`, `import-certificate-authority-cert`, `get-certificate-authority-crl`, `issue-cert`, `get-cert`, `delete-cert`, `revoke-cert`, `get-cert-body`, `create-pki-alert`, `get-pki-alert`, `update-pki-alert`, `delete-pki-alert`, `create-pki-collection`, `get-pki-collection`, `update-pki-collection`, `delete-pki-collection`, `get-pki-collection-items`, `add-pki-collection-item`, `delete-pki-collection-item`, `org-admin-accessed-project`, `create-certificate-template`, `update-certificate-template`, `delete-certificate-template`, `get-certificate-template`, `create-certificate-template-est-config`, `update-certificate-template-est-config`, `get-certificate-template-est-config`, `update-project-slack-config`, `get-project-slack-config`, `integration-synced`, `create-shared-secret`, `delete-shared-secret`, `read-shared-secret`.
 </ParamField>
 
 <ParamField path="eventMetadata" type="object" required>
-  The metadata associated with the event. This varies based on the event type.
+    The metadata associated with the event. This varies based on the event type.
 </ParamField>
 
 <ParamField path="userAgent" type="string">
-  The user agent of the actor, if applicable.
+    The user agent of the actor, if applicable.
 </ParamField>
 
 <ParamField path="userAgentType" type="web | cli | k8-operator | terraform | other | InfisicalPythonSDK | InfisicalNodeSDK">
-  The type of user agent.
+    The type of user agent.
 </ParamField>
 
 <ParamField path="expiresAt" type="string" required>
-  The expiration date of the log entry. When this date is reached, the log entry will be deleted from Infisical.
+    The expiration date of the log entry. When this date is reached, the log entry will be deleted from Infisical.
 </ParamField>
 
 <ParamField path="createdAt" type="string" required>
-  The creation date of the log entry.
+    The creation date of the log entry.
 </ParamField>
 
 <ParamField path="updatedAt" type="string" required>
-  The last update date of the log entry. This is unlikely to be out of sync with the `createdAt` field, as we do not update log entries after they've been created.
+    The last update date of the log entry. This is unlikely to be out of sync with the `createdAt` field, as we do not update log entries after they've been created.
 </ParamField>
 
 <ParamField path="orgId" type="string" required>
-  The unique identifier for the organization where the event occurred.
+    The unique identifier for the organization where the event occurred.
 </ParamField>
 
 <ParamField path="projectId" type="string">
-  The unique identifier for the project where the event occurred.
+    The unique identifier for the project where the event occurred.
 
-  The `projectId` field will only be present if the event occurred at the project level, not the organization level.
+    The `projectId` field will only be present if the event occurred at the project level, not the organization level.
 </ParamField>
 
 <ParamField path="projectName" type="string">
-  The name of the project where the event occurred.
+    The name of the project where the event occurred.
 
-  The `projectName` field will only be present if the event occurred at the project level, not the organization level.
+    The `projectName` field will only be present if the event occurred at the project level, not the organization level.
 </ParamField>

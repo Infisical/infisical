@@ -12,7 +12,7 @@ import type { FastifyRateLimitOptions } from "@fastify/rate-limit";
 import ratelimiter from "@fastify/rate-limit";
 import { fastifyRequestContext } from "@fastify/request-context";
 import fastify from "fastify";
-import { Redis } from "ioredis";
+import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
 
 import { HsmModule } from "@app/ee/services/hsm/hsm-types";
@@ -43,7 +43,7 @@ type TMain = {
   queue: TQueueServiceFactory;
   keyStore: TKeyStoreFactory;
   hsmModule: HsmModule;
-  redis: Redis;
+  redis: Redis | Cluster;
   envConfig: TEnvConfig;
   superAdminDAL: TSuperAdminDALFactory;
 };
@@ -76,6 +76,7 @@ export const main = async ({
   server.setValidatorCompiler(validatorCompiler);
   server.setSerializerCompiler(serializerCompiler);
 
+  // @ts-expect-error akhilmhdh: even on setting it fastify as Redis | Cluster it's throwing error
   server.decorate("redis", redis);
   server.addContentTypeParser("application/scim+json", { parseAs: "string" }, (_, body, done) => {
     try {

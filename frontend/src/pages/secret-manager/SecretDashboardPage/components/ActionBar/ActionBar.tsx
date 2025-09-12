@@ -14,9 +14,9 @@ import {
   faFingerprint,
   faFolder,
   faFolderPlus,
+  faInfoCircle,
   faKey,
   faLock,
-  faMinusSquare,
   faPaste,
   faPlus,
   faRotate,
@@ -33,6 +33,7 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretRotationV2Modal } from "@app/components/secret-rotations-v2";
 import {
+  Badge,
   Button,
   DeleteActionModal,
   DropdownMenu,
@@ -98,7 +99,7 @@ import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
 import { MoveSecretsModal } from "./MoveSecretsModal";
 
-type TParsedEnv = Record<string, { value: string; comments: string[]; secretPath?: string }>;
+type TParsedEnv = { value: string; comments: string[]; secretPath?: string; secretKey: string }[];
 type TParsedFolderEnv = Record<
   string,
   Record<string, { value: string; comments: string[]; secretPath?: string }>
@@ -406,8 +407,8 @@ export const ActionBar = ({
     }
 
     try {
-      const allUpdateSecrets: TParsedEnv = {};
-      const allCreateSecrets: TParsedEnv = {};
+      const allUpdateSecrets: TParsedEnv = [];
+      const allCreateSecrets: TParsedEnv = [];
 
       await Promise.all(
         Object.entries(envByPath).map(async ([folderPath, secrets]) => {
@@ -438,7 +439,7 @@ export const ActionBar = ({
             (_, i) => secretFolderKeys.slice(i * batchSize, (i + 1) * batchSize)
           );
 
-          const existingSecretLookup: Record<string, boolean> = {};
+          const existingSecretLookup = new Set<string>();
 
           const processBatches = async () => {
             await secretBatches.reduce(async (previous, batch) => {
@@ -452,7 +453,7 @@ export const ActionBar = ({
               });
 
               batchSecrets.forEach((secret) => {
-                existingSecretLookup[secret.secretKey] = true;
+                existingSecretLookup.add(`${normalizedPath}-${secret.secretKey}`);
               });
             }, Promise.resolve());
           };
@@ -466,18 +467,18 @@ export const ActionBar = ({
             // Store the path with the secret for later batch processing
             const secretWithPath = {
               ...secretData,
-              secretPath: normalizedPath
+              secretPath: normalizedPath,
+              secretKey
             };
 
-            if (existingSecretLookup[secretKey]) {
-              allUpdateSecrets[secretKey] = secretWithPath;
+            if (existingSecretLookup.has(`${normalizedPath}-${secretKey}`)) {
+              allUpdateSecrets.push(secretWithPath);
             } else {
-              allCreateSecrets[secretKey] = secretWithPath;
+              allCreateSecrets.push(secretWithPath);
             }
           });
         })
       );
-
       handlePopUpOpen("confirmUpload", {
         update: allUpdateSecrets,
         create: allCreateSecrets
@@ -520,7 +521,7 @@ export const ActionBar = ({
       const allPaths = new Set<string>();
 
       // Add paths from create secrets
-      Object.values(create || {}).forEach((secData) => {
+      create.forEach((secData) => {
         if (secData.secretPath && secData.secretPath !== secretPath) {
           allPaths.add(secData.secretPath);
         }
@@ -576,8 +577,8 @@ export const ActionBar = ({
         return Promise.resolve();
       }, Promise.resolve());
 
-      if (Object.keys(create || {}).length > 0) {
-        Object.entries(create).forEach(([secretKey, secData]) => {
+      if (create.length > 0) {
+        create.forEach((secData) => {
           // Use the stored secretPath or fall back to the current secretPath
           const path = secData.secretPath || secretPath;
 
@@ -589,7 +590,7 @@ export const ActionBar = ({
             type: SecretType.Shared,
             secretComment: secData.comments.join("\n"),
             secretValue: secData.value,
-            secretKey
+            secretKey: secData.secretKey
           });
         });
 
@@ -605,8 +606,8 @@ export const ActionBar = ({
         );
       }
 
-      if (Object.keys(update || {}).length > 0) {
-        Object.entries(update).forEach(([secretKey, secData]) => {
+      if (update.length > 0) {
+        update.forEach((secData) => {
           // Use the stored secretPath or fall back to the current secretPath
           const path = secData.secretPath || secretPath;
 
@@ -618,7 +619,7 @@ export const ActionBar = ({
             type: SecretType.Shared,
             secretComment: secData.comments.join("\n"),
             secretValue: secData.value,
-            secretKey
+            secretKey: secData.secretKey
           });
         });
 
@@ -666,6 +667,8 @@ export const ActionBar = ({
   const isTableFiltered =
     Object.values(filter.tags).some(Boolean) || Object.values(filter.include).some(Boolean);
 
+  const filteredTags = Object.values(filter?.tags ?? {}).filter(Boolean).length;
+
   return (
     <>
       <div className="mt-4 flex items-center space-x-2">
@@ -698,7 +701,7 @@ export const ActionBar = ({
                 Filters
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="p-0">
+            <DropdownMenuContent align="end" sideOffset={2} className="p-0">
               <DropdownMenuGroup>Filter By</DropdownMenuGroup>
               <DropdownMenuItem
                 onClick={(e) => {
@@ -777,11 +780,19 @@ export const ActionBar = ({
                     iconPos="right"
                     icon={<FontAwesomeIcon icon={faChevronRight} size="sm" />}
                   >
-                    Tags
+                    <div className="flex w-full justify-between">
+                      <span>Tags</span>
+                      {Boolean(filteredTags) && <Badge>{filteredTags} Applied</Badge>}
+                    </div>
                   </DropdownSubMenuTrigger>
                   <DropdownSubMenuContent className="thin-scrollbar max-h-[20rem] overflow-y-auto rounded-l-none">
                     <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                      Apply Tags to Filter Secrets
+                      <div className="flex w-full items-center justify-between">
+                        <span>Filter by Secret Tags</span>
+                        <Tooltip content="Matches secrets with one or more of the applied tags">
+                          <FontAwesomeIcon icon={faInfoCircle} />
+                        </Tooltip>
+                      </div>
                     </DropdownMenuLabel>
                     {tags.map(({ id, slug, color }) => (
                       <DropdownMenuItem
@@ -1061,14 +1072,14 @@ export const ActionBar = ({
         )}
       >
         <div className="mt-3.5 flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
-          <Tooltip content="Clear">
-            <IconButton variant="plain" ariaLabel="clear-selection" onClick={resetSelectedSecret}>
-              <FontAwesomeIcon icon={faMinusSquare} size="lg" />
-            </IconButton>
-          </Tooltip>
-          <div className="ml-2 flex-grow px-2 text-sm">
-            {Object.keys(selectedSecrets).length} Selected
-          </div>
+          <div className="mr-2 text-sm">{Object.keys(selectedSecrets).length} Selected</div>
+          <button
+            type="button"
+            className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
+            onClick={resetSelectedSecret}
+          >
+            Unselect All
+          </button>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Delete}
             a={subject(ProjectPermissionSub.Secrets, {
@@ -1230,8 +1241,8 @@ export const ActionBar = ({
             <div className="flex flex-col text-gray-300">
               <div>Your project already contains the following {updateSecretCount} secrets:</div>
               <div className="mt-2 text-sm text-gray-400">
-                {Object.keys((popUp?.confirmUpload?.data as TSecOverwriteOpt)?.update || {})
-                  ?.map((key) => key)
+                {(popUp?.confirmUpload?.data as TSecOverwriteOpt)?.update
+                  ?.map((sec) => sec.secretKey)
                   .join(", ")}
               </div>
               <div className="mt-6">

@@ -43,11 +43,14 @@ export const useUpdateDynamicSecret = () => {
       );
       return data.dynamicSecret;
     },
-    onSuccess: (_, { path, environmentSlug, projectSlug }) => {
+    onSuccess: (_, { path, environmentSlug, projectSlug, name }) => {
       // TODO: optimize but currently don't pass projectId
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });
       queryClient.invalidateQueries({
         queryKey: dynamicSecretKeys.list({ path, projectSlug, environmentSlug })
+      });
+      queryClient.invalidateQueries({
+        queryKey: dynamicSecretKeys.details({ path, projectSlug, environmentSlug, name })
       });
     }
   });
