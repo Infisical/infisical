@@ -66,7 +66,7 @@ export const useCreateSecretV3 = ({
         queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId: workspaceId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
@@ -131,7 +131,7 @@ export const useUpdateSecretV3 = ({
         queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId: workspaceId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
@@ -183,7 +183,7 @@ export const useDeleteSecretV3 = ({
         queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId: workspaceId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
@@ -225,7 +225,7 @@ export const useCreateSecretBatch = ({
         queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId: workspaceId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
@@ -267,7 +267,7 @@ export const useUpdateSecretBatch = ({
         queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId: workspaceId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
@@ -311,7 +311,7 @@ export const useDeleteSecretBatch = ({
         queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId: workspaceId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
@@ -391,7 +391,7 @@ export const useMoveSecrets = ({
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.count({
-          workspaceId: projectId,
+          projectId: projectId,
           environment: sourceEnvironment,
           directory: sourceSecretPath
         })
@@ -515,7 +515,7 @@ export const useCreateCommit = () => {
         queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId: workspaceId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })

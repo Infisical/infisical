@@ -3,47 +3,44 @@ import { TListProjectIdentitiesDTO, TSearchProjectsDTO } from "@app/hooks/api/wo
 import type { CaStatus } from "../ca";
 import { WorkflowIntegrationPlatform } from "../workflowIntegrations/types";
 
-export const workspaceKeys = {
-  getWorkspaceById: (workspaceId: string) => ["workspaces", { workspaceId }] as const,
-  getWorkspaceSecrets: (workspaceId: string) => [{ workspaceId }, "workspace-secrets"] as const,
-  getWorkspaceIndexStatus: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-index-status"] as const,
-  getProjectUpgradeStatus: (workspaceId: string) => [{ workspaceId }, "workspace-upgrade-status"],
-  getWorkspaceMemberships: (orgId: string) => [{ orgId }, "workspace-memberships"],
-  getWorkspaceAuthorization: (workspaceId: string) => [{ workspaceId }, "workspace-authorizations"],
-  getWorkspaceIntegrations: (workspaceId: string) => [{ workspaceId }, "workspace-integrations"],
-  getAllUserWorkspace: () => ["workspaces"] as const,
-  getWorkspaceAuditLogs: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-audit-logs"] as const,
+export const projectKeys = {
+  getWorkspaceById: (projectId: string) => ["projects", { projectId }] as const,
+  getWorkspaceSecrets: (projectId: string) => [{ projectId }, "project-secrets"] as const,
+  getWorkspaceIndexStatus: (projectId: string) => [{ projectId }, "project-index-status"] as const,
+  getProjectUpgradeStatus: (projectId: string) => [{ projectId }, "project-upgrade-status"],
+  getWorkspaceMemberships: (orgId: string) => [{ orgId }, "project-memberships"],
+  getWorkspaceAuthorization: (projectId: string) => [{ projectId }, "project-authorizations"],
+  getWorkspaceIntegrations: (projectId: string) => [{ projectId }, "project-integrations"],
+  getAllUserWorkspace: () => ["projects"] as const,
+  getWorkspaceAuditLogs: (projectId: string) => [{ projectId }, "project-audit-logs"] as const,
   getWorkspaceUsers: (
-    workspaceId: string,
+    projectId: string,
     includeGroupMembers: boolean = false,
     roles: string[] = []
-  ) => [{ workspaceId, includeGroupMembers, roles }, "workspace-users"] as const,
-  getWorkspaceUserDetails: (workspaceId: string, membershipId: string) =>
-    [{ workspaceId, membershipId }, "workspace-user-details"] as const,
-  getWorkspaceIdentityMemberships: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-identity-memberships"] as const,
-  getWorkspaceIdentityMembershipDetails: (workspaceId: string, identityId: string) =>
-    [{ workspaceId, identityId }, "workspace-identity-membership-details"] as const,
+  ) => [{ projectId, includeGroupMembers, roles }, "project-users"] as const,
+  getWorkspaceUserDetails: (projectId: string, membershipId: string) =>
+    [{ projectId, membershipId }, "project-user-details"] as const,
+  getWorkspaceIdentityMemberships: (projectId: string) =>
+    [{ projectId }, "project-identity-memberships"] as const,
+  getWorkspaceIdentityMembershipDetails: (projectId: string, identityId: string) =>
+    [{ projectId, identityId }, "project-identity-membership-details"] as const,
   // allows invalidation using above key without knowing params
   getWorkspaceIdentityMembershipsWithParams: ({
-    workspaceId,
+    projectId,
     ...params
   }: TListProjectIdentitiesDTO) =>
-    [...workspaceKeys.getWorkspaceIdentityMemberships(workspaceId), params] as const,
+    [...projectKeys.getWorkspaceIdentityMemberships(projectId), params] as const,
   searchWorkspace: (dto: TSearchProjectsDTO) => ["search-projects", dto] as const,
-  getWorkspaceGroupMemberships: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-groups"] as const,
-  getWorkspaceGroupMembershipDetails: (workspaceId: string, groupId: string) =>
-    [{ workspaceId, groupId }, "workspace-group-membership-details"] as const,
+  getWorkspaceGroupMemberships: (projectId: string) => [{ projectId }, "project-groups"] as const,
+  getWorkspaceGroupMembershipDetails: (projectId: string, groupId: string) =>
+    [{ projectId, groupId }, "project-group-membership-details"] as const,
   getWorkspaceCas: ({ projectSlug }: { projectSlug: string }) =>
-    [{ projectSlug }, "workspace-cas"] as const,
+    [{ projectSlug }, "project-cas"] as const,
   specificWorkspaceCas: ({ projectSlug, status }: { projectSlug: string; status?: CaStatus }) =>
-    [...workspaceKeys.getWorkspaceCas({ projectSlug }), { status }] as const,
-  allWorkspaceCertificates: () => ["workspace-certificates"] as const,
+    [...projectKeys.getWorkspaceCas({ projectSlug }), { status }] as const,
+  allWorkspaceCertificates: () => ["project-certificates"] as const,
   forWorkspaceCertificates: (slug: string) =>
-    [...workspaceKeys.allWorkspaceCertificates(), slug] as const,
+    [...projectKeys.allWorkspaceCertificates(), slug] as const,
   specificWorkspaceCertificates: ({
     slug,
     offset,
@@ -52,25 +49,24 @@ export const workspaceKeys = {
     slug: string;
     offset: number;
     limit: number;
-  }) => [...workspaceKeys.forWorkspaceCertificates(slug), { offset, limit }] as const,
-  getWorkspacePkiAlerts: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-pki-alerts"] as const,
+  }) => [...projectKeys.forWorkspaceCertificates(slug), { offset, limit }] as const,
+  getWorkspacePkiAlerts: (projectId: string) => [{ projectId }, "project-pki-alerts"] as const,
   getWorkspacePkiSubscribers: (projectId: string) =>
-    [{ projectId }, "workspace-pki-subscribers"] as const,
-  getWorkspacePkiCollections: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-pki-collections"] as const,
-  getWorkspaceCertificateTemplates: (workspaceId: string) =>
-    [{ workspaceId }, "workspace-certificate-templates"] as const,
+    [{ projectId }, "project-pki-subscribers"] as const,
+  getWorkspacePkiCollections: (projectId: string) =>
+    [{ projectId }, "project-pki-collections"] as const,
+  getWorkspaceCertificateTemplates: (projectId: string) =>
+    [{ projectId }, "project-certificate-templates"] as const,
   getWorkspaceWorkflowIntegrationConfig: (
-    workspaceId: string,
+    projectId: string,
     integration: WorkflowIntegrationPlatform
-  ) => [{ workspaceId, integration }, "workspace-workflow-integration-config"] as const,
-  getWorkspaceSshCas: (projectId: string) => [{ projectId }, "workspace-ssh-cas"] as const,
+  ) => [{ projectId, integration }, "project-workflow-integration-config"] as const,
+  getWorkspaceSshCas: (projectId: string) => [{ projectId }, "project-ssh-cas"] as const,
   allWorkspaceSshCertificates: (projectId: string) =>
-    [{ projectId }, "workspace-ssh-certificates"] as const,
-  getWorkspaceSshHosts: (projectId: string) => [{ projectId }, "workspace-ssh-hosts"] as const,
+    [{ projectId }, "project-ssh-certificates"] as const,
+  getWorkspaceSshHosts: (projectId: string) => [{ projectId }, "project-ssh-hosts"] as const,
   getWorkspaceSshHostGroups: (projectId: string) =>
-    [{ projectId }, "workspace-ssh-host-groups"] as const,
+    [{ projectId }, "project-ssh-host-groups"] as const,
   specificWorkspaceSshCertificates: ({
     offset,
     limit,
@@ -79,8 +75,8 @@ export const workspaceKeys = {
     offset: number;
     limit: number;
     projectId: string;
-  }) => [...workspaceKeys.allWorkspaceSshCertificates(projectId), { offset, limit }] as const,
+  }) => [...projectKeys.allWorkspaceSshCertificates(projectId), { offset, limit }] as const,
   getWorkspaceSshCertificateTemplates: (projectId: string) =>
-    [{ projectId }, "workspace-ssh-certificate-templates"] as const,
+    [{ projectId }, "project-ssh-certificate-templates"] as const,
   getProjectSshConfig: (projectId: string) => [{ projectId }, "project-ssh-config"] as const
 };

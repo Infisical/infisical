@@ -414,7 +414,7 @@ export const SecretListView = ({
           queryKey: secretSnapshotKeys.count({ workspaceId, environment, directory: secretPath })
         });
         queryClient.invalidateQueries({
-          queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
+          queryKey: commitKeys.count({ projectId: workspaceId, environment, directory: secretPath })
         });
         queryClient.invalidateQueries({
           queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
@@ -492,7 +492,7 @@ export const SecretListView = ({
         queryKey: secretSnapshotKeys.count({ workspaceId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId: workspaceId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })

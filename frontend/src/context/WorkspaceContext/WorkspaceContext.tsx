@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 
-import { workspaceKeys } from "@app/hooks/api";
+import { projectKeys } from "@app/hooks/api";
 import { fetchWorkspaceById } from "@app/hooks/api/workspace/queries";
 
 export const useWorkspace = () => {
@@ -13,7 +13,7 @@ export const useWorkspace = () => {
   }
 
   const { data: currentWorkspace } = useSuspenseQuery({
-    queryKey: workspaceKeys.getWorkspaceById(params.projectId),
+    queryKey: projectKeys.getWorkspaceById(params.projectId),
     queryFn: () => fetchWorkspaceById(params.projectId as string),
     staleTime: Infinity
   });

@@ -13,6 +13,9 @@ import { registerCaRouter } from "./certificate-authority-router";
 import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
 import { registerCertRouter } from "./certificate-router";
 import { registerCertificateTemplateRouter } from "./certificate-template-router";
+import { registerDepreciatedProjectEnvRouter } from "./depreciated-project-env-router";
+import { registerDepreciatedProjectMembershipRouter } from "./depreciated-project-membership-router";
+import { registerDepreciatedSecretTagRouter } from "./depreciated-secret-tag-router";
 import { registerEventRouter } from "./event-router";
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
@@ -43,10 +46,10 @@ import { registerPkiSubscriberRouter } from "./pki-subscriber-router";
 import { registerProjectEnvRouter } from "./project-env-router";
 import { registerProjectKeyRouter } from "./project-key-router";
 import { registerProjectMembershipRouter } from "./project-membership-router";
+import { registerDepreciatedProjectRouter } from "./depreciated-project-router";
 import { registerProjectRouter } from "./project-router";
 import { SECRET_REMINDER_REGISTER_ROUTER_MAP } from "./reminder-routers";
 import { registerSecretFolderRouter } from "./secret-folder-router";
-import { registerSecretImportRouter } from "./secret-import-router";
 import { registerSecretRequestsRouter } from "./secret-requests-router";
 import { registerSecretSharingRouter } from "./secret-sharing-router";
 import { registerSecretTagRouter } from "./secret-tag-router";
@@ -57,6 +60,7 @@ import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
 import { registerWebhookRouter } from "./webhook-router";
 import { registerWorkflowIntegrationRouter } from "./workflow-integration-router";
+import { registerSecretImportRouter } from "./secret-import-router";
 
 export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerSsoRouter, { prefix: "/sso" });
@@ -101,13 +105,24 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (projectRouter) => {
-      await projectRouter.register(registerProjectRouter);
-      await projectRouter.register(registerProjectEnvRouter);
+      await projectRouter.register(registerDepreciatedProjectRouter);
+      await projectRouter.register(registerDepreciatedProjectEnvRouter);
+      // depreciated completed in use
       await projectRouter.register(registerProjectKeyRouter);
-      await projectRouter.register(registerProjectMembershipRouter);
-      await projectRouter.register(registerSecretTagRouter);
+      await projectRouter.register(registerDepreciatedProjectMembershipRouter);
+      await projectRouter.register(registerDepreciatedSecretTagRouter);
     },
     { prefix: "/workspace" }
+  );
+
+  await server.register(
+    async (projectRouter) => {
+      await projectRouter.register(registerProjectRouter);
+      await projectRouter.register(registerProjectMembershipRouter);
+      await projectRouter.register(registerProjectEnvRouter);
+      await projectRouter.register(registerSecretTagRouter);
+    },
+    { prefix: "/projects" }
   );
 
   await server.register(

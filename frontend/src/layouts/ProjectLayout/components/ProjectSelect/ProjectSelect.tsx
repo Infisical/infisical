@@ -36,7 +36,7 @@ import { usePopUp } from "@app/hooks";
 import { useGetUserWorkspaces } from "@app/hooks/api";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { Workspace } from "@app/hooks/api/workspace/types";
+import { Project } from "@app/hooks/api/workspace/types";
 
 export const ProjectSelect = () => {
   const [searchProject, setSearchProject] = useState("");
@@ -88,7 +88,7 @@ export const ProjectSelect = () => {
 
   const projects = useMemo(() => {
     const projectOptions = workspaces
-      .map((w): Workspace & { isFavorite: boolean } => ({
+      .map((w): Project & { isFavorite: boolean } => ({
         ...w,
         isFavorite: Boolean(projectFavorites?.includes(w.id))
       }))

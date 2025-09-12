@@ -26,7 +26,7 @@ import {
   ProjectWorkflowIntegrationConfig,
   WorkflowIntegrationPlatform
 } from "../workflowIntegrations/types";
-import { workspaceKeys } from "./query-keys";
+import { projectKeys } from "./query-keys";
 import {
   CreateEnvironmentDTO,
   CreateWorkspaceDTO,
@@ -47,21 +47,19 @@ import {
   UpdateEnvironmentDTO,
   UpdatePitVersionLimitDTO,
   UpdateProjectDTO,
-  Workspace,
+  Project,
   WorkspaceEnv
 } from "./types";
 
-export const fetchWorkspaceById = async (workspaceId: string) => {
-  const { data } = await apiRequest.get<{ workspace: Workspace }>(
-    `/api/v1/workspace/${workspaceId}`
-  );
+export const fetchWorkspaceById = async (projectId: string) => {
+  const { data } = await apiRequest.get<{ project: Project }>(`/api/v1/projects/${projectId}`);
 
-  return data.workspace;
+  return data.project;
 };
 
-const fetchWorkspaceIndexStatus = async (workspaceId: string) => {
+const fetchWorkspaceIndexStatus = async (projectId: string) => {
   const { data } = await apiRequest.get<boolean>(
-    `/api/v3/workspaces/${workspaceId}/secrets/blind-index-status`
+    `/api/v3/projects/${projectId}/secrets/blind-index-status`
   );
 
   return data;
@@ -69,18 +67,16 @@ const fetchWorkspaceIndexStatus = async (workspaceId: string) => {
 
 const fetchProjectUpgradeStatus = async (projectId: string) => {
   const { data } = await apiRequest.get<{ status: string }>(
-    `/api/v2/workspace/${projectId}/upgrade/status`
+    `/api/v1/projects/${projectId}/upgrade/status`
   );
 
   return data;
 };
 
-export const fetchWorkspaceSecrets = async (workspaceId: string) => {
+export const fetchWorkspaceSecrets = async (projectId: string) => {
   const {
     data: { secrets }
-  } = await apiRequest.get<{ secrets: EncryptedSecret[] }>(
-    `/api/v3/workspaces/${workspaceId}/secrets`
-  );
+  } = await apiRequest.get<{ secrets: EncryptedSecret[] }>(`/api/v3/projects/${projectId}/secrets`);
 
   return secrets;
 };
@@ -90,13 +86,13 @@ export const useUpgradeProject = () => {
 
   return useMutation<object, object, { projectId: string; privateKey: string }>({
     mutationFn: ({ projectId, privateKey }) => {
-      return apiRequest.post(`/api/v2/workspace/${projectId}/upgrade`, {
+      return apiRequest.post(`/api/v1/projects/${projectId}/upgrade`, {
         userPrivateKey: privateKey
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace()
+        queryKey: projectKeys.getAllUserWorkspace()
       });
     }
   });
@@ -108,7 +104,7 @@ export const useGetUpgradeProjectStatus = ({
   refetchInterval
 }: TGetUpgradeProjectStatusDTO) => {
   return useQuery({
-    queryKey: workspaceKeys.getProjectUpgradeStatus(projectId),
+    queryKey: projectKeys.getProjectUpgradeStatus(projectId),
     queryFn: () => fetchProjectUpgradeStatus(projectId),
     enabled,
     refetchInterval
@@ -116,39 +112,39 @@ export const useGetUpgradeProjectStatus = ({
 };
 
 const fetchUserWorkspaces = async (includeRoles?: boolean, type?: ProjectType | "all") => {
-  const { data } = await apiRequest.get<{ workspaces: Workspace[] }>("/api/v1/workspace", {
+  const { data } = await apiRequest.get<{ projects: Project[] }>("/api/v1/projects", {
     params: {
       includeRoles,
       type
     }
   });
-  return data.workspaces;
+  return data.projects;
 };
 
-export const useGetWorkspaceIndexStatus = (workspaceId: string) => {
+export const useGetWorkspaceIndexStatus = (projectId: string) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceIndexStatus(workspaceId),
-    queryFn: () => fetchWorkspaceIndexStatus(workspaceId),
+    queryKey: projectKeys.getWorkspaceIndexStatus(projectId),
+    queryFn: () => fetchWorkspaceIndexStatus(projectId),
     enabled: true
   });
 };
 
-export const useGetWorkspaceSecrets = (workspaceId: string) => {
+export const useGetWorkspaceSecrets = (projectId: string) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceSecrets(workspaceId),
-    queryFn: () => fetchWorkspaceSecrets(workspaceId),
+    queryKey: projectKeys.getWorkspaceSecrets(projectId),
+    queryFn: () => fetchWorkspaceSecrets(projectId),
     enabled: true
   });
 };
 
 export const useGetWorkspaceById = (
-  workspaceId: string,
+  projectId: string,
   dto?: { refetchInterval?: number | false }
 ) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceById(workspaceId),
-    queryFn: () => fetchWorkspaceById(workspaceId),
-    enabled: Boolean(workspaceId),
+    queryKey: projectKeys.getWorkspaceById(projectId),
+    queryFn: () => fetchWorkspaceById(projectId),
+    enabled: Boolean(projectId),
     refetchInterval: dto?.refetchInterval
   });
 };
@@ -161,19 +157,19 @@ export const useGetUserWorkspaces = ({
   options?: { enabled?: boolean };
 } = {}) =>
   useQuery({
-    queryKey: workspaceKeys.getAllUserWorkspace(),
+    queryKey: projectKeys.getAllUserWorkspace(),
     queryFn: () => fetchUserWorkspaces(includeRoles),
     ...options
   });
 
 export const useSearchProjects = ({ options, ...dto }: TSearchProjectsDTO) =>
   useQuery({
-    queryKey: workspaceKeys.searchWorkspace(dto),
+    queryKey: projectKeys.searchWorkspace(dto),
     queryFn: async () => {
       const { data } = await apiRequest.post<{
-        projects: (Workspace & { isMember: boolean })[];
+        projects: (Project & { isMember: boolean })[];
         totalCount: number;
-      }>("/api/v1/workspace/search", dto);
+      }>("/api/v1/projects/search", dto);
 
       return data;
     },
@@ -181,17 +177,17 @@ export const useSearchProjects = ({ options, ...dto }: TSearchProjectsDTO) =>
   });
 
 const fetchUserWorkspaceMemberships = async (orgId: string) => {
-  const { data } = await apiRequest.get<Record<string, Workspace[]>>(
-    `/api/v1/organization/${orgId}/workspace-memberships`
+  const { data } = await apiRequest.get<Record<string, Project[]>>(
+    `/api/v1/organization/${orgId}/project-memberships`
   );
 
   return data;
 };
 
-// to get all userids in an org with the workspace they are part of
+// to get all userids in an org with the project they are part of
 export const useGetUserWorkspaceMemberships = (orgId: string) =>
   useQuery({
-    queryKey: workspaceKeys.getWorkspaceMemberships(orgId),
+    queryKey: projectKeys.getWorkspaceMemberships(orgId),
     queryFn: () => fetchUserWorkspaceMemberships(orgId),
     enabled: Boolean(orgId)
   });
@@ -200,62 +196,62 @@ export const useNameWorkspaceSecrets = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, NameWorkspaceSecretsDTO>({
-    mutationFn: async ({ workspaceId, secretsToUpdate }) =>
-      apiRequest.post(`/api/v3/workspaces/${workspaceId}/secrets/names`, {
+    mutationFn: async ({ projectId, secretsToUpdate }) =>
+      apiRequest.post(`/api/v3/projects/${projectId}/secrets/names`, {
         secretsToUpdate
       }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceIndexStatus(variables.workspaceId)
+        queryKey: projectKeys.getWorkspaceIndexStatus(variables.projectId)
       });
     }
   });
 };
 
-const fetchWorkspaceAuthorization = async (workspaceId: string) => {
+const fetchWorkspaceAuthorization = async (projectId: string) => {
   const { data } = await apiRequest.get<{ authorizations: IntegrationAuth[] }>(
-    `/api/v1/workspace/${workspaceId}/authorizations`
+    `/api/v1/projects/${projectId}/authorizations`
   );
 
   return data.authorizations;
 };
 
 export const useGetWorkspaceAuthorizations = <TData = IntegrationAuth[],>(
-  workspaceId: string,
+  projectId: string,
   select?: (data: IntegrationAuth[]) => TData
 ) =>
   useQuery({
-    queryKey: workspaceKeys.getWorkspaceAuthorization(workspaceId),
-    queryFn: () => fetchWorkspaceAuthorization(workspaceId),
-    enabled: Boolean(workspaceId),
+    queryKey: projectKeys.getWorkspaceAuthorization(projectId),
+    queryFn: () => fetchWorkspaceAuthorization(projectId),
+    enabled: Boolean(projectId),
     select
   });
 
-export const fetchWorkspaceIntegrations = async (workspaceId: string) => {
+export const fetchWorkspaceIntegrations = async (projectId: string) => {
   const { data } = await apiRequest.get<{ integrations: TIntegration[] }>(
-    `/api/v1/workspace/${workspaceId}/integrations`
+    `/api/v1/projects/${projectId}/integrations`
   );
   return data.integrations;
 };
 
-export const useGetWorkspaceIntegrations = (workspaceId: string) =>
+export const useGetWorkspaceIntegrations = (projectId: string) =>
   useQuery({
-    queryKey: workspaceKeys.getWorkspaceIntegrations(workspaceId),
-    queryFn: () => fetchWorkspaceIntegrations(workspaceId),
-    enabled: Boolean(workspaceId),
+    queryKey: projectKeys.getWorkspaceIntegrations(projectId),
+    queryFn: () => fetchWorkspaceIntegrations(projectId),
+    enabled: Boolean(projectId),
     refetchInterval: 4000
   });
 
 export const createWorkspace = (
   dto: CreateWorkspaceDTO
-): Promise<{ data: { project: Workspace } }> => {
-  return apiRequest.post("/api/v2/workspace", dto);
+): Promise<{ data: { project: Project } }> => {
+  return apiRequest.post("/api/v1/projects", dto);
 };
 
 export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ data: { project: Workspace } }, object, CreateWorkspaceDTO>({
+  return useMutation<{ data: { project: Project } }, object, CreateWorkspaceDTO>({
     mutationFn: async ({ projectName, projectDescription, kmsKeyId, template, type }) =>
       createWorkspace({
         projectName,
@@ -266,7 +262,7 @@ export const useCreateWorkspace = () => {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace()
+        queryKey: projectKeys.getAllUserWorkspace()
       });
     }
   });
@@ -275,7 +271,7 @@ export const useCreateWorkspace = () => {
 export const useUpdateProject = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Workspace, object, UpdateProjectDTO>({
+  return useMutation<Project, object, UpdateProjectDTO>({
     mutationFn: async ({
       projectID,
       newProjectName,
@@ -285,8 +281,8 @@ export const useUpdateProject = () => {
       showSnapshotsLegacy,
       secretDetectionIgnoreValues
     }) => {
-      const { data } = await apiRequest.patch<{ workspace: Workspace }>(
-        `/api/v1/workspace/${projectID}`,
+      const { data } = await apiRequest.patch<{ project: Project }>(
+        `/api/v1/projects/${projectID}`,
         {
           name: newProjectName,
           description: newProjectDescription,
@@ -296,10 +292,10 @@ export const useUpdateProject = () => {
           secretDetectionIgnoreValues
         }
       );
-      return data.workspace;
+      return data.project;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserWorkspace() });
     }
   });
 };
@@ -307,18 +303,18 @@ export const useUpdateProject = () => {
 export const useToggleAutoCapitalization = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Workspace, object, ToggleAutoCapitalizationDTO>({
-    mutationFn: async ({ workspaceID, state }) => {
-      const { data } = await apiRequest.post<{ workspace: Workspace }>(
-        `/api/v1/workspace/${workspaceID}/auto-capitalization`,
+  return useMutation<Project, object, ToggleAutoCapitalizationDTO>({
+    mutationFn: async ({ projectID, state }) => {
+      const { data } = await apiRequest.post<{ project: Project }>(
+        `/api/v1/projects/${projectID}/auto-capitalization`,
         {
           autoCapitalization: state
         }
       );
-      return data.workspace;
+      return data.project;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserWorkspace() });
     }
   });
 };
@@ -326,18 +322,18 @@ export const useToggleAutoCapitalization = () => {
 export const useToggleDeleteProjectProtection = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Workspace, object, ToggleDeleteProjectProtectionDTO>({
-    mutationFn: async ({ workspaceID, state }) => {
-      const { data } = await apiRequest.post<{ workspace: Workspace }>(
-        `/api/v1/workspace/${workspaceID}/delete-protection`,
+  return useMutation<Project, object, ToggleDeleteProjectProtectionDTO>({
+    mutationFn: async ({ projectID, state }) => {
+      const { data } = await apiRequest.post<{ project: Project }>(
+        `/api/v1/projects/${projectID}/delete-protection`,
         {
           hasDeleteProtection: state
         }
       );
-      return data.workspace;
+      return data.project;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserWorkspace() });
     }
   });
 };
@@ -345,15 +341,15 @@ export const useToggleDeleteProjectProtection = () => {
 export const useUpdateWorkspaceVersionLimit = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Workspace, object, UpdatePitVersionLimitDTO>({
+  return useMutation<Project, object, UpdatePitVersionLimitDTO>({
     mutationFn: async ({ projectSlug, pitVersionLimit }) => {
-      const { data } = await apiRequest.put(`/api/v1/workspace/${projectSlug}/version-limit`, {
+      const { data } = await apiRequest.put(`/api/v1/projects/${projectSlug}/version-limit`, {
         pitVersionLimit
       });
-      return data.workspace;
+      return data.project;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserWorkspace() });
     }
   });
 };
@@ -361,18 +357,18 @@ export const useUpdateWorkspaceVersionLimit = () => {
 export const useUpdateWorkspaceAuditLogsRetention = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Workspace, object, UpdateAuditLogsRetentionDTO>({
+  return useMutation<Project, object, UpdateAuditLogsRetentionDTO>({
     mutationFn: async ({ projectSlug, auditLogsRetentionDays }) => {
       const { data } = await apiRequest.put(
-        `/api/v1/workspace/${projectSlug}/audit-logs-retention`,
+        `/api/v1/projects/${projectSlug}/audit-logs-retention`,
         {
           auditLogsRetentionDays
         }
       );
-      return data.workspace;
+      return data.project;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserWorkspace() });
     }
   });
 };
@@ -380,13 +376,13 @@ export const useUpdateWorkspaceAuditLogsRetention = () => {
 export const useDeleteWorkspace = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Workspace, object, DeleteWorkspaceDTO>({
-    mutationFn: async ({ workspaceID }) => {
-      const { data } = await apiRequest.delete(`/api/v1/workspace/${workspaceID}`);
-      return data.workspace;
+  return useMutation<Project, object, DeleteWorkspaceDTO>({
+    mutationFn: async ({ projectID }) => {
+      const { data } = await apiRequest.delete(`/api/v1/projects/${projectID}`);
+      return data.project;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserWorkspace() });
       queryClient.invalidateQueries({
         queryKey: ["org-admin-projects"]
       });
@@ -398,9 +394,9 @@ export const useCreateWsEnvironment = () => {
   const queryClient = useQueryClient();
 
   return useMutation<WorkspaceEnv, WorkspaceEnv, CreateEnvironmentDTO>({
-    mutationFn: async ({ workspaceId, name, slug }) => {
+    mutationFn: async ({ projectId, name, slug }) => {
       const { data } = await apiRequest.post<{ environment: WorkspaceEnv }>(
-        `/api/v1/workspace/${workspaceId}/environments`,
+        `/api/v1/projects/${projectId}/environments`,
         {
           name,
           slug
@@ -410,7 +406,7 @@ export const useCreateWsEnvironment = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace()
+        queryKey: projectKeys.getAllUserWorkspace()
       });
     }
   });
@@ -420,8 +416,8 @@ export const useUpdateWsEnvironment = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, UpdateEnvironmentDTO>({
-    mutationFn: ({ workspaceId, id, name, slug, position }) => {
-      return apiRequest.patch(`/api/v1/workspace/${workspaceId}/environments/${id}`, {
+    mutationFn: ({ projectId, id, name, slug, position }) => {
+      return apiRequest.patch(`/api/v1/projects/${projectId}/environments/${id}`, {
         name,
         slug,
         position
@@ -429,7 +425,7 @@ export const useUpdateWsEnvironment = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace()
+        queryKey: projectKeys.getAllUserWorkspace()
       });
     }
   });
@@ -439,57 +435,54 @@ export const useDeleteWsEnvironment = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, DeleteEnvironmentDTO>({
-    mutationFn: ({ id, workspaceId }) => {
-      return apiRequest.delete(`/api/v1/workspace/${workspaceId}/environments/${id}`);
+    mutationFn: ({ id, projectId }) => {
+      return apiRequest.delete(`/api/v1/projects/${projectId}/environments/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace()
+        queryKey: projectKeys.getAllUserWorkspace()
       });
     }
   });
 };
 
 export const useGetWorkspaceUsers = (
-  workspaceId: string,
+  projectId: string,
   includeGroupMembers?: boolean,
   roles?: string[]
 ) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceUsers(workspaceId, includeGroupMembers, roles),
+    queryKey: projectKeys.getWorkspaceUsers(projectId, includeGroupMembers, roles),
     queryFn: async () => {
       const {
         data: { users }
-      } = await apiRequest.get<{ users: TWorkspaceUser[] }>(
-        `/api/v1/workspace/${workspaceId}/users`,
-        {
-          params: {
-            includeGroupMembers,
-            roles:
-              roles && roles.length > 0
-                ? roles.map((role) => encodeURIComponent(role)).join(",")
-                : undefined
-          }
+      } = await apiRequest.get<{ users: TWorkspaceUser[] }>(`/api/v1/projects/${projectId}/users`, {
+        params: {
+          includeGroupMembers,
+          roles:
+            roles && roles.length > 0
+              ? roles.map((role) => encodeURIComponent(role)).join(",")
+              : undefined
         }
-      );
+      });
       return users;
     },
     enabled: true
   });
 };
 
-export const useGetWorkspaceUserDetails = (workspaceId: string, membershipId: string) => {
+export const useGetWorkspaceUserDetails = (projectId: string, membershipId: string) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceUserDetails(workspaceId, membershipId),
+    queryKey: projectKeys.getWorkspaceUserDetails(projectId, membershipId),
     queryFn: async () => {
       const {
         data: { membership }
       } = await apiRequest.get<{ membership: TWorkspaceUser }>(
-        `/api/v1/workspace/${workspaceId}/memberships/${membershipId}`
+        `/api/v1/projects/${projectId}/memberships/${membershipId}`
       );
       return membership;
     },
-    enabled: Boolean(workspaceId) && Boolean(membershipId)
+    enabled: Boolean(projectId) && Boolean(membershipId)
   });
 };
 
@@ -499,21 +492,21 @@ export const useDeleteUserFromWorkspace = () => {
   return useMutation({
     mutationFn: async ({
       usernames,
-      workspaceId
+      projectId
     }: {
-      workspaceId: string;
+      projectId: string;
       usernames: string[];
       orgId: string;
     }) => {
       const {
         data: { deletedMembership }
-      } = await apiRequest.delete(`/api/v2/workspace/${workspaceId}/memberships`, {
+      } = await apiRequest.delete(`/api/v1/projects/${projectId}/memberships`, {
         data: { usernames }
       });
       return deletedMembership;
     },
-    onSuccess: (_, { orgId, workspaceId }) => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceUsers(workspaceId) });
+    onSuccess: (_, { orgId, projectId }) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.getWorkspaceUsers(projectId) });
       queryClient.invalidateQueries({
         queryKey: userKeys.allOrgMembershipProjectMemberships(orgId)
       });
@@ -524,21 +517,21 @@ export const useDeleteUserFromWorkspace = () => {
 export const useUpdateUserWorkspaceRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ membershipId, roles, workspaceId }: TUpdateWorkspaceUserRoleDTO) => {
+    mutationFn: async ({ membershipId, roles, projectId }: TUpdateWorkspaceUserRoleDTO) => {
       const {
         data: { membership }
       } = await apiRequest.patch<{ membership: { projectId: string } }>(
-        `/api/v1/workspace/${workspaceId}/memberships/${membershipId}`,
+        `/api/v1/projects/${projectId}/memberships/${membershipId}`,
         {
           roles
         }
       );
       return membership;
     },
-    onSuccess: (_, { workspaceId, membershipId }) => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceUsers(workspaceId) });
+    onSuccess: (_, { projectId, membershipId }) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.getWorkspaceUsers(projectId) });
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceUserDetails(workspaceId, membershipId)
+        queryKey: projectKeys.getWorkspaceUserDetails(projectId, membershipId)
       });
     }
   });
@@ -549,17 +542,17 @@ export const useAddIdentityToWorkspace = () => {
   return useMutation({
     mutationFn: async ({
       identityId,
-      workspaceId,
+      projectId,
       role
     }: {
       identityId: string;
-      workspaceId: string;
+      projectId: string;
       role?: string;
     }) => {
       const {
         data: { identityMembership }
       } = await apiRequest.post(
-        `/api/v2/workspace/${workspaceId}/identity-memberships/${identityId}`,
+        `/api/v1/projects/${projectId}/identity-memberships/${identityId}`,
         {
           role
         }
@@ -567,9 +560,9 @@ export const useAddIdentityToWorkspace = () => {
 
       return identityMembership;
     },
-    onSuccess: (_, { identityId, workspaceId }) => {
+    onSuccess: (_, { identityId, projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceIdentityMemberships(workspaceId)
+        queryKey: projectKeys.getWorkspaceIdentityMemberships(projectId)
       });
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
@@ -581,11 +574,11 @@ export const useAddIdentityToWorkspace = () => {
 export const useUpdateIdentityWorkspaceRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ identityId, workspaceId, roles }: TUpdateWorkspaceIdentityRoleDTO) => {
+    mutationFn: async ({ identityId, projectId, roles }: TUpdateWorkspaceIdentityRoleDTO) => {
       const {
         data: { identityMembership }
       } = await apiRequest.patch(
-        `/api/v2/workspace/${workspaceId}/identity-memberships/${identityId}`,
+        `/api/v1/projects/${projectId}/identity-memberships/${identityId}`,
         {
           roles
         }
@@ -593,15 +586,15 @@ export const useUpdateIdentityWorkspaceRole = () => {
 
       return identityMembership;
     },
-    onSuccess: (_, { identityId, workspaceId }) => {
+    onSuccess: (_, { identityId, projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceIdentityMemberships(workspaceId)
+        queryKey: projectKeys.getWorkspaceIdentityMemberships(projectId)
       });
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
       });
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceIdentityMembershipDetails(workspaceId, identityId)
+        queryKey: projectKeys.getWorkspaceIdentityMembershipDetails(projectId, identityId)
       });
     }
   });
@@ -610,23 +603,17 @@ export const useUpdateIdentityWorkspaceRole = () => {
 export const useDeleteIdentityFromWorkspace = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      identityId,
-      workspaceId
-    }: {
-      identityId: string;
-      workspaceId: string;
-    }) => {
+    mutationFn: async ({ identityId, projectId }: { identityId: string; projectId: string }) => {
       const {
         data: { identityMembership }
       } = await apiRequest.delete(
-        `/api/v2/workspace/${workspaceId}/identity-memberships/${identityId}`
+        `/api/v1/projects/${projectId}/identity-memberships/${identityId}`
       );
       return identityMembership;
     },
-    onSuccess: (_, { identityId, workspaceId }) => {
+    onSuccess: (_, { identityId, projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceIdentityMemberships(workspaceId)
+        queryKey: projectKeys.getWorkspaceIdentityMemberships(projectId)
       });
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
@@ -637,7 +624,7 @@ export const useDeleteIdentityFromWorkspace = () => {
 
 export const useGetWorkspaceIdentityMemberships = (
   {
-    workspaceId,
+    projectId,
     offset = 0,
     limit = 100,
     orderBy = ProjectIdentityOrderBy.Name,
@@ -649,14 +636,14 @@ export const useGetWorkspaceIdentityMemberships = (
       TProjectIdentitiesList,
       unknown,
       TProjectIdentitiesList,
-      ReturnType<typeof workspaceKeys.getWorkspaceIdentityMembershipsWithParams>
+      ReturnType<typeof projectKeys.getWorkspaceIdentityMembershipsWithParams>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceIdentityMembershipsWithParams({
-      workspaceId,
+    queryKey: projectKeys.getWorkspaceIdentityMembershipsWithParams({
+      projectId,
       offset,
       limit,
       orderBy,
@@ -673,7 +660,7 @@ export const useGetWorkspaceIdentityMemberships = (
       });
 
       const { data } = await apiRequest.get<TProjectIdentitiesList>(
-        `/api/v2/workspace/${workspaceId}/identity-memberships`,
+        `/api/v1/projects/${projectId}/identity-memberships`,
         { params }
       );
       return data;
@@ -686,12 +673,12 @@ export const useGetWorkspaceIdentityMemberships = (
 export const useGetWorkspaceIdentityMembershipDetails = (projectId: string, identityId: string) => {
   return useQuery({
     enabled: Boolean(projectId && identityId),
-    queryKey: workspaceKeys.getWorkspaceIdentityMembershipDetails(projectId, identityId),
+    queryKey: projectKeys.getWorkspaceIdentityMembershipDetails(projectId, identityId),
     queryFn: async () => {
       const {
         data: { identityMembership }
       } = await apiRequest.get<{ identityMembership: IdentityMembership }>(
-        `/api/v2/workspace/${projectId}/identity-memberships/${identityId}`
+        `/api/v1/projects/${projectId}/identity-memberships/${identityId}`
       );
       return identityMembership;
     }
@@ -701,12 +688,12 @@ export const useGetWorkspaceIdentityMembershipDetails = (projectId: string, iden
 export const useGetWorkspaceGroupMembershipDetails = (projectId: string, groupId: string) => {
   return useQuery({
     enabled: Boolean(projectId && groupId),
-    queryKey: workspaceKeys.getWorkspaceGroupMembershipDetails(projectId, groupId),
+    queryKey: projectKeys.getWorkspaceGroupMembershipDetails(projectId, groupId),
     queryFn: async () => {
       const {
         data: { groupMembership }
       } = await apiRequest.get<{ groupMembership: TGroupMembership }>(
-        `/api/v2/workspace/${projectId}/groups/${groupId}`
+        `/api/v1/projects/${projectId}/groups/${groupId}`
       );
       return groupMembership;
     }
@@ -715,12 +702,12 @@ export const useGetWorkspaceGroupMembershipDetails = (projectId: string, groupId
 
 export const useListWorkspaceGroups = (projectId: string) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceGroupMemberships(projectId),
+    queryKey: projectKeys.getWorkspaceGroupMemberships(projectId),
     queryFn: async () => {
       const {
         data: { groupMemberships }
       } = await apiRequest.get<{ groupMemberships: TGroupMembership[] }>(
-        `/api/v2/workspace/${projectId}/groups`
+        `/api/v1/projects/${projectId}/groups`
       );
       return groupMemberships;
     },
@@ -736,7 +723,7 @@ export const useListWorkspaceCas = ({
   status?: CaStatus;
 }) => {
   return useQuery({
-    queryKey: workspaceKeys.specificWorkspaceCas({
+    queryKey: projectKeys.specificWorkspaceCas({
       projectSlug,
       status
     }),
@@ -748,7 +735,7 @@ export const useListWorkspaceCas = ({
       const {
         data: { cas }
       } = await apiRequest.get<{ cas: TCertificateAuthority[] }>(
-        `/api/v2/workspace/${projectSlug}/cas`,
+        `/api/v1/projects/${projectSlug}/cas`,
         {
           params
         }
@@ -769,7 +756,7 @@ export const useListWorkspaceCertificates = ({
   limit: number;
 }) => {
   return useQuery({
-    queryKey: workspaceKeys.specificWorkspaceCertificates({
+    queryKey: projectKeys.specificWorkspaceCertificates({
       slug: projectSlug,
       offset,
       limit
@@ -783,7 +770,7 @@ export const useListWorkspaceCertificates = ({
       const {
         data: { certificates, totalCount }
       } = await apiRequest.get<{ certificates: TCertificate[]; totalCount: number }>(
-        `/api/v2/workspace/${projectSlug}/certificates`,
+        `/api/v1/projects/${projectSlug}/certificates`,
         {
           params
         }
@@ -795,51 +782,49 @@ export const useListWorkspaceCertificates = ({
   });
 };
 
-export const useListWorkspacePkiAlerts = ({ workspaceId }: { workspaceId: string }) => {
+export const useListWorkspacePkiAlerts = ({ projectId }: { projectId: string }) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspacePkiAlerts(workspaceId),
+    queryKey: projectKeys.getWorkspacePkiAlerts(projectId),
     queryFn: async () => {
       const {
         data: { alerts }
-      } = await apiRequest.get<{ alerts: TPkiAlert[] }>(
-        `/api/v2/workspace/${workspaceId}/pki-alerts`
-      );
+      } = await apiRequest.get<{ alerts: TPkiAlert[] }>(`/api/v1/projects/${projectId}/pki-alerts`);
 
       return { alerts };
     },
-    enabled: Boolean(workspaceId)
+    enabled: Boolean(projectId)
   });
 };
 
-export const useListWorkspacePkiCollections = ({ workspaceId }: { workspaceId: string }) => {
+export const useListWorkspacePkiCollections = ({ projectId }: { projectId: string }) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspacePkiCollections(workspaceId),
+    queryKey: projectKeys.getWorkspacePkiCollections(projectId),
     queryFn: async () => {
       const {
         data: { collections }
       } = await apiRequest.get<{ collections: TPkiCollection[] }>(
-        `/api/v2/workspace/${workspaceId}/pki-collections`
+        `/api/v1/projects/${projectId}/pki-collections`
       );
 
       return { collections };
     },
-    enabled: Boolean(workspaceId)
+    enabled: Boolean(projectId)
   });
 };
 
-export const useListWorkspaceCertificateTemplates = ({ workspaceId }: { workspaceId: string }) => {
+export const useListWorkspaceCertificateTemplates = ({ projectId }: { projectId: string }) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceCertificateTemplates(workspaceId),
+    queryKey: projectKeys.getWorkspaceCertificateTemplates(projectId),
     queryFn: async () => {
       const {
         data: { certificateTemplates }
       } = await apiRequest.get<{ certificateTemplates: TCertificateTemplate[] }>(
-        `/api/v2/workspace/${workspaceId}/certificate-templates`
+        `/api/v1/projects/${projectId}/certificate-templates`
       );
 
       return { certificateTemplates };
     },
-    enabled: Boolean(workspaceId)
+    enabled: Boolean(projectId)
   });
 };
 
@@ -853,7 +838,7 @@ export const useListWorkspaceSshCertificates = ({
   projectId: string;
 }) => {
   return useQuery({
-    queryKey: workspaceKeys.specificWorkspaceSshCertificates({
+    queryKey: projectKeys.specificWorkspaceSshCertificates({
       offset,
       limit,
       projectId
@@ -867,7 +852,7 @@ export const useListWorkspaceSshCertificates = ({
       const { data } = await apiRequest.get<{
         certificates: TSshCertificate[];
         totalCount: number;
-      }>(`/api/v2/workspace/${projectId}/ssh-certificates`, {
+      }>(`/api/v1/projects/${projectId}/ssh-certificates`, {
         params
       });
       return data;
@@ -878,12 +863,12 @@ export const useListWorkspaceSshCertificates = ({
 
 export const useListWorkspaceSshCas = (projectId: string) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceSshCas(projectId),
+    queryKey: projectKeys.getWorkspaceSshCas(projectId),
     queryFn: async () => {
       const {
         data: { cas }
       } = await apiRequest.get<{ cas: Omit<TSshCertificateAuthority, "publicKey">[] }>(
-        `/api/v2/workspace/${projectId}/ssh-cas`
+        `/api/v1/projects/${projectId}/ssh-cas`
       );
       return cas;
     },
@@ -893,11 +878,11 @@ export const useListWorkspaceSshCas = (projectId: string) => {
 
 export const useListWorkspaceSshHosts = (projectId: string) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceSshHosts(projectId),
+    queryKey: projectKeys.getWorkspaceSshHosts(projectId),
     queryFn: async () => {
       const {
         data: { hosts }
-      } = await apiRequest.get<{ hosts: TSshHost[] }>(`/api/v2/workspace/${projectId}/ssh-hosts`);
+      } = await apiRequest.get<{ hosts: TSshHost[] }>(`/api/v1/projects/${projectId}/ssh-hosts`);
       return hosts;
     },
     enabled: Boolean(projectId)
@@ -906,12 +891,12 @@ export const useListWorkspaceSshHosts = (projectId: string) => {
 
 export const useListWorkspacePkiSubscribers = (projectId: string) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspacePkiSubscribers(projectId),
+    queryKey: projectKeys.getWorkspacePkiSubscribers(projectId),
     queryFn: async () => {
       const {
         data: { subscribers }
       } = await apiRequest.get<{ subscribers: TPkiSubscriber[] }>(
-        `/api/v2/workspace/${projectId}/pki-subscribers`
+        `/api/v1/projects/${projectId}/pki-subscribers`
       );
       return subscribers;
     },
@@ -921,12 +906,12 @@ export const useListWorkspacePkiSubscribers = (projectId: string) => {
 
 export const useListWorkspaceSshHostGroups = (projectId: string) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceSshHostGroups(projectId),
+    queryKey: projectKeys.getWorkspaceSshHostGroups(projectId),
     queryFn: async () => {
       const {
         data: { groups }
       } = await apiRequest.get<{ groups: (TSshHostGroup & { hostCount: number })[] }>(
-        `/api/v2/workspace/${projectId}/ssh-host-groups`
+        `/api/v1/projects/${projectId}/ssh-host-groups`
       );
       return groups;
     },
@@ -936,10 +921,10 @@ export const useListWorkspaceSshHostGroups = (projectId: string) => {
 
 export const useListWorkspaceSshCertificateTemplates = (projectId: string) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceSshCertificateTemplates(projectId),
+    queryKey: projectKeys.getWorkspaceSshCertificateTemplates(projectId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ certificateTemplates: TSshCertificateTemplate[] }>(
-        `/api/v2/workspace/${projectId}/ssh-certificate-templates`
+        `/api/v1/projects/${projectId}/ssh-certificate-templates`
       );
       return data;
     },
@@ -948,18 +933,18 @@ export const useListWorkspaceSshCertificateTemplates = (projectId: string) => {
 };
 
 export const useGetWorkspaceWorkflowIntegrationConfig = ({
-  workspaceId,
+  projectId,
   integration
 }: {
-  workspaceId: string;
+  projectId: string;
   integration: WorkflowIntegrationPlatform;
 }) => {
   return useQuery({
-    queryKey: workspaceKeys.getWorkspaceWorkflowIntegrationConfig(workspaceId, integration),
+    queryKey: projectKeys.getWorkspaceWorkflowIntegrationConfig(projectId, integration),
     queryFn: async () => {
       const { data } = await apiRequest
         .get<ProjectWorkflowIntegrationConfig>(
-          `/api/v1/workspace/${workspaceId}/workflow-integration-config/${integration}`
+          `/api/v1/projects/${projectId}/workflow-integration-config/${integration}`
         )
         .catch((err) => {
           if (err.response.status === 404) {
@@ -971,16 +956,16 @@ export const useGetWorkspaceWorkflowIntegrationConfig = ({
 
       return data;
     },
-    enabled: Boolean(workspaceId)
+    enabled: Boolean(projectId)
   });
 };
 
 export const useGetProjectSshConfig = (projectId: string) => {
   return useQuery({
-    queryKey: workspaceKeys.getProjectSshConfig(projectId),
+    queryKey: projectKeys.getProjectSshConfig(projectId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TProjectSshConfig>(
-        `/api/v1/workspace/${projectId}/ssh-config`
+        `/api/v1/projects/${projectId}/ssh-config`
       );
 
       return data;

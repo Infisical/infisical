@@ -12,7 +12,7 @@ import { SanitizedRoleSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectRoleServiceIdentifierType } from "@app/services/project-role/project-role-types";
 
-export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
+export const registerDepreciatedProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:projectId/roles",

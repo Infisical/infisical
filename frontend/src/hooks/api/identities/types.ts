@@ -1,7 +1,7 @@
 import { OrderByDirection } from "../generic/types";
 import { OrgIdentityOrderBy } from "../organization/types";
 import { TOrgRole } from "../roles/types";
-import { ProjectUserMembershipTemporaryMode, Workspace } from "../workspace/types";
+import { ProjectUserMembershipTemporaryMode, Project } from "../workspace/types";
 import { IdentityAuthMethod, IdentityJwtConfigurationType } from "./enums";
 
 export type IdentityTrustedIp = {
@@ -54,7 +54,7 @@ export type IdentityMembershipOrg = {
 export type IdentityMembership = {
   id: string;
   identity: Identity;
-  project: Pick<Workspace, "id" | "name" | "type">;
+  project: Pick<Project, "id" | "name" | "type">;
   roles: Array<
     {
       id: string;

@@ -15,10 +15,10 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
 
-export const registerProjectMembershipRouter = async (server: FastifyZodProvider) => {
+export const registerDepreciatedProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
-    url: "/:projectId/memberships",
+    url: "/:workspaceId/memberships",
     config: {
       rateLimit: readLimit
     },
@@ -32,7 +32,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        projectId: z.string().trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIPS.projectId)
+        workspaceId: z.string().trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIPS.projectId)
       }),
       response: {
         200: z.object({
@@ -71,7 +71,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.projectId
+        projectId: req.params.workspaceId
       });
       return { memberships };
     }
@@ -79,7 +79,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "GET",
-    url: "/:projectId/memberships/:membershipId",
+    url: "/:workspaceId/memberships/:membershipId",
     config: {
       rateLimit: readLimit
     },
@@ -91,7 +91,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        projectId: z.string().min(1).trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIP.projectId),
+        workspaceId: z.string().min(1).trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIP.projectId),
         membershipId: z.string().min(1).trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIP.membershipId)
       }),
       response: {
@@ -129,17 +129,16 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.projectId,
+        projectId: req.params.workspaceId,
         id: req.params.membershipId
       });
       return { membership };
     }
   });
 
-  // TODO(depri): ask this usage again
   server.route({
     method: "POST",
-    url: "/:projectId/memberships/details",
+    url: "/:workspaceId/memberships/details",
     config: {
       rateLimit: readLimit
     },
@@ -153,7 +152,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        projectId: z.string().min(1).trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIP.projectId)
+        workspaceId: z.string().min(1).trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIP.projectId)
       }),
       body: z.object({
         username: z.string().min(1).trim().describe(PROJECT_USERS.GET_USER_MEMBERSHIP.username)
@@ -192,7 +191,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.projectId,
+        projectId: req.params.workspaceId,
         username: req.body.username
       });
       return { membership };
@@ -201,13 +200,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "POST",
-    url: "/:projectId/memberships",
+    url: "/:workspaceId/memberships",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       params: z.object({
-        projectId: z.string().trim()
+        workspaceId: z.string().trim()
       }),
       body: z.object({
         members: z
@@ -233,12 +232,12 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.projectId,
+        projectId: req.params.workspaceId,
         members: req.body.members
       });
 
       await server.services.auditLog.createAuditLog({
-        projectId: req.params.projectId,
+        projectId: req.params.workspaceId,
         ...req.auditLogInfo,
         event: {
           type: EventType.ADD_BATCH_WORKSPACE_MEMBER,
@@ -255,7 +254,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "PATCH",
-    url: "/:projectId/memberships/:membershipId",
+    url: "/:workspaceId/memberships/:membershipId",
     config: {
       rateLimit: writeLimit
     },
@@ -269,7 +268,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        projectId: z.string().trim().describe(PROJECT_USERS.UPDATE_USER_MEMBERSHIP.projectId),
+        workspaceId: z.string().trim().describe(PROJECT_USERS.UPDATE_USER_MEMBERSHIP.projectId),
         membershipId: z.string().trim().describe(PROJECT_USERS.UPDATE_USER_MEMBERSHIP.membershipId)
       }),
       body: z.object({
@@ -306,14 +305,14 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.projectId,
+        projectId: req.params.workspaceId,
         membershipId: req.params.membershipId,
         roles: req.body.roles
       });
 
       // await server.services.auditLog.createAuditLog({
       //   ...req.auditLogInfo,
-      //   projectId: req.params.projectId,
+      //   projectId: req.params.workspaceId,
       //   event: {
       //     type: EventType.UPDATE_USER_WORKSPACE_ROLE,
       //     metadata: {
@@ -330,7 +329,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "DELETE",
-    url: "/:projectId/memberships/:membershipId",
+    url: "/:workspaceId/memberships/:membershipId",
     config: {
       rateLimit: writeLimit
     },
@@ -342,7 +341,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        projectId: z.string().trim(),
+        workspaceId: z.string().trim(),
         membershipId: z.string().trim()
       }),
       response: {
@@ -358,13 +357,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.projectId,
+        projectId: req.params.workspaceId,
         membershipId: req.params.membershipId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.params.projectId,
+        projectId: req.params.workspaceId,
         event: {
           type: EventType.REMOVE_WORKSPACE_MEMBER,
           metadata: {
@@ -372,34 +371,6 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
             email: ""
           }
         }
-      });
-      return { membership };
-    }
-  });
-
-  server.route({
-    method: "DELETE",
-    url: "/:projectId/leave",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({
-        projectId: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          membership: ProjectMembershipsSchema
-        })
-      }
-    },
-
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const membership = await server.services.projectMembership.leaveProject({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        projectId: req.params.projectId
       });
       return { membership };
     }
