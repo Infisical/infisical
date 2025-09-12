@@ -154,20 +154,22 @@ const renderOutputForm = (
   }
 
   if (provider === DynamicSecretProviders.AwsIam) {
-    const { USERNAME, ACCESS_KEY, SECRET_ACCESS_KEY } = data as {
+    const { USERNAME, ACCESS_KEY, SECRET_ACCESS_KEY, SESSION_TOKEN } = data as {
       ACCESS_KEY: string;
       SECRET_ACCESS_KEY: string;
-      USERNAME: string;
+      USERNAME?: string;
+      SESSION_TOKEN?: string;
     };
     return (
       <div>
-        <OutputDisplay label="AWS Username" value={USERNAME} />
+        {USERNAME && <OutputDisplay label="AWS IAM Username" value={USERNAME} />}
         <OutputDisplay label="AWS IAM Access Key" value={ACCESS_KEY} />
-        <OutputDisplay
-          label="AWS IAM Secret Key"
-          value={SECRET_ACCESS_KEY}
-          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
-        />
+        <OutputDisplay label="AWS IAM Secret Key" value={SECRET_ACCESS_KEY} />
+        {SESSION_TOKEN && <OutputDisplay label="AWS IAM Session Token" value={SESSION_TOKEN} />}
+        <div className="mt-2 text-xs text-mineshaft-300">
+          Important: Copy these credentials now. You will not be able to see them again after you
+          close the modal.
+        </div>
       </div>
     );
   }
