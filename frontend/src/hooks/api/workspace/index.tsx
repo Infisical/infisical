@@ -50,4 +50,4 @@ export {
   useUpdateWsEnvironment,
   useUpgradeProject
 } from "./queries";
-export { workspaceKeys } from "./query-keys";
+export { projectKeys } from "./query-keys";

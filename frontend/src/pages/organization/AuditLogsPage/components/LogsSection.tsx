@@ -13,7 +13,7 @@ import {
 } from "@app/context";
 import { Timezone } from "@app/helpers/datetime";
 import { withPermission, withProjectPermission } from "@app/hoc";
-import { Workspace } from "@app/hooks/api/workspace/types";
+import { Project } from "@app/hooks/api/workspace/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { LogsDateFilter } from "./LogsDateFilter";
@@ -31,7 +31,7 @@ type Props = {
   refetchInterval?: number;
   showFilters?: boolean;
   pageView?: boolean;
-  project?: Workspace;
+  project?: Project;
 };
 
 const LogsSectionComponent = ({

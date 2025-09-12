@@ -48,7 +48,7 @@ import {
   useRequestProjectAccess,
   useSearchProjects
 } from "@app/hooks/api";
-import { ProjectType, Workspace, WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import { ProjectType, Project, WorkspaceEnv } from "@app/hooks/api/workspace/types";
 import {
   ProjectListToggle,
   ProjectListView
@@ -180,7 +180,7 @@ export const AllProjectView = ({
     offset,
     totalCount: searchedProjects?.totalCount || 0
   });
-  const requestedWorkspaceDetails = (popUp.requestAccessConfirmation.data || {}) as Workspace;
+  const requestedWorkspaceDetails = (popUp.requestAccessConfirmation.data || {}) as Project;
 
   const handleToggleFilterByProjectType = (el: ProjectType) =>
     setProjectTypeFilter((state) => (state === el ? undefined : el));

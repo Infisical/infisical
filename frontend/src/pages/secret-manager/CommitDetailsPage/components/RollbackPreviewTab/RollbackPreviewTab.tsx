@@ -120,7 +120,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
   ] as const);
 
   const { mutateAsync: rollback } = useCommitRollback({
-    workspaceId: currentWorkspace.id,
+    projectId: currentWorkspace.id,
     commitId: selectedCommitId,
     folderId,
     deepRollback,

@@ -20,7 +20,7 @@ export enum ProjectUserMembershipTemporaryMode {
   Relative = "relative"
 }
 
-export type Workspace = {
+export type Project = {
   __v: number;
   id: string;
   name: string;
@@ -52,7 +52,7 @@ export type WorkspaceEnv = {
 export type WorkspaceTag = { id: string; name: string; slug: string };
 
 export type NameWorkspaceSecretsDTO = {
-  workspaceId: string;
+  projectId: string;
   secretsToUpdate: {
     secretName: string;
     secretId: string;
@@ -87,19 +87,19 @@ export type UpdateProjectDTO = {
 
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };
 export type UpdateAuditLogsRetentionDTO = { projectSlug: string; auditLogsRetentionDays: number };
-export type ToggleAutoCapitalizationDTO = { workspaceID: string; state: boolean };
-export type ToggleDeleteProjectProtectionDTO = { workspaceID: string; state: boolean };
+export type ToggleAutoCapitalizationDTO = { projectID: string; state: boolean };
+export type ToggleDeleteProjectProtectionDTO = { projectID: string; state: boolean };
 
-export type DeleteWorkspaceDTO = { workspaceID: string };
+export type DeleteWorkspaceDTO = { projectID: string };
 
 export type CreateEnvironmentDTO = {
-  workspaceId: string;
+  projectId: string;
   name: string;
   slug: string;
 };
 
 export type ReorderEnvironmentsDTO = {
-  workspaceId: string;
+  projectId: string;
   environmentSlug: string;
   environmentName: string;
   otherEnvironmentSlug: string;
@@ -107,18 +107,18 @@ export type ReorderEnvironmentsDTO = {
 };
 
 export type UpdateEnvironmentDTO = {
-  workspaceId: string;
+  projectId: string;
   id: string;
   name?: string;
   slug?: string;
   position?: number;
 };
 
-export type DeleteEnvironmentDTO = { workspaceId: string; id: string };
+export type DeleteEnvironmentDTO = { projectId: string; id: string };
 
 export type TUpdateWorkspaceUserRoleDTO = {
   membershipId: string;
-  workspaceId: string;
+  projectId: string;
   roles: (
     | {
         role: string;
@@ -136,7 +136,7 @@ export type TUpdateWorkspaceUserRoleDTO = {
 
 export type TUpdateWorkspaceIdentityRoleDTO = {
   identityId: string;
-  workspaceId: string;
+  projectId: string;
   roles: (
     | {
         role: string;
@@ -171,7 +171,7 @@ export type TUpdateWorkspaceGroupRoleDTO = {
 };
 
 export type TListProjectIdentitiesDTO = {
-  workspaceId: string;
+  projectId: string;
   offset?: number;
   limit?: number;
   orderBy?: ProjectIdentityOrderBy;

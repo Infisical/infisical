@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { userKeys } from "../users/query-keys";
-import { workspaceKeys as projectKeys } from "./query-keys";
+import { projectKeys } from "./query-keys";
 import {
   TProjectSshConfig,
   TUpdateProjectSshConfigDTO,
@@ -24,7 +24,7 @@ export const useAddGroupToWorkspace = () => {
     }) => {
       const {
         data: { groupMembership }
-      } = await apiRequest.post(`/api/v2/workspace/${projectId}/groups/${groupId}`, {
+      } = await apiRequest.post(`/api/v1/projects/${projectId}/groups/${groupId}`, {
         role
       });
 
@@ -44,7 +44,7 @@ export const useUpdateGroupWorkspaceRole = () => {
     mutationFn: async ({ groupId, projectId, roles }: TUpdateWorkspaceGroupRoleDTO) => {
       const {
         data: { groupMembership }
-      } = await apiRequest.patch(`/api/v2/workspace/${projectId}/groups/${groupId}`, {
+      } = await apiRequest.patch(`/api/v1/projects/${projectId}/groups/${groupId}`, {
         roles
       });
 
@@ -74,7 +74,7 @@ export const useDeleteGroupFromWorkspace = () => {
     }) => {
       const {
         data: { groupMembership }
-      } = await apiRequest.delete(`/api/v2/workspace/${projectId}/groups/${groupId}`);
+      } = await apiRequest.delete(`/api/v1/projects/${projectId}/groups/${groupId}`);
       return groupMembership;
     },
     onSuccess: (_, { projectId, username }) => {
@@ -91,9 +91,9 @@ export const useDeleteGroupFromWorkspace = () => {
 
 export const useLeaveProject = () => {
   const queryClient = useQueryClient();
-  return useMutation<object, object, { workspaceId: string }>({
-    mutationFn: ({ workspaceId }) => {
-      return apiRequest.delete(`/api/v1/workspace/${workspaceId}/leave`);
+  return useMutation<object, object, { projectId: string }>({
+    mutationFn: ({ projectId }) => {
+      return apiRequest.delete(`/api/v1/projects/${projectId}/leave`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserWorkspace() });
@@ -118,7 +118,7 @@ export const useMigrateProjectToV3 = () => {
 export const useRequestProjectAccess = () => {
   return useMutation<object, object, { projectId: string; comment: string }>({
     mutationFn: ({ projectId, comment }) => {
-      return apiRequest.post(`/api/v1/workspace/${projectId}/project-access`, {
+      return apiRequest.post(`/api/v1/projects/${projectId}/project-access`, {
         comment
       });
     }
@@ -129,7 +129,7 @@ export const useUpdateProjectSshConfig = () => {
   const queryClient = useQueryClient();
   return useMutation<TProjectSshConfig, object, TUpdateProjectSshConfigDTO>({
     mutationFn: ({ projectId, defaultUserSshCaId, defaultHostSshCaId }) => {
-      return apiRequest.patch(`/api/v1/workspace/${projectId}/ssh-config`, {
+      return apiRequest.patch(`/api/v1/projects/${projectId}/ssh-config`, {
         defaultUserSshCaId,
         defaultHostSshCaId
       });

@@ -9,13 +9,13 @@ import {
 
 import { registerGatewayV2Router } from "./gateway-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
-import { registerProjectRoleRouter } from "./project-role-router";
+import { registerDepreciatedProjectRoleRouter } from "./depreciated-project-role-router";
 
 export const registerV2EERoutes = async (server: FastifyZodProvider) => {
-  // org role starts with organization
   await server.register(
     async (projectRouter) => {
-      await projectRouter.register(registerProjectRoleRouter);
+      // this has been depreciated and moved to /api/v1/projects
+      await projectRouter.register(registerDepreciatedProjectRoleRouter);
     },
     { prefix: "/workspace" }
   );

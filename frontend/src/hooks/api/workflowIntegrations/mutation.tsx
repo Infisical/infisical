@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace/query-keys";
+import { projectKeys } from "../workspace/query-keys";
 import { workflowIntegrationKeys } from "./queries";
 import {
   TCheckMicrosoftTeamsIntegrationInstallationStatusDTO,
@@ -126,7 +126,7 @@ export const useUpdateProjectWorkflowIntegrationConfig = () => {
     },
     onSuccess: (_, { workspaceId, integration }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceWorkflowIntegrationConfig(workspaceId, integration)
+        queryKey: projectKeys.getWorkspaceWorkflowIntegrationConfig(workspaceId, integration)
       });
     }
   });
@@ -145,7 +145,7 @@ export const useDeleteProjectWorkflowIntegration = () => {
     },
     onSuccess: (_, { projectId, integration }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceWorkflowIntegrationConfig(projectId, integration)
+        queryKey: projectKeys.getWorkspaceWorkflowIntegrationConfig(projectId, integration)
       });
     }
   });

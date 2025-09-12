@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace/query-keys";
+import { projectKeys } from "../workspace/query-keys";
 import {
   TCreateSshCaDTO,
   TDeleteSshCaDTO,
@@ -28,7 +28,7 @@ export const useCreateSshCa = () => {
       return ca;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceSshCas(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getWorkspaceSshCas(projectId) });
     }
   });
 };
@@ -43,7 +43,7 @@ export const useUpdateSshCa = () => {
       return ca;
     },
     onSuccess: ({ projectId }, { caId }) => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceSshCas(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getWorkspaceSshCas(projectId) });
       queryClient.invalidateQueries({ queryKey: sshCaKeys.getSshCaById(caId) });
     }
   });
@@ -59,7 +59,7 @@ export const useDeleteSshCa = () => {
       return ca;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceSshCas(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getWorkspaceSshCas(projectId) });
     }
   });
 };
@@ -76,7 +76,7 @@ export const useSignSshKey = () => {
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.allWorkspaceSshCertificates(projectId)
+        queryKey: projectKeys.allWorkspaceSshCertificates(projectId)
       });
     }
   });
@@ -94,7 +94,7 @@ export const useIssueSshCreds = () => {
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.allWorkspaceSshCertificates(projectId)
+        queryKey: projectKeys.allWorkspaceSshCertificates(projectId)
       });
     }
   });

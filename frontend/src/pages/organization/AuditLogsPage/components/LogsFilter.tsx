@@ -29,7 +29,7 @@ import {
 } from "@app/hooks/api/auditLogs/constants";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { UserAgentType } from "@app/hooks/api/auth/types";
-import { Workspace } from "@app/hooks/api/workspace/types";
+import { Project } from "@app/hooks/api/workspace/types";
 
 import { LogFilterItem } from "./LogFilterItem";
 import { auditLogFilterFormSchema, Presets, TAuditLogFilterFormData } from "./types";
@@ -44,7 +44,7 @@ type Props = {
   presets?: Presets;
   setFilter: (data: TAuditLogFilterFormData) => void;
   filter: TAuditLogFilterFormData;
-  project?: Workspace;
+  project?: Project;
 };
 
 const getActiveFilterCount = (filter: TAuditLogFilterFormData) => {

@@ -57,7 +57,7 @@ export const useListProjectEnvironmentsFolders = (
     queryKey: folderQueryKeys.getProjectEnvironmentsFolders(projectId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TProjectEnvironmentsFolders>(
-        `/api/v1/workspace/${projectId}/environment-folder-tree`
+        `/api/v1/projects/${projectId}/environment-folder-tree`
       );
       return data;
     },
@@ -162,13 +162,13 @@ export const useCreateFolder = () => {
         queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ workspaceId: projectId, environment, directory: path })
+        queryKey: secretSnapshotKeys.list({ projectId, environment, directory: path })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ workspaceId: projectId, environment, directory: path })
+        queryKey: secretSnapshotKeys.count({ projectId, environment, directory: path })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId: projectId, environment, directory: path })
+        queryKey: commitKeys.count({ projectId, environment, directory: path })
       });
     }
   });
@@ -199,16 +199,16 @@ export const useUpdateFolder = () => {
         queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ workspaceId: projectId, environment, directory: path })
+        queryKey: secretSnapshotKeys.list({ projectId, environment, directory: path })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ workspaceId: projectId, environment, directory: path })
+        queryKey: secretSnapshotKeys.count({ projectId, environment, directory: path })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId: projectId, environment, directory: path })
+        queryKey: commitKeys.count({ projectId, environment, directory: path })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId: projectId, environment, directory: path })
+        queryKey: commitKeys.history({ projectId, environment, directory: path })
       });
     }
   });
@@ -239,16 +239,16 @@ export const useDeleteFolder = () => {
         queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ workspaceId: projectId, environment, directory: path })
+        queryKey: secretSnapshotKeys.list({ projectId, environment, directory: path })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ workspaceId: projectId, environment, directory: path })
+        queryKey: secretSnapshotKeys.count({ projectId, environment, directory: path })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId: projectId, environment, directory: path })
+        queryKey: commitKeys.count({ projectId, environment, directory: path })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId: projectId, environment, directory: path })
+        queryKey: commitKeys.history({ projectId, environment, directory: path })
       });
     }
   });
@@ -283,28 +283,28 @@ export const useUpdateFolderBatch = () => {
         });
         queryClient.invalidateQueries({
           queryKey: secretSnapshotKeys.list({
-            workspaceId: projectId,
+            projectId,
             environment: folder.environment,
             directory: folder.path
           })
         });
         queryClient.invalidateQueries({
           queryKey: secretSnapshotKeys.count({
-            workspaceId: projectId,
+            projectId,
             environment: folder.environment,
             directory: folder.path
           })
         });
         queryClient.invalidateQueries({
           queryKey: commitKeys.count({
-            workspaceId: projectId,
+            projectId,
             environment: folder.environment,
             directory: folder.path
           })
         });
         queryClient.invalidateQueries({
           queryKey: commitKeys.history({
-            workspaceId: projectId,
+            projectId,
             environment: folder.environment,
             directory: folder.path
           })
