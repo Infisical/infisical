@@ -1,5 +1,5 @@
 import { forwardRef, TextareaHTMLAttributes, useCallback, useMemo, useRef, useState } from "react";
-import { faFolder, faKey, faLayerGroup } from "@fortawesome/free-solid-svg-icons";
+import { faFolder, faKey, faLayerGroup, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
 
@@ -8,15 +8,6 @@ import { useDebounce, useToggle } from "@app/hooks";
 import { useGetProjectFolders, useGetProjectSecrets } from "@app/hooks/api";
 
 import { SecretInput } from "../SecretInput";
-
-// Regex to find all secret references in the format ${reference}
-const REFERENCE_REGEX = /\${([^}]+)}/g;
-
-// Extract unique references from a value
-const extractReferences = (value: string): string[] => {
-  const matches = Array.from(value.matchAll(REFERENCE_REGEX));
-  return [...new Set(matches.map((match) => match[1]))];
-};
 
 const getIndexOfUnclosedRefToTheLeft = (value: string, pos: number) => {
   // take substring up to pos in order to consider edits for closed references
@@ -92,7 +83,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
-    const inputRef = useRef<HTMLTextAreaElement | null>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
     const popoverContentRef = useRef<HTMLDivElement>(null);
     const [isFocused, setIsFocused] = useToggle(false);
     const currentCursorPosition = inputRef.current?.selectionStart || 0;
@@ -148,8 +139,6 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       }
     });
 
-    const allReferences = useMemo(() => extractReferences(value), [value]);
-
     const suggestions = useMemo(() => {
       if (!isPopupOpen) return [];
       // reset highlight whenever recomputation happens
@@ -186,51 +175,22 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             type: ReferenceType.SECRET
           });
       });
-      return suggestionsArr;
-    }, [secrets, folders, currentWorkspace?.environments, isPopupOpen, suggestionSource.value]);
 
-    // Mark as invalid when editing and reference doesn't match any suggestion
-    const invalidReferences = useMemo(() => {
-      const invalid = new Set<string>();
-
-      if (!isPopupOpen) {
-        return invalid; // No validation when not editing
-      }
-
-      const suggestionsHaveLoaded = Boolean(secrets || folders || currentWorkspace?.environments);
-
-      if (!suggestionsHaveLoaded) {
-        return invalid;
-      }
-
-      // If we have an active suggestion context but no suggestions, it means the query returned empty
-      const suggestionsAreEmpty = suggestions.length === 0;
-
-      allReferences.forEach((reference) => {
-        const matchesAnySuggestion = suggestions.some((suggestion) => {
-          if (!reference.includes(".")) {
-            return suggestion.slug === reference;
-          }
-          const parts = reference.split(".");
-          const finalPart = parts[parts.length - 1];
-          return suggestion.slug === finalPart;
+      if (suggestionsArr.length === 0 && suggestionSource.predicate.trim()) {
+        suggestionsArr.push({
+          label: "No matches found",
+          slug: "__no_match__",
+          type: ReferenceType.SECRET
         });
+      }
 
-        // Mark as invalid only if:
-        // 1. We have suggestions loaded AND none match, OR
-        // 2. The query returned empty results
-        if (!matchesAnySuggestion && (suggestions.length > 0 || suggestionsAreEmpty)) {
-          invalid.add(reference);
-        }
-      });
-
-      return invalid;
-    }, [isPopupOpen, allReferences, suggestions, secrets, folders, currentWorkspace?.environments]);
+      return suggestionsArr;
+    }, [secrets, folders, currentWorkspace?.environments, isPopupOpen, suggestionSource.predicate]);
 
     const handleSuggestionSelect = (selectIndex?: number) => {
       const selectedSuggestion =
         suggestions[typeof selectIndex !== "undefined" ? selectIndex : highlightedIndex];
-      if (!selectedSuggestion) {
+      if (!selectedSuggestion || selectedSuggestion.slug === "__no_match__") {
         return;
       }
 
@@ -275,21 +235,40 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       if (isPopupOpen) {
         if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
           setHighlightedIndex((prevIndex) => {
-            const pos = mod(prevIndex + 1, suggestions.length);
-            popoverContentRef.current?.children?.[pos]?.scrollIntoView({
+            let nextIndex = mod(prevIndex + 1, suggestions.length);
+            // Skip "no match" messages
+            while (
+              nextIndex < suggestions.length &&
+              suggestions[nextIndex].slug === "__no_match__"
+            ) {
+              nextIndex = mod(nextIndex + 1, suggestions.length);
+            }
+            // If we only have no-match messages, don't highlight anything
+            if (suggestions[nextIndex]?.slug === "__no_match__") {
+              return -1;
+            }
+            popoverContentRef.current?.children?.[nextIndex]?.scrollIntoView({
               block: "nearest",
               behavior: "smooth"
             });
-            return pos;
+            return nextIndex;
           });
         } else if (e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) {
           setHighlightedIndex((prevIndex) => {
-            const pos = mod(prevIndex - 1, suggestions.length);
-            popoverContentRef.current?.children?.[pos]?.scrollIntoView({
+            let prevIdx = mod(prevIndex - 1, suggestions.length);
+            // Skip "no match" messages
+            while (prevIdx >= 0 && suggestions[prevIdx].slug === "__no_match__") {
+              prevIdx = mod(prevIdx - 1, suggestions.length);
+            }
+            // If we only have no-match messages, don't highlight anything
+            if (suggestions[prevIdx]?.slug === "__no_match__") {
+              return -1;
+            }
+            popoverContentRef.current?.children?.[prevIdx]?.scrollIntoView({
               block: "nearest",
               behavior: "smooth"
             });
-            return pos;
+            return prevIdx;
           });
         } else if (e.key === "Enter" && highlightedIndex >= 0) {
           e.preventDefault();
@@ -306,20 +285,18 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     };
 
     // to handle multiple ref for single component
-    const handleRef = useCallback(
-      (el: HTMLTextAreaElement) => {
-        inputRef.current = el;
-        if (ref) {
-          if (typeof ref === "function") {
-            ref(el);
-          } else {
-            // eslint-disable-next-line no-param-reassign
-            ref.current = el;
-          }
+    const handleRef = useCallback((el: HTMLTextAreaElement) => {
+      // @ts-expect-error this is for multiple ref single component
+      inputRef.current = el;
+      if (ref) {
+        if (typeof ref === "function") {
+          ref(el);
+        } else {
+          // eslint-disable-next-line
+          ref.current = el;
         }
-      },
-      [ref]
-    );
+      }
+    }, []);
 
     return (
       <Popover.Root open={isPopupOpen} onOpenChange={handlePopUpOpen}>
@@ -338,7 +315,6 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             }}
             onChange={(e) => onChange?.(e.target.value)}
             containerClassName={containerClassName}
-            invalidReferences={invalidReferences}
           />
         </Popover.Trigger>
         <Popover.Content
@@ -356,7 +332,12 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             {suggestions.map((item, i) => {
               let entryIcon;
               let subText;
-              if (item.type === ReferenceType.SECRET) {
+              const isNoMatchMessage = item.slug === "__no_match__";
+
+              if (isNoMatchMessage) {
+                entryIcon = <FontAwesomeIcon icon={faSearch} className="text-gray-400" />;
+                subText = "No results";
+              } else if (item.type === ReferenceType.SECRET) {
                 entryIcon = <FontAwesomeIcon icon={faKey} className="text-bunker-300" />;
                 subText = "Secret";
               } else if (item.type === ReferenceType.ENVIRONMENT) {
@@ -367,10 +348,28 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                 subText = "Folder";
               }
 
-              return (
+              return isNoMatchMessage ? (
                 <div
-                  tabIndex={0}
-                  role="button"
+                  role="status"
+                  aria-label="no-match-message"
+                  className="flex w-full items-center justify-between border-mineshaft-600 text-left"
+                  key={`secret-reference-secret-${i + 1}`}
+                >
+                  <div className="text-md relative flex w-full cursor-default select-none items-center justify-between px-2 py-2 opacity-75 outline-none transition-all">
+                    <div className="flex w-full items-start gap-2">
+                      <div className="mt-1 flex items-center">{entryIcon}</div>
+                      <div className="text-md w-10/12 truncate text-left">
+                        <span className="text-gray-400">{item.label}</span>
+                        <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
+                          {subText}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleSuggestionSelect(i);
                   }}
@@ -382,8 +381,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                     handleSuggestionSelect(i);
                   }}
                   onMouseEnter={() => setHighlightedIndex(i)}
-                  style={{ pointerEvents: "auto" }}
-                  className="flex w-full items-center justify-between border-mineshaft-600 text-left"
+                  className="flex w-full items-center justify-between border-none border-mineshaft-600 bg-transparent p-0 text-left"
                   key={`secret-reference-secret-${i + 1}`}
                 >
                   <div
@@ -394,14 +392,14 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                     <div className="flex w-full items-start gap-2">
                       <div className="mt-1 flex items-center">{entryIcon}</div>
                       <div className="text-md w-10/12 truncate text-left">
-                        {item.label}
+                        <span>{item.label}</span>
                         <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
                           {subText}
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
