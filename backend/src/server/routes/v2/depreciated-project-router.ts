@@ -35,7 +35,8 @@ const projectWithEnv = SanitizedProjectSchema.extend({
   kmsSecretManagerKeyId: z.string().nullable().optional()
 });
 
-export const registerProjectRouter = async (server: FastifyZodProvider) => {
+export const registerDepreciatedProjectRouter = async (server: FastifyZodProvider) => {
+  // depreciated
   /* Get project key */
   server.route({
     method: "GET",
@@ -72,7 +73,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         projectId: req.params.workspaceId,
         event: {
-          type: EventType.GET_WORKSPACE_KEY,
+          type: EventType.GET_PROJECT_KEY,
           metadata: {
             keyId: key?.id as string
           }
@@ -80,68 +81,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return key;
-    }
-  });
-
-  /* Start upgrade of a project */
-  server.route({
-    method: "POST",
-    url: "/:projectId/upgrade",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({
-        projectId: z.string().trim()
-      }),
-      body: z.object({
-        userPrivateKey: z.string().trim()
-      }),
-      response: {
-        200: z.void()
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      await server.services.project.upgradeProject({
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        projectId: req.params.projectId,
-        userPrivateKey: req.body.userPrivateKey
-      });
-    }
-  });
-
-  /* Get upgrade status of project */
-  server.route({
-    url: "/:projectId/upgrade/status",
-    method: "GET",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      params: z.object({
-        projectId: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          status: z.string().nullable()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const status = await server.services.project.getProjectUpgradeStatus({
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.projectId,
-        actor: req.permission.type,
-        actorId: req.permission.id
-      });
-
-      return { status };
     }
   });
 
@@ -224,6 +163,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   /* Delete a project by slug */
+  // moved to DELETE /v1/projects/slug/:slug
   server.route({
     method: "DELETE",
     url: "/:slug",
@@ -276,6 +216,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   /* Get a project by slug */
+  // moved to GET /v1/projects/slug/:slug
   server.route({
     method: "GET",
     url: "/:slug",
@@ -337,7 +278,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         200: SanitizedProjectSchema
       }
     },
-
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const project = await server.services.project.updateProject({

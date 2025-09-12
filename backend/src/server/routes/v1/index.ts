@@ -15,9 +15,11 @@ import { registerCertRouter } from "./certificate-router";
 import { registerCertificateTemplateRouter } from "./certificate-template-router";
 import { registerDepreciatedProjectEnvRouter } from "./depreciated-project-env-router";
 import { registerDepreciatedProjectMembershipRouter } from "./depreciated-project-membership-router";
+import { registerDepreciatedProjectRouter } from "./depreciated-project-router";
 import { registerDepreciatedSecretTagRouter } from "./depreciated-secret-tag-router";
 import { registerEventRouter } from "./event-router";
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";
+import { registerGroupProjectRouter } from "./group-project-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
 import { registerIdentityAliCloudAuthRouter } from "./identity-alicloud-auth-router";
 import { registerIdentityAwsAuthRouter } from "./identity-aws-iam-auth-router";
@@ -46,10 +48,10 @@ import { registerPkiSubscriberRouter } from "./pki-subscriber-router";
 import { registerProjectEnvRouter } from "./project-env-router";
 import { registerProjectKeyRouter } from "./project-key-router";
 import { registerProjectMembershipRouter } from "./project-membership-router";
-import { registerDepreciatedProjectRouter } from "./depreciated-project-router";
 import { registerProjectRouter } from "./project-router";
 import { SECRET_REMINDER_REGISTER_ROUTER_MAP } from "./reminder-routers";
 import { registerSecretFolderRouter } from "./secret-folder-router";
+import { registerSecretImportRouter } from "./secret-import-router";
 import { registerSecretRequestsRouter } from "./secret-requests-router";
 import { registerSecretSharingRouter } from "./secret-sharing-router";
 import { registerSecretTagRouter } from "./secret-tag-router";
@@ -60,7 +62,7 @@ import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
 import { registerWebhookRouter } from "./webhook-router";
 import { registerWorkflowIntegrationRouter } from "./workflow-integration-router";
-import { registerSecretImportRouter } from "./secret-import-router";
+import { registerIdentityProjectRouter } from "./identity-project-router";
 
 export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerSsoRouter, { prefix: "/sso" });
@@ -121,6 +123,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await projectRouter.register(registerProjectMembershipRouter);
       await projectRouter.register(registerProjectEnvRouter);
       await projectRouter.register(registerSecretTagRouter);
+      await projectRouter.register(registerGroupProjectRouter);
+      await projectRouter.register(registerIdentityProjectRouter);
     },
     { prefix: "/projects" }
   );

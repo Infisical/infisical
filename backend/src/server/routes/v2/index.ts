@@ -1,13 +1,13 @@
 import { registerCaRouter } from "./certificate-authority-router";
-import { registerGroupProjectRouter } from "./group-project-router";
+import { registerDepreciatedGroupProjectRouter } from "./depreciated-group-project-router";
 import { registerIdentityOrgRouter } from "./identity-org-router";
-import { registerIdentityProjectRouter } from "./identity-project-router";
+import { registerDepreciatedIdentityProjectRouter } from "./depreciated-identity-project-router";
 import { registerMfaRouter } from "./mfa-router";
 import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
 import { registerPkiTemplatesRouter } from "./pki-templates-router";
-import { registerProjectMembershipRouter } from "./project-membership-router";
-import { registerProjectRouter } from "./project-router";
+import { registerDepreciatedProjectMembershipRouter } from "./depreciated-project-membership-router";
+import { registerDepreciatedProjectRouter } from "./depreciated-project-router";
 import { registerServiceTokenRouter } from "./service-token-router";
 import { registerUserRouter } from "./user-router";
 
@@ -32,12 +32,14 @@ export const registerV2Routes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/organizations" }
   );
+
+  // moved to v1/projects
   await server.register(
     async (projectServer) => {
-      await projectServer.register(registerProjectRouter);
-      await projectServer.register(registerIdentityProjectRouter);
-      await projectServer.register(registerGroupProjectRouter);
-      await projectServer.register(registerProjectMembershipRouter);
+      await projectServer.register(registerDepreciatedProjectRouter);
+      await projectServer.register(registerDepreciatedIdentityProjectRouter);
+      await projectServer.register(registerDepreciatedGroupProjectRouter);
+      await projectServer.register(registerDepreciatedProjectMembershipRouter);
     },
     { prefix: "/workspace" }
   );

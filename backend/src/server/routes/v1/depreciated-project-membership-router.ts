@@ -240,7 +240,7 @@ export const registerDepreciatedProjectMembershipRouter = async (server: Fastify
         projectId: req.params.workspaceId,
         ...req.auditLogInfo,
         event: {
-          type: EventType.ADD_BATCH_WORKSPACE_MEMBER,
+          type: EventType.ADD_BATCH_PROJECT_MEMBER,
           metadata: data.map(({ userId }) => ({
             userId: userId || "",
             email: ""
@@ -365,7 +365,7 @@ export const registerDepreciatedProjectMembershipRouter = async (server: Fastify
         ...req.auditLogInfo,
         projectId: req.params.workspaceId,
         event: {
-          type: EventType.REMOVE_WORKSPACE_MEMBER,
+          type: EventType.REMOVE_PROJECT_MEMBER,
           metadata: {
             userId: membership.userId,
             email: ""

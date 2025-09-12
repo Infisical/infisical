@@ -136,7 +136,7 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
       }
 
       await updateProjectMicrosoftTeamsConfig({
-        workspaceId: currentWorkspace.id,
+        projectId: currentWorkspace.id,
         isAccessRequestNotificationEnabled: data.isAccessRequestNotificationEnabled,
         isSecretRequestNotificationEnabled: data.isSecretRequestNotificationEnabled,
         ...(data.isAccessRequestNotificationEnabled && {

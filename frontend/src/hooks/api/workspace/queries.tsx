@@ -15,7 +15,6 @@ import { TIntegration } from "../integrations/types";
 import { TPkiAlert } from "../pkiAlerts/types";
 import { TPkiCollection } from "../pkiCollections/types";
 import { TPkiSubscriber } from "../pkiSubscriber/types";
-import { EncryptedSecret } from "../secrets/types";
 import { TSshCertificate, TSshCertificateAuthority } from "../sshCa/types";
 import { TSshCertificateTemplate } from "../sshCertificateTemplates/types";
 import { TSshHost } from "../sshHost/types";
@@ -32,7 +31,6 @@ import {
   CreateWorkspaceDTO,
   DeleteEnvironmentDTO,
   DeleteWorkspaceDTO,
-  NameWorkspaceSecretsDTO,
   ProjectIdentityOrderBy,
   ProjectType,
   TGetUpgradeProjectStatusDTO,
@@ -71,14 +69,6 @@ const fetchProjectUpgradeStatus = async (projectId: string) => {
   );
 
   return data;
-};
-
-export const fetchWorkspaceSecrets = async (projectId: string) => {
-  const {
-    data: { secrets }
-  } = await apiRequest.get<{ secrets: EncryptedSecret[] }>(`/api/v3/projects/${projectId}/secrets`);
-
-  return secrets;
 };
 
 export const useUpgradeProject = () => {
@@ -125,14 +115,6 @@ export const useGetWorkspaceIndexStatus = (projectId: string) => {
   return useQuery({
     queryKey: projectKeys.getWorkspaceIndexStatus(projectId),
     queryFn: () => fetchWorkspaceIndexStatus(projectId),
-    enabled: true
-  });
-};
-
-export const useGetWorkspaceSecrets = (projectId: string) => {
-  return useQuery({
-    queryKey: projectKeys.getWorkspaceSecrets(projectId),
-    queryFn: () => fetchWorkspaceSecrets(projectId),
     enabled: true
   });
 };
@@ -191,22 +173,6 @@ export const useGetUserWorkspaceMemberships = (orgId: string) =>
     queryFn: () => fetchUserWorkspaceMemberships(orgId),
     enabled: Boolean(orgId)
   });
-
-export const useNameWorkspaceSecrets = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<object, object, NameWorkspaceSecretsDTO>({
-    mutationFn: async ({ projectId, secretsToUpdate }) =>
-      apiRequest.post(`/api/v3/projects/${projectId}/secrets/names`, {
-        secretsToUpdate
-      }),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.getWorkspaceIndexStatus(variables.projectId)
-      });
-    }
-  });
-};
 
 const fetchWorkspaceAuthorization = async (projectId: string) => {
   const { data } = await apiRequest.get<{ authorizations: IntegrationAuth[] }>(

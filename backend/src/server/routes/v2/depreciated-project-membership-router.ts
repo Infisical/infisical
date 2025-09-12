@@ -7,7 +7,7 @@ import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-export const registerProjectMembershipRouter = async (server: FastifyZodProvider) => {
+export const registerDepreciatedProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:projectId/memberships",
@@ -71,7 +71,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         projectId: req.params.projectId,
         ...req.auditLogInfo,
         event: {
-          type: EventType.ADD_BATCH_WORKSPACE_MEMBER,
+          type: EventType.ADD_BATCH_PROJECT_MEMBER,
           metadata: memberships.map(({ userId, id }) => ({
             userId: userId || "",
             membershipId: id,
@@ -141,7 +141,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
           ...req.auditLogInfo,
           projectId: req.params.projectId,
           event: {
-            type: EventType.REMOVE_WORKSPACE_MEMBER,
+            type: EventType.REMOVE_PROJECT_MEMBER,
             metadata: {
               userId: membership.userId,
               email: ""

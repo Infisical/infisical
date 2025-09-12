@@ -118,13 +118,13 @@ export const useUpdateProjectWorkflowIntegrationConfig = () => {
   return useMutation({
     mutationFn: async (dto: TUpdateProjectWorkflowIntegrationConfigDTO) => {
       const { data } = await apiRequest.put(
-        `/api/v1/workspace/${dto.workspaceId}/workflow-integration`,
+        `/api/v1/projects/${dto.projectId}/workflow-integration`,
         dto
       );
 
       return data;
     },
-    onSuccess: (_, { workspaceId, integration }) => {
+    onSuccess: (_, { projectId: workspaceId, integration }) => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.getWorkspaceWorkflowIntegrationConfig(workspaceId, integration)
       });
@@ -138,7 +138,7 @@ export const useDeleteProjectWorkflowIntegration = () => {
   return useMutation({
     mutationFn: async (dto: TDeleteProjectWorkflowIntegrationDTO) => {
       const { data } = await apiRequest.delete(
-        `/api/v1/workspace/${dto.projectId}/workflow-integration/${dto.integration}/${dto.integrationId}`
+        `/api/v1/projects/${dto.projectId}/workflow-integration/${dto.integration}/${dto.integrationId}`
       );
 
       return data;

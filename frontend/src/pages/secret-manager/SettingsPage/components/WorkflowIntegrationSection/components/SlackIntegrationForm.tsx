@@ -83,7 +83,7 @@ export const SlackIntegrationForm = ({ onClose }: Props) => {
 
       await updateProjectSlackConfig({
         ...data,
-        workspaceId: currentWorkspace.id,
+        projectId: currentWorkspace.id,
         integration: WorkflowIntegrationPlatform.SLACK,
         integrationId: data.slackIntegrationId,
         accessRequestChannels: data.accessRequestChannels.filter(Boolean).join(", "),

@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 import {
-  OrgMembershipsSchema,
+  OrgMembershipRole,
+  ProjectMembershipRole,
   ProjectMembershipsSchema,
   ProjectUserMembershipRolesSchema,
   UserEncryptionKeysSchema,
@@ -206,50 +207,72 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectUsers],
+      description: "Invite members to project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        projectId: z.string().trim()
+        projectId: z.string().describe(PROJECT_USERS.INVITE_MEMBER.projectId)
       }),
       body: z.object({
-        members: z
-          .object({
-            orgMembershipId: z.string().trim(),
-            workspaceEncryptedKey: z.string().trim(),
-            workspaceEncryptedNonce: z.string().trim()
-          })
+        emails: z
+          .string()
+          .email()
           .array()
-          .min(1)
+          .default([])
+          .describe(PROJECT_USERS.INVITE_MEMBER.emails)
+          .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
+        usernames: z
+          .string()
+          .array()
+          .default([])
+          .describe(PROJECT_USERS.INVITE_MEMBER.usernames)
+          .refine((val) => val.every((el) => el === el.toLowerCase()), "Username must be lowercase"),
+        roleSlugs: z.string().array().min(1).optional().describe(PROJECT_USERS.INVITE_MEMBER.roleSlugs)
       }),
       response: {
         200: z.object({
-          success: z.boolean(),
-          data: OrgMembershipsSchema.array()
+          memberships: ProjectMembershipsSchema.array()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const data = await server.services.projectMembership.addUsersToProject({
-        actorId: req.permission.id,
-        actor: req.permission.type,
+      const usernamesAndEmails = [...req.body.emails, ...req.body.usernames];
+      const { projectMemberships: memberships } = await server.services.org.inviteUserToOrganization({
         actorAuthMethod: req.permission.authMethod,
+        actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.projectId,
-        members: req.body.members
+        actor: req.permission.type,
+        inviteeEmails: usernamesAndEmails,
+        orgId: req.permission.orgId,
+        organizationRoleSlug: OrgMembershipRole.NoAccess,
+        projects: [
+          {
+            id: req.params.projectId,
+            projectRoleSlug: req.body.roleSlugs || [ProjectMembershipRole.Member]
+          }
+        ]
       });
 
       await server.services.auditLog.createAuditLog({
         projectId: req.params.projectId,
         ...req.auditLogInfo,
         event: {
-          type: EventType.ADD_BATCH_WORKSPACE_MEMBER,
-          metadata: data.map(({ userId }) => ({
+          type: EventType.ADD_BATCH_PROJECT_MEMBER,
+          metadata: memberships.map(({ userId, id }) => ({
             userId: userId || "",
+            membershipId: id,
             email: ""
           }))
         }
       });
 
-      return { data, success: true };
+      return { memberships };
     }
   });
 
@@ -311,20 +334,76 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         roles: req.body.roles
       });
 
-      // await server.services.auditLog.createAuditLog({
-      //   ...req.auditLogInfo,
-      //   projectId: req.params.projectId,
-      //   event: {
-      //     type: EventType.UPDATE_USER_WORKSPACE_ROLE,
-      //     metadata: {
-      //       userId: membership.userId,
-      //       newRole: req.body.role,
-      //       oldRole: membership.role,
-      //       email: ""
-      //     }
-      //   }
-      // });
       return { roles };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:projectId/memberships",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectUsers],
+      description: "Remove members from project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().describe(PROJECT_USERS.REMOVE_MEMBER.projectId)
+      }),
+      body: z.object({
+        emails: z
+          .string()
+          .email()
+          .array()
+          .default([])
+          .describe(PROJECT_USERS.REMOVE_MEMBER.emails)
+          .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
+        usernames: z
+          .string()
+          .array()
+          .default([])
+          .describe(PROJECT_USERS.REMOVE_MEMBER.usernames)
+          .refine((val) => val.every((el) => el === el.toLowerCase()), "Username must be lowercase")
+      }),
+      response: {
+        200: z.object({
+          memberships: ProjectMembershipsSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const memberships = await server.services.projectMembership.deleteProjectMemberships({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        emails: req.body.emails,
+        usernames: req.body.usernames
+      });
+
+      for (const membership of memberships) {
+        // eslint-disable-next-line no-await-in-loop
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          projectId: req.params.projectId,
+          event: {
+            type: EventType.REMOVE_PROJECT_MEMBER,
+            metadata: {
+              userId: membership.userId,
+              email: ""
+            }
+          }
+        });
+      }
+      return { memberships };
     }
   });
 
@@ -366,7 +445,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         ...req.auditLogInfo,
         projectId: req.params.projectId,
         event: {
-          type: EventType.REMOVE_WORKSPACE_MEMBER,
+          type: EventType.REMOVE_PROJECT_MEMBER,
           metadata: {
             userId: membership.userId,
             email: ""

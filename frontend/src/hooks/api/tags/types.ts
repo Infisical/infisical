@@ -13,7 +13,7 @@ export type WsTag = {
 export type WorkspaceTag = { id: string; name: string; slug: string };
 
 export type CreateTagDTO = {
-  workspaceID: string;
+  projectID: string;
   tagSlug: string;
   tagColor: string;
 };
