@@ -36,6 +36,7 @@ export const refreshHerokuToken = async (
   refreshToken: string,
   appId: string,
   orgId: string,
+  projectId: string | null | undefined,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ): Promise<string> => {
@@ -64,7 +65,8 @@ export const refreshHerokuToken = async (
       expiresAt: new Date(Date.now() + data.expires_in * 1000 - 60000)
     },
     orgId,
-    kmsService
+    kmsService,
+    projectId
   });
 
   await appConnectionDAL.updateById(appId, { encryptedCredentials });
@@ -186,6 +188,7 @@ export const listHerokuApps = async ({
       appConnection.credentials.refreshToken,
       appConnection.id,
       appConnection.orgId,
+      appConnection.projectId,
       appConnectionDAL,
       kmsService
     );

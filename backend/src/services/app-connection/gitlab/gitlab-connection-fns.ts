@@ -64,6 +64,7 @@ export const refreshGitLabToken = async (
   refreshToken: string,
   appId: string,
   orgId: string,
+  projectId: string | undefined | null,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   instanceUrl?: string
@@ -105,7 +106,8 @@ export const refreshGitLabToken = async (
         expiresAt
       },
       orgId,
-      kmsService
+      kmsService,
+      projectId
     });
 
     await appConnectionDAL.updateById(appId, { encryptedCredentials });
@@ -238,6 +240,7 @@ export const getGitLabConnectionClient = async (
       appConnection.credentials.refreshToken,
       appConnection.id,
       appConnection.orgId,
+      appConnection.projectId,
       appConnectionDAL,
       kmsService,
       appConnection.credentials.instanceUrl
@@ -273,6 +276,7 @@ export const listGitLabProjects = async ({
       appConnection.credentials.refreshToken,
       appConnection.id,
       appConnection.orgId,
+      appConnection.projectId,
       appConnectionDAL,
       kmsService,
       appConnection.credentials.instanceUrl
@@ -341,6 +345,7 @@ export const listGitLabGroups = async ({
       appConnection.credentials.refreshToken,
       appConnection.id,
       appConnection.orgId,
+      appConnection.projectId,
       appConnectionDAL,
       kmsService,
       appConnection.credentials.instanceUrl

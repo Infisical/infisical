@@ -6,6 +6,7 @@ import {
   faCog,
   faHome,
   faMobile,
+  faPlug,
   faPuzzlePiece,
   faUsers,
   faVault
@@ -155,6 +156,23 @@ export const SecretManagerLayout = () => {
                                 {pendingRequestsCount}
                               </Badge>
                             )}
+                          </div>
+                        </MenuItem>
+                      )}
+                    </Link>
+                    <Link
+                      to="/projects/secret-management/$projectId/app-connections"
+                      params={{
+                        projectId: currentWorkspace.id
+                      }}
+                    >
+                      {({ isActive }) => (
+                        <MenuItem isSelected={isActive}>
+                          <div className="mx-1 flex gap-2">
+                            <div className="w-6">
+                              <FontAwesomeIcon icon={faPlug} />
+                            </div>
+                            App Connections
                           </div>
                         </MenuItem>
                       )}
