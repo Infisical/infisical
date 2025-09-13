@@ -39,7 +39,7 @@ const SecretReferenceNodeTree: z.ZodType<TSecretReferenceNode> = SecretReference
   children: z.lazy(() => SecretReferenceNodeTree.array())
 });
 
-export const registerSecretRouter = async (server: FastifyZodProvider) => {
+export const registerDepreciatedSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/tags/:secretName",
@@ -230,7 +230,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             }
           })
           .describe(RAW_SECRETS.LIST.metadataFilter),
-        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceId),
+        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.LIST.projectId),
         workspaceSlug: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceSlug),
         environment: z.string().trim().optional().describe(RAW_SECRETS.LIST.environment),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash).describe(RAW_SECRETS.LIST.secretPath),

@@ -964,7 +964,7 @@ export const RAW_SECRETS = {
     expand: "Whether or not to expand secret references.",
     recursive:
       "Whether or not to fetch all secrets from the specified base path, and all of its subdirectories. Note, the max depth is 20 deep.",
-    workspaceId: "The ID of the project to list secrets from.",
+    projectId: "The ID of the project to list secrets from.",
     workspaceSlug:
       "The slug of the project to list secrets from. This parameter is only applicable by machine identities.",
     environment: "The slug of the environment to list secrets from.",
@@ -1029,7 +1029,7 @@ export const RAW_SECRETS = {
   },
   GET_REFERENCE_TREE: {
     secretName: "The name of the secret to get the reference tree for.",
-    workspaceId: "The ID of the project where the secret is located.",
+    projectId: "The ID of the project where the secret is located.",
     environment: "The slug of the environment where the the secret is located.",
     secretPath: "The folder path where the secret is located."
   },

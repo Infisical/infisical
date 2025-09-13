@@ -83,6 +83,8 @@ export type UpdateProjectDTO = {
   secretSharing?: boolean;
   showSnapshotsLegacy?: boolean;
   secretDetectionIgnoreValues?: string[];
+  pitVersionLimit?: number;
+  autoCapitalization?: boolean;
 };
 
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };

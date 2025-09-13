@@ -34,22 +34,22 @@ export const projectKeys = {
   getWorkspaceGroupMemberships: (projectId: string) => [{ projectId }, "project-groups"] as const,
   getWorkspaceGroupMembershipDetails: (projectId: string, groupId: string) =>
     [{ projectId, groupId }, "project-group-membership-details"] as const,
-  getWorkspaceCas: ({ projectSlug }: { projectSlug: string }) =>
-    [{ projectSlug }, "project-cas"] as const,
-  specificWorkspaceCas: ({ projectSlug, status }: { projectSlug: string; status?: CaStatus }) =>
-    [...projectKeys.getWorkspaceCas({ projectSlug }), { status }] as const,
+  getWorkspaceCas: ({ projectId }: { projectId: string }) =>
+    [{ projectId }, "project-cas"] as const,
+  specificWorkspaceCas: ({ projectId, status }: { projectId: string; status?: CaStatus }) =>
+    [...projectKeys.getWorkspaceCas({ projectId }), { status }] as const,
   allWorkspaceCertificates: () => ["project-certificates"] as const,
-  forWorkspaceCertificates: (slug: string) =>
-    [...projectKeys.allWorkspaceCertificates(), slug] as const,
+  forWorkspaceCertificates: (projectId: string) =>
+    [...projectKeys.allWorkspaceCertificates(), projectId] as const,
   specificWorkspaceCertificates: ({
-    slug,
+    projectId,
     offset,
     limit
   }: {
-    slug: string;
+    projectId: string;
     offset: number;
     limit: number;
-  }) => [...projectKeys.forWorkspaceCertificates(slug), { offset, limit }] as const,
+  }) => [...projectKeys.forWorkspaceCertificates(projectId), { offset, limit }] as const,
   getWorkspacePkiAlerts: (projectId: string) => [{ projectId }, "project-pki-alerts"] as const,
   getWorkspacePkiSubscribers: (projectId: string) =>
     [{ projectId }, "project-pki-subscribers"] as const,

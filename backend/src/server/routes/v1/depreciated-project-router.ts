@@ -85,7 +85,7 @@ export const registerDepreciatedProjectRouter = async (server: FastifyZodProvide
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(PROJECTS.GET.workspaceId)
+        workspaceId: z.string().trim().describe(PROJECTS.GET.projectId)
       }),
       response: {
         200: z.object({
@@ -176,7 +176,7 @@ export const registerDepreciatedProjectRouter = async (server: FastifyZodProvide
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(PROJECTS.UPDATE.workspaceId)
+        workspaceId: z.string().trim().describe(PROJECTS.UPDATE.projectId)
       }),
       body: z.object({
         name: z
@@ -284,7 +284,11 @@ export const registerDepreciatedProjectRouter = async (server: FastifyZodProvide
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        workspaceSlug: req.params.workspaceSlug,
+        filter: {
+          type: ProjectFilterType.SLUG,
+          slug: req.params.workspaceSlug,
+          orgId: req.permission.orgId
+        },
         auditLogsRetentionDays: req.body.auditLogsRetentionDays
       });
 
@@ -321,7 +325,7 @@ export const registerDepreciatedProjectRouter = async (server: FastifyZodProvide
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(PROJECTS.LIST_INTEGRATION.workspaceId)
+        workspaceId: z.string().trim().describe(PROJECTS.LIST_INTEGRATION.projectId)
       }),
       response: {
         200: z.object({
@@ -366,7 +370,7 @@ export const registerDepreciatedProjectRouter = async (server: FastifyZodProvide
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(PROJECTS.LIST_INTEGRATION_AUTHORIZATION.workspaceId)
+        workspaceId: z.string().trim().describe(PROJECTS.LIST_INTEGRATION_AUTHORIZATION.projectId)
       }),
       response: {
         200: z.object({

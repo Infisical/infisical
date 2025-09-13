@@ -49,7 +49,7 @@ export const AddPkiCollectionItemModal = ({
   });
 
   const { data } = useListWorkspaceCertificates({
-    projectSlug: currentWorkspace?.slug || "",
+    projectId: currentWorkspace?.slug || "",
     offset: 0,
     limit: 25
   });

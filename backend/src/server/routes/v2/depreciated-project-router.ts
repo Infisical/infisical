@@ -47,7 +47,7 @@ export const registerDepreciatedProjectRouter = async (server: FastifyZodProvide
     schema: {
       description: "Return encrypted project key",
       params: z.object({
-        workspaceId: z.string().trim().describe(PROJECTS.GET_KEY.workspaceId)
+        workspaceId: z.string().trim().describe(PROJECTS.GET_KEY.projectId)
       }),
       response: {
         200: ProjectKeysSchema.merge(
@@ -125,8 +125,8 @@ export const registerDepreciatedProjectRouter = async (server: FastifyZodProvide
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        workspaceName: req.body.projectName,
-        workspaceDescription: req.body.projectDescription,
+        projectName: req.body.projectName,
+        projectDescription: req.body.projectDescription,
         slug: req.body.slug,
         kmsKeyId: req.body.kmsKeyId,
         template: req.body.template,

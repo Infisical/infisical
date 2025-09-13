@@ -2,7 +2,10 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
+  CertificatesSchema,
   IntegrationsSchema,
+  PkiAlertsSchema,
+  PkiCollectionsSchema,
   ProjectEnvironmentsSchema,
   ProjectMembershipsSchema,
   ProjectRolesSchema,
@@ -27,9 +30,25 @@ import { ProjectFilterType, SearchProjectSortBy } from "@app/services/project/pr
 import { validateSlackChannelsField } from "@app/services/slack/slack-auth-validators";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
-import { integrationAuthPubSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
+import {
+  integrationAuthPubSchema,
+  InternalCertificateAuthorityResponseSchema,
+  SanitizedProjectSchema
+} from "../sanitizedSchemas";
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
 import { slugSchema } from "@app/server/lib/schemas";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
+import { sanitizedSshCertificate } from "@app/ee/services/ssh-certificate/ssh-certificate-schema";
+import { sanitizedSshCertificateTemplate } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-schema";
+import { sanitizedSshCa } from "@app/ee/services/ssh/ssh-certificate-authority-schema";
+import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
+import { LoginMappingSource } from "@app/ee/services/ssh-host/ssh-host-types";
+import { sanitizedSshHostGroup } from "@app/ee/services/ssh-host-group/ssh-host-group-schema";
+import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
 
 const projectWithEnv = SanitizedProjectSchema.merge(
   z.object({
@@ -158,8 +177,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        workspaceName: req.body.projectName,
-        workspaceDescription: req.body.projectDescription,
+        projectName: req.body.projectName,
+        projectDescription: req.body.projectDescription,
         slug: req.body.slug,
         kmsKeyId: req.body.kmsKeyId,
         template: req.body.template,
@@ -365,58 +384,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  /* Delete a project by slug */
-  server.route({
-    method: "DELETE",
-    url: "/slug/:slug",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      hide: false,
-      tags: [ApiDocsTags.Projects],
-      description: "Delete project",
-      security: [
-        {
-          bearerAuth: []
-        }
-      ],
-      params: z.object({
-        slug: slugSchema({ min: 5, max: 36 }).describe("The slug of the project to delete.")
-      }),
-      response: {
-        200: SanitizedProjectSchema
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-
-    handler: async (req) => {
-      const project = await server.services.project.deleteProject({
-        filter: {
-          type: ProjectFilterType.SLUG,
-          slug: req.params.slug,
-          orgId: req.permission.orgId
-        },
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        actor: req.permission.type
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: project.id,
-        event: {
-          type: EventType.DELETE_PROJECT,
-          metadata: project
-        }
-      });
-
-      return project;
-    }
-  });
-
+  // TODO(depri): replcae frontned auto cap and delete protection with this patch
   server.route({
     method: "PATCH",
     url: "/:projectId",
@@ -462,11 +430,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .describe(PROJECTS.UPDATE.slug),
         secretSharing: z.boolean().optional().describe(PROJECTS.UPDATE.secretSharing),
         showSnapshotsLegacy: z.boolean().optional().describe(PROJECTS.UPDATE.showSnapshotsLegacy),
-        defaultProduct: z.nativeEnum(ProjectType).optional().describe(PROJECTS.UPDATE.defaultProduct),
         secretDetectionIgnoreValues: z
           .array(z.string())
           .optional()
-          .describe(PROJECTS.UPDATE.secretDetectionIgnoreValues)
+          .describe(PROJECTS.UPDATE.secretDetectionIgnoreValues),
+        pitVersionLimit: z.number().min(1).max(100).optional()
       }),
       response: {
         200: z.object({
@@ -485,12 +453,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           name: req.body.name,
           description: req.body.description,
           autoCapitalization: req.body.autoCapitalization,
-          defaultProduct: req.body.defaultProduct,
           hasDeleteProtection: req.body.hasDeleteProtection,
           slug: req.body.slug,
           secretSharing: req.body.secretSharing,
           showSnapshotsLegacy: req.body.showSnapshotsLegacy,
-          secretDetectionIgnoreValues: req.body.secretDetectionIgnoreValues
+          secretDetectionIgnoreValues: req.body.secretDetectionIgnoreValues,
+          pitVersionLimit: req.body.pitVersionLimit
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
@@ -515,158 +483,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    method: "POST",
-    url: "/:projectId/auto-capitalization",
+    method: "PUT",
+    url: "/:projectId/audit-logs-retention",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       params: z.object({
         projectId: z.string().trim()
-      }),
-      body: z.object({
-        autoCapitalization: z.boolean()
-      }),
-      response: {
-        200: z.object({
-          message: z.string(),
-          project: SanitizedProjectSchema
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const project = await server.services.project.toggleAutoCapitalization({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.projectId,
-        autoCapitalization: req.body.autoCapitalization
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.params.projectId,
-        event: {
-          type: EventType.UPDATE_PROJECT,
-          metadata: req.body
-        }
-      });
-
-      return {
-        message: "Successfully changed project settings",
-        project
-      };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/:projectId/delete-protection",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({
-        projectId: z.string().trim()
-      }),
-      body: z.object({
-        hasDeleteProtection: z.boolean()
-      }),
-      response: {
-        200: z.object({
-          message: z.string(),
-          project: SanitizedProjectSchema
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const project = await server.services.project.toggleDeleteProtection({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.projectId,
-        hasDeleteProtection: req.body.hasDeleteProtection
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.params.projectId,
-        event: {
-          type: EventType.UPDATE_PROJECT,
-          metadata: req.body
-        }
-      });
-
-      return {
-        message: "Successfully changed project settings",
-        project
-      };
-    }
-  });
-
-  server.route({
-    method: "PUT",
-    url: "/:workspaceSlug/version-limit",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({
-        workspaceSlug: z.string().trim()
-      }),
-      body: z.object({
-        pitVersionLimit: z.number().min(1).max(100)
-      }),
-      response: {
-        200: z.object({
-          message: z.string(),
-          project: SanitizedProjectSchema
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const project = await server.services.project.updateVersionLimit({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        pitVersionLimit: req.body.pitVersionLimit,
-        workspaceSlug: req.params.workspaceSlug
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: project.id,
-        event: {
-          type: EventType.UPDATE_PROJECT,
-          metadata: req.body
-        }
-      });
-
-      return {
-        message: "Successfully changed project version limit",
-        project
-      };
-    }
-  });
-
-  server.route({
-    method: "PUT",
-    url: "/:workspaceSlug/audit-logs-retention",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({
-        workspaceSlug: z.string().trim()
       }),
       body: z.object({
         auditLogsRetentionDays: z.number().min(0)
@@ -685,8 +509,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        workspaceSlug: req.params.workspaceSlug,
-        auditLogsRetentionDays: req.body.auditLogsRetentionDays
+        auditLogsRetentionDays: req.body.auditLogsRetentionDays,
+        filter: {
+          projectId: req.params.projectId,
+          type: ProjectFilterType.ID
+        }
       });
 
       await server.services.auditLog.createAuditLog({
@@ -1301,6 +1128,396 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return { status };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/cas",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      querystring: z.object({
+        status: z.enum([CaStatus.ACTIVE, CaStatus.PENDING_CERTIFICATE]).optional().describe(PROJECTS.LIST_CAS.status),
+        friendlyName: z.string().optional().describe(PROJECTS.LIST_CAS.friendlyName),
+        commonName: z.string().optional().describe(PROJECTS.LIST_CAS.commonName),
+        offset: z.coerce.number().min(0).max(100).default(0).describe(PROJECTS.LIST_CAS.offset),
+        limit: z.coerce.number().min(1).max(100).default(25).describe(PROJECTS.LIST_CAS.limit)
+      }),
+      response: {
+        200: z.object({
+          cas: z.array(InternalCertificateAuthorityResponseSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const cas = await server.services.project.listProjectCas({
+        filter: {
+          projectId: req.params.projectId,
+          type: ProjectFilterType.ID
+        },
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        ...req.query
+      });
+      return { cas };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/certificates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      querystring: z.object({
+        friendlyName: z.string().optional().describe(PROJECTS.LIST_CERTIFICATES.friendlyName),
+        commonName: z.string().optional().describe(PROJECTS.LIST_CERTIFICATES.commonName),
+        offset: z.coerce.number().min(0).max(100).default(0).describe(PROJECTS.LIST_CERTIFICATES.offset),
+        limit: z.coerce.number().min(1).max(100).default(25).describe(PROJECTS.LIST_CERTIFICATES.limit)
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(CertificatesSchema),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificates, totalCount } = await server.services.project.listProjectCertificates({
+        filter: {
+          projectId: req.params.projectId,
+          type: ProjectFilterType.ID
+        },
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        ...req.query
+      });
+      return { certificates, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/pki-alerts",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiAlerting],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          alerts: z.array(PkiAlertsSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { alerts } = await server.services.project.listProjectAlerts({
+        projectId: req.params.projectId,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      return { alerts };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/pki-collections",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateCollections],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          collections: z.array(PkiCollectionsSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { pkiCollections } = await server.services.project.listProjectPkiCollections({
+        projectId: req.params.projectId,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      return { collections: pkiCollections };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/pki-subscribers",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiSubscribers],
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_PKI_SUBSCRIBERS.projectId)
+      }),
+      response: {
+        200: z.object({
+          subscribers: z.array(sanitizedPkiSubscriber)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const subscribers = await server.services.project.listProjectPkiSubscribers({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId
+      });
+
+      return { subscribers };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/certificate-templates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateTemplates],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          certificateTemplates: sanitizedCertificateTemplate.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificateTemplates } = await server.services.project.listProjectCertificateTemplates({
+        projectId: req.params.projectId,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      return { certificateTemplates };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/ssh-certificates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CAS.projectId)
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().default(0).describe(PROJECTS.LIST_SSH_CERTIFICATES.offset),
+        limit: z.coerce.number().default(25).describe(PROJECTS.LIST_SSH_CERTIFICATES.limit)
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(sanitizedSshCertificate),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificates, totalCount } = await server.services.project.listProjectSshCertificates({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId,
+        offset: req.query.offset,
+        limit: req.query.limit
+      });
+
+      return { certificates, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/ssh-certificate-templates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshCertificateTemplates],
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CERTIFICATE_TEMPLATES.projectId)
+      }),
+      response: {
+        200: z.object({
+          certificateTemplates: z.array(sanitizedSshCertificateTemplate)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificateTemplates } = await server.services.project.listProjectSshCertificateTemplates({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId
+      });
+
+      return { certificateTemplates };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/ssh-cas",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshCertificateAuthorities],
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CAS.projectId)
+      }),
+      response: {
+        200: z.object({
+          cas: z.array(sanitizedSshCa)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const cas = await server.services.project.listProjectSshCas({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId
+      });
+
+      return { cas };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/ssh-hosts",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHosts],
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_SSH_HOSTS.projectId)
+      }),
+      response: {
+        200: z.object({
+          hosts: z.array(
+            sanitizedSshHost.extend({
+              loginMappings: loginMappingSchema
+                .extend({
+                  source: z.nativeEnum(LoginMappingSource)
+                })
+                .array()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const hosts = await server.services.project.listProjectSshHosts({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId
+      });
+
+      return { hosts };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/ssh-host-groups",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHostGroups],
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_SSH_HOST_GROUPS.projectId)
+      }),
+      response: {
+        200: z.object({
+          groups: z.array(
+            sanitizedSshHostGroup.extend({
+              loginMappings: loginMappingSchema.array(),
+              hostCount: z.number()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const groups = await server.services.project.listProjectSshHostGroups({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId
+      });
+
+      return { groups };
     }
   });
 };

@@ -245,7 +245,9 @@ export const useUpdateProject = () => {
       newSlug,
       secretSharing,
       showSnapshotsLegacy,
-      secretDetectionIgnoreValues
+      secretDetectionIgnoreValues,
+      autoCapitalization,
+      pitVersionLimit
     }) => {
       const { data } = await apiRequest.patch<{ project: Project }>(
         `/api/v1/projects/${projectID}`,
@@ -255,7 +257,9 @@ export const useUpdateProject = () => {
           slug: newSlug,
           secretSharing,
           showSnapshotsLegacy,
-          secretDetectionIgnoreValues
+          secretDetectionIgnoreValues,
+          autoCapitalization,
+          pitVersionLimit
         }
       );
       return data.project;
@@ -682,15 +686,15 @@ export const useListWorkspaceGroups = (projectId: string) => {
 };
 
 export const useListWorkspaceCas = ({
-  projectSlug,
+  projectId,
   status
 }: {
-  projectSlug: string;
+  projectId: string;
   status?: CaStatus;
 }) => {
   return useQuery({
     queryKey: projectKeys.specificWorkspaceCas({
-      projectSlug,
+      projectId,
       status
     }),
     queryFn: async () => {
@@ -701,29 +705,29 @@ export const useListWorkspaceCas = ({
       const {
         data: { cas }
       } = await apiRequest.get<{ cas: TCertificateAuthority[] }>(
-        `/api/v1/projects/${projectSlug}/cas`,
+        `/api/v1/projects/${projectId}/cas`,
         {
           params
         }
       );
       return cas;
     },
-    enabled: Boolean(projectSlug)
+    enabled: Boolean(projectId)
   });
 };
 
 export const useListWorkspaceCertificates = ({
-  projectSlug,
+  projectId,
   offset,
   limit
 }: {
-  projectSlug: string;
+  projectId: string;
   offset: number;
   limit: number;
 }) => {
   return useQuery({
     queryKey: projectKeys.specificWorkspaceCertificates({
-      slug: projectSlug,
+      projectId,
       offset,
       limit
     }),
@@ -736,7 +740,7 @@ export const useListWorkspaceCertificates = ({
       const {
         data: { certificates, totalCount }
       } = await apiRequest.get<{ certificates: TCertificate[]; totalCount: number }>(
-        `/api/v1/projects/${projectSlug}/certificates`,
+        `/api/v1/projects/${projectId}/certificates`,
         {
           params
         }
@@ -744,7 +748,7 @@ export const useListWorkspaceCertificates = ({
 
       return { certificates, totalCount };
     },
-    enabled: Boolean(projectSlug)
+    enabled: Boolean(projectId)
   });
 };
 

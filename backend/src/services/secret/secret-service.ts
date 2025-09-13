@@ -2970,14 +2970,23 @@ export const secretServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    projectId: inputProjectId
   }: TMoveSecretsDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    let project;
+    if (projectSlug) {
+      project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    } else if (inputProjectId) {
+      project = await projectDAL.findById(inputProjectId);
+    }
+
     if (!project) {
       throw new NotFoundError({
         message: `Project with slug '${projectSlug}' not found`
       });
     }
+
+    const projectId = project.id;
     if (project.version === ProjectVersion.V3) {
       return secretV2BridgeService.moveSecrets({
         sourceEnvironment,
@@ -3170,7 +3179,7 @@ export const secretServiceFactory = ({
         });
       }
       const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
-        project.id,
+        projectId,
         destinationFolder.environment.slug,
         destinationFolder.path
       );
@@ -3257,7 +3266,7 @@ export const secretServiceFactory = ({
         }
         if (locallyUpdatedSecrets.length) {
           await fnSecretBulkUpdate({
-            projectId: project.id,
+            projectId,
             folderId: destinationFolder.id,
             secretVersionDAL,
             secretDAL,
@@ -3300,7 +3309,7 @@ export const secretServiceFactory = ({
       const locallyDeletedSecrets = decryptedSourceSecrets.map((el) => ({ ...el, operation: SecretOperations.Delete }));
 
       const sourceFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
-        project.id,
+        projectId,
         sourceFolder.environment.slug,
         sourceFolder.path
       );
