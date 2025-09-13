@@ -8,6 +8,7 @@ import {
   faServer,
   faUser
 } from "@fortawesome/free-solid-svg-icons";
+import { useRouterState } from "@tanstack/react-router";
 
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
@@ -221,3 +222,11 @@ export const AWS_REGIONS = [
   { name: "AWS GovCloud (US-East)", slug: "us-gov-east-1" },
   { name: "AWS GovCloud (US-West)", slug: "us-gov-west-1" }
 ];
+
+export const useGetAppConnectionOauthReturnUrl = () => {
+  const {
+    location: { pathname }
+  } = useRouterState();
+
+  return pathname;
+};

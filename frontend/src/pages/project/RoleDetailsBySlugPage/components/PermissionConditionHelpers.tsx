@@ -23,6 +23,7 @@ export const renderOperatorSelectItems = (type: string) => {
     case "secretTags":
       return <SelectItem value={PermissionConditionOperators.$IN}>Contains</SelectItem>;
     case "identityId":
+    case "connectionId":
       return (
         <>
           <SelectItem value={PermissionConditionOperators.$EQ}>Equal</SelectItem>

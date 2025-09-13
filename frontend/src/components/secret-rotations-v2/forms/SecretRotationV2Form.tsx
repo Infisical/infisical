@@ -34,6 +34,7 @@ type Props = {
   environment?: string;
   environments?: WorkspaceEnv[];
   secretRotation?: TSecretRotationV2;
+  initialFormData?: Partial<TSecretRotationV2Form>;
 };
 
 const FORM_TABS: { name: string; key: string; fields: (keyof TSecretRotationV2Form)[] }[] = [
@@ -64,7 +65,8 @@ export const SecretRotationV2Form = ({
   environment: envSlug,
   secretPath,
   secretRotation,
-  environments
+  environments,
+  initialFormData
 }: Props) => {
   const createSecretRotation = useCreateSecretRotationV2();
   const updateSecretRotation = useUpdateSecretRotationV2();
@@ -93,7 +95,8 @@ export const SecretRotationV2Form = ({
           },
           environment: currentWorkspace?.environments.find((env) => env.slug === envSlug),
           secretPath,
-          ...(rotationOption!.template as object) // can't infer type since we don't know which specific type it is
+          ...((rotationOption?.template as object) ?? {}), // can't infer type since we don't know which specific type it is
+          ...(initialFormData as object)
         },
     reValidateMode: "onChange"
   });

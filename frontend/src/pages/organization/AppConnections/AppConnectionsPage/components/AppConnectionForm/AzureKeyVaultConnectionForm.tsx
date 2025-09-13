@@ -6,7 +6,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  getAppConnectionMethodDetails,
+  useGetAppConnectionOauthReturnUrl
+} from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useGetAppConnectionOption } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -15,6 +19,7 @@ import {
   TAzureKeyVaultConnection
 } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
 
+import { AzureKeyVaultFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -25,6 +30,7 @@ type ClientSecretForm = z.infer<typeof clientSecretSchema>;
 type Props = {
   appConnection?: TAzureKeyVaultConnection;
   onSubmit: (formData: ClientSecretForm) => Promise<void>;
+  projectId: string | undefined | null;
 };
 
 const baseSchema = genericAppConnectionFieldsSchema.extend({
@@ -96,7 +102,7 @@ const getDefaultValues = (appConnection?: TAzureKeyVaultConnection): Partial<For
   return base;
 };
 
-export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit }: Props) => {
+export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -109,6 +115,8 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit }: Props) 
     resolver: zodResolver(formSchema),
     defaultValues: getDefaultValues(appConnection)
   });
+
+  const returnUrl = useGetAppConnectionOauthReturnUrl();
 
   const {
     handleSubmit,
@@ -129,7 +137,12 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit }: Props) 
         localStorage.setItem("latestCSRFToken", state);
         localStorage.setItem(
           "azureKeyVaultConnectionFormData",
-          JSON.stringify({ ...formData, connectionId: appConnection?.id })
+          JSON.stringify({
+            ...formData,
+            connectionId: appConnection?.id,
+            projectId,
+            returnUrl
+          } as AzureKeyVaultFormData)
         );
         window.location.assign(
           `https://login.microsoftonline.com/${formData.tenantId || "common"}/oauth2/v2.0/authorize?client_id=${oauthClientId}&response_type=code&redirect_uri=${window.location.origin}/organization/app-connections/azure/oauth/callback&response_mode=query&scope=https://vault.azure.net/.default%20openid%20offline_access&state=${state}<:>azure-key-vault`

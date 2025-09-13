@@ -41,7 +41,7 @@ import { TSecretSyncQueueFactory } from "./secret-sync-queue";
 type TSecretSyncServiceFactoryDep = {
   secretSyncDAL: TSecretSyncDALFactory;
   secretImportDAL: TSecretImportDALFactory;
-  appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId" | "findById" | "findBySecretPath">;
@@ -267,7 +267,11 @@ export const secretSyncServiceFactory = ({
     const destinationApp = SECRET_SYNC_CONNECTION_MAP[params.destination];
 
     // validates permission to connect and app is valid for sync destination
-    await appConnectionService.connectAppConnectionById(destinationApp, params.connectionId, actor);
+    await appConnectionService.validateAppConnectionUsageById(
+      destinationApp,
+      { connectionId: params.connectionId, projectId },
+      actor
+    );
 
     try {
       const secretSync = await secretSyncDAL.create({
@@ -362,7 +366,11 @@ export const secretSyncServiceFactory = ({
       const destinationApp = SECRET_SYNC_CONNECTION_MAP[secretSync.destination as SecretSync];
 
       // validates permission to connect and app is valid for sync destination
-      await appConnectionService.connectAppConnectionById(destinationApp, params.connectionId, actor);
+      await appConnectionService.validateAppConnectionUsageById(
+        destinationApp,
+        { connectionId: params.connectionId, projectId: secretSync.projectId },
+        actor
+      );
     }
 
     if (

@@ -184,7 +184,7 @@ Infisical supports two methods for connecting to AWS.
             <Step title="Setup AWS Connection in Infisical">
                 <Tabs>
                     <Tab title="Infisical UI">
-                        1. Navigate to the App Connections tab on the Organization Settings page.
+                        1. Navigate to the **App Connections** page in the desired project.
                         ![App Connections Tab](/images/app-connections/general/add-connection.png)
 
                         2. Select the **AWS Connection** option.
@@ -209,6 +209,7 @@ Infisical supports two methods for connecting to AWS.
                                 --data '{
                                     "name": "my-aws-connection",
                                     "method": "assume-role",
+                                    "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
                                     "credentials": {
                                         "roleArn": "...",
                                     }
@@ -222,6 +223,7 @@ Infisical supports two methods for connecting to AWS.
                             "appConnection": {
                                 "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                                 "name": "my-aws-connection",
+                                "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
                                 "version": 123,
                                 "orgId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                                 "createdAt": "2023-11-07T05:31:56Z",
@@ -361,7 +363,7 @@ Infisical supports two methods for connecting to AWS.
             <Step title="Setup AWS Connection in Infisical">
                 <Tabs>
                     <Tab title="Infisical UI">
-                        1. Navigate to the App Connections tab on the Organization Settings page.
+                        1. Navigate to the **App Connections** page in the desired project.
                         ![App Connections Tab](/images/app-connections/general/add-connection.png)
 
                         2. Select the **AWS Connection** option.
@@ -386,6 +388,7 @@ Infisical supports two methods for connecting to AWS.
                                 --data '{
                                     "name": "my-aws-connection",
                                     "method": "access-key",
+                                    "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
                                     "credentials": {
                                         "accessKeyId": "...",
                                         "secretKey": "..."
@@ -400,6 +403,7 @@ Infisical supports two methods for connecting to AWS.
                             "appConnection": {
                                 "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                                 "name": "my-aws-connection",
+                                "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
                                 "version": 123,
                                 "orgId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                                 "createdAt": "2023-11-07T05:31:56Z",

@@ -4,6 +4,7 @@ import {
   faDatabase,
   faHome,
   faMagnifyingGlass,
+  faPlug,
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -96,6 +97,23 @@ export const SecretScanningLayout = () => {
                               {unresolvedFindings}
                             </Badge>
                           )}
+                        </div>
+                      </MenuItem>
+                    )}
+                  </Link>
+                  <Link
+                    to="/projects/secret-scanning/$projectId/app-connections"
+                    params={{
+                      projectId: currentWorkspace.id
+                    }}
+                  >
+                    {({ isActive }) => (
+                      <MenuItem isSelected={isActive}>
+                        <div className="mx-1 flex gap-2">
+                          <div className="w-6">
+                            <FontAwesomeIcon icon={faPlug} />
+                          </div>
+                          App Connections
                         </div>
                       </MenuItem>
                     )}

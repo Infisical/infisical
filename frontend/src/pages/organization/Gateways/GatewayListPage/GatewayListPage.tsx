@@ -4,11 +4,11 @@ import {
   faArrowUpRightFromSquare,
   faBookOpen,
   faCopy,
+  faDoorClosed,
   faEdit,
   faEllipsisV,
   faInfoCircle,
   faMagnifyingGlass,
-  faPlug,
   faSearch,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
@@ -243,7 +243,7 @@ export const GatewayListPage = withPermission(
                           ? "No Gateways match search..."
                           : "No Gateways have been configured"
                       }
-                      icon={gateways?.length ? faSearch : faPlug}
+                      icon={gateways?.length ? faSearch : faDoorClosed}
                     />
                   )}
                   <DeleteActionModal

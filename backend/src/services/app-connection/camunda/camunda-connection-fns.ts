@@ -40,7 +40,7 @@ const authorizeCamundaConnection = async ({
 };
 
 export const getCamundaConnectionAccessToken = async (
-  { id, orgId, credentials }: TCamundaConnection,
+  { id, orgId, credentials, projectId }: TCamundaConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
@@ -61,7 +61,8 @@ export const getCamundaConnectionAccessToken = async (
   const encryptedCredentials = await encryptAppConnectionCredentials({
     credentials: updatedCredentials,
     orgId,
-    kmsService
+    kmsService,
+    projectId
   });
 
   await appConnectionDAL.updateById(id, { encryptedCredentials });

@@ -352,7 +352,8 @@ export const getAzureADCSConnectionCredentials = async (
       const credentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
         kmsService,
-        encryptedCredentials: appConnection.encryptedCredentials
+        encryptedCredentials: appConnection.encryptedCredentials,
+        projectId: appConnection.projectId
       })) as {
         username: string;
         password: string;

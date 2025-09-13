@@ -13,7 +13,15 @@ export const BaseAppConnectionSchema = AppConnectionsSchema.omit({
   app: true,
   method: true
 }).extend({
-  credentialsHash: z.string().optional()
+  credentialsHash: z.string().optional(),
+  project: z
+    .object({
+      name: z.string(),
+      id: z.string(),
+      type: z.string(),
+      slug: z.string()
+    })
+    .nullish()
 });
 
 export const GenericCreateAppConnectionFieldsSchema = (
@@ -28,6 +36,7 @@ export const GenericCreateAppConnectionFieldsSchema = (
       .max(256, "Description cannot exceed 256 characters")
       .nullish()
       .describe(AppConnections.CREATE(app).description),
+    projectId: z.string().optional().describe(AppConnections.CREATE(app).projectId),
     isPlatformManagedCredentials: supportsPlatformManagedCredentials
       ? z.boolean().optional().default(false).describe(AppConnections.CREATE(app).isPlatformManagedCredentials)
       : z

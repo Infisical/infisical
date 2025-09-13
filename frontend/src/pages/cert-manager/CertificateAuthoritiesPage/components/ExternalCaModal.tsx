@@ -4,6 +4,7 @@ import { SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+import { AppConnectionOption } from "@app/components/app-connections";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -201,17 +202,17 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   }, [popUp?.ca?.isOpen, popUp?.ca?.data, reset, ca]);
 
   const { data: availableRoute53Connections, isPending: isRoute53Pending } =
-    useListAvailableAppConnections(AppConnection.AWS, {
+    useListAvailableAppConnections(AppConnection.AWS, currentWorkspace.id, {
       enabled: caType === CaType.ACME
     });
 
   const { data: availableCloudflareConnections, isPending: isCloudflarePending } =
-    useListAvailableAppConnections(AppConnection.Cloudflare, {
+    useListAvailableAppConnections(AppConnection.Cloudflare, currentWorkspace.id, {
       enabled: caType === CaType.ACME
     });
 
   const { data: availableAzureConnections, isPending: isAzurePending } =
-    useListAvailableAppConnections(AppConnection.AzureADCS, {
+    useListAvailableAppConnections(AppConnection.AzureADCS, currentWorkspace.id, {
       enabled: caType === CaType.AZURE_AD_CS
     });
 
@@ -457,6 +458,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                       placeholder="Select connection..."
                       getOptionLabel={(option) => option.name}
                       getOptionValue={(option) => option.id}
+                      components={{ Option: AppConnectionOption }}
                     />
                   </FormControl>
                 )}

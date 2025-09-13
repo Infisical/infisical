@@ -51,7 +51,7 @@ const authorizeAuth0Connection = async ({
 };
 
 export const getAuth0ConnectionAccessToken = async (
-  { id, orgId, credentials }: TAuth0Connection,
+  { id, orgId, credentials, projectId }: TAuth0Connection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
@@ -72,7 +72,8 @@ export const getAuth0ConnectionAccessToken = async (
   const encryptedCredentials = await encryptAppConnectionCredentials({
     credentials: updatedCredentials,
     orgId,
-    kmsService
+    kmsService,
+    projectId
   });
 
   await appConnectionDAL.updateById(id, { encryptedCredentials });
