@@ -1,5 +1,3 @@
-import { ProjectType } from "@app/hooks/api/workspace/types";
-
 import { AppConnection } from "../enums";
 import { TOnePassConnection } from "./1password-connection";
 import { TAppConnectionOption } from "./app-options";
@@ -196,22 +194,18 @@ export type TDeleteAppConnectionDTO = {
 //   [AppConnection.Okta]: TOktaConnection;
 // };
 
-export type TMigrateAppConnectionDTO = {
-  app: AppConnection;
-  connectionId: string;
-};
-
-export type AppConnectionUsage = {
-  projects: Array<{
-    id: string;
-    name: string;
-    slug: string;
-    type: ProjectType;
-    resources: {
-      secretSyncs: Array<{ id: string; name: string }>;
-      externalCas: Array<{ id: string; name: string }>;
-      secretRotations: Array<{ id: string; name: string }>;
-      dataSources: Array<{ id: string; name: string }>;
-    };
-  }>;
-};
+// scott: we will need this once we have individual app connection page
+// export type AppConnectionUsage = {
+//   projects: Array<{
+//     id: string;
+//     name: string;
+//     slug: string;
+//     type: ProjectType;
+//     resources: {
+//       secretSyncs: Array<{ id: string; name: string }>;
+//       externalCas: Array<{ id: string; name: string }>;
+//       secretRotations: Array<{ id: string; name: string }>;
+//       dataSources: Array<{ id: string; name: string }>;
+//     };
+//   }>;
+// };

@@ -31,7 +31,7 @@ const Content = ({ onComplete, projectId, projectType, app }: ContentProps) => {
     return (
       <AppConnectionForm
         onComplete={onComplete}
-        onBack={() => setSelectedApp(null)}
+        onBack={app ? undefined : () => setSelectedApp(null)}
         app={(app ?? selectedApp)!}
         projectId={projectId}
       />

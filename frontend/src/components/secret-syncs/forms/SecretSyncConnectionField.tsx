@@ -91,7 +91,7 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
       {!isPending && !availableConnections?.length && !canCreateConnection && (
         <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
           <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
-          You do not have access to any ${appName} Connections. Contact an admin to create one.
+          You do not have access to any {appName} Connections. Contact an admin to create one.
         </p>
       )}
       <AddAppConnectionModal
