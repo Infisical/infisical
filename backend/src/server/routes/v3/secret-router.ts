@@ -336,7 +336,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           organizationId: req.permission.orgId,
           properties: {
             numberOfSecrets: secrets.length,
-            workspaceId,
+            projectId: workspaceId,
             environment,
             secretPath: req.query.secretPath,
             channel: getUserAgentType(req.headers["user-agent"]),
@@ -405,7 +405,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretName: z.string().trim().describe(RAW_SECRETS.GET.secretName)
       }),
       querystring: z.object({
-        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.GET.workspaceId),
+        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.GET.projectId),
         workspaceSlug: z.string().trim().optional().describe(RAW_SECRETS.GET.workspaceSlug),
         environment: z.string().trim().optional().describe(RAW_SECRETS.GET.environment),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash).describe(RAW_SECRETS.GET.secretPath),
@@ -495,7 +495,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           distinctId: getTelemetryDistinctId(req),
           properties: {
             numberOfSecrets: 1,
-            workspaceId: secret.workspace,
+            projectId: secret.workspace,
             environment,
             secretPath: req.query.secretPath,
             channel: getUserAgentType(req.headers["user-agent"]),
@@ -526,7 +526,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretName: SecretNameSchema.describe(RAW_SECRETS.CREATE.secretName)
       }),
       body: z.object({
-        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.CREATE.workspaceId),
+        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.CREATE.projectId),
         projectSlug: z.string().trim().optional().describe(RAW_SECRETS.CREATE.projectSlug),
         environment: z.string().trim().describe(RAW_SECRETS.CREATE.environment),
         secretPath: z
@@ -638,7 +638,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           numberOfSecrets: 1,
-          workspaceId: projectId,
+          projectId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
@@ -669,7 +669,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretName: BaseSecretNameSchema.describe(RAW_SECRETS.UPDATE.secretName)
       }),
       body: z.object({
-        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.workspaceId),
+        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.projectId),
         projectSlug: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.projectSlug),
         environment: z.string().trim().describe(RAW_SECRETS.UPDATE.environment),
         secretValue: z
@@ -791,7 +791,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           numberOfSecrets: 1,
-          workspaceId: projectId,
+          projectId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
@@ -821,7 +821,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretName: z.string().min(1).describe(RAW_SECRETS.DELETE.secretName)
       }),
       body: z.object({
-        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.DELETE.workspaceId),
+        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.DELETE.projectId),
         projectSlug: z.string().trim().optional().describe(RAW_SECRETS.DELETE.projectSlug),
         environment: z.string().trim().describe(RAW_SECRETS.DELETE.environment),
         secretPath: z
@@ -909,7 +909,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           numberOfSecrets: 1,
-          workspaceId: projectId,
+          projectId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
@@ -1017,7 +1017,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           organizationId: req.permission.orgId,
           properties: {
             numberOfSecrets: secrets.length,
-            workspaceId: req.query.workspaceId,
+            projectId: req.query.workspaceId,
             environment: req.query.environment,
             secretPath: req.query.secretPath,
             channel: getUserAgentType(req.headers["user-agent"]),
@@ -1097,7 +1097,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           organizationId: req.permission.orgId,
           properties: {
             numberOfSecrets: 1,
-            workspaceId: req.query.workspaceId,
+            projectId: req.query.workspaceId,
             environment: req.query.environment,
             secretPath: req.query.secretPath,
             channel: getUserAgentType(req.headers["user-agent"]),
@@ -1272,7 +1272,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           numberOfSecrets: 1,
-          workspaceId: req.body.workspaceId,
+          projectId: req.body.workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
@@ -1466,7 +1466,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           numberOfSecrets: 1,
-          workspaceId: req.body.workspaceId,
+          projectId: req.body.workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
@@ -1594,7 +1594,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           numberOfSecrets: 1,
-          workspaceId: req.body.workspaceId,
+          projectId: req.body.workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
@@ -1781,7 +1781,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           numberOfSecrets: secrets.length,
-          workspaceId: req.body.workspaceId,
+          projectId: req.body.workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
@@ -1914,7 +1914,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           numberOfSecrets: secrets.length,
-          workspaceId: req.body.workspaceId,
+          projectId: req.body.workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
@@ -2039,7 +2039,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           numberOfSecrets: secrets.length,
-          workspaceId: req.body.workspaceId,
+          projectId: req.body.workspaceId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
@@ -2067,7 +2067,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       ],
       body: z.object({
         projectSlug: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.projectSlug),
-        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.workspaceId),
+        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.projectId),
         environment: z.string().trim().describe(RAW_SECRETS.CREATE.environment),
         secretPath: z
           .string()
@@ -2166,7 +2166,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           numberOfSecrets: secrets.length,
-          workspaceId: secrets[0].workspace,
+          projectId: secrets[0].workspace,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
@@ -2194,7 +2194,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       ],
       body: z.object({
         projectSlug: z.string().trim().optional().describe(RAW_SECRETS.DELETE.projectSlug),
-        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.DELETE.workspaceId),
+        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.DELETE.projectId),
         environment: z.string().trim().describe(RAW_SECRETS.UPDATE.environment),
         secretPath: z
           .string()
@@ -2341,7 +2341,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           numberOfSecrets: secrets.length,
-          workspaceId: secrets[0].workspace,
+          projectId: secrets[0].workspace,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
@@ -2369,7 +2369,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       ],
       body: z.object({
         projectSlug: z.string().trim().optional().describe(RAW_SECRETS.DELETE.projectSlug),
-        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.DELETE.workspaceId),
+        workspaceId: z.string().trim().optional().describe(RAW_SECRETS.DELETE.projectId),
         environment: z.string().trim().describe(RAW_SECRETS.DELETE.environment),
         secretPath: z
           .string()
@@ -2459,7 +2459,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         organizationId: req.permission.orgId,
         properties: {
           numberOfSecrets: secrets.length,
-          workspaceId: secrets[0].workspace,
+          projectId: secrets[0].workspace,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
@@ -2467,97 +2467,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       });
       return { secrets };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/raw/:secretName/secret-reference-tree",
-    config: {
-      rateLimit: secretsLimit
-    },
-    schema: {
-      hide: false,
-      tags: [ApiDocsTags.Secrets],
-      description: "Get secret reference tree",
-      security: [
-        {
-          bearerAuth: []
-        }
-      ],
-      params: z.object({
-        secretName: z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.secretName)
-      }),
-      querystring: z.object({
-        workspaceId: z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.workspaceId),
-        environment: z.string().trim().describe(RAW_SECRETS.GET_REFERENCE_TREE.environment),
-        secretPath: z
-          .string()
-          .trim()
-          .default("/")
-          .transform(removeTrailingSlash)
-          .describe(RAW_SECRETS.GET_REFERENCE_TREE.secretPath)
-      }),
-      response: {
-        200: z.object({
-          tree: SecretReferenceNodeTree,
-          value: z.string().optional()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const { secretName } = req.params;
-      const { secretPath, environment, workspaceId } = req.query;
-      const { tree, value } = await server.services.secret.getSecretReferenceTree({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: workspaceId,
-        secretName,
-        secretPath,
-        environment
-      });
-
-      return { tree, value };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/backfill-secret-references",
-    config: {
-      rateLimit: secretsLimit
-    },
-    schema: {
-      description: "Backfill secret references",
-      security: [
-        {
-          bearerAuth: []
-        }
-      ],
-      body: z.object({
-        projectId: z.string().trim().min(1)
-      }),
-      response: {
-        200: z.object({
-          message: z.string()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const { projectId } = req.body;
-      const message = await server.services.secret.backfillSecretReferences({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId
-      });
-
-      return message;
     }
   });
 };

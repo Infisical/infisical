@@ -33,18 +33,18 @@ export const useCreateSecretV3 = ({
       secretPath = "/",
       type,
       environment,
-      workspaceId,
+      projectId,
       secretKey,
       secretValue,
       secretComment,
       skipMultilineEncoding,
       tagIds
     }) => {
-      const { data } = await apiRequest.post(`/api/v3/secrets/raw/${secretKey}`, {
+      const { data } = await apiRequest.post(`/api/v4/secrets/${secretKey}`, {
         secretPath,
         type,
         environment,
-        workspaceId,
+        projectId,
         secretValue,
         secretComment,
         skipMultilineEncoding,
@@ -52,26 +52,26 @@ export const useCreateSecretV3 = ({
       });
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, secretPath }) => {
+    onSuccess: (_, { projectId, environment, secretPath }) => {
       queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+        queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+        queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ projectId: workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
-      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
     },
     ...options
   });
@@ -88,7 +88,7 @@ export const useUpdateSecretV3 = ({
       secretPath = "/",
       type,
       environment,
-      workspaceId,
+      projectId,
       secretKey,
       secretValue,
       tagIds,
@@ -100,8 +100,8 @@ export const useUpdateSecretV3 = ({
       skipMultilineEncoding,
       secretMetadata
     }) => {
-      const { data } = await apiRequest.patch(`/api/v3/secrets/raw/${secretKey}`, {
-        workspaceId,
+      const { data } = await apiRequest.patch(`/api/v4/secrets/${secretKey}`, {
+        projectId,
         environment,
         type,
         secretReminderNote,
@@ -117,26 +117,26 @@ export const useUpdateSecretV3 = ({
       });
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, secretPath }) => {
+    onSuccess: (_, { projectId, environment, secretPath }) => {
       queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+        queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+        queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ projectId: workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
-      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
     },
     ...options
   });
@@ -150,17 +150,10 @@ export const useDeleteSecretV3 = ({
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TDeleteSecretsV3DTO>({
-    mutationFn: async ({
-      secretPath = "/",
-      type,
-      environment,
-      workspaceId,
-      secretKey,
-      secretId
-    }) => {
-      const { data } = await apiRequest.delete(`/api/v3/secrets/raw/${secretKey}`, {
+    mutationFn: async ({ secretPath = "/", type, environment, projectId, secretKey, secretId }) => {
+      const { data } = await apiRequest.delete(`/api/v4/secrets/${secretKey}`, {
         data: {
-          workspaceId,
+          projectId,
           environment,
           type,
           secretPath,
@@ -169,26 +162,26 @@ export const useDeleteSecretV3 = ({
       });
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, secretPath }) => {
+    onSuccess: (_, { projectId, environment, secretPath }) => {
       queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+        queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+        queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ projectId: workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
-      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
     },
     ...options
   });
@@ -202,35 +195,35 @@ export const useCreateSecretBatch = ({
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TCreateSecretBatchDTO>({
-    mutationFn: async ({ secretPath = "/", workspaceId, environment, secrets }) => {
-      const { data } = await apiRequest.post("/api/v3/secrets/batch/raw", {
-        workspaceId,
+    mutationFn: async ({ secretPath = "/", projectId, environment, secrets }) => {
+      const { data } = await apiRequest.post("/api/v4/secrets/batch", {
+        projectId,
         environment,
         secretPath,
         secrets
       });
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, secretPath }) => {
+    onSuccess: (_, { projectId, environment, secretPath }) => {
       queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+        queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+        queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ projectId: workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
-      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
     },
     ...options
   });
@@ -244,35 +237,35 @@ export const useUpdateSecretBatch = ({
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TUpdateSecretBatchDTO>({
-    mutationFn: async ({ secretPath = "/", workspaceId, environment, secrets }) => {
-      const { data } = await apiRequest.patch("/api/v3/secrets/batch/raw", {
-        workspaceId,
+    mutationFn: async ({ secretPath = "/", projectId, environment, secrets }) => {
+      const { data } = await apiRequest.patch("/api/v4/secrets/batch", {
+        projectId,
         environment,
         secretPath,
         secrets
       });
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, secretPath }) => {
+    onSuccess: (_, { projectId, environment, secretPath }) => {
       queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+        queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+        queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ projectId: workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
-      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
     },
     ...options
   });
@@ -286,10 +279,10 @@ export const useDeleteSecretBatch = ({
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TDeleteSecretBatchDTO>({
-    mutationFn: async ({ secretPath = "/", workspaceId, environment, secrets }) => {
-      const { data } = await apiRequest.delete("/api/v3/secrets/batch/raw", {
+    mutationFn: async ({ secretPath = "/", projectId, environment, secrets }) => {
+      const { data } = await apiRequest.delete("/api/v4/secrets/batch", {
         data: {
-          workspaceId,
+          projectId,
           environment,
           secretPath,
           secrets
@@ -297,26 +290,26 @@ export const useDeleteSecretBatch = ({
       });
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, secretPath }) => {
+    onSuccess: (_, { projectId, environment, secretPath }) => {
       queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+        queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+        queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ projectId: workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
-      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
     },
     ...options
   });
@@ -349,7 +342,7 @@ export const useMoveSecrets = ({
       const { data } = await apiRequest.post<{
         isSourceUpdated: boolean;
         isDestinationUpdated: boolean;
-      }>("/api/v3/secrets/move", {
+      }>("/api/v4/secrets/move", {
         sourceEnvironment,
         sourceSecretPath,
         projectSlug,
@@ -370,7 +363,7 @@ export const useMoveSecrets = ({
       });
       queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({
-          workspaceId: projectId,
+          projectId,
           environment: sourceEnvironment,
           secretPath: sourceSecretPath
         })
@@ -378,33 +371,33 @@ export const useMoveSecrets = ({
       queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.list({
           environment: sourceEnvironment,
-          workspaceId: projectId,
+          projectId,
           directory: sourceSecretPath
         })
       });
       queryClient.invalidateQueries({
         queryKey: secretSnapshotKeys.count({
           environment: sourceEnvironment,
-          workspaceId: projectId,
+          projectId,
           directory: sourceSecretPath
         })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.count({
-          projectId: projectId,
+          projectId,
           environment: sourceEnvironment,
           directory: sourceSecretPath
         })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.history({
-          workspaceId: projectId,
+          projectId,
           environment: sourceEnvironment,
           directory: sourceSecretPath
         })
       });
       queryClient.invalidateQueries({
-        queryKey: secretApprovalRequestKeys.count({ workspaceId: projectId })
+        queryKey: secretApprovalRequestKeys.count({ projectId })
       });
     },
     ...options
@@ -432,16 +425,16 @@ export const useCreateCommit = () => {
     object,
     object,
     {
-      workspaceId: string;
+      projectId: string;
       environment: string;
       secretPath: string;
       pendingChanges: PendingChanges;
       message: string;
     }
   >({
-    mutationFn: async ({ workspaceId, environment, secretPath, pendingChanges, message }) => {
+    mutationFn: async ({ projectId, environment, secretPath, pendingChanges, message }) => {
       const { data } = await apiRequest.post("/api/v1/pit/batch/commit", {
-        projectId: workspaceId,
+        projectId,
         environment,
         secretPath,
         changes: {
@@ -501,26 +494,26 @@ export const useCreateCommit = () => {
       });
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, secretPath }) => {
+    onSuccess: (_, { projectId, environment, secretPath }) => {
       queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ environment, workspaceId, directory: secretPath })
+        queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ environment, workspaceId, directory: secretPath })
+        queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ projectId: workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
-      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ workspaceId }) });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
     }
   });
 };

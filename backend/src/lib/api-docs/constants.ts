@@ -984,7 +984,7 @@ export const RAW_SECRETS = {
     secretValue: "The value of the secret to create.",
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to create.",
-    workspaceId: "The ID of the project to create the secret in.",
+    projectId: "The ID of the project to create the secret in.",
     tagIds: "The ID of the tags to be attached to the created secret.",
     secretReminderRepeatDays: "Interval for secret rotation notifications, measured in days.",
     secretReminderNote: "Note to be attached in notification email."
@@ -992,7 +992,7 @@ export const RAW_SECRETS = {
   GET: {
     expand: "Whether or not to expand secret references.",
     secretName: "The name of the secret to get.",
-    workspaceId: "The ID of the project to get the secret from.",
+    projectId: "The ID of the project to get the secret from.",
     workspaceSlug: "The slug of the project to get the secret from.",
     environment: "The slug of the environment to get the secret from.",
     secretPath: "The path of the secret to get.",
@@ -1011,7 +1011,7 @@ export const RAW_SECRETS = {
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to update.",
     projectSlug: "The slug of the project to update the secret in.",
-    workspaceId: "The ID of the project to update the secret in.",
+    projectId: "The ID of the project to update the secret in.",
     tagIds: "The ID of the tags to be attached to the updated secret.",
     secretReminderRepeatDays: "Interval for secret rotation notifications, measured in days.",
     secretReminderNote: "Note to be attached in notification email.",
@@ -1025,7 +1025,7 @@ export const RAW_SECRETS = {
     secretPath: "The path of the secret.",
     type: "The type of the secret to delete.",
     projectSlug: "The slug of the project to delete the secret in.",
-    workspaceId: "The ID of the project where the secret is located."
+    projectId: "The ID of the project where the secret is located."
   },
   GET_REFERENCE_TREE: {
     secretName: "The name of the secret to get the reference tree for.",

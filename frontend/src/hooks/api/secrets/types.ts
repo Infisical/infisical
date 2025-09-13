@@ -17,30 +17,6 @@ export type SecretReminderRecipient = {
   };
   id: string;
 };
-export type EncryptedSecret = {
-  id: string;
-  version: number;
-  workspace: string;
-  type: SecretType;
-  environment: string;
-  secretKeyCiphertext: string;
-  secretKeyIV: string;
-  secretKeyTag: string;
-  secretValueCiphertext: string;
-  secretValueIV: string;
-  secretValueTag: string;
-  secretValueHidden: boolean;
-  __v: number;
-  createdAt: string;
-  updatedAt: string;
-  skipMultilineEncoding?: boolean;
-  secretCommentCiphertext: string;
-  secretCommentIV: string;
-  secretCommentTag: string;
-  secretReminderRepeatDays?: number | null;
-  secretReminderNote?: string | null;
-  tags: WsTag[];
-};
 
 // both personal and shared secret stitched together for dashboard
 export type SecretV3RawSanitized = {
@@ -76,7 +52,7 @@ export type SecretV3RawSanitized = {
 export type SecretV3Raw = {
   id: string;
   _id: string;
-  workspace: string;
+  project: string;
   environment: string;
   version: number;
   type: string;
@@ -113,7 +89,7 @@ export type SecretVersions = {
   id: string;
   secretId: string;
   version: number;
-  workspace: string;
+  project: string;
   type: SecretType;
   isDeleted: boolean;
   envId: string;
@@ -136,7 +112,7 @@ export type SecretVersions = {
 
 // dto
 export type TGetProjectSecretsKey = {
-  workspaceId: string;
+  projectId: string;
   environment: string;
   secretPath?: string;
   includeImports?: boolean;
@@ -148,7 +124,7 @@ export type TGetProjectSecretsKey = {
 export type TGetProjectSecretsDTO = TGetProjectSecretsKey;
 
 export type TGetProjectSecretsAllEnvDTO = {
-  workspaceId: string;
+  projectId: string;
   envs: string[];
   folderId?: string;
   secretPath?: string;
@@ -162,7 +138,7 @@ export type GetSecretVersionsDTO = {
 };
 
 export type TGetSecretAccessListDTO = {
-  workspaceId: string;
+  projectId: string;
   environment: string;
   secretPath: string;
   secretKey: string;
@@ -174,14 +150,14 @@ export type TCreateSecretsV3DTO = {
   secretComment: string;
   skipMultilineEncoding?: boolean;
   secretPath: string;
-  workspaceId: string;
+  projectId: string;
   environment: string;
   type: SecretType;
   tagIds?: string[];
 };
 
 export type TUpdateSecretsV3DTO = {
-  workspaceId: string;
+  projectId: string;
   environment: string;
   secretPath: string;
   type: SecretType;
@@ -198,7 +174,7 @@ export type TUpdateSecretsV3DTO = {
 };
 
 export type TDeleteSecretsV3DTO = {
-  workspaceId: string;
+  projectId: string;
   environment: string;
   type: SecretType;
   secretPath: string;
@@ -207,7 +183,7 @@ export type TDeleteSecretsV3DTO = {
 };
 
 export type TCreateSecretBatchDTO = {
-  workspaceId: string;
+  projectId: string;
   environment: string;
   secretPath: string;
   secrets: Array<{
@@ -224,7 +200,7 @@ export type TCreateSecretBatchDTO = {
 };
 
 export type TUpdateSecretBatchDTO = {
-  workspaceId: string;
+  projectId: string;
   environment: string;
   secretPath: string;
   secrets: Array<{
@@ -241,7 +217,7 @@ export type TUpdateSecretBatchDTO = {
 };
 
 export type TDeleteSecretBatchDTO = {
-  workspaceId: string;
+  projectId: string;
   environment: string;
   secretPath: string;
   secrets: Array<{
