@@ -450,9 +450,8 @@ export const OverviewPage = () => {
 
     try {
       await updateFolderBatch({
-        projectSlug,
         folders: updatedFolders,
-        projectId: projectId
+        projectId
       });
       createNotification({
         type: "success",

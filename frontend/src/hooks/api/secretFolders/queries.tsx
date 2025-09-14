@@ -258,9 +258,9 @@ export const useUpdateFolderBatch = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TUpdateFolderBatchDTO>({
-    mutationFn: async ({ projectSlug, folders }) => {
+    mutationFn: async ({ projectId, folders }) => {
       const { data } = await apiRequest.patch("/api/v2/folders/batch", {
-        projectSlug,
+        projectId,
         folders
       });
 

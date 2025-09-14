@@ -39,7 +39,6 @@ const SecretReferenceNodeTree: z.ZodType<TSecretReferenceNode> = SecretReference
   children: z.lazy(() => SecretReferenceNodeTree.array())
 });
 
-// TODO(depri): is service token supported in secrets router
 export const registerSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",

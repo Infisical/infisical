@@ -384,7 +384,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // TODO(depri): replcae frontned auto cap and delete protection with this patch
   server.route({
     method: "PATCH",
     url: "/:projectId",
