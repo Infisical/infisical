@@ -604,6 +604,7 @@ export const registerRoutes = async (
     secretApprovalPolicyDAL,
     licenseService,
     userDAL,
+    orgMembershipDAL,
     secretApprovalRequestDAL
   });
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, orgMembershipDAL });
