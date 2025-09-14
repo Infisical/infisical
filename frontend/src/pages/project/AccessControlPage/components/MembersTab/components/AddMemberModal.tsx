@@ -22,7 +22,7 @@ import {
   OrgPermissionSubjects,
   useOrganization,
   useOrgPermission,
-  useWorkspace
+  useProject
 } from "@app/context";
 import {
   useAddUsersToOrg,
@@ -31,7 +31,7 @@ import {
   useGetWorkspaceUsers
 } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { ProjectVersion } from "@app/hooks/api/workspace/types";
+import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const addMemberFormSchema = z.object({
@@ -57,7 +57,7 @@ type Props = {
 export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const navigate = useNavigate({ from: "" });
   const { permission } = useOrgPermission();
   const requesterEmail = useSearch({
@@ -66,12 +66,12 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   const orgId = currentOrg?.id || "";
-  const workspaceId = currentWorkspace?.id || "";
+  const workspaceId = currentProject?.id || "";
 
   const { data: members } = useGetWorkspaceUsers(workspaceId);
   const { data: orgUsers } = useGetOrgUsers(orgId);
 
-  const { data: roles } = useGetProjectRoles(currentWorkspace?.id || "");
+  const { data: roles } = useGetProjectRoles(currentProject?.id || "");
 
   const {
     control,
@@ -94,7 +94,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   }, [requesterEmail]);
 
   const onAddMembers = async ({ orgMemberships, projectRoleSlugs }: TAddMemberForm) => {
-    if (!currentWorkspace) return;
+    if (!currentProject) return;
     if (!currentOrg?.id) return;
 
     const existingMembers = orgMemberships.filter((membership) => !membership.isNewInvitee);
@@ -109,7 +109,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (!selectedMembers) return;
 
     try {
-      if (currentWorkspace.version === ProjectVersion.V1) {
+      if (currentProject.version === ProjectVersion.V1) {
         createNotification({
           type: "error",
           text: "Please upgrade your project to invite new members to the project."
@@ -146,8 +146,8 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             organizationRoleSlug: ProjectMembershipRole.Member, // only applies to new invites
             projects: [
               {
-                slug: currentWorkspace.slug,
-                id: currentWorkspace.id,
+                slug: currentProject.slug,
+                id: currentProject.id,
                 projectRoleSlug: projectRoleSlugs.map((role) => role.slug)
               }
             ]

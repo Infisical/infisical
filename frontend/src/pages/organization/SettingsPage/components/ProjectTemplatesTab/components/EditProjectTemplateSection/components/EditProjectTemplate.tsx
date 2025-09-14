@@ -8,7 +8,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { TProjectTemplate, useDeleteProjectTemplate } from "@app/hooks/api/projectTemplates";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { ProjectTemplateDetailsModal } from "../../ProjectTemplateDetailsModal";
 import { ProjectTemplateEnvironmentsForm } from "./ProjectTemplateEnvironmentsForm";

@@ -18,7 +18,7 @@ import {
   Input,
   Tooltip
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   useCreateCertTemplateV2,
   useListCasByProjectId,
@@ -72,9 +72,9 @@ type Props = {
 };
 
 export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
-  const { data: cas, isPending: isCaLoading } = useListCasByProjectId(currentWorkspace.id);
+  const { data: cas, isPending: isCaLoading } = useListCasByProjectId(currentProject.id);
 
   const { mutateAsync: createCertTemplate } = useCreateCertTemplateV2();
   const { mutateAsync: updateCertTemplate } = useUpdateCertTemplateV2();
@@ -124,7 +124,7 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
     extendedKeyUsages,
     ca
   }: FormData) => {
-    if (!currentWorkspace?.id) {
+    if (!currentProject?.id) {
       return;
     }
 
@@ -132,7 +132,7 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
       if (certTemplate) {
         await updateCertTemplate({
           templateName: certTemplate.name,
-          projectId: currentWorkspace.id,
+          projectId: currentProject.id,
           caName: ca.name,
           name,
           commonName,
@@ -152,7 +152,7 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
         });
       } else {
         await createCertTemplate({
-          projectId: currentWorkspace.id,
+          projectId: currentProject.id,
           caName: ca.name,
           name,
           commonName,

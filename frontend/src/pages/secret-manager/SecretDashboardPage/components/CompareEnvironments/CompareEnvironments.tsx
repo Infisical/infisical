@@ -38,7 +38,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -49,7 +49,7 @@ import { useGetImportedSecretsAllEnvs } from "@app/hooks/api";
 import { useGetProjectSecretsOverview } from "@app/hooks/api/dashboard";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { useResizableColWidth } from "@app/hooks/useResizableColWidth";
 import {
   useDynamicSecretOverview,
@@ -89,10 +89,10 @@ const DEFAULT_FILTER_STATE = {
 const COL_WIDTH_OFFSET = 220;
 
 export const CompareEnvironments = ({ secretPath }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const compareEnvironmentsKey = `compare-environments-${currentWorkspace.id}`;
+  const { currentProject } = useProject();
+  const compareEnvironmentsKey = `compare-environments-${currentProject.id}`;
 
-  const [selectedEnvironments, setSelectedEnvironments] = useState<WorkspaceEnv[]>(() => {
+  const [selectedEnvironments, setSelectedEnvironments] = useState<ProjectEnv[]>(() => {
     try {
       const storedEnvironments = JSON.parse(localStorage.getItem(compareEnvironmentsKey) ?? "[]");
 
@@ -104,12 +104,12 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
           }
         });
 
-        return currentWorkspace.environments.filter((env) => potentialEnvs.includes(env.id));
+        return currentProject.environments.filter((env) => potentialEnvs.includes(env.id));
       }
     } catch {
       // do nothing and proceed
     }
-    return currentWorkspace.environments.slice(0, 2);
+    return currentProject.environments.slice(0, 2);
   });
 
   const [filter, setFilter] = useState<Filter>(DEFAULT_FILTER_STATE);
@@ -133,7 +133,7 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
     setUserTablePreference("secretCompareTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const workspaceId = currentWorkspace.id;
+  const workspaceId = currentProject.id;
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearchFilter] = useDebounce(searchFilter);
   const [debouncedSelectedEnvironments] = useDebounce(selectedEnvironments);
@@ -153,12 +153,12 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
   } = useGetImportedSecretsAllEnvs({
     projectId: workspaceId,
     path: secretPath,
-    environments: (currentWorkspace.environments || []).map(({ slug }) => slug)
+    environments: (currentProject.environments || []).map(({ slug }) => slug)
   });
 
   const compareEnvironments = selectedEnvironments.length
     ? selectedEnvironments
-    : currentWorkspace.environments;
+    : currentProject.environments;
 
   const isFilteredByResources = Object.values(filter).some(Boolean);
   const { isPending: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
@@ -579,12 +579,12 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
         <FilterableSelect
           value={selectedEnvironments}
           onChange={(value) => {
-            const selected = value as MultiValue<WorkspaceEnv>;
+            const selected = value as MultiValue<ProjectEnv>;
 
-            setSelectedEnvironments((selected as WorkspaceEnv[]) ?? []);
+            setSelectedEnvironments((selected as ProjectEnv[]) ?? []);
           }}
           placeholder="Leave blank to compare all environments"
-          options={currentWorkspace.environments}
+          options={currentProject.environments}
           getOptionValue={(option) => option.slug}
           getOptionLabel={(option) => option.name}
           isMulti

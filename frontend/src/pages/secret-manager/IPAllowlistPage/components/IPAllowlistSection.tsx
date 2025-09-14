@@ -9,7 +9,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useSubscription,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { useDeleteTrustedIp } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -20,7 +20,7 @@ import { IPAllowlistTable } from "./IPAllowlistTable";
 export const IPAllowlistSection = () => {
   const { mutateAsync } = useDeleteTrustedIp();
   const { subscription } = useSubscription();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "trustedIp",
@@ -30,10 +30,10 @@ export const IPAllowlistSection = () => {
 
   const onDeleteTrustedIpSubmit = async (trustedIpId: string) => {
     try {
-      if (!currentWorkspace?.id) return;
+      if (!currentProject?.id) return;
 
       await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        projectId: currentProject.id,
         trustedIpId
       });
 

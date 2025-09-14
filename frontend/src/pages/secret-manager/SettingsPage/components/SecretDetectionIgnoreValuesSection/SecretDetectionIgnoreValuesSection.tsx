@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, IconButton, Input } from "@app/components/v2";
-import { useProjectPermission, useWorkspace } from "@app/context";
+import { useProjectPermission, useProject } from "@app/context";
 import { useUpdateProject } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
@@ -23,7 +23,7 @@ const formSchema = z.object({
 type TForm = z.infer<typeof formSchema>;
 
 export const SecretDetectionIgnoreValuesSection = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { membership } = useProjectPermission();
   const { mutateAsync: updateProject } = useUpdateProject();
 
@@ -45,19 +45,19 @@ export const SecretDetectionIgnoreValuesSection = () => {
   });
 
   useEffect(() => {
-    const existingIgnoreValues = currentWorkspace?.secretDetectionIgnoreValues || [];
+    const existingIgnoreValues = currentProject?.secretDetectionIgnoreValues || [];
     reset({
       ignoreValues:
         existingIgnoreValues.length > 0
           ? existingIgnoreValues.map((value) => ({ value }))
           : [{ value: "" }] // Show one empty field by default
     });
-  }, [currentWorkspace?.secretDetectionIgnoreValues, reset]);
+  }, [currentProject?.secretDetectionIgnoreValues, reset]);
 
   const handleIgnoreValuesSubmit = async ({ ignoreValues }: TForm) => {
     try {
       await updateProject({
-        projectID: currentWorkspace.id,
+        projectId: currentProject.id,
         secretDetectionIgnoreValues: ignoreValues.map((item) => item.value)
       });
 
@@ -75,7 +75,7 @@ export const SecretDetectionIgnoreValuesSection = () => {
 
   const isAdmin = membership.roles.includes(ProjectMembershipRole.Admin);
 
-  if (!currentWorkspace) return null;
+  if (!currentProject) return null;
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">

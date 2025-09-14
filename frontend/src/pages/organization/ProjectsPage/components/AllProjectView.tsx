@@ -48,7 +48,7 @@ import {
   useRequestProjectAccess,
   useSearchProjects
 } from "@app/hooks/api";
-import { ProjectType, Project, WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import { ProjectType, Project, ProjectEnv } from "@app/hooks/api/projects/types";
 import {
   ProjectListToggle,
   ProjectListView
@@ -155,7 +155,7 @@ export const AllProjectView = ({
   const handleAccessProject = async (
     type: ProjectType,
     projectId: string,
-    environments: WorkspaceEnv[]
+    environments: ProjectEnv[]
   ) => {
     try {
       await orgAdminAccessProject.mutateAsync({

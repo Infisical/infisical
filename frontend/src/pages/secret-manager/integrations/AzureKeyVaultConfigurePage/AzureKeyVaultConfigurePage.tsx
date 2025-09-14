@@ -11,11 +11,11 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthById } from "@app/hooks/api/integrationAuth";
 import { IntegrationSyncBehavior } from "@app/hooks/api/integrations/types";
-import { useGetWorkspaceById } from "@app/hooks/api/workspace";
+import { useGetWorkspaceById } from "@app/hooks/api/projects";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 const initialSyncBehaviors = [
@@ -38,9 +38,9 @@ export const AzureKeyVaultConfigurePage = () => {
     from: ROUTE_PATHS.SecretManager.Integratons.AzureKeyVaultConfigurePage.id,
     select: (el) => el.integrationAuthId
   });
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
-  const { data: workspace } = useGetWorkspaceById(currentWorkspace.id);
+  const { data: workspace } = useGetWorkspaceById(currentProject.id);
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
@@ -90,7 +90,7 @@ export const AzureKeyVaultConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations

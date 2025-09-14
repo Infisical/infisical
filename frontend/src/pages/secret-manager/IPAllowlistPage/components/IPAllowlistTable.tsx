@@ -19,7 +19,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useSubscription,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { useGetTrustedIps } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -41,8 +41,8 @@ type Props = {
 
 export const IPAllowlistTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Props) => {
   const { subscription } = useSubscription();
-  const { currentWorkspace } = useWorkspace();
-  const { data, isPending } = useGetTrustedIps(currentWorkspace?.id ?? "");
+  const { currentProject } = useProject();
+  const { data, isPending } = useGetTrustedIps(currentProject?.id ?? "");
 
   const formatType = (type: string, prefix?: number) => {
     return `${type.slice(0, 2).toUpperCase() + type.slice(2)} ${
@@ -77,10 +77,10 @@ export const IPAllowlistTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: 
                       <Td>{comment}</Td>
                       {/* <Td>
                                         <div className="flex items-center">
-                                            <FontAwesomeIcon 
-                                                icon={faCircle} 
+                                            <FontAwesomeIcon
+                                                icon={faCircle}
                                                 color="#2ecc71"
-                                            /> 
+                                            />
                                             <p className="ml-4">Active</p>
                                         </div>
                                     </Td> */}

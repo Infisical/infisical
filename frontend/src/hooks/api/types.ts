@@ -36,10 +36,10 @@ export type {
   ToggleAutoCapitalizationDTO,
   UpdateEnvironmentDTO,
   UpdateProjectDTO,
-  Project as Workspace,
-  WorkspaceEnv,
-  WorkspaceTag
-} from "./workspace/types";
+  Project,
+  ProjectEnv,
+  ProjectTag
+} from "./projects/types";
 
 export enum ApiErrorTypes {
   ValidationError = "ValidationFailure",

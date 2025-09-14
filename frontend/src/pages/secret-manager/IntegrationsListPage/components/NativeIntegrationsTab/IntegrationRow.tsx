@@ -15,7 +15,7 @@ import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Badge, IconButton, Td, Tooltip, Tr } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { TCloudIntegration } from "@app/hooks/api/integrations/types";
 import { TIntegration } from "@app/hooks/api/types";
 
@@ -37,7 +37,7 @@ export const IntegrationRow = ({
   cloudIntegration
 }: IProps) => {
   const navigate = useNavigate();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { id, secretPath, syncMessage, isSynced } = integration;
 
@@ -62,7 +62,7 @@ export const IntegrationRow = ({
           to: "/projects/secret-management/$projectId/integrations/$integrationId",
           params: {
             integrationId: integration.id,
-            projectId: currentWorkspace.id
+            projectId: currentProject.id
           }
         })
       }

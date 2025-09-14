@@ -40,7 +40,7 @@ import { envConfig } from "@app/config/env";
 import { useOrganization, useSubscription, useUser } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
-import { useGetOrganizations, useLogoutUser, workspaceKeys } from "@app/hooks/api";
+import { useGetOrganizations, useLogoutUser, projectKeys } from "@app/hooks/api";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
@@ -135,7 +135,7 @@ export const Navbar = () => {
 
   const handleOrgChange = async (orgId: string) => {
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-    queryClient.removeQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
+    queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
 
     const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
       organizationId: orgId

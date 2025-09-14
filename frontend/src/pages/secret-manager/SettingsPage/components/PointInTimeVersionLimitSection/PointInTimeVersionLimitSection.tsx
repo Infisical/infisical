@@ -4,9 +4,9 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { useProjectPermission, useWorkspace } from "@app/context";
+import { useProjectPermission, useProject } from "@app/context";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { useUpdateWorkspaceVersionLimit } from "@app/hooks/api/workspace/queries";
+import { useUpdateProject } from "@app/hooks/api";
 
 const formSchema = z.object({
   pitVersionLimit: z.coerce.number().min(1).max(100)
@@ -15,9 +15,9 @@ const formSchema = z.object({
 type TForm = z.infer<typeof formSchema>;
 
 export const PointInTimeVersionLimitSection = () => {
-  const { mutateAsync: updatePitVersion } = useUpdateWorkspaceVersionLimit();
+  const { mutateAsync: updateProject } = useUpdateProject();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject, projectId } = useProject();
   const { membership } = useProjectPermission();
 
   const {
@@ -27,17 +27,17 @@ export const PointInTimeVersionLimitSection = () => {
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     values: {
-      pitVersionLimit: currentWorkspace?.pitVersionLimit || 10
+      pitVersionLimit: currentProject?.pitVersionLimit || 10
     }
   });
 
-  if (!currentWorkspace) return null;
+  if (!currentProject) return null;
 
   const handleVersionLimitSubmit = async ({ pitVersionLimit }: TForm) => {
     try {
-      await updatePitVersion({
+      await updateProject({
         pitVersionLimit,
-        projectSlug: currentWorkspace.slug
+        projectId
       });
 
       createNotification({

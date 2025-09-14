@@ -7,12 +7,12 @@ import { SecretRotationV2ModalHeader } from "@app/components/secret-rotations-v2
 import { SecretRotationV2Select } from "@app/components/secret-rotations-v2/SecretRotationV2Select";
 import { Modal, ModalContent } from "@app/components/v2";
 import { SecretRotation, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
-import { WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import { ProjectEnv } from "@app/hooks/api/projects/types";
 
 type SharedProps = {
   secretPath: string;
   environment?: string;
-  environments?: WorkspaceEnv[];
+  environments?: ProjectEnv[];
 };
 
 type Props = {

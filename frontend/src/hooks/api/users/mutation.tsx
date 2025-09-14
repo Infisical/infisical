@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { projectKeys } from "../workspace";
+import { projectKeys } from "../projects";
 import { userKeys } from "./query-keys";
 import { AddUserToWsDTONonE2EE } from "./types";
 
@@ -18,7 +18,7 @@ export const useAddUserToWsNonE2EE = () => {
       return data;
     },
     onSuccess: (_, { orgId, projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getWorkspaceUsers(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
       queryClient.invalidateQueries({
         queryKey: userKeys.allOrgMembershipProjectMemberships(orgId)
       });

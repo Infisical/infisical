@@ -44,12 +44,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useUser,
-  useWorkspace
-} from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useUser, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
@@ -81,7 +76,7 @@ type Filter = {
 };
 
 export const MembersTable = ({ handlePopUpOpen }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { user } = useUser();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<Filter>({
@@ -90,7 +85,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
   const filterRoles = useMemo(() => filter.roles, [filter.roles]);
 
   const userId = user?.id || "";
-  const workspaceId = currentWorkspace?.id || "";
+  const workspaceId = currentProject?.id || "";
   const { data: projectRoles } = useGetProjectRoles(workspaceId);
 
   const {
@@ -312,7 +307,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     onKeyDown={(evt) => {
                       if (evt.key === "Enter") {
                         navigate({
-                          to: `${getProjectBaseURL(currentWorkspace.type)}/members/$membershipId`,
+                          to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
                           params: {
                             projectId: workspaceId,
                             membershipId
@@ -322,7 +317,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     }}
                     onClick={() =>
                       navigate({
-                        to: `${getProjectBaseURL(currentWorkspace.type)}/members/$membershipId`,
+                        to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
                         params: {
                           projectId: workspaceId,
                           membershipId

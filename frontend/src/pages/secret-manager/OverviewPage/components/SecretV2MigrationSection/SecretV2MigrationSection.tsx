@@ -8,11 +8,11 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Checkbox, Modal, ModalContent, Spinner } from "@app/components/v2";
-import { useProjectPermission, useWorkspace } from "@app/context";
+import { useProjectPermission, useProject } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useGetWorkspaceById, useMigrateProjectToV3, workspaceKeys } from "@app/hooks/api";
+import { useGetWorkspaceById, useMigrateProjectToV3, projectKeys } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { ProjectVersion } from "@app/hooks/api/workspace/types";
+import { ProjectVersion } from "@app/hooks/api/projects/types";
 
 enum ProjectUpgradeStatus {
   InProgress = "IN_PROGRESS",
@@ -28,14 +28,14 @@ const formSchema = z.object({
 
 export const SecretV2MigrationSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["migrationInfo"] as const);
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const queryClient = useQueryClient();
   const { data: workspaceDetails, refetch } = useGetWorkspaceById(
     // if v3 no need to fetch
-    currentWorkspace?.version === ProjectVersion.V3 ? "" : currentWorkspace?.id || "",
+    currentProject?.version === ProjectVersion.V3 ? "" : currentProject?.id || "",
     {
       refetchInterval:
-        currentWorkspace?.upgradeStatus === ProjectUpgradeStatus.InProgress ? 2000 : false
+        currentProject?.upgradeStatus === ProjectUpgradeStatus.InProgress ? 2000 : false
     }
   );
   const { membership } = useProjectPermission();
@@ -54,12 +54,12 @@ export const SecretV2MigrationSection = () => {
       createNotification({ type: "success", text: "Project upgrade completed successfully" });
       migrateProjectToV3.reset();
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace()
+        queryKey: projectKeys.getAllUserProjects()
       });
     }
   }, [isProjectUpgraded, Boolean(migrateProjectToV3.data)]);
 
-  if (isProjectUpgraded || currentWorkspace?.version === ProjectVersion.V3) return null;
+  if (isProjectUpgraded || currentProject?.version === ProjectVersion.V3) return null;
 
   const isUpgrading = workspaceDetails?.upgradeStatus === ProjectUpgradeStatus.InProgress;
   const didProjectUpgradeFailed = workspaceDetails?.upgradeStatus === ProjectUpgradeStatus.Failed;
@@ -67,7 +67,7 @@ export const SecretV2MigrationSection = () => {
   const handleMigrationSecretV2 = async () => {
     try {
       handlePopUpToggle("migrationInfo");
-      await migrateProjectToV3.mutateAsync({ workspaceId: currentWorkspace?.id || "" });
+      await migrateProjectToV3.mutateAsync({ projectId: currentProject?.id || "" });
       refetch();
       createNotification({
         text: "Project upgrade started",

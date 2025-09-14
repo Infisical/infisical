@@ -31,12 +31,12 @@ import { useDebounce } from "@app/hooks";
 import { useMoveSecrets } from "@app/hooks/api";
 import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
-import { WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import { ProjectEnv } from "@app/hooks/api/projects/types";
 
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  environments: WorkspaceEnv[];
+  environments: ProjectEnv[];
   projectId: string;
   projectSlug: string;
   sourceSecretPath: string;
@@ -64,7 +64,6 @@ type MoveResults = {
 const Content = ({
   onComplete,
   secrets,
-  projectSlug,
   environments,
   projectId,
   sourceSecretPath
@@ -189,7 +188,6 @@ const Content = ({
 
       try {
         const { isDestinationUpdated, isSourceUpdated } = await moveSecrets.mutateAsync({
-          projectSlug,
           shouldOverwrite,
           sourceEnvironment: environment.slug,
           sourceSecretPath,

@@ -42,7 +42,7 @@ import {
   ProjectPermissionSub,
   useProjectPermission,
   useSubscription,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { ProjectPermissionSecretRotationActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
@@ -56,7 +56,7 @@ import { TSecretRotationProviderTemplate } from "@app/hooks/api/secretRotation/t
 import { CreateRotationForm } from "@app/pages/secret-manager/SecretRotationPage/components/CreateRotationForm";
 
 const Page = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { permission } = useProjectPermission();
 
   const navigate = useNavigate();
@@ -68,7 +68,7 @@ const Page = () => {
     "upgradePlan",
     "secretRotationV2"
   ] as const);
-  const workspaceId = currentWorkspace?.id || "";
+  const workspaceId = currentProject?.id || "";
   const canCreateRotation = permission.can(
     ProjectPermissionSecretRotationActions.Create,
     ProjectPermissionSub.SecretRotation
@@ -173,7 +173,7 @@ const Page = () => {
           <Link
             className="text-mineshaft-100 underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
             to="/projects/secret-management/$projectId/overview"
-            params={{ projectId: currentWorkspace.id }}
+            params={{ projectId: currentProject.id }}
           >
             Secret Manager Dashboard
           </Link>{" "}
@@ -408,7 +408,7 @@ const Page = () => {
               <Link
                 className="text-mineshaft-100 underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
                 to="/projects/secret-management/$projectId/overview"
-                params={{ projectId: currentWorkspace.id }}
+                params={{ projectId: currentProject.id }}
               >
                 Secret Manager Dashboard
               </Link>{" "}
@@ -425,7 +425,7 @@ const Page = () => {
                 onClick={() =>
                   navigate({
                     to: "/projects/secret-management/$projectId/overview",
-                    params: { projectId: currentWorkspace.id }
+                    params: { projectId: currentProject.id }
                   })
                 }
                 colorSchema="secondary"

@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { projectKeys } from "../workspace/query-keys";
+import { projectKeys } from "../projects/query-keys";
 import { TCreateSshHostDTO, TDeleteSshHostDTO, TSshHost, TUpdateSshHostDTO } from "./types";
 
 export const useCreateSshHost = () => {
@@ -13,7 +13,7 @@ export const useCreateSshHost = () => {
       return host;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getWorkspaceSshHosts(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectSshHosts(projectId) });
     }
   });
 };
@@ -26,7 +26,7 @@ export const useUpdateSshHost = () => {
       return host;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getWorkspaceSshHosts(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectSshHosts(projectId) });
     }
   });
 };
@@ -39,7 +39,7 @@ export const useDeleteSshHost = () => {
       return host;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getWorkspaceSshHosts(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectSshHosts(projectId) });
     }
   });
 };

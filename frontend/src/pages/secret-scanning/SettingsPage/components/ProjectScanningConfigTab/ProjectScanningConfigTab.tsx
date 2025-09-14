@@ -1,16 +1,16 @@
 import { faBan } from "@fortawesome/free-solid-svg-icons";
 
 import { AccessRestrictedBanner, ContentLoader, EmptyState } from "@app/components/v2";
-import { useSubscription, useWorkspace } from "@app/context";
+import { useSubscription, useProject } from "@app/context";
 import { useGetSecretScanningConfig } from "@app/hooks/api/secretScanningV2";
 
 import { SecretScanningConfigForm } from "./SecretScanningConfigForm";
 
 export const ProjectScanningConfigTab = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { subscription } = useSubscription();
   const { data: config, isPending: isConfigPending } = useGetSecretScanningConfig(
-    currentWorkspace.id,
+    currentProject.id,
     { enabled: subscription.secretScanning }
   );
 

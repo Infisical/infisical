@@ -34,7 +34,7 @@ import {
 import { useDebounce } from "@app/hooks";
 import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
 import { WsTag } from "@app/hooks/api/tags/types";
-import { WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { QuickSearchSecretRotationItem } from "@app/pages/secret-manager/OverviewPage/components/SecretSearchInput/components/QuickSearchSecretRotationItem";
 import { RowType } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.types";
 
@@ -43,7 +43,7 @@ import { QuickSearchFolderItem } from "./QuickSearchFolderItem";
 import { QuickSearchSecretItem } from "./QuickSearchSecretItem";
 
 export type QuickSearchModalProps = {
-  environments: WorkspaceEnv[];
+  environments: ProjectEnv[];
   projectId: string;
   tags?: WsTag[];
   isSingleEnv?: boolean;

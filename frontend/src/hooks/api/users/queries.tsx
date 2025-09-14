@@ -10,7 +10,7 @@ import { MfaMethod } from "../auth/types";
 import { TGroupWithProjectMemberships } from "../groups/types";
 import { setAuthToken } from "../reactQuery";
 import { subscriptionQueryKeys } from "../subscriptions/queries";
-import { workspaceKeys } from "../workspace";
+import { projectKeys } from "../projects";
 import { userKeys } from "./query-keys";
 import {
   AddUserToOrgDTO,
@@ -197,10 +197,10 @@ export const useAddUsersToOrg = () => {
       projects?.forEach((project) => {
         if (project.slug) {
           queryClient.invalidateQueries({
-            queryKey: workspaceKeys.getWorkspaceGroupMemberships(project.slug)
+            queryKey: projectKeys.getProjectGroupMemberships(project.slug)
           });
         }
-        queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceUsers(project.id) });
+        queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(project.id) });
       });
     }
   });

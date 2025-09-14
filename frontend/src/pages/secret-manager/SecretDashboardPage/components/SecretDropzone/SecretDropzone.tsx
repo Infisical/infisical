@@ -53,7 +53,7 @@ type TSecOverwriteOpt = { update: TParsedEnv; create: TParsedEnv };
 type Props = {
   isSmaller: boolean;
   environments?: { name: string; slug: string }[];
-  workspaceId: string;
+  projectId: string;
   environment: string;
   secretPath: string;
   isProtectedBranch?: boolean;
@@ -140,7 +140,7 @@ const MatrixImportModalTableRow = ({
 export const SecretDropzone = ({
   isSmaller,
   environments = [],
-  workspaceId,
+  projectId,
   environment,
   secretPath,
   isProtectedBranch = false
@@ -196,7 +196,7 @@ export const SecretDropzone = ({
       const { secrets: existingSecrets } = await fetchDashboardProjectSecretsByKeys({
         secretPath,
         environment,
-        projectId: workspaceId,
+        projectId: projectId,
         keys: envSecretKeys
       });
 
@@ -334,7 +334,7 @@ export const SecretDropzone = ({
       if (Object.keys(create || {}).length) {
         await createSecretBatch({
           secretPath,
-          workspaceId,
+          projectId,
           environment,
           secrets: Object.entries(create).map(([secretKey, secData]) => ({
             type: SecretType.Shared,
@@ -347,7 +347,7 @@ export const SecretDropzone = ({
       if (Object.keys(update || {}).length) {
         await updateSecretBatch({
           secretPath,
-          workspaceId,
+          projectId,
           environment,
           secrets: Object.entries(update).map(([secretKey, secData]) => ({
             type: SecretType.Shared,
@@ -358,13 +358,13 @@ export const SecretDropzone = ({
         });
       }
       queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId: projectId, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretApprovalRequestKeys.count({ workspaceId })
+        queryKey: secretApprovalRequestKeys.count({ projectId })
       });
       handlePopUpClose("confirmUpload");
       createNotification({
@@ -464,7 +464,7 @@ export const SecretDropzone = ({
                   onParsedEnv={handleParsedEnv}
                   environment={environment}
                   environments={environments}
-                  workspaceId={workspaceId}
+                  workspaceId={projectId}
                   secretPath={secretPath}
                   isSmaller={isSmaller}
                 />

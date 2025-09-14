@@ -2,16 +2,16 @@ import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-sv
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { ContentLoader } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useListSecretScanningFindings } from "@app/hooks/api/secretScanningV2";
 
 import { SecretScanningFindingsTable } from "./SecretScanningFindingsTable";
 
 export const SecretScanningFindingsSection = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { data: findings = [], isPending: isFindingsPending } = useListSecretScanningFindings(
-    currentWorkspace.id,
+    currentProject.id,
     {
       refetchInterval: 30000
     }

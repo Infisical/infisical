@@ -3,7 +3,7 @@ import { useFormContext, useWatch } from "react-hook-form";
 import { MongoAbility, MongoQuery } from "@casl/ability";
 import { Edge, Node, useEdgesState, useNodesState } from "@xyflow/react";
 
-import { ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { useListProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/queries";
 import { TSecretFolderWithPath } from "@app/hooks/api/secretFolders/types";
@@ -36,15 +36,15 @@ export const useAccessTree = (
   searchPath: string,
   subject: ProjectPermissionSub
 ) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { secretName, setSecretName, setViewMode, viewMode } = useAccessTreeContext();
   const { control } = useFormContext<AccessTreeForm>();
   const metadata = useWatch({ control, name: "metadata" });
   const [nodes, setNodes] = useNodesState<Node>([]);
   const [edges, setEdges] = useEdgesState<Edge>([]);
-  const [environment, setEnvironment] = useState(currentWorkspace.environments[0]?.slug ?? "");
+  const [environment, setEnvironment] = useState(currentProject.environments[0]?.slug ?? "");
   const { data: environmentsFolders, isPending } = useListProjectEnvironmentsFolders(
-    currentWorkspace.id
+    currentProject.id
   );
 
   const [levelFolderMap, setLevelFolderMap] = useState<LevelFolderMap>({});
@@ -279,7 +279,7 @@ export const useAccessTree = (
     environment,
     setEnvironment,
     isLoading: isPending,
-    environments: currentWorkspace.environments,
+    environments: currentProject.environments,
     secretName,
     setSecretName,
     viewMode,

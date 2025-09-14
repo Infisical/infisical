@@ -25,7 +25,7 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useProjectPermission,
-  useWorkspace
+  useProject
 } from "@app/context";
 import {
   useCreateIdentityProjectAdditionalPrivilege,
@@ -78,8 +78,8 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
   isDisabled
 }: Props) => {
   const isCreate = !privilegeId;
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id || "";
   const { data: privilegeDetails, isPending } = useGetIdentityProjectPrivilegeDetails({
     identityId,
     projectId,
@@ -225,7 +225,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
               >
                 Save
               </Button>
-              <AddPoliciesButton isDisabled={isDisabled} projectType={currentWorkspace.type} />
+              <AddPoliciesButton isDisabled={isDisabled} projectType={currentProject.type} />
             </div>
           </div>
         </div>

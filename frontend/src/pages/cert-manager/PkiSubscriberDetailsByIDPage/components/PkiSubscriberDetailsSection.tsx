@@ -17,7 +17,7 @@ import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
   useProjectPermission,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import {
@@ -44,8 +44,8 @@ type TCertificateDetails = {
 };
 
 export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace.id;
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const { permission } = useProjectPermission();
   const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);

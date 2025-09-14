@@ -10,7 +10,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { IconButton, Input, Spinner, Tooltip } from "@app/components/v2";
-import { ProjectPermissionSub, useProjectPermission, useWorkspace } from "@app/context";
+import { ProjectPermissionSub, useProjectPermission, useProject } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
@@ -37,7 +37,7 @@ export const formSchema = z.object({
 type TFormSchema = z.infer<typeof formSchema>;
 
 function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }: Props) {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject, projectId } = useProject();
   const { permission } = useProjectPermission();
 
   const secrets = environments.map((env) => getSecretByKey(env.slug, secretKey));
@@ -68,7 +68,6 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
       secret?.overrideAction === SecretActionType.Created ||
       secret?.overrideAction === SecretActionType.Modified
   );
-  const workspaceId = currentWorkspace?.id || "";
 
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
 
@@ -111,7 +110,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
 
         return updateSecretV3({
           environment: secret?.env,
-          workspaceId,
+          projectId,
           secretPath,
           secretKey: secret.key,
           secretValue: secret.value || "",
@@ -163,7 +162,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
             <Input
               autoComplete="off"
               isReadOnly={isReadOnly || secrets.filter(Boolean).length === 0}
-              autoCapitalization={currentWorkspace?.autoCapitalization}
+              autoCapitalization={currentProject?.autoCapitalization}
               variant="plain"
               isDisabled={isOverriden}
               placeholder={error?.message}

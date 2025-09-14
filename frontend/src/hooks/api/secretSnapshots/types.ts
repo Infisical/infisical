@@ -1,5 +1,5 @@
 import { SecretVersions } from "../secrets/types";
-import { WorkspaceEnv } from "../types";
+import { ProjectEnv } from "../types";
 
 export type TSecretSnapshot = {
   id: string;
@@ -13,7 +13,7 @@ export type TSnapshotData = Omit<TSecretSnapshot, "secretVersions"> & {
   id: string;
   secretVersions: (SecretVersions & { isRotatedSecret?: boolean })[];
   folderVersion: Array<{ name: string; id: string }>;
-  environment: WorkspaceEnv;
+  environment: ProjectEnv;
 };
 
 export type TSnapshotDataProps = {

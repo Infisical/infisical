@@ -14,7 +14,7 @@ import {
   IconButton
 } from "@app/components/v2";
 import { CopyButton } from "@app/components/v2/CopyButton";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
@@ -31,14 +31,14 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
   ] as const);
 
   const { mutateAsync: deleteMutateAsync } = useDeleteGroupFromWorkspace();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const navigate = useNavigate();
 
   const onRemoveGroupSubmit = async () => {
     try {
       await deleteMutateAsync({
         groupId: groupMembership.group.id,
-        projectId: currentWorkspace.id
+        projectId: currentProject.id
       });
 
       createNotification({
@@ -47,9 +47,9 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
       });
 
       navigate({
-        to: `${getProjectBaseURL(currentWorkspace.type)}/access-management`,
+        to: `${getProjectBaseURL(currentProject.type)}/access-management`,
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: "groups"

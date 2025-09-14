@@ -5,13 +5,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const RenderAuthorizePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useSaveIntegrationAccessToken();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const [apiKey, setApiKey] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
@@ -28,7 +28,7 @@ export const RenderAuthorizePage = () => {
       setIsLoading(true);
 
       const integrationAuth = await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         integration: "render",
         accessToken: apiKey
       });
@@ -38,7 +38,7 @@ export const RenderAuthorizePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations/render/create",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           integrationAuthId: integrationAuth.id

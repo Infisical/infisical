@@ -89,7 +89,7 @@ export const FolderListView = ({
           };
 
           addPendingChange(updatedCreate, {
-            workspaceId,
+            projectId: workspaceId,
             environment,
             secretPath
           });
@@ -106,7 +106,7 @@ export const FolderListView = ({
           };
 
           addPendingChange(updateChange, {
-            workspaceId,
+            projectId: workspaceId,
             environment,
             secretPath
           });
@@ -140,7 +140,7 @@ export const FolderListView = ({
 
   const handleDeletePending = (id: string) => {
     removePendingChange(id, "folder", {
-      workspaceId,
+      projectId: workspaceId,
       environment,
       secretPath
     });
@@ -161,7 +161,7 @@ export const FolderListView = ({
         };
 
         addPendingChange(pendingFolderDelete, {
-          workspaceId,
+          projectId: workspaceId,
           environment,
           secretPath
         });

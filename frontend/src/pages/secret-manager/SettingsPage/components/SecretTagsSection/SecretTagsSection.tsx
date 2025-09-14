@@ -8,7 +8,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useProjectPermission,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteWsTag } from "@app/hooks/api";
@@ -23,7 +23,7 @@ export const SecretTagsSection = (): JSX.Element => {
     "CreateSecretTag",
     "deleteTagConfirmation"
   ] as const);
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { permission } = useProjectPermission();
 
   const deleteWsTag = useDeleteWsTag();
@@ -31,7 +31,7 @@ export const SecretTagsSection = (): JSX.Element => {
   const onDeleteApproved = async () => {
     try {
       await deleteWsTag.mutateAsync({
-        projectId: currentWorkspace?.id || "",
+        projectId: currentProject?.id || "",
         tagID: (popUp?.deleteTagConfirmation?.data as DeleteModalData)?.id
       });
 

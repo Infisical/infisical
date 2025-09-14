@@ -29,4 +29,4 @@ export {
 export { useServerConfig } from "./ServerConfigContext";
 export { useSubscription } from "./SubscriptionContext";
 export { useUser } from "./UserContext";
-export { useWorkspace } from "./WorkspaceContext";
+export { useProject } from "./WorkspaceContext";

@@ -31,7 +31,7 @@ export type Project = {
   upgradeStatus: string | null;
   updatedAt: string;
   autoCapitalization: boolean;
-  environments: WorkspaceEnv[];
+  environments: ProjectEnv[];
   pitVersionLimit: number;
   auditLogsRetentionDays: number;
   slug: string;
@@ -43,13 +43,13 @@ export type Project = {
   secretDetectionIgnoreValues: string[];
 };
 
-export type WorkspaceEnv = {
+export type ProjectEnv = {
   id: string;
   name: string;
   slug: string;
 };
 
-export type WorkspaceTag = { id: string; name: string; slug: string };
+export type ProjectTag = { id: string; name: string; slug: string };
 
 export type NameWorkspaceSecretsDTO = {
   projectId: string;
@@ -76,7 +76,7 @@ export type CreateWorkspaceDTO = {
 };
 
 export type UpdateProjectDTO = {
-  projectID: string;
+  projectId: string;
   newProjectName?: string;
   newProjectDescription?: string;
   newSlug?: string;
@@ -85,6 +85,7 @@ export type UpdateProjectDTO = {
   secretDetectionIgnoreValues?: string[];
   pitVersionLimit?: number;
   autoCapitalization?: boolean;
+  hasDeleteProtection?: boolean;
 };
 
 export type UpdatePitVersionLimitDTO = { projectSlug: string; pitVersionLimit: number };

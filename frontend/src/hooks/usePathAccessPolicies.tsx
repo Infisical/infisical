@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useSubscription, useWorkspace } from "@app/context";
+import { useSubscription, useProject } from "@app/context";
 import { useGetAccessApprovalPolicies } from "@app/hooks/api";
 
 const matchesPath = (folderPath: string, pattern: string) => {
@@ -37,10 +37,10 @@ type Params = {
 };
 
 export const usePathAccessPolicies = ({ secretPath, environment }: Params) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { subscription } = useSubscription();
   const { data: policies } = useGetAccessApprovalPolicies({
-    projectSlug: currentWorkspace.slug,
+    projectSlug: currentProject.slug,
     options: {
       enabled: subscription.secretApproval
     }

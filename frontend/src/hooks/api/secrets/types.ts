@@ -227,7 +227,6 @@ export type TDeleteSecretBatchDTO = {
 };
 
 export type TMoveSecretsDTO = {
-  projectSlug: string;
   projectId: string;
   sourceEnvironment: string;
   sourceSecretPath: string;

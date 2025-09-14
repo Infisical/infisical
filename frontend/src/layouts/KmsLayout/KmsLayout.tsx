@@ -4,12 +4,12 @@ import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import { Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
-import { useProjectPermission, useWorkspace } from "@app/context";
+import { useProjectPermission, useProject } from "@app/context";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
 export const KmsLayout = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { assumedPrivilegeDetails } = useProjectPermission();
 
   return (
@@ -34,7 +34,7 @@ export const KmsLayout = () => {
                   <Link
                     to="/projects/kms/$projectId/overview"
                     params={{
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => (
@@ -51,7 +51,7 @@ export const KmsLayout = () => {
                   <Link
                     to="/projects/kms/$projectId/kmip"
                     params={{
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => (
@@ -70,7 +70,7 @@ export const KmsLayout = () => {
                   <Link
                     to="/projects/kms/$projectId/access-management"
                     params={{
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => (
@@ -87,7 +87,7 @@ export const KmsLayout = () => {
                   <Link
                     to="/projects/kms/$projectId/audit-logs"
                     params={{
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => (
@@ -104,7 +104,7 @@ export const KmsLayout = () => {
                   <Link
                     to="/projects/kms/$projectId/settings"
                     params={{
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => (

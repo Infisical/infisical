@@ -26,7 +26,7 @@ import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
   useProjectPermission,
-  useWorkspace
+  useProject
 } from "@app/context";
 import {
   ProjectPermissionCommitsActions,
@@ -53,7 +53,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { SecretV3RawSanitized } from "@app/hooks/api/types";
-import { ProjectVersion } from "@app/hooks/api/workspace/types";
+import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { usePathAccessPolicies } from "@app/hooks/usePathAccessPolicies";
 import { useResizableColWidth } from "@app/hooks/useResizableColWidth";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
@@ -94,7 +94,7 @@ const LOADER_TEXT = [
 ];
 
 const Page = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const navigate = useNavigate({
     from: ROUTE_PATHS.SecretManager.SecretDashboardPage.path
   });
@@ -142,15 +142,15 @@ const Page = () => {
   ] as const);
 
   // env slug
-  const workspaceId = currentWorkspace?.id || "";
-  const projectSlug = currentWorkspace?.slug || "";
+  const projectId = currentProject?.id || "";
+  const projectSlug = currentProject?.slug || "";
   const secretPath = (routerQueryParams.secretPath as string) || "/";
 
   useEffect(() => {
-    if (isBatchMode && workspaceId && environment && secretPath) {
-      loadPendingChanges({ workspaceId, environment, secretPath });
+    if (isBatchMode && projectId && environment && secretPath) {
+      loadPendingChanges({ projectId: projectId, environment, secretPath });
     }
-  }, [isBatchMode, workspaceId, environment, secretPath, loadPendingChanges]);
+  }, [isBatchMode, projectId, environment, secretPath, loadPendingChanges]);
 
   const canReadSecret = hasSecretReadValueOrDescribePermission(
     permission,
@@ -240,7 +240,7 @@ const Page = () => {
   const { togglePopUp } = usePopUpAction();
 
   useEffect(() => {
-    if (!currentWorkspace?.environments.find((env) => env.slug === environment)) {
+    if (!currentProject?.environments.find((env) => env.slug === environment)) {
       createNotification({
         text: "No environment found with given slug",
         type: "error"
@@ -248,11 +248,11 @@ const Page = () => {
       navigate({
         to: "/projects/secret-management/$projectId/overview",
         params: {
-          projectId: workspaceId
+          projectId: projectId
         }
       });
     }
-  }, [currentWorkspace, environment]);
+  }, [currentProject, environment]);
 
   const isResourceTypeFiltered = Object.values(filter.include).some(Boolean);
   const {
@@ -262,7 +262,7 @@ const Page = () => {
     isFetched
   } = useGetProjectSecretsDetails({
     environment,
-    projectId: workspaceId,
+    projectId: projectId,
     secretPath,
     offset,
     limit,
@@ -316,7 +316,7 @@ const Page = () => {
 
   // fetch imported secrets to show user the overriden ones
   const { data: importedSecrets } = useGetImportedSecretsSingleEnv({
-    projectId: workspaceId,
+    projectId: projectId,
     environment,
     path: secretPath,
     options: {
@@ -326,13 +326,13 @@ const Page = () => {
 
   // fetch tags
   const { data: tags } = useGetWsTags(
-    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? workspaceId : ""
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? projectId : ""
   );
 
   const { pathPolicies, hasPathPolicies } = usePathAccessPolicies({ secretPath, environment });
 
   const { data: boardPolicy } = useGetSecretApprovalPolicyOfABoard({
-    workspaceId,
+    projectId,
     environment,
     secretPath
   });
@@ -341,7 +341,7 @@ const Page = () => {
   const handleCreateCommit = async (changes: PendingChanges, message: string) => {
     try {
       await createCommit({
-        workspaceId,
+        projectId,
         environment,
         secretPath,
         pendingChanges: changes,
@@ -368,7 +368,7 @@ const Page = () => {
     fetchNextPage: fetchNextSnapshotList,
     hasNextPage: hasNextSnapshotListPage
   } = useGetWorkspaceSnapshotList({
-    workspaceId,
+    projectId,
     directory: secretPath,
     environment,
     isPaused: !popUp.snapshots.isOpen || !canDoReadRollback,
@@ -381,7 +381,7 @@ const Page = () => {
     isFetching: isFolderCommitsCountFetching
   } = useGetFolderCommitsCount({
     directory: secretPath,
-    workspaceId,
+    projectId,
     environment,
     isPaused: !canReadCommits
   });
@@ -391,13 +391,13 @@ const Page = () => {
     isPending: isSnapshotCountLoading,
     isFetching: isSnapshotCountFetching
   } = useGetWsSnapshotCount({
-    workspaceId,
+    projectId,
     environment,
     directory: secretPath,
     isPaused: !canDoReadRollback
   });
 
-  const isPITEnabled = !currentWorkspace?.showSnapshotsLegacy;
+  const isPITEnabled = !currentProject?.showSnapshotsLegacy;
 
   const changesCount = useMemo(() => {
     return isPITEnabled ? folderCommitsCount : snapshotCount;
@@ -416,7 +416,7 @@ const Page = () => {
       navigate({
         to: "/projects/secret-management/$projectId/commits/$environment/$folderId",
         params: {
-          projectId: workspaceId,
+          projectId: projectId,
           folderId,
           environment
         },
@@ -647,7 +647,7 @@ const Page = () => {
                 ? change.tags?.map((tag) => ({
                     id: tag.id,
                     slug: tag.slug,
-                    projectId: workspaceId,
+                    projectId: projectId,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                     __v: 0
@@ -734,7 +734,7 @@ const Page = () => {
   const mergedSecrets = getMergedSecretsWithPending();
   const mergedFolders = getMergedFoldersWithPending();
 
-  if (!(currentWorkspace?.version === ProjectVersion.V3))
+  if (!(currentProject?.version === ProjectVersion.V3))
     return (
       <div className="flex h-full w-full flex-col items-center justify-center px-6 text-mineshaft-50 dark:[color-scheme:dark]">
         <SecretV2MigrationSection />
@@ -794,8 +794,6 @@ const Page = () => {
         <>
           <ActionBar
             environment={environment}
-            workspaceId={workspaceId}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             isVisible={isVisible}
             isBatchMode={isBatchMode}
@@ -957,7 +955,7 @@ const Page = () => {
                   secretImports={imports}
                   isFetching={isDetailsFetching}
                   environment={environment}
-                  workspaceId={workspaceId}
+                  workspaceId={projectId}
                   secretPath={secretPath}
                   importedSecrets={importedSecrets}
                 />
@@ -966,7 +964,7 @@ const Page = () => {
                 <FolderListView
                   folders={mergedFolders}
                   environment={environment}
-                  workspaceId={workspaceId}
+                  workspaceId={projectId}
                   secretPath={secretPath}
                   onNavigateToFolder={handleResetFilter}
                   canNavigate={isFetched}
@@ -990,7 +988,7 @@ const Page = () => {
                   tags={tags}
                   isVisible={isVisible}
                   environment={environment}
-                  workspaceId={workspaceId}
+                  projectId={projectId}
                   secretPath={secretPath}
                   isProtectedBranch={isProtectedBranch}
                   importedBy={importedBy}
@@ -1001,7 +999,7 @@ const Page = () => {
                 <CommitForm
                   onCommit={handleCreateCommit}
                   environment={environment}
-                  workspaceId={workspaceId}
+                  workspaceId={projectId}
                   secretPath={secretPath}
                   isCommitting={isCommitPending}
                 />
@@ -1052,9 +1050,9 @@ const Page = () => {
             >
               <CreateSecretForm
                 environment={environment}
-                workspaceId={workspaceId}
+                projectId={projectId}
                 secretPath={secretPath}
-                autoCapitalize={currentWorkspace?.autoCapitalization}
+                autoCapitalize={currentProject?.autoCapitalization}
                 isProtectedBranch={isProtectedBranch}
                 isBatchMode={isBatchMode}
               />
@@ -1073,10 +1071,10 @@ const Page = () => {
           )}
           <SecretDropzone
             environment={environment}
-            workspaceId={workspaceId}
+            projectId={projectId}
             secretPath={secretPath}
             isSmaller={isNotEmpty}
-            environments={currentWorkspace?.environments}
+            environments={currentProject?.environments}
             isProtectedBranch={isProtectedBranch}
           />
           <PitDrawer
@@ -1094,7 +1092,7 @@ const Page = () => {
         <SnapshotView
           snapshotId={snapshotId || ""}
           environment={environment}
-          workspaceId={workspaceId}
+          projectId={projectId}
           secretPath={secretPath}
           secrets={secrets}
           folders={folders}

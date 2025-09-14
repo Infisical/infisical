@@ -17,7 +17,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   ProjectPermissionCommitsActions,
   ProjectPermissionSub
@@ -79,7 +79,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
   const [deepRollback, setDeepRollback] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const envSlug = useParams({
     from: ROUTE_PATHS.SecretManager.RollbackPreviewPage.id,
     select: (el) => el.environment
@@ -104,7 +104,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
     navigate({
       to: "/projects/secret-management/$projectId/commits/$environment/$folderId",
       params: {
-        projectId: currentWorkspace.id,
+        projectId: currentProject.id,
         folderId,
         environment: envSlug
       },
@@ -120,7 +120,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
   ] as const);
 
   const { mutateAsync: rollback } = useCommitRollback({
-    projectId: currentWorkspace.id,
+    projectId: currentProject.id,
     commitId: selectedCommitId,
     folderId,
     deepRollback,
@@ -133,7 +133,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
     folderId,
     selectedCommitId,
     envSlug,
-    currentWorkspace.id,
+    currentProject.id,
     deepRollback,
     secretPath
   );

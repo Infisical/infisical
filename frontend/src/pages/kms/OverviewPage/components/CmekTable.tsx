@@ -50,7 +50,7 @@ import {
   ProjectPermissionCmekActions,
   ProjectPermissionSub,
   useProjectPermission,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { kmsKeyUsageOptions } from "@app/helpers/kms";
 import {
@@ -87,10 +87,10 @@ const getStatusBadgeProps = (
 };
 
 export const CmekTable = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { permission } = useProjectPermission();
 
-  const projectId = currentWorkspace?.id ?? "";
+  const projectId = currentProject?.id ?? "";
 
   const {
     offset,

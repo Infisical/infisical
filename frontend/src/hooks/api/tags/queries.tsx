@@ -28,7 +28,7 @@ export const useCreateWsTag = () => {
   const queryClient = useQueryClient();
 
   return useMutation<WsTag, object, CreateTagDTO>({
-    mutationFn: async ({ projectID, tagColor, tagSlug }) => {
+    mutationFn: async ({ projectId: projectID, tagColor, tagSlug }) => {
       const { data } = await apiRequest.post<{ projectTag: WsTag }>(
         `/api/v1/projects/${projectID}/tags`,
         {

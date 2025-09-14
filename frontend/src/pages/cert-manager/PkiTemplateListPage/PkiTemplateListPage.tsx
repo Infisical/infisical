@@ -43,7 +43,7 @@ import {
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub,
   useSubscription,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteCertTemplateV2 } from "@app/hooks/api";
@@ -55,7 +55,7 @@ import { PkiTemplateForm } from "./components/PkiTemplateForm";
 const PER_PAGE_INIT = 25;
 export const PkiTemplateListPage = () => {
   const { t } = useTranslation();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -68,7 +68,7 @@ export const PkiTemplateListPage = () => {
   const { subscription } = useSubscription();
 
   const { data, isPending } = useListCertificateTemplates({
-    projectId: currentWorkspace.id,
+    projectId: currentProject.id,
     offset: (page - 1) * perPage,
     limit: perPage
   });
@@ -78,7 +78,7 @@ export const PkiTemplateListPage = () => {
   const onRemovePkiSubscriberSubmit = async () => {
     try {
       const pkiTemplate = await deleteCertTemplate.mutateAsync({
-        projectId: currentWorkspace.id,
+        projectId: currentProject.id,
         templateName: popUp?.deleteTemplate?.data?.name
       });
 

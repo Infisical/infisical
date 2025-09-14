@@ -39,11 +39,11 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { useGetUserWorkspaces } from "@app/hooks/api";
+import { useGetUserProjects } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { ProjectType, Project } from "@app/hooks/api/workspace/types";
+import { ProjectType, Project } from "@app/hooks/api/projects/types";
 import {
   ProjectListToggle,
   ProjectListView
@@ -79,7 +79,7 @@ export const MyProjectView = ({
     {}
   );
 
-  const { data: workspaces = [], isPending: isWorkspaceLoading } = useGetUserWorkspaces();
+  const { data: workspaces = [], isPending: isWorkspaceLoading } = useGetUserProjects();
   const {
     setPage,
     perPage,

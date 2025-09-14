@@ -32,7 +32,7 @@ type TFormSchema = z.infer<typeof typeSchema>;
 
 type Props = {
   environment: string;
-  workspaceId: string;
+  projectId: string;
   secretPath?: string;
   // modal props
   autoCapitalize?: boolean;
@@ -42,7 +42,7 @@ type Props = {
 
 export const CreateSecretForm = ({
   environment,
-  workspaceId,
+  projectId,
   secretPath = "/",
   autoCapitalize = true,
   isProtectedBranch = false,
@@ -66,7 +66,7 @@ export const CreateSecretForm = ({
   const { permission } = useProjectPermission();
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
   const { data: projectTags, isPending: isTagsLoading } = useGetWsTags(
-    canReadTags ? workspaceId : ""
+    canReadTags ? projectId : ""
   );
 
   const secretKeyInputRef = useRef<HTMLInputElement>(null);
@@ -80,7 +80,7 @@ export const CreateSecretForm = ({
     try {
       const parsedSlug = slugSchema.parse(slug);
       await createWsTag.mutateAsync({
-        workspaceID: workspaceId,
+        projectId,
         tagSlug: parsedSlug,
         tagColor: ""
       });
@@ -106,7 +106,8 @@ export const CreateSecretForm = ({
           resourceType: "secret"
         };
         addPendingChange(pendingSecretCreate, {
-          workspaceId,
+          projectId,
+
           environment,
           secretPath
         });
@@ -116,7 +117,7 @@ export const CreateSecretForm = ({
       }
       await createSecretV3({
         environment,
-        workspaceId,
+        projectId,
         secretPath,
         secretKey: key,
         secretValue: value || "",

@@ -2,7 +2,7 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   ProjectPermissionCommitsActions,
   ProjectPermissionSub
@@ -23,7 +23,7 @@ export const CommitDetailsPage = () => {
     from: ROUTE_PATHS.SecretManager.CommitDetailsPage.id,
     select: (el) => el.folderId
   });
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const navigate = useNavigate();
   const routerQueryParams: { secretPath?: string } = useSearch({
@@ -36,7 +36,7 @@ export const CommitDetailsPage = () => {
     navigate({
       to: "/projects/secret-management/$projectId/commits/$environment/$folderId",
       params: {
-        projectId: currentWorkspace.id,
+        projectId: currentProject.id,
         folderId,
         environment: envSlug
       },
@@ -51,7 +51,7 @@ export const CommitDetailsPage = () => {
     navigate({
       to: "/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore",
       params: {
-        projectId: currentWorkspace.id,
+        projectId: currentProject.id,
         folderId,
         environment: envSlug,
         commitId: selectedCommitId
@@ -73,7 +73,7 @@ export const CommitDetailsPage = () => {
         >
           <CommitDetailsTab
             selectedCommitId={selectedCommitId}
-            workspaceId={currentWorkspace.id}
+            workspaceId={currentProject.id}
             goBackToHistory={handleGoBackToHistory}
             envSlug={envSlug}
             goToRollbackPreview={handleGoToRollbackPreview}

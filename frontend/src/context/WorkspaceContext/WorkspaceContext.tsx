@@ -2,9 +2,9 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 
 import { projectKeys } from "@app/hooks/api";
-import { fetchWorkspaceById } from "@app/hooks/api/workspace/queries";
+import { fetchProjectById } from "@app/hooks/api/projects/queries";
 
-export const useWorkspace = () => {
+export const useProject = () => {
   const params = useParams({
     strict: false
   });
@@ -12,11 +12,11 @@ export const useWorkspace = () => {
     throw new Error("Missing project id");
   }
 
-  const { data: currentWorkspace } = useSuspenseQuery({
-    queryKey: projectKeys.getWorkspaceById(params.projectId),
-    queryFn: () => fetchWorkspaceById(params.projectId as string),
+  const { data: currentProject } = useSuspenseQuery({
+    queryKey: projectKeys.getProjectById(params.projectId),
+    queryFn: () => fetchProjectById(params.projectId as string),
     staleTime: Infinity
   });
 
-  return { currentWorkspace };
+  return { currentProject, projectId: currentProject.id };
 };

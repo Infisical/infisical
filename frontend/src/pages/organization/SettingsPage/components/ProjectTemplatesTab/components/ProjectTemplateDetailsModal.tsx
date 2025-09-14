@@ -20,7 +20,7 @@ import {
   useCreateProjectTemplate,
   useUpdateProjectTemplate
 } from "@app/hooks/api/projectTemplates";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({

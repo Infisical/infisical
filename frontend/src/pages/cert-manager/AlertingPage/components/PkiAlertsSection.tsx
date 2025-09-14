@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useDeletePkiAlert } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -12,8 +12,8 @@ import { PkiAlertModal } from "./PkiAlertModal";
 import { PkiAlertsTable } from "./PkiAlertsTable";
 
 export const PkiAlertsSection = () => {
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id || "";
   const { mutateAsync: deletePkiAlert } = useDeletePkiAlert();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([

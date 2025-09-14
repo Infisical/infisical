@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
 import { twMerge } from "tailwind-merge";
 
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import { useGetFoldersByEnv } from "@app/hooks/api";
 
@@ -35,11 +35,11 @@ export const SecretPathInput = ({
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [debouncedInputValue] = useDebounce(inputValue, 200);
 
-  const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const workspaceId = currentProject?.id || "";
   const { folderNames: folders } = useGetFoldersByEnv({
     path: secretPath,
-    environments: [environment || currentWorkspace?.environments?.[0].slug || ""],
+    environments: [environment || currentProject?.environments?.[0].slug || ""],
     projectId: workspaceId
   });
 

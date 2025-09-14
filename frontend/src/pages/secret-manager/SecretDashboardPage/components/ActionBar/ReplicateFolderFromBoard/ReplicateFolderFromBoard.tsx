@@ -48,7 +48,7 @@ type Props = {
     env: Record<string, Record<string, { value: string; comments: string[]; secretPath?: string }>>
   ) => void;
   environments?: { name: string; slug: string }[];
-  workspaceId: string;
+  projectId: string;
   environment: string;
   secretPath: string;
 };
@@ -64,7 +64,7 @@ type SecretStructure = {
 
 export const ReplicateFolderFromBoard = ({
   environments = [],
-  workspaceId,
+  projectId: workspaceId,
   isOpen,
   onToggle,
   onParsedEnv

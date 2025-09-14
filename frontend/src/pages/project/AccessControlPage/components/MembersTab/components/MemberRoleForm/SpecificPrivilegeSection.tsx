@@ -44,7 +44,7 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProjectPermission,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { removeTrailingSlash } from "@app/helpers/string";
 import { usePopUp } from "@app/hooks";
@@ -89,7 +89,7 @@ export const SpecificPrivilegeSecretForm = ({
   secretPath?: string;
   onClose?: () => void;
 }) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deletePrivilege",
@@ -129,7 +129,7 @@ export const SpecificPrivilegeSecretForm = ({
             temporaryAccess: privilege
           }
         : {
-            environmentSlug: currentWorkspace.environments?.[0]?.slug,
+            environmentSlug: currentProject.environments?.[0]?.slug,
             secretPath: initialSecretPath,
             read: selectedActions.includes(ProjectPermissionActions.Read),
             edit: selectedActions.includes(ProjectPermissionActions.Edit),
@@ -202,7 +202,7 @@ export const SpecificPrivilegeSecretForm = ({
   // This is used for requesting access additional privileges, not directly creating a privilege!
   const handleRequestAccess = async (data: TSecretPermissionForm) => {
     if (!policies) return;
-    if (!currentWorkspace) {
+    if (!currentProject) {
       createNotification({
         type: "error",
         text: "No workspace found.",
@@ -253,7 +253,7 @@ export const SpecificPrivilegeSecretForm = ({
       ...(data.temporaryAccess.isTemporary && {
         temporaryRange: data.temporaryAccess.temporaryRange
       }),
-      projectSlug: currentWorkspace.slug,
+      projectSlug: currentProject.slug,
       isTemporary: data.temporaryAccess.isTemporary,
       permissions: actions
         .filter(({ allowed }) => allowed)
@@ -307,7 +307,7 @@ export const SpecificPrivilegeSecretForm = ({
                   position="popper"
                   dropdownContainerClassName="max-w-none"
                 >
-                  {currentWorkspace?.environments?.map(({ slug, id, name }) => (
+                  {currentProject?.environments?.map(({ slug, id, name }) => (
                     <SelectItem value={slug} key={id}>
                       {name}
                     </SelectItem>

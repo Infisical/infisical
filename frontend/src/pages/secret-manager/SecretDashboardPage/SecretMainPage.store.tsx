@@ -97,7 +97,7 @@ export interface PendingChanges {
 
 // Context interface for batch operations
 export interface BatchContext {
-  workspaceId: string;
+  projectId: string;
   environment: string;
   secretPath: string;
 }
@@ -257,8 +257,8 @@ type BatchModeState = {
   };
 };
 
-const generateContextKey = (workspaceId: string, environment: string, secretPath: string) => {
-  return `${workspaceId}_${environment}_${secretPath}`;
+const generateContextKey = (projectId: string, environment: string, secretPath: string) => {
+  return `${projectId}_${environment}_${secretPath}`;
 };
 
 const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> = (set, get) => ({
@@ -272,7 +272,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
     addPendingChange: (change: PendingChange, context: BatchContext) =>
       set((state) => {
         const contextKey = generateContextKey(
-          context.workspaceId,
+          context.projectId,
           context.environment,
           context.secretPath
         );
@@ -551,7 +551,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
         const currentChanges =
           contextKey ===
           generateContextKey(
-            state.currentContext?.workspaceId || context.workspaceId,
+            state.currentContext?.projectId || context.projectId,
             state.currentContext?.environment || context.environment,
             state.currentContext?.secretPath || context.secretPath
           )
@@ -568,7 +568,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
     removePendingChange: (changeId: string, resourceType: string, context: BatchContext) =>
       set((state) => {
         const contextKey = generateContextKey(
-          context.workspaceId,
+          context.projectId,
           context.environment,
           context.secretPath
         );
@@ -593,7 +593,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
           state.currentContext &&
           contextKey ===
             generateContextKey(
-              state.currentContext.workspaceId,
+              state.currentContext.projectId,
               state.currentContext.environment,
               state.currentContext.secretPath
             );
@@ -606,7 +606,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
 
     loadPendingChanges: (context) => {
       const contextKey = generateContextKey(
-        context.workspaceId,
+        context.projectId,
         context.environment,
         context.secretPath
       );
@@ -626,7 +626,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
 
     clearAllPendingChanges: (context) => {
       const contextKey = generateContextKey(
-        context.workspaceId,
+        context.projectId,
         context.environment,
         context.secretPath
       );
@@ -641,7 +641,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
           state.currentContext &&
           contextKey ===
             generateContextKey(
-              state.currentContext.workspaceId,
+              state.currentContext.projectId,
               state.currentContext.environment,
               state.currentContext.secretPath
             );

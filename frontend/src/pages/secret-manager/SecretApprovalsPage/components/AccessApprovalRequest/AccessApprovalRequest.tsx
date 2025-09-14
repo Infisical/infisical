@@ -42,7 +42,7 @@ import {
   useProjectPermission,
   useSubscription,
   useUser,
-  useWorkspace
+  useProject
 } from "@app/context";
 import {
   getUserTablePreference,
@@ -110,7 +110,7 @@ export const AccessApprovalRequest = ({
   const { permission } = useProjectPermission();
   const { user } = useUser();
   const { subscription } = useSubscription();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { data: members } = useGetWorkspaceUsers(projectId, true);
   const membersGroupById = members?.reduce<Record<string, TWorkspaceUser>>(
@@ -410,7 +410,7 @@ export const AccessApprovalRequest = ({
                   <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
                     Select an Environment
                   </DropdownMenuLabel>
-                  {currentWorkspace?.environments.map(({ slug, name }) => (
+                  {currentProject?.environments.map(({ slug, name }) => (
                     <DropdownMenuItem
                       onClick={() => setEnvFilter((state) => (state === slug ? undefined : slug))}
                       key={`request-filter-${slug}`}

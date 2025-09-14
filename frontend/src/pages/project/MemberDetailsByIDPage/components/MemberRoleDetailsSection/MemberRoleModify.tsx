@@ -31,12 +31,12 @@ import {
   ProjectPermissionSub,
   useProjectPermission,
   useSubscription,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { useGetProjectRoles, useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/types";
-import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/workspace/types";
+import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
 
 const roleFormSchema = z.object({
   roles: z
@@ -65,9 +65,8 @@ type Props = {
 
 export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) => {
   const { subscription } = useSubscription();
-  const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?.id || "";
-  const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(workspaceId);
+  const { projectId } = useProject();
+  const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(projectId);
   const { permission } = useProjectPermission();
   const isMemberEditDisabled = permission.cannot(
     ProjectPermissionMemberActions.Edit,
@@ -131,7 +130,7 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
 
     try {
       await updateMembershipRole.mutateAsync({
-        workspaceId,
+        projectId,
         membershipId: projectMember.id,
         roles: sanitizedRoles
       });

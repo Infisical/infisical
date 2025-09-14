@@ -9,7 +9,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useSubscription,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
@@ -19,7 +19,7 @@ import { GroupTable } from "./GroupsTable";
 
 export const GroupsSection = () => {
   const { subscription } = useSubscription();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { mutateAsync: deleteMutateAsync } = useDeleteGroupFromWorkspace();
 
@@ -44,7 +44,7 @@ export const GroupsSection = () => {
     try {
       await deleteMutateAsync({
         groupId,
-        projectId: currentWorkspace?.id || ""
+        projectId: currentProject?.id || ""
       });
 
       createNotification({

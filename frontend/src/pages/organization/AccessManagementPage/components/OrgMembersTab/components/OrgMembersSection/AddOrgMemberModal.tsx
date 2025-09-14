@@ -21,10 +21,10 @@ import {
   useAddUsersToOrg,
   useFetchServerStatus,
   useGetOrgRoles,
-  useGetUserWorkspaces
+  useGetUserProjects
 } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { ProjectType, ProjectVersion } from "@app/hooks/api/workspace/types";
+import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { OrgInviteLink } from "./OrgInviteLink";
@@ -76,7 +76,7 @@ export const AddOrgMemberModal = ({
   const { data: organizationRoles } = useGetOrgRoles(currentOrg?.id ?? "");
   const { data: serverDetails } = useFetchServerStatus();
   const { mutateAsync: addUsersMutateAsync } = useAddUsersToOrg();
-  const { data: projects, isPending: isProjectsLoading } = useGetUserWorkspaces({
+  const { data: projects, isPending: isProjectsLoading } = useGetUserProjects({
     includeRoles: true
   });
 

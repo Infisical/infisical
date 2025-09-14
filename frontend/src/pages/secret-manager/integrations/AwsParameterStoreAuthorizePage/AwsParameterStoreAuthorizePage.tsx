@@ -16,7 +16,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 enum AwsAuthType {
@@ -40,7 +40,7 @@ type TForm = z.infer<typeof formSchema>;
 
 export const AWSParameterStoreAuthorizeIntegrationPage = () => {
   const navigate = useNavigate();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { mutateAsync } = useSaveIntegrationAccessToken();
 
   const { control, handleSubmit, formState, watch } = useForm<TForm>({
@@ -55,7 +55,7 @@ export const AWSParameterStoreAuthorizeIntegrationPage = () => {
   const handleFormSubmit = async (data: TForm) => {
     try {
       const integrationAuth = await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         integration: "aws-parameter-store",
         ...(data.type === AwsAuthType.AssumeRole
           ? {
@@ -70,7 +70,7 @@ export const AWSParameterStoreAuthorizeIntegrationPage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations/aws-parameter-store/create",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           integrationAuthId: integrationAuth.id

@@ -35,21 +35,18 @@ import {
   ProjectType,
   TGetUpgradeProjectStatusDTO,
   TListProjectIdentitiesDTO,
-  ToggleAutoCapitalizationDTO,
-  ToggleDeleteProjectProtectionDTO,
   TProjectSshConfig,
   TSearchProjectsDTO,
   TUpdateWorkspaceIdentityRoleDTO,
   TUpdateWorkspaceUserRoleDTO,
   UpdateAuditLogsRetentionDTO,
   UpdateEnvironmentDTO,
-  UpdatePitVersionLimitDTO,
   UpdateProjectDTO,
   Project,
-  WorkspaceEnv
+  ProjectEnv
 } from "./types";
 
-export const fetchWorkspaceById = async (projectId: string) => {
+export const fetchProjectById = async (projectId: string) => {
   const { data } = await apiRequest.get<{ project: Project }>(`/api/v1/projects/${projectId}`);
 
   return data.project;
@@ -82,7 +79,7 @@ export const useUpgradeProject = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getAllUserWorkspace()
+        queryKey: projectKeys.getAllUserProjects()
       });
     }
   });
@@ -113,7 +110,7 @@ const fetchUserWorkspaces = async (includeRoles?: boolean, type?: ProjectType | 
 
 export const useGetWorkspaceIndexStatus = (projectId: string) => {
   return useQuery({
-    queryKey: projectKeys.getWorkspaceIndexStatus(projectId),
+    queryKey: projectKeys.getProjectIndexStatus(projectId),
     queryFn: () => fetchWorkspaceIndexStatus(projectId),
     enabled: true
   });
@@ -124,14 +121,14 @@ export const useGetWorkspaceById = (
   dto?: { refetchInterval?: number | false }
 ) => {
   return useQuery({
-    queryKey: projectKeys.getWorkspaceById(projectId),
-    queryFn: () => fetchWorkspaceById(projectId),
+    queryKey: projectKeys.getProjectById(projectId),
+    queryFn: () => fetchProjectById(projectId),
     enabled: Boolean(projectId),
     refetchInterval: dto?.refetchInterval
   });
 };
 
-export const useGetUserWorkspaces = ({
+export const useGetUserProjects = ({
   includeRoles,
   options = {}
 }: {
@@ -139,14 +136,14 @@ export const useGetUserWorkspaces = ({
   options?: { enabled?: boolean };
 } = {}) =>
   useQuery({
-    queryKey: projectKeys.getAllUserWorkspace(),
+    queryKey: projectKeys.getAllUserProjects(),
     queryFn: () => fetchUserWorkspaces(includeRoles),
     ...options
   });
 
 export const useSearchProjects = ({ options, ...dto }: TSearchProjectsDTO) =>
   useQuery({
-    queryKey: projectKeys.searchWorkspace(dto),
+    queryKey: projectKeys.searchProject(dto),
     queryFn: async () => {
       const { data } = await apiRequest.post<{
         projects: (Project & { isMember: boolean })[];
@@ -169,7 +166,7 @@ const fetchUserWorkspaceMemberships = async (orgId: string) => {
 // to get all userids in an org with the project they are part of
 export const useGetUserWorkspaceMemberships = (orgId: string) =>
   useQuery({
-    queryKey: projectKeys.getWorkspaceMemberships(orgId),
+    queryKey: projectKeys.getProjectMemberships(orgId),
     queryFn: () => fetchUserWorkspaceMemberships(orgId),
     enabled: Boolean(orgId)
   });
@@ -187,7 +184,7 @@ export const useGetWorkspaceAuthorizations = <TData = IntegrationAuth[],>(
   select?: (data: IntegrationAuth[]) => TData
 ) =>
   useQuery({
-    queryKey: projectKeys.getWorkspaceAuthorization(projectId),
+    queryKey: projectKeys.getProjectAuthorization(projectId),
     queryFn: () => fetchWorkspaceAuthorization(projectId),
     enabled: Boolean(projectId),
     select
@@ -202,7 +199,7 @@ export const fetchWorkspaceIntegrations = async (projectId: string) => {
 
 export const useGetWorkspaceIntegrations = (projectId: string) =>
   useQuery({
-    queryKey: projectKeys.getWorkspaceIntegrations(projectId),
+    queryKey: projectKeys.getProjectIntegrations(projectId),
     queryFn: () => fetchWorkspaceIntegrations(projectId),
     enabled: Boolean(projectId),
     refetchInterval: 4000
@@ -228,7 +225,7 @@ export const useCreateWorkspace = () => {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getAllUserWorkspace()
+        queryKey: projectKeys.getAllUserProjects()
       });
     }
   });
@@ -239,8 +236,9 @@ export const useUpdateProject = () => {
 
   return useMutation<Project, object, UpdateProjectDTO>({
     mutationFn: async ({
-      projectID,
+      projectId: projectID,
       newProjectName,
+      hasDeleteProtection,
       newProjectDescription,
       newSlug,
       secretSharing,
@@ -259,67 +257,14 @@ export const useUpdateProject = () => {
           showSnapshotsLegacy,
           secretDetectionIgnoreValues,
           autoCapitalization,
-          pitVersionLimit
+          pitVersionLimit,
+          hasDeleteProtection
         }
       );
       return data.project;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserWorkspace() });
-    }
-  });
-};
-
-export const useToggleAutoCapitalization = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<Project, object, ToggleAutoCapitalizationDTO>({
-    mutationFn: async ({ projectID, state }) => {
-      const { data } = await apiRequest.post<{ project: Project }>(
-        `/api/v1/projects/${projectID}/auto-capitalization`,
-        {
-          autoCapitalization: state
-        }
-      );
-      return data.project;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserWorkspace() });
-    }
-  });
-};
-
-export const useToggleDeleteProjectProtection = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<Project, object, ToggleDeleteProjectProtectionDTO>({
-    mutationFn: async ({ projectID, state }) => {
-      const { data } = await apiRequest.post<{ project: Project }>(
-        `/api/v1/projects/${projectID}/delete-protection`,
-        {
-          hasDeleteProtection: state
-        }
-      );
-      return data.project;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserWorkspace() });
-    }
-  });
-};
-
-export const useUpdateWorkspaceVersionLimit = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<Project, object, UpdatePitVersionLimitDTO>({
-    mutationFn: async ({ projectSlug, pitVersionLimit }) => {
-      const { data } = await apiRequest.put(`/api/v1/projects/${projectSlug}/version-limit`, {
-        pitVersionLimit
-      });
-      return data.project;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserWorkspace() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects() });
     }
   });
 };
@@ -338,7 +283,7 @@ export const useUpdateWorkspaceAuditLogsRetention = () => {
       return data.project;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserWorkspace() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects() });
     }
   });
 };
@@ -352,7 +297,7 @@ export const useDeleteWorkspace = () => {
       return data.project;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserWorkspace() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects() });
       queryClient.invalidateQueries({
         queryKey: ["org-admin-projects"]
       });
@@ -363,9 +308,9 @@ export const useDeleteWorkspace = () => {
 export const useCreateWsEnvironment = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<WorkspaceEnv, WorkspaceEnv, CreateEnvironmentDTO>({
+  return useMutation<ProjectEnv, ProjectEnv, CreateEnvironmentDTO>({
     mutationFn: async ({ projectId, name, slug }) => {
-      const { data } = await apiRequest.post<{ environment: WorkspaceEnv }>(
+      const { data } = await apiRequest.post<{ environment: ProjectEnv }>(
         `/api/v1/projects/${projectId}/environments`,
         {
           name,
@@ -376,7 +321,7 @@ export const useCreateWsEnvironment = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getAllUserWorkspace()
+        queryKey: projectKeys.getAllUserProjects()
       });
     }
   });
@@ -395,7 +340,7 @@ export const useUpdateWsEnvironment = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getAllUserWorkspace()
+        queryKey: projectKeys.getAllUserProjects()
       });
     }
   });
@@ -410,7 +355,7 @@ export const useDeleteWsEnvironment = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getAllUserWorkspace()
+        queryKey: projectKeys.getAllUserProjects()
       });
     }
   });
@@ -422,7 +367,7 @@ export const useGetWorkspaceUsers = (
   roles?: string[]
 ) => {
   return useQuery({
-    queryKey: projectKeys.getWorkspaceUsers(projectId, includeGroupMembers, roles),
+    queryKey: projectKeys.getProjectUsers(projectId, includeGroupMembers, roles),
     queryFn: async () => {
       const {
         data: { users }
@@ -443,7 +388,7 @@ export const useGetWorkspaceUsers = (
 
 export const useGetWorkspaceUserDetails = (projectId: string, membershipId: string) => {
   return useQuery({
-    queryKey: projectKeys.getWorkspaceUserDetails(projectId, membershipId),
+    queryKey: projectKeys.getProjectUserDetails(projectId, membershipId),
     queryFn: async () => {
       const {
         data: { membership }
@@ -476,7 +421,7 @@ export const useDeleteUserFromWorkspace = () => {
       return deletedMembership;
     },
     onSuccess: (_, { orgId, projectId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getWorkspaceUsers(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
       queryClient.invalidateQueries({
         queryKey: userKeys.allOrgMembershipProjectMemberships(orgId)
       });
@@ -499,9 +444,9 @@ export const useUpdateUserWorkspaceRole = () => {
       return membership;
     },
     onSuccess: (_, { projectId, membershipId }) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getWorkspaceUsers(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getWorkspaceUserDetails(projectId, membershipId)
+        queryKey: projectKeys.getProjectUserDetails(projectId, membershipId)
       });
     }
   });
@@ -532,7 +477,7 @@ export const useAddIdentityToWorkspace = () => {
     },
     onSuccess: (_, { identityId, projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getWorkspaceIdentityMemberships(projectId)
+        queryKey: projectKeys.getProjectIdentityMemberships(projectId)
       });
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
@@ -558,13 +503,13 @@ export const useUpdateIdentityWorkspaceRole = () => {
     },
     onSuccess: (_, { identityId, projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getWorkspaceIdentityMemberships(projectId)
+        queryKey: projectKeys.getProjectIdentityMemberships(projectId)
       });
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
       });
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getWorkspaceIdentityMembershipDetails(projectId, identityId)
+        queryKey: projectKeys.getProjectIdentityMembershipDetails(projectId, identityId)
       });
     }
   });
@@ -583,7 +528,7 @@ export const useDeleteIdentityFromWorkspace = () => {
     },
     onSuccess: (_, { identityId, projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getWorkspaceIdentityMemberships(projectId)
+        queryKey: projectKeys.getProjectIdentityMemberships(projectId)
       });
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
@@ -606,13 +551,13 @@ export const useGetWorkspaceIdentityMemberships = (
       TProjectIdentitiesList,
       unknown,
       TProjectIdentitiesList,
-      ReturnType<typeof projectKeys.getWorkspaceIdentityMembershipsWithParams>
+      ReturnType<typeof projectKeys.getProjectIdentityMembershipsWithParams>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
-    queryKey: projectKeys.getWorkspaceIdentityMembershipsWithParams({
+    queryKey: projectKeys.getProjectIdentityMembershipsWithParams({
       projectId,
       offset,
       limit,
@@ -643,7 +588,7 @@ export const useGetWorkspaceIdentityMemberships = (
 export const useGetWorkspaceIdentityMembershipDetails = (projectId: string, identityId: string) => {
   return useQuery({
     enabled: Boolean(projectId && identityId),
-    queryKey: projectKeys.getWorkspaceIdentityMembershipDetails(projectId, identityId),
+    queryKey: projectKeys.getProjectIdentityMembershipDetails(projectId, identityId),
     queryFn: async () => {
       const {
         data: { identityMembership }
@@ -658,7 +603,7 @@ export const useGetWorkspaceIdentityMembershipDetails = (projectId: string, iden
 export const useGetWorkspaceGroupMembershipDetails = (projectId: string, groupId: string) => {
   return useQuery({
     enabled: Boolean(projectId && groupId),
-    queryKey: projectKeys.getWorkspaceGroupMembershipDetails(projectId, groupId),
+    queryKey: projectKeys.getProjectGroupMembershipDetails(projectId, groupId),
     queryFn: async () => {
       const {
         data: { groupMembership }
@@ -672,7 +617,7 @@ export const useGetWorkspaceGroupMembershipDetails = (projectId: string, groupId
 
 export const useListWorkspaceGroups = (projectId: string) => {
   return useQuery({
-    queryKey: projectKeys.getWorkspaceGroupMemberships(projectId),
+    queryKey: projectKeys.getProjectGroupMemberships(projectId),
     queryFn: async () => {
       const {
         data: { groupMemberships }
@@ -693,7 +638,7 @@ export const useListWorkspaceCas = ({
   status?: CaStatus;
 }) => {
   return useQuery({
-    queryKey: projectKeys.specificWorkspaceCas({
+    queryKey: projectKeys.specificProjectCas({
       projectId,
       status
     }),
@@ -726,7 +671,7 @@ export const useListWorkspaceCertificates = ({
   limit: number;
 }) => {
   return useQuery({
-    queryKey: projectKeys.specificWorkspaceCertificates({
+    queryKey: projectKeys.specificProjectCertificates({
       projectId,
       offset,
       limit
@@ -754,7 +699,7 @@ export const useListWorkspaceCertificates = ({
 
 export const useListWorkspacePkiAlerts = ({ projectId }: { projectId: string }) => {
   return useQuery({
-    queryKey: projectKeys.getWorkspacePkiAlerts(projectId),
+    queryKey: projectKeys.getProjectPkiAlerts(projectId),
     queryFn: async () => {
       const {
         data: { alerts }
@@ -768,7 +713,7 @@ export const useListWorkspacePkiAlerts = ({ projectId }: { projectId: string }) 
 
 export const useListWorkspacePkiCollections = ({ projectId }: { projectId: string }) => {
   return useQuery({
-    queryKey: projectKeys.getWorkspacePkiCollections(projectId),
+    queryKey: projectKeys.getProjectPkiCollections(projectId),
     queryFn: async () => {
       const {
         data: { collections }
@@ -784,7 +729,7 @@ export const useListWorkspacePkiCollections = ({ projectId }: { projectId: strin
 
 export const useListWorkspaceCertificateTemplates = ({ projectId }: { projectId: string }) => {
   return useQuery({
-    queryKey: projectKeys.getWorkspaceCertificateTemplates(projectId),
+    queryKey: projectKeys.getProjectCertificateTemplates(projectId),
     queryFn: async () => {
       const {
         data: { certificateTemplates }
@@ -808,7 +753,7 @@ export const useListWorkspaceSshCertificates = ({
   projectId: string;
 }) => {
   return useQuery({
-    queryKey: projectKeys.specificWorkspaceSshCertificates({
+    queryKey: projectKeys.specificProjectSshCertificates({
       offset,
       limit,
       projectId
@@ -833,7 +778,7 @@ export const useListWorkspaceSshCertificates = ({
 
 export const useListWorkspaceSshCas = (projectId: string) => {
   return useQuery({
-    queryKey: projectKeys.getWorkspaceSshCas(projectId),
+    queryKey: projectKeys.getProjectSshCas(projectId),
     queryFn: async () => {
       const {
         data: { cas }
@@ -848,7 +793,7 @@ export const useListWorkspaceSshCas = (projectId: string) => {
 
 export const useListWorkspaceSshHosts = (projectId: string) => {
   return useQuery({
-    queryKey: projectKeys.getWorkspaceSshHosts(projectId),
+    queryKey: projectKeys.getProjectSshHosts(projectId),
     queryFn: async () => {
       const {
         data: { hosts }
@@ -861,7 +806,7 @@ export const useListWorkspaceSshHosts = (projectId: string) => {
 
 export const useListWorkspacePkiSubscribers = (projectId: string) => {
   return useQuery({
-    queryKey: projectKeys.getWorkspacePkiSubscribers(projectId),
+    queryKey: projectKeys.getProjectPkiSubscribers(projectId),
     queryFn: async () => {
       const {
         data: { subscribers }
@@ -876,7 +821,7 @@ export const useListWorkspacePkiSubscribers = (projectId: string) => {
 
 export const useListWorkspaceSshHostGroups = (projectId: string) => {
   return useQuery({
-    queryKey: projectKeys.getWorkspaceSshHostGroups(projectId),
+    queryKey: projectKeys.getProjectSshHostGroups(projectId),
     queryFn: async () => {
       const {
         data: { groups }
@@ -891,7 +836,7 @@ export const useListWorkspaceSshHostGroups = (projectId: string) => {
 
 export const useListWorkspaceSshCertificateTemplates = (projectId: string) => {
   return useQuery({
-    queryKey: projectKeys.getWorkspaceSshCertificateTemplates(projectId),
+    queryKey: projectKeys.getProjectSshCertificateTemplates(projectId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ certificateTemplates: TSshCertificateTemplate[] }>(
         `/api/v1/projects/${projectId}/ssh-certificate-templates`
@@ -910,7 +855,7 @@ export const useGetWorkspaceWorkflowIntegrationConfig = ({
   integration: WorkflowIntegrationPlatform;
 }) => {
   return useQuery({
-    queryKey: projectKeys.getWorkspaceWorkflowIntegrationConfig(projectId, integration),
+    queryKey: projectKeys.getProjectWorkflowIntegrationConfig(projectId, integration),
     queryFn: async () => {
       const { data } = await apiRequest
         .get<ProjectWorkflowIntegrationConfig>(

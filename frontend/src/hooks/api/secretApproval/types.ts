@@ -1,11 +1,11 @@
 import { EnforcementLevel } from "../policies/enums";
-import { WorkspaceEnv } from "../workspace/types";
+import { ProjectEnv } from "../projects/types";
 
 export type TSecretApprovalPolicy = {
   id: string;
   project: string;
   name: string;
-  environments: WorkspaceEnv[];
+  environments: ProjectEnv[];
   secretPath?: string;
   approvals: number;
   approvers: Approver[];

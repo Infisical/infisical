@@ -32,7 +32,7 @@ export const useAddGroupToWorkspace = () => {
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getWorkspaceGroupMemberships(projectId)
+        queryKey: projectKeys.getProjectGroupMemberships(projectId)
       });
     }
   });
@@ -52,10 +52,10 @@ export const useUpdateGroupWorkspaceRole = () => {
     },
     onSuccess: (_, { projectId, groupId }) => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getWorkspaceGroupMemberships(projectId)
+        queryKey: projectKeys.getProjectGroupMemberships(projectId)
       });
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getWorkspaceGroupMembershipDetails(projectId, groupId)
+        queryKey: projectKeys.getProjectGroupMembershipDetails(projectId, groupId)
       });
     }
   });
@@ -79,7 +79,7 @@ export const useDeleteGroupFromWorkspace = () => {
     },
     onSuccess: (_, { projectId, username }) => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getWorkspaceGroupMemberships(projectId)
+        queryKey: projectKeys.getProjectGroupMemberships(projectId)
       });
 
       if (username) {
@@ -96,7 +96,7 @@ export const useLeaveProject = () => {
       return apiRequest.delete(`/api/v1/projects/${projectId}/leave`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserWorkspace() });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects() });
     }
   });
 };
@@ -109,7 +109,7 @@ export const useMigrateProjectToV3 = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.getAllUserWorkspace()
+        queryKey: projectKeys.getAllUserProjects()
       });
     }
   });

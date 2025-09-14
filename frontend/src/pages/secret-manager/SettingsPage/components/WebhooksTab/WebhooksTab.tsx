@@ -18,7 +18,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import {
@@ -35,8 +35,8 @@ export const WebhooksTab = withProjectPermission(
   () => {
     const { t } = useTranslation();
 
-    const { currentWorkspace } = useWorkspace();
-    const workspaceId = currentWorkspace?.id || "";
+    const { currentProject } = useProject();
+    const workspaceId = currentProject?.id || "";
     const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
       "addWebhook",
       "deleteWebhook"
@@ -302,7 +302,7 @@ export const WebhooksTab = withProjectPermission(
           </TableContainer>
         </div>
         <AddWebhookForm
-          environments={currentWorkspace?.environments}
+          environments={currentProject?.environments}
           isOpen={popUp?.addWebhook?.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("addWebhook", isOpen)}
           onCreateWebhook={handleWebhookCreate}

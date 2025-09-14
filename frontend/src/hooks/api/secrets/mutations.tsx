@@ -333,11 +333,11 @@ export const useMoveSecrets = ({
     mutationFn: async ({
       sourceEnvironment,
       sourceSecretPath,
-      projectSlug,
       destinationEnvironment,
       destinationSecretPath,
       secretIds,
-      shouldOverwrite
+      shouldOverwrite,
+      projectId
     }) => {
       const { data } = await apiRequest.post<{
         isSourceUpdated: boolean;
@@ -345,11 +345,11 @@ export const useMoveSecrets = ({
       }>("/api/v4/secrets/move", {
         sourceEnvironment,
         sourceSecretPath,
-        projectSlug,
         destinationEnvironment,
         destinationSecretPath,
         secretIds,
-        shouldOverwrite
+        shouldOverwrite,
+        projectId
       });
 
       return data;

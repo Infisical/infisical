@@ -16,7 +16,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useDeleteSshHostGroup, useGetSshHostGroupById } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -24,9 +24,9 @@ import { SshHostGroupModal } from "../SshHostsPage/components/SshHostGroupModal"
 import { SshHostGroupDetailsSection, SshHostGroupHostsSection } from "./components";
 
 const Page = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const navigate = useNavigate();
-  const projectId = currentWorkspace?.id || "";
+  const projectId = currentProject?.id || "";
   const sshHostGroupId = useParams({
     from: ROUTE_PATHS.Ssh.SshHostGroupDetailsByIDPage.id,
     select: (el) => el.sshHostGroupId

@@ -6,7 +6,7 @@ import { SessionStorageKeys } from "@app/const";
 
 import { organizationKeys } from "../organization/queries";
 import { setAuthToken } from "../reactQuery";
-import { workspaceKeys } from "../workspace";
+import { projectKeys } from "../projects";
 import {
   CompleteAccountDTO,
   CompleteAccountSignupDTO,
@@ -101,7 +101,7 @@ export const useSelectOrganization = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [organizationKeys.getUserOrganizations, workspaceKeys.getAllUserWorkspace]
+        queryKey: [organizationKeys.getUserOrganizations, projectKeys.getAllUserProjects]
       });
     }
   });

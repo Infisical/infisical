@@ -29,20 +29,20 @@ import {
   OrgPermissionSubjects,
   useOrganization,
   useSubscription,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
-import { useGetUserWorkspaces } from "@app/hooks/api";
+import { useGetUserProjects } from "@app/hooks/api";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { Project } from "@app/hooks/api/workspace/types";
+import { Project } from "@app/hooks/api/projects/types";
 
 export const ProjectSelect = () => {
   const [searchProject, setSearchProject] = useState("");
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject: currentWorkspace } = useProject();
   const { currentOrg } = useOrganization();
-  const { data: workspaces = [] } = useGetUserWorkspaces();
+  const { data: projects = [] } = useGetUserProjects();
   const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg.id);
 
   const { subscription } = useSubscription();
@@ -86,8 +86,8 @@ export const ProjectSelect = () => {
     "upgradePlan"
   ] as const);
 
-  const projects = useMemo(() => {
-    const projectOptions = workspaces
+  const projectsSortedByFav = useMemo(() => {
+    const projectOptions = projects
       .map((w): Project & { isFavorite: boolean } => ({
         ...w,
         isFavorite: Boolean(projectFavorites?.includes(w.id))
@@ -95,7 +95,7 @@ export const ProjectSelect = () => {
       .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite));
 
     return projectOptions;
-  }, [workspaces, projectFavorites, currentWorkspace]);
+  }, [projects, projectFavorites, currentWorkspace]);
 
   return (
     <div className="-mr-2 flex w-full items-center gap-1">
@@ -147,7 +147,7 @@ export const ProjectSelect = () => {
             />
           </div>
           <div className="thin-scrollbar max-h-80 overflow-auto">
-            {projects
+            {projectsSortedByFav
               ?.filter((el) => el.name?.toLowerCase().includes(searchProject.toLowerCase()))
               ?.map((workspace) => {
                 return (

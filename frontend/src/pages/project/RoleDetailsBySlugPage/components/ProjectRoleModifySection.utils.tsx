@@ -33,7 +33,7 @@ import {
   TPermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
 import { TProjectPermission } from "@app/hooks/api/roles/types";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 const GeneralPolicyActionSchema = z.object({
   read: z.boolean().optional(),

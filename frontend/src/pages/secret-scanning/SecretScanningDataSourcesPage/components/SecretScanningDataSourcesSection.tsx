@@ -5,7 +5,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretScanningDataSourceModal } from "@app/components/secret-scanning";
 import { Button, Spinner } from "@app/components/v2";
-import { ProjectPermissionSub, useSubscription, useWorkspace } from "@app/context";
+import { ProjectPermissionSub, useSubscription, useProject } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useListSecretScanningDataSources } from "@app/hooks/api/secretScanningV2";
@@ -20,10 +20,10 @@ export const SecretScanningDataSourcesSection = () => {
 
   const { subscription } = useSubscription();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { data: dataSources = [], isPending: isDataSourcesPending } =
-    useListSecretScanningDataSources(currentWorkspace.id, {
+    useListSecretScanningDataSources(currentProject.id, {
       refetchInterval: 30000,
       enabled: subscription.secretScanning
     });

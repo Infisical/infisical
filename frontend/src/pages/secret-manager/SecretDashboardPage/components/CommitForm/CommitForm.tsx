@@ -245,7 +245,7 @@ const ResourceChange: React.FC<ResourceChangeProps> = ({
   const handleDeletePending = useCallback(
     (changeType: string, id: string) => {
       removePendingChange(id, changeType, {
-        workspaceId,
+        projectId: workspaceId,
         environment,
         secretPath
       });
@@ -291,7 +291,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     }
     await onCommit(pendingChanges, commitMessage);
     clearAllPendingChanges({
-      workspaceId,
+      projectId: workspaceId,
       environment,
       secretPath
     });
@@ -336,7 +336,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                     <Button
                       size="sm"
                       onClick={() =>
-                        clearAllPendingChanges({ workspaceId, environment, secretPath })
+                        clearAllPendingChanges({ projectId: workspaceId, environment, secretPath })
                       }
                       isDisabled={totalChangesCount === 0}
                       variant="outline_bg"

@@ -19,7 +19,7 @@ import {
   SelectItem,
   Switch
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub
@@ -47,12 +47,12 @@ type Props = {
 };
 
 export const SlackIntegrationForm = ({ onClose }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { data: slackConfig } = useGetWorkspaceWorkflowIntegrationConfig({
-    workspaceId: currentWorkspace?.id ?? "",
+    projectId: currentProject?.id ?? "",
     integration: WorkflowIntegrationPlatform.SLACK
   });
-  const { data: workflowIntegrations } = useGetWorkflowIntegrations(currentWorkspace?.orgId);
+  const { data: workflowIntegrations } = useGetWorkflowIntegrations(currentProject?.orgId);
   const { mutateAsync: updateProjectSlackConfig } = useUpdateProjectWorkflowIntegrationConfig();
 
   const slackIntegrations = workflowIntegrations?.filter(
@@ -77,13 +77,13 @@ export const SlackIntegrationForm = ({ onClose }: Props) => {
 
   const handleIntegrationSave = async (data: TSlackConfigForm) => {
     try {
-      if (!currentWorkspace) {
+      if (!currentProject) {
         return;
       }
 
       await updateProjectSlackConfig({
         ...data,
-        projectId: currentWorkspace.id,
+        projectId: currentProject.id,
         integration: WorkflowIntegrationPlatform.SLACK,
         integrationId: data.slackIntegrationId,
         accessRequestChannels: data.accessRequestChannels.filter(Boolean).join(", "),
