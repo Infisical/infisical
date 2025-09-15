@@ -30,7 +30,8 @@ export enum TabSections {
   Member = "members",
   Groups = "groups",
   Roles = "roles",
-  Identities = "identities"
+  Identities = "identities",
+  IdentityGroups = "identity-groups"
 }
 
 const Page = () => {
@@ -62,7 +63,7 @@ const Page = () => {
       navigate({
         to: "/organization/access-management" as const,
         search: {
-          selectedTab: TabSections.Identities
+          selectedTab: TabSections.IdentityGroups
         }
       });
     } catch (err) {

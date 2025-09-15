@@ -36,7 +36,11 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import {
+  OrgPermissionIdentityGroupActions,
+  OrgPermissionSubjects,
+  useOrganization
+} from "@app/context";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -54,10 +58,10 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
-      ["identityGroup", "deleteIdentityGroup", "identityGroupMembers"]
+      ["identityGroup", "deleteIdentityGroup", "identityGroupCreateUpdate"]
     >,
     data?: {
-      groupId?: string;
+      identityGroupId?: string;
       name?: string;
       slug?: string;
       role?: string;
@@ -262,8 +266,8 @@ export const OrgIdentityGroupsTable = ({ handlePopUpOpen }: Props) => {
                       <Td>{slug}</Td>
                       <Td>
                         <OrgPermissionCan
-                          I={OrgPermissionGroupActions.Edit}
-                          a={OrgPermissionSubjects.Groups}
+                          I={OrgPermissionIdentityGroupActions.Edit}
+                          a={OrgPermissionSubjects.IdentityGroups}
                         >
                           {(isAllowed) => {
                             return (
@@ -317,8 +321,8 @@ export const OrgIdentityGroupsTable = ({ handlePopUpOpen }: Props) => {
                               Copy Identity Group ID
                             </DropdownMenuItem>
                             <OrgPermissionCan
-                              I={OrgPermissionGroupActions.Edit}
-                              a={OrgPermissionSubjects.Groups}
+                              I={OrgPermissionIdentityGroupActions.Edit}
+                              a={OrgPermissionSubjects.IdentityGroups}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
@@ -326,7 +330,7 @@ export const OrgIdentityGroupsTable = ({ handlePopUpOpen }: Props) => {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handlePopUpOpen("identityGroup", {
-                                      groupId: id,
+                                      identityGroupId: id,
                                       name,
                                       slug,
                                       role,
@@ -340,17 +344,17 @@ export const OrgIdentityGroupsTable = ({ handlePopUpOpen }: Props) => {
                               )}
                             </OrgPermissionCan>
                             <OrgPermissionCan
-                              I={OrgPermissionGroupActions.Edit}
-                              a={OrgPermissionSubjects.Groups}
+                              I={OrgPermissionIdentityGroupActions.Edit}
+                              a={OrgPermissionSubjects.IdentityGroups}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
                                   icon={<FontAwesomeIcon icon={faUserGroup} />}
                                   onClick={() =>
                                     navigate({
-                                      to: "/organization/groups/$groupId",
+                                      to: "/organization/identity-groups/$identityGroupId",
                                       params: {
-                                        groupId: id
+                                        identityGroupId: id
                                       }
                                     })
                                   }
@@ -361,8 +365,8 @@ export const OrgIdentityGroupsTable = ({ handlePopUpOpen }: Props) => {
                               )}
                             </OrgPermissionCan>
                             <OrgPermissionCan
-                              I={OrgPermissionGroupActions.Delete}
-                              a={OrgPermissionSubjects.Groups}
+                              I={OrgPermissionIdentityGroupActions.Delete}
+                              a={OrgPermissionSubjects.IdentityGroups}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
@@ -370,8 +374,11 @@ export const OrgIdentityGroupsTable = ({ handlePopUpOpen }: Props) => {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handlePopUpOpen("deleteIdentityGroup", {
-                                      groupId: id,
-                                      name
+                                      identityGroupId: id,
+                                      name,
+                                      slug,
+                                      role,
+                                      customRole
                                     });
                                   }}
                                   isDisabled={!isAllowed}
