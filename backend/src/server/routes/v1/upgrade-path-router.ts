@@ -9,16 +9,6 @@ const versionSchema = z
   .min(1)
   .max(50)
   .regex(new RE2(/^[a-zA-Z0-9._/-]+$/), "Invalid version format");
-const booleanSchema = z.boolean().default(false);
-const queryBooleanSchema = z
-  .union([z.boolean(), z.string()])
-  .transform((val) => {
-    if (typeof val === "string") {
-      return val === "true" || val === "1";
-    }
-    return val;
-  })
-  .default(false);
 
 export const registerUpgradePathRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -28,9 +18,6 @@ export const registerUpgradePathRouter = async (server: FastifyZodProvider) => {
       rateLimit: publicEndpointLimit
     },
     schema: {
-      querystring: z.object({
-        includePrerelease: queryBooleanSchema
-      }),
       response: {
         200: z.object({
           versions: z.array(
@@ -47,8 +34,7 @@ export const registerUpgradePathRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       try {
-        const { includePrerelease } = req.query;
-        const versions = await req.server.services.upgradePath.getGitHubReleases(includePrerelease);
+        const versions = await req.server.services.upgradePath.getGitHubReleases();
 
         return {
           versions
@@ -72,8 +58,7 @@ export const registerUpgradePathRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         fromVersion: versionSchema,
-        toVersion: versionSchema,
-        includePrerelease: booleanSchema
+        toVersion: versionSchema
       }),
       response: {
         200: z.object({
@@ -112,15 +97,9 @@ export const registerUpgradePathRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       try {
-        const { fromVersion, toVersion, includePrerelease } = req.body;
+        const { fromVersion, toVersion } = req.body;
 
-        req.log.info({ fromVersion, toVersion, includePrerelease }, "Calculating upgrade path");
-
-        const result = await req.server.services.upgradePath.calculateUpgradePath(
-          fromVersion,
-          toVersion,
-          includePrerelease
-        );
+        const result = await req.server.services.upgradePath.calculateUpgradePath(fromVersion, toVersion);
 
         req.log.info(
           { pathLength: result.path.length, hasBreaking: result.breakingChanges.length > 0 },

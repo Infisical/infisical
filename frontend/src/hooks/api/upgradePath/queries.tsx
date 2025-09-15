@@ -1,4 +1,4 @@
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useMutation, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -35,36 +35,26 @@ export interface UpgradePathResult {
   config: Record<string, unknown>;
 }
 
-export interface GetUpgradePathVersionsParams {
-  includePrerelease?: boolean;
-}
-
 export interface CalculateUpgradePathParams {
   fromVersion: string;
   toVersion: string;
-  includePrerelease?: boolean;
 }
 
 const upgradePathKeys = {
   all: ["upgrade-path"] as const,
-  versions: (params: GetUpgradePathVersionsParams) =>
-    [...upgradePathKeys.all, "versions", params] as const,
+  versions: () => [...upgradePathKeys.all, "versions"] as const,
   calculate: (params: CalculateUpgradePathParams) =>
     [...upgradePathKeys.all, "calculate", params] as const
 };
 
 export const useGetUpgradePathVersions = (
-  params: GetUpgradePathVersionsParams,
   options?: Omit<UseQueryOptions<{ versions: GitHubVersion[] }>, "queryKey" | "queryFn">
 ) => {
   return useQuery({
-    queryKey: upgradePathKeys.versions(params),
+    queryKey: upgradePathKeys.versions(),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ versions: GitHubVersion[] }>(
-        "/api/v1/upgrade-path/versions",
-        {
-          params
-        }
+        "/api/v1/upgrade-path/versions"
       );
       return data;
     },
@@ -73,11 +63,13 @@ export const useGetUpgradePathVersions = (
 };
 
 export const useCalculateUpgradePath = () => {
-  return async (params: CalculateUpgradePathParams): Promise<UpgradePathResult> => {
-    const { data } = await apiRequest.post<UpgradePathResult>(
-      "/api/v1/upgrade-path/calculate",
-      params
-    );
-    return data;
-  };
+  return useMutation({
+    mutationFn: async (params: CalculateUpgradePathParams): Promise<UpgradePathResult> => {
+      const { data } = await apiRequest.post<UpgradePathResult>(
+        "/api/v1/upgrade-path/calculate",
+        params
+      );
+      return data;
+    }
+  });
 };

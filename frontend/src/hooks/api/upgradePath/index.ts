@@ -1,7 +1,2 @@
-export type {
-  CalculateUpgradePathParams,
-  GetUpgradePathVersionsParams,
-  GitHubVersion,
-  UpgradePathResult
-} from "./queries";
+export type { CalculateUpgradePathParams, GitHubVersion, UpgradePathResult } from "./queries";
 export { useCalculateUpgradePath, useGetUpgradePathVersions } from "./queries";

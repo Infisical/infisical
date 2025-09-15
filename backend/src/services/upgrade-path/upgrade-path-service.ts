@@ -19,17 +19,15 @@ const versionSchema = z
   .min(1)
   .max(50)
   .regex(new RE2(/^[a-zA-Z0-9._/-]+$/), "Invalid version format");
-const booleanSchema = z.boolean().default(false);
 
 interface CalculateUpgradePathParams {
   fromVersion: string;
   toVersion: string;
-  includePrerelease?: boolean;
 }
 
 export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFactory) => {
-  const getGitHubReleases = async (includePrerelease = false): Promise<FormattedRelease[]> => {
-    const cacheKey = `upgrade-path:releases:${includePrerelease}`;
+  const getGitHubReleases = async (): Promise<FormattedRelease[]> => {
+    const cacheKey = "upgrade-path:releases";
 
     try {
       const cached = await keyStore.getItem(cacheKey);
@@ -39,7 +37,7 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
     }
 
     try {
-      const releases = await fetchReleases(booleanSchema.parse(includePrerelease));
+      const releases = await fetchReleases(false);
 
       const filteredReleases = releases.filter((v) => !v.tagName.includes("nightly"));
 
@@ -62,13 +60,19 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
 
     try {
       const yamlPath = path.join(__dirname, "..", "..", "..", "upgrade-path.yaml");
+      const resolvedPath = path.resolve(yamlPath);
+      const expectedBaseDir = path.resolve(__dirname, "..", "..", "..");
+      if (!resolvedPath.startsWith(expectedBaseDir)) {
+        throw new Error("Invalid configuration file path");
+      }
+
       const yamlContent = await readFile(yamlPath, "utf8");
 
       if (yamlContent.length > 1024 * 1024) {
         throw new Error("Config file too large");
       }
 
-      const config = yaml.load(yamlContent) as UpgradePathConfig;
+      const config = yaml.load(yamlContent, { schema: yaml.FAILSAFE_SCHEMA }) as UpgradePathConfig;
       const versionConfig = config?.versions || {};
 
       await keyStore.setItemWithExpiry(cacheKey, 24 * 60 * 60, JSON.stringify(versionConfig));
@@ -85,7 +89,8 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
 
   const normalizeVersion = (version: string): string => {
     // Extract just the X.X.X.X part from any version format
-    const versionMatch = version.match(/(\d+\.\d+\.\d+(?:\.\d+)?)/);
+    const versionRegex = new RE2(/(\d+\.\d+\.\d+(?:\.\d+)?)/);
+    const versionMatch = version.match(versionRegex);
     if (versionMatch) {
       return versionMatch[1];
     }
@@ -122,7 +127,7 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
   };
 
   const validateParams = (params: CalculateUpgradePathParams) => {
-    const { fromVersion, toVersion, includePrerelease = false } = params;
+    const { fromVersion, toVersion } = params;
 
     versionSchema.parse(fromVersion);
     versionSchema.parse(toVersion);
@@ -135,12 +140,12 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
       throw new Error("Nightly releases are not supported for upgrade path calculation");
     }
 
-    return { fromVersion, toVersion, includePrerelease: booleanSchema.parse(includePrerelease) };
+    return { fromVersion, toVersion };
   };
 
   const calculateUpgradePath = async (params: CalculateUpgradePathParams): Promise<UpgradePathResult> => {
-    const { fromVersion, toVersion, includePrerelease } = validateParams(params);
-    const cacheKey = `upgrade-path:${fromVersion}:${toVersion}:${includePrerelease}`;
+    const { fromVersion, toVersion } = validateParams(params);
+    const cacheKey = `upgrade-path:${fromVersion}:${toVersion}`;
 
     try {
       const cached = await keyStore.getItem(cacheKey);
@@ -149,7 +154,7 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
       // Cache miss, continue to fetch from source
     }
 
-    const [releases, config] = await Promise.all([getGitHubReleases(includePrerelease), getUpgradePathConfig()]);
+    const [releases, config] = await Promise.all([getGitHubReleases(), getUpgradePathConfig()]);
 
     const cleanFrom = normalizeVersion(fromVersion);
     const cleanTo = normalizeVersion(toVersion);
@@ -264,7 +269,6 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
   return {
     getGitHubReleases,
     getUpgradePathConfig,
-    calculateUpgradePath: (fromVersion: string, toVersion: string, includePrerelease = false) =>
-      calculateUpgradePath({ fromVersion, toVersion, includePrerelease })
+    calculateUpgradePath: (fromVersion: string, toVersion: string) => calculateUpgradePath({ fromVersion, toVersion })
   };
 };

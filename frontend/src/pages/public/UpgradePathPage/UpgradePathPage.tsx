@@ -1,10 +1,9 @@
 /* eslint-disable no-nested-ternary */
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { SingleValue } from "react-select";
 import { faExternalLink } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useMutation } from "@tanstack/react-query";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FilterableSelect, FormControl } from "@app/components/v2";
@@ -60,29 +59,31 @@ export const UpgradePathPage = () => {
     data: versions,
     isLoading: versionsLoading,
     isFetching: versionsFetching
-  } = useGetUpgradePathVersions(
-    {
-      includePrerelease: false
-    },
-    {
-      enabled: true,
-      staleTime: 24 * 60 * 60 * 1000,
-      refetchOnWindowFocus: false
-    }
-  );
+  } = useGetUpgradePathVersions({
+    enabled: true,
+    staleTime: 24 * 60 * 60 * 1000,
+    refetchOnWindowFocus: false
+  });
 
-  const calculateMutation = useMutation({
-    mutationFn: useCalculateUpgradePath(),
-    onSuccess: (data) => {
-      setUpgradeResult(data);
-    },
-    onError: (error: unknown) => {
+  const calculateMutation = useCalculateUpgradePath();
+
+  // Handle mutation results
+  React.useEffect(() => {
+    if (calculateMutation.isSuccess && calculateMutation.data) {
+      setUpgradeResult(calculateMutation.data);
+    }
+  }, [calculateMutation.isSuccess, calculateMutation.data]);
+
+  React.useEffect(() => {
+    if (calculateMutation.isError) {
       createNotification({
-        text: (error as any)?.response?.data?.message || "Failed to calculate upgrade path",
+        text:
+          (calculateMutation.error as any)?.response?.data?.message ||
+          "Failed to calculate upgrade path",
         type: "error"
       });
     }
-  });
+  }, [calculateMutation.isError, calculateMutation.error]);
 
   const versionOptions = useMemo(() => {
     if (!versions?.versions) return [];
@@ -125,8 +126,7 @@ export const UpgradePathPage = () => {
 
     calculateMutation.mutate({
       fromVersion,
-      toVersion,
-      includePrerelease: false
+      toVersion
     });
   };
 
