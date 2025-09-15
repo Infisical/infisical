@@ -188,7 +188,13 @@ export enum TableName {
   Relay = "relays",
   GatewayV2 = "gateways_v2",
 
-  KeyValueStore = "key_value_store"
+  KeyValueStore = "key_value_store",
+
+  // machine identity groups
+  IdentityGroups = "identity_groups",
+  IdentityGroupMembership = "identity_group_memberships",
+  IdentityGroupProjectMembership = "identity_group_project_memberships",
+  IdentityGroupProjectMembershipRole = "identity_group_project_membership_roles"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
