@@ -1010,7 +1010,7 @@
                   "api-reference/endpoints/organizations/bulk-delete-memberships",
                   "api-reference/endpoints/organizations/list-identity-memberships",
                   {
-                    "group": "To be deprecated",
+                    "group": "Legacy",
                     "pages": [
                       "api-reference/endpoints/deprecated/organizations/projects"
                     ]
@@ -1024,10 +1024,11 @@
                   "api-reference/endpoints/projects/create-project",
                   "api-reference/endpoints/projects/delete-project",
                   "api-reference/endpoints/projects/get-project",
+                  "api-reference/endpoints/projects/list-projects",
                   "api-reference/endpoints/projects/update-project",
                   "api-reference/endpoints/projects/secret-snapshots",
                   {
-                    "group": "To be deprecated",
+                    "group": "Legacy",
                     "pages": [
                       "api-reference/endpoints/deprecated/projects/get-project-by-slug",
                       "api-reference/endpoints/deprecated/projects/create-project",
@@ -1048,7 +1049,7 @@
                   "api-reference/endpoints/project-users/get-by-username",
                   "api-reference/endpoints/project-users/update-membership",
                   {
-                    "group": "To be deprecated",
+                    "group": "Legacy",
                     "pages": [
                       "api-reference/endpoints/deprecated/project-users/invite-member-to-project",
                       "api-reference/endpoints/deprecated/project-users/remove-member-from-project",
@@ -1068,7 +1069,7 @@
                   "api-reference/endpoints/project-groups/list",
                   "api-reference/endpoints/project-groups/update",
                   {
-                    "group": "To be deprecated",
+                    "group": "Legacy",
                     "pages": [
                       "api-reference/endpoints/deprecated/project-groups/create",
                       "api-reference/endpoints/deprecated/project-groups/delete",
@@ -1088,7 +1089,7 @@
                   "api-reference/endpoints/project-identities/update-identity-membership",
                   "api-reference/endpoints/project-identities/delete-identity-membership",
                   {
-                    "group": "To be deprecated",
+                    "group": "Legacy",
                     "pages": [
                       "api-reference/endpoints/deprecated/project-identities/add-identity-membership",
                       "api-reference/endpoints/deprecated/project-identities/list-identity-memberships",
@@ -1108,7 +1109,7 @@
                   "api-reference/endpoints/project-roles/get-by-slug",
                   "api-reference/endpoints/project-roles/list",
                   {
-                    "group": "To be deprecated",
+                    "group": "Legacy",
                     "pages": [
                       "api-reference/endpoints/deprecated/project-roles/create",
                       "api-reference/endpoints/deprecated/project-roles/update",
@@ -1136,7 +1137,7 @@
                   "api-reference/endpoints/environments/update",
                   "api-reference/endpoints/environments/delete",
                   {
-                    "group": "To be deprecated",
+                    "group": "Legacy",
                     "pages": [
                       "api-reference/endpoints/deprecated/environments/create",
                       "api-reference/endpoints/deprecated/environments/update",
@@ -1154,7 +1155,7 @@
                   "api-reference/endpoints/folders/update",
                   "api-reference/endpoints/folders/delete",
                   {
-                    "group": "To be deprecated",
+                    "group": "Legacy",
                     "pages": [
                       "api-reference/endpoints/deprecated/folders/list",
                       "api-reference/endpoints/deprecated/folders/get-by-id",
@@ -1175,7 +1176,7 @@
                   "api-reference/endpoints/secret-tags/update",
                   "api-reference/endpoints/secret-tags/delete",
                   {
-                    "group": "To be deprecated",
+                    "group": "Legacy",
                     "pages": [
                       "api-reference/endpoints/deprecated/secret-tags/list",
                       "api-reference/endpoints/deprecated/secret-tags/get-by-id",
@@ -1199,7 +1200,7 @@
                   "api-reference/endpoints/secrets/update-many",
                   "api-reference/endpoints/secrets/delete-many",
                   {
-                    "group": "To be deprecated",
+                    "group": "Legacy",
                     "pages": [
                       "api-reference/endpoints/deprecated/secrets/list",
                       "api-reference/endpoints/deprecated/secrets/create",
@@ -1244,7 +1245,7 @@
                   "api-reference/endpoints/secret-imports/update",
                   "api-reference/endpoints/secret-imports/delete",
                   {
-                    "group": "To be deprecated",
+                    "group": "Legacy",
                     "pages": [
                       "api-reference/endpoints/deprecated/secret-imports/list",
                       "api-reference/endpoints/deprecated/secret-imports/create",

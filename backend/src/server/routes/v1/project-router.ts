@@ -221,6 +221,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Projects],
+      description: "List projects",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       querystring: z.object({
         includeRoles: z
           .enum(["true", "false"])
