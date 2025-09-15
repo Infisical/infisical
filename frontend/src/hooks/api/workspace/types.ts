@@ -20,6 +20,10 @@ export enum ProjectUserMembershipTemporaryMode {
   Relative = "relative"
 }
 
+export enum IdentityGroupUserMembershipTemporaryMode {
+  Relative = "relative"
+}
+
 export type Workspace = {
   __v: number;
   id: string;
@@ -164,6 +168,24 @@ export type TUpdateWorkspaceGroupRoleDTO = {
         role: string;
         isTemporary: true;
         temporaryMode: ProjectUserMembershipTemporaryMode;
+        temporaryRange: string;
+        temporaryAccessStartTime: string;
+      }
+  )[];
+};
+
+export type TUpdateWorkspaceIdentityGroupRoleDTO = {
+  identityGroupId: string;
+  projectId: string;
+  roles: (
+    | {
+        role: string;
+        isTemporary?: false;
+      }
+    | {
+        role: string;
+        isTemporary: true;
+        temporaryMode: IdentityGroupUserMembershipTemporaryMode;
         temporaryRange: string;
         temporaryAccessStartTime: string;
       }

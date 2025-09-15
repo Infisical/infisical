@@ -84,6 +84,14 @@ export enum ProjectPermissionGroupActions {
   GrantPrivileges = "grant-privileges"
 }
 
+export enum ProjectPermissionIdentityGroupActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  GrantPrivileges = "grant-privileges"
+}
+
 export enum ProjectPermissionSshHostActions {
   Read = "read",
   Create = "create",
@@ -172,6 +180,7 @@ export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
   Groups = "groups",
+  IdentityGroups = "identity-groups",
   Settings = "settings",
   Integrations = "integrations",
   Webhooks = "webhooks",
@@ -306,6 +315,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
   | [ProjectPermissionMemberActions, ProjectPermissionSub.Member]
   | [ProjectPermissionGroupActions, ProjectPermissionSub.Groups]
+  | [ProjectPermissionIdentityGroupActions, ProjectPermissionSub.IdentityGroups]
   | [ProjectPermissionActions, ProjectPermissionSub.Integrations]
   | [ProjectPermissionActions, ProjectPermissionSub.Webhooks]
   | [ProjectPermissionAuditLogsActions, ProjectPermissionSub.AuditLogs]

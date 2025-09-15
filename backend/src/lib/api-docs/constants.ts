@@ -37,6 +37,7 @@ export enum ApiDocsTags {
   Projects = "Projects",
   ProjectUsers = "Project Users",
   ProjectGroups = "Project Groups",
+  ProjectIdentityGroups = "Project Identity Groups",
   ProjectIdentities = "Project Identities",
   ProjectRoles = "Project Roles",
   ProjectTemplates = "Project Templates",
@@ -136,6 +137,7 @@ export const IDENTITY_GROUPS = {
     id: "The ID of the identity group to list identities for.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
     limit: "The number of identities to return.",
+    projectId: "The ID of the project to list identities for.",
     search: "The text string that identity name will be filtered by.",
     filter: "Filter to apply to the returned identities. Can be 'existingMembers' or 'nonMembers'."
   },
@@ -785,17 +787,34 @@ export const PROJECTS = {
     groupIdOrName: "The ID or name of the group to add to the project.",
     role: "The role for the group to assume in the project."
   },
+  ADD_IDENTITY_GROUP_TO_PROJECT: {
+    projectId: "The ID of the project to add the identity group to.",
+    groupIdOrName: "The ID or name of the identity group to add to the project.",
+    role: "The role for the identity group to assume in the project."
+  },
   UPDATE_GROUP_IN_PROJECT: {
     projectId: "The ID of the project to update the group in.",
     groupId: "The ID of the group to update in the project.",
     roles: "A list of roles to update the group to."
   },
+  UPDATE_IDENTITY_GROUP_IN_PROJECT: {
+    projectId: "The ID of the project to update the identity group in.",
+    groupId: "The ID of the identity group to update in the project.",
+    roles: "A list of roles to update the identity group to."
+  },
   REMOVE_GROUP_FROM_PROJECT: {
     projectId: "The ID of the project to delete the group from.",
     groupId: "The ID of the group to delete from the project."
   },
+  REMOVE_IDENTITY_GROUP_FROM_PROJECT: {
+    projectId: "The ID of the project to delete the identity group from.",
+    groupId: "The ID of the identity group to delete from the project."
+  },
   LIST_GROUPS_IN_PROJECT: {
     projectId: "The ID of the project to list groups for."
+  },
+  LIST_IDENTITY_GROUPS_IN_PROJECT: {
+    projectId: "The ID of the project to list identity groups for."
   },
   LIST_INTEGRATION: {
     workspaceId: "The ID of the project to list integrations for."

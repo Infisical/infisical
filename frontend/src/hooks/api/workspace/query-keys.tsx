@@ -35,8 +35,12 @@ export const workspaceKeys = {
   searchWorkspace: (dto: TSearchProjectsDTO) => ["search-projects", dto] as const,
   getWorkspaceGroupMemberships: (workspaceId: string) =>
     [{ workspaceId }, "workspace-groups"] as const,
+  getWorkspaceIdentityGroupMemberships: (workspaceId: string) =>
+    [{ workspaceId }, "workspace-identity-group-memberships"] as const,
   getWorkspaceGroupMembershipDetails: (workspaceId: string, groupId: string) =>
     [{ workspaceId, groupId }, "workspace-group-membership-details"] as const,
+  getWorkspaceIdentityGroupMembershipDetails: (workspaceId: string, identityGroupId: string) =>
+    [{ workspaceId, identityGroupId }, "workspace-identity-group-membership-details"] as const,
   getWorkspaceCas: ({ projectSlug }: { projectSlug: string }) =>
     [{ projectSlug }, "workspace-cas"] as const,
   specificWorkspaceCas: ({ projectSlug, status }: { projectSlug: string; status?: CaStatus }) =>

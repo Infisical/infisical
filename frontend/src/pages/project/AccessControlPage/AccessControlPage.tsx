@@ -13,7 +13,8 @@ import {
   IdentityTab,
   MembersTab,
   ProjectRoleListTab,
-  ServiceTokenTab
+  ServiceTokenTab,
+  IdentityGroupsTab
 } from "./components";
 
 const Page = () => {
@@ -52,6 +53,7 @@ const Page = () => {
                 <p>Machine Identities</p>
               </div>
             </Tab>
+            <Tab value={ProjectAccessControlTabs.IdentityGroups}>Machine Identity Groups</Tab>
             {isSecretManager && (
               <Tab value={ProjectAccessControlTabs.ServiceTokens}>Service Tokens</Tab>
             )}
@@ -65,6 +67,9 @@ const Page = () => {
           </TabPanel>
           <TabPanel value={ProjectAccessControlTabs.Identities}>
             <IdentityTab />
+          </TabPanel>
+          <TabPanel value={ProjectAccessControlTabs.IdentityGroups}>
+            <IdentityGroupsTab />
           </TabPanel>
           {isSecretManager && (
             <TabPanel value={ProjectAccessControlTabs.ServiceTokens}>

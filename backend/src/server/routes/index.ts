@@ -49,7 +49,9 @@ import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group
 import { identityGroupDALFactory } from "@app/ee/services/identity-group/identity-group-dal";
 import { identityGroupMembershipDALFactory } from "@app/ee/services/identity-group/identity-group-membership-dal";
 import { identityGroupProjectDALFactory } from "@app/ee/services/identity-group/identity-group-project-membership-dal";
+import { identityGroupProjectMembershipRoleDALFactory } from "@app/ee/services/identity-group/identity-group-project-membership-role-dal";
 import { identityGroupServiceFactory } from "@app/ee/services/identity-group/identity-group-service";
+import { identityGroupProjectServiceFactory } from "@app/ee/services/identity-group-project";
 import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { HsmModule } from "@app/ee/services/hsm/hsm-types";
 import { identityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
@@ -477,6 +479,7 @@ export const registerRoutes = async (
   const identityGroupDAL = identityGroupDALFactory(db);
   const identityGroupMembershipDAL = identityGroupMembershipDALFactory(db);
   const identityGroupProjectDAL = identityGroupProjectDALFactory(db);
+  const identityGroupProjectMembershipRoleDAL = identityGroupProjectMembershipRoleDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
   const secretSharingDAL = secretSharingDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
@@ -650,6 +653,14 @@ export const registerRoutes = async (
     projectDAL,
     permissionService,
     licenseService
+  });
+  const identityGroupProjectService = identityGroupProjectServiceFactory({
+    identityGroupDAL,
+    identityGroupProjectDAL,
+    identityGroupProjectMembershipRoleDAL,
+    projectDAL,
+    projectRoleDAL,
+    permissionService
   });
   const groupProjectService = groupProjectServiceFactory({
     groupDAL,
@@ -2088,6 +2099,7 @@ export const registerRoutes = async (
     user: userService,
     group: groupService,
     identityGroup: identityGroupService,
+    identityGroupProject: identityGroupProjectService,
     groupProject: groupProjectService,
     permission: permissionService,
     org: orgService,

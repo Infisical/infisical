@@ -3,5 +3,6 @@ export enum ProjectAccessControlTabs {
   Roles = "roles",
   Groups = "groups",
   Identities = "identities",
-  ServiceTokens = "service-tokens"
+  ServiceTokens = "service-tokens",
+  IdentityGroups = "identity-groups"
 }

@@ -20,6 +20,7 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { TGithubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
 import { TGroupServiceFactory } from "@app/ee/services/group/group-service";
 import { TIdentityGroupServiceFactory } from "@app/ee/services/identity-group/identity-group-service";
+import { TIdentityGroupProjectServiceFactory } from "@app/ee/services/identity-group-project";
 import { TIdentityAuthTemplateServiceFactory } from "@app/ee/services/identity-auth-template";
 import { TIdentityProjectAdditionalPrivilegeServiceFactory } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-service";
 import { TIdentityProjectAdditionalPrivilegeV2ServiceFactory } from "@app/ee/services/identity-project-additional-privilege-v2/identity-project-additional-privilege-v2-service";
@@ -215,6 +216,7 @@ declare module "fastify" {
       group: TGroupServiceFactory;
       identityGroup: TIdentityGroupServiceFactory;
       groupProject: TGroupProjectServiceFactory;
+      identityGroupProject: TIdentityGroupProjectServiceFactory;
       apiKey: TApiKeyServiceFactory;
       pkiAlert: TPkiAlertServiceFactory;
       project: TProjectServiceFactory;

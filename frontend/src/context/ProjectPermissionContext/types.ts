@@ -227,6 +227,7 @@ export enum ProjectPermissionSub {
   Role = "role",
   Member = "member",
   Groups = "groups",
+  IdentityGroups = "identity-groups",
   Settings = "settings",
   Integrations = "integrations",
   Webhooks = "webhooks",
@@ -367,6 +368,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.Tags]
   | [ProjectPermissionMemberActions, ProjectPermissionSub.Member]
   | [ProjectPermissionActions, ProjectPermissionSub.Groups]
+  | [ProjectPermissionActions, ProjectPermissionSub.IdentityGroups]
   | [ProjectPermissionActions, ProjectPermissionSub.Integrations]
   | [ProjectPermissionActions, ProjectPermissionSub.Webhooks]
   | [ProjectPermissionAuditLogsActions, ProjectPermissionSub.AuditLogs]

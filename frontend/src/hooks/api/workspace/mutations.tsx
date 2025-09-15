@@ -7,7 +7,8 @@ import { workspaceKeys } from "./query-keys";
 import {
   TProjectSshConfig,
   TUpdateProjectSshConfigDTO,
-  TUpdateWorkspaceGroupRoleDTO
+  TUpdateWorkspaceGroupRoleDTO,
+  TUpdateWorkspaceIdentityGroupRoleDTO
 } from "./types";
 
 export const useAddGroupToWorkspace = () => {
@@ -137,6 +138,110 @@ export const useUpdateProjectSshConfig = () => {
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({
         queryKey: workspaceKeys.getProjectSshConfig(projectId)
+      });
+    }
+  });
+};
+
+/**
+ * Identity Groups
+ */
+export const useAddIdentityGroupToWorkspace = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      identityGroupId,
+      projectId,
+      role
+    }: {
+      identityGroupId: string;
+      projectId: string;
+      role?: string;
+    }) => {
+      const {
+        data: { identityGroupMembership }
+      } = await apiRequest.post(
+        `/api/v2/workspace/${projectId}/identity-groups/${identityGroupId}`,
+        {
+          role
+        }
+      );
+
+      return identityGroupMembership;
+    },
+    onSuccess: (_, { projectId, identityGroupId }) => {
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIdentityGroupMemberships(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIdentityGroupMembershipDetails(
+          projectId,
+          identityGroupId
+        )
+      });
+    }
+  });
+};
+
+export const useUpdateIdentityGroupWorkspaceRole = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      identityGroupId,
+      projectId,
+      roles
+    }: TUpdateWorkspaceIdentityGroupRoleDTO) => {
+      const {
+        data: { identityGroupMembership }
+      } = await apiRequest.patch(
+        `/api/v2/workspace/${projectId}/identity-groups/${identityGroupId}`,
+        {
+          roles
+        }
+      );
+
+      return identityGroupMembership;
+    },
+    onSuccess: (_, { projectId, identityGroupId }) => {
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIdentityGroupMemberships(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIdentityGroupMembershipDetails(
+          projectId,
+          identityGroupId
+        )
+      });
+    }
+  });
+};
+
+export const useDeleteIdentityGroupFromWorkspace = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      identityGroupId,
+      projectId
+    }: {
+      identityGroupId: string;
+      projectId: string;
+    }) => {
+      const {
+        data: { identityGroupMembership }
+      } = await apiRequest.delete(
+        `/api/v2/workspace/${projectId}/identity-groups/${identityGroupId}`
+      );
+      return identityGroupMembership;
+    },
+    onSuccess: (_, { projectId, identityGroupId }) => {
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIdentityGroupMemberships(projectId)
+      });
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.getWorkspaceIdentityGroupMembershipDetails(
+          projectId,
+          identityGroupId
+        )
       });
     }
   });

@@ -50,6 +50,7 @@ import {
   Workspace,
   WorkspaceEnv
 } from "./types";
+import { TIdentityGroupMembership } from "../identity-groups/types";
 
 export const fetchWorkspaceById = async (workspaceId: string) => {
   const { data } = await apiRequest.get<{ workspace: Workspace }>(
@@ -723,6 +724,21 @@ export const useListWorkspaceGroups = (projectId: string) => {
         `/api/v2/workspace/${projectId}/groups`
       );
       return groupMemberships;
+    },
+    enabled: true
+  });
+};
+
+export const useListWorkspaceIdentityGroups = (projectId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceIdentityGroupMemberships(projectId),
+    queryFn: async () => {
+      const {
+        data: { identityGroupMemberships }
+      } = await apiRequest.get<{ identityGroupMemberships: TIdentityGroupMembership[] }>(
+        `/api/v2/workspace/${projectId}/identity-groups`
+      );
+      return identityGroupMemberships;
     },
     enabled: true
   });

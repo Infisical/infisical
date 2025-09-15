@@ -1,10 +1,13 @@
 export {
   useAddGroupToWorkspace,
+  useAddIdentityGroupToWorkspace,
   useDeleteGroupFromWorkspace,
+  useDeleteIdentityGroupFromWorkspace,
   useLeaveProject,
   useMigrateProjectToV3,
   useRequestProjectAccess,
   useUpdateGroupWorkspaceRole,
+  useUpdateIdentityGroupWorkspaceRole,
   useUpdateProjectSshConfig
 } from "./mutations";
 export {
@@ -48,6 +51,7 @@ export {
   useUpdateProject,
   useUpdateUserWorkspaceRole,
   useUpdateWsEnvironment,
-  useUpgradeProject
+  useUpgradeProject,
+  useListWorkspaceIdentityGroups
 } from "./queries";
 export { workspaceKeys } from "./query-keys";

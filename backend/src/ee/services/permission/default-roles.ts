@@ -9,6 +9,7 @@ import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
+  ProjectPermissionIdentityGroupActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
@@ -142,6 +143,17 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionGroupActions.GrantPrivileges
     ],
     ProjectPermissionSub.Groups
+  );
+
+  can(
+    [
+      ProjectPermissionIdentityGroupActions.Create,
+      ProjectPermissionIdentityGroupActions.Edit,
+      ProjectPermissionIdentityGroupActions.Delete,
+      ProjectPermissionIdentityGroupActions.Read,
+      ProjectPermissionIdentityGroupActions.GrantPrivileges
+    ],
+    ProjectPermissionSub.IdentityGroups
   );
 
   can(
@@ -324,6 +336,8 @@ const buildMemberPermissionRules = () => {
 
   can([ProjectPermissionGroupActions.Read], ProjectPermissionSub.Groups);
 
+  can([ProjectPermissionIdentityGroupActions.Read], ProjectPermissionSub.IdentityGroups);
+
   can(
     [
       ProjectPermissionActions.Read,
@@ -495,6 +509,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionSecretRotationActions.Read, ProjectPermissionSub.SecretRotation);
   can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
   can(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
+  can(ProjectPermissionIdentityGroupActions.Read, ProjectPermissionSub.IdentityGroups);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);

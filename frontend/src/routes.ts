@@ -68,6 +68,10 @@ const secretManagerRoutes = route("/projects/secret-management/$projectId", [
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-secret-manager.tsx"),
     route("/members/$membershipId", "project/MemberDetailsByIDPage/route-secret-manager.tsx"),
     route("/groups/$groupId", "project/GroupDetailsByIDPage/route-secret-manager.tsx"),
+    route(
+      "/identity-groups/$identityGroupId",
+      "project/IdentityGroupDetailsByIDPage/route-secret-manager.tsx"
+    ),
     route("/integrations", [
       index("secret-manager/IntegrationsListPage/route.tsx"),
       route("/$integrationId", "secret-manager/IntegrationsDetailsByIDPage/route.tsx"),
