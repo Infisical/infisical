@@ -22,7 +22,7 @@ import {
   TabPanel,
   Tabs
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   CaType,
   useCreatePkiSubscriber,
@@ -158,8 +158,8 @@ const schema = z
 export type FormData = z.infer<typeof schema>;
 
 export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace.id;
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const { data: subscribers } = useListWorkspacePkiSubscribers(projectId);
   const { data: cas } = useListCasByProjectId(projectId);
   const [tabValue, setTabValue] = useState<FormTab>(FormTab.Configuration);

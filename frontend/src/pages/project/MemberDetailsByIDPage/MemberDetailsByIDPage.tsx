@@ -19,7 +19,7 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useOrganization,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { getProjectBaseURL, getProjectHomePage } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
@@ -40,12 +40,10 @@ export const Page = () => {
     select: (el) => el.membershipId as string
   });
   const { currentOrg } = useOrganization();
-  const { currentWorkspace } = useWorkspace();
-
-  const workspaceId = currentWorkspace?.id || "";
+  const { currentProject, projectId } = useProject();
 
   const { data: membershipDetails, isPending: isMembershipDetailsLoading } =
-    useGetWorkspaceUserDetails(workspaceId, membershipId);
+    useGetWorkspaceUserDetails(projectId, membershipId);
 
   const { mutateAsync: removeUserFromWorkspace, isPending: isRemovingUserFromWorkspace } =
     useDeleteUserFromWorkspace();
@@ -63,7 +61,7 @@ export const Page = () => {
       {
         actorId: userId,
         actorType: ActorType.USER,
-        projectId: workspaceId
+        projectId
       },
       {
         onSuccess: () => {
@@ -72,19 +70,19 @@ export const Page = () => {
             text: "User privilege assumption has started"
           });
 
-          const url = getProjectHomePage(currentWorkspace.type, currentWorkspace.environments);
-          window.location.href = url.replace("$projectId", currentWorkspace.id);
+          const url = getProjectHomePage(currentProject.type, currentProject.environments);
+          window.location.href = url.replace("$projectId", currentProject.id);
         }
       }
     );
   };
 
   const handleRemoveUser = async () => {
-    if (!currentOrg?.id || !currentWorkspace?.id || !membershipDetails?.user?.username) return;
+    if (!currentOrg?.id || !currentProject?.id || !membershipDetails?.user?.username) return;
 
     try {
       await removeUserFromWorkspace({
-        workspaceId: currentWorkspace.id,
+        projectId,
         usernames: [membershipDetails?.user?.username],
         orgId: currentOrg.id
       });
@@ -93,9 +91,9 @@ export const Page = () => {
         type: "success"
       });
       navigate({
-        to: `${getProjectBaseURL(currentWorkspace.type)}/access-management` as const,
+        to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         }
       });
     } catch (error) {

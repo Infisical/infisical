@@ -26,7 +26,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { CaStatus, CaType, useListExternalCasByProjectId } from "@app/hooks/api";
 import { caStatusToNameMap, getCaStatusBadgeVariant } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -44,8 +44,8 @@ type Props = {
 };
 
 export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const { data, isPending } = useListExternalCasByProjectId(currentWorkspace.id);
+  const { currentProject } = useProject();
+  const { data, isPending } = useListExternalCasByProjectId(currentProject.id);
 
   return (
     <div>

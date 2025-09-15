@@ -138,7 +138,7 @@ export const useListProjectGroupUsers = ({
       });
 
       const { data } = await apiRequest.get<{ users: TGroupUser[]; totalCount: number }>(
-        `/api/v2/workspace/${projectId}/groups/${id}/users`,
+        `/api/v1/projects/${projectId}/groups/${id}/users`,
         {
           params
         }

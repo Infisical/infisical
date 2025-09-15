@@ -22,7 +22,7 @@ import { renderIcon, SecretItem, TDiffModes, TDiffView } from "./SecretItem";
 type Props = {
   snapshotId: string;
   environment: string;
-  workspaceId: string;
+  projectId: string;
   secretPath?: string;
   secrets?: SecretV3RawSanitized[];
   folders?: TSecretFolder[];
@@ -43,7 +43,7 @@ const deepCompareSecrets = (lhs: SecretV3RawSanitized, rhs: SecretV3RawSanitized
 export const SnapshotView = ({
   snapshotId,
   environment,
-  workspaceId,
+  projectId,
   secretPath,
   secrets = [],
   folders = [],
@@ -130,7 +130,7 @@ export const SnapshotView = ({
     }
     try {
       await performRollback({
-        workspaceId,
+        projectId,
         snapshotId: snapshotData.id,
         environment,
         directory: secretPath

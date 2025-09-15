@@ -7,7 +7,7 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { useDeleteCert } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -19,7 +19,7 @@ import { CertificateRevocationModal } from "./CertificateRevocationModal";
 import { CertificatesTable } from "./CertificatesTable";
 
 export const CertificatesSection = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { mutateAsync: deleteCert } = useDeleteCert();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -32,9 +32,9 @@ export const CertificatesSection = () => {
 
   const onRemoveCertificateSubmit = async (serialNumber: string) => {
     try {
-      if (!currentWorkspace?.slug) return;
+      if (!currentProject?.slug) return;
 
-      await deleteCert({ serialNumber, projectSlug: currentWorkspace.slug });
+      await deleteCert({ serialNumber, projectSlug: currentProject.slug });
 
       createNotification({
         text: "Successfully deleted certificate",

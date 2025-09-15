@@ -24,7 +24,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -53,8 +53,8 @@ enum TagsOrderBy {
 }
 
 export const SecretTagsTable = ({ handlePopUpOpen }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const { data: tags = [], isPending } = useGetWsTags(currentWorkspace?.id ?? "");
+  const { currentProject } = useProject();
+  const { data: tags = [], isPending } = useGetWsTags(currentProject?.id ?? "");
 
   const {
     search,

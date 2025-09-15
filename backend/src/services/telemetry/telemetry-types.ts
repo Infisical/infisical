@@ -46,7 +46,7 @@ export type TSecretModifiedEvent = {
   properties: {
     numberOfSecrets: number;
     environment: string;
-    workspaceId: string;
+    projectId: string;
     secretPath: string;
     channel?: string;
     userAgent?: string;

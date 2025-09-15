@@ -237,8 +237,8 @@ export const projectServiceFactory = ({
     actorId,
     actorOrgId,
     actorAuthMethod,
-    workspaceName,
-    workspaceDescription,
+    projectName: workspaceName,
+    projectDescription: workspaceDescription,
     slug: projectSlug,
     kmsKeyId,
     tx: trx,
@@ -254,7 +254,13 @@ export const projectServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
+
+    if (
+      permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace) &&
+      permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Project)
+    ) {
+      throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
+    }
 
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
@@ -591,7 +597,8 @@ export const projectServiceFactory = ({
       secretSharing: update.secretSharing,
       defaultProduct: update.defaultProduct,
       showSnapshotsLegacy: update.showSnapshotsLegacy,
-      secretDetectionIgnoreValues: update.secretDetectionIgnoreValues
+      secretDetectionIgnoreValues: update.secretDetectionIgnoreValues,
+      pitVersionLimit: update.pitVersionLimit
     });
 
     return updatedProject;
@@ -684,19 +691,21 @@ export const projectServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     auditLogsRetentionDays,
-    workspaceSlug
+    filter
   }: TUpdateAuditLogsRetentionDTO) => {
-    const project = await projectDAL.findProjectBySlug(workspaceSlug, actorOrgId);
+    const project = await projectDAL.findProjectByFilter(filter);
+    const projectId = project.id;
+
     if (!project) {
       throw new NotFoundError({
-        message: `Project with slug '${workspaceSlug}' not found`
+        message: `Project not found`
       });
     }
 
     const { hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId: project.id,
+      projectId,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.Any

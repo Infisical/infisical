@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   CaStatus,
   useGetCaById,
@@ -46,16 +46,16 @@ type Props = {
 };
 
 export const InternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { data: cas } = useListWorkspaceCas({
-    projectSlug: currentWorkspace?.slug ?? "",
+    projectId: currentProject.id,
     status: CaStatus.ACTIVE
   });
   const { data: ca } = useGetCaById(caId);
   const { data: csr } = useGetCaCsr(caId);
 
   const { mutateAsync: signIntermediate } = useSignIntermediate();
-  const { mutateAsync: importCaCertificate } = useImportCaCertificate(currentWorkspace.id);
+  const { mutateAsync: importCaCertificate } = useImportCaCertificate(currentProject.id);
 
   const {
     control,
@@ -102,7 +102,7 @@ export const InternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
 
   const onFormSubmit = async ({ notAfter, maxPathLength }: FormData) => {
     try {
-      if (!csr || !caId || !currentWorkspace?.slug) return;
+      if (!csr || !caId || !currentProject?.slug) return;
 
       const { certificate, certificateChain } = await signIntermediate({
         caId: parentCaId,
@@ -114,7 +114,7 @@ export const InternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
 
       await importCaCertificate({
         caId,
-        projectSlug: currentWorkspace?.slug,
+        projectSlug: currentProject?.slug,
         certificate,
         certificateChain
       });

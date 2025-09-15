@@ -19,7 +19,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import {
   EXCLUDED_PERMISSION_SUBS,

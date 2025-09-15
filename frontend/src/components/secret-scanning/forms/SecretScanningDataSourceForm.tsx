@@ -6,7 +6,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import {
   SecretScanningDataSource,
@@ -39,7 +39,7 @@ const FORM_TABS: { name: string; key: string; fields: (keyof TSecretScanningData
 export const SecretScanningDataSourceForm = ({ type, onComplete, onCancel, dataSource }: Props) => {
   const createDataSource = useCreateSecretScanningDataSource();
   const updateDataSource = useUpdateSecretScanningDataSource();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { name: sourceType } = SECRET_SCANNING_DATA_SOURCE_MAP[type];
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
@@ -63,7 +63,7 @@ export const SecretScanningDataSourceForm = ({ type, onComplete, onCancel, dataS
       : createDataSource.mutateAsync({
           ...formData,
           connectionId: connection?.id,
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         });
     try {
       const source = await mutation;

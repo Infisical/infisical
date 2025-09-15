@@ -36,7 +36,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import {
   getUserTablePreference,
@@ -109,7 +109,7 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
     environmentIds: []
   });
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const {
     search,
@@ -372,7 +372,7 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
               <DropdownMenuItem isDisabled>No Secret Syncs Configured</DropdownMenuItem>
             )}
             <DropdownMenuLabel>Environment</DropdownMenuLabel>
-            {currentWorkspace.environments.map((env) => (
+            {currentProject.environments.map((env) => (
               <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();

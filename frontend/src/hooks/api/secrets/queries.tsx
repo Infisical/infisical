@@ -27,35 +27,35 @@ import {
 export const secretKeys = {
   // this is also used in secretSnapshot part
   getProjectSecret: ({
-    workspaceId,
+    projectId,
     environment,
     secretPath,
     viewSecretValue
   }: TGetProjectSecretsKey) =>
-    [{ workspaceId, environment, secretPath, viewSecretValue }, "secrets"] as const,
+    [{ projectId, environment, secretPath, viewSecretValue }, "secrets"] as const,
   getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"] as const,
   getSecretAccessList: ({
-    workspaceId,
+    projectId,
     environment,
     secretPath,
     secretKey
   }: TGetSecretAccessListDTO) =>
-    ["secret-access-list", { workspaceId, environment, secretPath, secretKey }] as const,
+    ["secret-access-list", { projectId, environment, secretPath, secretKey }] as const,
   getSecretReferenceTree: (dto: TGetSecretReferenceTreeDTO) => ["secret-reference-tree", dto]
 };
 
 export const fetchProjectSecrets = async ({
-  workspaceId,
+  projectId,
   environment,
   secretPath,
   includeImports,
   expandSecretReferences,
   viewSecretValue
 }: TGetProjectSecretsKey) => {
-  const { data } = await apiRequest.get<SecretV3RawResponse>("/api/v3/secrets/raw", {
+  const { data } = await apiRequest.get<SecretV3RawResponse>("/api/v4/secrets", {
     params: {
       environment,
-      workspaceId,
+      projectId,
       secretPath,
       viewSecretValue,
       expandSecretReferences,
@@ -116,7 +116,7 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
 };
 
 export const useGetProjectSecrets = ({
-  workspaceId,
+  projectId,
   environment,
   secretPath,
   viewSecretValue,
@@ -135,14 +135,14 @@ export const useGetProjectSecrets = ({
   useQuery({
     ...options,
     // wait for all values to be available
-    enabled: Boolean(workspaceId && environment) && (options?.enabled ?? true),
+    enabled: Boolean(projectId && environment) && (options?.enabled ?? true),
     queryKey: secretKeys.getProjectSecret({
-      workspaceId,
+      projectId,
       environment,
       secretPath,
       viewSecretValue
     }),
-    queryFn: () => fetchProjectSecrets({ workspaceId, environment, secretPath, viewSecretValue }),
+    queryFn: () => fetchProjectSecrets({ projectId, environment, secretPath, viewSecretValue }),
     select: useCallback(
       (data: Awaited<ReturnType<typeof fetchProjectSecrets>>) => mergePersonalSecrets(data.secrets),
       []
@@ -150,7 +150,7 @@ export const useGetProjectSecrets = ({
   });
 
 export const useGetProjectSecretsAllEnv = ({
-  workspaceId,
+  projectId,
   envs,
   secretPath
 }: TGetProjectSecretsAllEnvDTO) => {
@@ -159,11 +159,11 @@ export const useGetProjectSecretsAllEnv = ({
   const secrets = useQueries({
     queries: envs.map((environment) => ({
       queryKey: secretKeys.getProjectSecret({
-        workspaceId,
+        projectId,
         environment,
         secretPath
       }),
-      enabled: Boolean(workspaceId && environment),
+      enabled: Boolean(projectId && environment),
       onError: (error: unknown) => {
         if (axios.isAxiosError(error) && !isErrorHandled) {
           const { message, requestId } = error.response?.data as {
@@ -187,7 +187,7 @@ export const useGetProjectSecretsAllEnv = ({
           setIsErrorHandled.on();
         }
       },
-      queryFn: () => fetchProjectSecrets({ workspaceId, environment, secretPath }),
+      queryFn: () => fetchProjectSecrets({ projectId, environment, secretPath }),
       staleTime: 60 * 1000,
       // eslint-disable-next-line react-hooks/rules-of-hooks
       select: useCallback(
@@ -270,7 +270,7 @@ export const useGetSecretAccessList = (dto: TGetSecretAccessListDTO) =>
         users: SecretAccessListEntry[];
       }>(`/api/v1/secrets/${dto.secretKey}/access-list`, {
         params: {
-          workspaceId: dto.workspaceId,
+          projectId: dto.projectId,
           environment: dto.environment,
           secretPath: dto.secretPath
         }
@@ -287,11 +287,11 @@ const fetchSecretReferenceTree = async ({
   environmentSlug
 }: TGetSecretReferenceTreeDTO) => {
   const { data } = await apiRequest.get<{ tree: TSecretReferenceTraceNode; value: string }>(
-    `/api/v3/secrets/raw/${secretKey}/secret-reference-tree`,
+    `/api/v4/secrets/${secretKey}/secret-reference-tree`,
     {
       params: {
         secretPath,
-        workspaceId: projectId,
+        projectId,
         environment: environmentSlug
       }
     }

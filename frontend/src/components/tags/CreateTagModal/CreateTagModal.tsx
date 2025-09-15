@@ -15,7 +15,7 @@ import {
   ModalContent,
   Tooltip
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateWsTag } from "@app/hooks/api";
 import { slugSchema } from "@app/lib/schemas";
 
@@ -115,11 +115,10 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
     }
   });
 
-  const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id || "";
 
   const { mutateAsync: createWsTag } = useCreateWsTag();
-
   const [showHexInput, setShowHexInput] = useState<boolean>(false);
   const selectedTagColor = watch("color", secretTagsColors[0].hex);
 
@@ -130,7 +129,7 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
   const onFormSubmit = async ({ slug, color }: FormData) => {
     try {
       await createWsTag({
-        workspaceID: workspaceId,
+        projectId,
         tagColor: color,
         tagSlug: slug
       });

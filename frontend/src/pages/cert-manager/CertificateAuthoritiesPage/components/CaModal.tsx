@@ -16,7 +16,7 @@ import {
   Switch
   // DatePicker
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   CaStatus,
   CaType,
@@ -84,10 +84,10 @@ const caTypes = [
 ];
 
 export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { data: ca } = useGetCa({
     caName: (popUp?.ca?.data as { name: string })?.name || "",
-    projectId: currentWorkspace?.id || "",
+    projectId: currentProject?.id || "",
     type: CaType.INTERNAL
   });
 
@@ -178,13 +178,13 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
     configuration
   }: FormData) => {
     try {
-      if (!currentWorkspace?.slug) return;
+      if (!currentProject?.slug) return;
 
       if (ca) {
         // update
         await updateMutateAsync({
           caName: ca.name,
-          projectId: currentWorkspace.id,
+          projectId: currentProject.id,
           name,
           type: CaType.INTERNAL,
           status,
@@ -193,7 +193,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
       } else {
         // create
         await createMutateAsync({
-          projectId: currentWorkspace.id,
+          projectId: currentProject.id,
           name,
           type,
           status,

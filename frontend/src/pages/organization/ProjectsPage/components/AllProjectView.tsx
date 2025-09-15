@@ -48,7 +48,7 @@ import {
   useRequestProjectAccess,
   useSearchProjects
 } from "@app/hooks/api";
-import { ProjectType, Workspace, WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
 import {
   ProjectListToggle,
   ProjectListView
@@ -155,7 +155,7 @@ export const AllProjectView = ({
   const handleAccessProject = async (
     type: ProjectType,
     projectId: string,
-    environments: WorkspaceEnv[]
+    environments: ProjectEnv[]
   ) => {
     try {
       await orgAdminAccessProject.mutateAsync({
@@ -180,7 +180,7 @@ export const AllProjectView = ({
     offset,
     totalCount: searchedProjects?.totalCount || 0
   });
-  const requestedWorkspaceDetails = (popUp.requestAccessConfirmation.data || {}) as Workspace;
+  const requestedWorkspaceDetails = (popUp.requestAccessConfirmation.data || {}) as Project;
 
   const handleToggleFilterByProjectType = (el: ProjectType) =>
     setProjectTypeFilter((state) => (state === el ? undefined : el));
@@ -278,22 +278,26 @@ export const AllProjectView = ({
           </IconButton>
         </div>
         <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-          {(isAllowed) => (
-            <Button
-              isDisabled={!isAllowed}
-              colorSchema="secondary"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => {
-                if (isAddingProjectsAllowed) {
-                  onAddNewProject();
-                } else {
-                  onUpgradePlan();
-                }
-              }}
-              className="ml-2"
-            >
-              Add New Project
-            </Button>
+          {(isOldProjectPermissionAllowed) => (
+            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
+              {(isAllowed) => (
+                <Button
+                  isDisabled={!isAllowed && !isOldProjectPermissionAllowed}
+                  colorSchema="secondary"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={() => {
+                    if (isAddingProjectsAllowed) {
+                      onAddNewProject();
+                    } else {
+                      onUpgradePlan();
+                    }
+                  }}
+                  className="ml-2"
+                >
+                  Add New Project
+                </Button>
+              )}
+            </OrgPermissionCan>
           )}
         </OrgPermissionCan>
       </div>

@@ -35,9 +35,9 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
-  useUser,
-  useWorkspace
+  useUser
 } from "@app/context";
 import {
   getUserTablePreference,
@@ -58,8 +58,7 @@ import {
 } from "./components/SecretApprovalRequestChanges";
 
 export const SecretApprovalRequest = () => {
-  const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?.id || "";
+  const { currentProject, projectId } = useProject();
   const [selectedApprovalId, setSelectedApprovalId] = useState<string | null>(null);
 
   // filters
@@ -92,7 +91,7 @@ export const SecretApprovalRequest = () => {
     isPending: isApprovalRequestLoading,
     refetch
   } = useGetSecretApprovalRequests({
-    workspaceId,
+    projectId,
     status: statusFilter,
     environment: envFilter,
     committer: committerFilter,
@@ -105,14 +104,14 @@ export const SecretApprovalRequest = () => {
   const secretApprovalRequests = data?.approvals ?? [];
 
   const { data: secretApprovalRequestCount, isSuccess: isSecretApprovalReqCountSuccess } =
-    useGetSecretApprovalRequestCount({ workspaceId });
+    useGetSecretApprovalRequestCount({ projectId });
   const { user: userSession } = useUser();
   const search = useSearch({
     from: ROUTE_PATHS.SecretManager.ApprovalPage.id
   });
 
   const { permission } = useProjectPermission();
-  const { data: members } = useGetWorkspaceUsers(workspaceId);
+  const { data: members } = useGetWorkspaceUsers(projectId);
   const isSecretApprovalScreen = Boolean(selectedApprovalId);
   const { requestId } = search;
 
@@ -143,7 +142,6 @@ export const SecretApprovalRequest = () => {
           exit={{ opacity: 0, translateX: 30 }}
         >
           <SecretApprovalRequestChanges
-            workspaceId={workspaceId}
             approvalRequestId={selectedApprovalId || ""}
             onGoBack={handleGoBackSecretRequestDetail}
           />
@@ -241,7 +239,7 @@ export const SecretApprovalRequest = () => {
                     <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
                       Select an Environment
                     </DropdownMenuLabel>
-                    {currentWorkspace?.environments.map(({ slug, name }) => (
+                    {currentProject?.environments.map(({ slug, name }) => (
                       <DropdownMenuItem
                         onClick={() => setEnvFilter((state) => (state === slug ? undefined : slug))}
                         key={`request-filter-${slug}`}

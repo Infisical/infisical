@@ -33,7 +33,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -63,9 +63,9 @@ enum TokensOrderBy {
 }
 
 export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { data, isPending } = useGetUserWsServiceTokens({
-    workspaceID: currentWorkspace?.id || ""
+    workspaceID: currentProject?.id || ""
   });
 
   const {

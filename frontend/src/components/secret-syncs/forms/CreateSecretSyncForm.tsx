@@ -8,7 +8,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Switch } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import {
   SecretSync,
@@ -41,7 +41,7 @@ const FORM_TABS: { name: string; key: string; fields: (keyof TSecretSyncForm)[] 
 
 export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Props) => {
   const createSecretSync = useCreateSecretSync();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { name: destinationName } = SECRET_SYNC_MAP[destination];
 
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -70,7 +70,7 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
         ...formData,
         connectionId: connection.id,
         environment: environment.slug,
-        projectId: currentWorkspace.id
+        projectId: currentProject.id
       });
 
       createNotification({
