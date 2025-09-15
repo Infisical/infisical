@@ -18,7 +18,7 @@ import { ProjectUserMembershipTemporaryMode } from "@app/services/project-member
 
 import { SanitizedProjectSchema } from "../sanitizedSchemas";
 
-export const registerDepreciatedIdentityProjectRouter = async (server: FastifyZodProvider) => {
+export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:projectId/identity-memberships/:identityId",

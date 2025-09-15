@@ -8,7 +8,7 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-export const registerDepreciatedProjectEnvRouter = async (server: FastifyZodProvider) => {
+export const registerDeprecatedProjectEnvRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:workspaceId/environments/:envId",

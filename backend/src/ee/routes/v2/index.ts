@@ -7,7 +7,7 @@ import {
   SECRET_SCANNING_REGISTER_ROUTER_MAP
 } from "@app/ee/routes/v2/secret-scanning-v2-routers";
 
-import { registerDepreciatedProjectRoleRouter } from "./depreciated-project-role-router";
+import { registerDeprecatedProjectRoleRouter } from "./deprecated-project-role-router";
 import { registerGatewayV2Router } from "./gateway-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
 import { registerSecretApprovalPolicyRouter } from "./secret-approval-policy-router";
@@ -16,7 +16,7 @@ export const registerV2EERoutes = async (server: FastifyZodProvider) => {
   await server.register(
     async (projectRouter) => {
       // this has been depreciated and moved to /api/v1/projects
-      await projectRouter.register(registerDepreciatedProjectRoleRouter);
+      await projectRouter.register(registerDeprecatedProjectRoleRouter);
     },
     { prefix: "/workspace" }
   );

@@ -8,7 +8,7 @@ import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-export const registerDepreciatedProjectRouter = async (server: FastifyZodProvider) => {
+export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:workspaceId/secret-snapshots",

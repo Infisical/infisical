@@ -39,7 +39,7 @@ const SecretReferenceNodeTree: z.ZodType<TSecretReferenceNode> = SecretReference
   children: z.lazy(() => SecretReferenceNodeTree.array())
 });
 
-export const registerDepreciatedSecretRouter = async (server: FastifyZodProvider) => {
+export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/tags/:secretName",

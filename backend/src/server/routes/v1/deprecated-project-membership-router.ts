@@ -15,7 +15,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
 
-export const registerDepreciatedProjectMembershipRouter = async (server: FastifyZodProvider) => {
+export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:workspaceId/memberships",

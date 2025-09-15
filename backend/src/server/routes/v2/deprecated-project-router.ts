@@ -35,7 +35,7 @@ const projectWithEnv = SanitizedProjectSchema.extend({
   kmsSecretManagerKeyId: z.string().nullable().optional()
 });
 
-export const registerDepreciatedProjectRouter = async (server: FastifyZodProvider) => {
+export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider) => {
   // depreciated
   /* Get project key */
   server.route({

@@ -13,12 +13,12 @@ import { registerCaRouter } from "./certificate-authority-router";
 import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
 import { registerCertRouter } from "./certificate-router";
 import { registerCertificateTemplateRouter } from "./certificate-template-router";
-import { registerDepreciatedProjectEnvRouter } from "./depreciated-project-env-router";
-import { registerDepreciatedProjectMembershipRouter } from "./depreciated-project-membership-router";
-import { registerDepreciatedProjectRouter } from "./depreciated-project-router";
-import { registerDepreciatedSecretFolderRouter } from "./depreciated-secret-folder-router";
-import { registerDepreciatedSecretImportRouter } from "./depreciated-secret-import-router";
-import { registerDepreciatedSecretTagRouter } from "./depreciated-secret-tag-router";
+import { registerDeprecatedProjectEnvRouter } from "./deprecated-project-env-router";
+import { registerDeprecatedProjectMembershipRouter } from "./deprecated-project-membership-router";
+import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
+import { registerDeprecatedSecretFolderRouter } from "./deprecated-secret-folder-router";
+import { registerDeprecatedSecretImportRouter } from "./deprecated-secret-import-router";
+import { registerDeprecatedSecretTagRouter } from "./deprecated-secret-tag-router";
 import { registerEventRouter } from "./event-router";
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";
 import { registerGroupProjectRouter } from "./group-project-router";
@@ -93,8 +93,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerNotificationRouter, { prefix: "/notifications" });
   await server.register(registerInviteOrgRouter, { prefix: "/invite-org" });
   await server.register(registerUserActionRouter, { prefix: "/user-action" });
-  await server.register(registerDepreciatedSecretImportRouter, { prefix: "/secret-imports" });
-  await server.register(registerDepreciatedSecretFolderRouter, { prefix: "/folders" });
+  await server.register(registerDeprecatedSecretImportRouter, { prefix: "/secret-imports" });
+  await server.register(registerDeprecatedSecretFolderRouter, { prefix: "/folders" });
 
   await server.register(
     async (workflowIntegrationRouter) => {
@@ -107,12 +107,12 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (projectRouter) => {
-      await projectRouter.register(registerDepreciatedProjectRouter);
-      await projectRouter.register(registerDepreciatedProjectEnvRouter);
+      await projectRouter.register(registerDeprecatedProjectRouter);
+      await projectRouter.register(registerDeprecatedProjectEnvRouter);
       // depreciated completed in use
       await projectRouter.register(registerProjectKeyRouter);
-      await projectRouter.register(registerDepreciatedProjectMembershipRouter);
-      await projectRouter.register(registerDepreciatedSecretTagRouter);
+      await projectRouter.register(registerDeprecatedProjectMembershipRouter);
+      await projectRouter.register(registerDeprecatedSecretTagRouter);
     },
     { prefix: "/workspace" }
   );

@@ -30,7 +30,7 @@ const projectWithEnv = SanitizedProjectSchema.merge(
   })
 );
 
-export const registerDepreciatedProjectRouter = async (server: FastifyZodProvider) => {
+export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/",

@@ -11,7 +11,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 
 import { booleanSchema } from "../sanitizedSchemas";
 
-export const registerDepreciatedSecretFolderRouter = async (server: FastifyZodProvider) => {
+export const registerDeprecatedSecretFolderRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
     method: "POST",

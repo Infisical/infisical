@@ -10,7 +10,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 
 import { secretRawSchema } from "../sanitizedSchemas";
 
-export const registerDepreciatedSecretImportRouter = async (server: FastifyZodProvider) => {
+export const registerDeprecatedSecretImportRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/",

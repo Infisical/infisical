@@ -9,7 +9,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-export const registerDepreciatedSecretApprovalPolicyRouter = async (server: FastifyZodProvider) => {
+export const registerDeprecatedSecretApprovalPolicyRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
     method: "POST",

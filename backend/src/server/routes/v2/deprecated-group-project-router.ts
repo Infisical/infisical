@@ -15,7 +15,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
 
-export const registerDepreciatedGroupProjectRouter = async (server: FastifyZodProvider) => {
+export const registerDeprecatedGroupProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:projectId/groups/:groupIdOrName",

@@ -5,9 +5,9 @@ import { registerAccessApprovalRequestRouter } from "./access-approval-request-r
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
 import { AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP, registerAuditLogStreamRouter } from "./audit-log-stream-routers";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
-import { registerDepreciatedProjectRoleRouter } from "./depreciated-project-role-router";
-import { registerDepreciatedProjectRouter } from "./depreciated-project-router";
-import { registerDepreciatedSecretApprovalPolicyRouter } from "./depreciated-secret-approval-policy-router";
+import { registerDeprecatedProjectRoleRouter } from "./deprecated-project-role-router";
+import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
+import { registerDeprecatedSecretApprovalPolicyRouter } from "./deprecated-secret-approval-policy-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerKubernetesDynamicSecretLeaseRouter } from "./dynamic-secret-lease-routers/kubernetes-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
@@ -53,8 +53,8 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   // depreciated in favour of infisical workspace
   await server.register(
     async (projectRouter) => {
-      await projectRouter.register(registerDepreciatedProjectRoleRouter);
-      await projectRouter.register(registerDepreciatedProjectRouter);
+      await projectRouter.register(registerDeprecatedProjectRoleRouter);
+      await projectRouter.register(registerDeprecatedProjectRouter);
     },
     { prefix: "/workspace" }
   );
@@ -71,7 +71,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(registerSnapshotRouter, { prefix: "/secret-snapshot" });
   await server.register(registerPITRouter, { prefix: "/pit" });
-  await server.register(registerDepreciatedSecretApprovalPolicyRouter, { prefix: "/secret-approvals" });
+  await server.register(registerDeprecatedSecretApprovalPolicyRouter, { prefix: "/secret-approvals" });
   await server.register(registerSecretApprovalRequestRouter, {
     prefix: "/secret-approval-requests"
   });

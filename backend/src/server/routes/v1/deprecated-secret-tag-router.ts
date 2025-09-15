@@ -7,7 +7,7 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-export const registerDepreciatedSecretTagRouter = async (server: FastifyZodProvider) => {
+export const registerDeprecatedSecretTagRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:projectId/tags",

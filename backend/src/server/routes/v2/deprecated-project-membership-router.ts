@@ -7,7 +7,7 @@ import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-export const registerDepreciatedProjectMembershipRouter = async (server: FastifyZodProvider) => {
+export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:projectId/memberships",
