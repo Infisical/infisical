@@ -33,7 +33,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { useUser, useProject } from "@app/context";
+import { useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   useGetSecretApprovalRequestDetails,

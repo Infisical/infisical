@@ -5,8 +5,8 @@ import { apiRequest } from "@app/config/request";
 import { SessionStorageKeys } from "@app/const";
 
 import { organizationKeys } from "../organization/queries";
-import { setAuthToken } from "../reactQuery";
 import { projectKeys } from "../projects";
+import { setAuthToken } from "../reactQuery";
 import {
   CompleteAccountDTO,
   CompleteAccountSignupDTO,

@@ -1,6 +1,6 @@
 import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v2";
-import { useProjectPermission, useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import { useBackfillSecretReference } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 

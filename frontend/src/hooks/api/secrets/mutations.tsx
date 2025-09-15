@@ -405,14 +405,14 @@ export const useMoveSecrets = ({
 };
 
 export const createSecret = async (dto: TCreateSecretsV3DTO) => {
-  const { data } = await apiRequest.post(`/api/v3/secrets/${dto.secretKey}`, dto);
+  const { data } = await apiRequest.post(`/api/v4/secrets/${dto.secretKey}`, dto);
   return data;
 };
 
 export const useBackfillSecretReference = () =>
   useMutation<{ message: string }, object, { projectId: string }>({
     mutationFn: async ({ projectId }) => {
-      const { data } = await apiRequest.post("/api/v3/secrets/backfill-secret-references", {
+      const { data } = await apiRequest.post("/api/v4/secrets/backfill-secret-references", {
         projectId
       });
       return data.message;

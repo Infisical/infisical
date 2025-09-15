@@ -4,13 +4,13 @@ import { z } from "zod";
 
 import { projectKeys } from "@app/hooks/api";
 import { TIntegration } from "@app/hooks/api/integrations/types";
+import { fetchWorkspaceIntegrations } from "@app/hooks/api/projects/queries";
 import {
   fetchSecretSyncsByProjectId,
   SecretSync,
   secretSyncKeys,
   TSecretSync
 } from "@app/hooks/api/secretSyncs";
-import { fetchWorkspaceIntegrations } from "@app/hooks/api/projects/queries";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import { IntegrationsListPage } from "./IntegrationsListPage";

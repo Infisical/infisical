@@ -43,8 +43,8 @@ import {
   ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { removeTrailingSlash } from "@app/helpers/string";
 import { usePopUp } from "@app/hooks";

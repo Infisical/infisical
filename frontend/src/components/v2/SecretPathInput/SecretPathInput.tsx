@@ -36,11 +36,11 @@ export const SecretPathInput = ({
   const [debouncedInputValue] = useDebounce(inputValue, 200);
 
   const { currentProject } = useProject();
-  const workspaceId = currentProject?.id || "";
+  const projectId = currentProject?.id || "";
   const { folderNames: folders } = useGetFoldersByEnv({
     path: secretPath,
     environments: [environment || currentProject?.environments?.[0].slug || ""],
-    projectId: workspaceId
+    projectId
   });
 
   useEffect(() => {

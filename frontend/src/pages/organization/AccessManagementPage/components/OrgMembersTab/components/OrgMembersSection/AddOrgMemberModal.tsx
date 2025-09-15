@@ -23,8 +23,8 @@ import {
   useGetOrgRoles,
   useGetUserProjects
 } from "@app/hooks/api";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { OrgInviteLink } from "./OrgInviteLink";

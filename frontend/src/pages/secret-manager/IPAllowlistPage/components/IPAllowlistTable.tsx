@@ -18,8 +18,8 @@ import {
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useSubscription,
-  useProject
+  useProject,
+  useSubscription
 } from "@app/context";
 import { useGetTrustedIps } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";

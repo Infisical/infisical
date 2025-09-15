@@ -39,10 +39,10 @@ import { Badge } from "@app/components/v2/Badge";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
   useSubscription,
-  useUser,
-  useProject
+  useUser
 } from "@app/context";
 import {
   getUserTablePreference,

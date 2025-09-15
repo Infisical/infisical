@@ -15,7 +15,7 @@ import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import { Badge, Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
-import { useProjectPermission, useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import {
   useGetAccessRequestsCount,
   useGetSecretApprovalRequestCount,

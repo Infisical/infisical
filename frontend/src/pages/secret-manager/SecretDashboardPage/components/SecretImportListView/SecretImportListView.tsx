@@ -18,7 +18,7 @@ import { usePopUp } from "@app/hooks";
 import { useDeleteSecretImport, useUpdateSecretImport } from "@app/hooks/api";
 import { ReservedFolders } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
-import { SecretV3RawSanitized, ProjectEnv } from "@app/hooks/api/types";
+import { ProjectEnv, SecretV3RawSanitized } from "@app/hooks/api/types";
 import { formatReservedPaths } from "@app/lib/fn/string";
 
 import { SecretImportItem } from "./SecretImportItem";
@@ -86,7 +86,7 @@ export const computeImportedSecretRows = (
 
 type Props = {
   environment: string;
-  workspaceId: string;
+  projectId: string;
   secretPath?: string;
   secretImports?: TSecretImport[];
   isFetching?: boolean;
@@ -98,7 +98,7 @@ type Props = {
 export const SecretImportListView = ({
   secretImports,
   environment,
-  workspaceId,
+  projectId,
   secretPath,
   importedSecrets,
   // secrets = [],
@@ -132,7 +132,7 @@ export const SecretImportListView = ({
     const { id: secretImportId } = popUp.deleteSecretImport?.data as { id: string };
     try {
       await deleteSecretImport({
-        projectId: workspaceId,
+        projectId,
         environment,
         path: secretPath,
         id: secretImportId
@@ -158,7 +158,7 @@ export const SecretImportListView = ({
       const newImportOrder = arrayMove(items, oldIndex, newIndex);
       setItems(newImportOrder);
       updateSecretImport({
-        projectId: workspaceId,
+        projectId,
         environment,
         path: secretPath,
         id: active.id as string,

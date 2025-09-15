@@ -6,8 +6,8 @@ import { SecretRotationV2Form } from "@app/components/secret-rotations-v2/forms"
 import { SecretRotationV2ModalHeader } from "@app/components/secret-rotations-v2/SecretRotationV2ModalHeader";
 import { SecretRotationV2Select } from "@app/components/secret-rotations-v2/SecretRotationV2Select";
 import { Modal, ModalContent } from "@app/components/v2";
-import { SecretRotation, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
+import { SecretRotation, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 
 type SharedProps = {
   secretPath: string;

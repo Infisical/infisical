@@ -4,7 +4,7 @@ import { subject } from "@casl/ability";
 
 import { FilterableSelect, FormControl } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
-import { useProjectPermission, useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSub

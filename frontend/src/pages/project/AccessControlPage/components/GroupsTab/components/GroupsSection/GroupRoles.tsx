@@ -29,8 +29,8 @@ import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoles, useUpdateGroupWorkspaceRole } from "@app/hooks/api";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
-import { TProjectRole } from "@app/hooks/api/roles/types";
 import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
+import { TProjectRole } from "@app/hooks/api/roles/types";
 import { groupBy } from "@app/lib/fn/array";
 
 const temporaryRoleFormSchema = z.object({

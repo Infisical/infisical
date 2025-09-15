@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
 import { EmptyState } from "@app/components/v2";
-import { useSubscription, useProject } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components/LogsSection";

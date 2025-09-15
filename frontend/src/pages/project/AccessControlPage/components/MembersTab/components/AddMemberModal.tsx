@@ -30,8 +30,8 @@ import {
   useGetProjectRoles,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const addMemberFormSchema = z.object({
@@ -66,9 +66,9 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   const orgId = currentOrg?.id || "";
-  const workspaceId = currentProject?.id || "";
+  const projectId = currentProject?.id || "";
 
-  const { data: members } = useGetWorkspaceUsers(workspaceId);
+  const { data: members } = useGetWorkspaceUsers(projectId);
   const { data: orgUsers } = useGetOrgUsers(orgId);
 
   const { data: roles } = useGetProjectRoles(currentProject?.id || "");

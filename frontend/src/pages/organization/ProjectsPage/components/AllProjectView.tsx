@@ -48,7 +48,7 @@ import {
   useRequestProjectAccess,
   useSearchProjects
 } from "@app/hooks/api";
-import { ProjectType, Project, ProjectEnv } from "@app/hooks/api/projects/types";
+import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
 import {
   ProjectListToggle,
   ProjectListView

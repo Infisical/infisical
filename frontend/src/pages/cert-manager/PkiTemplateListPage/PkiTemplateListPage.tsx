@@ -42,8 +42,8 @@ import {
 import {
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub,
-  useSubscription,
-  useProject
+  useProject,
+  useSubscription
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteCertTemplateV2 } from "@app/hooks/api";

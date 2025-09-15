@@ -14,7 +14,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
-import { useSubscription, useProject } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
 import { useCreateSecretImport } from "@app/hooks/api";
 
 const typeSchema = z.object({
@@ -43,7 +43,7 @@ type Props = {
 
 export const CreateSecretImportForm = ({
   environment,
-  projectId: workspaceId,
+  projectId,
   secretPath = "/",
   isOpen,
   onClose,
@@ -77,7 +77,7 @@ export const CreateSecretImportForm = ({
 
       await createSecretImport({
         environment,
-        projectId: workspaceId,
+        projectId,
         path: secretPath,
         isReplication,
         import: {

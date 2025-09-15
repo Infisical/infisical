@@ -5,10 +5,10 @@ import { z } from "zod";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { useProjectPermission, useSubscription, useProject } from "@app/context";
+import { useProject, useProjectPermission, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/projects/queries";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const formSchema = z.object({
   auditLogsRetentionDays: z.coerce.number().min(0)

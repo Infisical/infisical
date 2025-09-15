@@ -44,7 +44,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useUser, useProject } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject, useUser } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
@@ -85,8 +85,8 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
   const filterRoles = useMemo(() => filter.roles, [filter.roles]);
 
   const userId = user?.id || "";
-  const workspaceId = currentProject?.id || "";
-  const { data: projectRoles } = useGetProjectRoles(workspaceId);
+  const projectId = currentProject?.id || "";
+  const { data: projectRoles } = useGetProjectRoles(projectId);
 
   const {
     search,
@@ -111,7 +111,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
   };
 
   const { data: members = [], isPending: isMembersLoading } = useGetWorkspaceUsers(
-    workspaceId,
+    projectId,
     undefined,
     filterRoles
   );
@@ -309,7 +309,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                         navigate({
                           to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
                           params: {
-                            projectId: workspaceId,
+                            projectId,
                             membershipId
                           }
                         });
@@ -319,7 +319,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                       navigate({
                         to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
                         params: {
-                          projectId: workspaceId,
+                          projectId,
                           membershipId
                         }
                       })

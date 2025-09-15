@@ -13,12 +13,12 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Checkbox, FormControl, Input } from "@app/components/v2";
+import { useProject } from "@app/context";
 import {
   usePerformSecretApprovalRequestMerge,
   useUpdateSecretApprovalRequestStatus
 } from "@app/hooks/api";
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
-import { useProject } from "@app/context";
 
 type Props = {
   approvalRequestId: string;

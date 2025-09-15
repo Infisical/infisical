@@ -1,6 +1,6 @@
+import { registerDepreciatedSecretRouter } from "./depreciated-secret-router";
 import { registerExternalMigrationRouter } from "./external-migration-router";
 import { registerLoginRouter } from "./login-router";
-import { registerDepreciatedSecretRouter } from "./depreciated-secret-router";
 import { registerSignupRouter } from "./signup-router";
 import { registerUserRouter } from "./user-router";
 

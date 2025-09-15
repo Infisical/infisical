@@ -196,7 +196,7 @@ export const SecretDropzone = ({
       const { secrets: existingSecrets } = await fetchDashboardProjectSecretsByKeys({
         secretPath,
         environment,
-        projectId: projectId,
+        projectId,
         keys: envSecretKeys
       });
 
@@ -361,7 +361,7 @@ export const SecretDropzone = ({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId: projectId, secretPath })
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.count({ projectId })
@@ -464,7 +464,7 @@ export const SecretDropzone = ({
                   onParsedEnv={handleParsedEnv}
                   environment={environment}
                   environments={environments}
-                  workspaceId={projectId}
+                  projectId={projectId}
                   secretPath={secretPath}
                   isSmaller={isSmaller}
                 />

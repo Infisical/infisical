@@ -33,7 +33,7 @@ import { FolderForm } from "../ActionBar/FolderForm";
 type Props = {
   folders?: TSecretFolder[];
   environment: string;
-  workspaceId: string;
+  projectId: string;
   secretPath?: string;
   onNavigateToFolder: (path: string) => void;
   canNavigate: boolean;
@@ -42,7 +42,7 @@ type Props = {
 export const FolderListView = ({
   folders = [],
   environment,
-  workspaceId,
+  projectId,
   secretPath = "/",
   onNavigateToFolder,
   canNavigate
@@ -89,7 +89,7 @@ export const FolderListView = ({
           };
 
           addPendingChange(updatedCreate, {
-            projectId: workspaceId,
+            projectId,
             environment,
             secretPath
           });
@@ -106,7 +106,7 @@ export const FolderListView = ({
           };
 
           addPendingChange(updateChange, {
-            projectId: workspaceId,
+            projectId,
             environment,
             secretPath
           });
@@ -121,7 +121,7 @@ export const FolderListView = ({
         name: newFolderName,
         path: secretPath,
         environment,
-        projectId: workspaceId,
+        projectId,
         description: newFolderDescription
       });
       handlePopUpClose("updateFolder");
@@ -140,7 +140,7 @@ export const FolderListView = ({
 
   const handleDeletePending = (id: string) => {
     removePendingChange(id, "folder", {
-      projectId: workspaceId,
+      projectId,
       environment,
       secretPath
     });
@@ -161,7 +161,7 @@ export const FolderListView = ({
         };
 
         addPendingChange(pendingFolderDelete, {
-          projectId: workspaceId,
+          projectId,
           environment,
           secretPath
         });
@@ -174,7 +174,7 @@ export const FolderListView = ({
         folderId: folderData.id,
         path: secretPath,
         environment,
-        projectId: workspaceId
+        projectId
       });
 
       handlePopUpClose("deleteFolder");

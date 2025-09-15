@@ -49,8 +49,8 @@ import {
   ProjectPermissionActions,
   ProjectPermissionCmekActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { kmsKeyUsageOptions } from "@app/helpers/kms";
 import {

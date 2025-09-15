@@ -13,6 +13,7 @@ import { SecretRotationV2SecretsMappingFields } from "@app/components/secret-rot
 import { Button } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { IS_ROTATION_DUAL_CREDENTIALS, SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
+import { ProjectEnv } from "@app/hooks/api/projects/types";
 import {
   SecretRotation,
   TSecretRotationV2,
@@ -22,7 +23,6 @@ import {
   useCreateSecretRotationV2,
   useUpdateSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2/mutations";
-import { ProjectEnv } from "@app/hooks/api/projects/types";
 
 import { SecretRotationV2FormSchema, TSecretRotationV2Form } from "./schemas";
 

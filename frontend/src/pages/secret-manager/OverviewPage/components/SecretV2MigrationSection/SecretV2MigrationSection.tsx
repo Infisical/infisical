@@ -8,11 +8,11 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Checkbox, Modal, ModalContent, Spinner } from "@app/components/v2";
-import { useProjectPermission, useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useGetWorkspaceById, useMigrateProjectToV3, projectKeys } from "@app/hooks/api";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { projectKeys, useGetWorkspaceById, useMigrateProjectToV3 } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 enum ProjectUpgradeStatus {
   InProgress = "IN_PROGRESS",

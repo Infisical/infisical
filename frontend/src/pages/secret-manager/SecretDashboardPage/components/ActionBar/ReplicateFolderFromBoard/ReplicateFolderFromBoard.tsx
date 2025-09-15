@@ -64,7 +64,7 @@ type SecretStructure = {
 
 export const ReplicateFolderFromBoard = ({
   environments = [],
-  projectId: workspaceId,
+  projectId,
   isOpen,
   onToggle,
   onParsedEnv
@@ -82,14 +82,14 @@ export const ReplicateFolderFromBoard = ({
   const [debouncedEnvCopySecretPath] = useDebounce(envCopySecPath);
 
   const { data: accessibleSecrets } = useGetAccessibleSecrets({
-    projectId: workspaceId,
+    projectId,
     secretPath: "/",
     environment: selectedEnvSlug.slug,
     recursive: true,
     filterByAction: shouldIncludeValues
       ? ProjectPermissionSecretActions.ReadValue
       : ProjectPermissionSecretActions.DescribeSecret,
-    options: { enabled: Boolean(workspaceId) && Boolean(selectedEnvSlug) && isOpen }
+    options: { enabled: Boolean(projectId) && Boolean(selectedEnvSlug) && isOpen }
   });
 
   const restructureSecrets = useMemo(() => {

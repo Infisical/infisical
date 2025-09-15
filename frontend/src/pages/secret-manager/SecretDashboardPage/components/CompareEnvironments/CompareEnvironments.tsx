@@ -133,7 +133,7 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
     setUserTablePreference("secretCompareTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const workspaceId = currentProject.id;
+  const projectId = currentProject.id;
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearchFilter] = useDebounce(searchFilter);
   const [debouncedSelectedEnvironments] = useDebounce(selectedEnvironments);
@@ -151,7 +151,7 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
     getImportedSecretByKey,
     getEnvImportedSecretKeyCount
   } = useGetImportedSecretsAllEnvs({
-    projectId: workspaceId,
+    projectId,
     path: secretPath,
     environments: (currentProject.environments || []).map(({ slug }) => slug)
   });
@@ -163,7 +163,7 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
   const isFilteredByResources = Object.values(filter).some(Boolean);
   const { isPending: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
     {
-      projectId: workspaceId,
+      projectId,
       environments: compareEnvironments.map((env) => env.slug),
       secretPath,
       orderDirection,

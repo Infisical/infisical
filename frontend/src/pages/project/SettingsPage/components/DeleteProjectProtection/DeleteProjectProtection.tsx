@@ -12,7 +12,7 @@ export const DeleteProjectProtection = () => {
   const handleToggleDeleteProjectProtection = async (state: boolean) => {
     try {
       await mutateAsync({
-        projectId: projectId,
+        projectId,
         hasDeleteProtection: state
       });
 

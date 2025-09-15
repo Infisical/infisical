@@ -40,9 +40,9 @@ import {
 import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import {
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
-  useSubscription,
-  useProject
+  useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretRotationActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";

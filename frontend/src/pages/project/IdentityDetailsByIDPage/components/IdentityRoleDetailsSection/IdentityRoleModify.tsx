@@ -29,13 +29,13 @@ import {
   ProjectPermissionActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { useGetProjectRoles, useUpdateIdentityWorkspaceRole } from "@app/hooks/api";
 import { IdentityMembership } from "@app/hooks/api/identities/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const roleFormSchema = z.object({
   roles: z

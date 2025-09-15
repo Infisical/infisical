@@ -1,7 +1,7 @@
 import { OrderByDirection } from "../generic/types";
 import { OrgIdentityOrderBy } from "../organization/types";
+import { Project, ProjectUserMembershipTemporaryMode } from "../projects/types";
 import { TOrgRole } from "../roles/types";
-import { ProjectUserMembershipTemporaryMode, Project } from "../projects/types";
 import { IdentityAuthMethod, IdentityJwtConfigurationType } from "./enums";
 
 export type IdentityTrustedIp = {

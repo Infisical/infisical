@@ -1,5 +1,5 @@
-import { SecretV3Raw } from "../secrets/types";
 import { ProjectEnv } from "../projects/types";
+import { SecretV3Raw } from "../secrets/types";
 
 export type TSecretImport = {
   id: string;

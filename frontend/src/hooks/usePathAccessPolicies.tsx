@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useSubscription, useProject } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
 import { useGetAccessApprovalPolicies } from "@app/hooks/api";
 
 const matchesPath = (folderPath: string, pattern: string) => {

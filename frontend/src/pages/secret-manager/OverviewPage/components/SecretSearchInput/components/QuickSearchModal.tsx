@@ -33,8 +33,8 @@ import {
 } from "@app/components/v2";
 import { useDebounce } from "@app/hooks";
 import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
-import { WsTag } from "@app/hooks/api/tags/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
+import { WsTag } from "@app/hooks/api/tags/types";
 import { QuickSearchSecretRotationItem } from "@app/pages/secret-manager/OverviewPage/components/SecretSearchInput/components/QuickSearchSecretRotationItem";
 import { RowType } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.types";
 

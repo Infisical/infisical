@@ -24,8 +24,8 @@ import {
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import {
   useCreateIdentityProjectAdditionalPrivilege,

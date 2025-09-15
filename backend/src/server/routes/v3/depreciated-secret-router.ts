@@ -298,7 +298,7 @@ export const registerDepreciatedSecretRouter = async (server: FastifyZodProvider
         workspaceId = projectId;
       }
 
-      if (!workspaceId || !environment) throw new BadRequestError({ message: "Missing workspace id or environment" });
+      if (!workspaceId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
       const { secrets, imports } = await server.services.secret.getSecretsRaw({
         actorId: req.permission.id,

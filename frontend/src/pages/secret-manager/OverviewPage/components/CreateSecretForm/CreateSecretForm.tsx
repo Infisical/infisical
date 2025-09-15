@@ -19,8 +19,8 @@ import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
@@ -92,7 +92,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
 
         if (folderName && parentPath && canCreateFolder) {
           await createFolder({
-            projectId: projectId,
+            projectId,
             path: parentPath,
             environment,
             name: folderName
@@ -190,7 +190,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
     try {
       const parsedSlug = slugSchema.parse(slug);
       await createWsTag.mutateAsync({
-        projectId: projectId,
+        projectId,
         tagSlug: parsedSlug,
         tagColor: ""
       });

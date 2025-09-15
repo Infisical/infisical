@@ -36,13 +36,13 @@ export const WebhooksTab = withProjectPermission(
     const { t } = useTranslation();
 
     const { currentProject } = useProject();
-    const workspaceId = currentProject?.id || "";
+    const projectId = currentProject?.id || "";
     const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
       "addWebhook",
       "deleteWebhook"
     ] as const);
 
-    const { data: webhooks, isPending: isWebhooksLoading } = useGetWebhooks(workspaceId);
+    const { data: webhooks, isPending: isWebhooksLoading } = useGetWebhooks(projectId);
 
     // mutation
     const { mutateAsync: createWebhook } = useCreateWebhook();
@@ -62,7 +62,7 @@ export const WebhooksTab = withProjectPermission(
       try {
         await createWebhook({
           ...data,
-          projectId: workspaceId
+          projectId
         });
         handlePopUpClose("addWebhook");
         createNotification({
@@ -82,7 +82,7 @@ export const WebhooksTab = withProjectPermission(
       try {
         await updateWebhook({
           webhookId,
-          projectId: workspaceId,
+          projectId,
           isDisabled
         });
         createNotification({
@@ -103,7 +103,7 @@ export const WebhooksTab = withProjectPermission(
         const webhookId = popUp?.deleteWebhook?.data as string;
         await deleteWebhook({
           webhookId,
-          projectId: workspaceId
+          projectId
         });
         handlePopUpClose("deleteWebhook");
         createNotification({
@@ -123,7 +123,7 @@ export const WebhooksTab = withProjectPermission(
       try {
         await testWebhook({
           webhookId,
-          projectId: workspaceId
+          projectId
         });
         createNotification({
           type: "success",

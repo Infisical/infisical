@@ -63,9 +63,9 @@ import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
-  useSubscription,
-  useProject
+  useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretRotationActions } from "@app/context/ProjectPermissionContext/types";
 import {
@@ -92,11 +92,11 @@ import {
 import { useGetProjectSecretsOverview } from "@app/hooks/api/dashboard/queries";
 import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
-import { SecretType, SecretV3RawSanitized, TSecretFolder, ProjectEnv } from "@app/hooks/api/types";
-import { ProjectVersion } from "@app/hooks/api/projects/types";
+import { ProjectEnv, SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
 import {
   useDynamicSecretOverview,
   useFolderOverview,
@@ -270,7 +270,7 @@ export const OverviewPage = () => {
     getImportedSecretByKey,
     getEnvImportedSecretKeyCount
   } = useGetImportedSecretsAllEnvs({
-    projectId: projectId,
+    projectId,
     path: secretPath,
     environments: (userAvailableEnvs || []).map(({ slug }) => slug)
   });
@@ -278,7 +278,7 @@ export const OverviewPage = () => {
   const isFilteredByResources = Object.values(filter).some(Boolean);
   const { isPending: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
     {
-      projectId: projectId,
+      projectId,
       environments: visibleEnvs.map((env) => env.slug),
       secretPath,
       orderDirection,
@@ -392,7 +392,7 @@ export const OverviewPage = () => {
         name: folderName,
         path: secretPath,
         environment,
-        projectId: projectId,
+        projectId,
         description
       });
     });
@@ -484,7 +484,7 @@ export const OverviewPage = () => {
         );
         if (folderName && parentPath && canCreateFolder) {
           await createFolder({
-            projectId: projectId,
+            projectId,
             path: parentPath,
             environment: env,
             name: folderName
@@ -648,7 +648,7 @@ export const OverviewPage = () => {
       );
       if (folderName && parentPath && canCreateFolder) {
         await createFolder({
-          projectId: projectId,
+          projectId,
           environment: slug,
           path: parentPath,
           name: folderName
@@ -662,7 +662,7 @@ export const OverviewPage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/secrets/$envSlug",
         params: {
-          projectId: projectId,
+          projectId,
           envSlug: slug
         },
         search: query
@@ -1412,7 +1412,7 @@ export const OverviewPage = () => {
                         <Link
                           to="/projects/secret-management/$projectId/settings"
                           params={{
-                            projectId: projectId
+                            projectId
                           }}
                           hash="environments"
                         >

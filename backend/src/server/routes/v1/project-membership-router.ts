@@ -137,7 +137,6 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     }
   });
 
-  // TODO(depri): ask this usage again
   server.route({
     method: "POST",
     url: "/:projectId/memberships/details",

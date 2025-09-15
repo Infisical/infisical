@@ -73,7 +73,7 @@ export const CommitDetailsPage = () => {
         >
           <CommitDetailsTab
             selectedCommitId={selectedCommitId}
-            workspaceId={currentProject.id}
+            projectId={currentProject.id}
             goBackToHistory={handleGoBackToHistory}
             envSlug={envSlug}
             goToRollbackPreview={handleGoToRollbackPreview}

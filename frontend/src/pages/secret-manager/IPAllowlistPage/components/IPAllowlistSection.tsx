@@ -8,8 +8,8 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useSubscription,
-  useProject
+  useProject,
+  useSubscription
 } from "@app/context";
 import { useDeleteTrustedIp } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";

@@ -1,7 +1,6 @@
-import { TListProjectIdentitiesDTO, TSearchProjectsDTO } from "./types";
-
 import type { CaStatus } from "../ca";
 import { WorkflowIntegrationPlatform } from "../workflowIntegrations/types";
+import { TListProjectIdentitiesDTO, TSearchProjectsDTO } from "./types";
 
 export const projectKeys = {
   getProjectById: (projectId: string) => ["projects", { projectId }] as const,

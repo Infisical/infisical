@@ -9,9 +9,9 @@ import { Button, DeleteActionModal, Tooltip } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
-  useSubscription,
-  useProject
+  useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
@@ -133,7 +133,7 @@ export const SelectionPanel = ({
                 folderId: folder?.id,
                 path: secretPath,
                 environment: env.slug,
-                projectId: projectId
+                projectId
               });
             }
           })

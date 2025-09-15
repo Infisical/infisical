@@ -13,9 +13,9 @@ import { motion } from "framer-motion";
 import { Badge, Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
 import {
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
-  useSubscription,
-  useProject
+  useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretScanningFindingActions } from "@app/context/ProjectPermissionContext/types";
 import { useGetSecretScanningUnresolvedFindingCount } from "@app/hooks/api/secretScanningV2";

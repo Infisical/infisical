@@ -57,7 +57,7 @@ const Page = () => {
       {
         actorId: identityId,
         actorType: ActorType.IDENTITY,
-        projectId: projectId
+        projectId
       },
       {
         onSuccess: () => {
@@ -86,7 +86,7 @@ const Page = () => {
       navigate({
         to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
         params: {
-          projectId: projectId
+          projectId
         },
         search: {
           selectedTab: "identities"

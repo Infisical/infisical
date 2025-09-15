@@ -27,8 +27,8 @@ import {
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { useGetPkiSubscriberCertificates } from "@app/hooks/api";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";

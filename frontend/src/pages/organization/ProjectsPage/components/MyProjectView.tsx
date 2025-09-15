@@ -41,9 +41,9 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { ProjectType, Project } from "@app/hooks/api/projects/types";
 import {
   ProjectListToggle,
   ProjectListView

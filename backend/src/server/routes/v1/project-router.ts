@@ -19,15 +19,28 @@ import {
 } from "@app/db/schemas";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
+import { sanitizedSshCa } from "@app/ee/services/ssh/ssh-certificate-authority-schema";
+import { sanitizedSshCertificate } from "@app/ee/services/ssh-certificate/ssh-certificate-schema";
+import { sanitizedSshCertificateTemplate } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-schema";
+import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
+import { LoginMappingSource } from "@app/ee/services/ssh-host/ssh-host-types";
+import { sanitizedSshHostGroup } from "@app/ee/services/ssh-host-group/ssh-host-group-schema";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { re2Validator } from "@app/lib/zod";
 import { readLimit, requestAccessLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
+import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
 import { ProjectFilterType, SearchProjectSortBy } from "@app/services/project/project-types";
 import { validateSlackChannelsField } from "@app/services/slack/slack-auth-validators";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
 import {
@@ -36,19 +49,6 @@ import {
   SanitizedProjectSchema
 } from "../sanitizedSchemas";
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
-import { slugSchema } from "@app/server/lib/schemas";
-import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
-import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
-import { sanitizedSshCertificate } from "@app/ee/services/ssh-certificate/ssh-certificate-schema";
-import { sanitizedSshCertificateTemplate } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-schema";
-import { sanitizedSshCa } from "@app/ee/services/ssh/ssh-certificate-authority-schema";
-import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
-import { LoginMappingSource } from "@app/ee/services/ssh-host/ssh-host-types";
-import { sanitizedSshHostGroup } from "@app/ee/services/ssh-host-group/ssh-host-group-schema";
-import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
-import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
-import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
 
 const projectWithEnv = SanitizedProjectSchema.merge(
   z.object({
@@ -292,7 +292,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // TODO(depri): confirm with the team
   server.route({
     method: "GET",
     url: "/slug/:slug",

@@ -2,7 +2,7 @@ import { faFingerprint } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
-import { useSubscription, useProject } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { TSecretSync } from "@app/hooks/api/secretSyncs";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components/LogsSection";

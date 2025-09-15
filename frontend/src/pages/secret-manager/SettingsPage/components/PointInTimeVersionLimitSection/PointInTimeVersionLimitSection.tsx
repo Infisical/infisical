@@ -4,9 +4,9 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { useProjectPermission, useProject } from "@app/context";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { useProject, useProjectPermission } from "@app/context";
 import { useUpdateProject } from "@app/hooks/api";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const formSchema = z.object({
   pitVersionLimit: z.coerce.number().min(1).max(100)

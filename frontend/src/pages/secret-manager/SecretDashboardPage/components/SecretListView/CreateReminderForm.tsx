@@ -137,7 +137,7 @@ const useWorkspaceMembers = () => {
 export const CreateReminderForm = ({
   isOpen,
   onOpenChange,
-  projectId: projectId,
+  projectId,
   environment,
   secretPath,
   secretId,

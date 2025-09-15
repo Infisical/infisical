@@ -30,8 +30,8 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { useDebounce } from "@app/hooks";
 import { useMoveSecrets } from "@app/hooks/api";
 import { useGetProjectSecretsQuickSearch } from "@app/hooks/api/dashboard";
-import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
+import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 type Props = {
   isOpen: boolean;

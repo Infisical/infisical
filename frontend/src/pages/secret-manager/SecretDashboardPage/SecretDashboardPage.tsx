@@ -25,8 +25,8 @@ import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import {
   ProjectPermissionCommitsActions,
@@ -50,10 +50,10 @@ import { useGetProjectSecretsDetails } from "@app/hooks/api/dashboard";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { SecretV3RawSanitized } from "@app/hooks/api/types";
-import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { usePathAccessPolicies } from "@app/hooks/usePathAccessPolicies";
 import { useResizableColWidth } from "@app/hooks/useResizableColWidth";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
@@ -148,7 +148,7 @@ const Page = () => {
 
   useEffect(() => {
     if (isBatchMode && projectId && environment && secretPath) {
-      loadPendingChanges({ projectId: projectId, environment, secretPath });
+      loadPendingChanges({ projectId, environment, secretPath });
     }
   }, [isBatchMode, projectId, environment, secretPath, loadPendingChanges]);
 
@@ -248,7 +248,7 @@ const Page = () => {
       navigate({
         to: "/projects/secret-management/$projectId/overview",
         params: {
-          projectId: projectId
+          projectId
         }
       });
     }
@@ -262,7 +262,7 @@ const Page = () => {
     isFetched
   } = useGetProjectSecretsDetails({
     environment,
-    projectId: projectId,
+    projectId,
     secretPath,
     offset,
     limit,
@@ -316,7 +316,7 @@ const Page = () => {
 
   // fetch imported secrets to show user the overriden ones
   const { data: importedSecrets } = useGetImportedSecretsSingleEnv({
-    projectId: projectId,
+    projectId,
     environment,
     path: secretPath,
     options: {
@@ -416,7 +416,7 @@ const Page = () => {
       navigate({
         to: "/projects/secret-management/$projectId/commits/$environment/$folderId",
         params: {
-          projectId: projectId,
+          projectId,
           folderId,
           environment
         },
@@ -647,7 +647,7 @@ const Page = () => {
                 ? change.tags?.map((tag) => ({
                     id: tag.id,
                     slug: tag.slug,
-                    projectId: projectId,
+                    projectId,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                     __v: 0
@@ -955,7 +955,7 @@ const Page = () => {
                   secretImports={imports}
                   isFetching={isDetailsFetching}
                   environment={environment}
-                  workspaceId={projectId}
+                  projectId={projectId}
                   secretPath={secretPath}
                   importedSecrets={importedSecrets}
                 />
@@ -964,7 +964,7 @@ const Page = () => {
                 <FolderListView
                   folders={mergedFolders}
                   environment={environment}
-                  workspaceId={projectId}
+                  projectId={projectId}
                   secretPath={secretPath}
                   onNavigateToFolder={handleResetFilter}
                   canNavigate={isFetched}
@@ -999,7 +999,7 @@ const Page = () => {
                 <CommitForm
                   onCommit={handleCreateCommit}
                   environment={environment}
-                  workspaceId={projectId}
+                  projectId={projectId}
                   secretPath={secretPath}
                   isCommitting={isCommitPending}
                 />

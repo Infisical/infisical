@@ -35,9 +35,9 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
-  useUser,
-  useProject
+  useUser
 } from "@app/context";
 import {
   getUserTablePreference,

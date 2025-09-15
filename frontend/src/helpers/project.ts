@@ -1,6 +1,6 @@
 import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/projects/queries";
-import { ProjectType, ProjectEnv } from "@app/hooks/api/projects/types";
+import { ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
 
 const secretsToBeAdded = [
   {
@@ -47,8 +47,8 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
   });
 
   try {
-    const { data } = await apiRequest.post("/api/v3/secrets/batch/raw", {
-      workspaceId: project.id,
+    const { data } = await apiRequest.post("/api/v4/secrets/batch", {
+      projectId: project.id,
       environment: "dev",
       secretPath: "/",
       secrets: secretsToBeAdded

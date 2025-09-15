@@ -12,8 +12,8 @@ import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { AddPoliciesButton } from "./AddPoliciesButton";
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";

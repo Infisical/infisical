@@ -24,8 +24,8 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useSubscription,
-  useProject
+  useProject,
+  useSubscription
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { projectKeys } from "@app/hooks/api";

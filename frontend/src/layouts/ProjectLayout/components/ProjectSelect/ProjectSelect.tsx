@@ -28,15 +28,15 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
-  useSubscription,
-  useProject
+  useProject,
+  useSubscription
 } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
+import { Project } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { Project } from "@app/hooks/api/projects/types";
 
 export const ProjectSelect = () => {
   const [searchProject, setSearchProject] = useState("");

@@ -8,9 +8,9 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
-  useSubscription,
-  useProject
+  useSubscription
 } from "@app/context";
 import { useDeleteWsEnvironment } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";

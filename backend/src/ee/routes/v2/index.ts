@@ -7,9 +7,9 @@ import {
   SECRET_SCANNING_REGISTER_ROUTER_MAP
 } from "@app/ee/routes/v2/secret-scanning-v2-routers";
 
+import { registerDepreciatedProjectRoleRouter } from "./depreciated-project-role-router";
 import { registerGatewayV2Router } from "./gateway-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
-import { registerDepreciatedProjectRoleRouter } from "./depreciated-project-role-router";
 import { registerSecretApprovalPolicyRouter } from "./secret-approval-policy-router";
 
 export const registerV2EERoutes = async (server: FastifyZodProvider) => {

@@ -10,7 +10,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { IconButton, Input, Spinner, Tooltip } from "@app/components/v2";
-import { ProjectPermissionSub, useProjectPermission, useProject } from "@app/context";
+import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";

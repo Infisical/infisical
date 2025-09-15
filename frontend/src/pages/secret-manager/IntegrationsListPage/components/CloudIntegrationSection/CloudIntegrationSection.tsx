@@ -24,8 +24,8 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { SecretSync } from "@app/hooks/api/secretSyncs";

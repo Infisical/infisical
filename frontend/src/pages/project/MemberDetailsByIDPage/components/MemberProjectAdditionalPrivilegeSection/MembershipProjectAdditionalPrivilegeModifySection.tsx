@@ -23,8 +23,8 @@ import {
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import {
   useCreateProjectUserAdditionalPrivilege,

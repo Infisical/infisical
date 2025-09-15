@@ -25,7 +25,7 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
     try {
       await deleteMutateAsync({
         identityId: id,
-        projectId: projectId
+        projectId
       });
 
       createNotification({

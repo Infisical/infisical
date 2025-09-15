@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { BreadcrumbTypes } from "@app/components/v2";
 import { projectKeys } from "@app/hooks/api";
-import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
 import { fetchProjectById } from "@app/hooks/api/projects/queries";
+import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
 import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
 import { SecretManagerLayout } from "@app/layouts/SecretManagerLayout";
 

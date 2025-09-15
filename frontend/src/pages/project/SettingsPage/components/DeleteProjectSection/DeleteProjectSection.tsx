@@ -9,8 +9,8 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useOrganization,
-  useProjectPermission,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useDeleteWorkspace, useGetWorkspaceUsers, useLeaveProject } from "@app/hooks/api";

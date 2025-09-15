@@ -172,7 +172,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      if (!projectId || !environment) throw new BadRequestError({ message: "Missing workspace id or environment" });
+      if (!projectId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
       const { secrets, imports } = await server.services.secret.getSecretsRaw({
         actorId: req.permission.id,
@@ -225,7 +225,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/raw/id/:secretId",
+    url: "/id/:secretId",
     config: {
       rateLimit: secretsLimit
     },

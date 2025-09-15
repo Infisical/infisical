@@ -1,7 +1,7 @@
 import { EnforcementLevel, PolicyType } from "../policies/enums";
+import { ProjectEnv } from "../projects/types";
 import { TProjectPermission } from "../roles/types";
 import { ApprovalStatus } from "../secretApprovalRequest/types";
-import { ProjectEnv } from "../projects/types";
 
 export type TAccessApprovalPolicy = {
   id: string;

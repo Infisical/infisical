@@ -16,6 +16,8 @@ import { registerCertificateTemplateRouter } from "./certificate-template-router
 import { registerDepreciatedProjectEnvRouter } from "./depreciated-project-env-router";
 import { registerDepreciatedProjectMembershipRouter } from "./depreciated-project-membership-router";
 import { registerDepreciatedProjectRouter } from "./depreciated-project-router";
+import { registerDepreciatedSecretFolderRouter } from "./depreciated-secret-folder-router";
+import { registerDepreciatedSecretImportRouter } from "./depreciated-secret-import-router";
 import { registerDepreciatedSecretTagRouter } from "./depreciated-secret-tag-router";
 import { registerEventRouter } from "./event-router";
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";
@@ -30,6 +32,7 @@ import { registerIdentityKubernetesRouter } from "./identity-kubernetes-auth-rou
 import { registerIdentityLdapAuthRouter } from "./identity-ldap-auth-router";
 import { registerIdentityOciAuthRouter } from "./identity-oci-auth-router";
 import { registerIdentityOidcAuthRouter } from "./identity-oidc-auth-router";
+import { registerIdentityProjectRouter } from "./identity-project-router";
 import { registerIdentityRouter } from "./identity-router";
 import { registerIdentityTlsCertAuthRouter } from "./identity-tls-cert-auth-router";
 import { registerIdentityTokenAuthRouter } from "./identity-token-auth-router";
@@ -50,8 +53,6 @@ import { registerProjectKeyRouter } from "./project-key-router";
 import { registerProjectMembershipRouter } from "./project-membership-router";
 import { registerProjectRouter } from "./project-router";
 import { SECRET_REMINDER_REGISTER_ROUTER_MAP } from "./reminder-routers";
-import { registerDepreciatedSecretFolderRouter } from "./depreciated-secret-folder-router";
-import { registerDepreciatedSecretImportRouter } from "./depreciated-secret-import-router";
 import { registerSecretRequestsRouter } from "./secret-requests-router";
 import { registerSecretSharingRouter } from "./secret-sharing-router";
 import { registerSecretTagRouter } from "./secret-tag-router";
@@ -62,7 +63,6 @@ import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
 import { registerWebhookRouter } from "./webhook-router";
 import { registerWorkflowIntegrationRouter } from "./workflow-integration-router";
-import { registerIdentityProjectRouter } from "./identity-project-router";
 
 export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerSsoRouter, { prefix: "/sso" });

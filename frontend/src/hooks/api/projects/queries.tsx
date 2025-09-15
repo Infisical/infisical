@@ -31,6 +31,8 @@ import {
   CreateWorkspaceDTO,
   DeleteEnvironmentDTO,
   DeleteWorkspaceDTO,
+  Project,
+  ProjectEnv,
   ProjectIdentityOrderBy,
   ProjectType,
   TGetUpgradeProjectStatusDTO,
@@ -41,9 +43,7 @@ import {
   TUpdateWorkspaceUserRoleDTO,
   UpdateAuditLogsRetentionDTO,
   UpdateEnvironmentDTO,
-  UpdateProjectDTO,
-  Project,
-  ProjectEnv
+  UpdateProjectDTO
 } from "./types";
 
 export const fetchProjectById = async (projectId: string) => {

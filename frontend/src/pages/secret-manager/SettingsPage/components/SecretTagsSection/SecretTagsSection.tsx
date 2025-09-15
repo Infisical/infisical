@@ -7,8 +7,8 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteWsTag } from "@app/hooks/api";

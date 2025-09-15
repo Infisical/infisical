@@ -55,9 +55,9 @@ import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
-  useSubscription,
-  useProject
+  useSubscription
 } from "@app/context";
 import {
   ProjectPermissionCommitsActions,
@@ -635,7 +635,7 @@ export const ActionBar = ({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({});
-      queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath });
+      dashboardKeys.getDashboardSecrets({ projectId, secretPath });
       queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.count({ projectId })
       });

@@ -66,7 +66,7 @@ export const SecretApprovalsPage = () => {
             <AccessApprovalRequest projectId={projectId} projectSlug={projectSlug} />
           </TabPanel>
           <TabPanel value={TabSection.Policies}>
-            <ApprovalPolicyList workspaceId={projectId} />
+            <ApprovalPolicyList projectId={projectId} />
           </TabPanel>
         </Tabs>
       </div>

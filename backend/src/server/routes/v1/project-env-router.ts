@@ -85,7 +85,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          workspace: z.string(),
+          projectId: z.string(),
           environment: ProjectEnvironmentsSchema
         })
       }
@@ -114,7 +114,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       });
       return {
         message: "Successfully created new environment",
-        workspace: req.params.projectId,
+        projectId: req.params.projectId,
         environment
       };
     }
@@ -147,7 +147,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          workspace: z.string(),
+          projectId: z.string(),
           environment: ProjectEnvironmentsSchema
         })
       }
@@ -182,7 +182,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
 
       return {
         message: "Successfully updated environment",
-        workspace: req.params.projectId,
+        projectId: req.params.projectId,
         environment
       };
     }
@@ -210,7 +210,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          workspace: z.string(),
+          projectId: z.string(),
           environment: ProjectEnvironmentsSchema
         })
       }
@@ -240,7 +240,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
 
       return {
         message: "Successfully deleted environment",
-        workspace: req.params.projectId,
+        projectId: req.params.projectId,
         environment
       };
     }

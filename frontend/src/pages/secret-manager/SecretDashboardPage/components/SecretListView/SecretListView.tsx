@@ -57,7 +57,7 @@ type Props = {
 export const SecretListView = ({
   secrets = [],
   environment,
-  projectId: projectId,
+  projectId,
   secretPath = "/",
   tags: wsTags = [],
   isVisible,
@@ -93,7 +93,7 @@ export const SecretListView = ({
     message:
       "You have unsaved changes. If you leave now, your work will be lost. Do you want to continue?",
     context: {
-      projectId: projectId,
+      projectId,
       environment,
       secretPath
     }
@@ -337,7 +337,7 @@ export const SecretListView = ({
               };
 
               addPendingChange(updatedCreate, {
-                projectId: projectId,
+                projectId,
                 environment,
                 secretPath
               });
@@ -369,7 +369,7 @@ export const SecretListView = ({
               };
 
               addPendingChange(updateChange, {
-                projectId: projectId,
+                projectId,
                 environment,
                 secretPath
               });
@@ -422,7 +422,7 @@ export const SecretListView = ({
           })
         });
         queryClient.invalidateQueries({
-          queryKey: commitKeys.count({ projectId: projectId, environment, directory: secretPath })
+          queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
         });
         queryClient.invalidateQueries({
           queryKey: commitKeys.history({
@@ -479,7 +479,7 @@ export const SecretListView = ({
         };
 
         addPendingChange(deleteChange, {
-          projectId: projectId,
+          projectId,
           environment,
           secretPath
         });
@@ -492,7 +492,7 @@ export const SecretListView = ({
       await handleSecretOperation("delete", SecretType.Shared, key, { secretId });
       // wrap this in another function and then reuse
       queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId: projectId, secretPath })
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
@@ -512,7 +512,7 @@ export const SecretListView = ({
         })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ projectId: projectId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.history({ projectId, environment, directory: secretPath })

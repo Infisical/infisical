@@ -40,9 +40,9 @@ import {
 import {
   ProjectPermissionSub,
   TProjectPermission,
+  useProject,
   useProjectPermission,
-  useSubscription,
-  useProject
+  useSubscription
 } from "@app/context";
 import { ProjectPermissionActions } from "@app/context/ProjectPermissionContext/types";
 import {
@@ -59,14 +59,14 @@ import {
 import { useGetAccessApprovalPolicies } from "@app/hooks/api/accessApproval/queries";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { PolicyType } from "@app/hooks/api/policies/enums";
-import { TAccessApprovalPolicy, Project } from "@app/hooks/api/types";
+import { Project, TAccessApprovalPolicy } from "@app/hooks/api/types";
 
 import { AccessPolicyForm } from "./components/AccessPolicyModal";
 import { ApprovalPolicyRow } from "./components/ApprovalPolicyRow";
 import { RemoveApprovalPolicyModal } from "./components/RemoveApprovalPolicyModal";
 
 interface IProps {
-  workspaceId: string;
+  projectId: string;
 }
 
 enum PolicyOrderBy {
@@ -118,7 +118,7 @@ const useApprovalPolicies = (permission: TProjectPermission, currentProject?: Pr
   };
 };
 
-export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
+export const ApprovalPolicyList = ({ projectId }: IProps) => {
   const { handlePopUpToggle, handlePopUpOpen, popUp } = usePopUp([
     "policyForm",
     "deletePolicy",
@@ -128,7 +128,7 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
 
-  const { data: members } = useGetWorkspaceUsers(workspaceId, true);
+  const { data: members } = useGetWorkspaceUsers(projectId, true);
   const { data: groups } = useListWorkspaceGroups(currentProject?.id || "");
 
   const { policies, isLoading: isPoliciesLoading } = useApprovalPolicies(

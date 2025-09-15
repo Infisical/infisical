@@ -1,7 +1,7 @@
 import { faBan } from "@fortawesome/free-solid-svg-icons";
 
 import { AccessRestrictedBanner, ContentLoader, EmptyState } from "@app/components/v2";
-import { useSubscription, useProject } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
 import { useGetSecretScanningConfig } from "@app/hooks/api/secretScanningV2";
 
 import { SecretScanningConfigForm } from "./SecretScanningConfigForm";

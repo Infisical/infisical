@@ -39,9 +39,9 @@ import {
 import {
   ProjectPermissionKmipActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
-  useSubscription,
-  useProject
+  useSubscription
 } from "@app/context";
 import {
   getUserTablePreference,

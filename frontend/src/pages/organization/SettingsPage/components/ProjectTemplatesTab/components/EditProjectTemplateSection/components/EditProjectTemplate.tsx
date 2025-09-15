@@ -7,8 +7,8 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
-import { TProjectTemplate, useDeleteProjectTemplate } from "@app/hooks/api/projectTemplates";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { TProjectTemplate, useDeleteProjectTemplate } from "@app/hooks/api/projectTemplates";
 
 import { ProjectTemplateDetailsModal } from "../../ProjectTemplateDetailsModal";
 import { ProjectTemplateEnvironmentsForm } from "./ProjectTemplateEnvironmentsForm";

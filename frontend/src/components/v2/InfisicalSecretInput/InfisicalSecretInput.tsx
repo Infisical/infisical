@@ -133,7 +133,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const { data: folders } = useGetProjectFolders({
       environment: suggestionSource.environment || "",
       path: suggestionSource.secretPath || "",
-      projectId: projectId,
+      projectId,
       options: {
         enabled: isPopupOpen
       }

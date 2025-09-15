@@ -25,14 +25,14 @@ interface CommitFormProps {
   onCommit: (changes: PendingChanges, commitMessage: string) => Promise<void>;
   isCommitting?: boolean;
   environment: string;
-  workspaceId: string;
+  projectId: string;
   secretPath: string;
 }
 
 interface ResourceChangeProps {
   change: PendingChange;
   environment: string;
-  workspaceId: string;
+  projectId: string;
   secretPath: string;
 }
 
@@ -237,7 +237,7 @@ const RenderFolderChanges = ({ onDiscard, change }: RenderResourceProps) => {
 const ResourceChange: React.FC<ResourceChangeProps> = ({
   change,
   environment,
-  workspaceId,
+  projectId,
   secretPath
 }) => {
   const { removePendingChange } = useBatchModeActions();
@@ -245,7 +245,7 @@ const ResourceChange: React.FC<ResourceChangeProps> = ({
   const handleDeletePending = useCallback(
     (changeType: string, id: string) => {
       removePendingChange(id, changeType, {
-        projectId: workspaceId,
+        projectId,
         environment,
         secretPath
       });
@@ -272,7 +272,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
   onCommit,
   isCommitting = false,
   environment,
-  workspaceId,
+  projectId,
   secretPath
 }) => {
   const { isBatchMode, pendingChanges, totalChangesCount } = useBatchMode();
@@ -291,7 +291,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     }
     await onCommit(pendingChanges, commitMessage);
     clearAllPendingChanges({
-      projectId: workspaceId,
+      projectId,
       environment,
       secretPath
     });
@@ -335,9 +335,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                   <div className="ml-6 mt-0.5 flex items-center gap-3">
                     <Button
                       size="sm"
-                      onClick={() =>
-                        clearAllPendingChanges({ projectId: workspaceId, environment, secretPath })
-                      }
+                      onClick={() => clearAllPendingChanges({ projectId, environment, secretPath })}
                       isDisabled={totalChangesCount === 0}
                       variant="outline_bg"
                       className="px-4 hover:border-red/40 hover:bg-red/[0.1]"
@@ -393,7 +391,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                           key={change.id}
                           change={change}
                           environment={environment}
-                          workspaceId={workspaceId}
+                          projectId={projectId}
                           secretPath={secretPath}
                         />
                       ))}
@@ -414,7 +412,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                           key={change.id}
                           change={change}
                           environment={environment}
-                          workspaceId={workspaceId}
+                          projectId={projectId}
                           secretPath={secretPath}
                         />
                       ))}
