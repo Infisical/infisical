@@ -78,7 +78,7 @@ using the Universal Auth authentication method.
     - Access Token Period (optional, default is `0`): If set, the access token becomes a renewable, non-expiring token for the specified period (in seconds). TTL and Max TTL are ignored when this is set. This is ideal for "secret zero" scenarios, where a workload needs to bootstrap itself securely without hard-coded static secrets.
 
     **Lockout Tab**
-    - Lockout (enabled by default): The lockout feature will temporarily block login attempts for a specific identity auth method after X consecutive login failures.
+    - Lockout (enabled by default): The lockout feature will temporarily block login attempts after X consecutive login failures.
     - Lockout Threshold (default is `3`): The amount of times login must fail before locking the identity auth method.
     - Lockout Duration (default is `5 minutes`): How long an identity auth method lockout lasts.
     - Lockout Counter Reset (default is `30 seconds`): How long to wait from the most recent failed login until resetting the lockout counter.
