@@ -1008,26 +1008,25 @@
                   "api-reference/endpoints/organizations/update-membership",
                   "api-reference/endpoints/organizations/delete-membership",
                   "api-reference/endpoints/organizations/bulk-delete-memberships",
-                  "api-reference/endpoints/organizations/list-identity-memberships",
-                  "api-reference/endpoints/organizations/workspaces"
+                  "api-reference/endpoints/organizations/list-identity-memberships"
                 ]
               },
               {
                 "group": "Projects",
                 "pages": [
-                  "api-reference/endpoints/workspaces/get-workspace-by-slug",
-                  "api-reference/endpoints/workspaces/create-workspace",
-                  "api-reference/endpoints/workspaces/delete-workspace",
-                  "api-reference/endpoints/workspaces/get-workspace",
-                  "api-reference/endpoints/workspaces/update-workspace",
-                  "api-reference/endpoints/workspaces/secret-snapshots"
+                  "api-reference/endpoints/projects/get-project-by-slug",
+                  "api-reference/endpoints/projects/create-project",
+                  "api-reference/endpoints/projects/delete-project",
+                  "api-reference/endpoints/projects/get-project",
+                  "api-reference/endpoints/projects/update-project",
+                  "api-reference/endpoints/projects/secret-snapshots"
                 ]
               },
               {
                 "group": "Project Users",
                 "pages": [
-                  "api-reference/endpoints/project-users/invite-member-to-workspace",
-                  "api-reference/endpoints/project-users/remove-member-from-workspace",
+                  "api-reference/endpoints/project-users/invite-member-to-project",
+                  "api-reference/endpoints/project-users/remove-member-from-project",
                   "api-reference/endpoints/project-users/memberships",
                   "api-reference/endpoints/project-users/get-by-username",
                   "api-reference/endpoints/project-users/update-membership"
@@ -1112,9 +1111,7 @@
                   "api-reference/endpoints/secrets/delete",
                   "api-reference/endpoints/secrets/create-many",
                   "api-reference/endpoints/secrets/update-many",
-                  "api-reference/endpoints/secrets/delete-many",
-                  "api-reference/endpoints/secrets/attach-tags",
-                  "api-reference/endpoints/secrets/detach-tags"
+                  "api-reference/endpoints/secrets/delete-many"
                 ]
               },
               {
@@ -2463,6 +2460,121 @@
                 ]
               }
             ]
+          },
+          {
+            "group": "To be depreciated",
+            "pages": [
+              {
+                "group": "Organizations",
+                "pages": [
+                  "api-reference/endpoints/depreciated/organizations/projects"
+                ]
+              },
+              {
+                "group": "Projects",
+                "pages": [
+                  "api-reference/endpoints/depreciated/projects/get-project-by-slug",
+                  "api-reference/endpoints/depreciated/projects/create-project",
+                  "api-reference/endpoints/depreciated/projects/delete-project",
+                  "api-reference/endpoints/depreciated/projects/get-project",
+                  "api-reference/endpoints/depreciated/projects/update-project",
+                  "api-reference/endpoints/depreciated/projects/secret-snapshots"
+                ]
+              },
+              {
+                "group": "Project Users",
+                "pages": [
+                  "api-reference/endpoints/depreciated/project-users/invite-member-to-project",
+                  "api-reference/endpoints/depreciated/project-users/remove-member-from-project",
+                  "api-reference/endpoints/depreciated/project-users/memberships",
+                  "api-reference/endpoints/depreciated/project-users/get-by-username",
+                  "api-reference/endpoints/depreciated/project-users/update-membership"
+                ]
+              },
+              {
+                "group": "Project Groups",
+                "pages": [
+                  "api-reference/endpoints/depreciated/project-groups/create",
+                  "api-reference/endpoints/depreciated/project-groups/delete",
+                  "api-reference/endpoints/depreciated/project-groups/get-by-id",
+                  "api-reference/endpoints/depreciated/project-groups/list",
+                  "api-reference/endpoints/depreciated/project-groups/update"
+                ]
+              },
+              {
+                "group": "Project Identities",
+                "pages": [
+                  "api-reference/endpoints/depreciated/project-identities/add-identity-membership",
+                  "api-reference/endpoints/depreciated/project-identities/list-identity-memberships",
+                  "api-reference/endpoints/depreciated/project-identities/get-by-id",
+                  "api-reference/endpoints/depreciated/project-identities/update-identity-membership",
+                  "api-reference/endpoints/depreciated/project-identities/delete-identity-membership"
+                ]
+              },
+              {
+                "group": "Project Roles",
+                "pages": [
+                  "api-reference/endpoints/depreciated/project-roles/create",
+                  "api-reference/endpoints/depreciated/project-roles/update",
+                  "api-reference/endpoints/depreciated/project-roles/delete",
+                  "api-reference/endpoints/depreciated/project-roles/get-by-slug",
+                  "api-reference/endpoints/depreciated/project-roles/list"
+                ]
+              },
+              {
+                "group": "Environments",
+                "pages": [
+                  "api-reference/endpoints/depreciated/environments/create",
+                  "api-reference/endpoints/depreciated/environments/update",
+                  "api-reference/endpoints/depreciated/environments/delete"
+                ]
+              },
+              {
+                "group": "Folders",
+                "pages": [
+                  "api-reference/endpoints/depreciated/folders/list",
+                  "api-reference/endpoints/depreciated/folders/get-by-id",
+                  "api-reference/endpoints/depreciated/folders/create",
+                  "api-reference/endpoints/depreciated/folders/update",
+                  "api-reference/endpoints/depreciated/folders/delete"
+                ]
+              },
+              {
+                "group": "Secret Tags",
+                "pages": [
+                  "api-reference/endpoints/depreciated/secret-tags/list",
+                  "api-reference/endpoints/depreciated/secret-tags/get-by-id",
+                  "api-reference/endpoints/depreciated/secret-tags/get-by-slug",
+                  "api-reference/endpoints/depreciated/secret-tags/create",
+                  "api-reference/endpoints/depreciated/secret-tags/update",
+                  "api-reference/endpoints/depreciated/secret-tags/delete"
+                ]
+              },
+              {
+                "group": "Secrets",
+                "pages": [
+                  "api-reference/endpoints/depreciated/secrets/list",
+                  "api-reference/endpoints/depreciated/secrets/create",
+                  "api-reference/endpoints/depreciated/secrets/read",
+                  "api-reference/endpoints/depreciated/secrets/update",
+                  "api-reference/endpoints/depreciated/secrets/delete",
+                  "api-reference/endpoints/depreciated/secrets/create-many",
+                  "api-reference/endpoints/depreciated/secrets/update-many",
+                  "api-reference/endpoints/depreciated/secrets/delete-many",
+                  "api-reference/endpoints/depreciated/secrets/attach-tags",
+                  "api-reference/endpoints/depreciated/secrets/detach-tags"
+                ]
+              },
+              {
+                "group": "Secret Imports",
+                "pages": [
+                  "api-reference/endpoints/depreciated/secret-imports/list",
+                  "api-reference/endpoints/depreciated/secret-imports/create",
+                  "api-reference/endpoints/depreciated/secret-imports/update",
+                  "api-reference/endpoints/depreciated/secret-imports/delete"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -2506,7 +2618,7 @@
     "href": "https://infisical.com"
   },
   "api": {
-    "openapi": "https://app.infisical.com/api/docs/json",
+    "openapi": "http://localhost:8080/api/docs/json",
     "mdx": {
       "server": ["https://app.infisical.com"]
     }
