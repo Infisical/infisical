@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ForbiddenError } from "@casl/ability";
+import slugify from "@sindresorhus/slugify";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
@@ -655,7 +656,9 @@ export const identityLdapAuthServiceFactory = ({
     { identityId, username }: TCheckLdapAuthLockoutDTO,
     authFn: () => Promise<T>
   ): Promise<T> => {
-    const LOCKOUT_KEY = `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:${username.trim().toLowerCase()}`;
+    const usernameSlug = slugify(username.trim().toLowerCase());
+
+    const LOCKOUT_KEY = `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:${usernameSlug}`;
 
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
     try {
