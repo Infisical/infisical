@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faCircleQuestion, faUserCircle } from "@fortawesome/free-regular-svg-icons";
 import {
@@ -8,6 +8,7 @@ import {
   faCaretDown,
   faCheck,
   faEnvelope,
+  faExclamationTriangle,
   faInfo,
   faInfoCircle,
   faServer,
@@ -111,6 +112,14 @@ export const Navbar = () => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
   const [showAdminsModal, setShowAdminsModal] = useState(false);
+  const [showCardDeclinedModal, setShowCardDeclinedModal] = useState(false);
+
+  useEffect(() => {
+    if (subscription?.cardDeclined && !sessionStorage.getItem("paymentFailed")) {
+      sessionStorage.setItem("paymentFailed", "true");
+      setShowCardDeclinedModal(true);
+    }
+  }, [subscription]);
 
   const { data: orgs } = useGetOrganizations();
   const navigate = useNavigate();
@@ -222,6 +231,19 @@ export const Navbar = () => {
                   <div className="mr-1 rounded border border-mineshaft-500 px-1 text-xs text-bunker-300 !no-underline">
                     {getPlan(subscription)}
                   </div>
+                  {subscription.cardDeclined && (
+                    <Tooltip
+                      content={`Your payment could not be processed${subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}. Please update your payment method to continue enjoying premium features.`}
+                      className="max-w-xs"
+                    >
+                      <div className="flex items-center">
+                        <FontAwesomeIcon
+                          icon={faExclamationTriangle}
+                          className="animate-pulse cursor-help text-xs text-primary-400"
+                        />
+                      </div>
+                    </Tooltip>
+                  )}
                 </div>
               </Link>
               <DropdownMenuTrigger asChild>
@@ -428,6 +450,49 @@ export const Navbar = () => {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <Modal isOpen={showCardDeclinedModal} onOpenChange={setShowCardDeclinedModal}>
+        <ModalContent
+          title={
+            <div className="flex items-center gap-2">
+              <FontAwesomeIcon icon={faExclamationTriangle} className="text-lg text-primary-400" />
+              Your payment could not be processed.
+            </div>
+          }
+        >
+          <div>
+            <div>
+              <div className="mb-1">
+                <p>
+                  We were unable to process your last payment
+                  {subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}.
+                  Please update your payment information to continue using premium features.
+                </p>
+              </div>
+              <div className="mt-4">
+                <div className="flex space-x-3">
+                  <Link to="/organization/billing" className="inline-flex">
+                    <Button
+                      colorSchema="primary"
+                      variant="solid"
+                      onClick={() => setShowCardDeclinedModal(false)}
+                    >
+                      Update Payment Method
+                    </Button>
+                    <Button
+                      colorSchema="secondary"
+                      variant="outline"
+                      className="ml-2"
+                      onClick={() => setShowCardDeclinedModal(false)}
+                    >
+                      Dismiss
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ModalContent>
+      </Modal>
       <Modal isOpen={showAdminsModal} onOpenChange={setShowAdminsModal}>
         <ModalContent title="Server Administrators" subTitle="View all server administrators">
           <div className="mb-2">

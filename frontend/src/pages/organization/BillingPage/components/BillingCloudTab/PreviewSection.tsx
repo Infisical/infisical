@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
@@ -15,13 +17,15 @@ import {
   useGetOrgPlanBillingInfo,
   useGetOrgTrialUrl
 } from "@app/hooks/api";
+import { subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { ManagePlansModal } from "./ManagePlansModal";
 
 export const PreviewSection = () => {
   const { currentOrg } = useOrganization();
-  const { subscription } = useSubscription();
+  const { subscription } = useSubscription(true);
+  const queryClient = useQueryClient();
   const { data, isPending } = useGetOrgPlanBillingInfo(currentOrg?.id ?? "");
   const getOrgTrialUrl = useGetOrgTrialUrl();
   const createCustomerPortalSession = useCreateCustomerPortalSession();
@@ -36,6 +40,12 @@ export const PreviewSection = () => {
 
     return formattedTotal;
   };
+
+  useEffect(() => {
+    queryClient.invalidateQueries({
+      queryKey: subscriptionQueryKeys.getOrgSubsription(currentOrg?.id ?? "")
+    });
+  }, []);
 
   const formatDate = (date: number) => {
     const createdDate = new Date(date * 1000);

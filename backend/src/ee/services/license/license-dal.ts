@@ -28,7 +28,7 @@ export const licenseDALFactory = (db: TDbClient) => {
   const countOrgUsersAndIdentities = async (orgId: string | null, tx?: Knex) => {
     try {
       // count org users
-      const userDoc = await (tx || db)(TableName.OrgMembership)
+      const userDoc = await (tx || db.replicaNode())(TableName.OrgMembership)
         .where({ status: OrgMembershipStatus.Accepted })
         .andWhere((bd) => {
           if (orgId) {
@@ -42,7 +42,7 @@ export const licenseDALFactory = (db: TDbClient) => {
       const userCount = Number(userDoc?.[0].count);
 
       // count org identities
-      const identityDoc = await (tx || db)(TableName.IdentityOrgMembership)
+      const identityDoc = await (tx || db.replicaNode())(TableName.IdentityOrgMembership)
         .where((bd) => {
           if (orgId) {
             void bd.where({ orgId });

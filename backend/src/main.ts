@@ -5,6 +5,7 @@ import "./lib/telemetry/instrumentation";
 import dotenv from "dotenv";
 
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
+import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 
 import { runMigrations } from "./auto-start-migrations";
 import { initAuditLogDbConnection, initDbConnection } from "./db";
@@ -54,7 +55,8 @@ const run = async () => {
 
   await queue.initialize();
 
-  const keyStore = keyStoreFactory(envConfig);
+  const keyValueStoreDAL = keyValueStoreDALFactory(db);
+  const keyStore = keyStoreFactory(envConfig, keyValueStoreDAL);
   const redis = buildRedisFromConfig(envConfig);
 
   const hsmModule = initializeHsmModule(envConfig);

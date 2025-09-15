@@ -1,5 +1,6 @@
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
+import { TKeyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -27,6 +28,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   queueService: TQueueServiceFactory;
   orgService: TOrgServiceFactory;
   userNotificationDAL: Pick<TUserNotificationDALFactory, "pruneNotifications">;
+  keyValueStoreDAL: Pick<TKeyValueStoreDALFactory, "pruneExpiredKeys">;
 };
 
 export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyResourceCleanUpQueueServiceFactory>;
@@ -43,7 +45,8 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   identityUniversalAuthClientSecretDAL,
   serviceTokenService,
   orgService,
-  userNotificationDAL
+  userNotificationDAL,
+  keyValueStoreDAL
 }: TDailyResourceCleanUpQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -52,6 +55,10 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   }
 
   const init = async () => {
+    if (appCfg.isSecondaryInstance) {
+      return;
+    }
+
     await queueService.stopRepeatableJob(
       QueueName.AuditLogPrune,
       QueueJobs.AuditLogPrune,
@@ -82,6 +89,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
           await orgService.notifyInvitedUsers();
           await auditLogDAL.pruneAuditLog();
           await userNotificationDAL.pruneNotifications();
+          await keyValueStoreDAL.pruneExpiredKeys();
           logger.info(`${QueueName.DailyResourceCleanUp}: queue task completed`);
         } catch (error) {
           logger.error(error, `${QueueName.DailyResourceCleanUp}: resource cleanup failed`);

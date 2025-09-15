@@ -12,7 +12,7 @@ export const kmsRootConfigDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const result = await (tx || db)(TableName.KmsServerRootConfig)
+      const result = await (tx || db?.replicaNode?.() || db)(TableName.KmsServerRootConfig)
         .where({ id } as never)
         .first("*");
       return result;

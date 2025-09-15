@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrgMembershipStatus, TableName, TSamlConfigs, TSamlConfigsUpdate, TUsers } from "@app/db/schemas";
+import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -82,6 +83,19 @@ export const samlConfigServiceFactory = ({
           "Failed to create SAML SSO configuration due to plan restriction. Upgrade plan to create SSO configuration."
       });
 
+    const org = await orgDAL.findOrgById(orgId);
+
+    if (!org) {
+      throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
+    }
+
+    if (org.googleSsoAuthEnforced && isActive) {
+      throw new BadRequestError({
+        message:
+          "You cannot enable SAML SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable SAML SSO."
+      });
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
@@ -119,6 +133,19 @@ export const samlConfigServiceFactory = ({
         message:
           "Failed to update SAML SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
       });
+
+    const org = await orgDAL.findOrgById(orgId);
+
+    if (!org) {
+      throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
+    }
+
+    if (org.googleSsoAuthEnforced && isActive) {
+      throw new BadRequestError({
+        message:
+          "Cannot enable SAML SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable SAML SSO."
+      });
+    }
 
     const updateQuery: TSamlConfigsUpdate = { authProvider, isActive, lastUsed: null };
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
@@ -310,14 +337,6 @@ export const samlConfigServiceFactory = ({
         return foundUser;
       });
     } else {
-      const plan = await licenseService.getPlan(orgId);
-      if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
-        // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
-        throw new BadRequestError({
-          message: "Failed to create new member via SAML due to member limit reached. Upgrade plan to add more members."
-        });
-      }
-
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         newUser = await userDAL.findOne(
@@ -365,6 +384,8 @@ export const samlConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
+          await throwOnPlanSeatLimitReached(licenseService, orgId, UserAliasType.SAML);
+
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
           await orgMembershipDAL.create(

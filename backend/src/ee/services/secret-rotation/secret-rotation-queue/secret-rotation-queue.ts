@@ -361,9 +361,8 @@ export const secretRotationQueueFactory = ({
             },
             tx
           );
+          await secretV2BridgeDAL.invalidateSecretCacheByProjectId(secretRotation.projectId, tx);
         });
-
-        await secretV2BridgeDAL.invalidateSecretCacheByProjectId(secretRotation.projectId);
       } else {
         if (!botKey)
           throw new NotFoundError({

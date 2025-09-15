@@ -15,7 +15,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
   // we are using postion based sorting as its a small list
   // this will return the last value of the position in a folder with secret imports
   const findLastImportPosition = async (folderId: string, tx?: Knex) => {
-    const lastPos = await (tx || db)(TableName.SecretImport)
+    const lastPos = await (tx || db.replicaNode())(TableName.SecretImport)
       .where({ folderId })
       .max("position", { as: "position" })
       .first();
