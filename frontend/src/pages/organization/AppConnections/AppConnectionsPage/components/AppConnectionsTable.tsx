@@ -38,11 +38,7 @@ import { OrgPermissionSubjects, ProjectPermissionSub } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
-import {
-  getUserTablePreference,
-  PreferenceKey,
-  setUserTablePreference
-} from "@app/helpers/userTablePreferences";
+import { getUserTablePreference, PreferenceKey, setUserTablePreference } from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { TAppConnection, useListAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -311,38 +307,46 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
               <FontAwesomeIcon icon={faFilter} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="thin-scrollbar max-h-[70vh] overflow-y-auto" align="end">
+          <DropdownMenuContent
+            sideOffset={2}
+            className="thin-scrollbar max-h-[70vh] overflow-y-auto"
+            align="end"
+          >
             <DropdownMenuLabel>Filter by Apps</DropdownMenuLabel>
             {appConnections.length ? (
-              [...new Set(appConnections.map(({ app }) => app))].map((app) => (
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setFilters((prev) => ({
-                      ...prev,
-                      apps: prev.apps.includes(app)
-                        ? prev.apps.filter((a) => a !== app)
-                        : [...prev.apps, app]
-                    }));
-                  }}
-                  key={app}
-                  icon={
-                    filters.apps.includes(app) && (
-                      <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
-                    )
-                  }
-                  iconPos="right"
-                >
-                  <div className="flex items-center gap-2">
-                    <img
-                      alt={`${APP_CONNECTION_MAP[app].name} integration`}
-                      src={`/images/integrations/${APP_CONNECTION_MAP[app].image}`}
-                      className="h-4 w-4"
-                    />
-                    <span>{APP_CONNECTION_MAP[app].name}</span>
-                  </div>
-                </DropdownMenuItem>
-              ))
+              [...new Set(appConnections.map(({ app }) => app))]
+                .sort((a, b) => {
+                  return a.toLowerCase().localeCompare(b.toLowerCase());
+                })
+                .map((app) => (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setFilters((prev) => ({
+                        ...prev,
+                        apps: prev.apps.includes(app)
+                          ? prev.apps.filter((a) => a !== app)
+                          : [...prev.apps, app]
+                      }));
+                    }}
+                    key={app}
+                    icon={
+                      filters.apps.includes(app) && (
+                        <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                      )
+                    }
+                    iconPos="right"
+                  >
+                    <div className="flex items-center gap-2">
+                      <img
+                        alt={`${APP_CONNECTION_MAP[app].name} integration`}
+                        src={`/images/integrations/${APP_CONNECTION_MAP[app].image}`}
+                        className="h-4 w-4"
+                      />
+                      <span>{APP_CONNECTION_MAP[app].name}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))
             ) : (
               <DropdownMenuItem isDisabled>No Connections Configured</DropdownMenuItem>
             )}

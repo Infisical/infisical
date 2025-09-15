@@ -221,6 +221,7 @@ export type TSearchProjectsDTO = {
   limit?: number;
   offset?: number;
   orderBy?: SearchProjectSortBy;
+  projectIds?: string[];
   orderDirection?: SortDirection;
 };
 
