@@ -1,0 +1,78 @@
+versions:
+  "infisical/v0.130.0-postgres":
+    breaking_changes:
+      - title: "API Key Authentication Deprecation"
+        description: "Legacy API key authentication method has been deprecated and will be removed in future versions"
+        action: "Migrate all integrations to use Machine Identity authentication with JWT tokens. Update your CI/CD pipelines and automation scripts"
+        impact: "high"
+      - title: "Environment Variable Structure Changes"
+        description: "Environment variable naming convention has changed from INFISICAL_ prefix to INF_ for better compatibility"
+        action: "Update all environment variable references in your deployment configurations, Docker files, and Kubernetes manifests"
+        impact: "medium"
+      - title: "RBAC Permission Model Updates"
+        description: "Role-based access control has been restructured with new permission granularity affecting existing role assignments"
+        action: "Review and reassign user roles and permissions. Test access to sensitive resources before production deployment"
+        impact: "high"
+    db_schema_changes: "Extensive database schema restructuring for authentication and RBAC systems. Requires table reorganization and reindexing which may cause extended downtime."
+    notes: "Critical authentication and permission system overhaul. Database migration is extensive and may cause extended downtime. Plan maintenance window accordingly and ensure health checks are adjusted for longer migration time."
+
+
+  "infisical/v0.131.0-postgres":
+    breaking_changes:
+      - title: "Webhook Payload Format Changes"
+        description: "Webhook event payloads now use a new standardized format that is incompatible with previous versions"
+        action: "Update all webhook consumers to handle the new payload structure. Test webhook integrations with Slack, Discord, and custom endpoints"
+        impact: "high"
+      - title: "Secret Versioning API Breaking Changes"
+        description: "Secret versioning endpoints have changed from /api/v2/secrets to /api/v3/secrets with modified request/response schemas"
+        action: "Update all API clients and SDKs to use the new v3 endpoints. Modify any custom integrations or scripts"
+        impact: "medium"
+      - title: "CLI Authentication Method Changes"
+        description: "Infisical CLI now requires explicit authentication method specification and no longer supports legacy token formats"
+        action: "Update CLI installation in all environments. Re-authenticate CLI instances using 'infisical login' command"
+        impact: "medium"
+    db_schema_changes: "Major database schema changes for API restructuring. Includes reindexing large tables and webhook payload modifications which significantly impact performance during migration."
+    notes: "Major API restructure with extensive database changes. Migration involves reindexing large tables and may significantly impact instance performance. Health checks will likely fail during migration. Schedule during lowest traffic period."
+
+  "v0.147.0":
+    breaking_changes:
+      - title: "Docker Tag Format Changes"
+        description: "Docker tags no longer contain the -postgres suffix. This affects deployment configurations"
+        action: "Update all deployment scripts, Docker Compose files, and Kubernetes manifests to use new tag format without -postgres suffix"
+        impact: "high"
+      - title: "Release Channel System Introduction"
+        description: "Formal release channels introduced with breaking changes to update mechanisms"
+        action: "Review release channel documentation and update your deployment strategy to align with new release channels"
+        impact: "medium"
+    db_schema_changes: "Database schema updates for release channel system implementation. Adds new tables for channel tracking and version management."
+    notes: "Docker tag format change requires deployment configuration updates. Review release channel documentation."
+
+  "0.147.0":
+    breaking_changes:
+      - title: "Docker Tag Format Changes"
+        description: "Docker tags no longer contain the -postgres suffix. This affects deployment configurations"
+        action: "Update all deployment scripts, Docker Compose files, and Kubernetes manifests to use new tag format without -postgres suffix"
+        impact: "high"
+      - title: "Release Channel System Introduction"
+        description: "Formal release channels introduced with breaking changes to update mechanisms"
+        action: "Review release channel documentation and update your deployment strategy to align with new release channels"
+        impact: "medium"
+    db_schema_changes: "Database schema updates for release channel system implementation. Adds new tables for channel tracking and version management."
+    notes: "Docker tag format change requires deployment configuration updates. Review release channel documentation."
+
+  "v0.148.0":
+    breaking_changes:
+      - title: "Secret Overview Page Removal"
+        description: "Secret overview page has been removed and replaced with revamped secret dashboard"
+        action: "Update any bookmarks, documentation, or automation that references the old overview page URLs"
+        impact: "medium"
+      - title: "Universal Auth Login Lockout"
+        description: "New lockout mechanism for Universal Auth that may affect existing authentication flows"
+        action: "Review and test authentication flows. Update monitoring and alerting for lockout scenarios"
+        impact: "high"
+      - title: "SAML Duplicate Account Handling Changes"
+        description: "Changes to how duplicate SAML accounts are handled during first-time sign-in"
+        action: "Test SAML authentication flows and ensure proper account linking procedures are in place"
+        impact: "medium"
+    db_schema_changes: "Database schema changes for authentication system improvements and UI restructuring. Includes new lockout mechanism tables and SAML account handling modifications."
+    notes: "UI changes and authentication flow updates. Test all authentication methods thoroughly."
