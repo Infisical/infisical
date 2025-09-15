@@ -24,16 +24,18 @@ type ContentProps = {
   selectedDataSource: SecretScanningDataSource | null;
   setSelectedDataSource: (selectedDataSource: SecretScanningDataSource | null) => void;
   initialFormData?: Partial<TSecretScanningDataSourceForm>;
+  onCancel: () => void;
 };
 
-const Content = ({ setSelectedDataSource, selectedDataSource, ...props }: ContentProps) => {
+const Content = ({
+  setSelectedDataSource,
+  selectedDataSource,
+  onCancel,
+  ...props
+}: ContentProps) => {
   if (selectedDataSource) {
     return (
-      <SecretScanningDataSourceForm
-        onCancel={() => setSelectedDataSource(null)}
-        type={selectedDataSource}
-        {...props}
-      />
+      <SecretScanningDataSourceForm onCancel={onCancel} type={selectedDataSource} {...props} />
     );
   }
 
@@ -86,11 +88,18 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
     }
   }, [connectionId, connectionName]);
 
+  const resetModal = () => {
+    setSelectedDataSource(null);
+    setInitialFormData(undefined);
+  };
+
   return (
     <Modal
       isOpen={isOpen}
       onOpenChange={(open) => {
-        if (!open) setSelectedDataSource(null);
+        if (!open) {
+          resetModal();
+        }
         onOpenChange(open);
       }}
     >
@@ -127,9 +136,10 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
       >
         <Content
           onComplete={() => {
-            setSelectedDataSource(null);
+            resetModal();
             onOpenChange(false);
           }}
+          onCancel={resetModal}
           selectedDataSource={selectedDataSource}
           setSelectedDataSource={setSelectedDataSource}
           initialFormData={initialFormData}

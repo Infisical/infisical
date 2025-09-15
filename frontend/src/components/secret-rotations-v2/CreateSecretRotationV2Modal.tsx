@@ -27,18 +27,20 @@ type ContentProps = {
   selectedRotation: SecretRotation | null;
   setSelectedRotation: (selectedRotation: SecretRotation | null) => void;
   initialFormData?: Partial<TSecretRotationV2Form>;
+  onCancel: () => void;
 } & SharedProps;
 
 const Content = ({
   setSelectedRotation,
   selectedRotation,
   initialFormData,
+  onCancel,
   ...props
 }: ContentProps) => {
   if (selectedRotation) {
     return (
       <SecretRotationV2Form
-        onCancel={() => setSelectedRotation(null)}
+        onCancel={onCancel}
         type={selectedRotation}
         initialFormData={initialFormData}
         {...props}
@@ -93,13 +95,17 @@ export const CreateSecretRotationV2Modal = ({ onOpenChange, isOpen, ...props }: 
     }
   }, [connectionId, connectionName]);
 
+  const handleReset = () => {
+    setSelectedRotation(null);
+    setInitialFormData(undefined);
+  };
+
   return (
     <Modal
       isOpen={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          setSelectedRotation(null);
-          setInitialFormData(undefined);
+          handleReset();
         }
         onOpenChange(open);
       }}
@@ -137,9 +143,10 @@ export const CreateSecretRotationV2Modal = ({ onOpenChange, isOpen, ...props }: 
       >
         <Content
           onComplete={() => {
-            setSelectedRotation(null);
+            handleReset();
             onOpenChange(false);
           }}
+          onCancel={handleReset}
           initialFormData={initialFormData}
           selectedRotation={selectedRotation}
           setSelectedRotation={setSelectedRotation}

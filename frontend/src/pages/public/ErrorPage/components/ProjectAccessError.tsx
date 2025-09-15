@@ -8,7 +8,6 @@ import { RequestProjectAccessModal } from "@app/components/projects";
 import { AccessRestrictedBanner, Button } from "@app/components/v2";
 import { OrgPermissionSubjects } from "@app/context";
 import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
-import { getProjectHomePage } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useOrgAdminAccessProject, useSearchProjects } from "@app/hooks/api";
 
@@ -41,10 +40,7 @@ export const ProjectAccessError = () => {
         projectId: project.id
       });
       await navigate({
-        to: getProjectHomePage(project.type, project.environments),
-        params: {
-          projectId: project.id
-        }
+        to: "."
       });
     } catch {
       createNotification({

@@ -149,6 +149,9 @@ const SECRET_SCANNING_APP_CONNECTION_MAP = Object.fromEntries(
   Object.entries(SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP).map(([key, value]) => [value, key])
 );
 
+// scott: ideally this would be derived from a utilized map like the above
+const PKI_APP_CONNECTIONS = [AppConnection.AWS, AppConnection.Cloudflare, AppConnection.AzureADCS];
+
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
   return [
     getAwsConnectionListItem(),
@@ -200,11 +203,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
         case ProjectType.SecretScanning:
           return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[option.app]);
         case ProjectType.CertificateManager:
-          return (
-            option.app === AppConnection.AWS ||
-            option.app === AppConnection.Cloudflare ||
-            option.app === AppConnection.AzureADCS
-          );
+          return PKI_APP_CONNECTIONS.includes(option.app);
         case ProjectType.KMS:
           return false;
         case ProjectType.SSH:
