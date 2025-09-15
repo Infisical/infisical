@@ -1,18 +1,31 @@
 /* eslint-disable no-nested-ternary */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
-import { faExternalLink, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { SingleValue } from "react-select";
+import { faExternalLink } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation } from "@tanstack/react-query";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
+import { Button, FilterableSelect, FormControl } from "@app/components/v2";
 
 import {
   useCalculateUpgradePath,
   useGetUpgradePathVersions
 } from "../../../hooks/api/upgradePath/queries";
 
+type VersionOption = {
+  label: string;
+  value: string;
+  isLatest: boolean;
+};
+
+const formatVersionOption = (option: VersionOption) => (
+  <div className="flex items-center justify-between">
+    <span>{option.label}</span>
+    {option.isLatest && <span className="text-xs text-primary">(Latest)</span>}
+  </div>
+);
 interface UpgradeResult {
   path: Array<{
     version: string;
@@ -39,66 +52,9 @@ interface UpgradeResult {
 }
 
 export const UpgradePathPage = () => {
-  const [fromVersion, setFromVersion] = useState("");
-  const [toVersion, setToVersion] = useState("");
-  const [fromSearch, setFromSearch] = useState("");
-  const [toSearch, setToSearch] = useState("");
-  const [showFromDropdown, setShowFromDropdown] = useState(false);
-  const [showToDropdown, setShowToDropdown] = useState(false);
+  const [fromVersion, setFromVersion] = useState<string | null>(null);
+  const [toVersion, setToVersion] = useState<string | null>(null);
   const [upgradeResult, setUpgradeResult] = useState<UpgradeResult | null>(null);
-  const [debouncedFromSearch, setDebouncedFromSearch] = useState("");
-  const [debouncedToSearch, setDebouncedToSearch] = useState("");
-
-  const fromDropdownRef = useRef<HTMLDivElement>(null);
-  const toDropdownRef = useRef<HTMLDivElement>(null);
-  const fromSearchTimeoutRef = useRef<NodeJS.Timeout>();
-  const toSearchTimeoutRef = useRef<NodeJS.Timeout>();
-
-  useEffect(() => {
-    if (fromSearchTimeoutRef.current) {
-      clearTimeout(fromSearchTimeoutRef.current);
-    }
-    fromSearchTimeoutRef.current = setTimeout(() => {
-      setDebouncedFromSearch(fromSearch);
-    }, 300);
-
-    return () => {
-      if (fromSearchTimeoutRef.current) {
-        clearTimeout(fromSearchTimeoutRef.current);
-      }
-    };
-  }, [fromSearch]);
-
-  useEffect(() => {
-    if (toSearchTimeoutRef.current) {
-      clearTimeout(toSearchTimeoutRef.current);
-    }
-    toSearchTimeoutRef.current = setTimeout(() => {
-      setDebouncedToSearch(toSearch);
-    }, 300);
-
-    return () => {
-      if (toSearchTimeoutRef.current) {
-        clearTimeout(toSearchTimeoutRef.current);
-      }
-    };
-  }, [toSearch]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (fromDropdownRef.current && !fromDropdownRef.current.contains(event.target as Node)) {
-        setShowFromDropdown(false);
-      }
-      if (toDropdownRef.current && !toDropdownRef.current.contains(event.target as Node)) {
-        setShowToDropdown(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
 
   const {
     data: versions,
@@ -128,44 +84,26 @@ export const UpgradePathPage = () => {
     }
   });
 
-  const filteredFromVersions = useMemo(() => {
+  const versionOptions = useMemo(() => {
     if (!versions?.versions) return [];
 
-    const filtered = versions.versions
+    return versions.versions
       .filter((version) => !version.tagName.includes("nightly"))
-      .filter((version) => {
-        if (!debouncedFromSearch) return true;
-        const searchTerm = debouncedFromSearch.toLowerCase();
-        return version.tagName.toLowerCase().includes(searchTerm);
-      });
+      .map((version) => ({
+        label: version.tagName,
+        value: version.tagName,
+        isLatest: versions.versions[0]?.tagName === version.tagName
+      }));
+  }, [versions?.versions]);
 
-    return filtered.slice(0, 25);
-  }, [versions?.versions, debouncedFromSearch]);
-
-  const filteredToVersions = useMemo(() => {
-    if (!versions?.versions) return [];
-
-    const filtered = versions.versions
-      .filter((version) => !version.tagName.includes("nightly"))
-      .filter((version) => {
-        if (!debouncedToSearch) return true;
-        const searchTerm = debouncedToSearch.toLowerCase();
-        return version.tagName.toLowerCase().includes(searchTerm);
-      });
-
-    return filtered.slice(0, 25);
-  }, [versions?.versions, debouncedToSearch]);
-
-  const handleFromVersionSelect = (version: string) => {
-    setFromVersion(version);
-    setFromSearch(version);
-    setShowFromDropdown(false);
+  const handleFromVersionSelect = (value: unknown) => {
+    const selected = value as SingleValue<VersionOption>;
+    setFromVersion(selected?.value || null);
   };
 
-  const handleToVersionSelect = (version: string) => {
-    setToVersion(version);
-    setToSearch(version);
-    setShowToDropdown(false);
+  const handleToVersionSelect = (value: unknown) => {
+    const selected = value as SingleValue<VersionOption>;
+    setToVersion(selected?.value || null);
   };
 
   const handleCalculate = () => {
@@ -232,121 +170,36 @@ export const UpgradePathPage = () => {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   {/* From Version Selector */}
-                  <div className="relative" ref={fromDropdownRef}>
-                    <FormControl label="From Version" isRequired>
-                      <div className="relative">
-                        <Input
-                          value={fromSearch}
-                          onChange={(e) => {
-                            setFromSearch(e.target.value);
-                            setFromVersion("");
-                            setShowFromDropdown(true);
-                          }}
-                          onFocus={() => setShowFromDropdown(true)}
-                          placeholder="Search or select version..."
-                          className="border-mineshaft-600 bg-mineshaft-900"
-                          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-                          isDisabled={versionsLoading || versionsFetching}
-                        />
-                        {showFromDropdown && (
-                          <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 shadow-lg">
-                            {(() => {
-                              if (versionsLoading || versionsFetching) {
-                                return (
-                                  <div className="flex items-center justify-center px-3 py-4">
-                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                                    <span className="ml-2 text-sm text-bunker-300">
-                                      Loading versions...
-                                    </span>
-                                  </div>
-                                );
-                              }
-                              if (filteredFromVersions.length > 0) {
-                                return filteredFromVersions.slice(0, 8).map((version) => (
-                                  <button
-                                    key={version.tagName}
-                                    type="button"
-                                    onClick={() => handleFromVersionSelect(version.tagName)}
-                                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-bunker-200 hover:bg-mineshaft-700 focus:bg-mineshaft-700 focus:outline-none"
-                                  >
-                                    <span>{version.tagName}</span>
-                                  </button>
-                                ));
-                              }
-                              return (
-                                <div className="px-3 py-2 text-sm text-bunker-400">
-                                  {debouncedFromSearch
-                                    ? `No versions found matching "${debouncedFromSearch}"`
-                                    : "No versions available"}
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        )}
-                      </div>
-                    </FormControl>
-                  </div>
+                  <FormControl label="From Version" isRequired>
+                    <FilterableSelect
+                      options={versionOptions}
+                      value={versionOptions.find((opt) => opt.value === fromVersion) || null}
+                      onChange={handleFromVersionSelect}
+                      placeholder="Search or select version..."
+                      isLoading={versionsLoading || versionsFetching}
+                      isDisabled={versionsLoading || versionsFetching}
+                      isSearchable
+                      isClearable
+                      menuPortalTarget={document.body}
+                      formatOptionLabel={formatVersionOption}
+                    />
+                  </FormControl>
 
                   {/* To Version Selector */}
-                  <div className="relative" ref={toDropdownRef}>
-                    <FormControl label="To Version" isRequired>
-                      <div className="relative">
-                        <Input
-                          value={toSearch}
-                          onChange={(e) => {
-                            setToSearch(e.target.value);
-                            setToVersion("");
-                            setShowToDropdown(true);
-                          }}
-                          onFocus={() => setShowToDropdown(true)}
-                          placeholder="Search or select version..."
-                          className="border-mineshaft-600 bg-mineshaft-900"
-                          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-                          isDisabled={versionsLoading || versionsFetching}
-                        />
-                        {showToDropdown && (
-                          <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 shadow-lg">
-                            {(() => {
-                              if (versionsLoading || versionsFetching) {
-                                return (
-                                  <div className="flex items-center justify-center px-3 py-4">
-                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                                    <span className="ml-2 text-sm text-bunker-300">
-                                      Loading versions...
-                                    </span>
-                                  </div>
-                                );
-                              }
-                              if (filteredToVersions.length > 0) {
-                                return filteredToVersions.slice(0, 8).map((version) => (
-                                  <button
-                                    key={version.tagName}
-                                    type="button"
-                                    onClick={() => handleToVersionSelect(version.tagName)}
-                                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-bunker-200 hover:bg-mineshaft-700 focus:bg-mineshaft-700 focus:outline-none"
-                                  >
-                                    <span>{version.tagName}</span>
-                                    <div className="flex items-center space-x-2">
-                                      {versions?.versions?.[0]?.tagName === version.tagName && (
-                                        <span className="text-xs text-primary">(Latest)</span>
-                                      )}
-                                    </div>
-                                  </button>
-                                ));
-                              }
-                              return (
-                                <div className="px-3 py-2 text-sm text-bunker-400">
-                                  {debouncedToSearch
-                                    ? `No versions found matching "${debouncedToSearch}"`
-                                    : "No versions available"}
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        )}
-                      </div>
-                    </FormControl>
-                  </div>
+                  <FormControl label="To Version" isRequired>
+                    <FilterableSelect
+                      options={versionOptions}
+                      value={versionOptions.find((opt) => opt.value === toVersion) || null}
+                      onChange={handleToVersionSelect}
+                      placeholder="Search or select version..."
+                      isLoading={versionsLoading || versionsFetching}
+                      isDisabled={versionsLoading || versionsFetching}
+                      isSearchable
+                      isClearable
+                      menuPortalTarget={document.body}
+                      formatOptionLabel={formatVersionOption}
+                    />
+                  </FormControl>
                 </div>
 
                 <Button
