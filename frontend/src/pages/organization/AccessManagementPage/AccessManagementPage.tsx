@@ -12,6 +12,7 @@ import {
   OrgPermissionActions,
   OrgPermissionGroupActions,
   OrgPermissionIdentityActions,
+  OrgPermissionIdentityGroupActions,
   OrgPermissionSubjects,
   useOrganization,
   useOrgPermission
@@ -20,6 +21,7 @@ import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { UpgradePrivilegeSystemModal } from "./components/UpgradePrivilegeSystemModal/UpgradePrivilegeSystemModal";
 import { OrgGroupsTab, OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "./components";
+import { OrgIdentityGroupsTab } from "./components/OrgIdentityGroupsTab";
 
 export const AccessManagementPage = () => {
   const { t } = useTranslation();
@@ -55,6 +57,15 @@ export const AccessManagementPage = () => {
       label: "Groups",
       isHidden: permission.cannot(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups),
       component: OrgGroupsTab
+    },
+    {
+      key: OrgAccessControlTabSections.IdentityGroups,
+      label: "Identity Groups",
+      isHidden: permission.cannot(
+        OrgPermissionIdentityGroupActions.Read,
+        OrgPermissionSubjects.IdentityGroups
+      ),
+      component: OrgIdentityGroupsTab
     },
     {
       key: OrgAccessControlTabSections.Identities,

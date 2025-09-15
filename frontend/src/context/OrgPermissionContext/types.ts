@@ -43,6 +43,7 @@ export enum OrgPermissionSubjects {
   Billing = "billing",
   SecretScanning = "secret-scanning",
   Identity = "identity",
+  IdentityGroups = "identity-groups",
   Kms = "kms",
   AdminConsole = "organization-admin-console",
   AuditLogs = "audit-logs",
@@ -103,6 +104,16 @@ export enum OrgPermissionGroupActions {
   RemoveMembers = "remove-members"
 }
 
+export enum OrgPermissionIdentityGroupActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  GrantPrivileges = "grant-privileges",
+  AddMembers = "add-members",
+  RemoveMembers = "remove-members"
+}
+
 export type AppConnectionSubjectFields = {
   connectionId: string;
 };
@@ -120,6 +131,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.Sso]
   | [OrgPermissionActions, OrgPermissionSubjects.Ldap]
   | [OrgPermissionGroupActions, OrgPermissionSubjects.Groups]
+  | [OrgPermissionIdentityGroupActions, OrgPermissionSubjects.IdentityGroups]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
   | [OrgPermissionBillingActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionActions, OrgPermissionSubjects.Kms]

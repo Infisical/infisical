@@ -553,6 +553,22 @@ import {
   TUserNotificationsInsert,
   TUserNotificationsUpdate
 } from "@app/db/schemas/user-notifications";
+import { TIdentityGroups, TIdentityGroupsInsert, TIdentityGroupsUpdate } from "@app/db/schemas/identity-groups";
+import {
+  TIdentityGroupMemberships,
+  TIdentityGroupMembershipsInsert,
+  TIdentityGroupMembershipsUpdate
+} from "@app/db/schemas/identity-group-memberships";
+import {
+  TIdentityGroupProjectMemberships,
+  TIdentityGroupProjectMembershipsInsert,
+  TIdentityGroupProjectMembershipsUpdate
+} from "@app/db/schemas/identity-group-project-memberships";
+import {
+  TIdentityGroupProjectMembershipRoles,
+  TIdentityGroupProjectMembershipRolesInsert,
+  TIdentityGroupProjectMembershipRolesUpdate
+} from "@app/db/schemas/identity-group-project-membership-roles";
 
 declare module "knex" {
   namespace Knex {
@@ -1303,6 +1319,26 @@ declare module "knex/types/tables" {
       TKeyValueStore,
       TKeyValueStoreInsert,
       TKeyValueStoreUpdate
+    >;
+    [TableName.IdentityGroups]: KnexOriginal.CompositeTableType<
+      TIdentityGroups,
+      TIdentityGroupsInsert,
+      TIdentityGroupsUpdate
+    >;
+    [TableName.IdentityGroupMembership]: KnexOriginal.CompositeTableType<
+      TIdentityGroupMemberships,
+      TIdentityGroupMembershipsInsert,
+      TIdentityGroupMembershipsUpdate
+    >;
+    [TableName.IdentityGroupProjectMembership]: KnexOriginal.CompositeTableType<
+      TIdentityGroupProjectMemberships,
+      TIdentityGroupProjectMembershipsInsert,
+      TIdentityGroupProjectMembershipsUpdate
+    >;
+    [TableName.IdentityGroupProjectMembershipRole]: KnexOriginal.CompositeTableType<
+      TIdentityGroupProjectMembershipRoles,
+      TIdentityGroupProjectMembershipRolesInsert,
+      TIdentityGroupProjectMembershipRolesUpdate
     >;
   }
 }

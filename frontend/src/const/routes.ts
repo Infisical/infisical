@@ -45,6 +45,10 @@ export const ROUTE_PATHS = Object.freeze({
       "/organization/groups/$groupId",
       "/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId"
     ),
+    IdentityGroupDetailsByIDPage: setRoute(
+      "/organization/identity-groups/$identityGroupId",
+      "/_authenticate/_inject-org-details/_org-layout/organization/identity-groups/$identityGroupId"
+    ),
     IdentityDetailsByIDPage: setRoute(
       "/organization/identities/$identityId",
       "/_authenticate/_inject-org-details/_org-layout/organization/identities/$identityId"

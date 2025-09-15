@@ -83,6 +83,7 @@ import {
   TFindAllWorkspacesDTO,
   TFindOrgMembersByEmailDTO,
   TGetOrgGroupsDTO,
+  TGetOrgIdentityGroupsDTO,
   TGetOrgMembershipDTO,
   TInviteUserToOrgDTO,
   TListProjectMembershipsByOrgMembershipIdDTO,
@@ -92,6 +93,7 @@ import {
   TUpgradePrivilegeSystemDTO,
   TVerifyUserToOrgDTO
 } from "./org-types";
+import { TIdentityGroupDALFactory } from "@app/ee/services/identity-group/identity-group-dal";
 
 type TOrgServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
@@ -103,6 +105,7 @@ type TOrgServiceFactoryDep = {
   orgRoleDAL: TOrgRoleDALFactory;
   userDAL: TUserDALFactory;
   groupDAL: TGroupDALFactory;
+  identityGroupDAL: TIdentityGroupDALFactory;
   projectDAL: TProjectDALFactory;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
   projectMembershipDAL: Pick<
@@ -158,6 +161,7 @@ export const orgServiceFactory = ({
   incidentContactDAL,
   permissionService,
   smtpService,
+  identityGroupDAL,
   projectDAL,
   projectMembershipDAL,
   projectKeyDAL,
@@ -232,6 +236,22 @@ export const orgServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
     const groups = await groupDAL.findByOrgId(orgId);
+    return groups;
+  };
+
+  /**
+   * Get all identity groups for an organization
+   */
+  const getOrgIdentityGroups = async ({
+    actor,
+    actorId,
+    orgId,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetOrgIdentityGroupsDTO) => {
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+    const groups = await identityGroupDAL.findByOrgId(orgId);
     return groups;
   };
 
@@ -1504,6 +1524,7 @@ export const orgServiceFactory = ({
     createIncidentContact,
     deleteIncidentContact,
     getOrgGroups,
+    getOrgIdentityGroups,
     listProjectMembershipsByOrgMembershipId,
     findOrgBySlug,
     resendOrgMemberInvitation,

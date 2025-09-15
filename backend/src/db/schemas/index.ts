@@ -168,3 +168,7 @@ export * from "./user-group-membership";
 export * from "./users";
 export * from "./webhooks";
 export * from "./workflow-integrations";
+export * from "./identity-groups";
+export * from "./identity-group-memberships";
+export * from "./identity-group-project-memberships";
+export * from "./identity-group-project-membership-roles";

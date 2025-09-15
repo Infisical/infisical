@@ -46,6 +46,10 @@ import { githubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/gi
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { identityGroupDALFactory } from "@app/ee/services/identity-group/identity-group-dal";
+import { identityGroupMembershipDALFactory } from "@app/ee/services/identity-group/identity-group-membership-dal";
+import { identityGroupProjectDALFactory } from "@app/ee/services/identity-group/identity-group-project-membership-dal";
+import { identityGroupServiceFactory } from "@app/ee/services/identity-group/identity-group-service";
 import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { HsmModule } from "@app/ee/services/hsm/hsm-types";
 import { identityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
@@ -470,6 +474,9 @@ export const registerRoutes = async (
   const groupProjectDAL = groupProjectDALFactory(db);
   const groupProjectMembershipRoleDAL = groupProjectMembershipRoleDALFactory(db);
   const userGroupMembershipDAL = userGroupMembershipDALFactory(db);
+  const identityGroupDAL = identityGroupDALFactory(db);
+  const identityGroupMembershipDAL = identityGroupMembershipDALFactory(db);
+  const identityGroupProjectDAL = identityGroupProjectDALFactory(db);
   const secretScanningDAL = secretScanningDALFactory(db);
   const secretSharingDAL = secretSharingDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
@@ -633,6 +640,16 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     oidcConfigDAL
+  });
+  const identityGroupService = identityGroupServiceFactory({
+    identityDAL,
+    identityGroupDAL,
+    identityGroupProjectDAL,
+    identityOrgMembershipDAL,
+    identityGroupMembershipDAL,
+    projectDAL,
+    permissionService,
+    licenseService
   });
   const groupProjectService = groupProjectServiceFactory({
     groupDAL,
@@ -816,6 +833,7 @@ export const registerRoutes = async (
     smtpService,
     userDAL,
     groupDAL,
+    identityGroupDAL,
     orgBotDAL,
     oidcConfigDAL,
     ldapConfigDAL,
@@ -2069,6 +2087,7 @@ export const registerRoutes = async (
     signup: signupService,
     user: userService,
     group: groupService,
+    identityGroup: identityGroupService,
     groupProject: groupProjectService,
     permission: permissionService,
     org: orgService,

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   AuditLogsSchema,
+  IdentityGroupsSchema,
   GroupsSchema,
   IncidentContactsSchema,
   OrgMembershipsSchema,
@@ -464,6 +465,43 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       });
 
       return { groups };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:organizationId/identity-groups",
+    schema: {
+      params: z.object({
+        organizationId: z.string().trim().describe(ORGANIZATIONS.LIST_IDENTITY_GROUPS.organizationId)
+      }),
+      response: {
+        200: z.object({
+          identityGroups: IdentityGroupsSchema.merge(
+            z.object({
+              customRole: OrgRolesSchema.pick({
+                id: true,
+                name: true,
+                slug: true,
+                permissions: true,
+                description: true
+              }).optional()
+            })
+          ).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const identityGroups = await server.services.org.getOrgIdentityGroups({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.params.organizationId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { identityGroups };
     }
   });
 };

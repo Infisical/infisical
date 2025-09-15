@@ -32,6 +32,7 @@ export enum ApiDocsTags {
   OidcAuth = "OIDC Auth",
   LdapAuth = "LDAP Auth",
   Groups = "Groups",
+  IdentityGroups = "Identity Groups",
   Organizations = "Organizations",
   Projects = "Projects",
   ProjectUsers = "Project Users",
@@ -110,6 +111,41 @@ export const GROUPS = {
   DELETE_USER: {
     id: "The ID of the group to remove the user from.",
     username: "The username of the user to remove from the group."
+  }
+} as const;
+
+export const IDENTITY_GROUPS = {
+  CREATE: {
+    name: "The name of the identity group to create.",
+    slug: "The slug of the identity group to create.",
+    role: "The role of the identity group to create."
+  },
+  UPDATE: {
+    id: "The ID of the identity group to update.",
+    name: "The new name of the identity group to update to.",
+    slug: "The new slug of the identity group to update to.",
+    role: "The new role of the identity group to update to."
+  },
+  DELETE: {
+    id: "The ID of the identity group to delete."
+  },
+  GET_BY_ID: {
+    id: "The ID of the identity group to get."
+  },
+  LIST_IDENTITIES: {
+    id: "The ID of the identity group to list identities for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
+    limit: "The number of identities to return.",
+    search: "The text string that identity name will be filtered by.",
+    filter: "Filter to apply to the returned identities. Can be 'existingMembers' or 'nonMembers'."
+  },
+  ADD_IDENTITY: {
+    id: "The ID of the identity group to add the identity to.",
+    identityId: "The ID of the identity to add to the group."
+  },
+  REMOVE_IDENTITY: {
+    id: "The ID of the identity group to remove the identity from.",
+    identityId: "The ID of the identity to remove from the group."
   }
 } as const;
 
@@ -699,6 +735,9 @@ export const ORGANIZATIONS = {
   },
   LIST_GROUPS: {
     organizationId: "The ID of the organization to list groups for."
+  },
+  LIST_IDENTITY_GROUPS: {
+    organizationId: "The ID of the organization to list identity groups for."
   }
 } as const;
 

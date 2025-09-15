@@ -80,6 +80,16 @@ export enum OrgPermissionGroupActions {
   RemoveMembers = "remove-members"
 }
 
+export enum OrgPermissionIdentityGroupActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  GrantPrivileges = "grant-privileges",
+  AddMembers = "add-members",
+  RemoveMembers = "remove-members"
+}
+
 export enum OrgPermissionBillingActions {
   Read = "read",
   ManageBilling = "manage-billing"
@@ -97,6 +107,7 @@ export enum OrgPermissionSubjects {
   GithubOrgSyncManual = "github-org-sync-manual",
   Ldap = "ldap",
   Groups = "groups",
+  IdentityGroups = "identity-groups",
   Billing = "billing",
   SecretScanning = "secret-scanning",
   Identity = "identity",
@@ -127,6 +138,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions, OrgPermissionSubjects.GithubOrgSyncManual]
   | [OrgPermissionActions, OrgPermissionSubjects.Ldap]
   | [OrgPermissionGroupActions, OrgPermissionSubjects.Groups]
+  | [OrgPermissionIdentityGroupActions, OrgPermissionSubjects.IdentityGroups]
   | [OrgPermissionActions, OrgPermissionSubjects.SecretScanning]
   | [OrgPermissionBillingActions, OrgPermissionSubjects.Billing]
   | [OrgPermissionIdentityActions, OrgPermissionSubjects.Identity]
@@ -204,7 +216,15 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Groups).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionGroupActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.IdentityGroups).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionIdentityGroupActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.SecretScanning).describe("The entity this permission pertains to."),
@@ -339,6 +359,14 @@ const buildAdminPermission = () => {
   can(OrgPermissionGroupActions.AddMembers, OrgPermissionSubjects.Groups);
   can(OrgPermissionGroupActions.RemoveMembers, OrgPermissionSubjects.Groups);
 
+  can(OrgPermissionIdentityGroupActions.Read, OrgPermissionSubjects.IdentityGroups);
+  can(OrgPermissionIdentityGroupActions.Create, OrgPermissionSubjects.IdentityGroups);
+  can(OrgPermissionIdentityGroupActions.Edit, OrgPermissionSubjects.IdentityGroups);
+  can(OrgPermissionIdentityGroupActions.Delete, OrgPermissionSubjects.IdentityGroups);
+  can(OrgPermissionIdentityGroupActions.GrantPrivileges, OrgPermissionSubjects.IdentityGroups);
+  can(OrgPermissionIdentityGroupActions.AddMembers, OrgPermissionSubjects.IdentityGroups);
+  can(OrgPermissionIdentityGroupActions.RemoveMembers, OrgPermissionSubjects.IdentityGroups);
+
   can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
   can(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
 
@@ -415,6 +443,7 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
   can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+  can(OrgPermissionIdentityGroupActions.Read, OrgPermissionSubjects.IdentityGroups);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
   can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);

@@ -31,6 +31,7 @@ export type SubscriptionPlan = {
   scim: boolean;
   ldap: boolean;
   groups: boolean;
+  identityGroups: boolean;
   status:
     | "incomplete"
     | "incomplete_expired"

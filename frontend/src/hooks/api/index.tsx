@@ -55,3 +55,4 @@ export * from "./users";
 export * from "./webhooks";
 export * from "./workflowIntegrations";
 export * from "./workspace";
+export * from "./identity-groups";

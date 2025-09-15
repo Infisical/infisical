@@ -6,6 +6,7 @@ export {
   OrgPermissionBillingActions,
   OrgPermissionGroupActions,
   OrgPermissionIdentityActions,
+  OrgPermissionIdentityGroupActions,
   OrgPermissionSubjects,
   useOrgPermission
 } from "./OrgPermissionContext";

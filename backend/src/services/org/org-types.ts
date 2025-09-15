@@ -96,6 +96,7 @@ export type TUpdateOrgDTO = {
 export type TUpgradePrivilegeSystemDTO = Omit<TOrgPermission, "actor">;
 
 export type TGetOrgGroupsDTO = TOrgPermission;
+export type TGetOrgIdentityGroupsDTO = TOrgPermission;
 
 export type TListProjectMembershipsByOrgMembershipIdDTO = {
   orgMembershipId: string;

@@ -30,6 +30,7 @@ const organizationRoutes = route("/organization", [
     route("/oauth/callback", "organization/SettingsPage/OauthCallbackPage/route.tsx")
   ]),
   route("/groups/$groupId", "organization/GroupDetailsByIDPage/route.tsx"),
+  route("/identity-groups/$identityGroupId", "organization/IdentityGroupDetailsByIDPage/route.tsx"),
   route("/members/$membershipId", "organization/UserDetailsByIDPage/route.tsx"),
   route("/roles/$roleId", "organization/RoleByIDPage/route.tsx"),
   route("/identities/$identityId", "organization/IdentityDetailsByIDPage/route.tsx"),
