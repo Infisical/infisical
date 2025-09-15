@@ -58,6 +58,7 @@ import { Route as adminResourceOverviewPageRouteImport } from './pages/admin/Res
 import { Route as organizationSecretSharingSettingsPageRouteImport } from './pages/organization/SecretSharingSettingsPage/route'
 import { Route as organizationRoleByIDPageRouteImport } from './pages/organization/RoleByIDPage/route'
 import { Route as organizationUserDetailsByIDPageRouteImport } from './pages/organization/UserDetailsByIDPage/route'
+import { Route as organizationIdentityGroupDetailsByIDPageRouteImport } from './pages/organization/IdentityGroupDetailsByIDPage/route'
 import { Route as organizationIdentityDetailsByIDPageRouteImport } from './pages/organization/IdentityDetailsByIDPage/route'
 import { Route as organizationGroupDetailsByIDPageRouteImport } from './pages/organization/GroupDetailsByIDPage/route'
 import { Route as organizationSettingsPageRouteImport } from './pages/organization/SettingsPage/route'
@@ -726,6 +727,14 @@ const organizationUserDetailsByIDPageRouteRoute =
   organizationUserDetailsByIDPageRouteImport.update({
     id: '/members/$membershipId',
     path: '/members/$membershipId',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
+  } as any)
+
+const organizationIdentityGroupDetailsByIDPageRouteRoute =
+  organizationIdentityGroupDetailsByIDPageRouteImport.update({
+    id: '/identity-groups/$identityGroupId',
+    path: '/identity-groups/$identityGroupId',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
   } as any)
@@ -2415,6 +2424,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof organizationIdentityDetailsByIDPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organization/identity-groups/$identityGroupId': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/identity-groups/$identityGroupId'
+      path: '/identity-groups/$identityGroupId'
+      fullPath: '/organization/identity-groups/$identityGroupId'
+      preLoaderRoute: typeof organizationIdentityGroupDetailsByIDPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organization/members/$membershipId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organization/members/$membershipId'
       path: '/members/$membershipId'
@@ -3735,6 +3751,7 @@ interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren {
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRouteWithChildren
   organizationGroupDetailsByIDPageRouteRoute: typeof organizationGroupDetailsByIDPageRouteRoute
   organizationIdentityDetailsByIDPageRouteRoute: typeof organizationIdentityDetailsByIDPageRouteRoute
+  organizationIdentityGroupDetailsByIDPageRouteRoute: typeof organizationIdentityGroupDetailsByIDPageRouteRoute
   organizationUserDetailsByIDPageRouteRoute: typeof organizationUserDetailsByIDPageRouteRoute
   organizationRoleByIDPageRouteRoute: typeof organizationRoleByIDPageRouteRoute
 }
@@ -3758,6 +3775,8 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: Authentica
       organizationGroupDetailsByIDPageRouteRoute,
     organizationIdentityDetailsByIDPageRouteRoute:
       organizationIdentityDetailsByIDPageRouteRoute,
+    organizationIdentityGroupDetailsByIDPageRouteRoute:
+      organizationIdentityGroupDetailsByIDPageRouteRoute,
     organizationUserDetailsByIDPageRouteRoute:
       organizationUserDetailsByIDPageRouteRoute,
     organizationRoleByIDPageRouteRoute: organizationRoleByIDPageRouteRoute,
@@ -4649,6 +4668,7 @@ export interface FileRoutesByFullPath {
   '/organization/settings/': typeof organizationSettingsPageRouteRoute
   '/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
   '/organization/identities/$identityId': typeof organizationIdentityDetailsByIDPageRouteRoute
+  '/organization/identity-groups/$identityGroupId': typeof organizationIdentityGroupDetailsByIDPageRouteRoute
   '/organization/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/organization/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/organization/secret-sharing/settings': typeof organizationSecretSharingSettingsPageRouteRoute
@@ -4862,6 +4882,7 @@ export interface FileRoutesByTo {
   '/organization/settings': typeof organizationSettingsPageRouteRoute
   '/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
   '/organization/identities/$identityId': typeof organizationIdentityDetailsByIDPageRouteRoute
+  '/organization/identity-groups/$identityGroupId': typeof organizationIdentityGroupDetailsByIDPageRouteRoute
   '/organization/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/organization/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/organization/secret-sharing/settings': typeof organizationSecretSharingSettingsPageRouteRoute
@@ -5083,6 +5104,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organization/settings/': typeof organizationSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/identities/$identityId': typeof organizationIdentityDetailsByIDPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organization/identity-groups/$identityGroupId': typeof organizationIdentityGroupDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/settings': typeof organizationSecretSharingSettingsPageRouteRoute
@@ -5311,6 +5333,7 @@ export interface FileRouteTypes {
     | '/organization/settings/'
     | '/organization/groups/$groupId'
     | '/organization/identities/$identityId'
+    | '/organization/identity-groups/$identityGroupId'
     | '/organization/members/$membershipId'
     | '/organization/roles/$roleId'
     | '/organization/secret-sharing/settings'
@@ -5523,6 +5546,7 @@ export interface FileRouteTypes {
     | '/organization/settings'
     | '/organization/groups/$groupId'
     | '/organization/identities/$identityId'
+    | '/organization/identity-groups/$identityGroupId'
     | '/organization/members/$membershipId'
     | '/organization/roles/$roleId'
     | '/organization/secret-sharing/settings'
@@ -5742,6 +5766,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organization/settings/'
     | '/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId'
     | '/_authenticate/_inject-org-details/_org-layout/organization/identities/$identityId'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/identity-groups/$identityGroupId'
     | '/_authenticate/_inject-org-details/_org-layout/organization/members/$membershipId'
     | '/_authenticate/_inject-org-details/_org-layout/organization/roles/$roleId'
     | '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/settings'
@@ -6160,6 +6185,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organization/settings",
         "/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId",
         "/_authenticate/_inject-org-details/_org-layout/organization/identities/$identityId",
+        "/_authenticate/_inject-org-details/_org-layout/organization/identity-groups/$identityGroupId",
         "/_authenticate/_inject-org-details/_org-layout/organization/members/$membershipId",
         "/_authenticate/_inject-org-details/_org-layout/organization/roles/$roleId"
       ]
@@ -6282,6 +6308,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/identities/$identityId": {
       "filePath": "organization/IdentityDetailsByIDPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organization/identity-groups/$identityGroupId": {
+      "filePath": "organization/IdentityGroupDetailsByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/members/$membershipId": {
