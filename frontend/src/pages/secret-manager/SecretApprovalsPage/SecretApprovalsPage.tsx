@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
 
 import { AccessApprovalRequest } from "./components/AccessApprovalRequest";
@@ -20,11 +20,10 @@ enum TabSection {
 
 export const SecretApprovalsPage = () => {
   const { t } = useTranslation();
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
-  const projectSlug = currentWorkspace?.slug || "";
+  const { currentProject, projectId } = useProject();
+  const projectSlug = currentProject?.slug || "";
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({
-    workspaceId: projectId
+    projectId
   });
   const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({ projectSlug });
   const defaultTab =
@@ -67,7 +66,7 @@ export const SecretApprovalsPage = () => {
             <AccessApprovalRequest projectId={projectId} projectSlug={projectSlug} />
           </TabPanel>
           <TabPanel value={TabSection.Policies}>
-            <ApprovalPolicyList workspaceId={projectId} />
+            <ApprovalPolicyList projectId={projectId} />
           </TabPanel>
         </Tabs>
       </div>

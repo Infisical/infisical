@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { AppConnectionOption } from "@app/components/app-connections";
 import { FilterableSelect, FormControl } from "@app/components/v2";
-import { ProjectPermissionSub, useProjectPermission, useWorkspace } from "@app/context";
+import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SECRET_ROTATION_CONNECTION_MAP } from "@app/helpers/secretRotationsV2";
@@ -29,11 +29,11 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
   const rotationType = watch("type");
   const app = SECRET_ROTATION_CONNECTION_MAP[rotationType];
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { data: availableConnections, isPending } = useListAvailableAppConnections(
     app,
-    currentWorkspace.id
+    currentProject.id
   );
 
   const connectionName = APP_CONNECTION_MAP[app].name;
@@ -117,8 +117,8 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
           localStorage.removeItem("secretRotationFormData");
           handlePopUpToggle("addConnection", isOpen);
         }}
-        projectType={currentWorkspace.type}
-        projectId={currentWorkspace.id}
+        projectType={currentProject.type}
+        projectId={currentProject.id}
         app={app}
         onComplete={(connection) => {
           if (connection) {

@@ -106,7 +106,7 @@ export type ProjectWorkflowIntegrationConfig =
 export type TUpdateProjectWorkflowIntegrationConfigDTO =
   | {
       integration: WorkflowIntegrationPlatform.SLACK;
-      workspaceId: string;
+      projectId: string;
       integrationId: string;
       isAccessRequestNotificationEnabled: boolean;
       accessRequestChannels: string;
@@ -115,7 +115,7 @@ export type TUpdateProjectWorkflowIntegrationConfigDTO =
     }
   | {
       integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS;
-      workspaceId: string;
+      projectId: string;
       integrationId: string;
       isAccessRequestNotificationEnabled: boolean;
       isSecretRequestNotificationEnabled: boolean;

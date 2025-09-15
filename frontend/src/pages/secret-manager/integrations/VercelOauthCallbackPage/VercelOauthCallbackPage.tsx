@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useAuthorizeIntegration } from "@app/hooks/api";
 
 export const VercelOauthCallbackPage = () => {
@@ -12,7 +12,7 @@ export const VercelOauthCallbackPage = () => {
   const { code, state } = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.VercelOauthCallbackPage.id
   });
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   useEffect(() => {
     (async () => {
@@ -22,7 +22,7 @@ export const VercelOauthCallbackPage = () => {
         localStorage.removeItem("latestCSRFToken");
 
         const integrationAuth = await mutateAsync({
-          workspaceId: currentWorkspace.id,
+          workspaceId: currentProject.id,
           code: code as string,
           integration: "vercel"
         });
@@ -30,7 +30,7 @@ export const VercelOauthCallbackPage = () => {
         navigate({
           to: "/projects/secret-management/$projectId/integrations/vercel/create",
           params: {
-            projectId: currentWorkspace.id
+            projectId: currentProject.id
           },
           search: {
             integrationAuthId: integrationAuth.id

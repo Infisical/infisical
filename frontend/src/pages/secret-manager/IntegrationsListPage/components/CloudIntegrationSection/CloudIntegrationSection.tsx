@@ -24,8 +24,8 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useWorkspace
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
@@ -60,7 +60,7 @@ export const CloudIntegrationSection = ({
     "deleteConfirmation"
   ] as const);
   const { permission } = useProjectPermission();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const navigate = useNavigate();
 
   const isEmpty = !isLoading && !cloudIntegrations?.length;
@@ -68,12 +68,12 @@ export const CloudIntegrationSection = ({
   const sortedCloudIntegrations = useMemo(() => {
     const sortedIntegrations = cloudIntegrations.sort((a, b) => a.name.localeCompare(b.name));
 
-    if (currentWorkspace?.environments.length === 0) {
+    if (currentProject?.environments.length === 0) {
       return sortedIntegrations.map((integration) => ({ ...integration, isAvailable: false }));
     }
 
     return sortedIntegrations;
-  }, [cloudIntegrations, currentWorkspace?.environments]);
+  }, [cloudIntegrations, currentProject?.environments]);
 
   const [search, setSearch] = useState("");
 
@@ -83,9 +83,9 @@ export const CloudIntegrationSection = ({
 
   return (
     <div>
-      {currentWorkspace?.environments.length === 0 && (
+      {currentProject?.environments.length === 0 && (
         <div className="px-5">
-          <NoEnvironmentsBanner projectId={currentWorkspace.id} />
+          <NoEnvironmentsBanner projectId={currentProject.id} />
         </div>
       )}
       <div className="m-4 mt-0 flex flex-col items-start justify-between px-2 text-xl">
@@ -138,7 +138,7 @@ export const CloudIntegrationSection = ({
                     navigate({
                       to: ROUTE_PATHS.SecretManager.IntegrationsListPage.path,
                       params: {
-                        projectId: currentWorkspace.id
+                        projectId: currentProject.id
                       },
                       search: {
                         selectedTab: IntegrationsListPageTabs.SecretSyncs,

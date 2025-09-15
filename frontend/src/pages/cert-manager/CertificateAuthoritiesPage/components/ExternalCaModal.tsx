@@ -17,7 +17,7 @@ import {
   SelectItem,
   Switch
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   TAvailableAppConnection,
@@ -128,11 +128,11 @@ const caTypes = [
 ];
 
 export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { data: ca, isLoading: isCaLoading } = useGetCa({
     caName: (popUp?.ca?.data as { name: string })?.name || "",
-    projectId: currentWorkspace?.id || "",
+    projectId: currentProject?.id || "",
     type: (popUp?.ca?.data as { type: CaType })?.type || ""
   });
 
@@ -202,17 +202,17 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   }, [popUp?.ca?.isOpen, popUp?.ca?.data, reset, ca]);
 
   const { data: availableRoute53Connections, isPending: isRoute53Pending } =
-    useListAvailableAppConnections(AppConnection.AWS, currentWorkspace.id, {
+    useListAvailableAppConnections(AppConnection.AWS, currentProject.id, {
       enabled: caType === CaType.ACME
     });
 
   const { data: availableCloudflareConnections, isPending: isCloudflarePending } =
-    useListAvailableAppConnections(AppConnection.Cloudflare, currentWorkspace.id, {
+    useListAvailableAppConnections(AppConnection.Cloudflare, currentProject.id, {
       enabled: caType === CaType.ACME
     });
 
   const { data: availableAzureConnections, isPending: isAzurePending } =
-    useListAvailableAppConnections(AppConnection.AzureADCS, currentWorkspace.id, {
+    useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id, {
       enabled: caType === CaType.AZURE_AD_CS
     });
 
@@ -298,7 +298,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     configuration: formConfiguration
   }: FormData) => {
     try {
-      if (!currentWorkspace?.slug) return;
+      if (!currentProject?.slug) return;
 
       let configPayload: any;
 
@@ -322,7 +322,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       if (ca) {
         await updateMutateAsync({
           caName: ca.name,
-          projectId: currentWorkspace.id,
+          projectId: currentProject.id,
           name,
           type,
           status,
@@ -331,7 +331,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
       } else {
         await createMutateAsync({
-          projectId: currentWorkspace.id,
+          projectId: currentProject.id,
           name,
           type,
           status,

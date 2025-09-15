@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { Button, FormControl, Input, Select, SelectItem, Spinner } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useGetProjectSecrets } from "@app/hooks/api";
 
 const formSchema = z.object({
@@ -22,9 +22,9 @@ type Props = {
 };
 
 export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const environments = currentWorkspace?.environments || [];
-  const workspaceId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const environments = currentProject?.environments || [];
+  const projectId = currentProject?.id || "";
   const {
     control,
     handleSubmit,
@@ -39,7 +39,7 @@ export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Pr
   const selectedSecrets = watch("secrets");
 
   const { data: secrets, isPending: isSecretsLoading } = useGetProjectSecrets({
-    workspaceId,
+    projectId,
     environment,
     secretPath
   });

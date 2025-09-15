@@ -32,6 +32,7 @@ export enum OrgPermissionMachineIdentityAuthTemplateActions {
 
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
+  Project = "project",
   Role = "role",
   Member = "member",
   Settings = "settings",
@@ -109,6 +110,7 @@ export type AppConnectionSubjectFields = {
 
 export type OrgPermissionSet =
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Workspace]
+  | [OrgPermissionActions.Create, OrgPermissionSubjects.Project]
   | [OrgPermissionActions.Read, OrgPermissionSubjects.Workspace]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
   | [OrgPermissionActions, OrgPermissionSubjects.Member]

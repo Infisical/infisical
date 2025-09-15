@@ -21,7 +21,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
-import { useGetUserWorkspaces } from "@app/hooks/api";
+import { useGetUserProjects } from "@app/hooks/api";
 import {
   eventToNameMap,
   secretEvents,
@@ -29,7 +29,7 @@ import {
 } from "@app/hooks/api/auditLogs/constants";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { UserAgentType } from "@app/hooks/api/auth/types";
-import { Workspace } from "@app/hooks/api/workspace/types";
+import { Project } from "@app/hooks/api/projects/types";
 
 import { LogFilterItem } from "./LogFilterItem";
 import { auditLogFilterFormSchema, Presets, TAuditLogFilterFormData } from "./types";
@@ -44,7 +44,7 @@ type Props = {
   presets?: Presets;
   setFilter: (data: TAuditLogFilterFormData) => void;
   filter: TAuditLogFilterFormData;
-  project?: Workspace;
+  project?: Project;
 };
 
 const getActiveFilterCount = (filter: TAuditLogFilterFormData) => {
@@ -72,7 +72,7 @@ const getActiveFilterCount = (filter: TAuditLogFilterFormData) => {
 };
 
 export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
-  const { data: workspaces = [] } = useGetUserWorkspaces();
+  const { data: workspaces = [] } = useGetUserProjects();
   const { currentOrg } = useOrganization();
 
   const workspacesInOrg = workspaces.filter((ws) => ws.orgId === currentOrg?.id);

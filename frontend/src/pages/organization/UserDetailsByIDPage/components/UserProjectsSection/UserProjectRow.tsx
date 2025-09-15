@@ -7,7 +7,7 @@ import { createNotification } from "@app/components/notifications";
 import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
-import { useGetUserWorkspaces } from "@app/hooks/api";
+import { useGetUserProjects } from "@app/hooks/api";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { OrgAccessControlTabSections } from "@app/types/org";
@@ -24,7 +24,7 @@ export const UserProjectRow = ({
   membership: { id, project, user, roles },
   handlePopUpOpen
 }: Props) => {
-  const { data: workspaces = [] } = useGetUserWorkspaces();
+  const { data: workspaces = [] } = useGetUserProjects();
   const navigate = useNavigate();
 
   const isAccessible = useMemo(() => {

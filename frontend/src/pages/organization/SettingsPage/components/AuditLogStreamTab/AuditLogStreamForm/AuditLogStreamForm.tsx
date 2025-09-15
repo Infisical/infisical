@@ -6,6 +6,7 @@ import { TAuditLogStream } from "@app/hooks/api/types";
 import { DiscriminativePick } from "@app/types";
 
 import { AuditLogStreamHeader } from "../components/AuditLogStreamHeader";
+import { AzureProviderAuditLogStreamForm } from "./AzureProviderAuditLogStreamForm";
 import { CriblProviderAuditLogStreamForm } from "./CriblProviderAuditLogStreamForm";
 import { CustomProviderAuditLogStreamForm } from "./CustomProviderAuditLogStreamForm";
 import { DatadogProviderAuditLogStreamForm } from "./DatadogProviderAuditLogStreamForm";
@@ -45,6 +46,8 @@ const CreateForm = ({ provider, onComplete }: CreateFormProps) => {
   };
 
   switch (provider) {
+    case LogProvider.Azure:
+      return <AzureProviderAuditLogStreamForm onSubmit={onSubmit} />;
     case LogProvider.Cribl:
       return <CriblProviderAuditLogStreamForm onSubmit={onSubmit} />;
     case LogProvider.Custom:
@@ -86,6 +89,10 @@ const UpdateForm = ({ auditLogStream, onComplete }: UpdateFormProps) => {
   };
 
   switch (auditLogStream.provider) {
+    case LogProvider.Azure:
+      return (
+        <AzureProviderAuditLogStreamForm onSubmit={onSubmit} auditLogStream={auditLogStream} />
+      );
     case LogProvider.Cribl:
       return (
         <CriblProviderAuditLogStreamForm onSubmit={onSubmit} auditLogStream={auditLogStream} />

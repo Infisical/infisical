@@ -17,7 +17,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   useCreateSshHostGroup,
   useGetSshHostGroupById,
@@ -56,8 +56,8 @@ const schema = z
 export type FormData = z.infer<typeof schema>;
 
 export const SshHostGroupModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace.id;
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const { data: sshHostGroups } = useListWorkspaceSshHostGroups(projectId);
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);

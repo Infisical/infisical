@@ -5,10 +5,10 @@ import { z } from "zod";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { useProjectPermission, useSubscription, useWorkspace } from "@app/context";
+import { useProject, useProjectPermission, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
+import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/projects/queries";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/workspace/queries";
 
 const formSchema = z.object({
   auditLogsRetentionDays: z.coerce.number().min(0)
@@ -19,7 +19,7 @@ type TForm = z.infer<typeof formSchema>;
 export const AuditLogsRetentionSection = () => {
   const { mutateAsync: updateAuditLogsRetention } = useUpdateWorkspaceAuditLogsRetention();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { membership } = useProjectPermission();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
@@ -32,11 +32,11 @@ export const AuditLogsRetentionSection = () => {
     resolver: zodResolver(formSchema),
     values: {
       auditLogsRetentionDays:
-        currentWorkspace?.auditLogsRetentionDays ?? subscription?.auditLogsRetentionDays ?? 0
+        currentProject?.auditLogsRetentionDays ?? subscription?.auditLogsRetentionDays ?? 0
     }
   });
 
-  if (!currentWorkspace) return null;
+  if (!currentProject) return null;
 
   const handleAuditLogsRetentionSubmit = async ({ auditLogsRetentionDays }: TForm) => {
     try {
@@ -59,7 +59,7 @@ export const AuditLogsRetentionSection = () => {
 
       await updateAuditLogsRetention({
         auditLogsRetentionDays,
-        projectSlug: currentWorkspace.slug
+        projectSlug: currentProject.slug
       });
 
       createNotification({

@@ -20,11 +20,11 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { OrgPermissionActions, OrgPermissionSubjects, useWorkspace } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useProject } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useGetIntegration } from "@app/hooks/api";
 import { useDeleteIntegration, useSyncIntegration } from "@app/hooks/api/integrations/queries";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { IntegrationAuditLogsSection } from "./components/IntegrationAuditLogsSection";
 import { IntegrationConnectionSection } from "./components/IntegrationConnectionSection";
@@ -45,8 +45,8 @@ export const IntegrationDetailsByIDPage = () => {
 
   const [shouldDeleteSecrets, setShouldDeleteSecrets] = useToggle(false);
 
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace.id;
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const { mutateAsync: syncIntegration } = useSyncIntegration();
   const { mutateAsync: deleteIntegration } = useDeleteIntegration();
 
@@ -56,7 +56,7 @@ export const IntegrationDetailsByIDPage = () => {
     try {
       await deleteIntegration({
         id: integrationId,
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         shouldDeleteIntegrationSecrets
       });
 

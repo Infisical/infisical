@@ -18,8 +18,8 @@ import {
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useSubscription,
-  useWorkspace
+  useProject,
+  useSubscription
 } from "@app/context";
 import { useUpdateWsEnvironment } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -40,17 +40,17 @@ type Props = {
 };
 
 export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { subscription } = useSubscription();
 
   const updateEnvironment = useUpdateWsEnvironment();
 
   const handleReorderEnv = async (id: string, position: number) => {
     try {
-      if (!currentWorkspace?.id) return;
+      if (!currentProject?.id) return;
 
       await updateEnvironment.mutateAsync({
-        workspaceId: currentWorkspace.id,
+        projectId: currentProject.id,
         id,
         position
       });
@@ -69,13 +69,13 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
   };
 
   const isMoreEnvironmentsAllowed =
-    subscription?.environmentLimit && currentWorkspace?.environments
-      ? currentWorkspace.environments.length <= subscription.environmentLimit
+    subscription?.environmentLimit && currentProject?.environments
+      ? currentProject.environments.length <= subscription.environmentLimit
       : true;
 
   const environmentsOverPlanLimit =
-    subscription?.environmentLimit && currentWorkspace?.environments
-      ? Math.max(0, currentWorkspace.environments.length - subscription.environmentLimit)
+    subscription?.environmentLimit && currentProject?.environments
+      ? Math.max(0, currentProject.environments.length - subscription.environmentLimit)
       : 0;
 
   return (
@@ -89,7 +89,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
           </Tr>
         </THead>
         <TBody>
-          {currentWorkspace.environments.map(({ name, slug, id }, pos) => (
+          {currentProject.environments.map(({ name, slug, id }, pos) => (
             <Tr key={id}>
               <Td>{name}</Td>
               <Td>{slug}</Td>
@@ -102,15 +102,12 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
                     <IconButton
                       className="mr-3 py-2"
                       onClick={() =>
-                        handleReorderEnv(
-                          id,
-                          Math.min(currentWorkspace.environments.length, pos + 2)
-                        )
+                        handleReorderEnv(id, Math.min(currentProject.environments.length, pos + 2))
                       }
                       colorSchema="primary"
                       variant="plain"
                       ariaLabel="update"
-                      isDisabled={pos === currentWorkspace.environments.length - 1 || !isAllowed}
+                      isDisabled={pos === currentProject.environments.length - 1 || !isAllowed}
                     >
                       <FontAwesomeIcon icon={faArrowDown} />
                     </IconButton>
@@ -183,7 +180,7 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
               </Td>
             </Tr>
           ))}
-          {currentWorkspace.environments?.length === 0 && (
+          {currentProject.environments?.length === 0 && (
             <Tr>
               <Td colSpan={3}>
                 <EmptyState title="No environments found" />

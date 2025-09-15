@@ -9,7 +9,7 @@ import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useAppConnectionOptions } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 type Props = {
   onSelect: (app: AppConnection) => void;

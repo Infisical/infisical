@@ -28,21 +28,21 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
-  useSubscription,
-  useWorkspace
+  useProject,
+  useSubscription
 } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
-import { useGetUserWorkspaces } from "@app/hooks/api";
+import { useGetUserProjects } from "@app/hooks/api";
+import { Project } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { Workspace } from "@app/hooks/api/workspace/types";
 
 export const ProjectSelect = () => {
   const [searchProject, setSearchProject] = useState("");
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject: currentWorkspace } = useProject();
   const { currentOrg } = useOrganization();
-  const { data: workspaces = [] } = useGetUserWorkspaces();
+  const { data: projects = [] } = useGetUserProjects();
   const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg.id);
 
   const { subscription } = useSubscription();
@@ -86,16 +86,16 @@ export const ProjectSelect = () => {
     "upgradePlan"
   ] as const);
 
-  const projects = useMemo(() => {
-    const projectOptions = workspaces
-      .map((w): Workspace & { isFavorite: boolean } => ({
+  const projectsSortedByFav = useMemo(() => {
+    const projectOptions = projects
+      .map((w): Project & { isFavorite: boolean } => ({
         ...w,
         isFavorite: Boolean(projectFavorites?.includes(w.id))
       }))
       .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite));
 
     return projectOptions;
-  }, [workspaces, projectFavorites, currentWorkspace]);
+  }, [projects, projectFavorites, currentWorkspace]);
 
   return (
     <div className="-mr-2 flex w-full items-center gap-1">
@@ -147,7 +147,7 @@ export const ProjectSelect = () => {
             />
           </div>
           <div className="thin-scrollbar max-h-80 overflow-auto">
-            {projects
+            {projectsSortedByFav
               ?.filter((el) => el.name?.toLowerCase().includes(searchProject.toLowerCase()))
               ?.map((workspace) => {
                 return (
@@ -200,16 +200,20 @@ export const ProjectSelect = () => {
           </div>
           <div className="mt-1 h-1 border-t border-mineshaft-600" />
           <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
-            {(isAllowed) => (
-              <DropdownMenuItem
-                isDisabled={!isAllowed}
-                icon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() =>
-                  handlePopUpOpen(isAddingProjectsAllowed ? "addNewWs" : "upgradePlan")
-                }
-              >
-                New Project
-              </DropdownMenuItem>
+            {(isOldProjectPermissionAllowed) => (
+              <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Project}>
+                {(isAllowed) => (
+                  <DropdownMenuItem
+                    isDisabled={!isAllowed && !isOldProjectPermissionAllowed}
+                    icon={<FontAwesomeIcon icon={faPlus} />}
+                    onClick={() =>
+                      handlePopUpOpen(isAddingProjectsAllowed ? "addNewWs" : "upgradePlan")
+                    }
+                  >
+                    New Project
+                  </DropdownMenuItem>
+                )}
+              </OrgPermissionCan>
             )}
           </OrgPermissionCan>
         </DropdownMenuContent>

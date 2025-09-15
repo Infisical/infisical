@@ -47,7 +47,7 @@ import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { TAppConnection, useListAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AddAppConnectionModal } from "./AddAppConnectionModal";
 import { AppConnectionRow } from "./AppConnectionRow";

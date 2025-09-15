@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet";
 
 import { PageHeader } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionSub
@@ -11,7 +11,7 @@ import { AppConnectionsTable } from "@app/pages/organization/AppConnections/AppC
 
 export const AppConnectionsPage = withProjectPermission(
   () => {
-    const { currentWorkspace } = useWorkspace();
+    const { currentProject } = useProject();
 
     return (
       <div className="bg-bunker-800">
@@ -28,10 +28,7 @@ export const AppConnectionsPage = withProjectPermission(
               description="Manage project App Connections"
             />
 
-            <AppConnectionsTable
-              projectId={currentWorkspace.id}
-              projectType={currentWorkspace.type}
-            />
+            <AppConnectionsTable projectId={currentProject.id} projectType={currentProject.type} />
           </div>
         </div>
       </div>

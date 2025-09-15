@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useUpdateWsEnvironment } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
@@ -23,7 +23,7 @@ const schema = z.object({
 export type FormData = z.infer<typeof schema>;
 
 export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { mutateAsync, isPending } = useUpdateWsEnvironment();
   const { control, handleSubmit, reset } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -34,10 +34,10 @@ export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpTog
 
   const onFormSubmit = async ({ name, slug }: FormData) => {
     try {
-      if (!currentWorkspace?.id) return;
+      if (!currentProject?.id) return;
 
       await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        projectId: currentProject.id,
         name,
         slug,
         id: oldEnvId

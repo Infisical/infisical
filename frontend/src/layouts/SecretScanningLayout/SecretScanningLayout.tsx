@@ -14,9 +14,9 @@ import { motion } from "framer-motion";
 import { Badge, Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
 import {
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
-  useSubscription,
-  useWorkspace
+  useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretScanningFindingActions } from "@app/context/ProjectPermissionContext/types";
 import { useGetSecretScanningUnresolvedFindingCount } from "@app/hooks/api/secretScanningV2";
@@ -24,14 +24,14 @@ import { useGetSecretScanningUnresolvedFindingCount } from "@app/hooks/api/secre
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
 export const SecretScanningLayout = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { assumedPrivilegeDetails } = useProjectPermission();
 
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
 
   const { data: unresolvedFindings } = useGetSecretScanningUnresolvedFindingCount(
-    currentWorkspace.id,
+    currentProject.id,
     {
       enabled:
         subscription.secretScanning &&
@@ -65,7 +65,7 @@ export const SecretScanningLayout = () => {
                   <Link
                     to="/projects/secret-scanning/$projectId/data-sources"
                     params={{
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => (
@@ -82,7 +82,7 @@ export const SecretScanningLayout = () => {
                   <Link
                     to="/projects/secret-scanning/$projectId/findings"
                     params={{
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => (
@@ -104,7 +104,7 @@ export const SecretScanningLayout = () => {
                   <Link
                     to="/projects/secret-scanning/$projectId/app-connections"
                     params={{
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => (
@@ -123,7 +123,7 @@ export const SecretScanningLayout = () => {
                   <Link
                     to="/projects/secret-scanning/$projectId/access-management"
                     params={{
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => (
@@ -140,7 +140,7 @@ export const SecretScanningLayout = () => {
                   <Link
                     to="/projects/secret-scanning/$projectId/audit-logs"
                     params={{
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => (
@@ -157,7 +157,7 @@ export const SecretScanningLayout = () => {
                   <Link
                     to="/projects/secret-scanning/$projectId/settings"
                     params={{
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => (

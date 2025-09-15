@@ -3,11 +3,11 @@ import { useState } from "react";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Checkbox } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { useUpdateProject } from "@app/hooks/api/workspace/queries";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { useUpdateProject } from "@app/hooks/api/projects/queries";
 
 export const SecretSnapshotsLegacySection = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { mutateAsync: updateProject } = useUpdateProject();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -16,13 +16,13 @@ export const SecretSnapshotsLegacySection = () => {
     setIsLoading(true);
 
     try {
-      if (!currentWorkspace?.id) {
+      if (!currentProject?.id) {
         setIsLoading(false);
         return;
       }
 
       await updateProject({
-        projectID: currentWorkspace.id,
+        projectId: currentProject.id,
         showSnapshotsLegacy: state
       });
 
@@ -50,7 +50,7 @@ export const SecretSnapshotsLegacySection = () => {
             <Checkbox
               id="showSnapshotsLegacy"
               isDisabled={!isAllowed || isLoading}
-              isChecked={currentWorkspace?.showSnapshotsLegacy ?? false}
+              isChecked={currentProject?.showSnapshotsLegacy ?? false}
               onCheckedChange={(state) => handleToggle(state as boolean)}
             >
               This feature enables your project members to view secret snapshots in the legacy

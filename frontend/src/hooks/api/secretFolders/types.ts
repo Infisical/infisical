@@ -1,4 +1,4 @@
-import { WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import { ProjectEnv } from "@app/hooks/api/projects/types";
 
 export enum ReservedFolders {
   SecretReplication = "__reserve_replication_"
@@ -22,7 +22,7 @@ export type TSecretFolder = {
 export type TSecretFolderWithPath = TSecretFolder & { path: string };
 
 export type TProjectEnvironmentsFolders = {
-  [key: string]: WorkspaceEnv & { folders: TSecretFolderWithPath[] };
+  [key: string]: ProjectEnv & { folders: TSecretFolderWithPath[] };
 };
 
 export type TGetProjectFoldersDTO = {
@@ -63,7 +63,6 @@ export type TDeleteFolderDTO = {
 
 export type TUpdateFolderBatchDTO = {
   projectId: string;
-  projectSlug: string;
   folders: {
     name: string;
     environment: string;

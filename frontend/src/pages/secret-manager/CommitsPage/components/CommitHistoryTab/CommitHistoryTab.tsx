@@ -136,7 +136,7 @@ export const CommitHistoryTab = ({
     isFetchingNextPage,
     hasNextPage
   } = useGetFolderCommitHistory({
-    workspaceId: projectId,
+    projectId,
     environment,
     directory: secretPath,
     limit,

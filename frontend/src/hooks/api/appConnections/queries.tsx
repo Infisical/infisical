@@ -14,7 +14,7 @@ import {
   TAppConnectionOption,
   TAppConnectionOptionMap
 } from "@app/hooks/api/appConnections/types/app-options";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 export const appConnectionKeys = {
   all: ["app-connection"] as const,

@@ -16,7 +16,7 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateIntegration, useGetIntegrationAuthApps } from "@app/hooks/api";
 import {
   useGetIntegrationAuthOctopusDeployScopeValues,
@@ -56,7 +56,7 @@ export const OctopusDeployConfigurePage = () => {
     }
   });
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.OctopusDeployCloudConfigurePage.id,
     select: (el) => el.integrationAuthId
@@ -137,7 +137,7 @@ export const OctopusDeployConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -153,16 +153,16 @@ export const OctopusDeployConfigurePage = () => {
   };
 
   useEffect(() => {
-    if (!octopusDeployResources || !octopusDeploySpaces || !currentWorkspace) return;
+    if (!octopusDeployResources || !octopusDeploySpaces || !currentProject) return;
 
     reset({
       targetResource: octopusDeployResources[0],
       targetSpace: octopusDeploySpaces.find((space) => space.IsDefault),
-      sourceEnvironment: currentWorkspace.environments[0],
+      sourceEnvironment: currentProject.environments[0],
       secretPath: "/",
       scope: OctopusDeployScope.Project
     });
-  }, [octopusDeploySpaces, octopusDeployResources, currentWorkspace]);
+  }, [octopusDeploySpaces, octopusDeployResources, currentProject]);
 
   if (isLoadingOctopusDeploySpaces || isOctopusDeployResourcesLoading)
     return (
@@ -196,9 +196,9 @@ export const OctopusDeployConfigurePage = () => {
                   value={value}
                   getOptionLabel={(option) => option.name}
                   onChange={onChange}
-                  options={currentWorkspace?.environments}
+                  options={currentProject?.environments}
                   placeholder="Select a project environment"
-                  isDisabled={!currentWorkspace?.environments.length}
+                  isDisabled={!currentProject?.environments.length}
                 />
               </FormControl>
             )}

@@ -14,7 +14,7 @@ import {
   SelectItem,
   TextArea
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useGetCert, useImportCertificate, useListWorkspacePkiCollections } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -48,13 +48,13 @@ type TCertificateDetails = {
 
 export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
   const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { data: cert } = useGetCert(
     (popUp?.certificateImport?.data as { serialNumber: string })?.serialNumber || ""
   );
 
   const { data } = useListWorkspacePkiCollections({
-    workspaceId: currentWorkspace?.id || ""
+    projectId: currentProject?.id || ""
   });
 
   const { mutateAsync: importCertificate } = useImportCertificate();
@@ -76,10 +76,10 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
     collectionId
   }: FormData) => {
     try {
-      if (!currentWorkspace?.slug) return;
+      if (!currentProject?.slug) return;
 
       const { serialNumber, certificate, certificateChain, privateKey } = await importCertificate({
-        projectSlug: currentWorkspace.slug,
+        projectSlug: currentProject.slug,
 
         certificatePem,
         privateKeyPem,

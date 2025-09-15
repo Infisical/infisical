@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalClose, ModalContent } from "@app/components/v2";
 import { useRequestProjectAccess } from "@app/hooks/api";
-import { Workspace } from "@app/hooks/api/workspace/types";
+import { Project } from "@app/hooks/api/projects/types";
 
 type ContentProps = {
   projectId: string;
@@ -57,7 +57,7 @@ const Content = ({ projectId, onComplete }: ContentProps) => {
 type RequestProjectAccessModalProps = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  project?: Workspace;
+  project?: Project;
   onComplete?: () => void;
 };
 

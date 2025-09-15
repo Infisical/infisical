@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Modal, ModalContent } from "@app/components/v2";
 import { TAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AppConnectionForm } from "./AppConnectionForm";
 import { AppConnectionsSelect } from "./AppConnectionList";

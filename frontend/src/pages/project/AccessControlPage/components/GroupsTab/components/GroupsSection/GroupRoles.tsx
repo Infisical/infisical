@@ -24,13 +24,13 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useGetProjectRoles, useUpdateGroupWorkspaceRole } from "@app/hooks/api";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
+import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
-import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/workspace/types";
 import { groupBy } from "@app/lib/fn/array";
 
 const temporaryRoleFormSchema = z.object({
@@ -213,7 +213,7 @@ type FormProps = {
 };
 
 const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const [searchRoles, setSearchRoles] = useState("");
 
@@ -255,7 +255,7 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
 
     try {
       await updateGroupWorkspaceRole.mutateAsync({
-        projectId: currentWorkspace?.id || "",
+        projectId: currentProject?.id || "",
         groupId,
         roles: selectedRoles
       });
@@ -373,11 +373,11 @@ export const GroupRoles = ({
   className,
   popperContentProps
 }: TMemberRolesProp) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { popUp, handlePopUpToggle } = usePopUp(["editRole"] as const);
 
   const { data: projectRoles, isPending: isRolesLoading } = useGetProjectRoles(
-    currentWorkspace?.id ?? ""
+    currentProject?.id ?? ""
   );
 
   return (

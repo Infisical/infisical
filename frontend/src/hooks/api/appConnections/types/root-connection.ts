@@ -1,4 +1,4 @@
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 export type TRootAppConnection = {
   id: string;

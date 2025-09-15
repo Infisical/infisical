@@ -8,7 +8,7 @@ import { CreateSecretSyncModal } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { Button, Spinner } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useListSecretSyncs } from "@app/hooks/api/secretSyncs";
@@ -25,7 +25,7 @@ export const SecretSyncsTab = () => {
 
   const navigate = useNavigate();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   useEffect(() => {
     if (!addSync) return;
@@ -34,7 +34,7 @@ export const SecretSyncsTab = () => {
     navigate({
       to: ROUTE_PATHS.SecretManager.IntegrationsListPage.path,
       params: {
-        projectId: currentWorkspace.id
+        projectId: currentProject.id
       },
       search
     });
@@ -65,7 +65,7 @@ export const SecretSyncsTab = () => {
       navigate({
         to: ROUTE_PATHS.SecretManager.IntegrationsListPage.path,
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search
       });
@@ -73,7 +73,7 @@ export const SecretSyncsTab = () => {
   }, [connectionId, connectionName]);
 
   const { data: secretSyncs = [], isPending: isSecretSyncsPending } = useListSecretSyncs(
-    currentWorkspace.id,
+    currentProject.id,
     {
       refetchInterval: 30000
     }

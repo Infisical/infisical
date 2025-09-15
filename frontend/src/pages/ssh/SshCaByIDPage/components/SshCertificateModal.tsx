@@ -14,7 +14,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   SshCertTemplateStatus,
   useGetSshCertTemplate,
@@ -71,8 +71,8 @@ enum SshCertificateOperation {
 }
 
 export const SshCertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id || "";
   const [operation, setOperation] = useState<SshCertificateOperation>(
     SshCertificateOperation.SIGN_SSH_KEY
   );

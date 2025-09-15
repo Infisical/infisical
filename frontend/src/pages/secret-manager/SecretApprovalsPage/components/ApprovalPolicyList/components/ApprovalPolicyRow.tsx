@@ -33,13 +33,13 @@ import { Approver } from "@app/hooks/api/accessApproval/types";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { ApproverType } from "@app/hooks/api/secretApproval/types";
-import { WorkspaceEnv } from "@app/hooks/api/types";
+import { ProjectEnv } from "@app/hooks/api/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
 interface IPolicy {
   id: string;
   name: string;
-  environments: WorkspaceEnv[];
+  environments: ProjectEnv[];
   projectId?: string;
   secretPath?: string;
   approvals: number;

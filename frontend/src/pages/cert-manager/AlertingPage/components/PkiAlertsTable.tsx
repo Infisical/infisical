@@ -10,7 +10,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useListWorkspacePkiAlerts } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -24,11 +24,11 @@ type Props = {
 };
 
 export const PkiAlertsTable = ({ handlePopUpOpen }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id || "";
 
   const { data, isPending } = useListWorkspacePkiAlerts({
-    workspaceId: projectId
+    projectId
   });
 
   return (

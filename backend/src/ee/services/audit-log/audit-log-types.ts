@@ -146,7 +146,7 @@ export enum EventType {
   MOVE_SECRETS = "move-secrets",
   DELETE_SECRET = "delete-secret",
   DELETE_SECRETS = "delete-secrets",
-  GET_WORKSPACE_KEY = "get-workspace-key",
+  GET_PROJECT_KEY = "get-project-key",
   AUTHORIZE_INTEGRATION = "authorize-integration",
   UPDATE_INTEGRATION_AUTH = "update-integration-auth",
   UNAUTHORIZE_INTEGRATION = "unauthorize-integration",
@@ -249,9 +249,9 @@ export enum EventType {
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
   GET_ENVIRONMENT = "get-environment",
-  ADD_WORKSPACE_MEMBER = "add-workspace-member",
-  ADD_BATCH_WORKSPACE_MEMBER = "add-workspace-members",
-  REMOVE_WORKSPACE_MEMBER = "remove-workspace-member",
+  ADD_PROJECT_MEMBER = "add-project-member",
+  ADD_BATCH_PROJECT_MEMBER = "add-project-members",
+  REMOVE_PROJECT_MEMBER = "remove-project-member",
   CREATE_FOLDER = "create-folder",
   UPDATE_FOLDER = "update-folder",
   DELETE_FOLDER = "delete-folder",
@@ -264,8 +264,8 @@ export enum EventType {
   CREATE_SECRET_IMPORT = "create-secret-import",
   UPDATE_SECRET_IMPORT = "update-secret-import",
   DELETE_SECRET_IMPORT = "delete-secret-import",
-  UPDATE_USER_WORKSPACE_ROLE = "update-user-workspace-role",
-  UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS = "update-user-workspace-denied-permissions",
+  UPDATE_USER_PROJECT_ROLE = "update-user-project-role",
+  UPDATE_USER_PROJECT_DENIED_PERMISSIONS = "update-user-project-denied-permissions",
   SECRET_APPROVAL_MERGED = "secret-approval-merged",
   SECRET_APPROVAL_REQUEST = "secret-approval-request",
   SECRET_APPROVAL_CLOSED = "secret-approval-closed",
@@ -666,8 +666,8 @@ interface DeleteSecretBatchEvent {
   };
 }
 
-interface GetWorkspaceKeyEvent {
-  type: EventType.GET_WORKSPACE_KEY;
+interface GetProjectKeyEvent {
+  type: EventType.GET_PROJECT_KEY;
   metadata: {
     keyId: string;
   };
@@ -1559,24 +1559,24 @@ interface DeleteEnvironmentEvent {
   };
 }
 
-interface AddWorkspaceMemberEvent {
-  type: EventType.ADD_WORKSPACE_MEMBER;
+interface AddProjectMemberEvent {
+  type: EventType.ADD_PROJECT_MEMBER;
   metadata: {
     userId: string;
     email: string;
   };
 }
 
-interface AddBatchWorkspaceMemberEvent {
-  type: EventType.ADD_BATCH_WORKSPACE_MEMBER;
+interface AddBatchProjectMemberEvent {
+  type: EventType.ADD_BATCH_PROJECT_MEMBER;
   metadata: Array<{
     userId: string;
     email: string;
   }>;
 }
 
-interface RemoveWorkspaceMemberEvent {
-  type: EventType.REMOVE_WORKSPACE_MEMBER;
+interface RemoveProjectMemberEvent {
+  type: EventType.REMOVE_PROJECT_MEMBER;
   metadata: {
     userId: string;
     email: string;
@@ -1715,7 +1715,7 @@ interface DeleteSecretImportEvent {
 }
 
 interface UpdateUserRole {
-  type: EventType.UPDATE_USER_WORKSPACE_ROLE;
+  type: EventType.UPDATE_USER_PROJECT_ROLE;
   metadata: {
     userId: string;
     email: string;
@@ -1725,7 +1725,7 @@ interface UpdateUserRole {
 }
 
 interface UpdateUserDeniedPermissions {
-  type: EventType.UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS;
+  type: EventType.UPDATE_USER_PROJECT_DENIED_PERMISSIONS;
   metadata: {
     userId: string;
     email: string;
@@ -3496,7 +3496,7 @@ export type Event =
   | MoveSecretsEvent
   | DeleteSecretEvent
   | DeleteSecretBatchEvent
-  | GetWorkspaceKeyEvent
+  | GetProjectKeyEvent
   | AuthorizeIntegrationEvent
   | UpdateIntegrationAuthEvent
   | UnauthorizeIntegrationEvent
@@ -3585,9 +3585,9 @@ export type Event =
   | GetEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent
-  | AddWorkspaceMemberEvent
-  | AddBatchWorkspaceMemberEvent
-  | RemoveWorkspaceMemberEvent
+  | AddProjectMemberEvent
+  | AddBatchProjectMemberEvent
+  | RemoveProjectMemberEvent
   | CreateFolderEvent
   | UpdateFolderEvent
   | DeleteFolderEvent
