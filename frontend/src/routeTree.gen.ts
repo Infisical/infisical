@@ -119,6 +119,7 @@ import { Route as projectIdentityDetailsByIDPageRouteSecretScanningImport } from
 import { Route as projectGroupDetailsByIDPageRouteSecretScanningImport } from './pages/project/GroupDetailsByIDPage/route-secret-scanning'
 import { Route as projectRoleDetailsBySlugPageRouteSecretManagerImport } from './pages/project/RoleDetailsBySlugPage/route-secret-manager'
 import { Route as projectMemberDetailsByIDPageRouteSecretManagerImport } from './pages/project/MemberDetailsByIDPage/route-secret-manager'
+import { Route as projectIdentityGroupDetailsByIDPageRouteSecretManagerImport } from './pages/project/IdentityGroupDetailsByIDPage/route-secret-manager'
 import { Route as projectIdentityDetailsByIDPageRouteSecretManagerImport } from './pages/project/IdentityDetailsByIDPage/route-secret-manager'
 import { Route as projectGroupDetailsByIDPageRouteSecretManagerImport } from './pages/project/GroupDetailsByIDPage/route-secret-manager'
 import { Route as projectRoleDetailsBySlugPageRouteKmsImport } from './pages/project/RoleDetailsBySlugPage/route-kms'
@@ -1199,6 +1200,13 @@ const projectMemberDetailsByIDPageRouteSecretManagerRoute =
   projectMemberDetailsByIDPageRouteSecretManagerImport.update({
     id: '/members/$membershipId',
     path: '/members/$membershipId',
+    getParentRoute: () => secretManagerLayoutRoute,
+  } as any)
+
+const projectIdentityGroupDetailsByIDPageRouteSecretManagerRoute =
+  projectIdentityGroupDetailsByIDPageRouteSecretManagerImport.update({
+    id: '/identity-groups/$identityGroupId',
+    path: '/identity-groups/$identityGroupId',
     getParentRoute: () => secretManagerLayoutRoute,
   } as any)
 
@@ -2991,6 +2999,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof projectIdentityDetailsByIDPageRouteSecretManagerImport
       parentRoute: typeof secretManagerLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/identity-groups/$identityGroupId': {
+      id: '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/identity-groups/$identityGroupId'
+      path: '/identity-groups/$identityGroupId'
+      fullPath: '/projects/secret-management/$projectId/identity-groups/$identityGroupId'
+      preLoaderRoute: typeof projectIdentityGroupDetailsByIDPageRouteSecretManagerImport
+      parentRoute: typeof secretManagerLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/members/$membershipId': {
       id: '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/members/$membershipId'
       path: '/members/$membershipId'
@@ -4236,6 +4251,7 @@ interface secretManagerLayoutRouteChildren {
   secretManagerSecretDashboardPageRouteRoute: typeof secretManagerSecretDashboardPageRouteRoute
   projectGroupDetailsByIDPageRouteSecretManagerRoute: typeof projectGroupDetailsByIDPageRouteSecretManagerRoute
   projectIdentityDetailsByIDPageRouteSecretManagerRoute: typeof projectIdentityDetailsByIDPageRouteSecretManagerRoute
+  projectIdentityGroupDetailsByIDPageRouteSecretManagerRoute: typeof projectIdentityGroupDetailsByIDPageRouteSecretManagerRoute
   projectMemberDetailsByIDPageRouteSecretManagerRoute: typeof projectMemberDetailsByIDPageRouteSecretManagerRoute
   projectRoleDetailsBySlugPageRouteSecretManagerRoute: typeof projectRoleDetailsBySlugPageRouteSecretManagerRoute
   AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdRouteWithChildren
@@ -4262,6 +4278,8 @@ const secretManagerLayoutRouteChildren: secretManagerLayoutRouteChildren = {
     projectGroupDetailsByIDPageRouteSecretManagerRoute,
   projectIdentityDetailsByIDPageRouteSecretManagerRoute:
     projectIdentityDetailsByIDPageRouteSecretManagerRoute,
+  projectIdentityGroupDetailsByIDPageRouteSecretManagerRoute:
+    projectIdentityGroupDetailsByIDPageRouteSecretManagerRoute,
   projectMemberDetailsByIDPageRouteSecretManagerRoute:
     projectMemberDetailsByIDPageRouteSecretManagerRoute,
   projectRoleDetailsBySlugPageRouteSecretManagerRoute:
@@ -4744,6 +4762,7 @@ export interface FileRoutesByFullPath {
   '/projects/kms/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteKmsRoute
   '/projects/secret-management/$projectId/groups/$groupId': typeof projectGroupDetailsByIDPageRouteSecretManagerRoute
   '/projects/secret-management/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteSecretManagerRoute
+  '/projects/secret-management/$projectId/identity-groups/$identityGroupId': typeof projectIdentityGroupDetailsByIDPageRouteSecretManagerRoute
   '/projects/secret-management/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteSecretManagerRoute
   '/projects/secret-management/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteSecretManagerRoute
   '/projects/secret-scanning/$projectId/groups/$groupId': typeof projectGroupDetailsByIDPageRouteSecretScanningRoute
@@ -4954,6 +4973,7 @@ export interface FileRoutesByTo {
   '/projects/kms/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteKmsRoute
   '/projects/secret-management/$projectId/groups/$groupId': typeof projectGroupDetailsByIDPageRouteSecretManagerRoute
   '/projects/secret-management/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteSecretManagerRoute
+  '/projects/secret-management/$projectId/identity-groups/$identityGroupId': typeof projectIdentityGroupDetailsByIDPageRouteSecretManagerRoute
   '/projects/secret-management/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteSecretManagerRoute
   '/projects/secret-management/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteSecretManagerRoute
   '/projects/secret-scanning/$projectId/groups/$groupId': typeof projectGroupDetailsByIDPageRouteSecretScanningRoute
@@ -5185,6 +5205,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/projects/kms/$projectId/_kms-layout/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteKmsRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/groups/$groupId': typeof projectGroupDetailsByIDPageRouteSecretManagerRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteSecretManagerRoute
+  '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/identity-groups/$identityGroupId': typeof projectIdentityGroupDetailsByIDPageRouteSecretManagerRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/members/$membershipId': typeof projectMemberDetailsByIDPageRouteSecretManagerRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteSecretManagerRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-scanning/$projectId/_secret-scanning-layout/groups/$groupId': typeof projectGroupDetailsByIDPageRouteSecretScanningRoute
@@ -5409,6 +5430,7 @@ export interface FileRouteTypes {
     | '/projects/kms/$projectId/roles/$roleSlug'
     | '/projects/secret-management/$projectId/groups/$groupId'
     | '/projects/secret-management/$projectId/identities/$identityId'
+    | '/projects/secret-management/$projectId/identity-groups/$identityGroupId'
     | '/projects/secret-management/$projectId/members/$membershipId'
     | '/projects/secret-management/$projectId/roles/$roleSlug'
     | '/projects/secret-scanning/$projectId/groups/$groupId'
@@ -5618,6 +5640,7 @@ export interface FileRouteTypes {
     | '/projects/kms/$projectId/roles/$roleSlug'
     | '/projects/secret-management/$projectId/groups/$groupId'
     | '/projects/secret-management/$projectId/identities/$identityId'
+    | '/projects/secret-management/$projectId/identity-groups/$identityGroupId'
     | '/projects/secret-management/$projectId/members/$membershipId'
     | '/projects/secret-management/$projectId/roles/$roleSlug'
     | '/projects/secret-scanning/$projectId/groups/$groupId'
@@ -5847,6 +5870,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/projects/kms/$projectId/_kms-layout/roles/$roleSlug'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/groups/$groupId'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/identities/$identityId'
+    | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/identity-groups/$identityGroupId'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/members/$membershipId'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/roles/$roleSlug'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-scanning/$projectId/_secret-scanning-layout/groups/$groupId'
@@ -6459,6 +6483,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug",
         "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/groups/$groupId",
         "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/identities/$identityId",
+        "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/identity-groups/$identityGroupId",
         "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/members/$membershipId",
         "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/roles/$roleSlug",
         "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId"
@@ -6806,6 +6831,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/identities/$identityId": {
       "filePath": "project/IdentityDetailsByIDPage/route-secret-manager.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/identity-groups/$identityGroupId": {
+      "filePath": "project/IdentityGroupDetailsByIDPage/route-secret-manager.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/members/$membershipId": {

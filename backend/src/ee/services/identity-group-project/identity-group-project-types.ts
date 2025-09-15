@@ -40,12 +40,11 @@ export type TGetIdentityGroupInProjectDTO = {
   groupId: string;
 } & TGenericPermission;
 
-export type TListProjectIdentityGroupUsersDTO = {
+export type TListProjectIdentityGroupIdentitiesDTO = {
   projectId: string;
   id: string;
   offset?: number;
   limit?: number;
-  username?: string;
   search?: string;
   filter?: EFilterReturnedIdentities;
 } & TGenericPermission;

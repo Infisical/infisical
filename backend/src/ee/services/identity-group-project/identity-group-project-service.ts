@@ -26,7 +26,7 @@ import {
   TCreateIdentityGroupProjectDTO,
   TGetIdentityGroupInProjectDTO,
   TListIdentityGroupsInProjectDTO,
-  TListProjectIdentityGroupUsersDTO,
+  TListProjectIdentityGroupIdentitiesDTO,
   TRemoveIdentityGroupFromProjectDTO,
   TUpdateIdentityGroupInProjectDTO
 } from "./identity-group-project-types";
@@ -408,7 +408,7 @@ export const identityGroupProjectServiceFactory = ({
     return identityGroupMembership;
   };
 
-  const listProjectIdentityGroupUsers = async ({
+  const listProjectIdentityGroupIdentities = async ({
     id,
     projectId,
     actor,
@@ -419,7 +419,7 @@ export const identityGroupProjectServiceFactory = ({
     limit = 10,
     search,
     filter
-  }: TListProjectIdentityGroupUsersDTO) => {
+  }: TListProjectIdentityGroupIdentitiesDTO) => {
     if (!actorOrgId) throw new BadRequestError({ message: "Organization ID is required" });
     const project = await projectDAL.findById(projectId);
 
@@ -454,7 +454,7 @@ export const identityGroupProjectServiceFactory = ({
       filter
     });
 
-    return { users: members, totalCount };
+    return { identities: members, totalCount };
   };
 
   return {
@@ -463,6 +463,6 @@ export const identityGroupProjectServiceFactory = ({
     removeIdentityGroupFromProject,
     listIdentityGroupsInProject,
     getIdentityGroupInProject,
-    listProjectIdentityGroupUsers
+    listProjectIdentityGroupIdentities
   };
 };

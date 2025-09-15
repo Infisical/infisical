@@ -52,6 +52,7 @@ export {
   useUpdateUserWorkspaceRole,
   useUpdateWsEnvironment,
   useUpgradeProject,
-  useListWorkspaceIdentityGroups
+  useListWorkspaceIdentityGroups,
+  useGetWorkspaceIdentityGroupMembershipDetails
 } from "./queries";
 export { workspaceKeys } from "./query-keys";

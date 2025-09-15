@@ -305,7 +305,7 @@ export const registerIdentityGroupProjectRouter = async (server: FastifyZodProvi
 
   server.route({
     method: "GET",
-    url: "/:projectId/identity-groups/:groupId/users",
+    url: "/:projectId/identity-groups/:groupId/identities",
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     config: {
       rateLimit: readLimit
@@ -313,7 +313,7 @@ export const registerIdentityGroupProjectRouter = async (server: FastifyZodProvi
     schema: {
       hide: false,
       tags: [ApiDocsTags.ProjectIdentityGroups],
-      description: "Return project identity group users",
+      description: "Return project identity group identities",
       params: z.object({
         projectId: z.string().trim().describe(IDENTITY_GROUPS.LIST_IDENTITIES.projectId),
         groupId: z.string().trim().describe(IDENTITY_GROUPS.LIST_IDENTITIES.id)
@@ -326,7 +326,7 @@ export const registerIdentityGroupProjectRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          users: z.array(
+          identities: z.array(
             z.object({
               id: z.string(),
               name: z.string(),
@@ -340,7 +340,7 @@ export const registerIdentityGroupProjectRouter = async (server: FastifyZodProvi
       }
     },
     handler: async (req) => {
-      const { users, totalCount } = await server.services.identityGroupProject.listProjectIdentityGroupUsers({
+      const { identities, totalCount } = await server.services.identityGroupProject.listProjectIdentityGroupIdentities({
         id: req.params.groupId,
         projectId: req.params.projectId,
         actor: req.permission.type,
@@ -350,7 +350,7 @@ export const registerIdentityGroupProjectRouter = async (server: FastifyZodProvi
         ...req.query
       });
 
-      return { users, totalCount };
+      return { identities, totalCount };
     }
   });
 };
