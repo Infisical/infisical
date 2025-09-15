@@ -254,7 +254,13 @@ export const projectServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
+
+    if (
+      permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace) &&
+      permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Project)
+    ) {
+      throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
+    }
 
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);

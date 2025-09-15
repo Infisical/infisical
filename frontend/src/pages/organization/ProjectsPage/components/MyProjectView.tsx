@@ -480,22 +480,26 @@ export const MyProjectView = ({
           </IconButton>
         </div>
         <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-          {(isAllowed) => (
-            <Button
-              isDisabled={!isAllowed}
-              colorSchema="secondary"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => {
-                if (isAddingProjectsAllowed) {
-                  onAddNewProject();
-                } else {
-                  onUpgradePlan();
-                }
-              }}
-              className="ml-2"
-            >
-              Add New Project
-            </Button>
+          {(isOldProjectV1Allowed) => (
+            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
+              {(isAllowed) => (
+                <Button
+                  isDisabled={!isAllowed && !isOldProjectV1Allowed}
+                  colorSchema="secondary"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={() => {
+                    if (isAddingProjectsAllowed) {
+                      onAddNewProject();
+                    } else {
+                      onUpgradePlan();
+                    }
+                  }}
+                  className="ml-2"
+                >
+                  Add New Project
+                </Button>
+              )}
+            </OrgPermissionCan>
           )}
         </OrgPermissionCan>
       </div>

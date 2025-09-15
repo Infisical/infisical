@@ -200,16 +200,20 @@ export const ProjectSelect = () => {
           </div>
           <div className="mt-1 h-1 border-t border-mineshaft-600" />
           <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
-            {(isAllowed) => (
-              <DropdownMenuItem
-                isDisabled={!isAllowed}
-                icon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() =>
-                  handlePopUpOpen(isAddingProjectsAllowed ? "addNewWs" : "upgradePlan")
-                }
-              >
-                New Project
-              </DropdownMenuItem>
+            {(isOldProjectPermissionAllowed) => (
+              <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Project}>
+                {(isAllowed) => (
+                  <DropdownMenuItem
+                    isDisabled={!isAllowed && !isOldProjectPermissionAllowed}
+                    icon={<FontAwesomeIcon icon={faPlus} />}
+                    onClick={() =>
+                      handlePopUpOpen(isAddingProjectsAllowed ? "addNewWs" : "upgradePlan")
+                    }
+                  >
+                    New Project
+                  </DropdownMenuItem>
+                )}
+              </OrgPermissionCan>
             )}
           </OrgPermissionCan>
         </DropdownMenuContent>
