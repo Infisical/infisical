@@ -14,7 +14,7 @@ import {
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { findOrgMembershipRole } from "@app/helpers/roles";
-import { useCreateGroup, useGetOrgRoles, useUpdateGroup } from "@app/hooks/api";
+import { useGetOrgRoles, useUpdateGroup, useCreateIdentityGroup } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const IdentityGroupFormSchema = z.object({
@@ -39,7 +39,7 @@ type Props = {
 export const OrgIdentityGroupModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
   const { data: roles } = useGetOrgRoles(currentOrg?.id || "");
-  const { mutateAsync: createMutateAsync, isPending: createIsLoading } = useCreateGroup();
+  const { mutateAsync: createMutateAsync, isPending: createIsLoading } = useCreateIdentityGroup();
   const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateGroup();
 
   const { control, handleSubmit, reset } = useForm<TIdentityGroupFormData>({
@@ -75,7 +75,7 @@ export const OrgIdentityGroupModal = ({ popUp, handlePopUpClose, handlePopUpTogg
     }
   }, [popUp?.group?.data, roles]);
 
-  const onGroupModalSubmit = async ({ name, slug, role }: TGroupFormData) => {
+  const onGroupModalSubmit = async ({ name, slug, role }: TIdentityGroupFormData) => {
     try {
       if (!currentOrg?.id) return;
 
