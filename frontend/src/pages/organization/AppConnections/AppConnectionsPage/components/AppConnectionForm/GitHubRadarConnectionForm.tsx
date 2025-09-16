@@ -6,7 +6,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, FormControl, ModalClose, Select, SelectItem } from "@app/components/v2";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  getAppConnectionMethodDetails,
+  useGetAppConnectionOauthReturnUrl
+} from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   GitHubRadarConnectionMethod,
@@ -15,6 +19,7 @@ import {
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { GithubRadarFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -22,6 +27,7 @@ import {
 
 type Props = {
   appConnection?: TGitHubRadarConnection;
+  projectId: string | undefined | null;
 };
 
 const formSchema = genericAppConnectionFieldsSchema.extend({
@@ -31,7 +37,7 @@ const formSchema = genericAppConnectionFieldsSchema.extend({
 
 type FormData = z.infer<typeof formSchema>;
 
-export const GitHubRadarConnectionForm = ({ appConnection }: Props) => {
+export const GitHubRadarConnectionForm = ({ appConnection, projectId }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -48,6 +54,8 @@ export const GitHubRadarConnectionForm = ({ appConnection }: Props) => {
     }
   });
 
+  const returnUrl = useGetAppConnectionOauthReturnUrl();
+
   const {
     handleSubmit,
     control,
@@ -63,7 +71,12 @@ export const GitHubRadarConnectionForm = ({ appConnection }: Props) => {
     localStorage.setItem("latestCSRFToken", state);
     localStorage.setItem(
       "githubRadarConnectionFormData",
-      JSON.stringify({ ...formData, connectionId: appConnection?.id })
+      JSON.stringify({
+        ...formData,
+        connectionId: appConnection?.id,
+        projectId,
+        returnUrl
+      } as GithubRadarFormData)
     );
 
     switch (formData.method) {

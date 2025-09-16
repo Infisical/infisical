@@ -26,7 +26,7 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useCreateIntegration } from "@app/hooks/api";
 import {
@@ -76,7 +76,7 @@ export const GitlabConfigurePage = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "confirmIntegration"
   ] as const);
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { control, handleSubmit, setValue, watch } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -85,7 +85,7 @@ export const GitlabConfigurePage = () => {
       secretPath: "/",
       secretPrefix: "",
       secretSuffix: "",
-      selectedSourceEnvironment: currentWorkspace.environments[0].slug,
+      selectedSourceEnvironment: currentProject.environments[0].slug,
       initialSyncBehavior: IntegrationSyncBehavior.PREFER_SOURCE
     }
   });
@@ -177,7 +177,7 @@ export const GitlabConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -267,7 +267,7 @@ export const GitlabConfigurePage = () => {
                       onValueChange={(e) => onChange(e)}
                       className="w-full"
                     >
-                      {currentWorkspace?.environments.map((sourceEnvironment) => (
+                      {currentProject?.environments.map((sourceEnvironment) => (
                         <SelectItem
                           value={sourceEnvironment.slug}
                           key={`source-environment-${sourceEnvironment.slug}`}

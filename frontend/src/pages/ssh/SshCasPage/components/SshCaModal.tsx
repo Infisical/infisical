@@ -15,7 +15,7 @@ import {
   SelectItem,
   TextArea
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateSshCa, useGetSshCaById, useUpdateSshCa } from "@app/hooks/api";
 import {
   SshCaKeySource,
@@ -54,8 +54,8 @@ export type FormData = z.infer<typeof schema>;
 
 export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const navigate = useNavigate();
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id || "";
   const { data: ca } = useGetSshCaById((popUp?.sshCa?.data as { caId: string })?.caId || "");
 
   const { mutateAsync: createMutateAsync } = useCreateSshCa();

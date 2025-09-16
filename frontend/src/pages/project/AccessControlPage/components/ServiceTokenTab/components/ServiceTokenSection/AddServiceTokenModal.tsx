@@ -22,7 +22,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useCreateServiceToken } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -70,7 +70,7 @@ type Props = {
 const ServiceTokenForm = () => {
   const { t } = useTranslation();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const {
     control,
     handleSubmit,
@@ -81,7 +81,7 @@ const ServiceTokenForm = () => {
       scopes: [
         {
           secretPath: "/",
-          environment: currentWorkspace?.environments?.[0]?.slug
+          environment: currentProject?.environments?.[0]?.slug
         }
       ]
     }
@@ -111,7 +111,7 @@ const ServiceTokenForm = () => {
 
   const onFormSubmit = async ({ name, scopes, expiresIn, permissions }: FormData) => {
     try {
-      if (!currentWorkspace?.id) return;
+      if (!currentProject?.id) return;
 
       const randomBytes = crypto.randomBytes(16).toString("hex");
 
@@ -122,7 +122,7 @@ const ServiceTokenForm = () => {
         scopes,
         expiresIn: Number(expiresIn),
         name,
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         randomBytes,
         permissions: Object.entries(permissions)
           .filter(([, permissionsValue]) => permissionsValue)
@@ -172,7 +172,7 @@ const ServiceTokenForm = () => {
           <Controller
             control={control}
             name={`scopes.${index}.environment`}
-            defaultValue={currentWorkspace?.environments?.[0]?.slug}
+            defaultValue={currentProject?.environments?.[0]?.slug}
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <FormControl
                 className="mb-0"
@@ -186,7 +186,7 @@ const ServiceTokenForm = () => {
                   onValueChange={(e) => onChange(e)}
                   className="w-full"
                 >
-                  {currentWorkspace?.environments.map(({ name, slug }) => (
+                  {currentProject?.environments.map(({ name, slug }) => (
                     <SelectItem value={slug} key={slug}>
                       {name}
                     </SelectItem>
@@ -225,7 +225,7 @@ const ServiceTokenForm = () => {
           variant="outline_bg"
           onClick={() =>
             append({
-              environment: currentWorkspace?.environments?.[0]?.slug || "",
+              environment: currentProject?.environments?.[0]?.slug || "",
               secretPath: ""
             })
           }
@@ -334,7 +334,7 @@ const ServiceTokenForm = () => {
 export const AddServiceTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { t } = useTranslation();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   return (
     <Modal
@@ -346,7 +346,7 @@ export const AddServiceTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
       <ModalContent
         title={
           t("section.token.add-dialog.title", {
-            target: currentWorkspace?.name
+            target: currentProject?.name
           }) as string
         }
         subTitle={t("section.token.add-dialog.description") as string}

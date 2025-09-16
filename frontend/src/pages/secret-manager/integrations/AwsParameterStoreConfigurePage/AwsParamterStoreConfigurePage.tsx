@@ -26,7 +26,7 @@ import {
   Tabs
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthById } from "@app/hooks/api/integrationAuth";
 import { useGetIntegrationAuthAwsKmsKeys } from "@app/hooks/api/integrationAuth/queries";
@@ -77,7 +77,7 @@ export const AWSParameterStoreConfigurePage = () => {
     from: ROUTE_PATHS.SecretManager.Integratons.AwsParameterStoreConfigurePage.id,
     select: (el) => el.integrationAuthId
   });
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { data: integrationAuth, isPending: isintegrationAuthLoading } = useGetIntegrationAuthById(
     (integrationAuthId as string) ?? ""
@@ -97,11 +97,11 @@ export const AWSParameterStoreConfigurePage = () => {
   const [kmsKeyId, setKmsKeyId] = useState("");
 
   useEffect(() => {
-    if (currentWorkspace) {
-      setSelectedSourceEnvironment(currentWorkspace.environments[0].slug);
+    if (currentProject) {
+      setSelectedSourceEnvironment(currentProject.environments[0].slug);
       setSelectedAWSRegion(awsRegions[0].slug);
     }
-  }, [currentWorkspace]);
+  }, [currentProject]);
 
   const { data: integrationAuthAwsKmsKeys, isPending: isIntegrationAuthAwsKmsKeysLoading } =
     useGetIntegrationAuthAwsKmsKeys({
@@ -158,7 +158,7 @@ export const AWSParameterStoreConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -226,7 +226,7 @@ export const AWSParameterStoreConfigurePage = () => {
                   onValueChange={(val) => setSelectedSourceEnvironment(val)}
                   className="w-full border border-mineshaft-500"
                 >
-                  {currentWorkspace?.environments.map((sourceEnvironment) => (
+                  {currentProject?.environments.map((sourceEnvironment) => (
                     <SelectItem
                       value={sourceEnvironment.slug}
                       key={`flyio-environment-${sourceEnvironment.slug}`}
@@ -261,7 +261,7 @@ export const AWSParameterStoreConfigurePage = () => {
               </FormControl>
               <FormControl label="Path" errorText={pathErrorText} isError={pathErrorText !== ""}>
                 <Input
-                  placeholder={`/${currentWorkspace.name
+                  placeholder={`/${currentProject.name
                     .toLowerCase()
                     .replace(/ /g, "-")}/${selectedSourceEnvironment}/`}
                   value={path}

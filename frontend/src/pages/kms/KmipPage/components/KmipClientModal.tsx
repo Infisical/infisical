@@ -13,7 +13,7 @@ import {
   ModalContent,
   TextArea
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateKmipClient, useUpdateKmipClient } from "@app/hooks/api/kmip";
 import { KmipPermission, TKmipClient } from "@app/hooks/api/kmip/types";
 
@@ -60,8 +60,8 @@ type FormProps = Pick<Props, "kmipClient"> & {
 const KmipClientForm = ({ onComplete, kmipClient }: FormProps) => {
   const createKmipClient = useCreateKmipClient();
   const updateKmipClient = useUpdateKmipClient();
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace.id;
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const isUpdate = !!kmipClient;
 
   const {

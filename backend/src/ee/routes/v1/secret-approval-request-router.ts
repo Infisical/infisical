@@ -27,7 +27,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     schema: {
       querystring: z.object({
-        workspaceId: z.string().trim(),
+        projectId: z.string().trim(),
         environment: z.string().trim().optional(),
         committer: z.string().trim().optional(),
         search: z.string().trim().optional(),
@@ -80,7 +80,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.query,
-        projectId: req.query.workspaceId
+        projectId: req.query.projectId
       });
       return { approvals, totalCount };
     }
@@ -94,7 +94,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     },
     schema: {
       querystring: z.object({
-        workspaceId: z.string().trim(),
+        projectId: z.string().trim(),
         policyId: z.string().trim().optional()
       }),
       response: {
@@ -113,7 +113,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.query.workspaceId,
+        projectId: req.query.projectId,
         policyId: req.query.policyId
       });
       return { approvals };

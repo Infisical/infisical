@@ -39,7 +39,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { isCustomProjectRole } from "@app/helpers/roles";
 import {
@@ -67,8 +67,8 @@ export const ProjectRoleList = () => {
     "deleteRole",
     "duplicateRole"
   ] as const);
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id || "";
 
   const { data: roles, isPending: isRolesLoading } = useGetProjectRoles(projectId);
 
@@ -250,9 +250,9 @@ export const ProjectRoleList = () => {
                   className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                   onClick={() =>
                     navigate({
-                      to: `${getProjectBaseURL(currentWorkspace.type)}/roles/$roleSlug`,
+                      to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
                       params: {
-                        projectId: currentWorkspace.id,
+                        projectId: currentProject.id,
                         roleSlug: slug
                       }
                     })
@@ -292,9 +292,9 @@ export const ProjectRoleList = () => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate({
-                                    to: `${getProjectBaseURL(currentWorkspace.type)}/roles/$roleSlug`,
+                                    to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
                                     params: {
-                                      projectId: currentWorkspace.id,
+                                      projectId: currentProject.id,
                                       roleSlug: slug
                                     }
                                   });

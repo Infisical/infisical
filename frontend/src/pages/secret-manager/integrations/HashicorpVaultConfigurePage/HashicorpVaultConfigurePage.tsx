@@ -25,7 +25,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { isValidPath } from "@app/helpers/string";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthById } from "@app/hooks/api/integrationAuth";
@@ -61,7 +61,7 @@ export const HashicorpVaultConfigurePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useCreateIntegration();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.HashicorpVaultConfigurePage.id,
     select: (el) => el.integrationAuthId
@@ -72,8 +72,8 @@ export const HashicorpVaultConfigurePage = () => {
   );
 
   const formSchema = useMemo(() => {
-    return generateFormSchema(currentWorkspace?.environments.map((env) => env.slug) ?? []);
-  }, [currentWorkspace?.environments]);
+    return generateFormSchema(currentProject?.environments.map((env) => env.slug) ?? []);
+  }, [currentProject?.environments]);
 
   const {
     control,
@@ -103,7 +103,7 @@ export const HashicorpVaultConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -177,7 +177,7 @@ export const HashicorpVaultConfigurePage = () => {
                     onValueChange={field.onChange}
                     className="w-full border border-mineshaft-500"
                   >
-                    {currentWorkspace?.environments.map((sourceEnvironment) => (
+                    {currentProject?.environments.map((sourceEnvironment) => (
                       <SelectItem
                         value={sourceEnvironment.slug}
                         key={`vault-environment-${sourceEnvironment.slug}`}

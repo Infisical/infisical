@@ -9,14 +9,14 @@ import {
   IS_ROTATION_DUAL_CREDENTIALS,
   SECRET_ROTATION_MAP
 } from "@app/helpers/secretRotationsV2";
-import { WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import { ProjectEnv } from "@app/hooks/api/projects/types";
 
 import { TSecretRotationV2Form } from "./schemas";
 import { SecretRotationV2ConnectionField } from "./SecretRotationV2ConnectionField";
 
 type Props = {
   isUpdate: boolean;
-  environments?: WorkspaceEnv[];
+  environments?: ProjectEnv[];
 };
 
 export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: Props) => {

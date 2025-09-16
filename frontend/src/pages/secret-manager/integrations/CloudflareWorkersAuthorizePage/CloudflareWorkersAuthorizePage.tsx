@@ -2,13 +2,13 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const CloudflareWorkersAuthorizePage = () => {
   const navigate = useNavigate();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { mutateAsync } = useSaveIntegrationAccessToken();
 
   const [accessKey, setAccessKey] = useState("");
@@ -30,7 +30,7 @@ export const CloudflareWorkersAuthorizePage = () => {
       setIsLoading(true);
 
       const integrationAuth = await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         integration: "cloudflare-workers",
         accessId: accountId,
         accessToken: accessKey
@@ -43,7 +43,7 @@ export const CloudflareWorkersAuthorizePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations/cloudflare-workers/create",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           integrationAuthId: integrationAuth.id

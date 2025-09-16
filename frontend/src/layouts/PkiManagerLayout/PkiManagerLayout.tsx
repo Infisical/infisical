@@ -7,6 +7,7 @@ import {
   faFileLines,
   faHome,
   faMobile,
+  faPlug,
   faSitemap,
   faStamp,
   faUsers
@@ -16,12 +17,12 @@ import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import { Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
-import { useProjectPermission, useWorkspace } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
 export const PkiManagerLayout = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { assumedPrivilegeDetails } = useProjectPermission();
   const { t } = useTranslation();
 
@@ -48,7 +49,7 @@ export const PkiManagerLayout = () => {
                     <Link
                       to="/projects/cert-management/$projectId/subscribers"
                       params={{
-                        projectId: currentWorkspace.id
+                        projectId: currentProject.id
                       }}
                     >
                       {({ isActive }) => (
@@ -65,7 +66,7 @@ export const PkiManagerLayout = () => {
                     <Link
                       to="/projects/cert-management/$projectId/certificate-templates"
                       params={{
-                        projectId: currentWorkspace.id
+                        projectId: currentProject.id
                       }}
                     >
                       {({ isActive }) => (
@@ -82,7 +83,7 @@ export const PkiManagerLayout = () => {
                     <Link
                       to="/projects/cert-management/$projectId/certificates"
                       params={{
-                        projectId: currentWorkspace.id
+                        projectId: currentProject.id
                       }}
                     >
                       {({ isActive }) => (
@@ -99,7 +100,7 @@ export const PkiManagerLayout = () => {
                     <Link
                       to="/projects/cert-management/$projectId/certificate-authorities"
                       params={{
-                        projectId: currentWorkspace.id
+                        projectId: currentProject.id
                       }}
                     >
                       {({ isActive }) => (
@@ -116,7 +117,7 @@ export const PkiManagerLayout = () => {
                     <Link
                       to="/projects/cert-management/$projectId/alerting"
                       params={{
-                        projectId: currentWorkspace.id
+                        projectId: currentProject.id
                       }}
                     >
                       {({ isActive }) => (
@@ -130,12 +131,29 @@ export const PkiManagerLayout = () => {
                         </MenuItem>
                       )}
                     </Link>
+                    <Link
+                      to="/projects/cert-management/$projectId/app-connections"
+                      params={{
+                        projectId: currentProject.id
+                      }}
+                    >
+                      {({ isActive }) => (
+                        <MenuItem isSelected={isActive}>
+                          <div className="mx-1 flex gap-2">
+                            <div className="w-6">
+                              <FontAwesomeIcon icon={faPlug} />
+                            </div>
+                            App Connections
+                          </div>
+                        </MenuItem>
+                      )}
+                    </Link>
                   </MenuGroup>
                   <MenuGroup title="Others">
                     <Link
                       to="/projects/cert-management/$projectId/access-management"
                       params={{
-                        projectId: currentWorkspace.id
+                        projectId: currentProject.id
                       }}
                     >
                       {({ isActive }) => (
@@ -152,7 +170,7 @@ export const PkiManagerLayout = () => {
                     <Link
                       to="/projects/cert-management/$projectId/audit-logs"
                       params={{
-                        projectId: currentWorkspace.id
+                        projectId: currentProject.id
                       }}
                     >
                       {({ isActive }) => (
@@ -169,7 +187,7 @@ export const PkiManagerLayout = () => {
                     <Link
                       to="/projects/cert-management/$projectId/settings"
                       params={{
-                        projectId: currentWorkspace.id
+                        projectId: currentProject.id
                       }}
                     >
                       {({ isActive }) => (

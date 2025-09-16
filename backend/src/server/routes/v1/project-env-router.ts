@@ -11,58 +11,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
-    url: "/:workspaceId/environments/:envId",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      hide: false,
-      tags: [ApiDocsTags.Environments],
-      description: "Get Environment",
-      security: [
-        {
-          bearerAuth: []
-        }
-      ],
-      params: z.object({
-        // NOTE(daniel): workspaceId isn't used, but we need to keep it for backwards compatibility. The endpoint defined below, uses no project ID, and is takes a pure environment ID.
-        workspaceId: z.string().trim().describe(ENVIRONMENTS.GET.workspaceId),
-        envId: z.string().trim().describe(ENVIRONMENTS.GET.id)
-      }),
-      response: {
-        200: z.object({
-          environment: ProjectEnvironmentsSchema
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const environment = await server.services.projectEnv.getEnvironmentById({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        id: req.params.envId
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: environment.projectId,
-        event: {
-          type: EventType.GET_ENVIRONMENT,
-          metadata: {
-            id: environment.id
-          }
-        }
-      });
-
-      return { environment };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/environments/:envId",
+    url: "/:projectId/environments/:envId",
     config: {
       rateLimit: readLimit
     },
@@ -76,7 +25,8 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        envId: z.string().trim().describe(ENVIRONMENTS.GET.id)
+        envId: z.string().trim().describe(ENVIRONMENTS.GET.id),
+        projectId: z.string().trim().describe(ENVIRONMENTS.GET.projectId)
       }),
       response: {
         200: z.object({
@@ -111,7 +61,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/:workspaceId/environments",
+    url: "/:projectId/environments",
     config: {
       rateLimit: writeLimit
     },
@@ -125,7 +75,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(ENVIRONMENTS.CREATE.workspaceId)
+        projectId: z.string().trim().describe(ENVIRONMENTS.CREATE.projectId)
       }),
       body: z.object({
         name: z.string().trim().describe(ENVIRONMENTS.CREATE.name),
@@ -135,7 +85,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          workspace: z.string(),
+          projectId: z.string(),
           environment: ProjectEnvironmentsSchema
         })
       }
@@ -147,7 +97,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        projectId: req.params.workspaceId,
+        projectId: req.params.projectId,
         ...req.body
       });
 
@@ -164,7 +114,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       });
       return {
         message: "Successfully created new environment",
-        workspace: req.params.workspaceId,
+        projectId: req.params.projectId,
         environment
       };
     }
@@ -172,7 +122,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "PATCH",
-    url: "/:workspaceId/environments/:id",
+    url: "/:projectId/environments/:id",
     config: {
       rateLimit: writeLimit
     },
@@ -186,7 +136,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(ENVIRONMENTS.UPDATE.workspaceId),
+        projectId: z.string().trim().describe(ENVIRONMENTS.UPDATE.projectId),
         id: z.string().trim().describe(ENVIRONMENTS.UPDATE.id)
       }),
       body: z.object({
@@ -197,7 +147,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          workspace: z.string(),
+          projectId: z.string(),
           environment: ProjectEnvironmentsSchema
         })
       }
@@ -209,7 +159,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
+        projectId: req.params.projectId,
         id: req.params.id,
         ...req.body
       });
@@ -232,7 +182,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
 
       return {
         message: "Successfully updated environment",
-        workspace: req.params.workspaceId,
+        projectId: req.params.projectId,
         environment
       };
     }
@@ -240,7 +190,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "DELETE",
-    url: "/:workspaceId/environments/:id",
+    url: "/:projectId/environments/:id",
     config: {
       rateLimit: writeLimit
     },
@@ -254,13 +204,13 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(ENVIRONMENTS.DELETE.workspaceId),
+        projectId: z.string().trim().describe(ENVIRONMENTS.DELETE.projectId),
         id: z.string().trim().describe(ENVIRONMENTS.DELETE.id)
       }),
       response: {
         200: z.object({
           message: z.string(),
-          workspace: z.string(),
+          projectId: z.string(),
           environment: ProjectEnvironmentsSchema
         })
       }
@@ -272,7 +222,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
+        projectId: req.params.projectId,
         id: req.params.id
       });
 
@@ -290,7 +240,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
 
       return {
         message: "Successfully deleted environment",
-        workspace: req.params.workspaceId,
+        projectId: req.params.projectId,
         environment
       };
     }

@@ -33,7 +33,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { useUser, useWorkspace } from "@app/context";
+import { useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   useGetSecretApprovalRequestDetails,
@@ -92,7 +92,6 @@ const getReviewedStatusSymbol = (status?: ApprovalStatus) => {
 };
 
 type Props = {
-  workspaceId: string;
   approvalRequestId: string;
   onGoBack: () => void;
 };
@@ -104,13 +103,9 @@ const reviewFormSchema = z.object({
 
 type TReviewFormSchema = z.infer<typeof reviewFormSchema>;
 
-export const SecretApprovalRequestChanges = ({
-  approvalRequestId,
-  onGoBack,
-  workspaceId
-}: Props) => {
+export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Props) => {
   const { user: userSession } = useUser();
-  const { currentWorkspace } = useWorkspace();
+  const { projectId } = useProject();
   const {
     data: secretApprovalRequestDetails,
     isSuccess: isSecretApprovalRequestSuccess,
@@ -123,7 +118,7 @@ export const SecretApprovalRequestChanges = ({
   );
   const { data: secretImports } = useGetSecretImports({
     environment: secretApprovalRequestDetails?.environment || "",
-    projectId: currentWorkspace.id,
+    projectId,
     path: approvalSecretPath
   });
 
@@ -526,7 +521,6 @@ export const SecretApprovalRequestChanges = ({
             isMergable={isMergable}
             statusChangeByEmail={secretApprovalRequestDetails.statusChangedByUser?.email}
             enforcementLevel={secretApprovalRequestDetails.policy.enforcementLevel}
-            workspaceId={workspaceId}
           />
         </div>
       </div>

@@ -24,12 +24,12 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useSubscription,
-  useWorkspace
+  useProject,
+  useSubscription
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { workspaceKeys } from "@app/hooks/api";
-import { WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import { projectKeys } from "@app/hooks/api";
+import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
 import { CompareEnvironments } from "../CompareEnvironments";
@@ -45,7 +45,7 @@ type Props = {
 const TABS_TO_SHOW = 5;
 
 export const EnvironmentTabs = ({ secretPath }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const currentEnv = useParams({
     from: ROUTE_PATHS.SecretManager.SecretDashboardPage.id,
     select: (el) => el.envSlug
@@ -54,8 +54,8 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
   const { subscription } = useSubscription();
 
   const isMoreEnvironmentsAllowed =
-    subscription?.environmentLimit && currentWorkspace?.environments
-      ? currentWorkspace.environments.length < subscription.environmentLimit
+    subscription?.environmentLimit && currentProject?.environments
+      ? currentProject.environments.length < subscription.environmentLimit
       : true;
 
   const [isNavigating, setIsNavigating] = useState(false);
@@ -68,20 +68,20 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
     "upgradePlan"
   ] as const);
 
-  const selectedIndex = currentWorkspace.environments.findIndex((env) => env.slug === currentEnv);
+  const selectedIndex = currentProject.environments.findIndex((env) => env.slug === currentEnv);
 
-  let tabEnvironments: WorkspaceEnv[];
-  let dropdownEnvironments: WorkspaceEnv[];
+  let tabEnvironments: ProjectEnv[];
+  let dropdownEnvironments: ProjectEnv[];
 
   if (selectedIndex < TABS_TO_SHOW) {
-    tabEnvironments = currentWorkspace.environments.slice(0, TABS_TO_SHOW);
-    dropdownEnvironments = currentWorkspace.environments.slice(TABS_TO_SHOW);
+    tabEnvironments = currentProject.environments.slice(0, TABS_TO_SHOW);
+    dropdownEnvironments = currentProject.environments.slice(TABS_TO_SHOW);
   } else {
     tabEnvironments = [
-      ...currentWorkspace.environments.slice(0, TABS_TO_SHOW - 1),
-      currentWorkspace.environments[selectedIndex]
+      ...currentProject.environments.slice(0, TABS_TO_SHOW - 1),
+      currentProject.environments[selectedIndex]
     ];
-    dropdownEnvironments = currentWorkspace.environments
+    dropdownEnvironments = currentProject.environments
       .slice(TABS_TO_SHOW - 1)
       .filter((env) => env.slug !== currentEnv);
   }
@@ -96,7 +96,7 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
       to: ROUTE_PATHS.SecretManager.SecretDashboardPage.path,
       params: {
         envSlug,
-        projectId: currentWorkspace.id
+        projectId: currentProject.id
       },
       search: (prev) => prev
     });
@@ -199,7 +199,7 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
               </Tooltip>
             </Tab>
           )}
-          {currentWorkspace.environments.length > 1 && (
+          {currentProject.environments.length > 1 && (
             <Tab className="ml-auto" value={COMPARE_ENVIRONMENT_TAB}>
               <div className="flex items-center gap-x-2 whitespace-nowrap">
                 <FontAwesomeIcon icon={faArrowRightArrowLeft} />
@@ -232,7 +232,7 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
         onOpenChange={(isOpen) => handlePopUpToggle("createEnvironment", isOpen)}
         onComplete={async (env) => {
           await queryClient.refetchQueries({
-            queryKey: workspaceKeys.getWorkspaceById(currentWorkspace.id)
+            queryKey: projectKeys.getProjectById(currentProject.id)
           });
           handleSelect(env.slug);
         }}

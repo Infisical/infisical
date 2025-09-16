@@ -8,9 +8,9 @@ import { queryClient as qc } from "@app/hooks/api/reactQuery";
 import { APIKeyDataV2 } from "../apiKeys/types";
 import { MfaMethod } from "../auth/types";
 import { TGroupWithProjectMemberships } from "../groups/types";
+import { projectKeys } from "../projects";
 import { setAuthToken } from "../reactQuery";
 import { subscriptionQueryKeys } from "../subscriptions/queries";
-import { workspaceKeys } from "../workspace";
 import { userKeys } from "./query-keys";
 import {
   AddUserToOrgDTO,
@@ -197,10 +197,10 @@ export const useAddUsersToOrg = () => {
       projects?.forEach((project) => {
         if (project.slug) {
           queryClient.invalidateQueries({
-            queryKey: workspaceKeys.getWorkspaceGroupMemberships(project.slug)
+            queryKey: projectKeys.getProjectGroupMemberships(project.slug)
           });
         }
-        queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceUsers(project.id) });
+        queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(project.id) });
       });
     }
   });

@@ -15,7 +15,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { CaType, useDeleteCa, useGetCa } from "@app/hooks/api";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -30,7 +30,7 @@ import {
 } from "./components";
 
 const Page = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const navigate = useNavigate();
   const params = useParams({
     from: ROUTE_PATHS.CertManager.CertAuthDetailsByIDPage.id
@@ -38,11 +38,11 @@ const Page = () => {
   const { caName } = params as { caName: string };
   const { data } = useGetCa({
     caName,
-    projectId: currentWorkspace?.id || "",
+    projectId: currentProject?.id || "",
     type: CaType.INTERNAL
   }) as { data: TInternalCertificateAuthority };
 
-  const projectId = currentWorkspace?.id || "";
+  const projectId = currentProject?.id || "";
 
   const { mutateAsync: deleteCa } = useDeleteCa();
 
@@ -55,11 +55,11 @@ const Page = () => {
 
   const onRemoveCaSubmit = async () => {
     try {
-      if (!currentWorkspace?.slug) return;
+      if (!currentProject?.slug) return;
 
       await deleteCa({
         caName,
-        projectId: currentWorkspace.id,
+        projectId: currentProject.id,
         type: CaType.INTERNAL
       });
 

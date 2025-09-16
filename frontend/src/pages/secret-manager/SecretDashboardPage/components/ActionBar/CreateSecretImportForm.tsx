@@ -14,7 +14,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
-import { useSubscription, useWorkspace } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
 import { useCreateSecretImport } from "@app/hooks/api";
 
 const typeSchema = z.object({
@@ -32,7 +32,7 @@ type TFormSchema = z.infer<typeof typeSchema>;
 
 type Props = {
   environment: string;
-  workspaceId: string;
+  projectId: string;
   secretPath?: string;
   // modal props
   isOpen?: boolean;
@@ -43,7 +43,7 @@ type Props = {
 
 export const CreateSecretImportForm = ({
   environment,
-  workspaceId,
+  projectId,
   secretPath = "/",
   isOpen,
   onClose,
@@ -57,8 +57,8 @@ export const CreateSecretImportForm = ({
     watch,
     formState: { isSubmitting }
   } = useForm<TFormSchema>({ resolver: zodResolver(typeSchema) });
-  const { currentWorkspace } = useWorkspace();
-  const environments = currentWorkspace?.environments || [];
+  const { currentProject } = useProject();
+  const environments = currentProject?.environments || [];
   const selectedEnvironment = watch("environment");
   const { subscription } = useSubscription();
 
@@ -77,7 +77,7 @@ export const CreateSecretImportForm = ({
 
       await createSecretImport({
         environment,
-        projectId: workspaceId,
+        projectId,
         path: secretPath,
         isReplication,
         import: {

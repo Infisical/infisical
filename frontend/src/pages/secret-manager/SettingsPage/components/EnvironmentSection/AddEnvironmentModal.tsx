@@ -4,15 +4,15 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalClose, ModalContent } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateWsEnvironment } from "@app/hooks/api";
-import { WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { slugSchema } from "@app/lib/schemas";
 
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onComplete?: (environment: WorkspaceEnv) => void;
+  onComplete?: (environment: ProjectEnv) => void;
 };
 
 const schema = z.object({
@@ -25,11 +25,11 @@ const schema = z.object({
 export type FormData = z.infer<typeof schema>;
 
 type ContentProps = {
-  onComplete: (environment: WorkspaceEnv) => void;
+  onComplete: (environment: ProjectEnv) => void;
 };
 
 const Content = ({ onComplete }: ContentProps) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { mutateAsync, isPending } = useCreateWsEnvironment();
   const { control, handleSubmit } = useForm<FormData>({
     resolver: zodResolver(schema)
@@ -37,10 +37,10 @@ const Content = ({ onComplete }: ContentProps) => {
 
   const onFormSubmit = async ({ environmentName, environmentSlug }: FormData) => {
     try {
-      if (!currentWorkspace?.id) return;
+      if (!currentProject?.id) return;
 
       const env = await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        projectId: currentProject.id,
         name: environmentName,
         slug: environmentSlug
       });

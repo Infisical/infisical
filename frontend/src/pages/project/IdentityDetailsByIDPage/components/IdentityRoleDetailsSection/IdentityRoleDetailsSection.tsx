@@ -23,7 +23,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useUpdateIdentityWorkspaceRole } from "@app/hooks/api";
@@ -41,7 +41,7 @@ export const IdentityRoleDetailsSection = ({
   identityMembershipDetails,
   isMembershipDetailsLoading
 }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deleteRole",
     "modifyRole"
@@ -53,7 +53,7 @@ export const IdentityRoleDetailsSection = ({
     try {
       const updatedRoles = identityMembershipDetails?.roles?.filter((el) => el.id !== id);
       await updateIdentityWorkspaceRole({
-        workspaceId: currentWorkspace?.id || "",
+        projectId: currentProject?.id || "",
         identityId: identityMembershipDetails.identity.id,
         roles: updatedRoles.map(
           ({

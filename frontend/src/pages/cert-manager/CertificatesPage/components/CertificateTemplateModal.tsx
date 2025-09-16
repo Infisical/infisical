@@ -22,7 +22,7 @@ import {
   SelectItem,
   Tooltip
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   CaStatus,
   useCreateCertTemplate,
@@ -82,7 +82,7 @@ type Props = {
 };
 
 export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { data: ca } = useGetCaById(caId);
 
@@ -91,12 +91,12 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
   );
 
   const { data: cas } = useListWorkspaceCas({
-    projectSlug: currentWorkspace?.slug ?? "",
+    projectId: currentProject?.id,
     status: CaStatus.ACTIVE
   });
 
   const { data: collectionsData } = useListWorkspacePkiCollections({
-    workspaceId: currentWorkspace?.id || ""
+    projectId: currentProject?.id || ""
   });
 
   const { mutateAsync: createCertTemplate } = useCreateCertTemplate();
@@ -155,7 +155,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
     keyUsages,
     extendedKeyUsages
   }: FormData) => {
-    if (!currentWorkspace?.id) {
+    if (!currentProject?.id) {
       return;
     }
 
@@ -163,7 +163,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
       if (certTemplate) {
         await updateCertTemplate({
           id: certTemplate.id,
-          projectId: currentWorkspace.id,
+          projectId: currentProject.id,
           pkiCollectionId: collectionId,
           caId,
           name,
@@ -184,7 +184,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
         });
       } else {
         await createCertTemplate({
-          projectId: currentWorkspace.id,
+          projectId: currentProject.id,
           pkiCollectionId: collectionId,
           caId,
           name,

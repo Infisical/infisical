@@ -7,7 +7,7 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { useDeletePkiSubscriber, useUpdatePkiSubscriber } from "@app/hooks/api";
 import { PkiSubscriberStatus } from "@app/hooks/api/pkiSubscriber/types";
@@ -17,8 +17,8 @@ import { PkiSubscriberModal } from "./PkiSubscriberModal";
 import { PkiSubscribersTable } from "./PkiSubscribersTable";
 
 export const PkiSubscriberSection = () => {
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace.id;
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const { mutateAsync: deletePkiSubscriber } = useDeletePkiSubscriber();
   const { mutateAsync: updatePkiSubscriber } = useUpdatePkiSubscriber();
 
@@ -55,7 +55,7 @@ export const PkiSubscriberSection = () => {
     status: PkiSubscriberStatus;
   }) => {
     try {
-      if (!currentWorkspace?.slug) return;
+      if (!currentProject?.slug) return;
 
       await updatePkiSubscriber({ subscriberName, projectId, status });
 

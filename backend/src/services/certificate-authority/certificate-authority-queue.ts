@@ -35,7 +35,7 @@ import {
 type TCertificateAuthorityQueueFactoryDep = {
   certificateAuthorityDAL: TCertificateAuthorityDALFactory;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
-  appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   certificateAuthorityCrlDAL: TCertificateAuthorityCrlDALFactory;

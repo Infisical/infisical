@@ -117,7 +117,7 @@ Infisical supports the use of [API Signing Key Authentication](https://docs.orac
     <Tab title="Infisical UI">
         <Steps>
             <Step title="Navigate to App Connections">
-                In your Infisical dashboard, go to **Organization Settings** and select the [**App Connections**](https://app.infisical.com/organization/app-connections) tab.
+                In your Infisical dashboard, navigate to the **App Connections** page in the desired project.
 
                 ![App Connections Tab](/images/app-connections/general/add-connection.png)
             </Step>
@@ -139,7 +139,7 @@ Infisical supports the use of [API Signing Key Authentication](https://docs.orac
                 ![OCI Connection Modal](/images/app-connections/oci/app-connection-modal.png)
             </Step>
             <Step title="Connection Created">
-                After clicking Create, your **OCI Connection** is established and ready to use with your Infisical projects.
+                After clicking Create, your **OCI Connection** is established and ready to use with your Infisical project.
 
                 ![OCI Connection Created](/images/app-connections/oci/app-connection-created.png)
             </Step>
@@ -157,6 +157,7 @@ Infisical supports the use of [API Signing Key Authentication](https://docs.orac
                 --data '{
                     "name": "my-oci-connection",
                     "method": "access-key",
+                    "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
                     "credentials": {
                         "userOcid": "ocid1.user.oc1..aaaaaaaagrp35tbkvvad4y2j7sug7xonua7dl2gfp4at2u5i5xj4ghnitg3a",
                         "tenancyOcid": "ocid1.tenancy.oc1..aaaaaaaaotfma465m4zumfe2ua64mj2m5dwmlw2llh4g4dnfttnakiifonta",
@@ -174,6 +175,7 @@ Infisical supports the use of [API Signing Key Authentication](https://docs.orac
           "appConnection": {
               "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
               "name": "my-oci-connection",
+              "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
               "description": null,
               "version": 1,
               "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",

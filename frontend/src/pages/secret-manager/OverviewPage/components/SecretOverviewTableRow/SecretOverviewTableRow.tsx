@@ -22,7 +22,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
-import { WorkspaceEnv } from "@app/hooks/api/types";
+import { ProjectEnv } from "@app/hooks/api/types";
 import { getExpandedRowStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
@@ -50,7 +50,7 @@ type Props = {
   getImportedSecretByKey: (
     env: string,
     secretName: string
-  ) => { secret?: SecretV3RawSanitized; environmentInfo?: WorkspaceEnv } | undefined;
+  ) => { secret?: SecretV3RawSanitized; environmentInfo?: ProjectEnv } | undefined;
   scrollOffset: number;
   importedBy?: {
     environment: { name: string; slug: string };

@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { caKeys } from "../ca/queries";
-import { workspaceKeys } from "../workspace";
+import { projectKeys } from "../projects";
 import { certTemplateKeys } from "./queries";
 import {
   TCertificateTemplate,
@@ -29,7 +29,7 @@ export const useCreateCertTemplate = () => {
     },
     onSuccess: ({ caId }, { projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceCertificateTemplates(projectId)
+        queryKey: projectKeys.getProjectCertificateTemplates(projectId)
       });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCertTemplates(caId) });
     }
@@ -49,7 +49,7 @@ export const useUpdateCertTemplate = () => {
     },
     onSuccess: ({ caId }, { projectId, id }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceCertificateTemplates(projectId)
+        queryKey: projectKeys.getProjectCertificateTemplates(projectId)
       });
       queryClient.invalidateQueries({ queryKey: certTemplateKeys.getCertTemplateById(id) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCertTemplates(caId) });
@@ -68,7 +68,7 @@ export const useDeleteCertTemplate = () => {
     },
     onSuccess: ({ caId }, { projectId, id }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceCertificateTemplates(projectId)
+        queryKey: projectKeys.getProjectCertificateTemplates(projectId)
       });
       queryClient.invalidateQueries({ queryKey: certTemplateKeys.getCertTemplateById(id) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCertTemplates(caId) });

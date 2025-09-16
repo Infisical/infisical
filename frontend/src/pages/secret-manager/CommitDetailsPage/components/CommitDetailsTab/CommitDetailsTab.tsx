@@ -53,13 +53,13 @@ const formatDisplayDate = (dateString: string): string => {
 
 export const CommitDetailsTab = ({
   selectedCommitId,
-  workspaceId,
+  projectId,
   envSlug,
   goBackToHistory,
   goToRollbackPreview
 }: {
   selectedCommitId: string;
-  workspaceId: string;
+  projectId: string;
   envSlug: string;
   goBackToHistory: () => void;
   goToRollbackPreview: () => void;
@@ -71,7 +71,7 @@ export const CommitDetailsTab = ({
     "revertChanges"
   ] as const);
 
-  const { data: commitDetails, isLoading } = useGetCommitDetails(workspaceId, selectedCommitId);
+  const { data: commitDetails, isLoading } = useGetCommitDetails(projectId, selectedCommitId);
 
   const routerQueryParams: { secretPath?: string } = useSearch({
     from: ROUTE_PATHS.SecretManager.CommitDetailsPage.id
@@ -80,7 +80,7 @@ export const CommitDetailsTab = ({
 
   const { mutateAsync: revert } = useCommitRevert({
     commitId: selectedCommitId,
-    projectId: workspaceId,
+    projectId,
     environment: envSlug,
     directory: secretPath
   });

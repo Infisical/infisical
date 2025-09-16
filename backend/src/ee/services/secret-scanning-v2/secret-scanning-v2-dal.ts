@@ -50,6 +50,7 @@ const baseSecretScanningDataSourceQuery = ({
       db.ref("description").withSchema(TableName.AppConnection).as("connectionDescription"),
       db.ref("version").withSchema(TableName.AppConnection).as("connectionVersion"),
       db.ref("gatewayId").withSchema(TableName.AppConnection).as("connectionGatewayId"),
+      db.ref("projectId").withSchema(TableName.AppConnection).as("connectionProjectId"),
       db.ref("createdAt").withSchema(TableName.AppConnection).as("connectionCreatedAt"),
       db.ref("updatedAt").withSchema(TableName.AppConnection).as("connectionUpdatedAt"),
       db
@@ -84,6 +85,7 @@ const expandSecretScanningDataSource = <
     connectionVersion,
     connectionIsPlatformManagedCredentials,
     connectionGatewayId,
+    connectionProjectId,
     ...el
   } = dataSource;
 
@@ -103,7 +105,8 @@ const expandSecretScanningDataSource = <
           updatedAt: connectionUpdatedAt,
           version: connectionVersion,
           isPlatformManagedCredentials: connectionIsPlatformManagedCredentials,
-          gatewayId: connectionGatewayId
+          gatewayId: connectionGatewayId,
+          projectId: connectionProjectId
         }
       : undefined
   };

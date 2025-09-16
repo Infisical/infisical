@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const CodefreshAuthorizePage = () => {
@@ -12,7 +12,7 @@ export const CodefreshAuthorizePage = () => {
   const [apiKey, setApiKey] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const handleButtonClick = async () => {
     try {
@@ -25,7 +25,7 @@ export const CodefreshAuthorizePage = () => {
       setIsLoading(true);
 
       const integrationAuth = await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         integration: "codefresh",
         accessToken: apiKey
       });
@@ -35,7 +35,7 @@ export const CodefreshAuthorizePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations/codefresh/create",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           integrationAuthId: integrationAuth.id

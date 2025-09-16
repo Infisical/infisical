@@ -4,7 +4,7 @@ import { format } from "date-fns";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, IconButton, Tooltip } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { CaStatus, CaType, InternalCaType, useGetCa } from "@app/hooks/api";
 import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants";
@@ -21,7 +21,7 @@ type Props = {
 };
 
 export const CaDetailsSection = ({ caName, handlePopUpOpen }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
@@ -31,7 +31,7 @@ export const CaDetailsSection = ({ caName, handlePopUpOpen }: Props) => {
 
   const { data } = useGetCa({
     caName,
-    projectId: currentWorkspace.id,
+    projectId: currentProject.id,
     type: CaType.INTERNAL
   });
 

@@ -5,6 +5,9 @@ import { registerAccessApprovalRequestRouter } from "./access-approval-request-r
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
 import { AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP, registerAuditLogStreamRouter } from "./audit-log-stream-routers";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
+import { registerDeprecatedProjectRoleRouter } from "./deprecated-project-role-router";
+import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
+import { registerDeprecatedSecretApprovalPolicyRouter } from "./deprecated-secret-approval-policy-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerKubernetesDynamicSecretLeaseRouter } from "./dynamic-secret-lease-routers/kubernetes-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
@@ -27,7 +30,6 @@ import { registerRateLimitRouter } from "./rate-limit-router";
 import { registerRelayRouter } from "./relay-router";
 import { registerSamlRouter } from "./saml-router";
 import { registerScimRouter } from "./scim-router";
-import { registerSecretApprovalPolicyRouter } from "./secret-approval-policy-router";
 import { registerSecretApprovalRequestRouter } from "./secret-approval-request-router";
 import { registerSecretRotationProviderRouter } from "./secret-rotation-provider-router";
 import { registerSecretRotationRouter } from "./secret-rotation-router";
@@ -47,18 +49,29 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   // org role starts with organization
   await server.register(registerOrgRoleRouter, { prefix: "/organization" });
   await server.register(registerLicenseRouter, { prefix: "/organizations" });
+
+  // depreciated in favour of infisical workspace
   await server.register(
     async (projectRouter) => {
-      await projectRouter.register(registerProjectRoleRouter);
-      await projectRouter.register(registerProjectRouter);
-      await projectRouter.register(registerTrustedIpRouter);
-      await projectRouter.register(registerAssumePrivilegeRouter);
+      await projectRouter.register(registerDeprecatedProjectRoleRouter);
+      await projectRouter.register(registerDeprecatedProjectRouter);
     },
     { prefix: "/workspace" }
   );
+
+  await server.register(
+    async (projectRouter) => {
+      await projectRouter.register(registerProjectRoleRouter);
+      await projectRouter.register(registerTrustedIpRouter);
+      await projectRouter.register(registerAssumePrivilegeRouter);
+      await projectRouter.register(registerProjectRouter);
+    },
+    { prefix: "/projects" }
+  );
+
   await server.register(registerSnapshotRouter, { prefix: "/secret-snapshot" });
   await server.register(registerPITRouter, { prefix: "/pit" });
-  await server.register(registerSecretApprovalPolicyRouter, { prefix: "/secret-approvals" });
+  await server.register(registerDeprecatedSecretApprovalPolicyRouter, { prefix: "/secret-approvals" });
   await server.register(registerSecretApprovalRequestRouter, {
     prefix: "/secret-approval-requests"
   });

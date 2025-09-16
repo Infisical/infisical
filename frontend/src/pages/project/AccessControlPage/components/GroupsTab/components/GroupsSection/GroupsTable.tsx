@@ -32,7 +32,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import {
   getUserTablePreference,
@@ -61,7 +61,7 @@ enum GroupsOrderBy {
 }
 
 export const GroupTable = ({ handlePopUpOpen }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const navigate = useNavigate();
 
   const {
@@ -85,7 +85,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
   };
 
   const { data: groupMemberships = [], isPending } = useListWorkspaceGroups(
-    currentWorkspace?.id || ""
+    currentProject?.id || ""
   );
 
   const filteredGroupMemberships = useMemo(() => {
@@ -159,9 +159,9 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                       onKeyDown={(evt) => {
                         if (evt.key === "Enter") {
                           navigate({
-                            to: `${getProjectBaseURL(currentWorkspace.type)}/groups/$groupId` as const,
+                            to: `${getProjectBaseURL(currentProject.type)}/groups/$groupId` as const,
                             params: {
-                              projectId: currentWorkspace.id,
+                              projectId: currentProject.id,
                               groupId: id
                             }
                           });
@@ -169,9 +169,9 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                       }}
                       onClick={() =>
                         navigate({
-                          to: `${getProjectBaseURL(currentWorkspace.type)}/groups/$groupId` as const,
+                          to: `${getProjectBaseURL(currentProject.type)}/groups/$groupId` as const,
                           params: {
-                            projectId: currentWorkspace.id,
+                            projectId: currentProject.id,
                             groupId: id
                           }
                         })

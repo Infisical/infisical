@@ -55,8 +55,8 @@ import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useWorkspace
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
@@ -120,7 +120,7 @@ export const SecretDetailSidebar = ({
   ] as const);
 
   const { permission } = useProjectPermission();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const tagFields = useFieldArray({
     control,
@@ -187,7 +187,7 @@ export const SecretDetailSidebar = ({
   });
 
   const { data: secretAccessList, isPending } = useGetSecretAccessList({
-    workspaceId: currentWorkspace.id,
+    projectId: currentProject.id,
     environment,
     secretPath,
     secretKey
@@ -252,9 +252,9 @@ export const SecretDetailSidebar = ({
   ) => {
     switch (actorType) {
       case ActorType.USER:
-        return `/projects/secret-management/${currentWorkspace.id}/members/${membershipId}`;
+        return `/projects/secret-management/${currentProject.id}/members/${membershipId}`;
       case ActorType.IDENTITY:
-        return `/projects/secret-management/${currentWorkspace.id}/identities/${actorId}`;
+        return `/projects/secret-management/${currentProject.id}/identities/${actorId}`;
       default:
         return null;
     }
@@ -367,16 +367,14 @@ export const SecretDetailSidebar = ({
                         />
                         <Tooltip
                           content={
-                            !currentWorkspace.secretSharing
+                            !currentProject.secretSharing
                               ? "This project does not allow secret sharing."
                               : "You don't have permission to view the secret value."
                           }
-                          isDisabled={!secret?.secretValueHidden && currentWorkspace.secretSharing}
+                          isDisabled={!secret?.secretValueHidden && currentProject.secretSharing}
                         >
                           <Button
-                            isDisabled={
-                              secret?.secretValueHidden || !currentWorkspace.secretSharing
-                            }
+                            isDisabled={secret?.secretValueHidden || !currentProject.secretSharing}
                             className="px-2 py-[0.43rem] font-normal"
                             variant="outline_bg"
                             leftIcon={<FontAwesomeIcon icon={faShare} />}
@@ -848,10 +846,10 @@ export const SecretDetailSidebar = ({
                             >
                               <Link
                                 to={
-                                  `${getProjectBaseURL(currentWorkspace.type)}/members/$membershipId` as const
+                                  `${getProjectBaseURL(currentProject.type)}/members/$membershipId` as const
                                 }
                                 params={{
-                                  projectId: currentWorkspace.id,
+                                  projectId: currentProject.id,
                                   membershipId: user.membershipId
                                 }}
                                 className="text-secondary/80 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 py-0.5 text-sm hover:text-mineshaft-100"
@@ -882,10 +880,10 @@ export const SecretDetailSidebar = ({
                             >
                               <Link
                                 to={
-                                  `${getProjectBaseURL(currentWorkspace.type)}/identities/$identityId` as const
+                                  `${getProjectBaseURL(currentProject.type)}/identities/$identityId` as const
                                 }
                                 params={{
-                                  projectId: currentWorkspace.id,
+                                  projectId: currentProject.id,
                                   identityId: identity.id
                                 }}
                                 className="text-secondary/80 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 py-0.5 text-sm hover:text-mineshaft-100"

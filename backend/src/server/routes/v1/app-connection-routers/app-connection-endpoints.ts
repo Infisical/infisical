@@ -26,6 +26,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     description?: string | null;
     isPlatformManagedCredentials?: boolean;
     gatewayId?: string | null;
+    projectId?: string;
   }>;
   updateSchema: z.ZodType<{
     name?: string;
@@ -47,18 +48,27 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     schema: {
       hide: false,
       tags: [ApiDocsTags.AppConnections],
-      description: `List the ${appName} Connections for the current organization.`,
+      description: `List the ${appName} Connections for the current organization or project.`,
+      querystring: z.object({
+        projectId: z.string().optional().describe(AppConnections.LIST(app).projectId)
+      }),
       response: {
         200: z.object({ appConnections: sanitizedResponseSchema.array() })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const appConnections = (await server.services.appConnection.listAppConnectionsByOrg(req.permission, app)) as T[];
+      const { projectId } = req.query;
+      const appConnections = (await server.services.appConnection.listAppConnections(
+        req.permission,
+        app,
+        projectId
+      )) as T[];
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId,
         event: {
           type: EventType.GET_APP_CONNECTIONS,
           metadata: {
@@ -82,14 +92,19 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     schema: {
       hide: false,
       tags: [ApiDocsTags.AppConnections],
-      description: `List the ${appName} Connections the current user has permission to establish connections with.`,
+      description: `List the ${appName} Connections the current user has permission to establish connections within this project.`,
+      querystring: z.object({
+        projectId: z.string().optional().describe(AppConnections.LIST(app).projectId)
+      }),
       response: {
         200: z.object({
           appConnections: z
             .object({
               app: z.literal(app),
               name: z.string(),
-              id: z.string().uuid()
+              id: z.string().uuid(),
+              projectId: z.string().nullish(),
+              orgId: z.string()
             })
             .array()
         })
@@ -97,14 +112,17 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const { projectId } = req.query;
       const appConnections = await server.services.appConnection.listAvailableAppConnectionsForUser(
         app,
-        req.permission
+        req.permission,
+        projectId
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId,
         event: {
           type: EventType.GET_AVAILABLE_APP_CONNECTIONS_DETAILS,
           metadata: {
@@ -149,6 +167,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: appConnection.projectId ?? undefined,
         event: {
           type: EventType.GET_APP_CONNECTION,
           metadata: {
@@ -178,6 +197,9 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
           .min(1, "Connection name required")
           .describe(AppConnections.GET_BY_NAME(app).connectionName)
       }),
+      querystring: z.object({
+        projectId: z.string().trim().optional().describe(AppConnections.GET_BY_NAME(app).projectId)
+      }),
       response: {
         200: z.object({ appConnection: sanitizedResponseSchema })
       }
@@ -185,16 +207,21 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { connectionName } = req.params;
+      const { projectId } = req.query;
 
       const appConnection = (await server.services.appConnection.findAppConnectionByName(
         app,
-        connectionName,
+        {
+          connectionName,
+          projectId
+        },
         req.permission
       )) as T;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: appConnection.projectId ?? undefined,
         event: {
           type: EventType.GET_APP_CONNECTION,
           metadata: {
@@ -216,9 +243,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     schema: {
       hide: false,
       tags: [ApiDocsTags.AppConnections],
-      description: `Create ${
-        startsWithVowel(appName) ? "an" : "a"
-      } ${appName} Connection for the current organization.`,
+      description: `Create ${startsWithVowel(appName) ? "an" : "a"} ${appName} Connection.`,
       body: createSchema,
       response: {
         200: z.object({ appConnection: sanitizedResponseSchema })
@@ -226,16 +251,17 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { name, method, credentials, description, isPlatformManagedCredentials, gatewayId } = req.body;
+      const { name, method, credentials, description, isPlatformManagedCredentials, gatewayId, projectId } = req.body;
 
       const appConnection = (await server.services.appConnection.createAppConnection(
-        { name, method, app, credentials, description, isPlatformManagedCredentials, gatewayId },
+        { name, method, app, credentials, description, isPlatformManagedCredentials, gatewayId, projectId },
         req.permission
       )) as T;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId,
         event: {
           type: EventType.CREATE_APP_CONNECTION,
           metadata: {
@@ -283,6 +309,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: appConnection.projectId ?? undefined,
         event: {
           type: EventType.UPDATE_APP_CONNECTION,
           metadata: {
@@ -329,6 +356,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        projectId: appConnection.projectId ?? undefined,
         event: {
           type: EventType.DELETE_APP_CONNECTION,
           metadata: {
@@ -340,4 +368,81 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       return { appConnection };
     }
   });
+
+  // scott: we will need this once we have individual app connection page and may want to expose to API
+  // server.route({
+  //   method: "GET",
+  //   url: `/:connectionId/usage`,
+  //   config: {
+  //     rateLimit: readLimit
+  //   },
+  //   schema: {
+  //     hide: true, // scott: we could expose this in the future but just for UI right now
+  //     tags: [ApiDocsTags.AppConnections],
+  //     params: z.object({
+  //       connectionId: z.string().uuid()
+  //     }),
+  //     response: {
+  //       200: z.object({
+  //         projects: z
+  //           .object({
+  //             id: z.string(),
+  //             name: z.string(),
+  //             type: z.nativeEnum(ProjectType),
+  //             slug: z.string(),
+  //             resources: z.object({
+  //               secretSyncs: z
+  //                 .object({
+  //                   id: z.string(),
+  //                   name: z.string()
+  //                 })
+  //                 .array(),
+  //               secretRotations: z
+  //                 .object({
+  //                   id: z.string(),
+  //                   name: z.string()
+  //                 })
+  //                 .array(),
+  //               externalCas: z
+  //                 .object({
+  //                   id: z.string(),
+  //                   name: z.string()
+  //                 })
+  //                 .array(),
+  //               dataSources: z
+  //                 .object({
+  //                   id: z.string(),
+  //                   name: z.string()
+  //                 })
+  //                 .array()
+  //             })
+  //           })
+  //           .array()
+  //       })
+  //     }
+  //   },
+  //   onRequest: verifyAuth([AuthMode.JWT]),
+  //   handler: async (req) => {
+  //     const { connectionId } = req.params;
+  //
+  //     const projects = await server.services.appConnection.findAppConnectionUsageById(
+  //       app,
+  //       connectionId,
+  //       req.permission
+  //     );
+  //
+  //     await server.services.auditLog.createAuditLog({
+  //       ...req.auditLogInfo,
+  //       orgId: req.permission.orgId,
+  //       event: {
+  //         type: EventType.GET_APP_CONNECTION_USAGE,
+  //         metadata: {
+  //           connectionId
+  //         }
+  //       }
+  //     });
+  //
+  //     return { projects };
+  //   }
+  // });
 };

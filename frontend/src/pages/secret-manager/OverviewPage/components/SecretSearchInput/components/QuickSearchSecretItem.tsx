@@ -28,10 +28,10 @@ import {
 import { reverseTruncate } from "@app/helpers/reverseTruncate";
 import { useTimedReset } from "@app/hooks";
 import { TDashboardProjectSecretsQuickSearch } from "@app/hooks/api/dashboard/types";
-import { WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import { ProjectEnv } from "@app/hooks/api/projects/types";
 
 type Props = {
-  environments: WorkspaceEnv[];
+  environments: ProjectEnv[];
   secretGroup: TDashboardProjectSecretsQuickSearch["secrets"][string];
   onClose: () => void;
   isSingleEnv?: boolean;
