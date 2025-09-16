@@ -172,7 +172,8 @@ export const pkiSyncQueueFactory = ({
         // Validate certificate data
         if (!certData.certificate || certData.certificate.trim() === "") {
           logger.error(`Skipping certificate ${certData.name}: empty certificate data`);
-          return;
+          // eslint-disable-next-line no-continue
+          continue;
         }
 
         // Parse certificate to extract metadata

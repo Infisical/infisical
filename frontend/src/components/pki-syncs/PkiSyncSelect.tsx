@@ -65,10 +65,10 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
           const { image, name } = PKI_SYNC_MAP[destination];
           return (
             <button
-              key={name}
+              key={destination}
               type="button"
               onClick={() =>
-                enterprise && !subscription.enterpriseSecretSyncs
+                enterprise && !subscription.enterpriseCertificateSyncs
                   ? handlePopUpOpen("upgradePlan")
                   : onSelect(destination)
               }

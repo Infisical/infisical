@@ -10,7 +10,13 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Switch } from "@app/components/v2";
 import { useWorkspace } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
-import { PkiSync, TPkiSync, useCreatePkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
+import {
+  PkiSync,
+  TCreatePkiSyncDTO,
+  TPkiSync,
+  useCreatePkiSync,
+  usePkiSyncOption
+} from "@app/hooks/api/pkiSyncs";
 
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
@@ -57,12 +63,16 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
     reValidateMode: "onChange"
   });
 
-  const onSubmit = async ({ connection, ...formData }: TPkiSyncForm) => {
+  const onSubmit = async ({ connection, destinationConfig, ...formData }: TPkiSyncForm) => {
     try {
       const pkiSync = await createPkiSync.mutateAsync({
         ...formData,
         connectionId: connection.id,
-        projectId: currentWorkspace.id
+        projectId: currentWorkspace.id,
+        destinationConfig: {
+          destination,
+          config: destinationConfig
+        } as unknown as TCreatePkiSyncDTO["destinationConfig"]
       });
 
       createNotification({
@@ -70,12 +80,12 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
         type: "success"
       });
       onComplete(pkiSync);
-    } catch (err: any) {
+    } catch (err: Error | unknown) {
       console.error(err);
       setShowConfirmation(false);
       createNotification({
         title: `Failed to add ${destinationName} Certificate Sync`,
-        text: err.message,
+        text: err instanceof Error ? err.message : "An unknown error occurred",
         type: "error"
       });
     }

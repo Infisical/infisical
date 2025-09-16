@@ -124,7 +124,7 @@ export const PkiSyncRow = ({
   return (
     <Tr
       onClick={() => {
-        console.log("PKI Sync navigation:", { syncId: id, projectId });
+        // console.log("PKI Sync navigation:", { syncId: id, projectId });
         navigate({
           to: ROUTE_PATHS.CertManager.PkiSyncDetailsByIDPage.path,
           params: {

@@ -146,7 +146,9 @@ export const PkiSyncsTable = ({ pkiSyncs }: Props) => {
           const destinationValues = getPkiSyncDestinationColValues(pkiSync);
 
           return (
-            PKI_SYNC_MAP[destination].name.toLowerCase().includes(searchValue) ||
+            (PKI_SYNC_MAP[destination]?.name || "Unknown Service")
+              .toLowerCase()
+              .includes(searchValue) ||
             name.toLowerCase().includes(searchValue) ||
             (pkiSync.appConnectionName &&
               pkiSync.appConnectionName.toLowerCase().includes(searchValue)) ||
@@ -209,7 +211,7 @@ export const PkiSyncsTable = ({ pkiSyncs }: Props) => {
   const getColSortIcon = (col: PkiSyncsOrderBy) =>
     orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
 
-  const isTableFiltered = Boolean(filters.destinations.length);
+  const isTableFiltered = Boolean(filters.destinations.length || filters.status.length);
 
   const handleDelete = (pkiSync: PkiSyncData) => handlePopUpOpen("deleteSync", pkiSync);
 

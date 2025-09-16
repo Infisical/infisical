@@ -88,7 +88,7 @@ export const PkiSyncsTab = () => {
             {(isAllowed) => (
               <Button
                 colorSchema="secondary"
-                type="submit"
+                type="button"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => handlePopUpOpen("addSync")}
                 isDisabled={!isAllowed}

@@ -18,7 +18,7 @@ export const enterprisePkiSyncCheck = async (
 ) => {
   const plan = await licenseService.getPlan(orgId);
 
-  if (!plan.enterpriseSecretSyncs && ENTERPRISE_PKI_SYNCS.includes(pkiSyncDestination)) {
+  if (!plan.enterpriseCertificateSyncs && ENTERPRISE_PKI_SYNCS.includes(pkiSyncDestination)) {
     throw new BadRequestError({
       message: errorMessage || "Failed to create PKI sync due to plan restriction. Upgrade plan to create PKI sync."
     });

@@ -39,7 +39,7 @@ export const useUpdatePkiSync = () => {
     },
     onSuccess: (_, { syncId, projectId }) => {
       queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
-      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId) });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
     }
   });
 };
@@ -56,7 +56,7 @@ export const useDeletePkiSync = () => {
     },
     onSuccess: (_, { syncId, projectId }) => {
       queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
-      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId) });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
     }
   });
 };
@@ -77,7 +77,7 @@ export const useTriggerPkiSyncSyncCertificates = () => {
     },
     onSuccess: (_, { syncId, projectId }) => {
       queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
-      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId) });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
     }
   });
 };
@@ -98,7 +98,7 @@ export const useTriggerPkiSyncImportCertificates = () => {
     },
     onSuccess: (_, { syncId, projectId }) => {
       queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
-      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId) });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
     }
   });
 };
@@ -119,7 +119,7 @@ export const useTriggerPkiSyncRemoveCertificates = () => {
     },
     onSuccess: (_, { syncId, projectId }) => {
       queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
-      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId) });
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
     }
   });
 };

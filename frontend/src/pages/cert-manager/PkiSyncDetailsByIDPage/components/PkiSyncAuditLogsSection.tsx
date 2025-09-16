@@ -54,25 +54,18 @@ export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
               Please{" "}
               {subscription && subscription.slug !== null ? (
                 <Link to="/organization/billing" target="_blank" rel="noopener noreferrer">
-                  <a
-                    className="cursor-pointer underline transition-all hover:text-white"
-                    target="_blank"
-                  >
+                  <span className="cursor-pointer underline transition-all hover:text-white">
                     upgrade your subscription
-                  </a>
+                  </span>
                 </Link>
               ) : (
                 <a
                   href="https://infisical.com/scheduledemo"
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="cursor-pointer underline transition-all hover:text-white"
                 >
-                  <a
-                    className="cursor-pointer underline transition-all hover:text-white"
-                    target="_blank"
-                  >
-                    upgrade your subscription
-                  </a>
+                  upgrade your subscription
                 </a>
               )}{" "}
               to view sync logs.

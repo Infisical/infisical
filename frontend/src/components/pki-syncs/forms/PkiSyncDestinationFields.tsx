@@ -14,6 +14,10 @@ export const PkiSyncDestinationFields = () => {
     case PkiSync.AzureKeyVault:
       return <AzureKeyVaultPkiSyncFields />;
     default:
-      throw new Error(`Unhandled Destination Config Field: ${destination}`);
+      return (
+        <div className="flex items-center justify-center rounded-md border border-red-500 bg-red-100 p-4 text-red-700">
+          <p>Unsupported destination: {destination}</p>
+        </div>
+      );
   }
 };

@@ -47,7 +47,7 @@ export const PkiSyncStatusBadge = ({ status }: Props) => {
     <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap" variant={variant}>
       <FontAwesomeIcon
         icon={icon}
-        className={[PkiSyncStatus.Running].includes(status) ? "animate-spin" : ""}
+        className={status === PkiSyncStatus.Running ? "animate-spin" : ""}
       />
       <span>{text}</span>
     </Badge>

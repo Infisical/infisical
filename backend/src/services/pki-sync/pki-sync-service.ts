@@ -29,6 +29,15 @@ import {
   TUpdatePkiSyncDTO
 } from "./pki-sync-types";
 
+const getDestinationAppType = (destination: PkiSync): AppConnection => {
+  switch (destination) {
+    case PkiSync.AzureKeyVault:
+      return AppConnection.AzureKeyVault;
+    default:
+      throw new BadRequestError({ message: "Unsupported PKI sync destination" });
+  }
+};
+
 type TPkiSyncServiceFactoryDep = {
   pkiSyncDAL: TPkiSyncDALFactory;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
@@ -89,7 +98,7 @@ export const pkiSyncServiceFactory = ({
     }
 
     // Get the destination app type based on PKI sync destination
-    const destinationApp = destination === PkiSync.AzureKeyVault ? AppConnection.AzureKeyVault : destination;
+    const destinationApp = getDestinationAppType(destination);
 
     // Validates permission to connect and app is valid for sync destination
     await appConnectionService.connectAppConnectionById(destinationApp, connectionId, actor);

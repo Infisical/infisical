@@ -30,8 +30,7 @@ const basePkiSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: PkiSyncF
       db
         .ref("isPlatformManagedCredentials")
         .withSchema(TableName.AppConnection)
-        .as("appConnectionIsPlatformManagedCredentials"),
-      db.ref("encryptedCredentials").withSchema(TableName.AppConnection).as("appConnectionEncryptedCredentials")
+        .as("appConnectionIsPlatformManagedCredentials")
     );
 
   if (filter) {

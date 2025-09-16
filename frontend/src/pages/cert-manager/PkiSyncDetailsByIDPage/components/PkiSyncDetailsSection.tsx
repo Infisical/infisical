@@ -86,7 +86,7 @@ export const PkiSyncDetailsSection = ({ pkiSync, onEditDetails }: Props) => {
           )}
           {lastSyncedAt && (
             <GenericFieldLabel label="Last Synced">
-              {format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}
+              {format(new Date(lastSyncedAt), "yyyy-MM-dd, h:mm aaa")}
             </GenericFieldLabel>
           )}
           {syncStatus === PkiSyncStatus.Failed && failureMessage && (

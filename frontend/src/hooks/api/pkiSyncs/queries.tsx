@@ -13,7 +13,8 @@ export const pkiSyncKeys = {
   all: ["pki-sync"] as const,
   options: () => [...pkiSyncKeys.all, "options"] as const,
   list: (projectId: string) => [...pkiSyncKeys.all, "list", projectId] as const,
-  byId: (syncId: string) => [...pkiSyncKeys.all, "by-id", syncId] as const
+  byId: (syncId: string, projectId: string) =>
+    [...pkiSyncKeys.all, "by-id", syncId, projectId] as const
 };
 
 export const usePkiSyncOptions = (
@@ -75,7 +76,7 @@ export const useGetPkiSync = (
   >
 ) => {
   return useQuery({
-    queryKey: pkiSyncKeys.byId(syncId),
+    queryKey: pkiSyncKeys.byId(syncId, projectId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TPkiSyncResponse>(`/api/v1/pki-syncs/${syncId}`, {
         params: { projectId }
