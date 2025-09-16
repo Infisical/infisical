@@ -10,6 +10,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("orgId").notNullable();
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.string("name").notNullable();
+      t.unique(["orgId", "name"]);
       t.string("slug").notNullable();
       t.unique(["orgId", "slug"]);
       t.string("role").notNullable();
