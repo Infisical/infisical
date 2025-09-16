@@ -18,7 +18,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { getProjectBaseURL, getProjectHomePage } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
@@ -38,12 +38,10 @@ const Page = () => {
     strict: false,
     select: (el) => el.identityId as string
   });
-  const { currentWorkspace } = useWorkspace();
-
-  const workspaceId = currentWorkspace?.id || "";
+  const { currentProject, projectId } = useProject();
 
   const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } =
-    useGetWorkspaceIdentityMembershipDetails(workspaceId, identityId);
+    useGetWorkspaceIdentityMembershipDetails(projectId, identityId);
 
   const { mutateAsync: deleteMutateAsync, isPending: isDeletingIdentity } =
     useDeleteIdentityFromWorkspace();
@@ -59,7 +57,7 @@ const Page = () => {
       {
         actorId: identityId,
         actorType: ActorType.IDENTITY,
-        projectId: workspaceId
+        projectId
       },
       {
         onSuccess: () => {
@@ -67,8 +65,8 @@ const Page = () => {
             type: "success",
             text: "Identity privilege assumption has started"
           });
-          const url = getProjectHomePage(currentWorkspace.type, currentWorkspace.environments);
-          window.location.href = url.replace("$projectId", currentWorkspace.id);
+          const url = getProjectHomePage(currentProject.type, currentProject.environments);
+          window.location.href = url.replace("$projectId", currentProject.id);
         }
       }
     );
@@ -78,7 +76,7 @@ const Page = () => {
     try {
       await deleteMutateAsync({
         identityId,
-        workspaceId
+        projectId
       });
       createNotification({
         text: "Successfully removed identity from project",
@@ -86,9 +84,9 @@ const Page = () => {
       });
       handlePopUpClose("deleteIdentity");
       navigate({
-        to: `${getProjectBaseURL(currentWorkspace.type)}/access-management` as const,
+        to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
         params: {
-          projectId: workspaceId
+          projectId
         },
         search: {
           selectedTab: "identities"

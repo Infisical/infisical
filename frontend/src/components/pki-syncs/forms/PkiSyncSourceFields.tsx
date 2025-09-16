@@ -1,17 +1,17 @@
 import { Controller, useFormContext } from "react-hook-form";
 
 import { FilterableSelect, FormControl } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
-import { useListWorkspacePkiSubscribers } from "@app/hooks/api/workspace";
+import { useProject } from "@app/context";
+import { useListWorkspacePkiSubscribers } from "@app/hooks/api";
 
 import { TPkiSyncForm } from "./schemas";
 
 export const PkiSyncSourceFields = () => {
   const { control } = useFormContext<TPkiSyncForm>();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { data: pkiSubscribers = [], isLoading } = useListWorkspacePkiSubscribers(
-    currentWorkspace?.id || ""
+    currentProject?.id || ""
   );
 
   return (

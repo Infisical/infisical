@@ -534,7 +534,8 @@ export type TSyncSecretsDTO<T extends boolean = false> = {
     });
 
 export type TMoveSecretsDTO = {
-  projectSlug: string;
+  projectId?: string;
+  projectSlug?: string;
   sourceEnvironment: string;
   sourceSecretPath: string;
   destinationEnvironment: string;

@@ -331,6 +331,7 @@ import { registerV1Routes } from "./v1";
 import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
+import { registerV4Routes } from "./v4";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
@@ -1669,7 +1670,8 @@ export const registerRoutes = async (
     identityOrgMembershipDAL,
     licenseService,
     identityDAL,
-    identityAuthTemplateDAL
+    identityAuthTemplateDAL,
+    keyStore
   });
 
   const dynamicSecretProviders = buildDynamicSecretProviders({
@@ -1826,7 +1828,8 @@ export const registerRoutes = async (
     gatewayService,
     gatewayV2Service,
     gatewayDAL,
-    gatewayV2DAL
+    gatewayV2DAL,
+    projectDAL
   });
 
   const secretSyncService = secretSyncServiceFactory({
@@ -2327,6 +2330,7 @@ export const registerRoutes = async (
     { prefix: "/api/v2" }
   );
   await server.register(registerV3Routes, { prefix: "/api/v3" });
+  await server.register(registerV4Routes, { prefix: "/api/v4" });
 
   server.addHook("onClose", async () => {
     cronJobs.forEach((job) => job.stop());

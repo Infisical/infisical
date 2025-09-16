@@ -14,7 +14,7 @@ import {
 
 export const secretApprovalRequestKeys = {
   list: ({
-    workspaceId,
+    projectId,
     environment,
     status,
     committer,
@@ -23,20 +23,20 @@ export const secretApprovalRequestKeys = {
     search
   }: TGetSecretApprovalRequestList) =>
     [
-      { workspaceId, environment, status, committer, offset, limit, search },
+      { projectId, environment, status, committer, offset, limit, search },
       "secret-approval-requests"
     ] as const,
   detail: ({ id }: Omit<TGetSecretApprovalRequestDetails, "decryptKey">) =>
     [{ id }, "secret-approval-request-detail"] as const,
-  count: ({ workspaceId, policyId }: TGetSecretApprovalRequestCount) => [
-    { workspaceId },
+  count: ({ projectId, policyId }: TGetSecretApprovalRequestCount) => [
+    { projectId },
     "secret-approval-request-count",
     ...(policyId ? [policyId] : [])
   ]
 };
 
 const fetchSecretApprovalRequestList = async ({
-  workspaceId,
+  projectId,
   environment,
   committer,
   status = "open",
@@ -49,7 +49,7 @@ const fetchSecretApprovalRequestList = async ({
     totalCount: number;
   }>("/api/v1/secret-approval-requests", {
     params: {
-      workspaceId,
+      projectId,
       environment,
       committer,
       status,
@@ -63,7 +63,7 @@ const fetchSecretApprovalRequestList = async ({
 };
 
 export const useGetSecretApprovalRequests = ({
-  workspaceId,
+  projectId,
   environment,
   options = {},
   status,
@@ -74,7 +74,7 @@ export const useGetSecretApprovalRequests = ({
 }: TGetSecretApprovalRequestList & TReactQueryOptions) =>
   useQuery({
     queryKey: secretApprovalRequestKeys.list({
-      workspaceId,
+      projectId,
       environment,
       committer,
       status,
@@ -84,7 +84,7 @@ export const useGetSecretApprovalRequests = ({
     }),
     queryFn: () =>
       fetchSecretApprovalRequestList({
-        workspaceId,
+        projectId,
         environment,
         status,
         committer,
@@ -92,7 +92,7 @@ export const useGetSecretApprovalRequests = ({
         offset,
         search
       }),
-    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
+    enabled: Boolean(projectId) && (options?.enabled ?? true),
     placeholderData: (previousData) => previousData
   });
 
@@ -127,19 +127,19 @@ export const useGetSecretApprovalRequestDetails = ({
   });
 
 const fetchSecretApprovalRequestCount = async ({
-  workspaceId,
+  projectId,
   policyId
 }: TGetSecretApprovalRequestCount) => {
   const { data } = await apiRequest.get<{ approvals: TSecretApprovalRequestCount }>(
     "/api/v1/secret-approval-requests/count",
-    { params: { workspaceId, policyId } }
+    { params: { projectId, policyId } }
   );
 
   return data.approvals;
 };
 
 export const useGetSecretApprovalRequestCount = ({
-  workspaceId,
+  projectId,
   policyId,
   options = {}
 }: TGetSecretApprovalRequestCount & {
@@ -154,8 +154,8 @@ export const useGetSecretApprovalRequestCount = ({
   >;
 }) =>
   useQuery({
-    queryKey: secretApprovalRequestKeys.count({ workspaceId, policyId }),
+    queryKey: secretApprovalRequestKeys.count({ projectId, policyId }),
     refetchInterval: 15000,
-    queryFn: () => fetchSecretApprovalRequestCount({ workspaceId, policyId }),
-    enabled: Boolean(workspaceId) && (options?.enabled ?? true)
+    queryFn: () => fetchSecretApprovalRequestCount({ projectId, policyId }),
+    enabled: Boolean(projectId) && (options?.enabled ?? true)
   });

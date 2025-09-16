@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
 import { Modal, ModalContent } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useGetWorkspaceWorkflowIntegrationConfig } from "@app/hooks/api";
 import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
 
@@ -40,14 +40,14 @@ export const AddWorkflowIntegrationModal = ({ isOpen, onToggle }: Props) => {
   const [wizardStep, setWizardStep] = useState(WizardSteps.SelectPlatform);
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { data: microsoftTeamsConfig } = useGetWorkspaceWorkflowIntegrationConfig({
-    workspaceId: currentWorkspace?.id ?? "",
+    projectId: currentProject?.id ?? "",
     integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS
   });
 
   const { data: slackConfig } = useGetWorkspaceWorkflowIntegrationConfig({
-    workspaceId: currentWorkspace?.id ?? "",
+    projectId: currentProject?.id ?? "",
     integration: WorkflowIntegrationPlatform.SLACK
   });
 

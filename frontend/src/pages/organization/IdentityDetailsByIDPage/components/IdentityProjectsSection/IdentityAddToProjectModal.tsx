@@ -17,7 +17,7 @@ import {
   useAddIdentityToWorkspace,
   useGetIdentityProjectMemberships,
   useGetProjectRoles,
-  useGetUserWorkspaces,
+  useGetUserProjects,
   useGetWorkspaceById
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -44,7 +44,7 @@ type Props = {
 
 const Content = ({ identityId, handlePopUpToggle }: Omit<Props, "popUp">) => {
   const { currentOrg } = useOrganization();
-  const { data: workspaces = [] } = useGetUserWorkspaces();
+  const { data: workspaces = [] } = useGetUserProjects();
   const { mutateAsync: addIdentityToWorkspace } = useAddIdentityToWorkspace();
 
   const {
@@ -77,7 +77,7 @@ const Content = ({ identityId, handlePopUpToggle }: Omit<Props, "popUp">) => {
   const onFormSubmit = async ({ project: selectedProject, role }: FormData) => {
     try {
       await addIdentityToWorkspace({
-        workspaceId: selectedProject.id,
+        projectId: selectedProject.id,
         identityId,
         role: role.slug || undefined
       });

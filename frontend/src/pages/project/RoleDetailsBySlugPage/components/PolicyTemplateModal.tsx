@@ -13,7 +13,7 @@ import {
   ModalContent
 } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import {
   PROJECT_PERMISSION_OBJECT,

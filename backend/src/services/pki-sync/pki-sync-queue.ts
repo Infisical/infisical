@@ -503,13 +503,15 @@ export const pkiSyncQueueFactory = ({
 
     try {
       const {
-        connection: { orgId, encryptedCredentials }
+        connection: { orgId, encryptedCredentials },
+        projectId
       } = pkiSync;
 
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        kmsService
+        kmsService,
+        projectId
       });
 
       const pkiSyncWithCredentials = {
@@ -628,13 +630,15 @@ export const pkiSyncQueueFactory = ({
 
     try {
       const {
-        connection: { orgId, encryptedCredentials }
+        connection: { orgId, encryptedCredentials },
+        projectId
       } = pkiSync;
 
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        kmsService
+        kmsService,
+        projectId
       });
 
       await $importCertificates({
@@ -748,7 +752,8 @@ export const pkiSyncQueueFactory = ({
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        kmsService
+        kmsService,
+        projectId: pkiSync.projectId
       });
 
       const certificateMap = await $getInfisicalCertificates(pkiSync);

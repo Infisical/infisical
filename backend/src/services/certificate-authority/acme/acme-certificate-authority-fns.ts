@@ -42,10 +42,10 @@ import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/
 
 type TAcmeCertificateAuthorityFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
-    "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa"
+    "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
@@ -152,7 +152,11 @@ export const AcmeCertificateAuthorityFns = ({
     }
 
     // validates permission to connect
-    await appConnectionService.connectAppConnectionById(appConnection.app as AppConnection, dnsAppConnectionId, actor);
+    await appConnectionService.validateAppConnectionUsageById(
+      appConnection.app as AppConnection,
+      { connectionId: dnsAppConnectionId, projectId },
+      actor
+    );
 
     const caEntity = await certificateAuthorityDAL.transaction(async (tx) => {
       try {
@@ -242,10 +246,16 @@ export const AcmeCertificateAuthorityFns = ({
           });
         }
 
+        const ca = await certificateAuthorityDAL.findById(id);
+
+        if (!ca) {
+          throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+        }
+
         // validates permission to connect
-        await appConnectionService.connectAppConnectionById(
+        await appConnectionService.validateAppConnectionUsageById(
           appConnection.app as AppConnection,
-          dnsAppConnectionId,
+          { connectionId: dnsAppConnectionId, projectId: ca.projectId },
           actor
         );
 

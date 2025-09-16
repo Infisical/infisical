@@ -7,7 +7,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreatePkiSyncModal } from "@app/components/pki-syncs";
 import { Button, Spinner } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
@@ -23,7 +23,7 @@ export const PkiSyncsTab = () => {
 
   const navigate = useNavigate();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const memoizedSearch = useMemo(() => search, [search]);
 
@@ -31,11 +31,11 @@ export const PkiSyncsTab = () => {
     navigate({
       to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
       params: {
-        projectId: currentWorkspace.id
+        projectId: currentProject?.id
       },
       search: memoizedSearch
     });
-  }, [navigate, currentWorkspace.id, memoizedSearch]);
+  }, [navigate, currentProject?.id, memoizedSearch]);
 
   useEffect(() => {
     if (!addSync) return;
@@ -45,7 +45,7 @@ export const PkiSyncsTab = () => {
   }, [addSync, handlePopUpOpen, navigateToBase]);
 
   const { data: pkiSyncs = [], isPending: isPkiSyncsPending } = useListPkiSyncs(
-    currentWorkspace.id
+    currentProject?.id || ""
   );
 
   if (isPkiSyncsPending)

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstac
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace";
+import { projectKeys } from "../projects";
 import {
   IntegrationMetadataSyncMode,
   TCloudIntegration,
@@ -121,7 +121,7 @@ export const useCreateIntegration = () => {
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceIntegrations(res.workspace)
+        queryKey: projectKeys.getProjectIntegrations(res.workspace)
       });
     }
   });
@@ -141,10 +141,10 @@ export const useDeleteIntegration = () => {
       ),
     onSuccess: (_, { workspaceId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceIntegrations(workspaceId)
+        queryKey: projectKeys.getProjectIntegrations(workspaceId)
       });
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceAuthorization(workspaceId)
+        queryKey: projectKeys.getProjectAuthorization(workspaceId)
       });
     }
   });

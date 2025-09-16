@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace/query-keys";
+import { projectKeys } from "../projects/query-keys";
 import { sshHostGroupKeys } from "./queries";
 import {
   TCreateSshHostGroupDTO,
@@ -20,7 +20,7 @@ export const useCreateSshHostGroup = () => {
     },
     onSuccess: ({ projectId, id }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceSshHostGroups(projectId)
+        queryKey: projectKeys.getProjectSshHostGroups(projectId)
       });
       queryClient.invalidateQueries({
         queryKey: sshHostGroupKeys.getSshHostGroupById(id)
@@ -41,10 +41,10 @@ export const useUpdateSshHostGroup = () => {
     },
     onSuccess: ({ projectId }, { sshHostGroupId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceSshHostGroups(projectId)
+        queryKey: projectKeys.getProjectSshHostGroups(projectId)
       });
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceSshHosts(projectId)
+        queryKey: projectKeys.getProjectSshHosts(projectId)
       });
       queryClient.invalidateQueries({
         queryKey: sshHostGroupKeys.getSshHostGroupById(sshHostGroupId)
@@ -64,10 +64,10 @@ export const useDeleteSshHostGroup = () => {
     },
     onSuccess: ({ projectId }, { sshHostGroupId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceSshHostGroups(projectId)
+        queryKey: projectKeys.getProjectSshHostGroups(projectId)
       });
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceSshHosts(projectId)
+        queryKey: projectKeys.getProjectSshHosts(projectId)
       });
       queryClient.invalidateQueries({
         queryKey: sshHostGroupKeys.getSshHostGroupById(sshHostGroupId)

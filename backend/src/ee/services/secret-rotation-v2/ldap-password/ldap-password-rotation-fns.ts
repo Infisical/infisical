@@ -175,7 +175,8 @@ export const ldapPasswordRotationFactory: TRotationFactory<
       const encryptedCredentials = await encryptAppConnectionCredentials({
         credentials: updatedCredentials,
         orgId,
-        kmsService
+        kmsService,
+        projectId: connection.projectId
       });
 
       await appConnectionDAL.updateById(connection.id, { encryptedCredentials });

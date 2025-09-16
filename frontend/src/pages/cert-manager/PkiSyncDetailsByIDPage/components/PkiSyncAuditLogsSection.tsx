@@ -2,7 +2,7 @@ import { faFingerprint } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
-import { useSubscription, useWorkspace } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { TPkiSync } from "@app/hooks/api/pkiSyncs";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components/LogsSection";
@@ -19,7 +19,7 @@ type Props = {
 
 export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
   const { subscription } = useSubscription();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const auditLogsRetentionDays = subscription?.auditLogsRetentionDays ?? 30;
 
@@ -37,7 +37,7 @@ export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
         <LogsSection
           refetchInterval={4000}
           showFilters={false}
-          project={currentWorkspace}
+          project={currentProject}
           presets={{
             eventMetadata: { syncId: pkiSync.id },
             startDate: new Date(

@@ -30,7 +30,7 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthById } from "@app/hooks/api/integrationAuth";
 import { useGetIntegrationAuthAwsKmsKeys } from "@app/hooks/api/integrationAuth/queries";
@@ -150,7 +150,7 @@ export const AwsSecretManagerConfigurePage = () => {
     select: (el) => el.integrationAuthId
   });
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { data: integrationAuth, isPending: isintegrationAuthLoading } = useGetIntegrationAuthById(
     (integrationAuthId as string) ?? ""
   );
@@ -162,11 +162,11 @@ export const AwsSecretManagerConfigurePage = () => {
     });
 
   useEffect(() => {
-    if (currentWorkspace) {
-      setValue("sourceEnvironment", currentWorkspace.environments[0].slug);
+    if (currentProject) {
+      setValue("sourceEnvironment", currentProject.environments[0].slug);
       setValue("awsRegion", awsRegions[0].slug);
     }
-  }, [currentWorkspace]);
+  }, [currentProject]);
 
   const handleButtonClick = async ({
     secretName,
@@ -206,7 +206,7 @@ export const AwsSecretManagerConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -286,7 +286,7 @@ export const AwsSecretManagerConfigurePage = () => {
                           field.onChange(val);
                         }}
                       >
-                        {currentWorkspace?.environments.map((sourceEnvironment) => (
+                        {currentProject?.environments.map((sourceEnvironment) => (
                           <SelectItem
                             value={sourceEnvironment.slug}
                             key={`source-environment-${sourceEnvironment.slug}`}
@@ -383,7 +383,7 @@ export const AwsSecretManagerConfigurePage = () => {
                         isError={Boolean(error)}
                       >
                         <Input
-                          placeholder={`${currentWorkspace.name
+                          placeholder={`${currentProject.name
                             .toLowerCase()
                             .replace(/ /g, "-")}/${selectedSourceEnvironment}`}
                           {...field}

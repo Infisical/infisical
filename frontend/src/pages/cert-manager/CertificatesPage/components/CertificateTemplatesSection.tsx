@@ -12,7 +12,7 @@ import { DeleteActionModal, IconButton } from "@app/components/v2";
 import {
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteCertTemplate } from "@app/hooks/api";
@@ -33,18 +33,18 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
     "upgradePlan"
   ] as const);
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { mutateAsync: deleteCertTemplate } = useDeleteCertTemplate();
 
   const onRemoveCertificateTemplateSubmit = async (id: string) => {
-    if (!currentWorkspace?.id) {
+    if (!currentProject?.id) {
       return;
     }
 
     try {
       await deleteCertTemplate({
         id,
-        projectId: currentWorkspace.id
+        projectId: currentProject.id
       });
 
       createNotification({

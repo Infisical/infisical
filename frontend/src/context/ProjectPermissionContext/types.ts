@@ -164,6 +164,14 @@ export enum ProjectPermissionAuditLogsActions {
   Read = "read"
 }
 
+export enum ProjectPermissionAppConnectionActions {
+  Read = "read-app-connections",
+  Create = "create-app-connections",
+  Edit = "edit-app-connections",
+  Delete = "delete-app-connections",
+  Connect = "connect-app-connections"
+}
+
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
@@ -183,6 +191,10 @@ export type IdentityManagementSubjectFields = {
   identityId: string;
 };
 
+export type AppConnectionSubjectFields = {
+  connectionId: string;
+};
+
 export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SecretSyncs
   | ProjectPermissionSub.PkiSyncs
@@ -195,7 +207,8 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SecretFolders
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.SecretRotation
-  | ProjectPermissionSub.SecretEvents;
+  | ProjectPermissionSub.SecretEvents
+  | ProjectPermissionSub.AppConnections;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
@@ -275,7 +288,8 @@ export enum ProjectPermissionSub {
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
   SecretScanningConfigs = "secret-scanning-configs",
-  SecretEvents = "secret-events"
+  SecretEvents = "secret-events",
+  AppConnections = "app-connections"
 }
 
 export type SecretSubjectFields = {
@@ -453,6 +467,13 @@ export type ProjectPermissionSet =
       (
         | ProjectPermissionSub.SecretEvents
         | (ForcedSubject<ProjectPermissionSub.SecretEvents> & SecretEventSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionAppConnectionActions,
+      (
+        | ProjectPermissionSub.AppConnections
+        | (ForcedSubject<ProjectPermissionSub.AppConnections> & AppConnectionSubjectFields)
       )
     ];
 

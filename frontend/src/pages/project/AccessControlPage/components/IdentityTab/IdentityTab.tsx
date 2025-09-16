@@ -45,7 +45,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
@@ -57,7 +57,7 @@ import { withProjectPermission } from "@app/hoc";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useDeleteIdentityFromWorkspace, useGetWorkspaceIdentityMemberships } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectIdentityOrderBy } from "@app/hooks/api/workspace/types";
+import { ProjectIdentityOrderBy } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityModal } from "./components/IdentityModal";
@@ -66,7 +66,7 @@ const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
 export const IdentityTab = withProjectPermission(
   () => {
-    const { currentWorkspace } = useWorkspace();
+    const { currentProject, projectId } = useProject();
     const navigate = useNavigate();
 
     const {
@@ -92,11 +92,9 @@ export const IdentityTab = withProjectPermission(
       setUserTablePreference("projectIdentityTable", PreferenceKey.PerPage, newPerPage);
     };
 
-    const workspaceId = currentWorkspace?.id ?? "";
-
     const { data, isPending, isFetching } = useGetWorkspaceIdentityMemberships(
       {
-        workspaceId: currentWorkspace?.id || "",
+        projectId,
         offset,
         limit,
         orderDirection,
@@ -126,7 +124,7 @@ export const IdentityTab = withProjectPermission(
       try {
         await deleteMutateAsync({
           identityId,
-          workspaceId
+          projectId
         });
 
         createNotification({
@@ -261,9 +259,9 @@ export const IdentityTab = withProjectPermission(
                         onKeyDown={(evt) => {
                           if (evt.key === "Enter") {
                             navigate({
-                              to: `${getProjectBaseURL(currentWorkspace.type)}/identities/$identityId` as const,
+                              to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId` as const,
                               params: {
-                                projectId: currentWorkspace.id,
+                                projectId: currentProject.id,
                                 identityId: id
                               }
                             });
@@ -271,9 +269,9 @@ export const IdentityTab = withProjectPermission(
                         }}
                         onClick={() =>
                           navigate({
-                            to: `${getProjectBaseURL(currentWorkspace.type)}/identities/$identityId` as const,
+                            to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId` as const,
                             params: {
-                              projectId: currentWorkspace.id,
+                              projectId: currentProject.id,
                               identityId: id
                             }
                           })

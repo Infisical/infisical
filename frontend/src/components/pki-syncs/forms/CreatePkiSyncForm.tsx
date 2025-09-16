@@ -8,7 +8,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Switch } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import {
   PkiSync,
@@ -41,7 +41,7 @@ const FORM_TABS: { name: string; key: string; fields: (keyof TPkiSyncForm)[] }[]
 
 export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) => {
   const createPkiSync = useCreatePkiSync();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { name: destinationName } = PKI_SYNC_MAP[destination];
 
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -68,7 +68,7 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
       const pkiSync = await createPkiSync.mutateAsync({
         ...formData,
         connectionId: connection.id,
-        projectId: currentWorkspace.id,
+        projectId: currentProject.id,
         destinationConfig: {
           destination,
           config: destinationConfig

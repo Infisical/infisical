@@ -5,7 +5,17 @@ import { AxiosError } from "axios";
 
 import { Button } from "@app/components/v2";
 
+import { ProjectAccessError } from "./components";
+
 export const ErrorPage = ({ error }: ErrorComponentProps) => {
+  if (
+    error instanceof AxiosError &&
+    error.status === 403 &&
+    error.response?.data?.error === "User not a part of the specified project"
+  ) {
+    return <ProjectAccessError />;
+  }
+
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-mineshaft-900">
       <div className="flex max-w-3xl flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-8 text-center text-mineshaft-200">

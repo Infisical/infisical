@@ -34,24 +34,33 @@ To create and manage LDAP auth templates, see our [Machine Identity Auth Templat
     To configure LDAP auth for your identity, press the **Add Auth Method** button on the identity's page.
 
     ![Add auth method](/images/platform/identities/ldap/identities-org-add-auth-method.png)
-    
+
     Now select **LDAP Auth** from the list of available auth methods for the identity.
 
     ![Select LDAP auth](/images/platform/identities/ldap/identities-org-add-auth-method-modal.png)
-    
-    
+
+
     After selecting **LDAP Auth**, you'll see the form you need to fill out to configure LDAP auth for your identity. The following fields are available:
 
+    **Configuration Tab**
     - `URL`: The LDAP server to connect to such as `ldap://ldap.your-org.com`, `ldaps://ldap.myorg.com:636` _(for connection over SSL/TLS)_, etc.
     - `Bind DN`: The DN to bind to the LDAP server with.
     - `Bind Pass`: The password to bind to the LDAP server with.
     - `Search Base / DN`: Base DN under which to perform user search such as `ou=Users,dc=acme,dc=com`.
     - `User Search Filter`: Template used to construct the LDAP user search filter such as `(uid={{username}})`; use literal `{{username}}` to have the given username used in the search. The default is `(uid={{username}})` which is compatible with several common directory schemas.
     - `Required Attributes`: A key/value pair of attributes that must be present in the LDAP user entry for them to be authenticated. As an example, if you set key `uid` to value `user1,user2,user3`, then only users with `uid` of `user1`, `user2`, or `user3` will be able to login with this identity. Each value is a comma separated list of attributes.
-    - `CA Certificate`: The CA certificate to use when verifying the LDAP server certificate. This field is optional but recommended.
     - `Access Token TTL` _(default is 2592000 equivalent to 30 days)_: The lifetime for an access token in seconds. This value will be referenced at renewal time.
     - `Access Token Max TTL` _(default is 2592000 equivalent to 30 days)_: The maximum lifetime for an access token in seconds. This value will be referenced at renewal time.
     - `Access Token Max Number of Uses` _(default is 0)_: The maximum number of times that an access token can be used; a value of 0 implies infinite number of uses.
+
+    **Lockout Tab**
+    - `Lockout` _(enabled by default)_: The lockout feature will temporarily block login attempts after X consecutive login failures.
+    - `Lockout Threshold` _(default is 3)_: The amount of times login must fail before locking the identity auth method.
+    - `Lockout Duration` _(default is 5 minutes)_: How long an identity auth method lockout lasts.
+    - `Lockout Counter Reset` _(default is 30 seconds)_: How long to wait from the most recent failed login until resetting the lockout counter.
+
+    **Advanced Tab**
+    - `CA Certificate`: The CA certificate to use when verifying the LDAP server certificate. This field is optional but recommended.
     - `Access Token Trusted IPs`: The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the 0.0.0.0/0, allowing usage from any network address.
 
     Once you've filled out the form, press **Add** to save your changes.
@@ -91,3 +100,13 @@ To create and manage LDAP auth templates, see our [Machine Identity Auth Templat
     </Step>
   </Step>
 </Steps>
+
+**FAQ**
+
+<AccordionGroup>
+    <Accordion title="How do I reset a lockout?">
+        You can reset (remove) all lockouts for an identity auth method by clicking into the auth method and pressing **Reset All Lockouts**.
+
+        ![ldap reset lockouts](/images/platform/identities/ldap-reset-lockouts.png)
+    </Accordion>
+</AccordionGroup>

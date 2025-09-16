@@ -13,7 +13,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   useCreatePkiAlert,
   useGetPkiAlertById,
@@ -60,15 +60,15 @@ type Props = {
 };
 
 export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id || "";
 
   const { data: alert } = useGetPkiAlertById(
     (popUp?.pkiAlert?.data as { alertId: string })?.alertId || ""
   );
 
   const { data: pkiCollections } = useListWorkspacePkiCollections({
-    workspaceId: projectId
+    projectId
   });
 
   const { mutateAsync: createPkiAlert } = useCreatePkiAlert();

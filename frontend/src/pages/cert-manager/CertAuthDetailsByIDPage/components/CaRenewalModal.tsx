@@ -13,7 +13,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   CaRenewalType,
   useRenewCa
@@ -45,8 +45,8 @@ type Props = {
 };
 
 export const CaRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const projectSlug = currentWorkspace?.slug || "";
+  const { currentProject } = useProject();
+  const projectSlug = currentProject?.slug || "";
 
   const popUpData = popUp?.renewCa?.data as {
     caId: string;

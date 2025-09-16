@@ -12,6 +12,7 @@ import {
 } from "@app/context";
 import {
   PermissionConditionOperators,
+  ProjectPermissionAppConnectionActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
@@ -33,8 +34,8 @@ import {
   TPermissionCondition,
   TPermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectPermission } from "@app/hooks/api/roles/types";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 const GeneralPolicyActionSchema = z.object({
   read: z.boolean().optional(),
@@ -143,6 +144,14 @@ const SecretScanningFindingPolicyActionSchema = z.object({
 const SecretScanningConfigPolicyActionSchema = z.object({
   [ProjectPermissionSecretScanningConfigActions.Read]: z.boolean().optional(),
   [ProjectPermissionSecretScanningConfigActions.Update]: z.boolean().optional()
+});
+
+const AppConnectionPolicyActionSchema = z.object({
+  [ProjectPermissionAppConnectionActions.Create]: z.boolean().optional(),
+  [ProjectPermissionAppConnectionActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAppConnectionActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionAppConnectionActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionAppConnectionActions.Connect]: z.boolean().optional()
 });
 
 const KmipPolicyActionSchema = z.object({
@@ -322,6 +331,12 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
+      [ProjectPermissionSub.AppConnections]: AppConnectionPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.PkiSyncs]: PkiSyncPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -411,7 +426,8 @@ type TConditionalFields =
   | ProjectPermissionSub.Identity
   | ProjectPermissionSub.SecretSyncs
   | ProjectPermissionSub.PkiSyncs
-  | ProjectPermissionSub.SecretEvents;
+  | ProjectPermissionSub.SecretEvents
+  | ProjectPermissionSub.AppConnections;
 
 export const isConditionalSubjects = (
   subject: ProjectPermissionSub
@@ -427,7 +443,8 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.CertificateTemplates ||
   subject === ProjectPermissionSub.SecretSyncs ||
   subject === ProjectPermissionSub.PkiSyncs ||
-  subject === ProjectPermissionSub.SecretEvents;
+  subject === ProjectPermissionSub.SecretEvents ||
+  subject === ProjectPermissionSub.AppConnections;
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
   const formConditions: z.infer<typeof ConditionSchema> = [];
@@ -535,7 +552,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.SshHostGroups,
         ProjectPermissionSub.SecretSyncs,
         ProjectPermissionSub.PkiSyncs,
-        ProjectPermissionSub.SecretEvents
+        ProjectPermissionSub.SecretEvents,
+        ProjectPermissionSub.AppConnections
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -701,6 +719,27 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             "subscribe-on-updated": canSubscribeUpdate,
             "subscribe-on-import-mutations": canSubscribeImportMutations,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : []
+          });
+
+          return;
+        }
+
+        if (subject === ProjectPermissionSub.AppConnections) {
+          const canCreate = action.includes(ProjectPermissionAppConnectionActions.Create);
+          const canRead = action.includes(ProjectPermissionAppConnectionActions.Read);
+          const canEdit = action.includes(ProjectPermissionAppConnectionActions.Edit);
+          const canDelete = action.includes(ProjectPermissionAppConnectionActions.Delete);
+          const canConnect = action.includes(ProjectPermissionAppConnectionActions.Connect);
+
+          // from above statement we are sure it won't be undefined
+          formVal[subject]!.push({
+            [ProjectPermissionAppConnectionActions.Read]: canRead,
+            [ProjectPermissionAppConnectionActions.Create]: canCreate,
+            [ProjectPermissionAppConnectionActions.Edit]: canEdit,
+            [ProjectPermissionAppConnectionActions.Delete]: canDelete,
+            [ProjectPermissionAppConnectionActions.Connect]: canConnect,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
           });
 
           return;
@@ -1667,6 +1706,31 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         value: ProjectPermissionSecretEventActions.SubscribeImportMutations
       }
     ]
+  },
+  [ProjectPermissionSub.AppConnections]: {
+    title: "App Connections",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionAppConnectionActions.Read
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionAppConnectionActions.Create
+      },
+      {
+        label: "Update",
+        value: ProjectPermissionAppConnectionActions.Edit
+      },
+      {
+        label: "Delete",
+        value: ProjectPermissionAppConnectionActions.Delete
+      },
+      {
+        label: "Connect",
+        value: ProjectPermissionAppConnectionActions.Connect
+      }
+    ]
   }
 };
 
@@ -1740,7 +1804,8 @@ export const ProjectTypePermissionSubjects: Record<
     ...KmsPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(),
     ...SshPermissionSubjects(),
-    ...SecretScanningSubject()
+    ...SecretScanningSubject(),
+    [ProjectPermissionSub.AppConnections]: true
   },
   [ProjectType.KMS]: {
     ...SharedPermissionSubjects,
@@ -1748,7 +1813,8 @@ export const ProjectTypePermissionSubjects: Record<
     ...SecretsManagerPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(),
     ...SshPermissionSubjects(),
-    ...SecretScanningSubject()
+    ...SecretScanningSubject(),
+    [ProjectPermissionSub.AppConnections]: false
   },
   [ProjectType.CertificateManager]: {
     ...SharedPermissionSubjects,
@@ -1756,7 +1822,8 @@ export const ProjectTypePermissionSubjects: Record<
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
     ...SshPermissionSubjects(),
-    ...SecretScanningSubject()
+    ...SecretScanningSubject(),
+    [ProjectPermissionSub.AppConnections]: true
   },
   [ProjectType.SSH]: {
     ...SharedPermissionSubjects,
@@ -1764,7 +1831,8 @@ export const ProjectTypePermissionSubjects: Record<
     ...CertificateManagerPermissionSubjects(),
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
-    ...SecretScanningSubject()
+    ...SecretScanningSubject(),
+    [ProjectPermissionSub.AppConnections]: false
   },
   [ProjectType.SecretScanning]: {
     ...SharedPermissionSubjects,
@@ -1772,7 +1840,8 @@ export const ProjectTypePermissionSubjects: Record<
     ...SshPermissionSubjects(),
     ...CertificateManagerPermissionSubjects(),
     ...KmsPermissionSubjects(),
-    ...SecretsManagerPermissionSubjects()
+    ...SecretsManagerPermissionSubjects(),
+    [ProjectPermissionSub.AppConnections]: true
   }
 };
 

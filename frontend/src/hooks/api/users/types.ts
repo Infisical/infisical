@@ -1,5 +1,5 @@
 import { MfaMethod } from "../auth/types";
-import { ProjectType, ProjectUserMembershipTemporaryMode } from "../workspace/types";
+import { ProjectType, ProjectUserMembershipTemporaryMode } from "../projects/types";
 
 export enum AuthMethod {
   EMAIL = "email",

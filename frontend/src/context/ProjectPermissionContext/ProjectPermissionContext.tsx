@@ -22,8 +22,8 @@ export const useProjectPermission = () => {
   const {
     data: { permission, membership, assumedPrivilegeDetails }
   } = useSuspenseQuery({
-    queryKey: roleQueryKeys.getUserProjectPermissions({ workspaceId: projectId }),
-    queryFn: () => fetchUserProjectPermissions({ workspaceId: projectId }),
+    queryKey: roleQueryKeys.getUserProjectPermissions({ projectId }),
+    queryFn: () => fetchUserProjectPermissions({ projectId }),
     staleTime: Infinity,
     select: (data) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(data.permissions);

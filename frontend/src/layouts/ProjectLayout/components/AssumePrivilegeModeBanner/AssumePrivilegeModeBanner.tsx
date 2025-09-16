@@ -2,13 +2,13 @@ import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button } from "@app/components/v2";
-import { useProjectPermission, useWorkspace } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
 import { useRemoveAssumeProjectPrivilege } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 
 export const AssumePrivilegeModeBanner = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const exitAssumePrivilegeMode = useRemoveAssumeProjectPrivilege();
   const { assumedPrivilegeDetails } = useProjectPermission();
 
@@ -32,15 +32,12 @@ export const AssumePrivilegeModeBanner = () => {
           onClick={() => {
             exitAssumePrivilegeMode.mutate(
               {
-                projectId: currentWorkspace.id
+                projectId: currentProject.id
               },
               {
                 onSuccess: () => {
-                  const url = getProjectHomePage(
-                    currentWorkspace.type,
-                    currentWorkspace.environments
-                  );
-                  window.location.href = url.replace("$projectId", currentWorkspace.id);
+                  const url = getProjectHomePage(currentProject.type, currentProject.environments);
+                  window.location.href = url.replace("$projectId", currentProject.id);
                 }
               }
             );

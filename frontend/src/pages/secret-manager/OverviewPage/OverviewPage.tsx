@@ -63,9 +63,9 @@ import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
-  useSubscription,
-  useWorkspace
+  useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretRotationActions } from "@app/context/ProjectPermissionContext/types";
 import {
@@ -92,16 +92,11 @@ import {
 import { useGetProjectSecretsOverview } from "@app/hooks/api/dashboard/queries";
 import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
-import {
-  SecretType,
-  SecretV3RawSanitized,
-  TSecretFolder,
-  WorkspaceEnv
-} from "@app/hooks/api/types";
-import { ProjectVersion } from "@app/hooks/api/workspace/types";
+import { ProjectEnv, SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
 import {
   useDynamicSecretOverview,
   useFolderOverview,
@@ -173,10 +168,9 @@ export const OverviewPage = () => {
   const [debouncedScrollOffset] = useDebounce(scrollOffset);
   const { permission } = useProjectPermission();
   const tableRef = useRef<HTMLDivElement>(null);
-  const { currentWorkspace } = useWorkspace();
-  const isProjectV3 = currentWorkspace?.version === ProjectVersion.V3;
-  const workspaceId = currentWorkspace?.id as string;
-  const projectSlug = currentWorkspace?.slug as string;
+  const { currentProject, projectId } = useProject();
+  const isProjectV3 = currentProject?.version === ProjectVersion.V3;
+  const projectSlug = currentProject?.slug as string;
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearchFilter, setDebouncedSearchFilter] = useDebounce(searchFilter);
   const secretPath = (routerSearch?.secretPath as string) || "/";
@@ -246,7 +240,7 @@ export const OverviewPage = () => {
     };
   }, []);
 
-  const userAvailableEnvs = currentWorkspace?.environments || [];
+  const userAvailableEnvs = currentProject?.environments || [];
   const userAvailableDynamicSecretEnvs = userAvailableEnvs.filter((env) =>
     permission.can(
       ProjectPermissionDynamicSecretActions.CreateRootCredential,
@@ -267,7 +261,7 @@ export const OverviewPage = () => {
     )
   );
 
-  const [filteredEnvs, setFilteredEnvs] = useState<WorkspaceEnv[]>([]);
+  const [filteredEnvs, setFilteredEnvs] = useState<ProjectEnv[]>([]);
   const visibleEnvs = filteredEnvs.length ? filteredEnvs : userAvailableEnvs;
 
   const {
@@ -276,7 +270,7 @@ export const OverviewPage = () => {
     getImportedSecretByKey,
     getEnvImportedSecretKeyCount
   } = useGetImportedSecretsAllEnvs({
-    projectId: workspaceId,
+    projectId,
     path: secretPath,
     environments: (userAvailableEnvs || []).map(({ slug }) => slug)
   });
@@ -284,7 +278,7 @@ export const OverviewPage = () => {
   const isFilteredByResources = Object.values(filter).some(Boolean);
   const { isPending: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
     {
-      projectId: workspaceId,
+      projectId,
       environments: visibleEnvs.map((env) => env.slug),
       secretPath,
       orderDirection,
@@ -368,7 +362,7 @@ export const OverviewPage = () => {
   );
 
   const { data: tags } = useGetWsTags(
-    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? workspaceId : ""
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? projectId : ""
   );
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
@@ -398,7 +392,7 @@ export const OverviewPage = () => {
         name: folderName,
         path: secretPath,
         environment,
-        projectId: workspaceId,
+        projectId,
         description
       });
     });
@@ -456,9 +450,8 @@ export const OverviewPage = () => {
 
     try {
       await updateFolderBatch({
-        projectSlug,
         folders: updatedFolders,
-        projectId: workspaceId
+        projectId
       });
       createNotification({
         type: "success",
@@ -491,7 +484,7 @@ export const OverviewPage = () => {
         );
         if (folderName && parentPath && canCreateFolder) {
           await createFolder({
-            projectId: workspaceId,
+            projectId,
             path: parentPath,
             environment: env,
             name: folderName
@@ -500,7 +493,7 @@ export const OverviewPage = () => {
       }
       const result = await createSecretV3({
         environment: env,
-        workspaceId,
+        projectId,
         secretPath,
         secretKey: key,
         secretValue: value,
@@ -555,7 +548,7 @@ export const OverviewPage = () => {
     try {
       const result = await updateSecretV3({
         environment: env,
-        workspaceId,
+        projectId,
         secretPath,
         secretKey: key,
         secretValue,
@@ -586,7 +579,7 @@ export const OverviewPage = () => {
     try {
       const result = await deleteSecretV3({
         environment: env,
-        workspaceId,
+        projectId,
         secretPath,
         secretKey: key,
         secretId,
@@ -655,7 +648,7 @@ export const OverviewPage = () => {
       );
       if (folderName && parentPath && canCreateFolder) {
         await createFolder({
-          projectId: workspaceId,
+          projectId,
           environment: slug,
           path: parentPath,
           name: folderName
@@ -669,7 +662,7 @@ export const OverviewPage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/secrets/$envSlug",
         params: {
-          projectId: workspaceId,
+          projectId,
           envSlug: slug
         },
         search: query
@@ -1099,7 +1092,7 @@ export const OverviewPage = () => {
               tags={tags}
               onChange={setSearchFilter}
               environments={userAvailableEnvs}
-              projectId={currentWorkspace?.id}
+              projectId={currentProject?.id}
             />
             {userAvailableEnvs.length > 0 && (
               <div>
@@ -1419,7 +1412,7 @@ export const OverviewPage = () => {
                         <Link
                           to="/projects/secret-management/$projectId/settings"
                           params={{
-                            projectId: workspaceId
+                            projectId
                           }}
                           hash="environments"
                         >

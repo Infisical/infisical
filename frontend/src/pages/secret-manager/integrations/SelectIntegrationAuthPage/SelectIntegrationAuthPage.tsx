@@ -6,7 +6,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { Button, Card, CardTitle, ContentLoader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization, useWorkspace } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import {
   useDuplicateIntegrationAuth,
   useGetCloudIntegrations,
@@ -20,7 +20,7 @@ export const SelectIntegrationAuthPage = () => {
   const navigate = useNavigate();
   const { data: cloudIntegrations } = useGetCloudIntegrations();
   const { currentOrg } = useOrganization();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const orgId = currentOrg?.id || "";
 
   const integrationSlug = useSearch({
@@ -50,10 +50,10 @@ export const SelectIntegrationAuthPage = () => {
 
         if (integrationSlug === "github") {
           const sameProjectIntegrationAuths = filteredIntegrationAuths.filter(
-            (auth) => auth.projectId === currentWorkspace?.id
+            (auth) => auth.projectId === currentProject?.id
           );
           const differentProjectIntegrationAuths = filteredIntegrationAuths.filter(
-            (auth) => auth.projectId !== currentWorkspace?.id
+            (auth) => auth.projectId !== currentProject?.id
           );
 
           const installationIds = new Set<string>();
@@ -117,11 +117,11 @@ export const SelectIntegrationAuthPage = () => {
 
   const handleConnectionSelect = async (integrationAuth: IntegrationAuth) => {
     if (integrationSlug === "github") {
-      if (integrationAuth.projectId === currentWorkspace?.id) {
+      if (integrationAuth.projectId === currentProject?.id) {
         navigate({
           to: "/projects/secret-management/$projectId/integrations/github/create",
           params: {
-            projectId: currentWorkspace.id
+            projectId: currentProject.id
           },
           search: {
             integrationAuthId: integrationAuth.id
@@ -130,14 +130,14 @@ export const SelectIntegrationAuthPage = () => {
       } else {
         // we create a copy of the existing integration auth from another project to the current project
         const newIntegrationAuth = await duplicateIntegrationAuth({
-          projectId: currentWorkspace?.id || "",
+          projectId: currentProject?.id || "",
           integrationAuthId: integrationAuth.id
         });
 
         navigate({
           to: "/projects/secret-management/$projectId/integrations/github/create",
           params: {
-            projectId: currentWorkspace.id
+            projectId: currentProject.id
           },
           search: {
             integrationAuthId: newIntegrationAuth.id

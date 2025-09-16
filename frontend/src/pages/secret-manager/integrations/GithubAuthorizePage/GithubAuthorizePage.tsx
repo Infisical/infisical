@@ -15,7 +15,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { localStorageService } from "@app/helpers/localStorage";
 import { useGetCloudIntegrations } from "@app/hooks/api";
 
@@ -31,7 +31,7 @@ export const GithubAuthorizePage = () => {
   const { data: cloudIntegrations } = useGetCloudIntegrations();
   const githubIntegration = cloudIntegrations?.find((integration) => integration.slug === "github");
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<AuthMethod>(AuthMethod.APP);
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   return (
     <div className="flex h-full w-full items-center justify-center">
@@ -84,7 +84,7 @@ export const GithubAuthorizePage = () => {
                   navigate({
                     to: "/projects/secret-management/$projectId/integrations/select-integration-auth",
                     params: {
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     },
                     search: {
                       integrationSlug: "github"
@@ -102,7 +102,7 @@ export const GithubAuthorizePage = () => {
 
                   const state = crypto.randomBytes(16).toString("hex");
                   localStorage.setItem("latestCSRFToken", state);
-                  localStorageService.setIntegrationProjectId(currentWorkspace.id);
+                  localStorageService.setIntegrationProjectId(currentProject.id);
                   window.location.assign(
                     `https://github.com/login/oauth/authorize?client_id=${githubIntegration?.clientId}&response_type=code&scope=repo,admin:org&redirect_uri=${window.location.origin}/integrations/github/oauth2/callback&state=${state}`
                   );

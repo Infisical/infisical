@@ -14,7 +14,7 @@ import {
   ModalContent,
   Spinner
 } from "@app/components/v2";
-import { useOrganization, useWorkspace } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import {
   useAddIdentityToWorkspace,
   useGetIdentityMembershipOrgs,
@@ -37,10 +37,9 @@ type Props = {
 
 const Content = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
-  const { currentWorkspace } = useWorkspace();
+  const { projectId } = useProject();
 
   const organizationId = currentOrg?.id || "";
-  const workspaceId = currentWorkspace?.id || "";
 
   const { data: identityMembershipOrgsData, isPending: isMembershipsLoading } =
     useGetIdentityMembershipOrgs({
@@ -49,12 +48,12 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
     });
   const identityMembershipOrgs = identityMembershipOrgsData?.identityMemberships;
   const { data: identityMembershipsData } = useGetWorkspaceIdentityMemberships({
-    workspaceId,
+    projectId,
     limit: 20000 // TODO: this is temp to preserve functionality for larger projects, will optimize in PR referenced above
   });
   const identityMemberships = identityMembershipsData?.identityMemberships;
 
-  const { data: roles, isPending: isRolesLoading } = useGetProjectRoles(workspaceId);
+  const { data: roles, isPending: isRolesLoading } = useGetProjectRoles(projectId);
 
   const { mutateAsync: addIdentityToWorkspaceMutateAsync } = useAddIdentityToWorkspace();
 
@@ -80,7 +79,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   const onFormSubmit = async ({ identity, role }: FormData) => {
     try {
       await addIdentityToWorkspaceMutateAsync({
-        workspaceId,
+        projectId,
         identityId: identity.id,
         role: role.slug || undefined
       });

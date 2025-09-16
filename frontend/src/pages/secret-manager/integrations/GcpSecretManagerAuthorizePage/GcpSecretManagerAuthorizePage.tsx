@@ -11,7 +11,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { Button, Card, CardTitle, FormControl, TextArea } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { localStorageService } from "@app/helpers/localStorage";
 import { useGetCloudIntegrations, useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -31,7 +31,7 @@ export const GcpSecretManagerAuthorizePage = () => {
   });
 
   const { data: cloudIntegrations } = useGetCloudIntegrations();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { mutateAsync } = useSaveIntegrationAccessToken();
 
@@ -47,7 +47,7 @@ export const GcpSecretManagerAuthorizePage = () => {
 
     const state = crypto.randomBytes(16).toString("hex");
     localStorage.setItem("latestCSRFToken", state);
-    localStorageService.setIntegrationProjectId(currentWorkspace.id);
+    localStorageService.setIntegrationProjectId(currentProject.id);
 
     if (!integrationOption.clientId) {
       createIntegrationMissingEnvVarsNotification(integrationOption.slug);
@@ -63,7 +63,7 @@ export const GcpSecretManagerAuthorizePage = () => {
       setIsLoading(true);
 
       const integrationAuth = await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         integration: "gcp-secret-manager",
         refreshToken: accessToken
       });
@@ -72,7 +72,7 @@ export const GcpSecretManagerAuthorizePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations/gcp-secret-manager/create",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           integrationAuthId: integrationAuth.id

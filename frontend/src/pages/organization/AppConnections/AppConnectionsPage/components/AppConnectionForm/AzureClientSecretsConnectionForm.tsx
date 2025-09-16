@@ -7,7 +7,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  getAppConnectionMethodDetails,
+  useGetAppConnectionOauthReturnUrl
+} from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   AzureClientSecretsConnectionMethod,
@@ -16,6 +20,7 @@ import {
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { AzureClientSecretsFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -26,6 +31,7 @@ type ClientSecretForm = z.infer<typeof clientSecretSchema>;
 type Props = {
   appConnection?: TAzureClientSecretsConnection;
   onSubmit: (formData: ClientSecretForm) => Promise<void>;
+  projectId: string | undefined | null;
 };
 
 const baseSchema = genericAppConnectionFieldsSchema.extend({
@@ -97,7 +103,7 @@ const getDefaultValues = (appConnection?: TAzureClientSecretsConnection): Partia
   return base;
 };
 
-export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit }: Props) => {
+export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit, projectId }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -110,6 +116,8 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit }: Pr
     resolver: zodResolver(formSchema),
     defaultValues: getDefaultValues(appConnection)
   });
+
+  const returnUrl = useGetAppConnectionOauthReturnUrl();
 
   const {
     handleSubmit,
@@ -129,7 +137,12 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit }: Pr
         localStorage.setItem("latestCSRFToken", state);
         localStorage.setItem(
           "azureClientSecretsConnectionFormData",
-          JSON.stringify({ ...formData, connectionId: appConnection?.id })
+          JSON.stringify({
+            ...formData,
+            connectionId: appConnection?.id,
+            projectId,
+            returnUrl
+          } as AzureClientSecretsFormData)
         );
         window.location.assign(
           `https://login.microsoftonline.com/${formData.tenantId || "common"}/oauth2/v2.0/authorize?client_id=${oauthClientId}&response_type=code&redirect_uri=${window.location.origin}/organization/app-connections/azure/oauth/callback&response_mode=query&scope=https://graph.microsoft.com/.default%20openid%20offline_access&state=${state}<:>azure-client-secrets`

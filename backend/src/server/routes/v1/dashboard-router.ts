@@ -207,7 +207,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const environments = req.query.environments.split(",");
 
       if (!projectId || environments.length === 0)
-        throw new BadRequestError({ message: "Missing workspace id or environment(s)" });
+        throw new BadRequestError({ message: "Missing project id or environment(s)" });
 
       const { shouldUseSecretV2Bridge } = await server.services.projectBot.getBotKey(projectId);
 
@@ -474,7 +474,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 organizationId: req.permission.orgId,
                 properties: {
                   numberOfSecrets: secretCountFromEnv,
-                  workspaceId: projectId,
+                  projectId,
                   environment,
                   secretPath,
                   channel: getUserAgentType(req.headers["user-agent"]),
@@ -696,7 +696,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         includeSecretRotations
       } = req.query;
 
-      if (!projectId || !environment) throw new BadRequestError({ message: "Missing workspace id or environment" });
+      if (!projectId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
       const { shouldUseSecretV2Bridge } = await server.services.projectBot.getBotKey(projectId);
 
@@ -1001,7 +1001,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             organizationId: req.permission.orgId,
             properties: {
               numberOfSecrets: secretCount,
-              workspaceId: projectId,
+              projectId,
               environment,
               secretPath,
               channel: getUserAgentType(req.headers["user-agent"]),
@@ -1168,7 +1168,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               organizationId: req.permission.orgId,
               properties: {
                 numberOfSecrets: secretCountForEnv,
-                workspaceId: projectId,
+                projectId,
                 environment,
                 secretPath,
                 channel: getUserAgentType(req.headers["user-agent"]),
@@ -1361,7 +1361,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           organizationId: req.permission.orgId,
           properties: {
             numberOfSecrets: secrets.length,
-            workspaceId: projectId,
+            projectId,
             environment,
             secretPath,
             channel: getUserAgentType(req.headers["user-agent"]),

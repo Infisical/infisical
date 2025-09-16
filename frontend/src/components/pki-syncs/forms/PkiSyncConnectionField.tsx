@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
 import { FilterableSelect, FormControl } from "@app/components/v2";
-import { OrgPermissionSubjects, useOrgPermission } from "@app/context";
+import { OrgPermissionSubjects, useOrgPermission, useProject } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { PKI_SYNC_CONNECTION_MAP } from "@app/helpers/pkiSyncs";
@@ -19,11 +19,15 @@ type Props = {
 export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
   const { permission } = useOrgPermission();
   const { control, watch } = useFormContext<TPkiSyncForm>();
+  const { currentProject } = useProject();
 
   const destination = watch("destination");
   const app = PKI_SYNC_CONNECTION_MAP[destination];
 
-  const { data: availableConnections, isPending } = useListAvailableAppConnections(app);
+  const { data: availableConnections, isPending } = useListAvailableAppConnections(
+    app,
+    currentProject.id
+  );
 
   const connectionName = APP_CONNECTION_MAP[app].name;
 

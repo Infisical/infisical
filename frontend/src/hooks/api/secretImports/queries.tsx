@@ -30,10 +30,10 @@ export const secretImportKeys = {
 
 const fetchSecretImport = async ({ projectId, environment, path = "/" }: TGetSecretImports) => {
   const { data } = await apiRequest.get<{ secretImports: TSecretImport[] }>(
-    "/api/v1/secret-imports",
+    "/api/v2/secret-imports",
     {
       params: {
-        workspaceId: projectId,
+        projectId,
         environment,
         path
       }
@@ -65,16 +65,12 @@ export const useGetSecretImports = ({
     queryFn: () => fetchSecretImport({ path, projectId, environment })
   });
 
-const fetchImportedSecrets = async (
-  workspaceId: string,
-  environment: string,
-  directory?: string
-) => {
+const fetchImportedSecrets = async (projectId: string, environment: string, directory?: string) => {
   const { data } = await apiRequest.get<{ secrets: TImportedSecrets[] }>(
-    "/api/v1/secret-imports/secrets/raw",
+    "/api/v2/secret-imports/secrets",
     {
       params: {
-        workspaceId,
+        projectId,
         environment,
         path: directory
       }
@@ -89,10 +85,10 @@ const fetchImportedFolders = async ({
   path
 }: TGetImportedFoldersByEnvDTO) => {
   const { data } = await apiRequest.get<{ secretImports: TSecretImport[] }>(
-    "/api/v1/secret-imports",
+    "/api/v2/secret-imports",
     {
       params: {
-        workspaceId: projectId,
+        projectId,
         environment,
         path
       }

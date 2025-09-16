@@ -122,12 +122,11 @@ export const formSchema = z.object({
     .refine((val) => val !== "custom", { message: "Cannot use custom as its a keyword" }),
   permissions: z
     .object({
-      workspace: z
+      project: z
         .object({
           create: z.boolean().optional()
         })
         .optional(),
-
       "audit-logs": auditLogsPermissionSchema,
       member: generalPermissionSchema,
       groups: groupPermissionSchema,
@@ -162,7 +161,11 @@ export const rolePermission2Form = (permissions: TPermission[] = []) => {
   // i would have to write a if loop with both conditions same
   const formVal: Record<string, any> = {};
   permissions.forEach((permission) => {
-    const { subject, action } = permission;
+    const { action } = permission;
+    let { subject } = permission;
+    if (subject === OrgPermissionSubjects.Workspace) {
+      subject = OrgPermissionSubjects.Project;
+    }
     if (!formVal?.[subject]) formVal[subject] = {};
     formVal[subject][action] = true;
   });

@@ -13,6 +13,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Checkbox, FormControl, Input } from "@app/components/v2";
+import { useProject } from "@app/context";
 import {
   usePerformSecretApprovalRequestMerge,
   useUpdateSecretApprovalRequestStatus
@@ -28,7 +29,6 @@ type Props = {
   canApprove?: boolean;
   isBypasser: boolean;
   statusChangeByEmail?: string;
-  workspaceId: string;
   enforcementLevel: EnforcementLevel;
 };
 
@@ -39,11 +39,11 @@ export const SecretApprovalRequestAction = ({
   isMergable,
   approvals,
   statusChangeByEmail,
-  workspaceId,
   enforcementLevel,
   canApprove,
   isBypasser
 }: Props) => {
+  const { projectId } = useProject();
   const { mutateAsync: performSecretApprovalMerge, isPending: isMerging } =
     usePerformSecretApprovalRequestMerge();
 
@@ -62,7 +62,7 @@ export const SecretApprovalRequestAction = ({
     try {
       await performSecretApprovalMerge({
         id: approvalRequestId,
-        workspaceId,
+        projectId,
         bypassReason: byPassApproval ? bypassReason : undefined
       });
       createNotification({
@@ -83,7 +83,7 @@ export const SecretApprovalRequestAction = ({
       await updateSecretStatusChange({
         id: approvalRequestId,
         status: reqState,
-        workspaceId
+        projectId
       });
       createNotification({
         type: "success",

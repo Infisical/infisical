@@ -1,17 +1,17 @@
 import { useFormContext } from "react-hook-form";
 
 import { Badge, GenericFieldLabel } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
-import { useListWorkspacePkiSubscribers } from "@app/hooks/api/workspace";
+import { useListWorkspacePkiSubscribers } from "@app/hooks/api";
 
 import { TPkiSyncForm } from "./schemas";
 
 export const PkiSyncReviewFields = () => {
   const { watch } = useFormContext<TPkiSyncForm>();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
-  const { data: pkiSubscribers = [] } = useListWorkspacePkiSubscribers(currentWorkspace?.id || "");
+  const { data: pkiSubscribers = [] } = useListWorkspacePkiSubscribers(currentProject?.id || "");
 
   const getSubscriberName = (subscriberId?: string) => {
     const subscriber = pkiSubscribers.find((sub) => sub.id === subscriberId);

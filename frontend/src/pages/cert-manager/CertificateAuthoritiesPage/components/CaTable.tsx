@@ -22,7 +22,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { CaStatus, CaType, useListCasByTypeAndProjectId } from "@app/hooks/api";
 import {
   caStatusToNameMap,
@@ -49,8 +49,8 @@ type Props = {
 
 export const CaTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
-  const { currentWorkspace } = useWorkspace();
-  const { data, isPending } = useListCasByTypeAndProjectId(CaType.INTERNAL, currentWorkspace.id);
+  const { currentProject } = useProject();
+  const { data, isPending } = useListCasByTypeAndProjectId(CaType.INTERNAL, currentProject.id);
   const cas = data as TInternalCertificateAuthority[];
 
   return (
@@ -80,7 +80,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                       navigate({
                         to: "/projects/cert-management/$projectId/ca/$caName",
                         params: {
-                          projectId: currentWorkspace.id,
+                          projectId: currentProject.id,
                           caName: ca.name
                         }
                       })
