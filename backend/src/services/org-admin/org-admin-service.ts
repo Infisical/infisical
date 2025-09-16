@@ -134,35 +134,27 @@ export const orgAdminServiceFactory = ({
     });
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
-    const filteredProjectMembers = projectMembers
-      .filter(
-        (member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin) && member.userId !== actorId
-      )
-      .map((el) => el.user.email!)
-      .filter(Boolean);
-
+    const projectAdmins = projectMembers.filter(
+      (member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin) && member.userId !== actorId
+    );
+    const mappedProjectAdmins = projectAdmins.map((el) => el.user.email!).filter(Boolean);
     const actorEmail = projectMembers.find((el) => el.userId === actorId)?.user?.username;
 
     if (actorEmail) {
       await notificationService.createUserNotifications(
-        projectMembers
-          .filter(
-            (member) =>
-              member.roles.some((role) => role.role === ProjectMembershipRole.Admin) && member.userId !== actorId
-          )
-          .map((member) => ({
-            userId: member.userId,
-            orgId: project.orgId,
-            type: NotificationType.DIRECT_PROJECT_ACCESS_ISSUED_TO_ADMIN,
-            title: "Direct Project Access Issued",
-            body: `The organization admin **${actorEmail}** has self-issued direct access to the project **${project.name}**.`
-          }))
+        projectAdmins.map((member) => ({
+          userId: member.userId,
+          orgId: project.orgId,
+          type: NotificationType.DIRECT_PROJECT_ACCESS_ISSUED_TO_ADMIN,
+          title: "Direct Project Access Issued",
+          body: `The organization admin **${actorEmail}** has self-issued direct access to the project **${project.name}**.`
+        }))
       );
 
-      if (filteredProjectMembers.length) {
+      if (mappedProjectAdmins.length) {
         await smtpService.sendMail({
           template: SmtpTemplates.OrgAdminProjectDirectAccess,
-          recipients: filteredProjectMembers,
+          recipients: mappedProjectAdmins,
           subjectLine: "Organization Admin Project Direct Access Issued",
           substitutions: {
             projectName: project.name,
