@@ -8,7 +8,10 @@ export enum NotificationType {
   SECRET_SCANNING_SECRETS_DETECTED = "secret-scanning-secrets-detected",
   SECRET_SCANNING_SCAN_FAILED = "secret-scanning-scan-failed",
   LOGIN_FROM_NEW_DEVICE = "login-from-new-device",
-  ADMIN_SSO_BYPASS = "admin-sso-bypass"
+  ADMIN_SSO_BYPASS = "admin-sso-bypass",
+  IMPORT_STARTED = "import-started",
+  IMPORT_SUCCESSFUL = "import-successful",
+  IMPORT_FAILED = "import-failed"
 }
 
 export interface TCreateUserNotificationDTO {
