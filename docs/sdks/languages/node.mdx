@@ -50,6 +50,7 @@ The SDK methods are organized into the following high-level categories:
 4. `projects`: Creates and manages projects.
 5. `environments`: Creates and manages environments.
 6. `folders`: Creates and manages folders.
+7. `kms`: Manages KMS keys and encryption/signing operations.
 
 ### `auth`
 
@@ -456,7 +457,7 @@ const project = await client.projects().create({
   projectDescription: "<project-description>", // Optional
   slug: "<slug-of-project-to-create>", // Optional
   template: "<project-template-name>", // Optional
-  kmsKeyId: "kms-key-id" // Optional
+  kmsKeyId: "<kms-key-id>" // Optional
 });
 ```
 
@@ -557,3 +558,222 @@ const folders = await client.folders().listFolders({
 
 **Returns:**
 - `Folder[]`: An array of folders.
+
+### `kms`
+
+The KMS (Key Management Service) module allows you to create and manage cryptographic keys for encryption and digital signing operations.
+
+#### Create a new KMS key
+
+Creating a new KMS key can be done by using the `.kms().keys().create({})` function. Keys can be created for either encryption/decryption or signing/verification operations.
+
+##### Example for creating an encryption key
+
+```typescript
+import { InfisicalSDK, KeyUsage, EncryptionAlgorithm } from "@infisical/sdk";
+const client = new InfisicalSDK();
+
+await client.auth().universalAuth.login({
+	clientId: "CLIENT_ID",
+	clientSecret: "CLIENT_SECRET"
+});
+
+const encryptionKey = await client.kms().keys().create({
+	projectId: "your-project-id",
+	name: "my-encryption-key",
+	description: "Key for encrypting sensitive data",
+	keyUsage: KeyUsage.ENCRYPTION,
+	encryptionAlgorithm: EncryptionAlgorithm.AES_256_GCM
+});
+
+console.log(encryptionKey);
+```
+
+##### Example for creating a signing key
+
+```typescript
+const signingKey = await client.kms().keys().create({
+	projectId: "your-project-id",
+	name: "my-signing-key",
+	description: "Key for signing documents",
+	keyUsage: KeyUsage.SIGNING,
+	encryptionAlgorithm: EncryptionAlgorithm.RSA_4096
+});
+
+console.log(signingKey);
+```
+
+**Parameters:**
+- `projectId` (string): The ID of your project.
+- `name` (string): The name of the KMS key.
+- `description` (string, optional): A description of the key's purpose.
+- `keyUsage` (KeyUsage): Either `KeyUsage.ENCRYPTION` for encrypt/decrypt operations or `KeyUsage.SIGNING` for sign/verify operations.
+- `encryptionAlgorithm` (EncryptionAlgorithm): The algorithm to use. Options include:
+  - For encryption: `AES_256_GCM`, `AES_128_GCM`, `RSA_4096`, `ECC_NIST_P256`
+  - For signing: `RSA_4096`, `ECC_NIST_P256`
+
+**Returns:**
+- `KmsKey`: The created KMS key object.
+
+#### Get a KMS key by name
+
+```typescript
+const key = await client.kms().keys().getByName({
+	projectId: "your-project-id",
+	name: "my-encryption-key"
+});
+
+console.log(key);
+```
+
+**Parameters:**
+- `projectId` (string): The ID of your project.
+- `name` (string): The name of the KMS key to retrieve.
+
+**Returns:**
+- `KmsKey`: The KMS key object.
+
+#### Delete a KMS key
+
+```typescript
+const deletedKey = await client.kms().keys().delete({
+	keyId: "<kms-key-id>"
+});
+
+console.log(deletedKey);
+```
+
+**Parameters:**
+- `keyId` (string): The ID of the KMS key to delete.
+
+**Returns:**
+- `KmsKey`: The deleted KMS key object.
+
+### `kms.encryption`
+
+The encryption module provides operations for encrypting and decrypting data using KMS keys created with `KeyUsage.ENCRYPTION`.
+
+#### Encrypt data
+
+```typescript
+const encrypted = await client.kms().encryption().encrypt({
+	keyId: "<kms-key-id>",
+	plaintext: "<base64-encoded-data>"
+});
+
+console.log(encrypted); // Returns the ciphertext string
+```
+
+**Parameters:**
+- `keyId` (string): The ID of the encryption key.
+- `plaintext` (string): The data to encrypt. This must be base64 encoded.
+
+**Returns:**
+- `string`: The encrypted ciphertext.
+
+#### Decrypt data
+
+```typescript
+const decrypted = await client.kms().encryption().decrypt({
+	keyId: "<kms-key-id>",
+	ciphertext: "<encrypted-data>"
+});
+
+console.log(decrypted); // Returns the original plaintext
+```
+
+**Parameters:**
+- `keyId` (string): The ID of the encryption key used to encrypt the data.
+- `ciphertext` (string): The encrypted data to decrypt.
+
+**Returns:**
+- `string`: The decrypted plaintext.
+
+### `kms.signing`
+
+The signing module provides operations for digitally signing data and verifying signatures using KMS keys created with `KeyUsage.SIGNING`.
+
+#### Sign data
+
+```typescript
+import { SigningAlgorithm } from "@infisical/sdk";
+
+const signature = await client.kms().signing().sign({
+	keyId: "<kms-key-id>",
+	data: "<base64-encoded-data>",
+	signingAlgorithm: SigningAlgorithm.RSASSA_PSS_SHA_256,
+	isDigest: false // Optional: set to true if data is already a hash digest
+});
+
+console.log(signature);
+```
+
+**Parameters:**
+- `keyId` (string): The ID of the signing key.
+- `data` (string): The data to sign.
+- `signingAlgorithm` (SigningAlgorithm): The signing algorithm to use. Available algorithms:
+  - **RSA PSS** (non-deterministic): `RSASSA_PSS_SHA_256`, `RSASSA_PSS_SHA_384`, `RSASSA_PSS_SHA_512`
+  - **RSA PKCS#1 v1.5** (deterministic): `RSASSA_PKCS1_V1_5_SHA_256`, `RSASSA_PKCS1_V1_5_SHA_384`, `RSASSA_PKCS1_V1_5_SHA_512`
+  - **ECDSA** (non-deterministic): `ECDSA_SHA_256`, `ECDSA_SHA_384`, `ECDSA_SHA_512`
+- `isDigest` (boolean, optional): Whether the data is already a hash digest. Defaults to `false`.
+
+**Returns:**
+- `KmsSignDataResponse`: Object containing the signature, keyId, and signingAlgorithm.
+
+#### Verify a signature
+
+```typescript
+const verification = await client.kms().signing().verify({
+	keyId: "<kms-key-id>",
+	data: "<base64-encoded-original-data>", // Must be base64 encoded
+	signature: "<data-signature>",
+	signingAlgorithm: SigningAlgorithm.RSASSA_PSS_SHA_256,
+	isDigest: false // Optional: set to true if data is already a hash digest
+});
+
+console.log(verification.signatureValid); // true or false
+```
+
+**Parameters:**
+- `keyId` (string): The ID of the signing key used to create the signature.
+- `data` (string): The original data that was signed (must be base64 encoded).
+- `signature` (string): The signature to verify.
+- `signingAlgorithm` (SigningAlgorithm): The same signing algorithm used to create the signature.
+- `isDigest` (boolean, optional): Whether the data is already a hash digest. Defaults to `false`.
+
+**Returns:**
+- `KmsVerifyDataResponse`: Object containing `signatureValid` (boolean), `keyId`, and `signingAlgorithm`.
+
+#### Get supported signing algorithms for a key
+
+```typescript
+const algorithms = await client.kms().signing().listSigningAlgorithms({
+	keyId: "<kms-key-id>"
+});
+
+console.log(algorithms); // Array of supported SigningAlgorithm values
+```
+
+**Parameters:**
+- `keyId` (string): The ID of the KMS signing key.
+
+**Returns:**
+- `SigningAlgorithm[]`: Array of supported signing algorithms for the key.
+
+#### Get public key
+
+Retrieve the public key for signature verification operations.
+
+```typescript
+const publicKey = await client.kms().signing().getPublicKey({
+	keyId: "<kms-key-id>"
+});
+
+console.log(publicKey); // Returns the public key string
+```
+
+**Parameters:**
+- `keyId` (string): The ID of the KMS signing key.
+
+**Returns:**
+- `string`: The public key in PEM format.
