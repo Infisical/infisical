@@ -21,8 +21,8 @@ export async function up(knex: Knex): Promise<void> {
 
   await createOnUpdateTrigger(knex, TableName.IdentityGroups);
 
-  if (!(await knex.schema.hasTable(TableName.IdentityUserGroupMembership))) {
-    await knex.schema.createTable(TableName.IdentityUserGroupMembership, (t) => {
+  if (!(await knex.schema.hasTable(TableName.IdentityGroupMembership))) {
+    await knex.schema.createTable(TableName.IdentityGroupMembership, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid()); // link to user and link to groups cascade on groups
       t.uuid("identityId").notNullable();
       t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
@@ -32,7 +32,7 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  await createOnUpdateTrigger(knex, TableName.IdentityUserGroupMembership);
+  await createOnUpdateTrigger(knex, TableName.IdentityGroupMembership);
 
   if (!(await knex.schema.hasTable(TableName.IdentityGroupProjectMembership))) {
     await knex.schema.createTable(TableName.IdentityGroupProjectMembership, (t) => {
@@ -49,12 +49,12 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists(TableName.UserGroupMembership);
-  await dropOnUpdateTrigger(knex, TableName.UserGroupMembership);
+  await knex.schema.dropTableIfExists(TableName.IdentityGroupMembership);
+  await dropOnUpdateTrigger(knex, TableName.IdentityGroupMembership);
 
-  await knex.schema.dropTableIfExists(TableName.GroupProjectMembership);
-  await dropOnUpdateTrigger(knex, TableName.GroupProjectMembership);
+  await knex.schema.dropTableIfExists(TableName.IdentityGroupProjectMembership);
+  await dropOnUpdateTrigger(knex, TableName.IdentityGroupProjectMembership);
 
-  await knex.schema.dropTableIfExists(TableName.Groups);
-  await dropOnUpdateTrigger(knex, TableName.Groups);
+  await knex.schema.dropTableIfExists(TableName.IdentityGroups);
+  await dropOnUpdateTrigger(knex, TableName.IdentityGroups);
 }
