@@ -6,7 +6,9 @@ export enum NotificationType {
   SECRET_CHANGE_POLICY_BYPASSED = "secret-change-policy-bypassed",
   SECRET_ROTATION_FAILED = "secret-rotation-failed",
   SECRET_SCANNING_SECRETS_DETECTED = "secret-scanning-secrets-detected",
-  SECRET_SCANNING_SCAN_FAILED = "secret-scanning-scan-failed"
+  SECRET_SCANNING_SCAN_FAILED = "secret-scanning-scan-failed",
+  LOGIN_FROM_NEW_DEVICE = "login-from-new-device",
+  ADMIN_SSO_BYPASS = "admin-sso-bypass"
 }
 
 export interface TCreateUserNotificationDTO {
