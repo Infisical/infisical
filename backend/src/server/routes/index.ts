@@ -1231,7 +1231,8 @@ export const registerRoutes = async (
     projectTemplateService,
     groupProjectDAL,
     smtpService,
-    reminderService
+    reminderService,
+    notificationService
   });
 
   const projectEnvService = projectEnvServiceFactory({
