@@ -361,9 +361,8 @@ export const secretRotationQueueFactory = ({
             },
             tx
           );
+          await secretV2BridgeDAL.invalidateSecretCacheByProjectId(secretRotation.projectId, tx);
         });
-
-        await secretV2BridgeDAL.invalidateSecretCacheByProjectId(secretRotation.projectId);
       } else {
         if (!botKey)
           throw new NotFoundError({
@@ -432,7 +431,7 @@ export const secretRotationQueueFactory = ({
           numberOfSecrets: numberOfSecretsRotated,
           environment: secretRotation.environment.slug,
           secretPath: secretRotation.secretPath,
-          workspaceId: secretRotation.projectId
+          projectId: secretRotation.projectId
         }
       });
 

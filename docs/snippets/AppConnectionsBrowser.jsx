@@ -4,7 +4,7 @@ export const AppConnectionsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const categories = ['All', 'Cloud Providers', 'Databases', 'CI/CD', 'Monitoring', 'Directory Services', 'Identity & Auth'];
+  const categories = ['All', 'Cloud Providers', 'Databases', 'CI/CD', 'Monitoring', 'Directory Services', 'Identity & Auth', 'Data Analytics', 'Hosting', 'DevOps Tools', 'Security'];
 
   const connections = [
     {"name": "AWS", "slug": "aws", "path": "/integrations/app-connections/aws", "description": "Learn how to connect your AWS applications to pull secrets from Infisical.", "category": "Cloud Providers"},
@@ -14,15 +14,15 @@ export const AppConnectionsBrowser = () => {
     {"name": "Azure DevOps", "slug": "azure-devops", "path": "/integrations/app-connections/azure-devops", "description": "Learn how to connect your Azure DevOps to pull secrets from Infisical.", "category": "CI/CD"},
     {"name": "Azure ADCS", "slug": "azure-adcs", "path": "/integrations/app-connections/azure-adcs", "description": "Learn how to connect your Azure ADCS to pull secrets from Infisical.", "category": "Cloud Providers"},
     {"name": "GCP", "slug": "gcp", "path": "/integrations/app-connections/gcp", "description": "Learn how to connect your GCP applications to pull secrets from Infisical.", "category": "Cloud Providers"},
-    {"name": "HashiCorp Vault", "slug": "hashicorp-vault", "path": "/integrations/app-connections/hashicorp-vault", "description": "Learn how to connect your HashiCorp Vault to pull secrets from Infisical.", "category": "Cloud Providers"},
-    {"name": "1Password", "slug": "1password", "path": "/integrations/app-connections/1password", "description": "Learn how to connect your 1Password to pull secrets from Infisical.", "category": "Cloud Providers"},
-    {"name": "Vercel", "slug": "vercel", "path": "/integrations/app-connections/vercel", "description": "Learn how to connect your Vercel application to pull secrets from Infisical.", "category": "Cloud Providers"},
-    {"name": "Netlify", "slug": "netlify", "path": "/integrations/app-connections/netlify", "description": "Learn how to connect your Netlify application to pull secrets from Infisical.", "category": "Cloud Providers"},
-    {"name": "Railway", "slug": "railway", "path": "/integrations/app-connections/railway", "description": "Learn how to connect your Railway application to pull secrets from Infisical.", "category": "Cloud Providers"},
-    {"name": "Fly.io", "slug": "flyio", "path": "/integrations/app-connections/flyio", "description": "Learn how to connect your Fly.io application to pull secrets from Infisical.", "category": "Cloud Providers"},
-    {"name": "Render", "slug": "render", "path": "/integrations/app-connections/render", "description": "Learn how to connect your Render application to pull secrets from Infisical.", "category": "Cloud Providers"},
-    {"name": "Heroku", "slug": "heroku", "path": "/integrations/app-connections/heroku", "description": "Learn how to connect your Heroku application to pull secrets from Infisical.", "category": "Cloud Providers"},
-    {"name": "DigitalOcean", "slug": "digital-ocean", "path": "/integrations/app-connections/digital-ocean", "description": "Learn how to connect your DigitalOcean application to pull secrets from Infisical.", "category": "Cloud Providers"},
+    {"name": "HashiCorp Vault", "slug": "hashicorp-vault", "path": "/integrations/app-connections/hashicorp-vault", "description": "Learn how to connect your HashiCorp Vault to pull secrets from Infisical.", "category": "Security"},
+    {"name": "1Password", "slug": "1password", "path": "/integrations/app-connections/1password", "description": "Learn how to connect your 1Password to pull secrets from Infisical.", "category": "Security"},
+    {"name": "Vercel", "slug": "vercel", "path": "/integrations/app-connections/vercel", "description": "Learn how to connect your Vercel application to pull secrets from Infisical.", "category": "Hosting"},
+    {"name": "Netlify", "slug": "netlify", "path": "/integrations/app-connections/netlify", "description": "Learn how to connect your Netlify application to pull secrets from Infisical.", "category": "Hosting"},
+    {"name": "Railway", "slug": "railway", "path": "/integrations/app-connections/railway", "description": "Learn how to connect your Railway application to pull secrets from Infisical.", "category": "Hosting"},
+    {"name": "Fly.io", "slug": "flyio", "path": "/integrations/app-connections/flyio", "description": "Learn how to connect your Fly.io application to pull secrets from Infisical.", "category": "Hosting"},
+    {"name": "Render", "slug": "render", "path": "/integrations/app-connections/render", "description": "Learn how to connect your Render application to pull secrets from Infisical.", "category": "Hosting"},
+    {"name": "Heroku", "slug": "heroku", "path": "/integrations/app-connections/heroku", "description": "Learn how to connect your Heroku application to pull secrets from Infisical.", "category": "Hosting"},
+    {"name": "DigitalOcean", "slug": "digital-ocean", "path": "/integrations/app-connections/digital-ocean", "description": "Learn how to connect your DigitalOcean application to pull secrets from Infisical.", "category": "Hosting"},
     {"name": "Supabase", "slug": "supabase", "path": "/integrations/app-connections/supabase", "description": "Learn how to connect your Supabase application to pull secrets from Infisical.", "category": "Databases"},
     {"name": "Checkly", "slug": "checkly", "path": "/integrations/app-connections/checkly", "description": "Learn how to connect your Checkly application to pull secrets from Infisical.", "category": "Monitoring"},
     {"name": "GitHub", "slug": "github", "path": "/integrations/app-connections/github", "description": "Learn how to connect your GitHub application to pull secrets from Infisical.", "category": "CI/CD"},
@@ -30,12 +30,12 @@ export const AppConnectionsBrowser = () => {
     {"name": "GitLab", "slug": "gitlab", "path": "/integrations/app-connections/gitlab", "description": "Learn how to connect your GitLab application to pull secrets from Infisical.", "category": "CI/CD"},
     {"name": "TeamCity", "slug": "teamcity", "path": "/integrations/app-connections/teamcity", "description": "Learn how to connect your TeamCity to pull secrets from Infisical.", "category": "CI/CD"},
     {"name": "Bitbucket", "slug": "bitbucket", "path": "/integrations/app-connections/bitbucket", "description": "Learn how to connect your Bitbucket to pull secrets from Infisical.", "category": "CI/CD"},
-    {"name": "Terraform Cloud", "slug": "terraform-cloud", "path": "/integrations/app-connections/terraform-cloud", "description": "Learn how to connect your Terraform Cloud to pull secrets from Infisical.", "category": "Cloud Providers"},
+    {"name": "Terraform Cloud", "slug": "terraform-cloud", "path": "/integrations/app-connections/terraform-cloud", "description": "Learn how to connect your Terraform Cloud to pull secrets from Infisical.", "category": "DevOps Tools"},
     {"name": "Cloudflare", "slug": "cloudflare", "path": "/integrations/app-connections/cloudflare", "description": "Learn how to connect your Cloudflare application to pull secrets from Infisical.", "category": "Cloud Providers"},
-    {"name": "Databricks", "slug": "databricks", "path": "/integrations/app-connections/databricks", "description": "Learn how to connect your Databricks to pull secrets from Infisical.", "category": "Cloud Providers"},
-    {"name": "Windmill", "slug": "windmill", "path": "/integrations/app-connections/windmill", "description": "Learn how to connect your Windmill to pull secrets from Infisical.", "category": "Cloud Providers"},
-    {"name": "Camunda", "slug": "camunda", "path": "/integrations/app-connections/camunda", "description": "Learn how to connect your Camunda to pull secrets from Infisical.", "category": "Cloud Providers"},
-    {"name": "Humanitec", "slug": "humanitec", "path": "/integrations/app-connections/humanitec", "description": "Learn how to connect your Humanitec to pull secrets from Infisical.", "category": "Cloud Providers"},
+    {"name": "Databricks", "slug": "databricks", "path": "/integrations/app-connections/databricks", "description": "Learn how to connect your Databricks to pull secrets from Infisical.", "category": "Data Analytics"},
+    {"name": "Windmill", "slug": "windmill", "path": "/integrations/app-connections/windmill", "description": "Learn how to connect your Windmill to pull secrets from Infisical.", "category": "DevOps Tools"},
+    {"name": "Camunda", "slug": "camunda", "path": "/integrations/app-connections/camunda", "description": "Learn how to connect your Camunda to pull secrets from Infisical.", "category": "DevOps Tools"},
+    {"name": "Humanitec", "slug": "humanitec", "path": "/integrations/app-connections/humanitec", "description": "Learn how to connect your Humanitec to pull secrets from Infisical.", "category": "DevOps Tools"},
     {"name": "OCI", "slug": "oci", "path": "/integrations/app-connections/oci", "description": "Learn how to connect your OCI applications to pull secrets from Infisical.", "category": "Cloud Providers"},
     {"name": "Zabbix", "slug": "zabbix", "path": "/integrations/app-connections/zabbix", "description": "Learn how to connect your Zabbix to pull secrets from Infisical.", "category": "Monitoring"},
     {"name": "MySQL", "slug": "mysql", "path": "/integrations/app-connections/mysql", "description": "Learn how to connect your MySQL database to pull secrets from Infisical.", "category": "Databases"},

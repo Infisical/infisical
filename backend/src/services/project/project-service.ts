@@ -1,4 +1,5 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
+import { PackRule, unpackRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 
 import {
@@ -16,9 +17,11 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
+  ProjectPermissionSet,
   ProjectPermissionSshHostActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -234,8 +237,8 @@ export const projectServiceFactory = ({
     actorId,
     actorOrgId,
     actorAuthMethod,
-    workspaceName,
-    workspaceDescription,
+    projectName: workspaceName,
+    projectDescription: workspaceDescription,
     slug: projectSlug,
     kmsKeyId,
     tx: trx,
@@ -251,7 +254,13 @@ export const projectServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
+
+    if (
+      permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace) &&
+      permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Project)
+    ) {
+      throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
+    }
 
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
@@ -588,7 +597,8 @@ export const projectServiceFactory = ({
       secretSharing: update.secretSharing,
       defaultProduct: update.defaultProduct,
       showSnapshotsLegacy: update.showSnapshotsLegacy,
-      secretDetectionIgnoreValues: update.secretDetectionIgnoreValues
+      secretDetectionIgnoreValues: update.secretDetectionIgnoreValues,
+      pitVersionLimit: update.pitVersionLimit
     });
 
     return updatedProject;
@@ -681,19 +691,21 @@ export const projectServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     auditLogsRetentionDays,
-    workspaceSlug
+    filter
   }: TUpdateAuditLogsRetentionDTO) => {
-    const project = await projectDAL.findProjectBySlug(workspaceSlug, actorOrgId);
+    const project = await projectDAL.findProjectByFilter(filter);
+    const projectId = project.id;
+
     if (!project) {
       throw new NotFoundError({
-        message: `Project with slug '${workspaceSlug}' not found`
+        message: `Project not found`
       });
     }
 
     const { hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId: project.id,
+      projectId,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.Any
@@ -1803,7 +1815,8 @@ export const projectServiceFactory = ({
     limit,
     type,
     orderBy,
-    orderDirection
+    orderDirection,
+    projectIds
   }: TSearchProjectsDTO) => {
     // check user belong to org
     await permissionService.getOrgPermission(
@@ -1819,6 +1832,7 @@ export const projectServiceFactory = ({
       offset,
       name,
       type,
+      projectIds,
       orgId: permission.orgId,
       actor: permission.type,
       actorId: permission.id,
@@ -1852,9 +1866,52 @@ export const projectServiceFactory = ({
     if (projectMember) throw new BadRequestError({ message: "User already has access to the project" });
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
-    const filteredProjectMembers = projectMembers
+
+    let filteredProjectMembers = projectMembers
       .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
       .map((el) => el.user.email!);
+    if (filteredProjectMembers.length === 0) {
+      const customRolesWithMemberCreate = await projectRoleDAL.find({ projectId });
+      const customRoleSlugsCanCreate = customRolesWithMemberCreate
+        .filter((role) => {
+          try {
+            const permissions = (
+              typeof role.permissions === "string"
+                ? (JSON.parse(role.permissions) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[])
+                : role.permissions
+            ) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[];
+
+            const ability = createMongoAbility<MongoAbility<ProjectPermissionSet>>(
+              unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(permissions)
+            );
+            return ability.can(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
+          } catch {
+            return false;
+          }
+        })
+        .map((role) => role.slug);
+
+      if (customRoleSlugsCanCreate.length > 0) {
+        const usersWithCustomCreateMemberRole = projectMembers
+          .filter((member) =>
+            member.roles.some((role) => role.customRoleSlug && customRoleSlugsCanCreate.includes(role.customRoleSlug))
+          )
+          .map((el) => el.user.email!)
+          .filter(Boolean);
+
+        if (usersWithCustomCreateMemberRole.length > 0) {
+          filteredProjectMembers = usersWithCustomCreateMemberRole;
+        }
+      }
+    }
+
+    if (filteredProjectMembers.length === 0) {
+      throw new BadRequestError({
+        message:
+          "No users in this project have permission to grant you access. Please contact an organization administrator to assign the necessary permissions."
+      });
+    }
+
     const org = await orgDAL.findOne({ id: permission.orgId });
     const project = await projectDAL.findById(projectId);
     const userDetails = await userDAL.findById(permission.id);

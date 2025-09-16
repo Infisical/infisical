@@ -15,7 +15,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
   // we are using postion based sorting as its a small list
   // this will return the last value of the position in a folder with secret imports
   const findLastImportPosition = async (folderId: string, tx?: Knex) => {
-    const lastPos = await (tx || db)(TableName.SecretImport)
+    const lastPos = await (tx || db.replicaNode())(TableName.SecretImport)
       .where({ folderId })
       .max("position", { as: "position" })
       .first();
@@ -124,6 +124,27 @@ export const secretImportDALFactory = (db: TDbClient) => {
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find secret imports" });
+    }
+  };
+
+  const findByIds = async (ids: string[], tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
+        .whereIn(`${TableName.SecretImport}.id`, ids)
+        .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .select(
+          db.ref("*").withSchema(TableName.SecretImport) as unknown as keyof TSecretImports,
+          db.ref("slug").withSchema(TableName.Environment),
+          db.ref("name").withSchema(TableName.Environment),
+          db.ref("id").withSchema(TableName.Environment).as("envId")
+        );
+
+      return docs.map(({ envId, slug, name, ...el }) => ({
+        ...el,
+        importEnv: { id: envId, slug, name }
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find secret imports by ids" });
     }
   };
 
@@ -325,6 +346,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     ...secretImportOrm,
     find,
     findById,
+    findByIds,
     findByFolderIds,
     findLastImportPosition,
     updateAllPosition,

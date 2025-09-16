@@ -16,7 +16,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useDeletePkiCollection, useGetPkiCollectionById } from "@app/hooks/api";
 import { PkiItemType } from "@app/hooks/api/pkiCollections/constants";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -30,8 +30,8 @@ export const PkiCollectionPage = () => {
     from: ROUTE_PATHS.CertManager.PkiCollectionDetailsByIDPage.id
   });
   const collectionId = params.collectionId as string;
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id || "";
 
   const { data } = useGetPkiCollectionById(collectionId);
   const { mutateAsync: deletePkiCollection } = useDeletePkiCollection();

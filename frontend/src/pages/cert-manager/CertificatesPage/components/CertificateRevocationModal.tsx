@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useRevokeCert } from "@app/hooks/api";
 import { crlReasons } from "@app/hooks/api/certificates/constants";
 import { CrlReason } from "@app/hooks/api/certificates/enums";
@@ -35,7 +35,7 @@ type Props = {
 };
 
 export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { mutateAsync: revokeCertificate } = useRevokeCert();
 
   const {
@@ -49,12 +49,12 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
 
   const onFormSubmit = async ({ revocationReason }: FormData) => {
     try {
-      if (!currentWorkspace?.slug) return;
+      if (!currentProject?.slug) return;
 
       const { serialNumber } = popUp.revokeCertificate.data as { serialNumber: string };
 
       await revokeCertificate({
-        projectSlug: currentWorkspace.slug,
+        projectSlug: currentProject.slug,
         serialNumber,
         revocationReason
       });

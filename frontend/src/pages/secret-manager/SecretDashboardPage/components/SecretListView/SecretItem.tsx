@@ -28,7 +28,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useProjectPermission,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
@@ -75,7 +75,7 @@ type Props = {
   onCreateTag: () => void;
   environment: string;
   secretPath: string;
-  handleSecretShare: () => void;
+  onShareSecret: (sec: SecretV3RawSanitized) => void;
   importedBy?: {
     environment: { name: string; slug: string };
     folders: {
@@ -102,7 +102,7 @@ export const SecretItem = memo(
     onToggleSecretSelect,
     environment,
     secretPath,
-    handleSecretShare,
+    onShareSecret,
     importedBy,
     isPending,
     pendingAction,
@@ -112,7 +112,7 @@ export const SecretItem = memo(
       "editSecret",
       "reminder"
     ] as const);
-    const { currentWorkspace } = useWorkspace();
+    const { currentProject } = useProject();
     const { permission } = useProjectPermission();
     const { isRotatedSecret } = secret;
     const { removePendingChange } = useBatchModeActions();
@@ -122,7 +122,7 @@ export const SecretItem = memo(
 
     const handleDeletePending = (pendingSecret: SecretV3RawSanitized) => {
       removePendingChange(pendingSecret.id, "secret", {
-        workspaceId: currentWorkspace.id,
+        projectId: currentProject.id,
         environment,
         secretPath
       });
@@ -393,7 +393,7 @@ export const SecretItem = memo(
                   <Input
                     autoComplete="off"
                     isReadOnly={isReadOnly || isRotatedSecret}
-                    autoCapitalization={currentWorkspace?.autoCapitalization}
+                    autoCapitalization={currentProject?.autoCapitalization}
                     variant="plain"
                     isDisabled={isOverridden}
                     placeholder={error?.message}
@@ -677,12 +677,12 @@ export const SecretItem = memo(
                       )}
                     </ProjectPermissionCan>
                     <IconButton
-                      isDisabled={secret.secretValueHidden || !currentWorkspace.secretSharing}
+                      isDisabled={secret.secretValueHidden || !currentProject.secretSharing}
                       className="w-0 overflow-hidden p-0 group-hover:w-5"
                       variant="plain"
                       size="md"
                       ariaLabel="share-secret"
-                      onClick={handleSecretShare}
+                      onClick={() => onShareSecret(secret)}
                     >
                       <Tooltip content="Share Secret">
                         <FontAwesomeSymbol
@@ -974,7 +974,7 @@ export const SecretItem = memo(
         <CreateReminderForm
           isOpen={popUp.reminder.isOpen}
           onOpenChange={() => handlePopUpToggle("reminder")}
-          workspaceId={currentWorkspace.id}
+          projectId={currentProject.id}
           environment={environment}
           secretPath={secretPath}
           secretId={secret?.id}

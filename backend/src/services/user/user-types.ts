@@ -16,3 +16,8 @@ export type TUpdateUserMfaDTO = {
   isMfaEnabled?: boolean;
   selectedMfaMethod?: MfaMethod;
 };
+
+export type TUpdateUserEmailDTO = {
+  userId: string;
+  newEmail: string;
+};

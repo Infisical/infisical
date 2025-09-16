@@ -13,8 +13,15 @@ import { registerCaRouter } from "./certificate-authority-router";
 import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
 import { registerCertRouter } from "./certificate-router";
 import { registerCertificateTemplateRouter } from "./certificate-template-router";
+import { registerDeprecatedProjectEnvRouter } from "./deprecated-project-env-router";
+import { registerDeprecatedProjectMembershipRouter } from "./deprecated-project-membership-router";
+import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
+import { registerDeprecatedSecretFolderRouter } from "./deprecated-secret-folder-router";
+import { registerDeprecatedSecretImportRouter } from "./deprecated-secret-import-router";
+import { registerDeprecatedSecretTagRouter } from "./deprecated-secret-tag-router";
 import { registerEventRouter } from "./event-router";
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";
+import { registerGroupProjectRouter } from "./group-project-router";
 import { registerIdentityAccessTokenRouter } from "./identity-access-token-router";
 import { registerIdentityAliCloudAuthRouter } from "./identity-alicloud-auth-router";
 import { registerIdentityAwsAuthRouter } from "./identity-aws-iam-auth-router";
@@ -25,6 +32,7 @@ import { registerIdentityKubernetesRouter } from "./identity-kubernetes-auth-rou
 import { registerIdentityLdapAuthRouter } from "./identity-ldap-auth-router";
 import { registerIdentityOciAuthRouter } from "./identity-oci-auth-router";
 import { registerIdentityOidcAuthRouter } from "./identity-oidc-auth-router";
+import { registerIdentityProjectRouter } from "./identity-project-router";
 import { registerIdentityRouter } from "./identity-router";
 import { registerIdentityTlsCertAuthRouter } from "./identity-tls-cert-auth-router";
 import { registerIdentityTokenAuthRouter } from "./identity-token-auth-router";
@@ -33,6 +41,7 @@ import { registerIntegrationAuthRouter } from "./integration-auth-router";
 import { registerIntegrationRouter } from "./integration-router";
 import { registerInviteOrgRouter } from "./invite-org-router";
 import { registerMicrosoftTeamsRouter } from "./microsoft-teams-router";
+import { registerNotificationRouter } from "./notification-router";
 import { registerOrgAdminRouter } from "./org-admin-router";
 import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
@@ -44,8 +53,6 @@ import { registerProjectKeyRouter } from "./project-key-router";
 import { registerProjectMembershipRouter } from "./project-membership-router";
 import { registerProjectRouter } from "./project-router";
 import { SECRET_REMINDER_REGISTER_ROUTER_MAP } from "./reminder-routers";
-import { registerSecretFolderRouter } from "./secret-folder-router";
-import { registerSecretImportRouter } from "./secret-import-router";
 import { registerSecretRequestsRouter } from "./secret-requests-router";
 import { registerSecretSharingRouter } from "./secret-sharing-router";
 import { registerSecretTagRouter } from "./secret-tag-router";
@@ -83,10 +90,11 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerAdminRouter, { prefix: "/admin" });
   await server.register(registerOrgAdminRouter, { prefix: "/organization-admin" });
   await server.register(registerUserRouter, { prefix: "/user" });
+  await server.register(registerNotificationRouter, { prefix: "/notifications" });
   await server.register(registerInviteOrgRouter, { prefix: "/invite-org" });
   await server.register(registerUserActionRouter, { prefix: "/user-action" });
-  await server.register(registerSecretImportRouter, { prefix: "/secret-imports" });
-  await server.register(registerSecretFolderRouter, { prefix: "/folders" });
+  await server.register(registerDeprecatedSecretImportRouter, { prefix: "/secret-imports" });
+  await server.register(registerDeprecatedSecretFolderRouter, { prefix: "/folders" });
 
   await server.register(
     async (workflowIntegrationRouter) => {
@@ -99,13 +107,26 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (projectRouter) => {
-      await projectRouter.register(registerProjectRouter);
-      await projectRouter.register(registerProjectEnvRouter);
+      await projectRouter.register(registerDeprecatedProjectRouter);
+      await projectRouter.register(registerDeprecatedProjectEnvRouter);
+      // depreciated completed in use
       await projectRouter.register(registerProjectKeyRouter);
-      await projectRouter.register(registerProjectMembershipRouter);
-      await projectRouter.register(registerSecretTagRouter);
+      await projectRouter.register(registerDeprecatedProjectMembershipRouter);
+      await projectRouter.register(registerDeprecatedSecretTagRouter);
     },
     { prefix: "/workspace" }
+  );
+
+  await server.register(
+    async (projectRouter) => {
+      await projectRouter.register(registerProjectRouter);
+      await projectRouter.register(registerProjectMembershipRouter);
+      await projectRouter.register(registerProjectEnvRouter);
+      await projectRouter.register(registerSecretTagRouter);
+      await projectRouter.register(registerGroupProjectRouter);
+      await projectRouter.register(registerIdentityProjectRouter);
+    },
+    { prefix: "/projects" }
   );
 
   await server.register(

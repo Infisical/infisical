@@ -4,7 +4,7 @@ import { subject } from "@casl/ability";
 
 import { FilterableSelect, FormControl } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
-import { useProjectPermission, useWorkspace } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSub
@@ -16,7 +16,7 @@ export const SecretSyncSourceFields = () => {
   const { control, watch, setError, clearErrors } = useFormContext<TSecretSyncForm>();
 
   const { permission } = useProjectPermission();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const selectedEnvironment = watch("environment");
   const selectedSecretPath = watch("secretPath");
@@ -48,7 +48,7 @@ export const SecretSyncSourceFields = () => {
       </p>
 
       <Controller
-        defaultValue={currentWorkspace.environments[0]}
+        defaultValue={currentProject.environments[0]}
         control={control}
         name="environment"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
@@ -56,7 +56,7 @@ export const SecretSyncSourceFields = () => {
             <FilterableSelect
               value={value}
               onChange={onChange}
-              options={currentWorkspace.environments}
+              options={currentProject.environments}
               placeholder="Select environment..."
               getOptionLabel={(option) => option?.name}
               getOptionValue={(option) => option?.id}

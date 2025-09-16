@@ -21,7 +21,7 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { EmptyState, IconButton, SecretInput, TableContainer, Tooltip } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useResyncSecretReplication } from "@app/hooks/api";
 import { TSecretImport } from "@app/hooks/api/types";
@@ -82,7 +82,7 @@ export const SecretImportItem = ({
     lastReplicated,
     importEnv
   } = secretImport as TSecretImport;
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const [isExpanded, setIsExpanded] = useToggle();
   const { attributes, listeners, transform, transition, setNodeRef, isDragging } = useSortable({
     id
@@ -118,7 +118,7 @@ export const SecretImportItem = ({
         id,
         environment,
         path: secretPath,
-        projectId: currentWorkspace?.id || ""
+        projectId: currentProject?.id || ""
       });
       createNotification({
         text: "Please refresh the dashboard to view changes",

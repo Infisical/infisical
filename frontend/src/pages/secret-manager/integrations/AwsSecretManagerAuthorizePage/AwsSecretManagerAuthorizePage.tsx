@@ -16,7 +16,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 enum AwsAuthType {
@@ -41,7 +41,7 @@ type TForm = z.infer<typeof formSchema>;
 export const AWSSecretManagerAuthorizePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useSaveIntegrationAccessToken();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { control, handleSubmit, formState, watch } = useForm<TForm>({
     resolver: zodResolver(formSchema),
@@ -54,7 +54,7 @@ export const AWSSecretManagerAuthorizePage = () => {
   const handleFormSubmit = async (data: TForm) => {
     try {
       const integrationAuth = await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         integration: "aws-secret-manager",
         ...(data.type === AwsAuthType.AssumeRole
           ? {
@@ -68,7 +68,7 @@ export const AWSSecretManagerAuthorizePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations/aws-secret-manager/create",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           integrationAuthId: integrationAuth.id

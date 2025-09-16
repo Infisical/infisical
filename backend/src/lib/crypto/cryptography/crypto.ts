@@ -250,8 +250,11 @@ const cryptographyFactory = () => {
         };
       };
 
-      const encryptWithRootEncryptionKey = (data: string) => {
-        const appCfg = getConfig();
+      const encryptWithRootEncryptionKey = (
+        data: string,
+        appCfgOverride?: Pick<TEnvConfig, "ROOT_ENCRYPTION_KEY" | "ENCRYPTION_KEY">
+      ) => {
+        const appCfg = appCfgOverride || getConfig();
         const rootEncryptionKey = appCfg.ROOT_ENCRYPTION_KEY;
         const encryptionKey = appCfg.ENCRYPTION_KEY;
 
@@ -421,7 +424,8 @@ const cryptographyFactory = () => {
       constants: crypto.constants,
       X509Certificate: crypto.X509Certificate,
       KeyObject: crypto.KeyObject,
-      Hash: crypto.Hash
+      Hash: crypto.Hash,
+      timingSafeEqual: crypto.timingSafeEqual
     }
   };
 };

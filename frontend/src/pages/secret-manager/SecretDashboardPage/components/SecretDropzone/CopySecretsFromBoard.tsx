@@ -46,14 +46,14 @@ type Props = {
   onToggle: (isOpen: boolean) => void;
   onParsedEnv: (env: Record<string, { value: string; comments: string[] }>) => void;
   environments?: { name: string; slug: string }[];
-  workspaceId: string;
+  projectId: string;
   environment: string;
   secretPath: string;
 };
 
 export const CopySecretsFromBoard = ({
   environments = [],
-  workspaceId,
+  projectId,
   environment,
   secretPath,
   isOpen,
@@ -81,7 +81,7 @@ export const CopySecretsFromBoard = ({
 
   const { data: accessibleSecrets, isPending: isAccessibleSecretsLoading } =
     useGetAccessibleSecrets({
-      projectId: workspaceId,
+      projectId,
       secretPath: debouncedEnvCopySecretPath,
       environment: selectedEnvSlug.slug,
       filterByAction: shouldIncludeValues
@@ -89,7 +89,7 @@ export const CopySecretsFromBoard = ({
         : ProjectPermissionSecretActions.DescribeSecret,
       options: {
         enabled:
-          Boolean(workspaceId) &&
+          Boolean(projectId) &&
           Boolean(selectedEnvSlug) &&
           Boolean(debouncedEnvCopySecretPath) &&
           isOpen

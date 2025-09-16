@@ -246,13 +246,6 @@ export const SanitizedDynamicSecretSchema = DynamicSecretsSchema.omit({
   metadata: ResourceMetadataSchema.optional()
 });
 
-export const SanitizedAuditLogStreamSchema = z.object({
-  id: z.string(),
-  url: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date()
-});
-
 export const SanitizedProjectSchema = ProjectsSchema.pick({
   id: true,
   name: true,

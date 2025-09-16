@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { TReactQueryOptions } from "@app/types/reactQuery";
 
-import { workspaceKeys } from "../workspace";
+import { projectKeys } from "../projects";
 import {
   App,
   BitbucketEnvironment,
@@ -970,7 +970,7 @@ export const useAuthorizeIntegration = () => {
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({
-        queryKey: { queryKey: workspaceKeys.getWorkspaceAuthorization(res.workspace) }
+        queryKey: { queryKey: projectKeys.getProjectAuthorization(res.workspace) }
       });
     }
   });
@@ -1016,7 +1016,7 @@ export const useSaveIntegrationAccessToken = () => {
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceAuthorization(res.workspace)
+        queryKey: projectKeys.getProjectAuthorization(res.workspace)
       });
     }
   });
@@ -1035,10 +1035,10 @@ export const useDeleteIntegrationAuths = () => {
       ),
     onSuccess: (_, { workspaceId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceAuthorization(workspaceId)
+        queryKey: projectKeys.getProjectAuthorization(workspaceId)
       });
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceIntegrations(workspaceId)
+        queryKey: projectKeys.getProjectIntegrations(workspaceId)
       });
     }
   });
@@ -1052,10 +1052,10 @@ export const useDeleteIntegrationAuth = () => {
     mutationFn: ({ id }) => apiRequest.delete(`/api/v1/integration-auth/${id}`),
     onSuccess: (_, { workspaceId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceAuthorization(workspaceId)
+        queryKey: projectKeys.getProjectAuthorization(workspaceId)
       });
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspaceIntegrations(workspaceId)
+        queryKey: projectKeys.getProjectIntegrations(workspaceId)
       });
     }
   });

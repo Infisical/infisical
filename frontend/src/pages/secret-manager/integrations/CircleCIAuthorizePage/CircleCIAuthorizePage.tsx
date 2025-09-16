@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const CircleCIAuthorizePage = () => {
@@ -15,7 +15,7 @@ export const CircleCIAuthorizePage = () => {
   const [apiKey, setApiKey] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const handleButtonClick = async () => {
     try {
@@ -28,7 +28,7 @@ export const CircleCIAuthorizePage = () => {
       setIsLoading(true);
 
       const integrationAuth = await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         integration: "circleci",
         accessToken: apiKey
       });
@@ -38,7 +38,7 @@ export const CircleCIAuthorizePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations/circleci/create",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           integrationAuthId: integrationAuth.id

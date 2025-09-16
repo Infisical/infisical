@@ -38,7 +38,7 @@ type TAwsSecretsRecord = Record<string, SecretListEntry>;
 type TAwsSecretValuesRecord = Record<string, SecretValueEntry>;
 type TAwsSecretDescriptionsRecord = Record<string, DescribeSecretResponse>;
 
-const MAX_RETRIES = 5;
+const MAX_RETRIES = 10;
 const BATCH_SIZE = 20;
 
 const getSecretsManagerClient = async (secretSync: TAwsSecretsManagerSyncWithCredentials) => {

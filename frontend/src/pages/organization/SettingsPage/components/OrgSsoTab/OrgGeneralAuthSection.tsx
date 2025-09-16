@@ -24,11 +24,17 @@ enum EnforceAuthType {
 export const OrgGeneralAuthSection = ({
   isSamlConfigured,
   isOidcConfigured,
-  isGoogleConfigured
+  isGoogleConfigured,
+  isSamlActive,
+  isOidcActive,
+  isLdapActive
 }: {
   isSamlConfigured: boolean;
   isOidcConfigured: boolean;
   isGoogleConfigured: boolean;
+  isSamlActive: boolean;
+  isOidcActive: boolean;
+  isLdapActive: boolean;
 }) => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
@@ -126,6 +132,15 @@ export const OrgGeneralAuthSection = ({
     }
   };
 
+  const isGoogleOAuthEnforced = currentOrg.googleSsoAuthEnforced;
+
+  const getActiveSsoLabel = () => {
+    if (isSamlActive) return "SAML";
+    if (isOidcActive) return "OIDC";
+    if (isLdapActive) return "LDAP";
+    return "";
+  };
+
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
       <div>
@@ -135,7 +150,7 @@ export const OrgGeneralAuthSection = ({
         </p>
       </div>
       <div className="flex flex-col gap-2 py-4">
-        <div className={twMerge("mt-4", !isSamlConfigured && "hidden")}>
+        <div className={twMerge("mt-4", (!isSamlConfigured || isGoogleOAuthEnforced) && "hidden")}>
           <div className="mb-2 flex justify-between">
             <div className="flex items-center gap-1">
               <span className="text-md text-mineshaft-100">Enforce SAML SSO</span>
@@ -160,7 +175,7 @@ export const OrgGeneralAuthSection = ({
           </p>
         </div>
 
-        <div className={twMerge("mt-4", !isOidcConfigured && "hidden")}>
+        <div className={twMerge("mt-4", (!isOidcConfigured || isGoogleOAuthEnforced) && "hidden")}>
           <div className="mb-2 flex justify-between">
             <div className="flex items-center gap-1">
               <span className="text-md text-mineshaft-100">Enforce OIDC SSO</span>
@@ -188,25 +203,47 @@ export const OrgGeneralAuthSection = ({
         <div className={twMerge("mt-2", !isGoogleConfigured && "hidden")}>
           <div className="mb-2 flex justify-between">
             <div className="flex items-center gap-1">
-              <span className="text-md text-mineshaft-100">Enforce Google SSO</span>
+              <span className="text-md text-mineshaft-100">Enforce Google OAuth</span>
             </div>
-            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+            <OrgPermissionCan
+              I={OrgPermissionActions.Edit}
+              a={OrgPermissionSubjects.Sso}
+              tooltipProps={{
+                className: "max-w-sm",
+                side: "left"
+              }}
+              allowedLabel={
+                isOidcActive || isSamlActive || isLdapActive
+                  ? `You cannot enforce Google OAuth while ${getActiveSsoLabel()} SSO is enabled. Disable ${getActiveSsoLabel()} SSO to enforce Google OAuth.`
+                  : undefined
+              }
+              renderTooltip={isOidcActive || isSamlActive || isLdapActive}
+            >
               {(isAllowed) => (
-                <Switch
-                  id="enforce-google-sso"
-                  onCheckedChange={(value) =>
-                    handleEnforceOrgAuthToggle(value, EnforceAuthType.GOOGLE)
-                  }
-                  isChecked={currentOrg?.googleSsoAuthEnforced ?? false}
-                  isDisabled={!isAllowed || currentOrg?.authEnforced}
-                />
+                <div>
+                  <Switch
+                    id="enforce-google-sso"
+                    onCheckedChange={(value) =>
+                      handleEnforceOrgAuthToggle(value, EnforceAuthType.GOOGLE)
+                    }
+                    isChecked={currentOrg?.googleSsoAuthEnforced ?? false}
+                    isDisabled={
+                      !isAllowed ||
+                      currentOrg?.authEnforced ||
+                      isOidcActive ||
+                      isSamlActive ||
+                      isLdapActive
+                    }
+                  />
+                </div>
               )}
             </OrgPermissionCan>
           </div>
           <p className="text-sm text-mineshaft-300">
-            Enforce users to authenticate via Google to access this organization.
+            Enforce users to authenticate via Google OAuth to access this organization.
             <br />
-            When this is enabled your organization members will only be able to login with Google.
+            When this is enabled your organization members will only be able to login with Google
+            OAuth (not Google SAML).
           </p>
         </div>
       </div>
@@ -266,8 +303,8 @@ export const OrgGeneralAuthSection = ({
           </div>
           <p className="text-sm text-mineshaft-300">
             <span>
-              Allow organization admins to bypass SAML enforcement when SSO is unavailable,
-              misconfigured, or inaccessible.
+              Allow organization admins to bypass SSO login enforcement when your SSO provider is
+              unavailable, misconfigured, or inaccessible.
             </span>
           </p>
         </div>

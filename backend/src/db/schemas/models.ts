@@ -131,6 +131,7 @@ export enum TableName {
   SecretApprovalRequestSecretTagV2 = "secret_approval_request_secret_tags_v2",
   SnapshotSecretV2 = "secret_snapshot_secrets_v2",
   ProjectSplitBackfillIds = "project_split_backfill_ids",
+  UserNotifications = "user_notifications",
   // Gateway
   OrgGatewayConfig = "org_gateway_config",
   Gateway = "gateways",
@@ -178,7 +179,16 @@ export enum TableName {
   SecretScanningConfig = "secret_scanning_configs",
   // reminders
   Reminder = "reminders",
-  ReminderRecipient = "reminders_recipients"
+  ReminderRecipient = "reminders_recipients",
+
+  // gateway v2
+  InstanceRelayConfig = "instance_relay_config",
+  OrgRelayConfig = "org_relay_config",
+  OrgGatewayConfigV2 = "org_gateway_config_v2",
+  Relay = "relays",
+  GatewayV2 = "gateways_v2",
+
+  KeyValueStore = "key_value_store"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

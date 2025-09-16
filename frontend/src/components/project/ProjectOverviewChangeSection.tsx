@@ -6,7 +6,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input, TextArea } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useUpdateProject } from "@app/hooks/api";
 
 const baseFormSchema = z.object({
@@ -37,35 +37,35 @@ type Props = {
 };
 
 export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { mutateAsync, isPending } = useUpdateProject();
   const { handleSubmit, control, reset, watch } = useForm<BaseFormData | FormDataWithSlug>({
     resolver: zodResolver(showSlugField ? formSchemaWithSlug : baseFormSchema)
   });
 
-  const currentSlug = showSlugField ? watch("slug") : currentWorkspace?.slug;
+  const currentSlug = showSlugField ? watch("slug") : currentProject?.slug;
 
   useEffect(() => {
-    if (currentWorkspace) {
+    if (currentProject) {
       reset({
-        name: currentWorkspace.name,
-        description: currentWorkspace.description ?? "",
-        ...(showSlugField && { slug: currentWorkspace.slug })
+        name: currentProject.name,
+        description: currentProject.description ?? "",
+        ...(showSlugField && { slug: currentProject.slug })
       });
     }
-  }, [currentWorkspace, showSlugField]);
+  }, [currentProject, showSlugField]);
 
   const onFormSubmit = async (data: BaseFormData | FormDataWithSlug) => {
     try {
-      if (!currentWorkspace?.id) return;
+      if (!currentProject?.id) return;
 
       await mutateAsync({
-        projectID: currentWorkspace.id,
+        projectId: currentProject.id,
         newProjectName: data.name,
         newProjectDescription: data.description,
         ...(showSlugField &&
           "slug" in data && {
-            newSlug: data.slug !== currentWorkspace.slug ? data.slug : undefined
+            newSlug: data.slug !== currentProject.slug ? data.slug : undefined
           })
       });
 
@@ -105,7 +105,7 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
             variant="outline_bg"
             size="sm"
             onClick={() => {
-              navigator.clipboard.writeText(currentWorkspace?.id || "");
+              navigator.clipboard.writeText(currentProject?.id || "");
               createNotification({
                 text: "Copied project ID to clipboard",
                 type: "success"

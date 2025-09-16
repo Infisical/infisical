@@ -21,7 +21,7 @@ import {
   DynamicSecretAwsIamCredentialType,
   DynamicSecretProviders
 } from "@app/hooks/api/dynamicSecret/types";
-import { WorkspaceEnv } from "@app/hooks/api/types";
+import { ProjectEnv } from "@app/hooks/api/types";
 
 import { MetadataForm } from "../../DynamicSecretListView/MetadataForm";
 
@@ -122,7 +122,7 @@ type Props = {
   onCancel: () => void;
   secretPath: string;
   projectSlug: string;
-  environments: WorkspaceEnv[];
+  environments: ProjectEnv[];
   isSingleEnvironmentMode?: boolean;
 };
 

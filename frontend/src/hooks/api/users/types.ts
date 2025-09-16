@@ -1,5 +1,5 @@
 import { MfaMethod } from "../auth/types";
-import { ProjectType, ProjectUserMembershipTemporaryMode } from "../workspace/types";
+import { ProjectType, ProjectUserMembershipTemporaryMode } from "../projects/types";
 
 export enum AuthMethod {
   EMAIL = "email",
@@ -19,10 +19,10 @@ export type User = {
   createdAt: Date;
   updatedAt: Date;
   username: string;
-  email?: string;
+  email?: string | null;
   superAdmin: boolean;
-  firstName?: string;
-  lastName?: string;
+  firstName?: string | null;
+  lastName?: string | null;
   authProvider?: AuthMethod;
   authMethods: AuthMethod[];
   isMfaEnabled: boolean;

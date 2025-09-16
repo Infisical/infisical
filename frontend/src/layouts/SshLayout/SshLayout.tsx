@@ -15,14 +15,14 @@ import { Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useWorkspace
+  useProject,
+  useProjectPermission
 } from "@app/context";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
 export const SshLayout = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { assumedPrivilegeDetails } = useProjectPermission();
 
   return (
@@ -47,7 +47,7 @@ export const SshLayout = () => {
                   <Link
                     to="/projects/ssh/$projectId/overview"
                     params={{
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => (
@@ -70,7 +70,7 @@ export const SshLayout = () => {
                         <Link
                           to="/projects/ssh/$projectId/cas"
                           params={{
-                            projectId: currentWorkspace.id
+                            projectId: currentProject.id
                           }}
                         >
                           {({ isActive }) => (
@@ -93,7 +93,7 @@ export const SshLayout = () => {
                   <Link
                     to="/projects/ssh/$projectId/access-management"
                     params={{
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => (
@@ -110,7 +110,7 @@ export const SshLayout = () => {
                   <Link
                     to="/projects/ssh/$projectId/audit-logs"
                     params={{
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => (
@@ -127,7 +127,7 @@ export const SshLayout = () => {
                   <Link
                     to="/projects/ssh/$projectId/settings"
                     params={{
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => (

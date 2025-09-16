@@ -1,6 +1,6 @@
 /* eslint-disable no-continue */
 import { subject } from "@casl/ability";
-import Redis from "ioredis";
+import { Cluster, Redis } from "ioredis";
 
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { logger } from "@app/lib/logger";
@@ -12,7 +12,7 @@ import { BusEvent, RegisteredEvent } from "./types";
 const AUTH_REFRESH_INTERVAL = 60 * 1000;
 const HEART_BEAT_INTERVAL = 15 * 1000;
 
-export const sseServiceFactory = (bus: TEventBusService, redis: Redis) => {
+export const sseServiceFactory = (bus: TEventBusService, redis: Redis | Cluster) => {
   const clients = new Set<EventStreamClient>();
 
   const heartbeatInterval = setInterval(() => {

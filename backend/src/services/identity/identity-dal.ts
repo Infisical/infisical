@@ -25,7 +25,7 @@ export const identityDALFactory = (db: TDbClient) => {
     } as const;
     const tableName = authMethodToTableName[authMethod];
     if (!tableName) return;
-    const data = await db(tableName).where({ identityId }).first();
+    const data = await db.replicaNode()(tableName).where({ identityId }).first();
     if (!data) return;
     return data.accessTokenTrustedIps;
   };

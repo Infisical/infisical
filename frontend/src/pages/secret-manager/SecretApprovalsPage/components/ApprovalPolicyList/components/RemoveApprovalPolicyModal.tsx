@@ -4,7 +4,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal, Spinner } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   useDeleteAccessApprovalPolicy,
   useDeleteSecretApprovalPolicy,
@@ -29,18 +29,18 @@ export const RemoveApprovalPolicyModal = ({
   const { mutateAsync: deleteSecretApprovalPolicy } = useDeleteSecretApprovalPolicy();
   const { mutateAsync: deleteAccessApprovalPolicy } = useDeleteAccessApprovalPolicy();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const handleDeletePolicy = async () => {
     try {
       if (policyType === PolicyType.ChangePolicy) {
         await deleteSecretApprovalPolicy({
-          workspaceId: currentWorkspace.id,
+          projectId: currentProject.id,
           id: policyId
         });
       } else {
         await deleteAccessApprovalPolicy({
-          projectSlug: currentWorkspace.slug,
+          projectSlug: currentProject.slug,
           id: policyId
         });
       }
@@ -59,14 +59,14 @@ export const RemoveApprovalPolicyModal = ({
 
   const deleteSecretApprovalData = useGetSecretApprovalRequestCount({
     policyId,
-    workspaceId: currentWorkspace.id,
+    projectId: currentProject.id,
     options: {
       enabled: Boolean(policyId) && policyType === PolicyType.ChangePolicy
     }
   });
 
   const deleteAccessApprovalData = useGetAccessRequestsCount({
-    projectSlug: currentWorkspace.slug,
+    projectSlug: currentProject.slug,
     policyId,
     options: {
       enabled: Boolean(policyId) && policyType === PolicyType.AccessPolicy

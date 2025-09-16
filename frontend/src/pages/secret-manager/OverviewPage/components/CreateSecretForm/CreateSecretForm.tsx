@@ -19,8 +19,8 @@ import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useWorkspace
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
@@ -57,16 +57,15 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
     formState: { isSubmitting, errors }
   } = useForm<TFormSchema>({ resolver: zodResolver(typeSchema) });
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject, projectId } = useProject();
   const { permission } = useProjectPermission();
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
-  const workspaceId = currentWorkspace?.id || "";
-  const environments = currentWorkspace?.environments || [];
+  const environments = currentProject?.environments || [];
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
   const { data: projectTags, isPending: isTagsLoading } = useGetWsTags(
-    canReadTags ? workspaceId : ""
+    canReadTags ? projectId : ""
   );
 
   const secretKeyInputRef = useRef<HTMLInputElement>(null);
@@ -93,7 +92,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
 
         if (folderName && parentPath && canCreateFolder) {
           await createFolder({
-            projectId: workspaceId,
+            projectId,
             path: parentPath,
             environment,
             name: folderName
@@ -106,7 +105,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
       return {
         ...(await createSecretV3({
           environment,
-          workspaceId,
+          projectId,
           secretPath,
           secretKey: key,
           secretValue: value || "",
@@ -176,7 +175,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
 
     if (!secretKey || isWholeKeyHighlighted) {
       e.preventDefault();
-      const keyStr = currentWorkspace.autoCapitalization ? key.toUpperCase() : key;
+      const keyStr = currentProject.autoCapitalization ? key.toUpperCase() : key;
       setValue("key", keyStr);
       if (value) {
         setValue("value", value);
@@ -191,7 +190,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
     try {
       const parsedSlug = slugSchema.parse(slug);
       await createWsTag.mutateAsync({
-        workspaceID: workspaceId,
+        projectId,
         tagSlug: parsedSlug,
         tagColor: ""
       });
@@ -220,7 +219,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
           }}
           placeholder="Type your secret name"
           onPaste={handlePaste}
-          autoCapitalization={currentWorkspace?.autoCapitalization}
+          autoCapitalization={currentProject?.autoCapitalization}
         />
       </FormControl>
       <Controller

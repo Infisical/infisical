@@ -13,7 +13,7 @@ export const gatewayDALFactory = (db: TDbClient) => {
     { offset, limit, sort, tx }: TFindOpt<TGateways> = {}
   ) => {
     try {
-      const query = (tx || db)(TableName.Gateway)
+      const query = (tx || db.replicaNode())(TableName.Gateway)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter(filter, TableName.Gateway, ["orgId"]))
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Gateway}.identityId`)

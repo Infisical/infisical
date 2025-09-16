@@ -40,9 +40,9 @@ import {
 import {
   ProjectPermissionSub,
   TProjectPermission,
+  useProject,
   useProjectPermission,
-  useSubscription,
-  useWorkspace
+  useSubscription
 } from "@app/context";
 import { ProjectPermissionActions } from "@app/context/ProjectPermissionContext/types";
 import {
@@ -59,14 +59,14 @@ import {
 import { useGetAccessApprovalPolicies } from "@app/hooks/api/accessApproval/queries";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { PolicyType } from "@app/hooks/api/policies/enums";
-import { TAccessApprovalPolicy, Workspace } from "@app/hooks/api/types";
+import { Project, TAccessApprovalPolicy } from "@app/hooks/api/types";
 
 import { AccessPolicyForm } from "./components/AccessPolicyModal";
 import { ApprovalPolicyRow } from "./components/ApprovalPolicyRow";
 import { RemoveApprovalPolicyModal } from "./components/RemoveApprovalPolicyModal";
 
 interface IProps {
-  workspaceId: string;
+  projectId: string;
 }
 
 enum PolicyOrderBy {
@@ -81,24 +81,24 @@ type PolicyFilters = {
   environmentIds: string[];
 };
 
-const useApprovalPolicies = (permission: TProjectPermission, currentWorkspace?: Workspace) => {
+const useApprovalPolicies = (permission: TProjectPermission, currentProject?: Project) => {
   const { data: accessPolicies, isPending: isAccessPoliciesLoading } = useGetAccessApprovalPolicies(
     {
-      projectSlug: currentWorkspace?.slug as string,
+      projectSlug: currentProject?.slug as string,
       options: {
         enabled:
           permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
-          !!currentWorkspace?.slug
+          !!currentProject?.slug
       }
     }
   );
   const { data: secretPolicies, isPending: isSecretPoliciesLoading } = useGetSecretApprovalPolicies(
     {
-      workspaceId: currentWorkspace?.id as string,
+      projectId: currentProject?.id as string,
       options: {
         enabled:
           permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&
-          !!currentWorkspace?.id
+          !!currentProject?.id
       }
     }
   );
@@ -118,7 +118,7 @@ const useApprovalPolicies = (permission: TProjectPermission, currentWorkspace?: 
   };
 };
 
-export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
+export const ApprovalPolicyList = ({ projectId }: IProps) => {
   const { handlePopUpToggle, handlePopUpOpen, popUp } = usePopUp([
     "policyForm",
     "deletePolicy",
@@ -126,14 +126,14 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
   ] as const);
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
-  const { data: members } = useGetWorkspaceUsers(workspaceId, true);
-  const { data: groups } = useListWorkspaceGroups(currentWorkspace?.id || "");
+  const { data: members } = useGetWorkspaceUsers(projectId, true);
+  const { data: groups } = useListWorkspaceGroups(currentProject?.id || "");
 
   const { policies, isLoading: isPoliciesLoading } = useApprovalPolicies(
     permission,
-    currentWorkspace
+    currentProject
   );
 
   const [filters, setFilters] = useState<PolicyFilters>({
@@ -367,7 +367,7 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
                   Change Policy
                 </DropdownMenuItem>
                 <DropdownMenuLabel>Environment</DropdownMenuLabel>
-                {currentWorkspace.environments.map((env) => (
+                {currentProject.environments.map((env) => (
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.preventDefault();
@@ -466,7 +466,7 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
                     </Td>
                   </Tr>
                 )}
-                {!!currentWorkspace &&
+                {!!currentProject &&
                   filteredPolicies
                     ?.slice(offset, perPage * page)
                     .map((policy) => (
@@ -497,8 +497,8 @@ export const ApprovalPolicyList = ({ workspaceId }: IProps) => {
         </div>
       </motion.div>
       <AccessPolicyForm
-        projectId={currentWorkspace.id}
-        projectSlug={currentWorkspace.slug}
+        projectId={currentProject.id}
+        projectSlug={currentProject.slug}
         isOpen={popUp.policyForm.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("policyForm", isOpen)}
         members={members}

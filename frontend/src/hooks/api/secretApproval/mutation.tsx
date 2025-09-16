@@ -11,7 +11,7 @@ export const useCreateSecretApprovalPolicy = () => {
   return useMutation<object, object, TCreateSecretPolicyDTO>({
     mutationFn: async ({
       environments,
-      workspaceId,
+      projectId,
       approvals,
       approvers,
       bypassers,
@@ -20,9 +20,9 @@ export const useCreateSecretApprovalPolicy = () => {
       enforcementLevel,
       allowedSelfApprovals
     }) => {
-      const { data } = await apiRequest.post("/api/v1/secret-approvals", {
+      const { data } = await apiRequest.post("/api/v2/secret-approvals", {
         environments,
-        workspaceId,
+        projectId,
         approvals,
         approvers,
         bypassers,
@@ -33,9 +33,9 @@ export const useCreateSecretApprovalPolicy = () => {
       });
       return data;
     },
-    onSuccess: (_, { workspaceId }) => {
+    onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: secretApprovalKeys.getApprovalPolicies(workspaceId)
+        queryKey: secretApprovalKeys.getApprovalPolicies(projectId)
       });
     }
   });
@@ -56,7 +56,7 @@ export const useUpdateSecretApprovalPolicy = () => {
       allowedSelfApprovals,
       environments
     }) => {
-      const { data } = await apiRequest.patch(`/api/v1/secret-approvals/${id}`, {
+      const { data } = await apiRequest.patch(`/api/v2/secret-approvals/${id}`, {
         approvals,
         approvers,
         bypassers,
@@ -68,9 +68,9 @@ export const useUpdateSecretApprovalPolicy = () => {
       });
       return data;
     },
-    onSuccess: (_, { workspaceId }) => {
+    onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: secretApprovalKeys.getApprovalPolicies(workspaceId)
+        queryKey: secretApprovalKeys.getApprovalPolicies(projectId)
       });
     }
   });
@@ -81,12 +81,12 @@ export const useDeleteSecretApprovalPolicy = () => {
 
   return useMutation<object, object, TDeleteSecretPolicyDTO>({
     mutationFn: async ({ id }) => {
-      const { data } = await apiRequest.delete(`/api/v1/secret-approvals/${id}`);
+      const { data } = await apiRequest.delete(`/api/v2/secret-approvals/${id}`);
       return data;
     },
-    onSuccess: (_, { workspaceId }) => {
+    onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: secretApprovalKeys.getApprovalPolicies(workspaceId)
+        queryKey: secretApprovalKeys.getApprovalPolicies(projectId)
       });
     }
   });

@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import {
   useCreateProjectRole,
@@ -38,8 +38,8 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
     roleSlug: string;
   };
 
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id || "";
 
   const { data: role } = useGetProjectRoleBySlug(projectId, popupData?.roleSlug ?? "");
 
@@ -101,7 +101,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
 
         navigate({
-          to: `${getProjectBaseURL(currentWorkspace.type)}/roles/$roleSlug` as const,
+          to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug` as const,
           params: {
             roleSlug: newRole.slug,
             projectId

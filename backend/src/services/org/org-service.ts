@@ -9,11 +9,14 @@ import {
   ProjectMembershipRole,
   ProjectVersion,
   TableName,
+  TOidcConfigs,
   TProjectMemberships,
   TProjectUserMembershipRolesInsert,
+  TSamlConfigs,
   TUsers
 } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import {
@@ -125,6 +128,7 @@ type TOrgServiceFactoryDep = {
   incidentContactDAL: TIncidentContactsDALFactory;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
+  ldapConfigDAL: Pick<TLdapConfigDALFactory, "findOne">;
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
   permissionService: TPermissionServiceFactory;
@@ -165,6 +169,7 @@ export const orgServiceFactory = ({
   projectRoleDAL,
   samlConfigDAL,
   oidcConfigDAL,
+  ldapConfigDAL,
   projectUserMembershipRoleDAL,
   identityMetadataDAL,
   projectBotService,
@@ -446,16 +451,20 @@ export const orgServiceFactory = ({
       });
     }
 
-    if (authEnforced) {
-      const samlCfg = await samlConfigDAL.findOne({
+    let samlCfg: TSamlConfigs | undefined;
+    let oidcCfg: TOidcConfigs | undefined;
+    if (authEnforced || googleSsoAuthEnforced) {
+      samlCfg = await samlConfigDAL.findOne({
         orgId,
         isActive: true
       });
-      const oidcCfg = await oidcConfigDAL.findOne({
+      oidcCfg = await oidcConfigDAL.findOne({
         orgId,
         isActive: true
       });
+    }
 
+    if (authEnforced) {
       if (!samlCfg && !oidcCfg)
         throw new NotFoundError({
           message: `SAML or OIDC configuration for organization with ID '${orgId}' not found`
@@ -480,6 +489,32 @@ export const orgServiceFactory = ({
       if (googleSsoAuthEnforced && currentOrg.authEnforced) {
         throw new BadRequestError({
           message: "Google SSO auth enforcement cannot be enabled when SAML/OIDC auth enforcement is enabled."
+        });
+      }
+
+      if (samlCfg) {
+        throw new BadRequestError({
+          message:
+            "Cannot enable Google OAuth enforcement while SAML SSO is configured. Disable SAML SSO to enforce Google OAuth."
+        });
+      }
+
+      if (oidcCfg) {
+        throw new BadRequestError({
+          message:
+            "Cannot enable Google OAuth enforcement while OIDC SSO is configured. Disable OIDC SSO to enforce Google OAuth."
+        });
+      }
+
+      const ldapCfg = await ldapConfigDAL.findOne({
+        orgId,
+        isActive: true
+      });
+
+      if (ldapCfg) {
+        throw new BadRequestError({
+          message:
+            "Cannot enable Google OAuth enforcement while LDAP SSO is configured. Disable LDAP SSO to enforce Google OAuth."
         });
       }
 
@@ -528,15 +563,18 @@ export const orgServiceFactory = ({
   /*
    * Create organization
    * */
-  const createOrganization = async ({
-    userId,
-    userEmail,
-    orgName
-  }: {
-    userId: string;
-    orgName: string;
-    userEmail?: string | null;
-  }) => {
+  const createOrganization = async (
+    {
+      userId,
+      userEmail,
+      orgName
+    }: {
+      userId?: string;
+      orgName: string;
+      userEmail?: string | null;
+    },
+    trx?: Knex
+  ) => {
     const { privateKey, publicKey } = await crypto.encryption().asymmetric().generateKeyPair();
     const key = crypto.randomBytes(32).toString("base64");
     const {
@@ -555,22 +593,25 @@ export const orgServiceFactory = ({
     } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(key);
 
     const customerId = await licenseService.generateOrgCustomerId(orgName, userEmail);
-    const organization = await orgDAL.transaction(async (tx) => {
+
+    const createOrg = async (tx: Knex) => {
       // akhilmhdh: for now this is auto created. in future we can input from user and for previous users just modifiy
       const org = await orgDAL.create(
         { name: orgName, customerId, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) },
         tx
       );
-      await orgDAL.createMembership(
-        {
-          userId,
-          orgId: org.id,
-          role: OrgMembershipRole.Admin,
-          status: OrgMembershipStatus.Accepted,
-          isActive: true
-        },
-        tx
-      );
+      if (userId) {
+        await orgDAL.createMembership(
+          {
+            userId,
+            orgId: org.id,
+            role: OrgMembershipRole.Admin,
+            status: OrgMembershipStatus.Accepted,
+            isActive: true
+          },
+          tx
+        );
+      }
       await orgBotDAL.create(
         {
           name: org.name,
@@ -590,7 +631,9 @@ export const orgServiceFactory = ({
         tx
       );
       return org;
-    });
+    };
+
+    const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
     return organization;

@@ -18,7 +18,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import {
@@ -35,14 +35,14 @@ export const WebhooksTab = withProjectPermission(
   () => {
     const { t } = useTranslation();
 
-    const { currentWorkspace } = useWorkspace();
-    const workspaceId = currentWorkspace?.id || "";
+    const { currentProject } = useProject();
+    const projectId = currentProject?.id || "";
     const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
       "addWebhook",
       "deleteWebhook"
     ] as const);
 
-    const { data: webhooks, isPending: isWebhooksLoading } = useGetWebhooks(workspaceId);
+    const { data: webhooks, isPending: isWebhooksLoading } = useGetWebhooks(projectId);
 
     // mutation
     const { mutateAsync: createWebhook } = useCreateWebhook();
@@ -62,7 +62,7 @@ export const WebhooksTab = withProjectPermission(
       try {
         await createWebhook({
           ...data,
-          workspaceId
+          projectId
         });
         handlePopUpClose("addWebhook");
         createNotification({
@@ -82,7 +82,7 @@ export const WebhooksTab = withProjectPermission(
       try {
         await updateWebhook({
           webhookId,
-          workspaceId,
+          projectId,
           isDisabled
         });
         createNotification({
@@ -103,7 +103,7 @@ export const WebhooksTab = withProjectPermission(
         const webhookId = popUp?.deleteWebhook?.data as string;
         await deleteWebhook({
           webhookId,
-          workspaceId
+          projectId
         });
         handlePopUpClose("deleteWebhook");
         createNotification({
@@ -123,7 +123,7 @@ export const WebhooksTab = withProjectPermission(
       try {
         await testWebhook({
           webhookId,
-          workspaceId
+          projectId
         });
         createNotification({
           type: "success",
@@ -302,7 +302,7 @@ export const WebhooksTab = withProjectPermission(
           </TableContainer>
         </div>
         <AddWebhookForm
-          environments={currentWorkspace?.environments}
+          environments={currentProject?.environments}
           isOpen={popUp?.addWebhook?.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("addWebhook", isOpen)}
           onCreateWebhook={handleWebhookCreate}

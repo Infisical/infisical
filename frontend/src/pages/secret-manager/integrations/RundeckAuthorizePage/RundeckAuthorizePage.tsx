@@ -8,7 +8,7 @@ import { useNavigate } from "@tanstack/react-router";
 import z from "zod";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 const schema = z.object({
@@ -25,7 +25,7 @@ export const RundeckAuthorizePage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { mutateAsync } = useSaveIntegrationAccessToken();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { control, handleSubmit } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -40,7 +40,7 @@ export const RundeckAuthorizePage = () => {
       setIsLoading(true);
 
       const integrationAuth = await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         integration: "rundeck",
         accessToken: authToken,
         url: rundeckURL.trim()
@@ -50,7 +50,7 @@ export const RundeckAuthorizePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations/rundeck/create",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           integrationAuthId: integrationAuth.id

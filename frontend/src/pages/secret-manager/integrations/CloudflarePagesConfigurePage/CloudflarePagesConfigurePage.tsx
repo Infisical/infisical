@@ -14,7 +14,7 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateIntegration, useGetWorkspaceById } from "@app/hooks/api";
 import {
   useGetIntegrationAuthApps,
@@ -31,7 +31,7 @@ export const CloudflarePagesConfigurePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useCreateIntegration();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.CloudflarePagesConfigurePage.id,
@@ -39,7 +39,7 @@ export const CloudflarePagesConfigurePage = () => {
   });
 
   const [secretPath, setSecretPath] = useState("/");
-  const { data: workspace } = useGetWorkspaceById(currentWorkspace.id);
+  const { data: workspace } = useGetWorkspaceById(currentProject.id);
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
   const { data: integrationAuthApps } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? ""
@@ -96,7 +96,7 @@ export const CloudflarePagesConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations

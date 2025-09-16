@@ -9,7 +9,7 @@ export enum ProjectMembershipRole {
 }
 
 export type TGetProjectRolesDTO = {
-  workspaceId?: string;
+  projectId?: string;
 };
 
 export type TProjectRole = {
@@ -52,7 +52,7 @@ export type TGetUserOrgPermissionsDTO = {
 };
 
 export type TGetUserProjectPermissionDTO = {
-  workspaceId: string;
+  projectId: string;
 };
 
 export type TCreateOrgRoleDTO = {
