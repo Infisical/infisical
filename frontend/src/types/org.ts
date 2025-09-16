@@ -2,5 +2,6 @@ export enum OrgAccessControlTabSections {
   Member = "members",
   Groups = "groups",
   Roles = "roles",
-  Identities = "identities"
+  Identities = "identities",
+  IdentityGroup = "identity-groups"
 }

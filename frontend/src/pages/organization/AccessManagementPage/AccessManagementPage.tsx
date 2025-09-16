@@ -19,7 +19,7 @@ import {
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { UpgradePrivilegeSystemModal } from "./components/UpgradePrivilegeSystemModal/UpgradePrivilegeSystemModal";
-import { OrgGroupsTab, OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "./components";
+import { OrgGroupsTab, OrgIdentityTab, OrgMembersTab, OrgIdentityGroupsTab, OrgRoleTabSection } from "./components";
 
 export const AccessManagementPage = () => {
   const { t } = useTranslation();
@@ -64,6 +64,16 @@ export const AccessManagementPage = () => {
         OrgPermissionSubjects.Identity
       ),
       component: OrgIdentityTab
+    },
+    {
+      key: OrgAccessControlTabSections.IdentityGroup,
+      label: "Identity Groups",
+      isHidden: permission.cannot(
+        OrgPermissionIdentityActions.Read,
+        // TODO: fix this with the new permission for identity groups
+        OrgPermissionSubjects.Identity
+      ),
+      component: OrgIdentityGroupsTab
     },
     {
       key: OrgAccessControlTabSections.Roles,
