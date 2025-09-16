@@ -10,6 +10,7 @@ import { Button, FormControl, Input, Modal, ModalContent } from "@app/components
 import { useUser } from "@app/context";
 import { useRequestEmailChangeOTP, useUpdateUserEmail } from "@app/hooks/api/users";
 import { clearSession } from "@app/hooks/api/users/queries";
+import { AuthMethod } from "@app/hooks/api/users/types";
 
 const emailSchema = z
   .object({
@@ -43,6 +44,7 @@ const otpInputProps = {
 export const ChangeEmailSection = () => {
   const navigate = useNavigate();
   const { user } = useUser();
+  const hasEmailAuth = user?.authMethods?.includes(AuthMethod.EMAIL) ?? false;
   const [isOTPModalOpen, setIsOTPModalOpen] = useState(false);
   const [pendingEmail, setPendingEmail] = useState("");
 
@@ -177,6 +179,11 @@ export const ChangeEmailSection = () => {
                   label="New email address"
                   isError={Boolean(error)}
                   errorText={error?.message}
+                  tooltipText={
+                    hasEmailAuth
+                      ? "Your email authentication method is currently enabled and will remain active after changing your email."
+                      : "Email authentication method will be automatically enabled after changing your email. You can change this back after logging in with your new email if desired."
+                  }
                 >
                   <Input
                     {...field}
