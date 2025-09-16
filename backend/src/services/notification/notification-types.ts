@@ -2,7 +2,8 @@ export enum NotificationType {
   ACCESS_APPROVAL_REQUEST = "access-approval-request",
   ACCESS_APPROVAL_REQUEST_UPDATED = "access-approval-request-updated",
   ACCESS_POLICY_BYPASSED = "access-policy-bypassed",
-  SECRET_CHANGE_REQUEST = "secret-change-request"
+  SECRET_CHANGE_REQUEST = "secret-change-request",
+  SECRET_CHANGE_POLICY_BYPASSED = "secret-change-policy-bypassed"
 }
 
 export interface TCreateUserNotificationDTO {

@@ -29,6 +29,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -1037,6 +1038,17 @@ export const secretApprovalRequestServiceFactory = ({
           id: policy.approvers.map((approver: { userId: string | null | undefined }) => approver.userId!)
         }
       });
+
+      await notificationService.createUserNotifications(
+        approverUsers.map((approver) => ({
+          userId: approver.id,
+          orgId: project.orgId,
+          type: NotificationType.SECRET_CHANGE_POLICY_BYPASSED,
+          title: "Secret Change Policy Bypassed",
+          body: `**${requestedByUser.firstName} ${requestedByUser.lastName}** (${requestedByUser.email}) has merged a secret to **${policy.secretPath}** in the **${env.name}** environment for project **${project.name}** without obtaining the required approval.`,
+          link: `/projects/secret-management/${project.id}/approval`
+        }))
+      );
 
       await smtpService.sendMail({
         recipients: approverUsers.filter((approver) => approver.email).map((approver) => approver.email!),
