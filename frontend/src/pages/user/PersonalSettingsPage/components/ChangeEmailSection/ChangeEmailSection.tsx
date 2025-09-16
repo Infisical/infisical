@@ -182,7 +182,7 @@ export const ChangeEmailSection = () => {
                   tooltipText={
                     hasEmailAuth
                       ? "Your email authentication method is currently enabled and will remain active after changing your email."
-                      : "Email authentication method will be automatically enabled after changing your email. You can change this back after logging in with your new email if desired."
+                      : "Email authentication method will be automatically enabled after changing your email. You may disable email authentication after logging in with your new email if needed."
                   }
                 >
                   <Input
