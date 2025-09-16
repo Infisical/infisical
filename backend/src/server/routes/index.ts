@@ -2017,7 +2017,8 @@ export const registerRoutes = async (
     queueService,
     projectDAL,
     projectMembershipDAL,
-    smtpService
+    smtpService,
+    notificationService
   });
 
   const secretScanningV2Queue = await secretScanningV2QueueServiceFactory({
