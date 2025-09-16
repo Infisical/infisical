@@ -928,7 +928,8 @@ export const registerRoutes = async (
     projectRoleDAL,
     groupProjectDAL,
     secretReminderRecipientsDAL,
-    licenseService
+    licenseService,
+    notificationService
   });
   const projectUserAdditionalPrivilegeService = projectUserAdditionalPrivilegeServiceFactory({
     permissionService,
