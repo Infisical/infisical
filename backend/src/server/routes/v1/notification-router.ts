@@ -3,8 +3,10 @@ import { z } from "zod";
 import { UserNotificationsSchema } from "@app/db/schemas/user-notifications";
 import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerNotificationRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -95,6 +97,16 @@ export const registerNotificationRouter = async (server: FastifyZodProvider) => 
         notificationId: req.params.notificationId,
         userId: req.auth.userId,
         ...req.body
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.NotificationUpdated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          notificationId: req.params.notificationId,
+          ...req.body
+        }
       });
 
       return { notification };

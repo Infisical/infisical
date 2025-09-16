@@ -18,6 +18,8 @@ import { ms } from "@app/lib/ms";
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
+import { TNotificationServiceFactory } from "../notification/notification-service";
+import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
@@ -56,6 +58,7 @@ type TProjectMembershipServiceFactoryDep = {
   projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
   secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
   groupProjectDAL: TGroupProjectDALFactory;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembershipServiceFactory>;
@@ -74,7 +77,8 @@ export const projectMembershipServiceFactory = ({
   projectDAL,
   projectKeyDAL,
   secretReminderRecipientsDAL,
-  licenseService
+  licenseService,
+  notificationService
 }: TProjectMembershipServiceFactoryDep) => {
   const getProjectMemberships = async ({
     actorId,
@@ -236,6 +240,16 @@ export const projectMembershipServiceFactory = ({
     });
 
     if (sendEmails) {
+      await notificationService.createUserNotifications(
+        orgMembers.map((member) => ({
+          userId: member.userId,
+          orgId: project.orgId,
+          type: NotificationType.PROJECT_INVITATION,
+          title: "Project Invitation",
+          body: `You've been invited to join the project **${project.name}**.`
+        }))
+      );
+
       const appCfg = getConfig();
       await smtpService.sendMail({
         template: SmtpTemplates.WorkspaceInvite,

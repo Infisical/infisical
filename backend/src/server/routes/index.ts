@@ -773,7 +773,8 @@ export const registerRoutes = async (
     orgDAL,
     totpService,
     orgMembershipDAL,
-    auditLogService
+    auditLogService,
+    notificationService
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -887,7 +888,8 @@ export const registerRoutes = async (
     projectDAL,
     permissionService,
     projectUserMembershipRoleDAL,
-    projectMembershipDAL
+    projectMembershipDAL,
+    notificationService
   });
 
   const rateLimitService = rateLimitServiceFactory({
@@ -926,7 +928,8 @@ export const registerRoutes = async (
     projectRoleDAL,
     groupProjectDAL,
     secretReminderRecipientsDAL,
-    licenseService
+    licenseService,
+    notificationService
   });
   const projectUserAdditionalPrivilegeService = projectUserAdditionalPrivilegeServiceFactory({
     permissionService,
@@ -1145,7 +1148,8 @@ export const registerRoutes = async (
     appConnectionDAL,
     licenseService,
     gatewayService,
-    gatewayV2Service
+    gatewayV2Service,
+    notificationService
   });
 
   const secretQueueService = secretQueueFactory({
@@ -1229,7 +1233,8 @@ export const registerRoutes = async (
     projectTemplateService,
     groupProjectDAL,
     smtpService,
-    reminderService
+    reminderService,
+    notificationService
   });
 
   const projectEnvService = projectEnvServiceFactory({
@@ -1363,7 +1368,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     projectMicrosoftTeamsConfigDAL,
     microsoftTeamsService,
-    folderCommitService
+    folderCommitService,
+    notificationService
   });
 
   const secretService = secretServiceFactory({
@@ -1814,7 +1820,8 @@ export const registerRoutes = async (
     secretV2BridgeService,
     resourceMetadataDAL,
     folderCommitService,
-    folderVersionDAL
+    folderVersionDAL,
+    notificationService
   });
 
   const migrationService = externalMigrationServiceFactory({
@@ -2017,7 +2024,8 @@ export const registerRoutes = async (
     queueService,
     projectDAL,
     projectMembershipDAL,
-    smtpService
+    smtpService,
+    notificationService
   });
 
   const secretScanningV2Queue = await secretScanningV2QueueServiceFactory({
@@ -2029,7 +2037,8 @@ export const registerRoutes = async (
     smtpService,
     kmsService,
     keyStore,
-    appConnectionDAL
+    appConnectionDAL,
+    notificationService
   });
 
   const secretScanningV2Service = secretScanningV2ServiceFactory({
