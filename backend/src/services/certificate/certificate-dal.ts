@@ -25,6 +25,20 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findAllActiveCertsForSubscriber = async ({ subscriberId }: { subscriberId: string }) => {
+    try {
+      const certs = await db
+        .replicaNode()(TableName.Certificate)
+        .where({ pkiSubscriberId: subscriberId, status: CertStatus.ACTIVE })
+        .where("notAfter", ">", new Date())
+        .orderBy("notBefore", "desc");
+
+      return certs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find all active certificates for subscriber" });
+    }
+  };
+
   const countCertificatesInProject = async ({
     projectId,
     friendlyName,
@@ -83,6 +97,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     ...certificateOrm,
     countCertificatesInProject,
     countCertificatesForPkiSubscriber,
-    findLatestActiveCertForSubscriber
+    findLatestActiveCertForSubscriber,
+    findAllActiveCertsForSubscriber
   };
 };

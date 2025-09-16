@@ -120,6 +120,16 @@ export enum ProjectPermissionSecretSyncActions {
   RemoveSecrets = "remove-secrets"
 }
 
+export enum ProjectPermissionPkiSyncActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  SyncCertificates = "sync-certificates",
+  ImportCertificates = "import-certificates",
+  RemoveCertificates = "remove-certificates"
+}
+
 export enum ProjectPermissionSecretRotationActions {
   Read = "read",
   ReadGeneratedCredentials = "read-generated-credentials",
@@ -204,6 +214,7 @@ export enum ProjectPermissionSub {
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
+  PkiSyncs = "pki-syncs",
   Kmip = "kmip",
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
@@ -233,6 +244,10 @@ export type SecretFolderSubjectFields = {
 export type SecretSyncSubjectFields = {
   environment: string;
   secretPath: string;
+};
+
+export type PkiSyncSubjectFields = {
+  projectId: string;
 };
 
 export type DynamicSecretSubjectFields = {
@@ -294,6 +309,10 @@ export type ProjectPermissionSet =
   | [
       ProjectPermissionSecretSyncActions,
       ProjectPermissionSub.SecretSyncs | (ForcedSubject<ProjectPermissionSub.SecretSyncs> & SecretSyncSubjectFields)
+    ]
+  | [
+      ProjectPermissionPkiSyncActions,
+      ProjectPermissionSub.PkiSyncs | (ForcedSubject<ProjectPermissionSub.PkiSyncs> & PkiSyncSubjectFields)
     ]
   | [
       ProjectPermissionActions,
@@ -457,6 +476,12 @@ const SecretSyncConditionV2Schema = z
         .partial()
     ]),
     secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
+  })
+  .partial();
+
+const PkiSyncConditionSchema = z
+  .object({
+    projectId: z.string()
   })
   .partial();
 
@@ -895,6 +920,16 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "Describe what action an entity can take."
     ),
     conditions: SecretSyncConditionV2Schema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.PkiSyncs).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionPkiSyncActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: PkiSyncConditionSchema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),

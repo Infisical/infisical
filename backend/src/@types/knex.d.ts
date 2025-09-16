@@ -263,6 +263,9 @@ import {
   TPkiSubscribers,
   TPkiSubscribersInsert,
   TPkiSubscribersUpdate,
+  TPkiSyncs,
+  TPkiSyncsInsert,
+  TPkiSyncsUpdate,
   TProjectBots,
   TProjectBotsInsert,
   TProjectBotsUpdate,
@@ -680,6 +683,7 @@ declare module "knex/types/tables" {
       TPkiSubscribersInsert,
       TPkiSubscribersUpdate
     >;
+    [TableName.PkiSync]: KnexOriginal.CompositeTableType<TPkiSyncs, TPkiSyncsInsert, TPkiSyncsUpdate>;
     [TableName.UserGroupMembership]: KnexOriginal.CompositeTableType<
       TUserGroupMembership,
       TUserGroupMembershipInsert,

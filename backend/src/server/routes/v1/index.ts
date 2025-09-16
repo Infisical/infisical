@@ -40,6 +40,7 @@ import { registerPasswordRouter } from "./password-router";
 import { registerPkiAlertRouter } from "./pki-alert-router";
 import { registerPkiCollectionRouter } from "./pki-collection-router";
 import { registerPkiSubscriberRouter } from "./pki-subscriber-router";
+import { registerPkiSyncRouter } from "./pki-sync-router";
 import { registerProjectEnvRouter } from "./project-env-router";
 import { registerProjectKeyRouter } from "./project-key-router";
 import { registerProjectMembershipRouter } from "./project-membership-router";
@@ -137,6 +138,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerIntegrationAuthRouter, { prefix: "/integration-auth" });
   await server.register(registerWebhookRouter, { prefix: "/webhooks" });
   await server.register(registerIdentityRouter, { prefix: "/identities" });
+  await server.register(registerPkiSyncRouter, { prefix: "/pki-syncs" });
 
   await server.register(
     async (secretSharingRouter) => {

@@ -20,6 +20,7 @@ import {
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
+  ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretEventActions,
@@ -98,6 +99,16 @@ const SecretSyncPolicyActionSchema = z.object({
   [ProjectPermissionSecretSyncActions.SyncSecrets]: z.boolean().optional(),
   [ProjectPermissionSecretSyncActions.ImportSecrets]: z.boolean().optional(),
   [ProjectPermissionSecretSyncActions.RemoveSecrets]: z.boolean().optional()
+});
+
+const PkiSyncPolicyActionSchema = z.object({
+  [ProjectPermissionPkiSyncActions.Read]: z.boolean().optional(),
+  [ProjectPermissionPkiSyncActions.Create]: z.boolean().optional(),
+  [ProjectPermissionPkiSyncActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionPkiSyncActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionPkiSyncActions.SyncCertificates]: z.boolean().optional(),
+  [ProjectPermissionPkiSyncActions.ImportCertificates]: z.boolean().optional(),
+  [ProjectPermissionPkiSyncActions.RemoveCertificates]: z.boolean().optional()
 });
 
 const CommitPolicyActionSchema = z.object({
@@ -311,6 +322,12 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
+      [ProjectPermissionSub.PkiSyncs]: PkiSyncPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
 
       [ProjectPermissionSub.Commits]: CommitPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Member]: MemberPolicyActionSchema.array().default([]),
@@ -393,6 +410,7 @@ type TConditionalFields =
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.Identity
   | ProjectPermissionSub.SecretSyncs
+  | ProjectPermissionSub.PkiSyncs
   | ProjectPermissionSub.SecretEvents;
 
 export const isConditionalSubjects = (
@@ -408,6 +426,7 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.PkiSubscribers ||
   subject === ProjectPermissionSub.CertificateTemplates ||
   subject === ProjectPermissionSub.SecretSyncs ||
+  subject === ProjectPermissionSub.PkiSyncs ||
   subject === ProjectPermissionSub.SecretEvents;
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
@@ -515,6 +534,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.SshCertificates,
         ProjectPermissionSub.SshHostGroups,
         ProjectPermissionSub.SecretSyncs,
+        ProjectPermissionSub.PkiSyncs,
         ProjectPermissionSub.SecretEvents
       ].includes(subject)
     ) {
@@ -570,6 +590,38 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             [ProjectPermissionSecretSyncActions.SyncSecrets]: canSyncSecrets,
             [ProjectPermissionSecretSyncActions.ImportSecrets]: canImportSecrets,
             [ProjectPermissionSecretSyncActions.RemoveSecrets]: canRemoveSecrets,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+          return;
+        }
+
+        if (subject === ProjectPermissionSub.PkiSyncs) {
+          const canRead = action.includes(ProjectPermissionPkiSyncActions.Read);
+          const canEdit = action.includes(ProjectPermissionPkiSyncActions.Edit);
+          const canDelete = action.includes(ProjectPermissionPkiSyncActions.Delete);
+          const canCreate = action.includes(ProjectPermissionPkiSyncActions.Create);
+          const canSyncCertificates = action.includes(
+            ProjectPermissionPkiSyncActions.SyncCertificates
+          );
+          const canImportCertificates = action.includes(
+            ProjectPermissionPkiSyncActions.ImportCertificates
+          );
+          const canRemoveCertificates = action.includes(
+            ProjectPermissionPkiSyncActions.RemoveCertificates
+          );
+
+          if (!formVal[subject]) formVal[subject] = [{ conditions: [], inverted: false }];
+
+          // from above statement we are sure it won't be undefined
+          formVal[subject]!.push({
+            [ProjectPermissionPkiSyncActions.Read]: canRead,
+            [ProjectPermissionPkiSyncActions.Create]: canCreate,
+            [ProjectPermissionPkiSyncActions.Edit]: canEdit,
+            [ProjectPermissionPkiSyncActions.Delete]: canDelete,
+            [ProjectPermissionPkiSyncActions.SyncCertificates]: canSyncCertificates,
+            [ProjectPermissionPkiSyncActions.ImportCertificates]: canImportCertificates,
+            [ProjectPermissionPkiSyncActions.RemoveCertificates]: canRemoveCertificates,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -1493,6 +1545,24 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.PkiSyncs]: {
+    title: "Certificate Syncs",
+    actions: [
+      { label: "Read", value: ProjectPermissionPkiSyncActions.Read },
+      { label: "Create", value: ProjectPermissionPkiSyncActions.Create },
+      { label: "Modify", value: ProjectPermissionPkiSyncActions.Edit },
+      { label: "Remove", value: ProjectPermissionPkiSyncActions.Delete },
+      { label: "Trigger Syncs", value: ProjectPermissionPkiSyncActions.SyncCertificates },
+      {
+        label: "Import Certificates from Destination",
+        value: ProjectPermissionPkiSyncActions.ImportCertificates
+      },
+      {
+        label: "Remove Certificates from Destination",
+        value: ProjectPermissionPkiSyncActions.RemoveCertificates
+      }
+    ]
+  },
   [ProjectPermissionSub.Kmip]: {
     title: "KMIP",
     actions: [
@@ -1618,6 +1688,7 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.SecretApproval]: enabled,
   [ProjectPermissionSub.Integrations]: enabled,
   [ProjectPermissionSub.SecretSyncs]: enabled,
+  [ProjectPermissionSub.PkiSyncs]: enabled,
   [ProjectPermissionSub.Kms]: enabled,
   [ProjectPermissionSub.Environments]: enabled,
   [ProjectPermissionSub.Tags]: enabled,
@@ -2009,6 +2080,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
           actions: [ProjectPermissionSecretSyncActions.Read]
         },
         {
+          subject: ProjectPermissionSub.PkiSyncs,
+          actions: [ProjectPermissionPkiSyncActions.Read]
+        },
+        {
           subject: ProjectPermissionSub.Commits,
           actions: [ProjectPermissionCommitsActions.Read]
         }
@@ -2068,6 +2143,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.SecretSyncs,
           actions: Object.values(ProjectPermissionSecretSyncActions)
+        },
+        {
+          subject: ProjectPermissionSub.PkiSyncs,
+          actions: Object.values(ProjectPermissionPkiSyncActions)
         },
         {
           subject: ProjectPermissionSub.Commits,

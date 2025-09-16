@@ -404,6 +404,14 @@ export enum EventType {
   SECRET_SYNC_SYNC_SECRETS = "secret-sync-sync-secrets",
   SECRET_SYNC_IMPORT_SECRETS = "secret-sync-import-secrets",
   SECRET_SYNC_REMOVE_SECRETS = "secret-sync-remove-secrets",
+  GET_PKI_SYNCS = "get-pki-syncs",
+  GET_PKI_SYNC = "get-pki-sync",
+  CREATE_PKI_SYNC = "create-pki-sync",
+  UPDATE_PKI_SYNC = "update-pki-sync",
+  DELETE_PKI_SYNC = "delete-pki-sync",
+  PKI_SYNC_SYNC_CERTIFICATES = "pki-sync-sync-certificates",
+  PKI_SYNC_IMPORT_CERTIFICATES = "pki-sync-import-certificates",
+  PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
   OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
   CREATE_KMIP_CLIENT = "create-kmip-client",
@@ -2908,6 +2916,77 @@ interface SecretSyncRemoveSecretsEvent {
   };
 }
 
+interface GetPkiSyncsEvent {
+  type: EventType.GET_PKI_SYNCS;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface GetPkiSyncEvent {
+  type: EventType.GET_PKI_SYNC;
+  metadata: {
+    destination: string;
+    syncId: string;
+  };
+}
+
+interface CreatePkiSyncEvent {
+  type: EventType.CREATE_PKI_SYNC;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+    destination: string;
+  };
+}
+
+interface UpdatePkiSyncEvent {
+  type: EventType.UPDATE_PKI_SYNC;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+  };
+}
+
+interface DeletePkiSyncEvent {
+  type: EventType.DELETE_PKI_SYNC;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+    destination: string;
+  };
+}
+
+interface PkiSyncSyncCertificatesEvent {
+  type: EventType.PKI_SYNC_SYNC_CERTIFICATES;
+  metadata: {
+    syncId: string;
+    syncMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
+  };
+}
+
+interface PkiSyncImportCertificatesEvent {
+  type: EventType.PKI_SYNC_IMPORT_CERTIFICATES;
+  metadata: {
+    syncId: string;
+    importMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
+  };
+}
+
+interface PkiSyncRemoveCertificatesEvent {
+  type: EventType.PKI_SYNC_REMOVE_CERTIFICATES;
+  metadata: {
+    syncId: string;
+    removeMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
+  };
+}
+
 interface OidcGroupMembershipMappingAssignUserEvent {
   type: EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER;
   metadata: {
@@ -3715,6 +3794,14 @@ export type Event =
   | SecretSyncSyncSecretsEvent
   | SecretSyncImportSecretsEvent
   | SecretSyncRemoveSecretsEvent
+  | GetPkiSyncsEvent
+  | GetPkiSyncEvent
+  | CreatePkiSyncEvent
+  | UpdatePkiSyncEvent
+  | DeletePkiSyncEvent
+  | PkiSyncSyncCertificatesEvent
+  | PkiSyncImportCertificatesEvent
+  | PkiSyncRemoveCertificatesEvent
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
   | CreateKmipClientEvent

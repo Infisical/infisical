@@ -140,6 +140,14 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.SECRET_SYNC_SYNC_SECRETS]: "Secret Sync synced secrets",
   [EventType.SECRET_SYNC_IMPORT_SECRETS]: "Secret Sync imported secrets",
   [EventType.SECRET_SYNC_REMOVE_SECRETS]: "Secret Sync removed secrets",
+  [EventType.GET_PKI_SYNCS]: "List PKI syncs",
+  [EventType.GET_PKI_SYNC]: "Get PKI sync",
+  [EventType.CREATE_PKI_SYNC]: "Create PKI sync",
+  [EventType.UPDATE_PKI_SYNC]: "Update PKI sync",
+  [EventType.DELETE_PKI_SYNC]: "Delete PKI sync",
+  [EventType.PKI_SYNC_SYNC_CERTIFICATES]: "PKI Sync synced certificates",
+  [EventType.PKI_SYNC_IMPORT_CERTIFICATES]: "PKI Sync imported certificates",
+  [EventType.PKI_SYNC_REMOVE_CERTIFICATES]: "PKI Sync removed certificates",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER]:
     "OIDC group membership mapping assigned user to groups",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER]:

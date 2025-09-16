@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
@@ -10,6 +11,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -20,6 +22,8 @@ import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
+import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
+import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
@@ -53,6 +57,8 @@ type TCertificateServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -69,8 +75,32 @@ export const certificateServiceFactory = ({
   pkiCollectionItemDAL,
   projectDAL,
   kmsService,
-  permissionService
+  permissionService,
+  pkiSyncDAL,
+  pkiSyncQueue
 }: TCertificateServiceFactoryDep) => {
+  /**
+   * Trigger auto sync for PKI syncs connected to a PKI subscriber when certificates are issued/revoked/deleted
+   */
+  const triggerAutoSyncForSubscriber = async (subscriberId: string) => {
+    try {
+      // Find all PKI syncs that are connected to this subscriber and have auto sync enabled
+      const pkiSyncs = await pkiSyncDAL.find({
+        subscriberId,
+        isAutoSyncEnabled: true
+      });
+
+      // Queue sync jobs for each auto sync enabled PKI sync
+      for (const pkiSync of pkiSyncs) {
+        await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSync.id });
+      }
+    } catch (error) {
+      // Don't throw error to avoid breaking the main certificate operation
+      // Just log the auto sync failure
+      logger.error(error, `Failed to trigger auto sync for subscriber ${subscriberId}:`);
+    }
+  };
+
   /**
    * Return details for certificate with serial number [serialNumber]
    */
@@ -158,6 +188,11 @@ export const certificateServiceFactory = ({
 
     const deletedCert = await certificateDAL.deleteById(cert.id);
 
+    // Trigger auto sync for PKI syncs connected to this certificate's subscriber
+    if (cert.pkiSubscriberId) {
+      await triggerAutoSyncForSubscriber(cert.pkiSubscriberId);
+    }
+
     return {
       deletedCert
     };
@@ -221,6 +256,11 @@ export const certificateServiceFactory = ({
         revocationReason: revocationReasonToCrlCode(revocationReason)
       }
     );
+
+    // Trigger auto sync for PKI syncs connected to this certificate's subscriber
+    if (cert.pkiSubscriberId) {
+      await triggerAutoSyncForSubscriber(cert.pkiSubscriberId);
+    }
 
     // Note: External CA revocation handling would go here for supported CA types
     // Currently, only internal CAs and ACME CAs support revocation

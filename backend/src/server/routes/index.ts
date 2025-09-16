@@ -248,6 +248,9 @@ import { pkiCollectionServiceFactory } from "@app/services/pki-collection/pki-co
 import { pkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { pkiSubscriberQueueServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-queue";
 import { pkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
+import { pkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
+import { pkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
+import { pkiSyncServiceFactory } from "@app/services/pki-sync/pki-sync-service";
 import { pkiTemplatesDALFactory } from "@app/services/pki-templates/pki-templates-dal";
 import { pkiTemplatesServiceFactory } from "@app/services/pki-templates/pki-templates-service";
 import { projectDALFactory } from "@app/services/project/project-dal";
@@ -975,6 +978,7 @@ export const registerRoutes = async (
   const pkiCollectionDAL = pkiCollectionDALFactory(db);
   const pkiCollectionItemDAL = pkiCollectionItemDALFactory(db);
   const pkiSubscriberDAL = pkiSubscriberDALFactory(db);
+  const pkiSyncDAL = pkiSyncDALFactory(db);
   const pkiTemplatesDAL = pkiTemplatesDALFactory(db);
 
   const instanceRelayConfigDAL = instanceRelayConfigDalFactory(db);
@@ -983,21 +987,6 @@ export const registerRoutes = async (
   const gatewayV2DAL = gatewayV2DalFactory(db);
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
-
-  const certificateService = certificateServiceFactory({
-    certificateDAL,
-    certificateBodyDAL,
-    certificateSecretDAL,
-    certificateAuthorityDAL,
-    certificateAuthorityCertDAL,
-    certificateAuthorityCrlDAL,
-    certificateAuthoritySecretDAL,
-    projectDAL,
-    kmsService,
-    permissionService,
-    pkiCollectionDAL,
-    pkiCollectionItemDAL
-  });
 
   const sshCertificateAuthorityService = sshCertificateAuthorityServiceFactory({
     sshCertificateAuthorityDAL,
@@ -1977,6 +1966,38 @@ export const registerRoutes = async (
     internalCaFns
   });
 
+  const pkiSyncQueue = pkiSyncQueueFactory({
+    queueService,
+    kmsService,
+    appConnectionDAL,
+    keyStore,
+    pkiSyncDAL,
+    auditLogService,
+    projectMembershipDAL,
+    projectDAL,
+    licenseService,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL
+  });
+
+  const certificateService = certificateServiceFactory({
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthorityCrlDAL,
+    certificateAuthoritySecretDAL,
+    projectDAL,
+    kmsService,
+    permissionService,
+    pkiCollectionDAL,
+    pkiCollectionItemDAL,
+    pkiSyncDAL,
+    pkiSyncQueue
+  });
+
   const pkiSubscriberService = pkiSubscriberServiceFactory({
     pkiSubscriberDAL,
     certificateAuthorityDAL,
@@ -1990,7 +2011,18 @@ export const registerRoutes = async (
     kmsService,
     permissionService,
     certificateAuthorityQueue,
-    internalCaFns
+    internalCaFns,
+    pkiSyncDAL,
+    pkiSyncQueue
+  });
+
+  const pkiSyncService = pkiSyncServiceFactory({
+    pkiSyncDAL,
+    pkiSubscriberDAL,
+    appConnectionService,
+    permissionService,
+    licenseService,
+    pkiSyncQueue
   });
 
   const pkiTemplateService = pkiTemplatesServiceFactory({
@@ -2136,6 +2168,7 @@ export const registerRoutes = async (
     pkiAlert: pkiAlertService,
     pkiCollection: pkiCollectionService,
     pkiSubscriber: pkiSubscriberService,
+    pkiSync: pkiSyncService,
     pkiTemplate: pkiTemplateService,
     secretScanning: secretScanningService,
     license: licenseService,
