@@ -28,6 +28,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -140,6 +141,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
@@ -172,7 +174,8 @@ export const secretApprovalRequestServiceFactory = ({
   resourceMetadataDAL,
   projectMicrosoftTeamsConfigDAL,
   microsoftTeamsService,
-  folderCommitService
+  folderCommitService,
+  notificationService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({
     projectId,
@@ -1446,7 +1449,8 @@ export const secretApprovalRequestServiceFactory = ({
       secretApprovalPolicyDAL,
       secretApprovalRequest,
       smtpService,
-      projectId
+      projectId,
+      notificationService
     });
 
     return secretApprovalRequest;
@@ -1813,7 +1817,8 @@ export const secretApprovalRequestServiceFactory = ({
       secretApprovalPolicyDAL,
       secretApprovalRequest,
       smtpService,
-      projectId
+      projectId,
+      notificationService
     });
     return secretApprovalRequest;
   };

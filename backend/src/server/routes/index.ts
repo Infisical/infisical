@@ -1363,7 +1363,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     projectMicrosoftTeamsConfigDAL,
     microsoftTeamsService,
-    folderCommitService
+    folderCommitService,
+    notificationService
   });
 
   const secretService = secretServiceFactory({
