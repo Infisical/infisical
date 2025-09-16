@@ -741,25 +741,7 @@ export const appConnectionServiceFactory = ({
     return appConnection;
   };
 
-  const listAvailableAppConnectionsForUser = async (app: AppConnection, actor: OrgServiceActor, projectId: string) => {
-    const project = await projectDAL.findProjectById(projectId);
-
-    if (!project) throw new BadRequestError({ message: `Could not find project with ID ${projectId}` });
-
-    const { permission: projectPermission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.Any
-    });
-
-    ForbiddenError.from(projectPermission).throwUnlessCan(
-      ProjectPermissionAppConnectionActions.Connect,
-      ProjectPermissionSub.AppConnections
-    );
-
+  const listAvailableAppConnectionsForUser = async (app: AppConnection, actor: OrgServiceActor, projectId?: string) => {
     const { permission: orgPermission } = await permissionService.getOrgPermission(
       actor.type,
       actor.id,
@@ -768,21 +750,43 @@ export const appConnectionServiceFactory = ({
       actor.orgId
     );
 
+    let availableProjectConnections: TAppConnections[] = [];
+
+    if (projectId) {
+      const project = await projectDAL.findProjectById(projectId);
+
+      if (!project) throw new BadRequestError({ message: `Could not find project with ID ${projectId}` });
+
+      const { permission: projectPermission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        projectId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        actionProjectType: ActionProjectType.Any
+      });
+
+      ForbiddenError.from(projectPermission).throwUnlessCan(
+        ProjectPermissionAppConnectionActions.Connect,
+        ProjectPermissionSub.AppConnections
+      );
+
+      const projectAppConnections = await appConnectionDAL.find({ app, projectId });
+
+      availableProjectConnections = projectAppConnections.filter((connection) =>
+        projectPermission.can(
+          ProjectPermissionAppConnectionActions.Connect,
+          subject(ProjectPermissionSub.AppConnections, { connectionId: connection.id })
+        )
+      );
+    }
+
     const orgAppConnections = await appConnectionDAL.find({ app, orgId: actor.orgId, projectId: null });
 
     const availableOrgConnections = orgAppConnections.filter((connection) =>
       orgPermission.can(
         OrgPermissionAppConnectionActions.Connect,
         subject(OrgPermissionSubjects.AppConnections, { connectionId: connection.id })
-      )
-    );
-
-    const projectAppConnections = await appConnectionDAL.find({ app, projectId });
-
-    const availableProjectConnections = projectAppConnections.filter((connection) =>
-      projectPermission.can(
-        ProjectPermissionAppConnectionActions.Connect,
-        subject(ProjectPermissionSub.AppConnections, { connectionId: connection.id })
       )
     );
 

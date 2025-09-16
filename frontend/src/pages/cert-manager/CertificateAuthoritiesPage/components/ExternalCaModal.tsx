@@ -601,6 +601,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     placeholder="Select connection..."
                     getOptionLabel={(option) => option.name}
                     getOptionValue={(option) => option.id}
+                    components={{ Option: AppConnectionOption }}
                   />
                 </FormControl>
               )}

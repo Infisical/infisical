@@ -94,7 +94,7 @@ export const registerAppConnectionEndpoints = <T extends TAppConnection, I exten
       tags: [ApiDocsTags.AppConnections],
       description: `List the ${appName} Connections the current user has permission to establish connections within this project.`,
       querystring: z.object({
-        projectId: z.string().describe(AppConnections.LIST(app).projectId)
+        projectId: z.string().optional().describe(AppConnections.LIST(app).projectId)
       }),
       response: {
         200: z.object({
