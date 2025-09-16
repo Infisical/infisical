@@ -15,6 +15,7 @@ import { registerExternalKmsRouter } from "./external-kms-router";
 import { registerGatewayRouter } from "./gateway-router";
 import { registerGithubOrgSyncRouter } from "./github-org-sync-router";
 import { registerGroupRouter } from "./group-router";
+import { registerIdentityGroupRouter } from "./identity-group-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
 import { registerIdentityTemplateRouter } from "./identity-template-router";
 import { registerKmipRouter } from "./kmip-router";
@@ -129,6 +130,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerSecretRouter, { prefix: "/secrets" });
   await server.register(registerSecretVersionRouter, { prefix: "/secret" });
   await server.register(registerGroupRouter, { prefix: "/groups" });
+  await server.register(registerIdentityGroupRouter, { prefix: "/identity-groups" });
 
   await server.register(
     async (auditLogStreamRouter) => {
