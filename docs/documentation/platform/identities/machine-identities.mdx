@@ -38,6 +38,16 @@ To interact with various resources in Infisical, Machine Identities can authenti
 - [GCP Auth](/documentation/platform/identities/gcp-auth): A GCP-native authentication method for GCP resources (e.g. Compute Engine, App Engine, Cloud Run, Google Kubernetes Engine, IAM service accounts, etc.).
 - [OIDC Auth](/documentation/platform/identities/oidc-auth): A platform-agnostic, JWT-based authentication method for workloads using an OpenID Connect identity provider.
 
+## Identity Lockout
+
+Lockout is a feature that prevents brute-force attacks on identity login endpoints. Auth methods that support lockout include: [Universal Auth](/documentation/platform/identities/universal-auth).
+
+Supported auth methods have lockout enabled by default. If triggered, lockout temporarily disables the login endpoint for 5 minutes after 3 consecutive failed login attempts within a 30-second window. Lockout can be configured and disabled in the identity auth method settings.
+
+<Warning>
+    When Lockout is enabled, a rate limit of approximately 10 requests per second is enforced on relevant authentication endpoints. This security measure employs a protective lock to mitigate parallel login attacks. If this rate limitation interferes with your operational requirements, you may consider disabling Lockout.
+</Warning>
+
 ## FAQ
 
 <AccordionGroup>
@@ -51,15 +61,15 @@ You can learn more about how to do this in the CLI quickstart [here](/cli/usage)
 
 <Accordion title="What is the difference between an identity and service token?">
   A service token is a project-level authentication method that is being deprecated in favor of identities. The service token method will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
-  
+
   Amongst many differences, identities provide broader access over the Infisical API, utilizes the same
   permission system as user identities, and come with a significantly larger number of configurable authentication and security features.
-  
+
   If you're looking for a simple authentication method, similar to service tokens, that can be bound onto an identity, we recommend checking out [Token Auth](/documentation/platform/identities/token-auth).
 </Accordion>
 <Accordion title="Why can I not create, read, update, or delete an identity?">
   There are a few reasons for why this might happen:
-  
+
   - You have insufficient organization permissions to create, read, update, delete identities.
   - The identity you are trying to read, update, or delete is more privileged than yourself.
   - The role you are trying to create an identity for or update an identity to is more privileged than yours.
