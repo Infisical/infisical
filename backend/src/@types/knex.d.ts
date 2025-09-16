@@ -505,7 +505,16 @@ import {
   TWebhooksUpdate,
   TWorkflowIntegrations,
   TWorkflowIntegrationsInsert,
-  TWorkflowIntegrationsUpdate
+  TWorkflowIntegrationsUpdate,
+  TIdentityGroups,
+  TIdentityGroupsInsert,
+  TIdentityGroupsUpdate,
+  TIdentityGroupMembership,
+  TIdentityGroupMembershipInsert,
+  TIdentityGroupMembershipUpdate,
+  TIdentityGroupProjectMembership,
+  TIdentityGroupProjectMembershipInsert,
+  TIdentityGroupProjectMembershipUpdate,
 } from "@app/db/schemas";
 import {
   TAccessApprovalPoliciesEnvironments,
@@ -567,6 +576,9 @@ declare module "knex/types/tables" {
   interface Tables {
     [TableName.Users]: KnexOriginal.CompositeTableType<TUsers, TUsersInsert, TUsersUpdate>;
     [TableName.Groups]: KnexOriginal.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
+    [TableName.IdentityGroups]: KnexOriginal.CompositeTableType<TIdentityGroups, TIdentityGroupsInsert, TIdentityGroupsUpdate>;
+    [TableName.IdentityGroupMembership]: KnexOriginal.CompositeTableType<TIdentityGroupMembership, TIdentityGroupMembershipInsert, TIdentityGroupMembershipUpdate>;
+    [TableName.IdentityGroupProjectMembership]: KnexOriginal.CompositeTableType<TIdentityGroupProjectMembership, TIdentityGroupProjectMembershipInsert, TIdentityGroupProjectMembershipUpdate>;
     [TableName.SshHostGroup]: KnexOriginal.CompositeTableType<
       TSshHostGroups,
       TSshHostGroupsInsert,
