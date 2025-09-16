@@ -888,7 +888,8 @@ export const registerRoutes = async (
     projectDAL,
     permissionService,
     projectUserMembershipRoleDAL,
-    projectMembershipDAL
+    projectMembershipDAL,
+    notificationService
   });
 
   const rateLimitService = rateLimitServiceFactory({

@@ -11,7 +11,8 @@ export enum NotificationType {
   ADMIN_SSO_BYPASS = "admin-sso-bypass",
   IMPORT_STARTED = "import-started",
   IMPORT_SUCCESSFUL = "import-successful",
-  IMPORT_FAILED = "import-failed"
+  IMPORT_FAILED = "import-failed",
+  DIRECT_PROJECT_ACCESS_ISSUED_TO_ADMIN = "direct-project-access-issued-to-admin"
 }
 
 export interface TCreateUserNotificationDTO {

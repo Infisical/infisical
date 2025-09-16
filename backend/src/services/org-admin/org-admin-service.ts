@@ -5,6 +5,8 @@ import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/ee/
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
+import { TNotificationServiceFactory } from "../notification/notification-service";
+import { NotificationType } from "../notification/notification-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
@@ -20,6 +22,7 @@ type TOrgAdminServiceFactoryDep = {
   >;
   projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create" | "delete">;
   smtpService: Pick<TSmtpService, "sendMail">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 export type TOrgAdminServiceFactory = ReturnType<typeof orgAdminServiceFactory>;
@@ -29,7 +32,8 @@ export const orgAdminServiceFactory = ({
   projectDAL,
   projectMembershipDAL,
   projectUserMembershipRoleDAL,
-  smtpService
+  smtpService,
+  notificationService
 }: TOrgAdminServiceFactoryDep) => {
   const listOrgProjects = async ({
     actor,
@@ -137,16 +141,35 @@ export const orgAdminServiceFactory = ({
       .map((el) => el.user.email!)
       .filter(Boolean);
 
-    if (filteredProjectMembers.length) {
-      await smtpService.sendMail({
-        template: SmtpTemplates.OrgAdminProjectDirectAccess,
-        recipients: filteredProjectMembers,
-        subjectLine: "Organization Admin Project Direct Access Issued",
-        substitutions: {
-          projectName: project.name,
-          email: projectMembers.find((el) => el.userId === actorId)?.user?.username
-        }
-      });
+    const actorEmail = projectMembers.find((el) => el.userId === actorId)?.user?.username;
+
+    if (actorEmail) {
+      await notificationService.createUserNotifications(
+        projectMembers
+          .filter(
+            (member) =>
+              member.roles.some((role) => role.role === ProjectMembershipRole.Admin) && member.userId !== actorId
+          )
+          .map((member) => ({
+            userId: member.userId,
+            orgId: project.orgId,
+            type: NotificationType.DIRECT_PROJECT_ACCESS_ISSUED_TO_ADMIN,
+            title: "Direct Project Access Issued",
+            body: `The organization admin **${actorEmail}** has self-issued direct access to the project **${project.name}**.`
+          }))
+      );
+
+      if (filteredProjectMembers.length) {
+        await smtpService.sendMail({
+          template: SmtpTemplates.OrgAdminProjectDirectAccess,
+          recipients: filteredProjectMembers,
+          subjectLine: "Organization Admin Project Direct Access Issued",
+          substitutions: {
+            projectName: project.name,
+            email: actorEmail
+          }
+        });
+      }
     }
     return { isExistingMember: false, membership: updatedMembership };
   };
