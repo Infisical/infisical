@@ -1148,7 +1148,8 @@ export const registerRoutes = async (
     appConnectionDAL,
     licenseService,
     gatewayService,
-    gatewayV2Service
+    gatewayV2Service,
+    notificationService
   });
 
   const secretQueueService = secretQueueFactory({
