@@ -603,6 +603,11 @@ export type AddIdentityLdapAuthDTO = {
   accessTokenTrustedIps: {
     ipAddress: string;
   }[];
+
+  lockoutEnabled: boolean;
+  lockoutThreshold: number;
+  lockoutDurationSeconds: number;
+  lockoutCounterResetSeconds: number;
 };
 
 export type UpdateIdentityLdapAuthDTO = {
@@ -625,6 +630,11 @@ export type UpdateIdentityLdapAuthDTO = {
   accessTokenTrustedIps?: {
     ipAddress: string;
   }[];
+
+  lockoutEnabled?: boolean;
+  lockoutThreshold?: number;
+  lockoutDurationSeconds?: number;
+  lockoutCounterResetSeconds?: number;
 };
 
 export type DeleteIdentityLdapAuthDTO = {
@@ -650,6 +660,15 @@ export type IdentityLdapAuth = {
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: IdentityTrustedIp[];
+
+  lockoutEnabled: boolean;
+  lockoutThreshold: number;
+  lockoutDurationSeconds: number;
+  lockoutCounterResetSeconds: number;
+};
+
+export type ClearIdentityLdapAuthLockoutsDTO = {
+  identityId: string;
 };
 
 export type AddIdentityTokenAuthDTO = {

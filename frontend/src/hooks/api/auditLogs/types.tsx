@@ -874,6 +874,13 @@ interface IntegrationSyncedEvent {
   };
 }
 
+interface ClearIdentityLdapAuthLockoutsEvent {
+  type: EventType.CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS;
+  metadata: {
+    identityId: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -958,7 +965,8 @@ export type Event =
   | GetCertificateTemplateEstConfig
   | UpdateProjectWorkflowIntegrationConfig
   | GetProjectWorkflowIntegrationConfig
-  | IntegrationSyncedEvent;
+  | IntegrationSyncedEvent
+  | ClearIdentityLdapAuthLockoutsEvent;
 
 export type AuditLog = {
   id: string;

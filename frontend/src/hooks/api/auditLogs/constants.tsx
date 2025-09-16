@@ -194,6 +194,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_IDENTITY_LDAP_AUTH]: "Updated LDAP Auth for identity",
   [EventType.GET_IDENTITY_LDAP_AUTH]: "Retrieved LDAP Auth for identity",
   [EventType.REVOKE_IDENTITY_LDAP_AUTH]: "Revoked LDAP Auth for identity",
+  [EventType.CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS]: "Clear LDAP Auth lockouts",
 
   [EventType.SECRET_SCANNING_DATA_SOURCE_LIST]: "List Secret Scanning Data Sources",
   [EventType.SECRET_SCANNING_DATA_SOURCE_CREATE]: "Create Secret Scanning Data Source",
