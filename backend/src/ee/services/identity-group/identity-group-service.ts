@@ -25,7 +25,7 @@ export const identityGroupServiceFactory = ({
   permissionService,
   licenseService
 }: TIdentityGroupServiceFactoryDep) => {
-  const createGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateIdentityGroupDTO) => {
+  const createIdentityGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateIdentityGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
     const { permission, membership } = await permissionService.getOrgPermission(
@@ -71,5 +71,5 @@ export const identityGroupServiceFactory = ({
     return identityGroup;
   };
 
-  return { createGroup };
+  return { createIdentityGroup };
 };

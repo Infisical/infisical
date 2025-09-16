@@ -32,6 +32,7 @@ export enum ApiDocsTags {
   OidcAuth = "OIDC Auth",
   LdapAuth = "LDAP Auth",
   Groups = "Groups",
+  IdentityGroups = "Identity Groups",
   Organizations = "Organizations",
   Projects = "Projects",
   ProjectUsers = "Project Users",
