@@ -7,6 +7,7 @@ import {
   faFileLines,
   faHome,
   faMobile,
+  faPlug,
   faSitemap,
   faStamp,
   faUsers
@@ -126,6 +127,23 @@ export const PkiManagerLayout = () => {
                               <FontAwesomeIcon icon={faBell} />
                             </div>
                             Alerting
+                          </div>
+                        </MenuItem>
+                      )}
+                    </Link>
+                    <Link
+                      to="/projects/cert-management/$projectId/app-connections"
+                      params={{
+                        projectId: currentProject.id
+                      }}
+                    >
+                      {({ isActive }) => (
+                        <MenuItem isSelected={isActive}>
+                          <div className="mx-1 flex gap-2">
+                            <div className="w-6">
+                              <FontAwesomeIcon icon={faPlug} />
+                            </div>
+                            App Connections
                           </div>
                         </MenuItem>
                       )}

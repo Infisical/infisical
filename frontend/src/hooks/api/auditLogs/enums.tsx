@@ -140,6 +140,8 @@ export enum EventType {
   CREATE_APP_CONNECTION = "create-app-connection",
   UPDATE_APP_CONNECTION = "update-app-connection",
   DELETE_APP_CONNECTION = "delete-app-connection",
+  GET_APP_CONNECTION_USAGE = "get-app-connection-usage",
+  MIGRATE_APP_CONNECTION = "migrate-app-connection",
   GET_SECRET_SYNCS = "get-secret-syncs",
   GET_SECRET_SYNC = "get-secret-sync",
   CREATE_SECRET_SYNC = "create-secret-sync",

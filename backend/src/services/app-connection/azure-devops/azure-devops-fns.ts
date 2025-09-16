@@ -70,7 +70,8 @@ export const getAzureDevopsConnection = async (
       const oauthCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
         kmsService,
-        encryptedCredentials: appConnection.encryptedCredentials
+        encryptedCredentials: appConnection.encryptedCredentials,
+        projectId: appConnection.projectId
       })) as TAzureDevOpsConnectionCredentials;
 
       if (!("refreshToken" in oauthCredentials)) {
@@ -100,7 +101,8 @@ export const getAzureDevopsConnection = async (
       const encryptedOAuthCredentials = await encryptAppConnectionCredentials({
         credentials: updatedOAuthCredentials,
         orgId: appConnection.orgId,
-        kmsService
+        kmsService,
+        projectId: appConnection.projectId
       });
 
       await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials: encryptedOAuthCredentials });
@@ -111,7 +113,8 @@ export const getAzureDevopsConnection = async (
       const accessTokenCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
         kmsService,
-        encryptedCredentials: appConnection.encryptedCredentials
+        encryptedCredentials: appConnection.encryptedCredentials,
+        projectId: appConnection.projectId
       })) as { accessToken: string };
 
       if (!("accessToken" in accessTokenCredentials)) {
@@ -124,7 +127,8 @@ export const getAzureDevopsConnection = async (
       const clientSecretCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
         kmsService,
-        encryptedCredentials: appConnection.encryptedCredentials
+        encryptedCredentials: appConnection.encryptedCredentials,
+        projectId: appConnection.projectId
       })) as TAzureDevOpsConnectionClientSecretCredentials;
 
       const { accessToken, expiresAt, clientId, clientSecret, tenantId: clientTenantId } = clientSecretCredentials;
@@ -153,7 +157,8 @@ export const getAzureDevopsConnection = async (
       const encryptedClientCredentials = await encryptAppConnectionCredentials({
         credentials: updatedClientCredentials,
         orgId: appConnection.orgId,
-        kmsService
+        kmsService,
+        projectId: appConnection.projectId
       });
 
       await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials: encryptedClientCredentials });

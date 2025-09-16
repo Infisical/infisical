@@ -27,6 +27,7 @@ type Props = {
   type: SecretScanningDataSource;
   onCancel: () => void;
   dataSource?: TSecretScanningDataSource;
+  initialFormData?: Partial<TSecretScanningDataSourceForm>;
 };
 
 const FORM_TABS: { name: string; key: string; fields: (keyof TSecretScanningDataSourceForm)[] }[] =
@@ -36,7 +37,13 @@ const FORM_TABS: { name: string; key: string; fields: (keyof TSecretScanningData
     { name: "Review", key: "review", fields: [] }
   ];
 
-export const SecretScanningDataSourceForm = ({ type, onComplete, onCancel, dataSource }: Props) => {
+export const SecretScanningDataSourceForm = ({
+  type,
+  onComplete,
+  onCancel,
+  dataSource,
+  initialFormData
+}: Props) => {
   const createDataSource = useCreateSecretScanningDataSource();
   const updateDataSource = useUpdateSecretScanningDataSource();
   const { currentProject } = useProject();
@@ -48,7 +55,8 @@ export const SecretScanningDataSourceForm = ({ type, onComplete, onCancel, dataS
     resolver: zodResolver(SecretScanningDataSourceSchema),
     defaultValues: dataSource ?? {
       type,
-      isAutoScanEnabled: true // scott: this may need to be derived from type in the future
+      isAutoScanEnabled: true, // scott: this may need to be derived from type in the future
+      ...(initialFormData as object)
     },
     reValidateMode: "onChange"
   });

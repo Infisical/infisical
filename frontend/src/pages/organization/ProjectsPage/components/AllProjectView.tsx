@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
 import {
   faArrowDownAZ,
   faBorderAll,
@@ -16,6 +15,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
+import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
 import {
   Badge,
   Button,
@@ -24,12 +24,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  FormControl,
   IconButton,
   Input,
   Lottie,
-  Modal,
-  ModalContent,
   Pagination,
   Skeleton,
   Tooltip
@@ -43,11 +40,7 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
-import {
-  useOrgAdminAccessProject,
-  useRequestProjectAccess,
-  useSearchProjects
-} from "@app/hooks/api";
+import { useOrgAdminAccessProject, useSearchProjects } from "@app/hooks/api";
 import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
 import {
   ProjectListToggle,
@@ -60,53 +53,6 @@ type Props = {
   isAddingProjectsAllowed: boolean;
   projectListView: ProjectListView;
   onProjectListViewChange: (value: ProjectListView) => void;
-};
-
-type RequestAccessModalProps = {
-  projectId: string;
-  onPopUpToggle: () => void;
-};
-
-const RequestAccessModal = ({ projectId, onPopUpToggle }: RequestAccessModalProps) => {
-  const form = useForm<{ note: string }>();
-
-  const requestProjectAccess = useRequestProjectAccess();
-
-  const onFormSubmit = ({ note }: { note: string }) => {
-    if (requestProjectAccess.isPending) return;
-    requestProjectAccess.mutate(
-      {
-        comment: note,
-        projectId
-      },
-      {
-        onSuccess: () => {
-          createNotification({
-            type: "success",
-            title: "Project Access Request Sent",
-            text: "Project admins will receive an email of your request"
-          });
-          onPopUpToggle();
-        }
-      }
-    );
-  };
-
-  return (
-    <form onSubmit={form.handleSubmit(onFormSubmit)}>
-      <FormControl label="Note">
-        <Input {...form.register("note")} />
-      </FormControl>
-      <div className="mt-4 flex items-center">
-        <Button className="mr-4" size="sm" type="submit" isLoading={form.formState.isSubmitting}>
-          Submit Request
-        </Button>
-        <Button colorSchema="secondary" variant="plain" onClick={() => onPopUpToggle()}>
-          Cancel
-        </Button>
-      </div>
-    </form>
-  );
 };
 
 export const AllProjectView = ({
@@ -423,20 +369,11 @@ export const AllProjectView = ({
           <div className="text-center font-light">No Projects Found</div>
         </div>
       )}
-      <Modal
+      <RequestProjectAccessModal
         isOpen={popUp.requestAccessConfirmation.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("requestAccessConfirmation", isOpen)}
-      >
-        <ModalContent
-          title="Confirm Access Request"
-          subTitle={`Requesting access to project ${requestedWorkspaceDetails?.name}. You may include an optional note for project admins to review your request.`}
-        >
-          <RequestAccessModal
-            onPopUpToggle={() => handlePopUpToggle("requestAccessConfirmation")}
-            projectId={requestedWorkspaceDetails?.id}
-          />
-        </ModalContent>
-      </Modal>
+        project={requestedWorkspaceDetails}
+      />
     </div>
   );
 };

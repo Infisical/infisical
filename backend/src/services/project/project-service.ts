@@ -1815,7 +1815,8 @@ export const projectServiceFactory = ({
     limit,
     type,
     orderBy,
-    orderDirection
+    orderDirection,
+    projectIds
   }: TSearchProjectsDTO) => {
     // check user belong to org
     await permissionService.getOrgPermission(
@@ -1831,6 +1832,7 @@ export const projectServiceFactory = ({
       offset,
       name,
       type,
+      projectIds,
       orgId: permission.orgId,
       actor: permission.type,
       actorId: permission.id,

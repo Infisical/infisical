@@ -2,16 +2,21 @@ import { useMemo, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
+  faArrowUpRightFromSquare,
+  faBookOpen,
   faCheckCircle,
   faFilter,
   faMagnifyingGlass,
   faPlug,
+  faPlus,
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
+import { VariablePermissionCan } from "@app/components/permissions";
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,6 +34,9 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { OrgPermissionSubjects, ProjectPermissionSub } from "@app/context";
+import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
+import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import {
   getUserTablePreference,
@@ -39,7 +47,9 @@ import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { TAppConnection, useListAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { AddAppConnectionModal } from "./AddAppConnectionModal";
 import { AppConnectionRow } from "./AppConnectionRow";
 import { DeleteAppConnectionModal } from "./DeleteAppConnectionModal";
 import { EditAppConnectionCredentialsModal } from "./EditAppConnectionCredentialsModal";
@@ -48,21 +58,44 @@ import { EditAppConnectionDetailsModal } from "./EditAppConnectionDetailsModal";
 enum AppConnectionsOrderBy {
   App = "app",
   Name = "name",
-  Method = "method"
+  Method = "method",
+  ManagedBy = "managed-by"
 }
 
 type AppConnectionFilters = {
   apps: AppConnection[];
 };
 
-export const AppConnectionsTable = () => {
-  const { isPending, data: appConnections = [] } = useListAppConnections();
+enum View {
+  All = "all",
+  Scope = "scope"
+}
+
+const APP_CONNECTION_VIEW_STORAGE_KEY = "app-connection-view";
+
+type Props = {
+  projectId?: string;
+  projectType?: ProjectType;
+};
+
+export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
+  const isProjectView = Boolean(projectId);
+  const { isPending, data: appConnections = [] } = useListAppConnections(projectId);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+    "addConnection",
     "deleteConnection",
     "editCredentials",
     "editDetails"
   ] as const);
+
+  const [view, setView] = useState<View>(() => {
+    const storedView = localStorage.getItem(APP_CONNECTION_VIEW_STORAGE_KEY) as View | null;
+
+    if (storedView && Object.values(View).includes(storedView)) return storedView;
+
+    return View.Scope;
+  });
 
   const [filters, setFilters] = useState<AppConnectionFilters>({
     apps: []
@@ -96,6 +129,10 @@ export const AppConnectionsTable = () => {
         .filter((appConnection) => {
           const { app, method, name } = appConnection;
 
+          if (view === View.Scope && !isProjectView && appConnection.projectId) {
+            return false;
+          }
+
           if (filters.apps.length && !filters.apps.includes(app)) return false;
 
           const searchValue = search.trim().toLowerCase();
@@ -121,6 +158,13 @@ export const AppConnectionsTable = () => {
                 .localeCompare(
                   getAppConnectionMethodDetails(connectionTwo.method).name.toLowerCase()
                 );
+            case AppConnectionsOrderBy.ManagedBy:
+              if (!connectionOne.project) return 1;
+              if (!connectionTwo.project) return -1;
+
+              return connectionOne.project.name
+                .toLowerCase()
+                .localeCompare(connectionTwo.project.name.toLowerCase());
             case AppConnectionsOrderBy.App:
             default:
               return APP_CONNECTION_MAP[connectionOne.app].name
@@ -128,7 +172,7 @@ export const AppConnectionsTable = () => {
                 .localeCompare(APP_CONNECTION_MAP[connectionTwo.app].name.toLowerCase());
           }
         }),
-    [appConnections, orderDirection, search, orderBy, filters]
+    [appConnections, orderDirection, search, orderBy, filters, view]
   );
 
   useResetPageHelper({
@@ -165,8 +209,87 @@ export const AppConnectionsTable = () => {
     handlePopUpOpen("editDetails", appConnection);
 
   return (
-    <div>
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-1">
+            <p className="text-xl font-semibold text-mineshaft-100">App Connections</p>
+            <a
+              href="https://infisical.com/docs/integrations/app-connections/overview"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <div className="ml-1 mt-[0.12rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                <span>Docs</span>
+                <FontAwesomeIcon
+                  icon={faArrowUpRightFromSquare}
+                  className="mb-[0.07rem] ml-1.5 text-[10px]"
+                />
+              </div>
+            </a>
+          </div>
+          <p className="text-sm text-bunker-300">
+            Create and configure connections with third-party apps for re-use across your project
+            {isProjectView ? "" : "s"}.
+          </p>
+        </div>
+        <VariablePermissionCan
+          type={isProjectView ? "project" : "org"}
+          I={
+            isProjectView
+              ? ProjectPermissionAppConnectionActions.Create
+              : OrgPermissionAppConnectionActions.Create
+          }
+          a={
+            isProjectView
+              ? ProjectPermissionSub.AppConnections
+              : OrgPermissionSubjects.AppConnections
+          }
+        >
+          {(isAllowed) => (
+            <Button
+              colorSchema="secondary"
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={() => handlePopUpOpen("addConnection")}
+              isDisabled={!isAllowed}
+            >
+              Add Connection
+            </Button>
+          )}
+        </VariablePermissionCan>
+      </div>
       <div className="flex gap-2">
+        {!isProjectView && (
+          <div className="flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+            <Button
+              variant="outline_bg"
+              onClick={() => {
+                setView(View.Scope);
+                localStorage.setItem(APP_CONNECTION_VIEW_STORAGE_KEY, View.Scope);
+              }}
+              size="xs"
+              className={`${
+                view === View.Scope ? "bg-mineshaft-500" : "bg-transparent"
+              } min-w-[5rem] rounded border-none hover:bg-mineshaft-600`}
+            >
+              Organization
+            </Button>
+            <Button
+              variant="outline_bg"
+              onClick={() => {
+                setView(View.All);
+                localStorage.setItem(APP_CONNECTION_VIEW_STORAGE_KEY, View.All);
+              }}
+              size="xs"
+              className={`${
+                view === View.All ? "bg-mineshaft-500" : "bg-transparent"
+              } min-w-[5rem] rounded border-none hover:bg-mineshaft-600`}
+            >
+              All
+            </Button>
+          </div>
+        )}
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -188,38 +311,46 @@ export const AppConnectionsTable = () => {
               <FontAwesomeIcon icon={faFilter} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="thin-scrollbar max-h-[70vh] overflow-y-auto" align="end">
+          <DropdownMenuContent
+            sideOffset={2}
+            className="thin-scrollbar max-h-[70vh] overflow-y-auto"
+            align="end"
+          >
             <DropdownMenuLabel>Filter by Apps</DropdownMenuLabel>
             {appConnections.length ? (
-              [...new Set(appConnections.map(({ app }) => app))].map((app) => (
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setFilters((prev) => ({
-                      ...prev,
-                      apps: prev.apps.includes(app)
-                        ? prev.apps.filter((a) => a !== app)
-                        : [...prev.apps, app]
-                    }));
-                  }}
-                  key={app}
-                  icon={
-                    filters.apps.includes(app) && (
-                      <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
-                    )
-                  }
-                  iconPos="right"
-                >
-                  <div className="flex items-center gap-2">
-                    <img
-                      alt={`${APP_CONNECTION_MAP[app].name} integration`}
-                      src={`/images/integrations/${APP_CONNECTION_MAP[app].image}`}
-                      className="h-4 w-4"
-                    />
-                    <span>{APP_CONNECTION_MAP[app].name}</span>
-                  </div>
-                </DropdownMenuItem>
-              ))
+              [...new Set(appConnections.map(({ app }) => app))]
+                .sort((a, b) => {
+                  return a.toLowerCase().localeCompare(b.toLowerCase());
+                })
+                .map((app) => (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setFilters((prev) => ({
+                        ...prev,
+                        apps: prev.apps.includes(app)
+                          ? prev.apps.filter((a) => a !== app)
+                          : [...prev.apps, app]
+                      }));
+                    }}
+                    key={app}
+                    icon={
+                      filters.apps.includes(app) && (
+                        <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                      )
+                    }
+                    iconPos="right"
+                  >
+                    <div className="flex items-center gap-2">
+                      <img
+                        alt={`${APP_CONNECTION_MAP[app].name} integration`}
+                        src={`/images/integrations/${APP_CONNECTION_MAP[app].image}`}
+                        className="h-4 w-4"
+                      />
+                      <span>{APP_CONNECTION_MAP[app].name}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))
             ) : (
               <DropdownMenuItem isDisabled>No Connections Configured</DropdownMenuItem>
             )}
@@ -269,7 +400,21 @@ export const AppConnectionsTable = () => {
                   </IconButton>
                 </div>
               </Th>
-
+              {!isProjectView && (
+                <Th>
+                  <div className="flex items-center">
+                    Managed By
+                    <IconButton
+                      variant="plain"
+                      className={getClassName(AppConnectionsOrderBy.ManagedBy)}
+                      ariaLabel="sort"
+                      onClick={() => handleSort(AppConnectionsOrderBy.ManagedBy)}
+                    >
+                      <FontAwesomeIcon icon={getColSortIcon(AppConnectionsOrderBy.ManagedBy)} />
+                    </IconButton>
+                  </div>
+                </Th>
+              )}
               <Th className="w-5" />
             </Tr>
           </THead>
@@ -284,6 +429,7 @@ export const AppConnectionsTable = () => {
                 onDelete={handleDelete}
                 onEditCredentials={handleEditCredentials}
                 onEditDetails={handleEditDetails}
+                isProjectView={isProjectView}
               />
             ))}
           </TBody>
@@ -322,6 +468,12 @@ export const AppConnectionsTable = () => {
         isOpen={popUp.editDetails.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}
         appConnection={popUp.editDetails.data}
+      />
+      <AddAppConnectionModal
+        isOpen={popUp.addConnection.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("addConnection", isOpen)}
+        projectId={projectId}
+        projectType={projectType}
       />
     </div>
   );

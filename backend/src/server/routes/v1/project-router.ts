@@ -985,6 +985,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         type: z.nativeEnum(ProjectType).optional(),
         orderBy: z.nativeEnum(SearchProjectSortBy).optional().default(SearchProjectSortBy.NAME),
         orderDirection: z.nativeEnum(SortDirection).optional().default(SortDirection.ASC),
+        projectIds: z.string().trim().array().optional(),
         name: z
           .string()
           .trim()

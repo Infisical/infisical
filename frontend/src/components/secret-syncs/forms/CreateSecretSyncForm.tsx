@@ -29,6 +29,7 @@ type Props = {
   onComplete: (secretSync: TSecretSync) => void;
   destination: SecretSync;
   onCancel: () => void;
+  initialFormData?: Partial<TSecretSyncForm>;
 };
 
 const FORM_TABS: { name: string; key: string; fields: (keyof TSecretSyncForm)[] }[] = [
@@ -39,14 +40,20 @@ const FORM_TABS: { name: string; key: string; fields: (keyof TSecretSyncForm)[] 
   { name: "Review", key: "review", fields: [] }
 ];
 
-export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Props) => {
+export const CreateSecretSyncForm = ({
+  destination,
+  onComplete,
+  onCancel,
+  initialFormData
+}: Props) => {
   const createSecretSync = useCreateSecretSync();
   const { currentProject } = useProject();
   const { name: destinationName } = SECRET_SYNC_MAP[destination];
 
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+  // scoot: right now we only do this when creating a connection so we know index 1
+  const [selectedTabIndex, setSelectedTabIndex] = useState(initialFormData ? 1 : 0);
 
   const { syncOption } = useSecretSyncOption(destination);
 
@@ -59,7 +66,8 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
         initialSyncBehavior: syncOption?.canImportSecrets
           ? undefined
           : SecretSyncInitialSyncBehavior.OverwriteDestination
-      }
+      },
+      ...initialFormData
     } as Partial<TSecretSyncForm>,
     reValidateMode: "onChange"
   });

@@ -41,10 +41,10 @@ import {
 
 type TAzureAdCsCertificateAuthorityFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
-    "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa"
+    "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
@@ -621,9 +621,9 @@ export const AzureAdCsCertificateAuthorityFns = ({
       });
     }
 
-    await appConnectionService.connectAppConnectionById(
+    await appConnectionService.validateAppConnectionUsageById(
       appConnection.app as AppConnection,
-      azureAdcsConnectionId,
+      { connectionId: azureAdcsConnectionId, projectId },
       actor
     );
 
@@ -705,9 +705,15 @@ export const AzureAdCsCertificateAuthorityFns = ({
           });
         }
 
-        await appConnectionService.connectAppConnectionById(
+        const ca = await certificateAuthorityDAL.findById(id);
+
+        if (!ca) {
+          throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+        }
+
+        await appConnectionService.validateAppConnectionUsageById(
           appConnection.app as AppConnection,
-          azureAdcsConnectionId,
+          { connectionId: azureAdcsConnectionId, projectId: ca.projectId },
           actor
         );
 

@@ -16,6 +16,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { AddPoliciesButton } from "./AddPoliciesButton";
+import { AppConnectionPermissionConditions } from "./AppConnectionPermissionConditions";
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
 import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
 import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
@@ -75,6 +76,10 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.SecretEvents) {
       return <SecretEventPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.AppConnections) {
+      return <AppConnectionPermissionConditions isDisabled={isDisabled} />;
     }
 
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
