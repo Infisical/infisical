@@ -4,7 +4,9 @@ export enum NotificationType {
   ACCESS_POLICY_BYPASSED = "access-policy-bypassed",
   SECRET_CHANGE_REQUEST = "secret-change-request",
   SECRET_CHANGE_POLICY_BYPASSED = "secret-change-policy-bypassed",
-  SECRET_ROTATION_FAILED = "secret-rotation-failed"
+  SECRET_ROTATION_FAILED = "secret-rotation-failed",
+  SECRET_SCANNING_SECRETS_DETECTED = "secret-scanning-secrets-detected",
+  SECRET_SCANNING_SCAN_FAILED = "secret-scanning-scan-failed"
 }
 
 export interface TCreateUserNotificationDTO {
