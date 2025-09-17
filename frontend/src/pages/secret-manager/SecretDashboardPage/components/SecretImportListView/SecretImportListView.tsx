@@ -64,18 +64,24 @@ export const computeImportedSecretRows = (
   const importedSecretEntries: {
     key: string;
     value?: string;
-    overriden: {
+    environment: string;
+    secretPath?: string;
+    overridden: {
       env: string;
       secretPath: string;
     };
+    isEmpty?: boolean;
   }[] = [];
 
-  importedSec.secrets.forEach(({ key, value }) => {
+  importedSec.secrets.forEach(({ key, value, env, path, isEmpty }) => {
     if (!importedEntry[key]) {
       importedSecretEntries.push({
         key,
         value,
-        overriden: overridenSec?.[key]
+        environment: env,
+        secretPath: path,
+        overridden: overridenSec?.[key],
+        isEmpty
       });
       importedEntry[key] = true;
     }

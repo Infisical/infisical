@@ -10,6 +10,7 @@ import {
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQueryClient } from "@tanstack/react-query";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -27,12 +28,23 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
-import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
-import { SecretType } from "@app/hooks/api/types";
+import {
+  dashboardKeys,
+  fetchSecretValue,
+  useGetSecretValue
+} from "@app/hooks/api/dashboard/queries";
+import { ProjectEnv, SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
+import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 type Props = {
   defaultValue?: string | null;
@@ -56,6 +68,15 @@ type Props = {
   ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
   isRotatedSecret?: boolean;
+  isEmpty?: boolean;
+  importedSecret?:
+    | {
+        secretPath: string;
+        secret?: SecretV3RawSanitized;
+        environmentInfo?: ProjectEnv;
+        environment: string;
+      }
+    | undefined;
   importedBy?: {
     environment: { name: string; slug: string };
     folders: {
@@ -81,11 +102,48 @@ export const SecretEditRow = ({
   isVisible,
   secretId,
   isRotatedSecret,
-  importedBy
+  importedBy,
+  importedSecret,
+  isEmpty
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret"
   ] as const);
+
+  const queryClient = useQueryClient();
+
+  const { currentProject } = useProject();
+
+  const [isFieldFocused, setIsFieldFocused] = useToggle();
+
+  const fetchSecretValueParams = importedSecret
+    ? {
+        environment: importedSecret.environment,
+        secretPath: importedSecret.secretPath,
+        secretKey: importedSecret.secret!.key,
+        projectId: currentProject.id
+      }
+    : {
+        environment,
+        secretPath,
+        secretKey: secretName,
+        projectId: currentProject.id,
+        isOverride
+      };
+
+  // scott: only fetch value if secret exists, has non-empty value and user has permission
+  const canFetchValue = Boolean(importedSecret ?? secretId) && !isEmpty && !secretValueHidden;
+
+  const {
+    data: secretValueData,
+    isPending: isPendingSecretValueData,
+    isError: isErrorFetchingSecretValue
+  } = useGetSecretValue(fetchSecretValueParams, {
+    enabled: canFetchValue && (isVisible || isFieldFocused)
+  });
+
+  const isFetchingSecretValue = canFetchValue && isPendingSecretValueData;
+  const isSecretValueFetched = Boolean(secretValueData);
 
   const {
     handleSubmit,
@@ -95,7 +153,7 @@ export const SecretEditRow = ({
     formState: { isDirty, isSubmitting }
   } = useForm({
     values: {
-      value: defaultValue || null
+      value: (secretValueData?.valueOverride ?? secretValueData?.value) || null
     }
   });
 
@@ -113,6 +171,25 @@ export const SecretEditRow = ({
   };
 
   const handleCopySecretToClipboard = async () => {
+    if (!isSecretValueFetched) {
+      try {
+        const data = await fetchSecretValue(fetchSecretValueParams);
+
+        queryClient.setQueryData(dashboardKeys.getSecretValue(fetchSecretValueParams), data);
+
+        await window.navigator.clipboard.writeText(data.valueOverride ?? data.value);
+        createNotification({ type: "success", text: "Copied secret to clipboard" });
+        return;
+      } catch (e) {
+        console.error(e);
+        createNotification({
+          type: "error",
+          text: "Failed to fetch secret value."
+        });
+        return;
+      }
+    }
+
     const { value } = getValues();
     if (value) {
       try {
@@ -221,14 +298,25 @@ export const SecretEditRow = ({
       )}
       <div className="flex-grow border-r border-r-mineshaft-600 pl-1 pr-2">
         <Controller
-          disabled={isImportedSecret && !defaultValue}
           control={control}
           name="value"
           render={({ field }) => (
             <InfisicalSecretInput
               {...field}
-              isReadOnly={isImportedSecret || (isRotatedSecret && !isOverride)}
-              value={field.value as string}
+              isReadOnly={
+                isImportedSecret ||
+                (isRotatedSecret && !isOverride) ||
+                isFetchingSecretValue ||
+                isErrorFetchingSecretValue
+              }
+              value={
+                // eslint-disable-next-line no-nested-ternary
+                isFetchingSecretValue
+                  ? HIDDEN_SECRET_VALUE
+                  : isErrorFetchingSecretValue
+                    ? "Error fetching secret value..."
+                    : (field.value as string)
+              }
               key="secret-input"
               isVisible={isVisible && !secretValueHidden}
               secretPath={secretPath}
@@ -236,6 +324,11 @@ export const SecretEditRow = ({
               isImport={isImportedSecret}
               defaultValue={secretValueHidden ? "" : undefined}
               canEditButNotView={secretValueHidden && !isOverride}
+              onFocus={() => setIsFieldFocused.on()}
+              onBlur={() => {
+                field.onBlur();
+                setIsFieldFocused.off();
+              }}
             />
           )}
         />

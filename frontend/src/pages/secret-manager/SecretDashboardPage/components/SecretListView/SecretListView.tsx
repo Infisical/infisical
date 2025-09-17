@@ -616,19 +616,21 @@ export const SecretListView = ({
           </>
         }
       />
-      <SecretDetailSidebar
-        environment={environment}
-        secretPath={secretPath}
-        isOpen={popUp.secretDetail.isOpen}
-        onToggle={(isOpen) => handlePopUpToggle("secretDetail", isOpen)}
-        secret={popUp.secretDetail.data as SecretV3RawSanitized}
-        onDeleteSecret={() => handlePopUpOpen("deleteSecret", popUp.secretDetail.data)}
-        onClose={() => handlePopUpClose("secretDetail")}
-        onSaveSecret={handleSaveSecret}
-        tags={wsTags}
-        onCreateTag={() => handlePopUpOpen("createTag")}
-        handleSecretShare={(value: string) => handlePopUpOpen("createSharedSecret", { value })}
-      />
+      {popUp.secretDetail.data && (
+        <SecretDetailSidebar
+          environment={environment}
+          secretPath={secretPath}
+          isOpen={popUp.secretDetail.isOpen}
+          onToggle={(isOpen) => handlePopUpToggle("secretDetail", isOpen)}
+          secret={popUp.secretDetail.data as SecretV3RawSanitized}
+          onDeleteSecret={() => handlePopUpOpen("deleteSecret", popUp.secretDetail.data)}
+          onClose={() => handlePopUpClose("secretDetail")}
+          onSaveSecret={handleSaveSecret}
+          tags={wsTags}
+          onCreateTag={() => handlePopUpOpen("createTag")}
+          handleSecretShare={(value: string) => handlePopUpOpen("createSharedSecret", { value })}
+        />
+      )}
       <CreateTagModal
         isOpen={popUp.createTag.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("createTag", isOpen)}

@@ -349,9 +349,7 @@ export const OverviewPage = () => {
     getSecretRotationStatusesByName
   } = useSecretRotationOverview(secretRotations);
 
-  const { secKeys, getEnvSecretKeyCount } = useSecretOverview(
-    secrets?.concat(secretImportsShaped) || []
-  );
+  const { secKeys, getEnvSecretKeyCount } = useSecretOverview(secrets || []);
 
   const getSecretByKey = useCallback(
     (env: string, key: string) => {

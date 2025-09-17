@@ -2333,7 +2333,8 @@ export const secretV2BridgeServiceFactory = ({
     actorAuthMethod,
     limit = 20,
     offset = 0,
-    secretId
+    secretId,
+    secretVersions: secretVersionsFilter
   }: TGetSecretVersionsDTO) => {
     const secret = await secretDAL.findById(secretId);
 
@@ -2370,6 +2371,7 @@ export const secretV2BridgeServiceFactory = ({
     const secretVersions = await secretVersionDAL.findVersionsBySecretIdWithActors({
       secretId,
       projectId: folder.projectId,
+      secretVersions: secretVersionsFilter,
       findOpt: {
         offset,
         limit,

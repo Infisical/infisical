@@ -27,8 +27,8 @@ import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
@@ -48,6 +48,13 @@ import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { format } from "date-fns";
 import { CreateReminderForm } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CreateReminderForm";
 import {
+  dashboardKeys,
+  fetchSecretValue,
+  useGetSecretValue
+} from "@app/hooks/api/dashboard/queries";
+import { createNotification } from "@app/components/notifications";
+import { useQueryClient } from "@tanstack/react-query";
+import {
   FontAwesomeSpriteName,
   formSchema,
   SecretActionType,
@@ -56,11 +63,11 @@ import {
 import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 import { useBatchModeActions } from "../../SecretMainPage.store";
 
-export const HIDDEN_SECRET_VALUE = "*****************************";
+export const HIDDEN_SECRET_VALUE = "*************************";
 export const HIDDEN_SECRET_VALUE_API_MASK = "<hidden-by-infisical>";
 
 type Props = {
-  secret: SecretV3RawSanitized;
+  secret: SecretV3RawSanitized & { originalKey?: string };
   onSaveSecret: (
     orgSec: SecretV3RawSanitized,
     modSec: Omit<SecretV3RawSanitized, "tags"> & { tags?: { id: string }[] },
@@ -91,7 +98,7 @@ type Props = {
 
 export const SecretItem = memo(
   ({
-    secret,
+    secret: originalSecret,
     onSaveSecret,
     onDeleteSecret,
     onDetailViewSecret,
@@ -114,8 +121,40 @@ export const SecretItem = memo(
     ] as const);
     const { currentProject } = useProject();
     const { permission } = useProjectPermission();
-    const { isRotatedSecret } = secret;
     const { removePendingChange } = useBatchModeActions();
+
+    const [isFieldFocused, setIsFieldFocused] = useToggle();
+    const queryClient = useQueryClient();
+
+    const canFetchSecretValue =
+      !originalSecret.secretValueHidden && !originalSecret.isEmpty && !isPending;
+
+    const fetchSecretValueParams = {
+      environment,
+      secretPath,
+      secretKey: originalSecret.originalKey || originalSecret.key,
+      projectId: currentProject.id,
+      isOverride: Boolean(originalSecret.idOverride)
+    };
+
+    const {
+      data: secretValueData,
+      isPending: isPendingSecretValueData,
+      isError: isErrorFetchingSecretValue
+    } = useGetSecretValue(fetchSecretValueParams, {
+      enabled: canFetchSecretValue && (isVisible || isFieldFocused)
+    });
+
+    const isLoadingSecretValue = canFetchSecretValue && isPendingSecretValueData;
+    const hasFetchedSecretValue = !canFetchSecretValue || Boolean(secretValueData);
+
+    const secret = {
+      ...originalSecret,
+      value: originalSecret.value ?? secretValueData?.value,
+      valueOverride: originalSecret.valueOverride ?? secretValueData?.valueOverride
+    };
+
+    const { isRotatedSecret } = secret;
 
     const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
     const isAutoSavingRef = useRef(false);
@@ -139,11 +178,42 @@ export const SecretItem = memo(
     );
 
     const getDefaultValue = () => {
+      if (isLoadingSecretValue) return HIDDEN_SECRET_VALUE;
+
       if (secret.secretValueHidden && !isPending) {
         return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
       }
-      return secret.valueOverride || secret.value || "";
+
+      if (isErrorFetchingSecretValue) return "Error loading secret value...";
+
+      return secret.value || "";
     };
+
+    const getOverrideDefaultValue = () => {
+      if (isLoadingSecretValue) return HIDDEN_SECRET_VALUE;
+
+      if (secret.secretValueHidden && !isPending) {
+        return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
+      }
+
+      if (isErrorFetchingSecretValue) return "Error loading secret value...";
+
+      return secret.valueOverride || "";
+    };
+
+    const formMethods = useForm<TFormSchema>({
+      defaultValues: {
+        ...secret,
+        valueOverride: getOverrideDefaultValue(),
+        value: getDefaultValue()
+      },
+      values: {
+        ...secret,
+        valueOverride: getOverrideDefaultValue(),
+        value: getDefaultValue()
+      },
+      resolver: zodResolver(formSchema)
+    });
 
     const {
       handleSubmit,
@@ -155,17 +225,7 @@ export const SecretItem = memo(
       getValues,
       trigger,
       formState: { isDirty, isSubmitting, errors }
-    } = useForm<TFormSchema>({
-      defaultValues: {
-        ...secret,
-        value: getDefaultValue()
-      },
-      values: {
-        ...secret,
-        value: getDefaultValue()
-      },
-      resolver: zodResolver(formSchema)
-    });
+    } = formMethods;
 
     const secretName = watch("key");
     const overrideAction = watch("overrideAction");
@@ -255,7 +315,10 @@ export const SecretItem = memo(
       );
 
     const isReadOnlySecret =
-      isReadOnly || isRotatedSecret || (isPending && pendingAction === PendingAction.Delete);
+      isReadOnly ||
+      isRotatedSecret ||
+      (isPending && pendingAction === PendingAction.Delete) ||
+      isLoadingSecretValue;
 
     const { secretValueHidden } = secret;
 
@@ -322,12 +385,36 @@ export const SecretItem = memo(
       }
     };
 
-    const copyTokenToClipboard = () => {
-      const [overrideValue, value] = getValues(["value", "valueOverride"]);
-      if (isOverridden) {
-        navigator.clipboard.writeText(value as string);
+    const fetchValue = async () => {
+      if (secretValueData) return secretValueData;
+
+      try {
+        const data = await fetchSecretValue(fetchSecretValueParams);
+
+        queryClient.setQueryData(dashboardKeys.getSecretValue(fetchSecretValueParams), data);
+
+        return data;
+      } catch (e) {
+        console.error(e);
+        createNotification({
+          type: "error",
+          text: "Failed to fetch secret value"
+        });
+        throw e;
+      }
+    };
+
+    const copyTokenToClipboard = async () => {
+      if (hasFetchedSecretValue) {
+        const [overrideValue, value] = getValues(["value", "valueOverride"]);
+        if (isOverridden) {
+          navigator.clipboard.writeText(value as string);
+        } else {
+          navigator.clipboard.writeText(overrideValue as string);
+        }
       } else {
-        navigator.clipboard.writeText(overrideValue as string);
+        const data = await fetchValue();
+        navigator.clipboard.writeText((data.valueOverride ?? data.value) as string);
       }
       setIsSecValueCopied.on();
     };
@@ -428,6 +515,11 @@ export const SecretItem = memo(
                       isVisible={isVisible}
                       isReadOnly={isReadOnly}
                       {...field}
+                      onFocus={() => setIsFieldFocused.on()}
+                      onBlur={() => {
+                        setIsFieldFocused.off();
+                        field.onBlur();
+                      }}
                       containerClassName="py-1.5 rounded-md transition-all"
                     />
                   )}
@@ -446,6 +538,13 @@ export const SecretItem = memo(
                       environment={environment}
                       secretPath={secretPath}
                       {...field}
+                      onFocus={() => {
+                        setIsFieldFocused.on();
+                      }}
+                      onBlur={() => {
+                        setIsFieldFocused.off();
+                        field.onBlur();
+                      }}
                       defaultValue={
                         secretValueHidden && !isPending ? HIDDEN_SECRET_VALUE : undefined
                       }
@@ -682,7 +781,19 @@ export const SecretItem = memo(
                       variant="plain"
                       size="md"
                       ariaLabel="share-secret"
-                      onClick={() => onShareSecret(secret)}
+                      onClick={async () => {
+                        if (hasFetchedSecretValue) {
+                          onShareSecret(secret);
+                          return;
+                        }
+
+                        const data = await fetchValue();
+
+                        onShareSecret({
+                          ...secret,
+                          ...data
+                        });
+                      }}
                     >
                       <Tooltip content="Share Secret">
                         <FontAwesomeSymbol

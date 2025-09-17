@@ -183,17 +183,6 @@ const Page = () => {
     })
   );
 
-  const canReadSecretValue = hasSecretReadValueOrDescribePermission(
-    permission,
-    ProjectPermissionSecretActions.ReadValue,
-    {
-      environment,
-      secretPath,
-      secretName: "*",
-      secretTags: ["*"]
-    }
-  );
-
   const canReadSecretImports = permission.can(
     ProjectPermissionActions.Read,
     subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
@@ -271,7 +260,6 @@ const Page = () => {
     orderDirection,
     includeImports: canReadSecretImports && (isResourceTypeFiltered ? filter.include.import : true),
     includeFolders: isResourceTypeFiltered ? filter.include.folder : true,
-    viewSecretValue: canReadSecretValue,
     includeDynamicSecrets:
       canReadDynamicSecret && (isResourceTypeFiltered ? filter.include.dynamic : true),
     includeSecrets: canReadSecret && (isResourceTypeFiltered ? filter.include.secret : true),
@@ -601,7 +589,9 @@ const Page = () => {
       return secrets;
     }
 
-    const mergedSecrets = [...(secrets || [])];
+    const mergedSecrets = [...(secrets || [])] as (SecretV3RawSanitized & {
+      originalKey?: string;
+    })[];
 
     pendingChanges.secrets.forEach((change) => {
       switch (change.type) {
@@ -652,7 +642,8 @@ const Page = () => {
                     updatedAt: new Date().toISOString(),
                     __v: 0
                   })) || []
-                : mergedSecrets[updateIndex].tags
+                : mergedSecrets[updateIndex].tags,
+              originalKey: mergedSecrets[updateIndex].key
             };
           }
           break;

@@ -222,7 +222,15 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_ORG]: "Update Organization",
   [EventType.CREATE_PROJECT]: "Create Project",
   [EventType.UPDATE_PROJECT]: "Update Project",
-  [EventType.DELETE_PROJECT]: "Delete Project"
+  [EventType.DELETE_PROJECT]: "Delete Project",
+
+  [EventType.CREATE_SECRET_REMINDER]: "Create Secret Reminder",
+  [EventType.GET_SECRET_REMINDER]: "Get Secret Reminder",
+  [EventType.DELETE_SECRET_REMINDER]: "Delete Secret Reminder",
+
+  [EventType.DASHBOARD_LIST_SECRETS]: "Dashboard List Secrets",
+  [EventType.DASHBOARD_GET_SECRET_VALUE]: "Dashboard Get Secret Value",
+  [EventType.DASHBOARD_GET_SECRET_VERSION_VALUE]: "Dashboard Get Secret Version Value"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
