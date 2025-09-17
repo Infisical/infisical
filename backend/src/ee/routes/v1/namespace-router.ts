@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 import { NamespacesSchema } from "@app/db/schemas";
+import { ApiDocsTags, NAMESPACES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { slugSchema } from "@app/server/lib/schemas";
 
 const SanitizedNamespaceSchema = NamespacesSchema.pick({
   id: true,
@@ -22,9 +24,17 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Namespaces],
+      description: "Create a new namespace",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
-        name: z.string().min(1).max(64),
-        description: z.string().optional()
+        name: slugSchema().describe(NAMESPACES.CREATE.name),
+        description: z.string().optional().describe(NAMESPACES.CREATE.description)
       }),
       response: {
         200: z.object({
@@ -50,10 +60,18 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Namespaces],
+      description: "List namespaces",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       querystring: z.object({
-        offset: z.coerce.number().min(0).default(0),
-        limit: z.coerce.number().min(1).max(100).default(20),
-        search: z.string().optional()
+        offset: z.coerce.number().min(0).default(0).describe(NAMESPACES.LIST.offset),
+        limit: z.coerce.number().min(1).max(100).default(50).describe(NAMESPACES.LIST.limit),
+        search: z.string().optional().describe(NAMESPACES.LIST.search)
       }),
       response: {
         200: z.object({
@@ -80,8 +98,16 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Namespaces],
+      description: "Get namespace by name",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        name: z.string()
+        name: slugSchema().describe(NAMESPACES.GET.name)
       }),
       response: {
         200: z.object({
@@ -106,12 +132,20 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Namespaces],
+      description: "Update namespace",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        name: z.string()
+        name: slugSchema().describe(NAMESPACES.UPDATE.name)
       }),
       body: z.object({
-        newName: z.string().min(1).max(64).optional(),
-        description: z.string().optional()
+        newName: slugSchema().optional().describe(NAMESPACES.UPDATE.newName),
+        description: z.string().optional().describe(NAMESPACES.UPDATE.description)
       }),
       response: {
         200: z.object({
@@ -138,8 +172,16 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Namespaces],
+      description: "Delete namespace",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        name: z.string()
+        name: slugSchema().describe(NAMESPACES.DELETE.name)
       }),
       response: {
         200: z.object({

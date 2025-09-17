@@ -329,6 +329,8 @@ import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
 import { registerV4Routes } from "./v4";
+import { namespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
+import { namespaceServiceFactory } from "@app/ee/services/namespace/namespace-service";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
@@ -518,6 +520,8 @@ export const registerRoutes = async (
   const secretScanningV2DAL = secretScanningV2DALFactory(db);
   const keyValueStoreDAL = keyValueStoreDALFactory(db);
 
+  const namespaceDAL = namespaceDALFactory(db);
+
   const eventBusService = eventBusFactory(server.redis);
   const sseService = sseServiceFactory(eventBusService, server.redis);
 
@@ -594,6 +598,11 @@ export const registerRoutes = async (
   });
 
   const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
+
+  const namespaceService = namespaceServiceFactory({
+    permissionService,
+    namespaceDAL
+  });
 
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
@@ -2188,7 +2197,8 @@ export const registerRoutes = async (
     reminder: reminderService,
     bus: eventBusService,
     sse: sseService,
-    notification: notificationService
+    notification: notificationService,
+    namespace: namespaceService
   });
 
   const cronJobs: CronJob[] = [];

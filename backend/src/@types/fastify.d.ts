@@ -119,7 +119,7 @@ import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
-import { TNamespaceServiceFactory } from "@app/services/namespace/namespace-service";
+import { TNamespaceServiceFactory } from "@app/ee/services/namespace/namespace-service";
 
 declare module "@fastify/request-context" {
   interface RequestContextData {

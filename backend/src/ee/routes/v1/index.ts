@@ -44,6 +44,7 @@ import { registerSshHostGroupRouter } from "./ssh-host-group-router";
 import { registerSshHostRouter } from "./ssh-host-router";
 import { registerTrustedIpRouter } from "./trusted-ip-router";
 import { registerUserAdditionalPrivilegeRouter } from "./user-additional-privilege-router";
+import { registerNamespaceRouter } from "./namespace-router";
 
 export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   // org role starts with organization
@@ -129,6 +130,8 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerSecretRouter, { prefix: "/secrets" });
   await server.register(registerSecretVersionRouter, { prefix: "/secret" });
   await server.register(registerGroupRouter, { prefix: "/groups" });
+
+  await server.register(registerNamespaceRouter, { prefix: "/namespaces" });
 
   await server.register(
     async (auditLogStreamRouter) => {
