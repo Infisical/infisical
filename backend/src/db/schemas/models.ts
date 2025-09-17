@@ -188,7 +188,13 @@ export enum TableName {
   Relay = "relays",
   GatewayV2 = "gateways_v2",
 
-  KeyValueStore = "key_value_store"
+  KeyValueStore = "key_value_store",
+
+  Namespace = "namespaces",
+  NamespaceMembership = "namespace_memberships",
+  NamespaceMembershipRoles = "namespace_membership_roles",
+  NamespaceRoles = "namespace_roles",
+  NamespaceAdditionalPrivilege = "namespace_additional_privileges"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
