@@ -19,14 +19,21 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.NamespaceMembership))) {
     await knex.schema.createTable(TableName.NamespaceMembership, (t) => {
       t.uuid("id").primary().defaultTo(knex.fn.uuid());
+
+      t.uuid("namespaceId").notNullable();
+      t.foreign("namespaceId").references("id").inTable(TableName.Namespace).onDelete("CASCADE");
+
       t.uuid("orgUserMembershipId");
       t.foreign("orgUserMembershipId").references("id").inTable(TableName.OrgMembership).onDelete("CASCADE");
+
       t.uuid("orgIdentityMembershipId");
       t.foreign("orgIdentityMembershipId")
         .references("id")
         .inTable(TableName.IdentityOrgMembership)
         .onDelete("CASCADE");
+
       t.timestamps(true, true, true);
+      // check only either identity or user membership is passed and not both
       t.check(
         "(:orgUserMembership: IS NOT NULL AND :orgIdentityMembership: IS NULL) OR (:orgUserMembership: IS NULL AND :orgIdentityMembership: IS NOT NULL)",
         { orgUserMembership: "orgUserMembershipId", orgIdentityMembership: "orgIdentityMembershipId" },
@@ -37,8 +44,8 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.NamespaceMembership);
   }
 
-  if (!(await knex.schema.hasTable(TableName.NamespaceRoles))) {
-    await knex.schema.createTable(TableName.NamespaceRoles, (t) => {
+  if (!(await knex.schema.hasTable(TableName.NamespaceRole))) {
+    await knex.schema.createTable(TableName.NamespaceRole, (t) => {
       t.uuid("id").primary().defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
       t.string("description");
@@ -49,15 +56,15 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
 
-    await createOnUpdateTrigger(knex, TableName.NamespaceRoles);
+    await createOnUpdateTrigger(knex, TableName.NamespaceRole);
   }
 
-  if (!(await knex.schema.hasTable(TableName.NamespaceMembershipRoles))) {
-    await knex.schema.createTable(TableName.NamespaceMembershipRoles, (t) => {
+  if (!(await knex.schema.hasTable(TableName.NamespaceMembershipRole))) {
+    await knex.schema.createTable(TableName.NamespaceMembershipRole, (t) => {
       t.uuid("id").primary().defaultTo(knex.fn.uuid());
       t.string("role").notNullable();
       t.uuid("customRoleId");
-      t.foreign("customRoleId").references("id").inTable(TableName.NamespaceRoles);
+      t.foreign("customRoleId").references("id").inTable(TableName.NamespaceRole);
       t.boolean("isTemporary").notNullable().defaultTo(false);
       t.string("temporaryMode");
       t.string("temporaryRange"); // could be cron or relative time like 1H or 1minute etc
@@ -68,7 +75,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
 
-    await createOnUpdateTrigger(knex, TableName.NamespaceMembershipRoles);
+    await createOnUpdateTrigger(knex, TableName.NamespaceMembershipRole);
   }
 
   if (!(await knex.schema.hasTable(TableName.NamespaceAdditionalPrivilege))) {
@@ -94,14 +101,14 @@ export async function down(knex: Knex): Promise<void> {
   await dropOnUpdateTrigger(knex, TableName.NamespaceAdditionalPrivilege);
   await knex.schema.dropTableIfExists(TableName.NamespaceAdditionalPrivilege);
 
-  await dropOnUpdateTrigger(knex, TableName.NamespaceMembershipRoles);
-  await knex.schema.dropTableIfExists(TableName.NamespaceMembershipRoles);
+  await dropOnUpdateTrigger(knex, TableName.NamespaceMembershipRole);
+  await knex.schema.dropTableIfExists(TableName.NamespaceMembershipRole);
 
   await dropOnUpdateTrigger(knex, TableName.NamespaceMembership);
   await knex.schema.dropTableIfExists(TableName.NamespaceMembership);
 
-  await dropOnUpdateTrigger(knex, TableName.NamespaceRoles);
-  await knex.schema.dropTableIfExists(TableName.NamespaceRoles);
+  await dropOnUpdateTrigger(knex, TableName.NamespaceRole);
+  await knex.schema.dropTableIfExists(TableName.NamespaceRole);
 
   await dropOnUpdateTrigger(knex, TableName.Namespace);
   await knex.schema.dropTableIfExists(TableName.Namespace);

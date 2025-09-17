@@ -192,8 +192,8 @@ export enum TableName {
 
   Namespace = "namespaces",
   NamespaceMembership = "namespace_memberships",
-  NamespaceMembershipRoles = "namespace_membership_roles",
-  NamespaceRoles = "namespace_roles",
+  NamespaceMembershipRole = "namespace_membership_roles",
+  NamespaceRole = "namespace_roles",
   NamespaceAdditionalPrivilege = "namespace_additional_privileges"
 }
 
@@ -215,6 +215,13 @@ export const ServiceTokenScopes = z
   .array();
 
 export enum OrgMembershipRole {
+  Admin = "admin",
+  Member = "member",
+  NoAccess = "no-access",
+  Custom = "custom"
+}
+
+export enum NamespaceMembershipRole {
   Admin = "admin",
   Member = "member",
   NoAccess = "no-access",
