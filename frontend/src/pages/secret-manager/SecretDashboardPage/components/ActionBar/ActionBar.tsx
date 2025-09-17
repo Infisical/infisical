@@ -72,10 +72,7 @@ import {
   useMoveSecrets,
   useUpdateSecretBatch
 } from "@app/hooks/api";
-import {
-  dashboardKeys,
-  fetchDashboardProjectSecretsByKeys
-} from "@app/hooks/api/dashboard/queries";
+import { dashboardKeys, fetchDashboardProjectSecretsByKeys } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
@@ -349,6 +346,7 @@ export const ActionBar = ({
         destinationEnvironment,
         destinationSecretPath,
         projectId,
+        projectSlug: currentProject.slug,
         secretIds: secretsToMove.map((sec) => sec.id)
       });
 
