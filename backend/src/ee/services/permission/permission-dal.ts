@@ -3,6 +3,7 @@ import { z } from "zod";
 import { TDbClient } from "@app/db";
 import {
   IdentityProjectMembershipRoleSchema,
+  NamespaceMembershipRolesSchema,
   OrgMembershipRole,
   OrgMembershipsSchema,
   TableName,
@@ -90,6 +91,7 @@ export interface TPermissionDALFactory {
         orgAuthEnforced: boolean | null | undefined;
         orgGoogleSsoAuthEnforced: boolean;
         orgRole: OrgMembershipRole;
+        bypassOrgAuthEnabled: boolean;
         userId: string;
         projectId: string;
         username: string;
@@ -98,7 +100,6 @@ export interface TPermissionDALFactory {
         createdAt: Date;
         updatedAt: Date;
         shouldUseNewPrivilegeSystem: boolean;
-        bypassOrgAuthEnabled: boolean;
         metadata: {
           id: string;
           key: string;
@@ -125,6 +126,102 @@ export interface TPermissionDALFactory {
           temporaryAccessStartTime: Date | null | undefined;
           temporaryAccessEndTime: Date | null | undefined;
           isTemporary: boolean;
+        }[];
+      }
+    | undefined
+  >;
+  getUserNamespacePermission: (
+    userId: string,
+    namespaceId: string
+  ) => Promise<
+    | {
+        roles: {
+          id: string;
+          role: string;
+          customRoleSlug: string;
+          permissions: unknown;
+          temporaryRange: string | null | undefined;
+          temporaryMode: string | null | undefined;
+          temporaryAccessStartTime: Date | null | undefined;
+          temporaryAccessEndTime: Date | null | undefined;
+          isTemporary: boolean;
+        }[];
+        additionalPrivileges: {
+          id: string;
+          permissions: unknown;
+          temporaryRange: string | null | undefined;
+          temporaryMode: string | null | undefined;
+          temporaryAccessStartTime: Date | null | undefined;
+          temporaryAccessEndTime: Date | null | undefined;
+          isTemporary: boolean;
+        }[];
+        orgId: string;
+        orgAuthEnforced: boolean | null | undefined;
+        orgGoogleSsoAuthEnforced: boolean;
+        orgRole: OrgMembershipRole;
+        bypassOrgAuthEnabled: boolean;
+        userId: string;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        metadata: {
+          id: string;
+          key: string;
+          value: string;
+        }[];
+        namespaceMembershipRoles: {
+          id: string;
+          role: string;
+          customRoleSlug: string;
+          permissions: unknown;
+          temporaryRange: string | null | undefined;
+          temporaryMode: string | null | undefined;
+          temporaryAccessStartTime: Date | null | undefined;
+          temporaryAccessEndTime: Date | null | undefined;
+          isTemporary: boolean;
+        }[];
+      }
+    | undefined
+  >;
+  getIdentityNamespacePermission: (
+    identityId: string,
+    namespaceId: string
+  ) => Promise<
+    | {
+        roles: {
+          id: string;
+          createdAt: Date;
+          updatedAt: Date;
+          isTemporary: boolean;
+          role: string;
+          namespaceMembershipId: string;
+          temporaryRange?: string | null | undefined;
+          permissions?: unknown;
+          customRoleId?: string | null | undefined;
+          temporaryMode?: string | null | undefined;
+          temporaryAccessStartTime?: Date | null | undefined;
+          temporaryAccessEndTime?: Date | null | undefined;
+          customRoleSlug?: string | null | undefined;
+        }[];
+        additionalPrivileges: {
+          id: string;
+          permissions: unknown;
+          temporaryRange: string | null | undefined;
+          temporaryMode: string | null | undefined;
+          temporaryAccessEndTime: Date | null | undefined;
+          temporaryAccessStartTime: Date | null | undefined;
+          isTemporary: boolean;
+        }[];
+        id: string;
+        identityId: string;
+        username: string;
+        createdAt: Date;
+        updatedAt: Date;
+        orgId: string;
+        metadata: {
+          id: string;
+          key: string;
+          value: string;
         }[];
       }
     | undefined
@@ -1009,6 +1106,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           username,
           orgAuthEnforced,
           orgGoogleSsoAuthEnforced,
+          bypassOrgAuthEnabled,
           orgRole,
           membershipId,
           groupMembershipId,
@@ -1017,8 +1115,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           groupMembershipUpdatedAt,
           membershipUpdatedAt,
           projectType,
-          shouldUseNewPrivilegeSystem,
-          bypassOrgAuthEnabled
+          shouldUseNewPrivilegeSystem
         }) => ({
           orgId,
           orgAuthEnforced,
@@ -1147,6 +1244,352 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "GetProjectPermission" });
+    }
+  };
+
+  const getUserNamespacePermission: TPermissionDALFactory["getUserNamespacePermission"] = async (
+    userId,
+    namespaceId
+  ) => {
+    try {
+      const docs = await db
+        .replicaNode()(TableName.Namespace)
+        .where(`${TableName.Namespace}.id`, namespaceId)
+        .join(TableName.OrgMembership, (queryBuilder) => {
+          void queryBuilder
+            .on(`${TableName.OrgMembership}.userId`, db.raw("?", [userId]))
+            .andOn(`${TableName.OrgMembership}.orgId`, `${TableName.Namespace}.orgId`);
+        })
+        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.OrgMembership}.orgId`)
+        .join(TableName.NamespaceMembership, (queryBuilder) => {
+          void queryBuilder
+            .on(`${TableName.NamespaceMembership}.namespaceId`, `${TableName.Namespace}.id`)
+            .andOn(`${TableName.NamespaceMembership}.orgUserMembershipId`, `${TableName.OrgMembership}.id`);
+        })
+        .leftJoin(
+          TableName.NamespaceMembershipRole,
+          `${TableName.NamespaceMembershipRole}.namespaceMembershipId`,
+          `${TableName.NamespaceMembership}.id`
+        )
+        .leftJoin(
+          TableName.NamespaceRole,
+          `${TableName.NamespaceMembershipRole}.customRoleId`,
+          `${TableName.NamespaceRole}.id`
+        )
+        .leftJoin(
+          TableName.NamespaceAdditionalPrivilege,
+          `${TableName.NamespaceMembership}.id`,
+          `${TableName.NamespaceAdditionalPrivilege}.namespaceMembershipId`
+        )
+        .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
+          void queryBuilder
+            .on(`${TableName.OrgMembership}.userId`, `${TableName.IdentityMetadata}.userId`)
+            .andOn(`${TableName.OrgMembership}.orgId`, `${TableName.IdentityMetadata}.orgId`);
+        })
+        .select(
+          // db.ref("id").withSchema(TableName.Users).as("userId"),
+          // db.ref("username").withSchema(TableName.Users).as("username"),
+          db.ref("id").withSchema(TableName.NamespaceMembership).as("membershipId"),
+          db.ref("createdAt").withSchema(TableName.NamespaceMembership).as("membershipCreatedAt"),
+          db.ref("updatedAt").withSchema(TableName.NamespaceMembership).as("membershipUpdatedAt"),
+          db.ref("slug").withSchema(TableName.NamespaceRole).as("userNamespaceMembershipRoleCustomRoleSlug"),
+          db.ref("permissions").withSchema(TableName.NamespaceRole).as("userNamespaceCustomRolePermission"),
+          db.ref("permissions").withSchema(TableName.NamespaceRole).as("userNamespaceCustomRolePermission"),
+          db.ref("id").withSchema(TableName.NamespaceMembershipRole).as("userNamespaceMembershipRoleId"),
+          db.ref("role").withSchema(TableName.NamespaceMembershipRole).as("userNamespaceMembershipRole"),
+          db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
+          db.ref("googleSsoAuthEnforced").withSchema(TableName.Organization).as("orgGoogleSsoAuthEnforced"),
+          db.ref("bypassOrgAuthEnabled").withSchema(TableName.Organization).as("bypassOrgAuthEnabled"),
+          db.ref("role").withSchema(TableName.OrgMembership).as("orgRole"),
+          db
+            .ref("temporaryMode")
+            .withSchema(TableName.NamespaceMembershipRole)
+            .as("userNamespaceMembershipRoleTemporaryMode"),
+          db
+            .ref("isTemporary")
+            .withSchema(TableName.NamespaceMembershipRole)
+            .as("userNamespaceMembershipRoleIsTemporary"),
+          db
+            .ref("temporaryRange")
+            .withSchema(TableName.NamespaceMembershipRole)
+            .as("userNamespaceMembershipRoleTemporaryRange"),
+          db
+            .ref("temporaryAccessStartTime")
+            .withSchema(TableName.NamespaceMembershipRole)
+            .as("userNamespaceMembershipRoleTemporaryAccessStartTime"),
+          db
+            .ref("temporaryAccessEndTime")
+            .withSchema(TableName.NamespaceMembershipRole)
+            .as("userNamespaceMembershipRoleTemporaryAccessEndTime"),
+          db.ref("id").withSchema(TableName.NamespaceAdditionalPrivilege).as("userAdditionalPrivilegesId"),
+          db
+            .ref("permissions")
+            .withSchema(TableName.NamespaceAdditionalPrivilege)
+            .as("userAdditionalPrivilegesPermissions"),
+          db
+            .ref("temporaryMode")
+            .withSchema(TableName.NamespaceAdditionalPrivilege)
+            .as("userAdditionalPrivilegesTemporaryMode"),
+          db
+            .ref("isTemporary")
+            .withSchema(TableName.NamespaceAdditionalPrivilege)
+            .as("userAdditionalPrivilegesIsTemporary"),
+          db
+            .ref("temporaryRange")
+            .withSchema(TableName.NamespaceAdditionalPrivilege)
+            .as("userAdditionalPrivilegesTemporaryRange"),
+          db.ref("userId").withSchema(TableName.NamespaceAdditionalPrivilege).as("userAdditionalPrivilegesUserId"),
+          db
+            .ref("temporaryAccessStartTime")
+            .withSchema(TableName.NamespaceAdditionalPrivilege)
+            .as("userAdditionalPrivilegesTemporaryAccessStartTime"),
+          db
+            .ref("temporaryAccessEndTime")
+            .withSchema(TableName.NamespaceAdditionalPrivilege)
+            .as("userAdditionalPrivilegesTemporaryAccessEndTime"),
+          // general
+          db.ref("id").withSchema(TableName.IdentityMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue"),
+          db.ref("orgId").withSchema(TableName.OrgMembership),
+          db.ref("id").withSchema(TableName.Namespace).as("namespaceId")
+        );
+
+      const [userPermission] = sqlNestRelationships({
+        data: docs,
+        key: "namespaceId",
+        parentMapper: ({
+          orgId,
+          membershipId,
+          membershipCreatedAt,
+          membershipUpdatedAt,
+          orgAuthEnforced,
+          orgGoogleSsoAuthEnforced,
+          bypassOrgAuthEnabled,
+          orgRole
+        }) => ({
+          orgId,
+          userId,
+          id: membershipId,
+          createdAt: membershipCreatedAt,
+          updatedAt: membershipUpdatedAt,
+          orgAuthEnforced,
+          orgGoogleSsoAuthEnforced,
+          bypassOrgAuthEnabled,
+          orgRole: orgRole as OrgMembershipRole
+        }),
+        childrenMapper: [
+          {
+            key: "userNamespaceMembershipRoleId",
+            label: "namespaceMembershipRoles" as const,
+            mapper: ({
+              userNamespaceMembershipRoleId,
+              userNamespaceMembershipRole,
+              userNamespaceCustomRolePermission,
+              userNamespaceMembershipRoleIsTemporary,
+              userNamespaceMembershipRoleTemporaryMode,
+              userNamespaceMembershipRoleTemporaryRange,
+              userNamespaceMembershipRoleTemporaryAccessEndTime,
+              userNamespaceMembershipRoleTemporaryAccessStartTime,
+              userNamespaceMembershipRoleCustomRoleSlug
+            }) => ({
+              id: userNamespaceMembershipRoleId,
+              role: userNamespaceMembershipRole,
+              customRoleSlug: userNamespaceMembershipRoleCustomRoleSlug,
+              permissions: userNamespaceCustomRolePermission,
+              temporaryRange: userNamespaceMembershipRoleTemporaryRange,
+              temporaryMode: userNamespaceMembershipRoleTemporaryMode,
+              temporaryAccessStartTime: userNamespaceMembershipRoleTemporaryAccessStartTime,
+              temporaryAccessEndTime: userNamespaceMembershipRoleTemporaryAccessEndTime,
+              isTemporary: userNamespaceMembershipRoleIsTemporary
+            })
+          },
+          {
+            key: "userAdditionalPrivilegesId",
+            label: "additionalPrivileges" as const,
+            mapper: ({
+              userAdditionalPrivilegesId,
+              userAdditionalPrivilegesPermissions,
+              userAdditionalPrivilegesIsTemporary,
+              userAdditionalPrivilegesTemporaryMode,
+              userAdditionalPrivilegesTemporaryRange,
+              userAdditionalPrivilegesTemporaryAccessEndTime,
+              userAdditionalPrivilegesTemporaryAccessStartTime
+            }) => ({
+              id: userAdditionalPrivilegesId,
+              permissions: userAdditionalPrivilegesPermissions,
+              temporaryRange: userAdditionalPrivilegesTemporaryRange,
+              temporaryMode: userAdditionalPrivilegesTemporaryMode,
+              temporaryAccessStartTime: userAdditionalPrivilegesTemporaryAccessStartTime,
+              temporaryAccessEndTime: userAdditionalPrivilegesTemporaryAccessEndTime,
+              isTemporary: userAdditionalPrivilegesIsTemporary
+            })
+          },
+          {
+            key: "metadataId",
+            label: "metadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
+            })
+          }
+        ]
+      });
+
+      if (!userPermission) return undefined;
+      if (!userPermission?.namespaceMembershipRoles?.[0]) return undefined;
+
+      // when introducting cron mode change it here
+      const activeRoles =
+        userPermission?.namespaceMembershipRoles?.filter(
+          ({ isTemporary, temporaryAccessEndTime }) =>
+            !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
+        ) ?? [];
+
+      const activeAdditionalPrivileges =
+        userPermission?.additionalPrivileges?.filter(
+          ({ isTemporary, temporaryAccessEndTime }) =>
+            !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
+        ) ?? [];
+
+      return {
+        ...userPermission,
+        roles: activeRoles,
+        additionalPrivileges: activeAdditionalPrivileges
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "GetNamespacePermission" });
+    }
+  };
+
+  const getIdentityNamespacePermission: TPermissionDALFactory["getIdentityNamespacePermission"] = async (
+    identityId,
+    namespaceId
+  ) => {
+    try {
+      const docs = await db
+        .replicaNode()(TableName.IdentityOrgMembership)
+        .join(
+          TableName.NamespaceMembership,
+          `${TableName.NamespaceMembership}.orgIdentityMembershipId`,
+          `${TableName.IdentityOrgMembership}.id`
+        )
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.IdentityOrgMembership}.identityId`)
+        .leftJoin(
+          TableName.NamespaceRole,
+          `${TableName.NamespaceMembershipRole}.customRoleId`,
+          `${TableName.NamespaceRole}.id`
+        )
+        .leftJoin(
+          TableName.NamespaceAdditionalPrivilege,
+          `${TableName.NamespaceAdditionalPrivilege}.namespaceMembershipId`,
+          `${TableName.NamespaceMembership}.id`
+        )
+        .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
+          void queryBuilder
+            .on(`${TableName.Identity}.id`, `${TableName.IdentityMetadata}.identityId`)
+            .andOn(`${TableName.IdentityOrgMembership}.orgId`, `${TableName.IdentityMetadata}.orgId`);
+        })
+        .where(`${TableName.IdentityOrgMembership}.identityId`, identityId)
+        .where(`${TableName.NamespaceMembership}.namespaceId`, namespaceId)
+        .select(selectAllTableCols(TableName.NamespaceMembershipRole))
+        .select(
+          db.ref("id").withSchema(TableName.NamespaceMembership).as("membershipId"),
+          db.ref("name").withSchema(TableName.Identity).as("identityName"),
+          db.ref("orgId").withSchema(TableName.IdentityOrgMembership).as("orgId"), // Now you can select orgId from Project
+          db.ref("type").withSchema(TableName.Project).as("projectType"),
+          db.ref("createdAt").withSchema(TableName.NamespaceMembership).as("membershipCreatedAt"),
+          db.ref("updatedAt").withSchema(TableName.NamespaceMembership).as("membershipUpdatedAt"),
+          db.ref("slug").withSchema(TableName.NamespaceRole).as("customRoleSlug"),
+          db.ref("permissions").withSchema(TableName.NamespaceRole),
+          db.ref("id").withSchema(TableName.NamespaceAdditionalPrivilege).as("identityApId"),
+          db.ref("permissions").withSchema(TableName.NamespaceAdditionalPrivilege).as("identityApPermissions"),
+          db.ref("temporaryMode").withSchema(TableName.NamespaceAdditionalPrivilege).as("identityApTemporaryMode"),
+          db.ref("isTemporary").withSchema(TableName.NamespaceAdditionalPrivilege).as("identityApIsTemporary"),
+          db.ref("temporaryRange").withSchema(TableName.NamespaceAdditionalPrivilege).as("identityApTemporaryRange"),
+          db
+            .ref("temporaryAccessStartTime")
+            .withSchema(TableName.NamespaceAdditionalPrivilege)
+            .as("identityApTemporaryAccessStartTime"),
+          db
+            .ref("temporaryAccessEndTime")
+            .withSchema(TableName.NamespaceAdditionalPrivilege)
+            .as("identityApTemporaryAccessEndTime"),
+          db.ref("id").withSchema(TableName.IdentityMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue")
+        );
+
+      const permission = sqlNestRelationships({
+        data: docs,
+        key: "membershipId",
+        parentMapper: ({ membershipId, membershipCreatedAt, membershipUpdatedAt, orgId, identityName }) => ({
+          id: membershipId,
+          identityId,
+          username: identityName,
+          createdAt: membershipCreatedAt,
+          updatedAt: membershipUpdatedAt,
+          orgId
+        }),
+        childrenMapper: [
+          {
+            key: "id",
+            label: "roles" as const,
+            mapper: (data) =>
+              NamespaceMembershipRolesSchema.extend({
+                permissions: z.unknown(),
+                customRoleSlug: z.string().optional().nullable()
+              }).parse(data)
+          },
+          {
+            key: "identityApId",
+            label: "additionalPrivileges" as const,
+            mapper: ({
+              identityApId,
+              identityApPermissions,
+              identityApIsTemporary,
+              identityApTemporaryMode,
+              identityApTemporaryRange,
+              identityApTemporaryAccessEndTime,
+              identityApTemporaryAccessStartTime
+            }) => ({
+              id: identityApId,
+              permissions: identityApPermissions,
+              temporaryRange: identityApTemporaryRange,
+              temporaryMode: identityApTemporaryMode,
+              temporaryAccessEndTime: identityApTemporaryAccessEndTime,
+              temporaryAccessStartTime: identityApTemporaryAccessStartTime,
+              isTemporary: identityApIsTemporary
+            })
+          },
+          {
+            key: "metadataId",
+            label: "metadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
+            })
+          }
+        ]
+      });
+
+      if (!permission?.[0]) return undefined;
+
+      // when introducting cron mode change it here
+      const activeRoles = permission?.[0]?.roles.filter(
+        ({ isTemporary, temporaryAccessEndTime }) =>
+          !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
+      );
+      const activeAdditionalPrivileges = permission?.[0]?.additionalPrivileges?.filter(
+        ({ isTemporary, temporaryAccessEndTime }) =>
+          !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
+      );
+
+      return { ...permission[0], roles: activeRoles, additionalPrivileges: activeAdditionalPrivileges };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "GetNamespaceIdentityPermission" });
     }
   };
 
@@ -1473,6 +1916,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
     getProjectIdentityPermission,
     getProjectUserPermissions,
     getProjectIdentityPermissions,
-    getProjectGroupPermissions
+    getProjectGroupPermissions,
+    getUserNamespacePermission,
+    getIdentityNamespacePermission
   };
 };
