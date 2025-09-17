@@ -4,12 +4,22 @@ import { AxiosError } from "axios";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 
+import { PkiSync } from "../pki-sync-enums";
 import { PkiSyncError } from "../pki-sync-errors";
 import { GetAzureKeyVaultCertificate, TAzureKeyVaultPkiSyncWithCredentials } from "./azure-key-vault-pki-sync-types";
+
+export const AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION = {
+  name: "Azure Key Vault" as const,
+  connection: AppConnection.AzureKeyVault,
+  destination: PkiSync.AzureKeyVault,
+  canImportCertificates: false,
+  canRemoveCertificates: true
+};
 
 type TAzureKeyVaultPkiSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
@@ -56,7 +66,6 @@ export const azureKeyVaultPkiSyncFactory = ({ kmsService, appConnectionDAL }: TA
             lastSlashIndex = getAzureKeyVaultCertificate.id.lastIndexOf("/");
           }
 
-          // Get the certificate details
           const azureKeyVaultCertificate = await request.get<GetAzureKeyVaultCertificate>(
             `${getAzureKeyVaultCertificate.id}?api-version=7.4`,
             {
@@ -66,7 +75,6 @@ export const azureKeyVaultPkiSyncFactory = ({ kmsService, appConnectionDAL }: TA
             }
           );
 
-          // Convert base64 certificate to PEM format if available
           let certPem = "";
           if (azureKeyVaultCertificate.data.cer) {
             try {
@@ -75,7 +83,6 @@ export const azureKeyVaultPkiSyncFactory = ({ kmsService, appConnectionDAL }: TA
               const base64Cert = azureKeyVaultCertificate.data.cer;
               certPem = `-----BEGIN CERTIFICATE-----\n${base64Cert.match(/.{1,64}/g)?.join("\n")}\n-----END CERTIFICATE-----`;
             } catch (error) {
-              // If conversion fails, assume it's already in PEM format
               certPem = azureKeyVaultCertificate.data.cer;
             }
           }
@@ -259,7 +266,6 @@ export const azureKeyVaultPkiSyncFactory = ({ kmsService, appConnectionDAL }: TA
               { certificateKey: key, syncId: pkiSync.id },
               "Certificate exists in deleted but recoverable state in Azure Key Vault - skipping upload"
             );
-            // Return a successful result to avoid failing the entire sync
             return { key, success: false, skipped: true, reason: "Certificate in deleted but recoverable state" };
           }
 

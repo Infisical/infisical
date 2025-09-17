@@ -230,6 +230,7 @@ export const PkiSyncsTable = ({ pkiSyncs }: Props) => {
       await updateSync.mutateAsync({
         syncId: pkiSync.id,
         projectId: pkiSync.projectId,
+        destination: pkiSync.destination,
         isAutoSyncEnabled
       });
 
@@ -251,7 +252,8 @@ export const PkiSyncsTable = ({ pkiSyncs }: Props) => {
     try {
       await triggerSync.mutateAsync({
         syncId: pkiSync.id,
-        projectId: pkiSync.projectId
+        projectId: pkiSync.projectId,
+        destination: pkiSync.destination
       });
 
       createNotification({

@@ -40,7 +40,6 @@ export const PkiSyncListItemSchema = PkiSyncSchema.extend({
   appConnectionApp: z.string().max(255)
 });
 
-// Schema for PKI sync details (includes app connection info)
 export const PkiSyncDetailsSchema = PkiSyncSchema.extend({
   appConnectionName: z.string().max(255),
   appConnectionApp: z.string().max(255)

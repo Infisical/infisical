@@ -103,6 +103,12 @@ export const pkiSyncServiceFactory = ({
     // Validates permission to connect and app is valid for sync destination
     await appConnectionService.connectAppConnectionById(destinationApp, connectionId, actor);
 
+    const defaultSyncOptions = {
+      canImportCertificates: false,
+      canRemoveCertificates: true,
+      ...syncOptions
+    };
+
     try {
       const pkiSync = await pkiSyncDAL.create({
         name,
@@ -110,7 +116,7 @@ export const pkiSyncServiceFactory = ({
         destination,
         isAutoSyncEnabled,
         destinationConfig,
-        syncOptions,
+        syncOptions: defaultSyncOptions,
         subscriberId,
         connectionId,
         projectId,

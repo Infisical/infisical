@@ -24,7 +24,8 @@ const Content = ({ pkiSync, onComplete }: ContentProps) => {
     try {
       await triggerRemoveCertificates.mutateAsync({
         syncId,
-        projectId
+        projectId,
+        destination
       });
 
       createNotification({

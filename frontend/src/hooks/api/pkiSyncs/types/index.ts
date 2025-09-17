@@ -29,29 +29,34 @@ export type TCreatePkiSyncDTO = DiscriminativePick<
   | "isAutoSyncEnabled"
 > & { subscriberId?: string; projectId: string };
 
-export type TUpdatePkiSyncDTO = Partial<Omit<TCreatePkiSyncDTO, "destination" | "projectId">> & {
+export type TUpdatePkiSyncDTO = Partial<Omit<TCreatePkiSyncDTO, "projectId">> & {
   syncId: string;
   projectId: string;
+  destination: PkiSync;
 };
 
 export type TDeletePkiSyncDTO = {
   syncId: string;
   projectId: string;
+  destination: PkiSync;
 };
 
 export type TTriggerPkiSyncSyncCertificatesDTO = {
   syncId: string;
   projectId: string;
+  destination: PkiSync;
 };
 
 export type TTriggerPkiSyncImportCertificatesDTO = {
   syncId: string;
   projectId: string;
+  destination: PkiSync;
 };
 
 export type TTriggerPkiSyncRemoveCertificatesDTO = {
   syncId: string;
   projectId: string;
+  destination: PkiSync;
 };
 
 export * from "./common";

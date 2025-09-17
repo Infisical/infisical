@@ -20,7 +20,7 @@ export const PkiSyncFormSchema = z.object({
     vaultBaseUrl: z.string().url("Valid URL is required")
   }),
   syncOptions: z.object({
-    canImportCertificates: z.boolean().default(true),
+    canImportCertificates: z.boolean().default(false),
     canRemoveCertificates: z.boolean().default(true)
   })
 });

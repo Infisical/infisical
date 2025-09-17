@@ -70,6 +70,7 @@ export const PkiSyncReviewFields = () => {
           <GenericFieldLabel label="Upload Certificates">
             <Badge variant="success">Always Enabled</Badge>
           </GenericFieldLabel>
+          {/* Hidden for now - Import certificates functionality disabled
           {syncOptions?.canImportCertificates !== undefined && (
             <GenericFieldLabel label="Import Certificates">
               <Badge variant={syncOptions.canImportCertificates ? "success" : "danger"}>
@@ -77,6 +78,7 @@ export const PkiSyncReviewFields = () => {
               </Badge>
             </GenericFieldLabel>
           )}
+          */}
           {syncOptions?.canRemoveCertificates !== undefined && (
             <GenericFieldLabel label="Remove Certificates">
               <Badge variant={syncOptions.canRemoveCertificates ? "success" : "danger"}>

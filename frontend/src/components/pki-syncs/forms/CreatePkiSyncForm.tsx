@@ -10,13 +10,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Switch } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
-import {
-  PkiSync,
-  TCreatePkiSyncDTO,
-  TPkiSync,
-  useCreatePkiSync,
-  usePkiSyncOption
-} from "@app/hooks/api/pkiSyncs";
+import { PkiSync, TPkiSync, useCreatePkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
@@ -69,10 +63,7 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
         ...formData,
         connectionId: connection.id,
         projectId: currentProject.id,
-        destinationConfig: {
-          destination,
-          config: destinationConfig
-        } as unknown as TCreatePkiSyncDTO["destinationConfig"]
+        destinationConfig
       });
 
       createNotification({

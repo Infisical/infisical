@@ -42,7 +42,6 @@ import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
   TPkiSync,
-  usePkiSyncOption,
   useTriggerPkiSyncSyncCertificates,
   useUpdatePkiSync
 } from "@app/hooks/api/pkiSyncs";
@@ -69,7 +68,6 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
   const updatePkiSyncMutation = useUpdatePkiSync();
 
   const destinationName = PKI_SYNC_MAP[destination].name;
-  const { syncOption } = usePkiSyncOption(destination);
 
   const handleCopyId = useCallback(() => {
     setIsIdCopied.on();
@@ -88,7 +86,8 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
     try {
       await triggerSyncMutation.mutateAsync({
         syncId: id,
-        projectId
+        projectId,
+        destination
       });
       createNotification({
         text: "PKI sync job queued successfully",
@@ -108,6 +107,7 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
       await updatePkiSyncMutation.mutateAsync({
         syncId: id,
         projectId,
+        destination,
         isAutoSyncEnabled: !pkiSync.isAutoSyncEnabled
       });
       createNotification({
@@ -192,65 +192,61 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
                 Copy Sync ID
               </DropdownMenuItem>
 
-              {syncOption?.canImportCertificates && (
-                <ProjectPermissionCan
-                  I={ProjectPermissionPkiSyncActions.ImportCertificates}
-                  a={permissionSubject}
-                >
-                  {(isAllowed: boolean) => (
-                    <DropdownMenuItem
-                      icon={<FontAwesomeIcon icon={faDownload} />}
-                      onClick={() => handlePopUpOpen("importCertificates")}
-                      isDisabled={!isAllowed}
+              <ProjectPermissionCan
+                I={ProjectPermissionPkiSyncActions.ImportCertificates}
+                a={permissionSubject}
+              >
+                {(isAllowed: boolean) => (
+                  <DropdownMenuItem
+                    icon={<FontAwesomeIcon icon={faDownload} />}
+                    onClick={() => handlePopUpOpen("importCertificates")}
+                    isDisabled={!isAllowed}
+                  >
+                    <Tooltip
+                      position="left"
+                      sideOffset={42}
+                      content={`Import certificates from this ${destinationName} destination into Infisical.`}
                     >
-                      <Tooltip
-                        position="left"
-                        sideOffset={42}
-                        content={`Import certificates from this ${destinationName} destination into Infisical.`}
-                      >
-                        <div className="flex h-full w-full items-center justify-between gap-1">
-                          <span>Import Certificates</span>
-                          <FontAwesomeIcon
-                            className="text-bunker-300"
-                            size="sm"
-                            icon={faInfoCircle}
-                          />
-                        </div>
-                      </Tooltip>
-                    </DropdownMenuItem>
-                  )}
-                </ProjectPermissionCan>
-              )}
+                      <div className="flex h-full w-full items-center justify-between gap-1">
+                        <span>Import Certificates</span>
+                        <FontAwesomeIcon
+                          className="text-bunker-300"
+                          size="sm"
+                          icon={faInfoCircle}
+                        />
+                      </div>
+                    </Tooltip>
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
 
-              {syncOption?.canRemoveCertificates && (
-                <ProjectPermissionCan
-                  I={ProjectPermissionPkiSyncActions.RemoveCertificates}
-                  a={permissionSubject}
-                >
-                  {(isAllowed: boolean) => (
-                    <DropdownMenuItem
-                      icon={<FontAwesomeIcon icon={faEraser} />}
-                      onClick={() => handlePopUpOpen("removeCertificates")}
-                      isDisabled={!isAllowed}
+              <ProjectPermissionCan
+                I={ProjectPermissionPkiSyncActions.RemoveCertificates}
+                a={permissionSubject}
+              >
+                {(isAllowed: boolean) => (
+                  <DropdownMenuItem
+                    icon={<FontAwesomeIcon icon={faEraser} />}
+                    onClick={() => handlePopUpOpen("removeCertificates")}
+                    isDisabled={!isAllowed}
+                  >
+                    <Tooltip
+                      position="left"
+                      sideOffset={42}
+                      content={`Remove certificates synced by Infisical from this ${destinationName} destination.`}
                     >
-                      <Tooltip
-                        position="left"
-                        sideOffset={42}
-                        content={`Remove certificates synced by Infisical from this ${destinationName} destination.`}
-                      >
-                        <div className="flex h-full w-full items-center justify-between gap-1">
-                          <span>Remove Certificates</span>
-                          <FontAwesomeIcon
-                            className="text-bunker-300"
-                            size="sm"
-                            icon={faInfoCircle}
-                          />
-                        </div>
-                      </Tooltip>
-                    </DropdownMenuItem>
-                  )}
-                </ProjectPermissionCan>
-              )}
+                      <div className="flex h-full w-full items-center justify-between gap-1">
+                        <span>Remove Certificates</span>
+                        <FontAwesomeIcon
+                          className="text-bunker-300"
+                          size="sm"
+                          icon={faInfoCircle}
+                        />
+                      </div>
+                    </Tooltip>
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
 
               <ProjectPermissionCan I={ProjectPermissionPkiSyncActions.Edit} a={permissionSubject}>
                 {(isAllowed: boolean) => (

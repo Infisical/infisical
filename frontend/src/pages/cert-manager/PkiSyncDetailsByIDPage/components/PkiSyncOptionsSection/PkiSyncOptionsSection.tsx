@@ -16,7 +16,7 @@ type Props = {
 
 export const PkiSyncOptionsSection = ({ pkiSync, onEditOptions }: Props) => {
   const {
-    syncOptions: { canImportCertificates, canRemoveCertificates }
+    syncOptions: { canRemoveCertificates }
   } = pkiSync;
 
   const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
@@ -44,11 +44,13 @@ export const PkiSyncOptionsSection = ({ pkiSync, onEditOptions }: Props) => {
         </div>
         <div>
           <div className="space-y-3">
+            {/* Hidden for now - Import certificates functionality disabled
             <GenericFieldLabel label="Certificate Import">
               <Badge variant={canImportCertificates ? "success" : "danger"}>
                 {canImportCertificates ? "Enabled" : "Disabled"}
               </Badge>
             </GenericFieldLabel>
+            */}
             <GenericFieldLabel label="Certificate Removal">
               <Badge variant={canRemoveCertificates ? "success" : "danger"}>
                 {canRemoveCertificates ? "Enabled" : "Disabled"}

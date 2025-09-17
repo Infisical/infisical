@@ -711,6 +711,19 @@
                       "documentation/platform/pki/pki-issuer",
                       "documentation/platform/pki/integration-guides/gloo-mesh"
                     ]
+                  },
+                  {
+                    "group": "Certificate Syncs",
+                    "pages": [
+                      "documentation/platform/pki/certificate-syncs",
+                      "documentation/platform/pki/certificate-syncs/overview",
+                      {
+                        "group": "Syncs",
+                        "pages": [
+                          "documentation/platform/pki/certificate-syncs/azure-key-vault"
+                        ]
+                      }
+                    ]
                   }
                 ]
               }
@@ -2475,6 +2488,26 @@
                   "api-reference/endpoints/pki-alerts/update",
                   "api-reference/endpoints/pki-alerts/delete"
                 ]
+              },
+              {
+                "group": "Certificate Syncs",
+                "pages": [
+                  "api-reference/endpoints/certificate-syncs/list",
+                  "api-reference/endpoints/certificate-syncs/options",
+                  {
+                    "group": "Azure Key Vault",
+                    "pages": [
+                      "api-reference/endpoints/certificate-syncs/azure-key-vault/list",
+                      "api-reference/endpoints/certificate-syncs/azure-key-vault/get-by-id",
+                      "api-reference/endpoints/certificate-syncs/azure-key-vault/create",
+                      "api-reference/endpoints/certificate-syncs/azure-key-vault/update",
+                      "api-reference/endpoints/certificate-syncs/azure-key-vault/delete",
+                      "api-reference/endpoints/certificate-syncs/azure-key-vault/sync-certificates",
+                      "api-reference/endpoints/certificate-syncs/azure-key-vault/import-certificates",
+                      "api-reference/endpoints/certificate-syncs/azure-key-vault/remove-certificates"
+                    ]
+                  }
+                ]
               }
             ]
           },
@@ -2614,9 +2647,9 @@
     "href": "https://infisical.com"
   },
   "api": {
-    "openapi": "https://app.infisical.com/api/docs/json",
+    "openapi": "https://5e8f77f30103.ngrok-free.app/api/docs/json",
     "mdx": {
-      "server": ["https://app.infisical.com"]
+      "server": ["https://5e8f77f30103.ngrok-free.app"]
     }
   },
   "appearance": {

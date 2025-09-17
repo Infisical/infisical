@@ -44,7 +44,7 @@ import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { useToggle } from "@app/hooks";
-import { PkiSyncData, PkiSyncStatus, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
+import { PkiSyncData, PkiSyncStatus } from "@app/hooks/api/pkiSyncs";
 
 import { PkiSyncDestinationCol } from "./PkiSyncDestinationCol";
 import { PkiSyncTableCell } from "./PkiSyncTableCell";
@@ -79,8 +79,6 @@ export const PkiSyncRow = ({
     isAutoSyncEnabled,
     projectId
   } = pkiSync;
-
-  const { syncOption } = usePkiSyncOption(destination);
 
   const destinationName = PKI_SYNC_MAP[destination].name;
 
@@ -296,38 +294,36 @@ export const PkiSyncRow = ({
                   </DropdownMenuItem>
                 )}
               </ProjectPermissionCan>
-              {syncOption?.canImportCertificates && (
-                <ProjectPermissionCan
-                  I={ProjectPermissionPkiSyncActions.ImportCertificates}
-                  a={permissionSubject}
-                >
-                  {(isAllowed: boolean) => (
-                    <DropdownMenuItem
-                      icon={<FontAwesomeIcon icon={faDownload} />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onTriggerImportCertificates(pkiSync);
-                      }}
-                      isDisabled={!isAllowed}
+              <ProjectPermissionCan
+                I={ProjectPermissionPkiSyncActions.ImportCertificates}
+                a={permissionSubject}
+              >
+                {(isAllowed: boolean) => (
+                  <DropdownMenuItem
+                    icon={<FontAwesomeIcon icon={faDownload} />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTriggerImportCertificates(pkiSync);
+                    }}
+                    isDisabled={!isAllowed}
+                  >
+                    <Tooltip
+                      position="left"
+                      sideOffset={42}
+                      content={`Import certificates from this ${destinationName} destination into Infisical.`}
                     >
-                      <Tooltip
-                        position="left"
-                        sideOffset={42}
-                        content={`Import certificates from this ${destinationName} destination into Infisical.`}
-                      >
-                        <div className="flex h-full w-full items-center justify-between gap-1">
-                          <span>Import Certificates</span>
-                          <FontAwesomeIcon
-                            className="text-bunker-300"
-                            size="sm"
-                            icon={faInfoCircle}
-                          />
-                        </div>
-                      </Tooltip>
-                    </DropdownMenuItem>
-                  )}
-                </ProjectPermissionCan>
-              )}
+                      <div className="flex h-full w-full items-center justify-between gap-1">
+                        <span>Import Certificates</span>
+                        <FontAwesomeIcon
+                          className="text-bunker-300"
+                          size="sm"
+                          icon={faInfoCircle}
+                        />
+                      </div>
+                    </Tooltip>
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
               <ProjectPermissionCan
                 I={ProjectPermissionPkiSyncActions.RemoveCertificates}
                 a={permissionSubject}

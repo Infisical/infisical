@@ -23,7 +23,8 @@ export const DeletePkiSyncModal = ({ isOpen, onOpenChange, pkiSync, onComplete }
     try {
       await deleteSync.mutateAsync({
         syncId,
-        projectId
+        projectId,
+        destination
       });
 
       createNotification({

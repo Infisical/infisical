@@ -216,7 +216,6 @@ export const pkiSyncQueueFactory = ({
           encryptedCertificate
         });
 
-        // Create certificate secret record with encrypted private key (if available)
         if (certData.privateKey) {
           const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
             plainText: Buffer.from(certData.privateKey)
@@ -231,7 +230,6 @@ export const pkiSyncQueueFactory = ({
         logger.info(`Successfully created certificate ${certData.name} with ID ${createdCert.id}`);
       } catch (error) {
         logger.error(`Failed to create certificate ${certData.name}: ${String(error)}`);
-        // Continue with other certificates even if one fails
       }
     }
   };
@@ -264,7 +262,6 @@ export const pkiSyncQueueFactory = ({
       for (const certificate of certificates) {
         try {
           // Only sync certificates issued by Infisical (not imported ones)
-          // Imported certificates don't have caId and certificateTemplateId
           if (!certificate.caId) {
             logger.debug(
               { certificateId: certificate.id, subscriberId },
@@ -503,15 +500,14 @@ export const pkiSyncQueueFactory = ({
 
     try {
       const {
-        connection: { orgId, encryptedCredentials },
-        projectId
+        connection: { orgId, encryptedCredentials, projectId: appConnectionProjectId }
       } = pkiSync;
 
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
         kmsService,
-        projectId
+        projectId: appConnectionProjectId
       });
 
       const pkiSyncWithCredentials = {
@@ -564,7 +560,6 @@ export const pkiSyncQueueFactory = ({
       if (err instanceof PkiSyncError && !err.shouldRetry) {
         isFinalAttempt = true;
       } else {
-        // re-throw so job fails
         throw err;
       }
     } finally {
@@ -630,15 +625,14 @@ export const pkiSyncQueueFactory = ({
 
     try {
       const {
-        connection: { orgId, encryptedCredentials },
-        projectId
+        connection: { orgId, encryptedCredentials, projectId: appConnectionProjectId }
       } = pkiSync;
 
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
         kmsService,
-        projectId
+        projectId: appConnectionProjectId
       });
 
       await $importCertificates({
@@ -673,7 +667,6 @@ export const pkiSyncQueueFactory = ({
       if (err instanceof PkiSyncError && !err.shouldRetry) {
         isFinalAttempt = true;
       } else {
-        // re-throw so job fails
         throw err;
       }
     } finally {
@@ -746,14 +739,14 @@ export const pkiSyncQueueFactory = ({
 
     try {
       const {
-        connection: { orgId, encryptedCredentials }
+        connection: { orgId, encryptedCredentials, projectId: appConnectionProjectId }
       } = pkiSync;
 
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
         kmsService,
-        projectId: pkiSync.projectId
+        projectId: appConnectionProjectId
       });
 
       const certificateMap = await $getInfisicalCertificates(pkiSync);
@@ -797,7 +790,6 @@ export const pkiSyncQueueFactory = ({
       if (err instanceof PkiSyncError && !err.shouldRetry) {
         isFinalAttempt = true;
       } else {
-        // re-throw so job fails
         throw err;
       }
     } finally {
@@ -880,7 +872,6 @@ export const pkiSyncQueueFactory = ({
       errorMessage = lastRemoveMessage || null;
     }
 
-    // Log notification for now - actual email sending would require SMTP configuration
     if (projectAdmins.length > 0) {
       logger.info(
         `PKI Sync ${action} failure notification would be sent to ${projectAdmins.length} admin(s) for sync "${name}" in project "${project.name}". Error: ${errorMessage}`

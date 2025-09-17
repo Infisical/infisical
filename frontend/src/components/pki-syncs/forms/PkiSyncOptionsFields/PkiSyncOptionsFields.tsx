@@ -12,6 +12,8 @@ export const PkiSyncOptionsFields = () => {
   return (
     <>
       <p className="mb-4 text-sm text-bunker-300">Configure how certificates should be synced.</p>
+      {/*
+      TODO: Re-enable this when we have a way to import certificates
       <Controller
         control={control}
         name="syncOptions.canImportCertificates"
@@ -48,6 +50,7 @@ export const PkiSyncOptionsFields = () => {
           </FormControl>
         )}
       />
+      */}
       <Controller
         control={control}
         name="syncOptions.canRemoveCertificates"

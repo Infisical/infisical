@@ -1,0 +1,136 @@
+---
+title: "Azure Key Vault"
+description: "Learn how to configure an Azure Key Vault Certificate Sync for Infisical PKI."
+---
+
+**Prerequisites:**
+
+        - Set up and configure a [Certificate Authority](/documentation/platform/pki/overview)
+        - Create an [Azure Key Vault Connection](/integrations/app-connections/azure-key-vault)
+        - Ensure your network security policies allow incoming requests from Infisical to this certificate sync provider, if network restrictions apply.
+
+<Note>
+  The Azure Key Vault Certificate Sync requires the following certificate permissions to be set on the user / service principal
+  for Infisical to sync certificates to Azure Key Vault: `certificates/list`, `certificates/get`, `certificates/import`, `certificates/delete`.
+
+  Any role with these permissions would work such as the **Key Vault Certificates Officer** role.
+</Note>
+
+<Note>
+  Certificates synced to Azure Key Vault will be stored as certificate objects, preserving both the certificate and private key components.
+</Note>
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to **Project** > **Integrations** and select the **Certificate Syncs** tab. Click on the **Add Sync** button.
+        ![Certificate Syncs Tab](/images/certificate-syncs/general/certificate-sync-tab.png)
+
+        2. Select the **Azure Key Vault** option.
+        ![Select Key Vault](/images/certificate-syncs/azure-key-vault/select-key-vault-option.png)
+
+        3. Configure the **Source** from where certificates should be retrieved, then click **Next**.
+        ![Configure Source](/images/certificate-syncs/azure-key-vault/vault-source.png)
+
+            - **PKI Subscriber**: The PKI subscriber to retrieve certificates from.
+
+        4. Configure the **Destination** to where certificates should be deployed, then click **Next**.
+        ![Configure Destination](/images/certificate-syncs/azure-key-vault/vault-destination.png)
+
+            - **Azure Connection**: The Azure Connection to authenticate with.
+            - **Vault Base URL**: The URL of your Azure Key Vault.
+            <p class="height:1px"  />
+
+        5. Configure the **Sync Options** to specify how certificates should be synced, then click **Next**.
+        ![Configure Options](/images/certificate-syncs/azure-key-vault/vault-options.png)
+
+            - **Auto-Sync Enabled**: If enabled, certificates will automatically be synced from the source PKI subscriber when changes occur. Disable to enforce manual syncing only.
+            - **Enable Certificate Removal**: If enabled, Infisical will remove expired certificates from the destination during sync operations. Disable this option if you intend to manage certificate cleanup manually.
+
+        6. Configure the **Details** of your Azure Key Vault Certificate Sync, then click **Next**.
+        ![Configure Details](/images/certificate-syncs/azure-key-vault/vault-details.png)
+
+            - **Name**: The name of your sync. Must be slug-friendly.
+            - **Description**: An optional description for your sync.
+
+        7. Review your Azure Key Vault Certificate Sync configuration, then click **Create Sync**.
+        ![Confirm Configuration](/images/certificate-syncs/azure-key-vault/vault-review.png)
+
+        8. If enabled, your Azure Key Vault Certificate Sync will begin syncing your certificates to the destination endpoint.
+        ![Sync Certificates](/images/certificate-syncs/azure-key-vault/vault-synced.png)
+
+    </Tab>
+    <Tab title="API">
+        To create an **Azure Key Vault Certificate Sync**, make an API request to the [Create Azure Key Vault Certificate Sync](/api-reference/endpoints/certificate-syncs/azure-key-vault/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v1/pki-syncs \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-key-vault-cert-sync",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "an example certificate sync",
+            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "subscriberId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "destination": "azure-key-vault",
+            "isAutoSyncEnabled": true,
+            "syncOptions": {
+                "canRemoveCertificates": true
+            },
+            "destinationConfig": {
+                "vaultBaseUrl": "https://my-key-vault.vault.azure.net"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```json Response
+        {
+            "pkiSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-key-vault-cert-sync",
+                "description": "an example certificate sync",
+                "destination": "azure-key-vault",
+                "isAutoSyncEnabled": true,
+                "destinationConfig": {
+                    "vaultBaseUrl": "https://my-key-vault.vault.azure.net"
+                },
+                "syncOptions": {
+                    "canRemoveCertificates": true
+                },
+                "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "subscriberId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "createdAt": "2023-01-01T00:00:00.000Z",
+                "updatedAt": "2023-01-01T00:00:00.000Z"
+            }
+        }
+        ```
+    </Tab>
+</Tabs>
+
+## Certificate Management
+
+Your Azure Key Vault Certificate Sync will:
+
+- **Automatic Deployment**: Deploy new certificates issued by your PKI subscriber to Azure Key Vault
+- **Certificate Updates**: Update certificates in Azure Key Vault when renewals occur
+- **Expiration Handling**: Optionally remove expired certificates from Azure Key Vault (if enabled)
+- **Format Preservation**: Maintain certificate format and metadata during sync operations
+
+<Note>
+    Azure Key Vault Certificate Syncs support both automatic and manual synchronization modes. When auto-sync is enabled, certificates are automatically deployed as they are issued or renewed.
+</Note>
+
+## Manual Certificate Import
+
+You can manually import existing certificates from your PKI subscriber to Azure Key Vault using the import certificates functionality. This is useful for:
+
+- Initial setup when you have existing certificates to migrate
+- One-time imports of specific certificates
+- Testing certificate sync configurations
+
+To manually import certificates, use the [Import Certificates](/api-reference/endpoints/certificate-syncs/azure-key-vault/import) API endpoint or the manual import option in the Infisical UI.

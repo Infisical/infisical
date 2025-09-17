@@ -1,0 +1,118 @@
+---
+sidebarTitle: "Overview"
+description: "Learn how to sync certificates from Infisical PKI to third-party services."
+---
+
+Certificate Syncs enable you to sync certificates from Infisical PKI to third-party services using [App Connections](/integrations/app-connections/overview).
+
+<Note>
+    Certificate Syncs are designed to automatically deploy certificates issued by your Certificate Authority to external services, ensuring your certificates are always up-to-date across your infrastructure.
+</Note>
+
+## Concept
+
+Certificate Syncs are a project-level resource used to sync certificates, via an [App Connection](/integrations/app-connections/overview), from a particular PKI subscriber (source)
+to a third-party service (destination). When new certificates are issued or existing certificates are renewed, changes will automatically be propagated to the destination, ensuring
+your certificates are always current.
+
+<br />
+
+<div align="center">
+
+    ```mermaid
+    %%{init: {'flowchart': {'curve': 'linear'} } }%%
+    graph LR
+    A[App Connection]
+    B[Certificate Sync]
+    C[Certificate 1]
+    D[Certificate 2]
+    E[Certificate 3]
+    F[Third-Party Service]
+    G[Certificate 1]
+    H[Certificate 2]
+    I[Certificate 3]
+    J[PKI Subscriber]
+
+    B --> A
+    C --> J
+    D --> J
+    E --> J
+    A --> F
+    F --> G
+    F --> H
+    F --> I
+    J --> B
+
+    classDef default fill:#ffffff,stroke:#666,stroke-width:2px,rx:10px,color:black
+    classDef connection fill:#FFF2B2,stroke:#E6C34A,stroke-width:2px,color:black,rx:15px
+    classDef certificate fill:#E6F4FF,stroke:#0096D6,stroke-width:2px,color:black,rx:15px
+    classDef sync fill:#F4FFE6,stroke:#96D600,stroke-width:2px,color:black,rx:15px
+    classDef service fill:#E6E6FF,stroke:#6B4E96,stroke-width:2px,color:black,rx:15px
+    classDef subscriber fill:#FFE6E6,stroke:#D63F3F,stroke-width:2px,color:black,rx:15px
+
+    class A connection
+    class B sync
+    class C,D,E,G,H,I certificate
+    class F service
+    class J subscriber
+    ```
+
+</div>
+
+## Workflow
+
+Configuring a Certificate Sync requires three components: a <strong>source</strong> PKI subscriber to retrieve certificates from,
+a <strong>destination</strong> endpoint to deploy certificates to, and <strong>configuration options</strong> to determine how your certificates
+should be synced. Follow these steps to start syncing:
+
+<Note>
+    For step-by-step guides on syncing to a particular third-party service, refer to the Certificate Syncs section in the Navigation Bar.
+</Note>
+
+1. <strong>Create App Connection:</strong> If you have not already done so, create an [App Connection](/integrations/app-connections/overview)
+via the UI or API for the third-party service you intend to sync certificates to.
+
+2. <strong>Create Certificate Sync:</strong> Configure a Certificate Sync in the desired project by specifying the following parameters via the UI or API:
+    - <strong>Source:</strong> The PKI subscriber you wish to retrieve certificates from.
+    - <strong>Destination:</strong> The App Connection to utilize and the destination endpoint to deploy certificates to. These can vary between services.
+    - <strong>Options:</strong> Customize how certificates should be synced, such as whether or not certificates should be removed from the destination when they expire.
+
+<Note>
+    Certificate Syncs are the source of truth for connected third-party services. Any certificate,
+    including associated data, not present or managed by Infisical before syncing will be
+    overwritten, and changes made directly in the connected service outside of Infisical may also
+    be overwritten by future syncs.
+</Note>
+
+<Info>
+    Some third-party services do not support removing expired certificates automatically.
+</Info>
+
+3. <strong>Utilize Sync:</strong> Any new certificates issued or renewals from the source PKI subscriber will now automatically be propagated to the destination endpoint.
+
+<Note>
+    Infisical is continuously expanding its Certificate Sync third-party service support. If the service you need isn't available,
+    contact us at team@infisical.com to make a request.
+</Note>
+
+## Certificate Management
+
+Certificate Syncs handle the full lifecycle of certificate management:
+
+- **Automatic Deployment**: New certificates are automatically deployed to configured destinations
+- **Renewal Propagation**: Certificate renewals are seamlessly pushed to all connected services
+- **Expiration Handling**: Expired certificates can be automatically removed from destinations (service-dependent)
+- **Certificate Validation**: Certificates are validated before deployment to ensure integrity
+
+<div align="center">
+    ```mermaid
+    graph LR
+      A[Certificate Issued] -->|Deploy| B[Destination Service]
+      C[Certificate Renewed] -->|Update| B
+      D[Certificate Expired] -->|Remove| B
+      style B fill:#F4FFE6,stroke:#96D600,stroke-width:2px,color:black,rx:15px
+      style A fill:#E6F4FF,stroke:#0096D6,stroke-width:2px,color:black,rx:15px
+      style C fill:#E6F4FF,stroke:#0096D6,stroke-width:2px,color:black,rx:15px
+      style D fill:#FFE6E6,stroke:#D63F3F,stroke-width:2px,color:black,rx:15px
+    ```
+</div>

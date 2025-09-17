@@ -5,10 +5,15 @@ import { BadRequestError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
+import { AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION } from "./azure-key-vault/azure-key-vault-pki-sync-fns";
 import { PkiSync } from "./pki-sync-enums";
 import { TCertificateMap, TPkiSyncWithCredentials } from "./pki-sync-types";
 
 const ENTERPRISE_PKI_SYNCS: PkiSync[] = [];
+
+const PKI_SYNC_LIST_OPTIONS = {
+  [PkiSync.AzureKeyVault]: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION
+};
 
 export const enterprisePkiSyncCheck = async (
   licenseService: Pick<TLicenseServiceFactory, "getPlan">,
@@ -26,7 +31,7 @@ export const enterprisePkiSyncCheck = async (
 };
 
 export const listPkiSyncOptions = () => {
-  return Object.values(PkiSync);
+  return Object.values(PKI_SYNC_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
 };
 
 export const matchesSchema = <T extends ZodSchema>(schema: T, data: unknown): data is z.infer<T> => {

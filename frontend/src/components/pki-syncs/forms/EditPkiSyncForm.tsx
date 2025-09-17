@@ -43,7 +43,8 @@ export const EditPkiSyncForm = ({ pkiSync, fields, onComplete }: Props) => {
         syncId: pkiSync.id,
         ...formData,
         connectionId: connection.id,
-        projectId: pkiSync.projectId
+        projectId: pkiSync.projectId,
+        destination: pkiSync.destination
       });
 
       createNotification({
