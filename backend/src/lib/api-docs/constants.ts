@@ -71,7 +71,8 @@ export enum ApiDocsTags {
   OidcSso = "OIDC SSO",
   SamlSso = "SAML SSO",
   LdapSso = "LDAP SSO",
-  Events = "Event Subscriptions"
+  Events = "Event Subscriptions",
+  Namespaces = "Namespaces"
 }
 
 export const GROUPS = {
@@ -2921,5 +2922,28 @@ export const EventSubscriptions = {
   SUBSCRIBE_PROJECT_EVENTS: {
     projectId: "The ID of the project to subscribe to events for.",
     register: "List of events you want to subscribe to"
+  }
+};
+
+export const NAMESPACES = {
+  CREATE: {
+    name: "The name of the namespace to create. Must be a valid slug (lowercase, alphanumeric, hyphens, underscores).",
+    description: "An optional description for the namespace."
+  },
+  LIST: {
+    offset: "The offset to start from. If you enter 10, it will start from the 10th namespace.",
+    limit: "The number of namespaces to return. Maximum is 100.",
+    search: "Search term to filter namespaces by name."
+  },
+  GET: {
+    name: "The name of the namespace to retrieve."
+  },
+  UPDATE: {
+    name: "The current name of the namespace to update.",
+    newName: "The new name for the namespace. Must be a valid slug (lowercase, alphanumeric, hyphens, underscores).",
+    description: "The new description for the namespace."
+  },
+  DELETE: {
+    name: "The name of the namespace to delete."
   }
 };
