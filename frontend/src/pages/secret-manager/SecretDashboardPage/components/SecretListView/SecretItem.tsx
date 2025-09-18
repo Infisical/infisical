@@ -127,6 +127,7 @@ export const SecretItem = memo(
     const queryClient = useQueryClient();
 
     const canFetchSecretValue =
+      // TODO NOTE FOR PR PROGRESS: may need to remove !isPending, messes with key edits not fetching proper value
       !originalSecret.secretValueHidden && !originalSecret.isEmpty && !isPending;
 
     const fetchSecretValueParams = {
@@ -201,7 +202,17 @@ export const SecretItem = memo(
       return secret.valueOverride || "";
     };
 
-    const formMethods = useForm<TFormSchema>({
+    const {
+      handleSubmit,
+      control,
+      register,
+      watch,
+      setValue,
+      reset,
+      getValues,
+      trigger,
+      formState: { isDirty, isSubmitting, errors }
+    } = useForm<TFormSchema>({
       defaultValues: {
         ...secret,
         valueOverride: getOverrideDefaultValue(),
@@ -214,18 +225,6 @@ export const SecretItem = memo(
       },
       resolver: zodResolver(formSchema)
     });
-
-    const {
-      handleSubmit,
-      control,
-      register,
-      watch,
-      setValue,
-      reset,
-      getValues,
-      trigger,
-      formState: { isDirty, isSubmitting, errors }
-    } = formMethods;
 
     const secretName = watch("key");
     const overrideAction = watch("overrideAction");

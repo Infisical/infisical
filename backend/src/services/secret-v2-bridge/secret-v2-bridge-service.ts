@@ -2941,7 +2941,7 @@ export const secretV2BridgeServiceFactory = ({
       secretKey: secretName
     });
 
-    return { tree: stackTrace, value: expandedValue };
+    return { tree: stackTrace, value: expandedValue, secret };
   };
 
   const getAccessibleSecrets = async ({

@@ -1262,7 +1262,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { secretName } = req.params;
       const { secretPath, environment, projectId } = req.query;
-      const { tree, value } = await server.services.secret.getSecretReferenceTree({
+      const { tree, value, secret } = await server.services.secret.getSecretReferenceTree({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
@@ -1271,6 +1271,21 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretName,
         secretPath,
         environment
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.GET_SECRET,
+          metadata: {
+            environment,
+            secretPath,
+            secretId: secret.id,
+            secretKey: secretName,
+            secretVersion: secret.version
+          }
+        }
       });
 
       return { tree, value };
