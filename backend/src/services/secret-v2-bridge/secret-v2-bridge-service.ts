@@ -478,15 +478,16 @@ export const secretV2BridgeServiceFactory = ({
       secret = sharedSecretToModify;
     }
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Edit,
-      subject(ProjectPermissionSub.Secrets, {
-        environment,
-        secretPath,
-        secretName: inputSecret.secretName,
-        secretTags: secret.tags.map((el) => el.slug)
-      })
-    );
+    if (secret.type !== SecretType.Personal)
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretActions.Edit,
+        subject(ProjectPermissionSub.Secrets, {
+          environment,
+          secretPath,
+          secretName: inputSecret.secretName,
+          secretTags: secret.tags.map((el) => el.slug)
+        })
+      );
 
     // validate tags
     // fetch all tags and if not same count throw error meaning one was invalid tags
@@ -497,17 +498,18 @@ export const secretV2BridgeServiceFactory = ({
     const tagsToCheck = inputSecret.tagIds ? newTags : secret.tags;
 
     // now check with new ids
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Edit,
-      subject(ProjectPermissionSub.Secrets, {
-        environment,
-        secretPath,
-        secretName: inputSecret.secretName,
-        ...(tagsToCheck.length && {
-          secretTags: tagsToCheck.map((el) => el.slug)
+    if (secret.type !== SecretType.Personal)
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretActions.Edit,
+        subject(ProjectPermissionSub.Secrets, {
+          environment,
+          secretPath,
+          secretName: inputSecret.secretName,
+          ...(tagsToCheck.length && {
+            secretTags: tagsToCheck.map((el) => el.slug)
+          })
         })
-      })
-    );
+      );
 
     if (inputSecret.newSecretName) {
       const doesNewNameSecretExist = await secretDAL.findOne({
@@ -706,15 +708,17 @@ export const secretV2BridgeServiceFactory = ({
           })
     });
     if (!secretToDelete) throw new NotFoundError({ message: "Secret not found" });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Delete,
-      subject(ProjectPermissionSub.Secrets, {
-        environment,
-        secretPath,
-        secretName: secretToDelete.key,
-        secretTags: secretToDelete.tags?.map((el) => el.slug)
-      })
-    );
+
+    if (secretToDelete.type !== SecretType.Personal)
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretActions.Delete,
+        subject(ProjectPermissionSub.Secrets, {
+          environment,
+          secretPath,
+          secretName: secretToDelete.key,
+          secretTags: secretToDelete.tags?.map((el) => el.slug)
+        })
+      );
 
     try {
       const deletedSecret = await secretDAL.transaction(async (tx) => {

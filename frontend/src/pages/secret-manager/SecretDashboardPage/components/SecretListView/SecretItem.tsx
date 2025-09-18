@@ -515,7 +515,6 @@ export const SecretItem = memo(
                       isErrorLoadingValue={isErrorFetchingSecretValue}
                       key="value-overriden"
                       isVisible={isVisible}
-                      isReadOnly={isReadOnly}
                       {...field}
                       onFocus={() => {
                         if (secret.idOverride) setIsFieldFocused.on();
@@ -718,7 +717,7 @@ export const SecretItem = memo(
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <ProjectPermissionCan
-                    I={ProjectPermissionActions.Edit}
+                    I={ProjectPermissionActions.Create}
                     a={subject(ProjectPermissionSub.Secrets, {
                       environment,
                       secretPath,
