@@ -466,7 +466,12 @@ export const SecretListView = ({
   );
 
   const handleSecretDelete = useCallback(async () => {
-    const { key, id: secretId, value } = popUp.deleteSecret?.data as SecretV3RawSanitized;
+    const {
+      key,
+      id: secretId,
+      value,
+      secretValueHidden
+    } = popUp.deleteSecret?.data as SecretV3RawSanitized;
     try {
       if (isBatchMode) {
         const deleteChange: PendingSecretDelete = {
@@ -475,7 +480,8 @@ export const SecretListView = ({
           secretKey: key,
           secretValue: value || "",
           timestamp: Date.now(),
-          resourceType: "secret"
+          resourceType: "secret",
+          secretValueHidden
         };
 
         addPendingChange(deleteChange, {

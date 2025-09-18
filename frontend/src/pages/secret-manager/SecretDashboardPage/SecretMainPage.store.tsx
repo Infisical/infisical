@@ -54,6 +54,7 @@ export interface PendingSecretDelete extends BasePendingChange {
   type: PendingAction.Delete;
   secretKey: string;
   secretValue: string;
+  secretValueHidden: boolean;
 }
 
 // Folder-related change types

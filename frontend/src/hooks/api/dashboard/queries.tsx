@@ -223,7 +223,7 @@ export const useGetProjectSecretsOverview = (
         environments
       });
 
-      queryClient.resetQueries({
+      queryClient.invalidateQueries({
         queryKey: dashboardKeys.getSecretValuesRoot()
       });
 
@@ -335,7 +335,7 @@ export const useGetProjectSecretsDetails = (
         tags
       });
 
-      queryClient.resetQueries({
+      queryClient.invalidateQueries({
         queryKey: dashboardKeys.getSecretValuesRoot()
       });
 

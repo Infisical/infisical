@@ -151,7 +151,7 @@ export const SecretEditRow = ({
     formState: { isDirty, isSubmitting }
   } = useForm({
     defaultValues: {
-      value: (secretValueData?.valueOverride ?? secretValueData?.value) || null
+      value: secretValueData?.valueOverride ?? secretValueData?.value ?? (defaultValue || null)
     }
   });
 

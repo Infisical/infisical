@@ -212,7 +212,8 @@ export const SecretItem = memo(
       reset,
       getValues,
       trigger,
-      formState: { isDirty, isSubmitting, errors }
+      formState: { isDirty, isSubmitting, errors },
+      getFieldState
     } = useForm<TFormSchema>({
       defaultValues: {
         ...secret,
@@ -497,7 +498,7 @@ export const SecretItem = memo(
               tabIndex={0}
               role="button"
             >
-              {secretValueHidden && !isOverridden && !isPending && (
+              {secretValueHidden && !getFieldState("value").isDirty && (
                 <Tooltip
                   content={`You do not have access to view the current value${canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}`}
                 >

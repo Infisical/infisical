@@ -47,10 +47,12 @@ import {
   useGetWsTags
 } from "@app/hooks/api";
 import { useGetProjectSecretsDetails } from "@app/hooks/api/dashboard";
+import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
+import { queryClient } from "@app/hooks/api/reactQuery";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { SecretV3RawSanitized } from "@app/hooks/api/types";
@@ -151,6 +153,10 @@ const Page = () => {
       loadPendingChanges({ projectId, environment, secretPath });
     }
   }, [isBatchMode, projectId, environment, secretPath, loadPendingChanges]);
+
+  useEffect(() => {
+    if (isVisible) setIsVisible(false);
+  }, [environment]);
 
   const canReadSecret = hasSecretReadValueOrDescribePermission(
     permission,
@@ -335,6 +341,24 @@ const Page = () => {
         pendingChanges: changes,
         message
       });
+
+      if (!isProtectedBranch) {
+        pendingChanges.secrets.forEach((secret) => {
+          if (secret.type === "update" && secret.secretValue !== undefined) {
+            queryClient.setQueryData(
+              dashboardKeys.getSecretValue({
+                projectId,
+                environment,
+                secretPath,
+                secretKey: secret.newSecretName ?? secret.secretKey,
+                isOverride: false
+              }),
+              { value: secret.secretValue }
+            );
+          }
+        });
+      }
+
       createNotification({
         text: isProtectedBranch
           ? "Requested changes have been sent for review"

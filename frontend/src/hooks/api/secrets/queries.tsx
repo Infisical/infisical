@@ -6,6 +6,7 @@ import axios from "axios";
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 import { useToggle } from "@app/hooks/useToggle";
+import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 import { ERROR_NOT_ALLOWED_READ_SECRETS } from "./constants";
 import {
@@ -81,7 +82,7 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       id: el.id,
       env: el.environment,
       key: el.secretKey,
-      value: el.secretValue,
+      value: el.secretValueHidden ? HIDDEN_SECRET_VALUE : el.secretValue,
       secretValueHidden: el.secretValueHidden,
       tags: el.tags || [],
       comment: el.secretComment || "",
