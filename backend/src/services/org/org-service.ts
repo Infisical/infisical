@@ -865,7 +865,6 @@ export const orgServiceFactory = ({
     actor,
     inviteeEmails,
     organizationRoleSlug,
-    projects: invitedProjects,
     actorAuthMethod,
     actorOrgId
   }: TInviteUserToOrgDTO) => {
@@ -884,6 +883,7 @@ export const orgServiceFactory = ({
         name: "InviteUser"
       });
     }
+
     const plan = await licenseService.getPlan(orgId);
     const isCustomOrgRole = !Object.values(OrgMembershipRole).includes(organizationRoleSlug as OrgMembershipRole);
     if (isCustomOrgRole) {
@@ -893,264 +893,131 @@ export const orgServiceFactory = ({
         });
     }
 
-    const projectsToInvite = invitedProjects?.length
-      ? await projectDAL.find({
-          orgId,
-          $in: {
-            id: invitedProjects?.map(({ id }) => id)
-          }
-        })
-      : [];
-
-    if (projectsToInvite.length !== invitedProjects?.length) {
-      throw new ForbiddenRequestError({
-        message: "Access denied to one or more of the specified projects"
-      });
-    }
-
-    if (projectsToInvite.some((el) => el.version !== ProjectVersion.V3)) {
-      throw new BadRequestError({
-        message: "One or more selected projects are not compatible with this operation. Please upgrade your projects."
-      });
-    }
-
     const mailsForOrgInvitation: { email: string; userId: string; firstName: string; lastName: string }[] = [];
-    const mailsForProjectInvitation: { email: string[]; projectName: string }[] = [];
-    const newProjectMemberships: TProjectMemberships[] = [];
 
-    await orgDAL.transaction(async (tx) => {
-      const users: Pick<TUsers, "id" | "firstName" | "lastName" | "email" | "username">[] = [];
+    const organizationMemberData = await orgDAL.transaction(async (tx) => {
+      const existingUsers = await userDAL.find({ $in: { username: inviteeEmails } }, { tx });
 
-      for await (const inviteeEmail of inviteeEmails) {
-        const usersByUsername = await userDAL.findUserByUsername(inviteeEmail, tx);
-        let inviteeUser =
-          usersByUsername?.length > 1
-            ? usersByUsername.find((el) => el.username === inviteeEmail)
-            : usersByUsername?.[0];
+      // some users doesn't exist
+      if (existingUsers.length !== inviteeEmails.length) {
+        const newUserEmails = inviteeEmails.filter((inviteeEmail) =>
+          Boolean(existingUsers.find((el) => el.username === inviteeEmail))
+        );
 
-        // if the user doesn't exist we create the user with the email
-        if (!inviteeUser) {
-          // TODO(carlos): will be removed once the function receives usernames instead of emails
-          const usersByEmail = await userDAL.findUserByEmail(inviteeEmail, tx);
-          if (usersByEmail?.length === 1) {
-            [inviteeUser] = usersByEmail;
-          } else {
-            inviteeUser = await userDAL.create(
+        for await (const inviteeEmail of newUserEmails) {
+          const usersByUsername = await userDAL.findUserByUsername(inviteeEmail, tx);
+          let inviteeUser =
+            usersByUsername?.length > 1
+              ? usersByUsername.find((el) => el.username === inviteeEmail)
+              : usersByUsername?.[0];
+
+          // if the user doesn't exist we create the user with the email
+          if (!inviteeUser) {
+            // TODO(carlos): will be removed once the function receives usernames instead of emails
+            const usersByEmail = await userDAL.findUserByEmail(inviteeEmail, tx);
+            if (usersByEmail?.length === 1) {
+              [inviteeUser] = usersByEmail;
+            } else {
+              inviteeUser = await userDAL.create(
+                {
+                  isAccepted: false,
+                  email: inviteeEmail,
+                  username: inviteeEmail,
+                  authMethods: [AuthMethod.EMAIL],
+                  isGhost: false
+                },
+                tx
+              );
+            }
+          }
+
+          existingUsers.push(inviteeUser);
+          const inviteeUserId = inviteeUser?.id;
+          const existingEncrytionKey = await userDAL.findUserEncKeyByUserId(inviteeUserId, tx);
+
+          // when user is missing the encrytion keys
+          // this could happen either if user doesn't exist or user didn't find step 3 of generating the encryption keys of srp
+          // So what we do is we generate a random secure password and then encrypt it with a random pub-private key
+          // Then when user sign in (as login is not possible as isAccepted is false) we rencrypt the private key with the user password
+          if (!inviteeUser || (inviteeUser && !inviteeUser?.isAccepted && !existingEncrytionKey)) {
+            await userDAL.createUserEncryption(
               {
-                isAccepted: false,
-                email: inviteeEmail,
-                username: inviteeEmail,
-                authMethods: [AuthMethod.EMAIL],
-                isGhost: false
+                userId: inviteeUserId,
+                encryptionVersion: 2
               },
               tx
             );
           }
         }
+      }
 
-        const inviteeUserId = inviteeUser?.id;
-        const existingEncrytionKey = await userDAL.findUserEncKeyByUserId(inviteeUserId, tx);
+      const existingOrgMemberships = await orgDAL.findMembership(
+        {
+          [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId,
+          $in: {
+            [`${TableName.OrgMembership}.userId` as "userId"]: existingUsers.map((el) => el.id)
+          }
+        },
+        { tx }
+      );
 
-        // when user is missing the encrytion keys
-        // this could happen either if user doesn't exist or user didn't find step 3 of generating the encryption keys of srp
-        // So what we do is we generate a random secure password and then encrypt it with a random pub-private key
-        // Then when user sign in (as login is not possible as isAccepted is false) we rencrypt the private key with the user password
-        if (!inviteeUser || (inviteeUser && !inviteeUser?.isAccepted && !existingEncrytionKey)) {
-          await userDAL.createUserEncryption(
-            {
-              userId: inviteeUserId,
-              encryptionVersion: 2
-            },
-            tx
-          );
-        }
+      if (existingOrgMemberships.length === existingUsers.length) {
+        return { users: existingUsers };
+      }
 
-        const [inviteeOrgMembership] = await orgDAL.findMembership(
-          {
-            [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId,
-            [`${TableName.OrgMembership}.userId` as "userId"]: inviteeUserId
-          },
-          { tx }
-        );
-
+      const nonOrgUsers = existingUsers.filter((user) => !existingOrgMemberships.find((el) => el.userId === user.id));
+      for await (const nonOrgUser of nonOrgUsers) {
         // if there exist no org membership we set is as given by the request
-        if (!inviteeOrgMembership) {
-          if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
-            // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
-            throw new BadRequestError({
-              name: "InviteUser",
-              message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
-            });
-          }
-
-          if (org?.authEnforced) {
-            throw new ForbiddenRequestError({
-              name: "InviteUser",
-              message: "Failed to invite user due to org-level auth enforced for organization"
-            });
-          }
-
-          // as its used by project invite also
-          ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
-          let roleId;
-          const orgRole = isCustomOrgRole ? OrgMembershipRole.Custom : organizationRoleSlug;
-          if (isCustomOrgRole) {
-            const customRole = await orgRoleDAL.findOne({ slug: organizationRoleSlug, orgId });
-            if (!customRole) {
-              throw new NotFoundError({
-                name: "InviteUser",
-                message: `Custom organization role with slug '${orgRole}' not found`
-              });
-            }
-            roleId = customRole.id;
-          }
-
-          await orgDAL.createMembership(
-            {
-              userId: inviteeUser.id,
-              inviteEmail: inviteeEmail,
-              orgId,
-              role: orgRole,
-              status: OrgMembershipStatus.Invited,
-              isActive: true,
-              roleId
-            },
-            tx
-          );
-          mailsForOrgInvitation.push({
-            email: inviteeEmail,
-            userId: inviteeUser.id,
-            firstName: inviteeUser?.firstName || "",
-            lastName: inviteeUser.lastName || ""
+        if (plan?.slug !== "enterprise" && plan?.identityLimit && plan.identitiesUsed >= plan.identityLimit) {
+          // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
+          throw new BadRequestError({
+            name: "InviteUser",
+            message: "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
           });
         }
 
-        users.push(inviteeUser);
-      }
-
-      const userIds = users.map(({ id }) => id);
-      const userEncryptionKeys = await userDAL.findUserEncKeyByUserIdsBatch({ userIds }, tx);
-      // we don't need to spam with email. Thus org invitation doesn't need project invitation again
-      const userIdsWithOrgInvitation = new Set(mailsForOrgInvitation.map((el) => el.userId));
-
-      // if there exist no project membership we set is as given by the request
-      for await (const project of projectsToInvite) {
-        const projectId = project.id;
-        const { permission: projectPermission, membership } = await permissionService.getProjectPermission({
-          actor,
-          actorId,
-          projectId,
-          actorAuthMethod,
-          actorOrgId,
-          actionProjectType: ActionProjectType.Any
-        });
-        ForbiddenError.from(projectPermission).throwUnlessCan(
-          ProjectPermissionMemberActions.Create,
-          ProjectPermissionSub.Member
-        );
-        const existingMembers = await projectMembershipDAL.find(
-          {
-            projectId: project.id,
-            $in: { userId: userIds }
-          },
-          { tx }
-        );
-        const existingMembersGroupByUserId = groupBy(existingMembers, (i) => i.userId);
-        const userWithEncryptionKeyInvitedToProject = userEncryptionKeys.filter(
-          (user) => !existingMembersGroupByUserId?.[user.userId]
-        );
-
-        // eslint-disable-next-line no-continue
-        if (!userWithEncryptionKeyInvitedToProject.length) continue;
-
-        // validate custom project role
-        const invitedProjectRoles = invitedProjects.find((el) => el.id === project.id)?.projectRoleSlug || [
-          ProjectMembershipRole.Member
-        ];
-
-        for await (const invitedRole of invitedProjectRoles) {
-          const { permission: rolePermission } = await permissionService.getProjectPermissionByRole(
-            invitedRole,
-            projectId
-          );
-
-          if (invitedRole !== ProjectMembershipRole.NoAccess) {
-            const permissionBoundary = validatePrivilegeChangeOperation(
-              membership.shouldUseNewPrivilegeSystem,
-              ProjectPermissionMemberActions.GrantPrivileges,
-              ProjectPermissionSub.Member,
-              projectPermission,
-              rolePermission
-            );
-
-            if (!permissionBoundary.isValid)
-              throw new PermissionBoundaryError({
-                message: constructPermissionErrorMessage(
-                  "Failed to invite user to the project",
-                  membership.shouldUseNewPrivilegeSystem,
-                  ProjectPermissionMemberActions.GrantPrivileges,
-                  ProjectPermissionSub.Member
-                ),
-                details: { missingPermissions: permissionBoundary.missingPermissions }
-              });
-          }
+        if (org?.authEnforced) {
+          throw new ForbiddenRequestError({
+            name: "InviteUser",
+            message: "Failed to invite user due to org-level auth enforced for organization"
+          });
         }
 
-        const customProjectRoles = invitedProjectRoles.filter(
-          (role) => !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole)
-        );
-        const hasCustomRole = Boolean(customProjectRoles.length);
-        if (hasCustomRole) {
-          if (!plan?.rbac)
-            throw new BadRequestError({
+        // as its used by project invite also
+        ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
+        let roleId;
+        const orgRole = isCustomOrgRole ? OrgMembershipRole.Custom : organizationRoleSlug;
+        if (isCustomOrgRole) {
+          const customRole = await orgRoleDAL.findOne({ slug: organizationRoleSlug, orgId });
+          if (!customRole) {
+            throw new NotFoundError({
               name: "InviteUser",
-              message:
-                "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
+              message: `Custom organization role with slug '${orgRole}' not found`
             });
+          }
+          roleId = customRole.id;
         }
 
-        const customRoles = hasCustomRole
-          ? await projectRoleDAL.find({
-              projectId,
-              $in: { slug: customProjectRoles.map((role) => role) }
-            })
-          : [];
-        if (customRoles.length !== customProjectRoles.length) {
-          throw new NotFoundError({ name: "InviteUser", message: "Custom project role not found" });
-        }
-
-        const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
-
-        const projectMemberships = await projectMembershipDAL.insertMany(
-          userWithEncryptionKeyInvitedToProject.map((userEnc) => ({
-            projectId,
-            userId: userEnc.userId
-          })),
+        await orgDAL.createMembership(
+          {
+            userId: nonOrgUser.id,
+            inviteEmail: nonOrgUser.email,
+            orgId,
+            role: orgRole,
+            status: OrgMembershipStatus.Invited,
+            isActive: true,
+            roleId
+          },
           tx
         );
-        newProjectMemberships.push(...projectMemberships);
 
-        const sanitizedProjectMembershipRoles: TProjectUserMembershipRolesInsert[] = [];
-        invitedProjectRoles.forEach((projectRole) => {
-          const isCustomRole = Boolean(customRolesGroupBySlug?.[projectRole]?.[0]);
-          projectMemberships.forEach((membershipEntry) => {
-            sanitizedProjectMembershipRoles.push({
-              projectMembershipId: membershipEntry.id,
-              role: isCustomRole ? ProjectMembershipRole.Custom : projectRole,
-              customRoleId: customRolesGroupBySlug[projectRole] ? customRolesGroupBySlug[projectRole][0].id : null
-            });
-          });
-        });
-        await projectUserMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
-
-        mailsForProjectInvitation.push({
-          email: userWithEncryptionKeyInvitedToProject
-            .filter((el) => !userIdsWithOrgInvitation.has(el.userId))
-            .map((el) => el.email || el.username),
-          projectName: project.name
+        mailsForOrgInvitation.push({
+          email: nonOrgUser.email || nonOrgUser.username,
+          userId: nonOrgUser.id,
+          firstName: nonOrgUser?.firstName || "",
+          lastName: nonOrgUser.lastName || ""
         });
       }
-      return users;
     });
 
     await licenseService.updateSubscriptionOrgMemberCount(orgId);
@@ -1186,27 +1053,11 @@ export const orgServiceFactory = ({
       })
     );
 
-    await Promise.allSettled(
-      mailsForProjectInvitation
-        .filter((el) => Boolean(el.email.length))
-        .map(async (el) => {
-          return smtpService.sendMail({
-            template: SmtpTemplates.WorkspaceInvite,
-            subjectLine: "Infisical project invitation",
-            recipients: el.email,
-            substitutions: {
-              workspaceName: el.projectName,
-              callback_url: `${appCfg.SITE_URL}/login`
-            }
-          });
-        })
-    );
-
     if (!appCfg.isSmtpConfigured) {
-      return { signupTokens, projectMemberships: newProjectMemberships };
+      return { signupTokens, userIds: organizationMemberData?.users };
     }
 
-    return { signupTokens: undefined, projectMemberships: newProjectMemberships };
+    return { signupTokens: undefined, userIds: organizationMemberData?.users };
   };
 
   /**

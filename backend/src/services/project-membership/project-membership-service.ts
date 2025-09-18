@@ -1,7 +1,14 @@
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
+import {
+  ActionProjectType,
+  ProjectMembershipRole,
+  ProjectVersion,
+  TableName,
+  TProjectMemberships,
+  TProjectUserMembershipRolesInsert
+} from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   constructPermissionErrorMessage,
@@ -31,7 +38,8 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TProjectMembershipDALFactory } from "./project-membership-dal";
 import {
   ProjectUserMembershipTemporaryMode,
-  TAddUsersToWorkspaceDTO,
+  TAddUsersToProjectV1DTO,
+  TAddUsersToProjectV2DTO,
   TDeleteProjectMembershipOldDTO,
   TDeleteProjectMembershipsDTO,
   TGetProjectMembershipByIdDTO,
@@ -52,7 +60,10 @@ type TProjectMembershipServiceFactoryDep = {
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find" | "findOne">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgMembersByUsername">;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction" | "findProjectById">;
+  projectDAL: Pick<
+    TProjectDALFactory,
+    "findById" | "findProjectGhostUser" | "transaction" | "findProjectById" | "find"
+  >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
@@ -170,7 +181,8 @@ export const projectMembershipServiceFactory = ({
     return membership;
   };
 
-  const addUsersToProject = async ({
+  // depreciated in favour of addUsersToProjectV2
+  const addUsersToProjectV1 = async ({
     projectId,
     actorId,
     actor,
@@ -178,7 +190,7 @@ export const projectMembershipServiceFactory = ({
     actorAuthMethod,
     members,
     sendEmails = true
-  }: TAddUsersToWorkspaceDTO) => {
+  }: TAddUsersToProjectV1DTO) => {
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
@@ -262,6 +274,175 @@ export const projectMembershipServiceFactory = ({
       });
     }
     return orgMembers;
+  };
+
+  const addUsersToProjectV2 = async ({
+    actorId,
+    actor,
+    // ensure you call the respective org and namespace add users before passing this
+    validatedInvitedUsers,
+    projects: invitedProjects,
+    actorAuthMethod,
+    actorOrgId
+  }: TAddUsersToProjectV2DTO) => {
+    const appCfg = getConfig();
+    const projectsToInvite = invitedProjects?.length
+      ? await projectDAL.find({
+          orgId: actorOrgId,
+          $in: {
+            id: invitedProjects?.map(({ id }) => id)
+          }
+        })
+      : [];
+
+    if (projectsToInvite.length !== invitedProjects?.length) {
+      throw new ForbiddenRequestError({
+        message: "Access denied to one or more of the specified projects"
+      });
+    }
+
+    if (projectsToInvite.some((el) => el.version !== ProjectVersion.V3)) {
+      throw new BadRequestError({
+        message: "One or more selected projects are not compatible with this operation. Please upgrade your projects."
+      });
+    }
+
+    const mailsForProjectInvitation: { email: string[]; projectName: string }[] = [];
+    const plan = await licenseService.getPlan(actorOrgId);
+    const newProjectMemberships: TProjectMemberships[] = [];
+
+    await projectMembershipDAL.transaction(async (tx) => {
+      for await (const project of projectsToInvite) {
+        const projectId = project.id;
+        const { permission: projectPermission, membership } = await permissionService.getProjectPermission({
+          actor,
+          actorId,
+          projectId,
+          actorAuthMethod,
+          actorOrgId,
+          actionProjectType: ActionProjectType.Any
+        });
+        ForbiddenError.from(projectPermission).throwUnlessCan(
+          ProjectPermissionMemberActions.Create,
+          ProjectPermissionSub.Member
+        );
+        const existingMembers = await projectMembershipDAL.find(
+          {
+            projectId: project.id,
+            $in: { userId: validatedInvitedUsers.map((el) => el.id) }
+          },
+          { tx }
+        );
+
+        const existingMembersGroupByUserId = groupBy(existingMembers, (i) => i.userId);
+        const newProjectUsers = validatedInvitedUsers.filter((u) => !existingMembersGroupByUserId?.[u.id]);
+
+        // eslint-disable-next-line no-continue
+        if (!newProjectUsers.length) continue;
+
+        // validate custom project role
+        const invitedProjectRoles = invitedProjects.find((el) => el.id === project.id)?.projectRoleSlug || [
+          ProjectMembershipRole.Member
+        ];
+
+        for await (const invitedRole of invitedProjectRoles) {
+          const { permission: rolePermission } = await permissionService.getProjectPermissionByRole(
+            invitedRole,
+            projectId
+          );
+
+          if (invitedRole !== ProjectMembershipRole.NoAccess) {
+            const permissionBoundary = validatePrivilegeChangeOperation(
+              membership.shouldUseNewPrivilegeSystem,
+              ProjectPermissionMemberActions.GrantPrivileges,
+              ProjectPermissionSub.Member,
+              projectPermission,
+              rolePermission
+            );
+
+            if (!permissionBoundary.isValid)
+              throw new PermissionBoundaryError({
+                message: constructPermissionErrorMessage(
+                  "Failed to invite user to the project",
+                  membership.shouldUseNewPrivilegeSystem,
+                  ProjectPermissionMemberActions.GrantPrivileges,
+                  ProjectPermissionSub.Member
+                ),
+                details: { missingPermissions: permissionBoundary.missingPermissions }
+              });
+          }
+        }
+
+        const customProjectRoles = invitedProjectRoles.filter(
+          (role) => !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole)
+        );
+        const hasCustomRole = Boolean(customProjectRoles.length);
+        if (hasCustomRole) {
+          if (!plan?.rbac)
+            throw new BadRequestError({
+              name: "InviteUser",
+              message:
+                "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
+            });
+        }
+
+        const customRoles = hasCustomRole
+          ? await projectRoleDAL.find({
+              projectId,
+              $in: { slug: customProjectRoles.map((role) => role) }
+            })
+          : [];
+        if (customRoles.length !== customProjectRoles.length) {
+          throw new NotFoundError({ name: "InviteUser", message: "Custom project role not found" });
+        }
+
+        const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
+
+        const projectMemberships = await projectMembershipDAL.insertMany(
+          newProjectUsers.map((u) => ({
+            projectId,
+            userId: u.id
+          })),
+          tx
+        );
+
+        newProjectMemberships.push(...projectMemberships);
+
+        const sanitizedProjectMembershipRoles: TProjectUserMembershipRolesInsert[] = [];
+        invitedProjectRoles.forEach((projectRole) => {
+          const isCustomRole = Boolean(customRolesGroupBySlug?.[projectRole]?.[0]);
+          projectMemberships.forEach((membershipEntry) => {
+            sanitizedProjectMembershipRoles.push({
+              projectMembershipId: membershipEntry.id,
+              role: isCustomRole ? ProjectMembershipRole.Custom : projectRole,
+              customRoleId: customRolesGroupBySlug[projectRole] ? customRolesGroupBySlug[projectRole][0].id : null
+            });
+          });
+        });
+        await projectUserMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
+
+        mailsForProjectInvitation.push({
+          email: newProjectUsers?.map((el) => el.email || el.username),
+          projectName: project.name
+        });
+      }
+    });
+
+    await Promise.allSettled(
+      mailsForProjectInvitation
+        .filter((el) => Boolean(el.email.length))
+        .map(async (el) => {
+          return smtpService.sendMail({
+            template: SmtpTemplates.WorkspaceInvite,
+            subjectLine: "Infisical project invitation",
+            recipients: el.email,
+            substitutions: {
+              workspaceName: el.projectName,
+              callback_url: `${appCfg.SITE_URL}/login`
+            }
+          });
+        })
+    );
   };
 
   const updateProjectMembership = async ({
@@ -593,8 +774,9 @@ export const projectMembershipServiceFactory = ({
     updateProjectMembership,
     deleteProjectMemberships,
     deleteProjectMembership, // TODO: Remove this
-    addUsersToProject,
+    addUsersToProjectV1,
     leaveProject,
-    getProjectMembershipById
+    getProjectMembershipById,
+    addUsersToProjectV2
   };
 };
