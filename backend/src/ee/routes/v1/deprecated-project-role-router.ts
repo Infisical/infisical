@@ -78,9 +78,9 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
           type: EventType.CREATE_PROJECT_ROLE,
           metadata: {
             roleId: role.id,
-            slug: role.slug,
-            name: role.name,
-            description: role.description,
+            slug: req.body.slug,
+            name: req.body.name,
+            description: req.body.description,
             permissions: stringifiedPermissions
           }
         }
