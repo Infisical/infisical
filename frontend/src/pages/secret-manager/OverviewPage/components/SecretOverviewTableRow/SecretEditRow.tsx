@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import {
@@ -15,10 +15,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import {
-  hasSecretReference,
-  SecretReferenceTree
-} from "@app/components/secrets/SecretReferenceDetails";
+import { SecretReferenceTree } from "@app/components/secrets/SecretReferenceDetails";
 import {
   DeleteActionModal,
   IconButton,
@@ -150,12 +147,19 @@ export const SecretEditRow = ({
     control,
     reset,
     getValues,
+    setValue,
     formState: { isDirty, isSubmitting }
   } = useForm({
-    values: {
+    defaultValues: {
       value: (secretValueData?.valueOverride ?? secretValueData?.value) || null
     }
   });
+
+  useEffect(() => {
+    if (secretValueData && !isDirty) {
+      setValue("value", secretValueData.valueOverride ?? secretValueData.value);
+    }
+  }, [secretValueData]);
 
   const { permission } = useProjectPermission();
 
@@ -171,7 +175,7 @@ export const SecretEditRow = ({
   };
 
   const handleCopySecretToClipboard = async () => {
-    if (!isSecretValueFetched) {
+    if (!isSecretValueFetched && !isDirty) {
       try {
         const data = await fetchSecretValue(fetchSecretValueParams);
 
@@ -402,18 +406,12 @@ export const SecretEditRow = ({
               <Modal>
                 <ModalTrigger asChild>
                   <div className="opacity-0 group-hover:opacity-100">
-                    <Tooltip
-                      content={
-                        hasSecretReference(defaultValue || "")
-                          ? "Secret Reference Tree"
-                          : "Secret does not contain references"
-                      }
-                    >
+                    <Tooltip content="Secret Reference Tree">
                       <IconButton
                         variant="plain"
                         ariaLabel="reference-tree"
                         className="h-full"
-                        isDisabled={!hasSecretReference(defaultValue || "") || !canReadSecretValue}
+                        isDisabled={!canReadSecretValue || !secretId || isEmpty}
                       >
                         <FontAwesomeIcon icon={faProjectDiagram} />
                       </IconButton>

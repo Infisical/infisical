@@ -21,10 +21,7 @@ import { Link } from "@tanstack/react-router";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import {
-  hasSecretReference,
-  SecretReferenceTree
-} from "@app/components/secrets/SecretReferenceDetails";
+import { SecretReferenceTree } from "@app/components/secrets/SecretReferenceDetails";
 import {
   Button,
   Drawer,
@@ -843,26 +840,15 @@ export const SecretDetailSidebar = ({
               )}
             </div>
             <div className="mt-auto flex items-center space-x-2 pb-4">
-              <Tooltip
-                content={
-                  hasSecretReference(secret?.value)
-                    ? undefined
-                    : "Secret does not contain any references."
-                }
-                className="z-[100] text-center"
+              <Button
+                className="flex-1"
+                variant="outline_bg"
+                isDisabled={cannotReadSecretValue || secret.isEmpty}
+                leftIcon={<FontAwesomeIcon icon={faProjectDiagram} />}
+                onClick={() => handlePopUpOpen("secretReferenceTree", secretKey)}
               >
-                <div className="flex-1">
-                  <Button
-                    className="w-full"
-                    variant="outline_bg"
-                    isDisabled={cannotReadSecretValue || !hasSecretReference(secret?.value)}
-                    leftIcon={<FontAwesomeIcon icon={faProjectDiagram} />}
-                    onClick={() => handlePopUpOpen("secretReferenceTree", secretKey)}
-                  >
-                    Secret Reference Tree
-                  </Button>
-                </div>
-              </Tooltip>
+                Secret Reference Tree
+              </Button>
               <Tooltip content="Copy Secret ID" className="z-[100]">
                 <IconButton
                   variant="outline_bg"

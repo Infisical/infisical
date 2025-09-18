@@ -119,6 +119,7 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       sec.valueOverride = personalSecret.value;
       sec.overrideAction = "modified";
       sec.isEmpty = personalSecret.isEmpty;
+      sec.secretValueHidden = false;
     }
   });
 
