@@ -36,10 +36,6 @@ export type TDeleteOrgMembershipsDTO = {
 export type TInviteUserToOrgDTO = {
   inviteeEmails: string[];
   organizationRoleSlug: string;
-  projects?: {
-    id: string;
-    projectRoleSlug?: string[];
-  }[];
 } & TOrgPermission;
 
 export type TResendOrgMemberInvitationDTO = {

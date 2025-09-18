@@ -44,7 +44,7 @@ export type TDeleteProjectMembershipsDTO = {
   usernames: string[];
 } & TProjectPermission;
 
-export type TAddUsersToWorkspaceDTO = {
+export type TAddUsersToProjectV1DTO = {
   sendEmails?: boolean;
   members: {
     orgMembershipId: string;
@@ -53,9 +53,27 @@ export type TAddUsersToWorkspaceDTO = {
   }[];
 } & TProjectPermission;
 
-export type TAddUsersToWorkspaceNonE2EEDTO = {
+export type TAddUsersToProjectV2DTO = {
+  sendEmails?: boolean;
+  validatedInvitedUsers: { id: string; username: string; email?: string }[];
+  projects?: {
+    id: string;
+    projectRoleSlug?: string[];
+  }[];
+} & TProjectPermission;
+
+export type TAddUsersToProjectNonE2EEDTO = {
   sendEmails?: boolean;
   emails: string[];
   usernames: string[];
   roleSlugs?: string[];
+} & TProjectPermission;
+
+export type TAddUsersToProjectDTO = {
+  sendEmails?: boolean;
+  members: {
+    orgMembershipId: string;
+    workspaceEncryptedKey: string;
+    workspaceEncryptedNonce: string;
+  }[];
 } & TProjectPermission;

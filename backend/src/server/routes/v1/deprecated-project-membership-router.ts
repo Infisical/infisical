@@ -227,7 +227,7 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const data = await server.services.projectMembership.addUsersToProject({
+      const data = await server.services.projectMembership.addUsersToProjectV1({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
