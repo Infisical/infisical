@@ -230,7 +230,15 @@ export const eventToNameMap: { [K in EventType]: string } = {
 
   [EventType.DASHBOARD_LIST_SECRETS]: "Dashboard List Secrets",
   [EventType.DASHBOARD_GET_SECRET_VALUE]: "Dashboard Get Secret Value",
-  [EventType.DASHBOARD_GET_SECRET_VERSION_VALUE]: "Dashboard Get Secret Version Value"
+  [EventType.DASHBOARD_GET_SECRET_VERSION_VALUE]: "Dashboard Get Secret Version Value",
+
+  [EventType.CREATE_PROJECT_ROLE]: "Create Project Role",
+  [EventType.UPDATE_PROJECT_ROLE]: "Update Project Role",
+  [EventType.DELETE_PROJECT_ROLE]: "Delete Project Role",
+
+  [EventType.CREATE_ORG_ROLE]: "Create Org Role",
+  [EventType.UPDATE_ORG_ROLE]: "Update Org Role",
+  [EventType.DELETE_ORG_ROLE]: "Delete Org Role"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
