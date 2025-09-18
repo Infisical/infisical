@@ -1083,7 +1083,7 @@ export const relayServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.DeleteRelays, OrgPermissionSubjects.Relay);
 
     const relay = await relayDAL.findById(id);
-    if (!relay || relay.orgId !== actorOrgId) {
+    if (!relay || relay.orgId !== actorOrgId || relay.orgId === null) {
       throw new NotFoundError({ message: "Relay not found" });
     }
 

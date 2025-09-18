@@ -163,7 +163,7 @@ export const OrgRelayPermissionRow = ({ isEditable, control, setValue }: Props) 
                           }
                           field.onChange(e);
                         }}
-                        id={`permissions.relays.${action}`}
+                        id={`permissions.relay.${action}`}
                       >
                         {label}
                       </Checkbox>

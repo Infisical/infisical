@@ -4,7 +4,7 @@ import { RelaysSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { UnauthorizedError } from "@app/lib/errors";
-import { writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -106,6 +106,9 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
       response: {
         200: RelaysSchema.array()
       }
+    },
+    config: {
+      rateLimit: readLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
