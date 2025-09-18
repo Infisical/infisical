@@ -39,6 +39,7 @@ export enum ApiDocsTags {
   ProjectIdentities = "Project Identities",
   ProjectRoles = "Project Roles",
   NamespaceRoles = "Namespace Roles",
+  NamespaceUserMemberships = "Namespace User Memberships",
   ProjectTemplates = "Project Templates",
   Environments = "Environments",
   Folders = "Folders",
@@ -2981,5 +2982,37 @@ export const NAMESPACES = {
   },
   DELETE: {
     name: "The name of the namespace to delete."
+  }
+};
+
+export const NAMESPACE_USER_MEMBERSHIPS = {
+  LIST: {
+    namespaceSlug: "The slug of the namespace to list memberships for.",
+    limit: "The number of memberships to return. Maximum is 1000.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th membership."
+  },
+  GET: {
+    namespaceSlug: "The slug of the namespace.",
+    membershipId: "The ID of the membership to retrieve."
+  },
+  SEARCH: {
+    namespaceSlug: "The slug of the namespace to search memberships in.",
+    username: "Search term to filter memberships by username.",
+    limit: "The number of memberships to return. Maximum is 100.",
+    offset: "The offset to start from."
+  },
+  UPDATE: {
+    namespaceSlug: "The slug of the namespace.",
+    membershipId: "The ID of the membership to update.",
+    roles: "The roles to assign to the user. Can include temporary role assignments."
+  },
+  DELETE: {
+    namespaceSlug: "The slug of the namespace.",
+    membershipId: "The ID of the membership to delete."
+  },
+  ADD_USER: {
+    namespaceSlug: "The slug of the namespace to add users to.",
+    usernames: "Array of usernames to add to the namespace.",
+    roleSlugs: "Array of role slugs to assign to the users."
   }
 };

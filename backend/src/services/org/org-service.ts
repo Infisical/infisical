@@ -1024,10 +1024,10 @@ export const orgServiceFactory = ({
     );
 
     if (!appCfg.isSmtpConfigured) {
-      return { signupTokens, userIds: organizationMemberData?.users };
+      return { signupTokens, users: organizationMemberData?.users };
     }
 
-    return { signupTokens: undefined, userIds: organizationMemberData?.users };
+    return { signupTokens: undefined, users: organizationMemberData?.users };
   };
 
   /**

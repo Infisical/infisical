@@ -121,6 +121,7 @@ import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 import { TNamespaceServiceFactory } from "@app/ee/services/namespace/namespace-service";
 import { TNamespaceRoleServiceFactory } from "@app/services/namespace-role/namespace-role-service";
+import { TNamespaceUserMembershipServiceFactory } from "@app/ee/services/namespace-user-membership/namespace-user-membership-service";
 
 declare module "@fastify/request-context" {
   interface RequestContextData {
@@ -316,6 +317,7 @@ declare module "fastify" {
       offlineUsageReport: TOfflineUsageReportServiceFactory;
       namespace: TNamespaceServiceFactory;
       namespaceRole: TNamespaceRoleServiceFactory;
+      namespaceUserMembership: TNamespaceUserMembershipServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

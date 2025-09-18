@@ -1,12 +1,38 @@
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, sqlNestRelationships } from "@app/lib/knex";
+import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 export type TNamespaceUserMembershipDALFactory = ReturnType<typeof namespaceUserMembershipDALFactory>;
 
 export const namespaceUserMembershipDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.NamespaceMembership);
+
+  const findMembershipsByUsername = async (namespaceId: string, usernames: string[]) => {
+    try {
+      const members = await db
+        .replicaNode()(TableName.NamespaceMembership)
+        .where({ [`${TableName.NamespaceMembership}.namespaceid` as "namespaceId"]: namespaceId })
+        .whereNotNull(`${TableName.NamespaceMembership}.orgUserMembershipId` as "orgUserMembershipId")
+        .join(
+          TableName.OrgMembership,
+          `${TableName.NamespaceMembership}.orgUserMembershipId`,
+          `${TableName.OrgMembership}.id`
+        )
+        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .select(selectAllTableCols(TableName.NamespaceMembership))
+        .select(db.ref("id").withSchema(TableName.Users).as("userId"), db.ref("username").withSchema(TableName.Users))
+        .whereIn("username", usernames)
+        .where({ isGhost: false });
+
+      return members.map(({ userId, username, ...data }) => ({
+        ...data,
+        user: { id: userId, username }
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find namespace members by email" });
+    }
+  };
 
   const findAllMembers = async (
     namespaceId: string,
@@ -75,6 +101,7 @@ export const namespaceUserMembershipDALFactory = (db: TDbClient) => {
         .select(
           db.ref("id").withSchema(TableName.NamespaceMembership),
           db.ref("createdAt").withSchema(TableName.NamespaceMembership),
+          db.ref("updatedAt").withSchema(TableName.NamespaceMembership),
           db.ref("username").withSchema(TableName.Users),
           db.ref("email").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
@@ -98,7 +125,18 @@ export const namespaceUserMembershipDALFactory = (db: TDbClient) => {
 
       const members = sqlNestRelationships({
         data: docs,
-        parentMapper: ({ email, firstName, username, lastName, id, userId, namespaceName, createdAt, isActive }) => ({
+        parentMapper: ({
+          email,
+          firstName,
+          username,
+          lastName,
+          id,
+          userId,
+          namespaceName,
+          createdAt,
+          isActive,
+          updatedAt
+        }) => ({
           id,
           userId,
           namespaceId,
@@ -114,7 +152,8 @@ export const namespaceUserMembershipDALFactory = (db: TDbClient) => {
             id: namespaceId,
             name: namespaceName
           },
-          createdAt
+          createdAt,
+          updatedAt
         }),
         key: "id",
         childrenMapper: [
@@ -162,6 +201,7 @@ export const namespaceUserMembershipDALFactory = (db: TDbClient) => {
 
   return {
     ...orm,
-    findAllMembers
+    findAllMembers,
+    findMembershipsByUsername
   };
 };
