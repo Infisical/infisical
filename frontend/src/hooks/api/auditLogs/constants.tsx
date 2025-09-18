@@ -222,7 +222,15 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_ORG]: "Update Organization",
   [EventType.CREATE_PROJECT]: "Create Project",
   [EventType.UPDATE_PROJECT]: "Update Project",
-  [EventType.DELETE_PROJECT]: "Delete Project"
+  [EventType.DELETE_PROJECT]: "Delete Project",
+
+  [EventType.CREATE_PROJECT_ROLE]: "Create Project Role",
+  [EventType.UPDATE_PROJECT_ROLE]: "Update Project Role",
+  [EventType.DELETE_PROJECT_ROLE]: "Delete Project Role",
+
+  [EventType.CREATE_ORG_ROLE]: "Create Org Role",
+  [EventType.UPDATE_ORG_ROLE]: "Update Org Role",
+  [EventType.DELETE_ORG_ROLE]: "Delete Org Role"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
