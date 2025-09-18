@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 import { RailwayPublicAPI } from "@app/services/app-connection/railway/railway-connection-public-client";
-import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
 import { TSecretMap } from "../secret-sync-types";
