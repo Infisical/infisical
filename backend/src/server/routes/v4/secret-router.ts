@@ -762,7 +762,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.Secrets],
       body: z.object({
-        projectSlug: z.string().trim(),
+        projectId: z.string().trim(),
         sourceEnvironment: z.string().trim(),
         sourceSecretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         destinationEnvironment: z.string().trim(),
