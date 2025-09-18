@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
 import { RailwayPublicAPI } from "@app/services/app-connection/railway/railway-connection-public-client";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
 import { TSecretMap } from "../secret-sync-types";
@@ -11,6 +12,8 @@ export const RailwaySyncFns = {
   async getSecrets(secretSync: TRailwaySyncWithCredentials): Promise<TSecretMap> {
     try {
       const config = secretSync.destinationConfig;
+      const { keySchema } = secretSync.syncOptions;
+      const { environment } = secretSync;
 
       const variables = await RailwayPublicAPI.getVariables(secretSync.connection, {
         projectId: config.projectId,
@@ -24,6 +27,10 @@ export const RailwaySyncFns = {
         // Skip importing private railway variables
         // eslint-disable-next-line no-continue
         if (key.startsWith("RAILWAY_")) continue;
+
+        // Check if key matches the schema
+        // eslint-disable-next-line no-continue
+        if (!matchesSchema(key, environment?.slug || "", keySchema)) continue;
 
         entries[key] = {
           value
