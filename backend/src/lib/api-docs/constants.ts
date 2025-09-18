@@ -2094,6 +2094,9 @@ export const NAMESPACE_ROLE = {
     roleSlug: "The slug of the role to get details."
   },
   LIST: {
+    offset: "The offset to start from. If you enter 10, it will start from the 10th key.",
+    search: "The text string to filter key names by.",
+    limit: "The number of keys to return.",
     namespaceName: "The name of the namespace to list the roles of."
   },
   GET_USER_PERMISSIONS: {

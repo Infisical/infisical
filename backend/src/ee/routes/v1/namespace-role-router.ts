@@ -162,22 +162,31 @@ export const registerNamespaceRoleRouter = async (server: FastifyZodProvider) =>
       params: z.object({
         namespaceName: z.string().trim().describe(NAMESPACE_ROLE.LIST.namespaceName)
       }),
+      querystring: z.object({
+        offset: z.coerce.number().min(0).default(0).describe(NAMESPACE_ROLE.LIST.offset),
+        limit: z.coerce.number().min(1).max(100).default(50).describe(NAMESPACE_ROLE.LIST.limit),
+        search: z.string().optional().describe(NAMESPACE_ROLE.LIST.search)
+      }),
       response: {
         200: z.object({
-          roles: NamespaceRolesSchema.omit({ permissions: true }).array()
+          roles: NamespaceRolesSchema.omit({ permissions: true }).array(),
+          totalCount: z.number()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const roles = await server.services.namespaceRole.listRoles({
+      const { roles, totalCount } = await server.services.namespaceRole.listRoles({
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
-        namespaceName: req.params.namespaceName
+        namespaceName: req.params.namespaceName,
+        offset: req.query.offset,
+        limit: req.query.limit,
+        search: req.query.search
       });
-      return { roles };
+      return { roles, totalCount };
     }
   });
 

@@ -24,6 +24,9 @@ export type TDeleteNamespaceRoleDTO = {
 
 export type TListNamespaceRolesDTO = {
   namespaceName: string;
+  limit?: number;
+  offset?: number;
+  search?: string;
 } & Omit<TNamespacePermission, "namespaceId">;
 
 export type TGetNamespacePredefinedRolesDTO = {
