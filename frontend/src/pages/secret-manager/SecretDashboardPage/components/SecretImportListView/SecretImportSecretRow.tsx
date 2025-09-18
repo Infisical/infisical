@@ -63,9 +63,6 @@ export const SecretImportSecretRow = ({
           isReadOnly
         />
       </td>
-      {/* <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
-            <EnvFolderIcon env={overriden?.env} secretPath={overriden?.secretPath} />
-          </td> */}
     </tr>
   );
 };

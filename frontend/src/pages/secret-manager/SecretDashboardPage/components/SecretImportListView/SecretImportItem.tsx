@@ -304,7 +304,6 @@ export const SecretImportItem = ({
                   <tr>
                     <td style={{ padding: "0.25rem 1rem" }}>Key</td>
                     <td style={{ padding: "0.25rem 1rem" }}>Value</td>
-                    {/* <td style={{ padding: "0.25rem 1rem" }}>Override</td> */}
                   </tr>
                 </thead>
                 <tbody>
