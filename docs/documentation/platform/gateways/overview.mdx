@@ -6,7 +6,9 @@ description: "How to access private network resources from Infisical"
 
 ![Architecture Overview](../../../images/platform/gateways/gateway-highlevel-diagram.png)
 
-The Infisical Gateway provides secure access to private resources within your network without needing direct inbound connections to your environment. This method keeps your resources fully protected from external access while enabling Infisical to securely interact with resources like databases.
+The Infisical Gateway provides secure access to private resources within your network without needing direct inbound connections to your environment. 
+This is particularly useful when Infisical isn't hosted within the same network as the resources it needs to reach. 
+This method keeps your resources fully protected from external access while enabling Infisical to securely interact with resources like databases.
 
 <Info>
   Gateway is a paid feature available under the Enterprise Tier for Infisical
@@ -15,84 +17,62 @@ The Infisical Gateway provides secure access to private resources within your ne
   license.
 </Info>
 
-## What are Gateways and Relays?
+## Core Components
 
-### Gateway
+The Gateway system consists of two primary components working together to enable secure network access:
 
-A lightweight service deployed within your VPCs that provides secure access to private resources:
+<Tabs>
+  <Tab title="Gateway" icon="server">
+  A Gateway is a lightweight service that you deploy within your own network infrastructure to provide secure access to your private resources. Think of it as a secure bridge between Infisical and your internal systems.
 
-- **Runs inside your network** - Deployed within your VPCs, data centers, or on-premises infrastructure
-- **Makes outbound connections only** - No inbound firewall rules required
-- **Provides secure access** - Uses SSH reverse tunnels and certificate-based authentication
-- **Handles resource connections** - Connects to your private databases, APIs, and services
+  Gateways must be deployed within the same network where your target resources are located, with direct network connectivity to the private resources you want Infisical to access. 
+  For different networks, regions, or isolated environments, you'll need to deploy separate gateways.
 
-### Relay Server
+  **Core Functions:**
+  - **Network Placement**: Deployed within your VPCs, data centers, or on-premises infrastructure where your private resources live
+  - **Connection Model**: Only makes outbound connections to Infisical's relay servers, so no inbound firewall rules are needed
+  - **Security Method**: Uses SSH reverse tunnels with certificate-based authentication for maximum security
+  - **Resource Access**: Acts as a proxy to connect Infisical to your private databases, APIs, and other services
+  </Tab>
 
-Infrastructure that routes encrypted traffic between the Infisical platform and gateways:
+  <Tab title="Relay Server" icon="route">
+  A Relay Server is the routing infrastructure that enables secure communication between the Infisical platform and your deployed gateways. It acts as an intermediary that never sees your actual data.
 
-- **Routes encrypted traffic** - Routes traffic between the platform and gateways
-- **Provides network isolation** - Enables communication without direct connections
-- **Handles authentication** - Manages SSH certificate validation and routing
-- **Ensures security** - Uses double encryption to protect data in transit
+  **Core Functions:**
+  - **Traffic Routing**: Routes encrypted traffic between the Infisical platform and your gateways without storing or inspecting the data
+  - **Network Isolation**: Enables secure communication without requiring direct network connections between Infisical and your private infrastructure  
+  - **Authentication Management**: Validates SSH certificates and manages secure routing between authenticated gateways
+
+  **Deployment Options:**
+  To reduce operational overhead, Infisical Cloud (US/EU) provides managed relay infrastructure, though organizations can also deploy their own relays for reduced latency.
+  - **Infisical Managed**: Use pre-deployed relays in select regions, shared across all Infisical Cloud organizations. Each organization traffic is isolated and encrypted.
+  - **Self-Deployed**: Deploy your own dedicated relay servers geographically close to your infrastructure for reduced latency.
+  </Tab>
+</Tabs>
 
 ## How It Works
 
 The Gateway system uses SSH reverse tunnels for secure, firewall-friendly connectivity:
 
 1. **Gateway Registration**: The gateway establishes an outbound SSH reverse tunnel to a relay server using SSH certificates issued by Infisical
-2. **Relay Routing**: The relay server routes encrypted traffic between the Infisical platform and gateways
-3. **Resource Access**: The Infisical platform connects to your private resources through the established gateway connections
+2. **Persistent Connection**: The gateway maintains an open TCP connection with the relay server, creating a secure channel for incoming requests
+3. **Request Routing**: When Infisical needs to access your resources, requests are routed through the relay server to the already-established gateway connection
+4. **Resource Access**: The gateway receives the routed requests and connects to your private resources on behalf of Infisical
 
-**Key Benefits:**
+## Getting Started
 
-- **No inbound firewall rules needed** - all connections are outbound from your network
-- **Firewall-friendly** - uses standard SSH over TCP
-- **Certificate-based authentication** provides enhanced security
-- **Automatic reconnection** if connections are lost
+Ready to set up your gateway? Follow the guides below.
 
-## Understanding Relay Types
-
-Relays are the routing infrastructure that enables secure communication between Infisical and your gateways. There are two main approaches to relay deployment:
-
-**Managed Relays** - Use Infisical's hosted relay infrastructure in US/EU regions for quick setup with minimal operational overhead.
-
-**Self-Deployed Relays** - Deploy your own relay servers for regional proximity, enhanced control, and custom network policies.
-
-### Managed Relays (Recommended for Most Users)
-
-Managed relays are pre-configured relay servers hosted by Infisical that can serve multiple organizations with minimal operational overhead.
-
-**Infisical Cloud (US/EU Regions):**
-
-- Pre-configured relays in US and EU regions
-- No setup or maintenance required
-- Shared across all Infisical Cloud organizations
-- Managed and monitored by Infisical
-- Best for getting started quickly
-
-**Self-Hosted Instance Relays:**
-
-- Instance administrators can deploy shared relays for their entire instance
-- All organizations on the instance can use these relays
-- Reduces operational burden for individual Organizations
-- Ideal for self-hosted instances wanting shared relay infrastructure
-
-### Self-Deployed Relays (Organization-Specific)
-
-Organizations can deploy and manage their own dedicated relay servers for regional proximity, network control, compliance requirements, or enhanced security.
-
-**Key Benefits:**
-
-- Deploy in any region or cloud provider for lower latency
-- Custom network configurations and security policies
-- Dedicated resources not shared with other organizations
-- Full control over relay infrastructure
-- Uses standard Infisical authentication methods
-
-## Next Steps
-
-Ready to get started? Follow these guides:
-
-1. **[Gateway Deployment](/documentation/platform/gateways/gateway-deployment)** - Complete gateway deployment and network configuration
-2. **[Relay Deployment](/documentation/platform/gateways/relay-deployment)** - Complete relay deployment and network configuration
-3. **[Security Architecture](/documentation/platform/gateways/security)** - Security model and best practices
+<Columns cols={2}>
+  <Card title="Gateway Deployment" href="/documentation/platform/gateways/gateway-deployment">
+    Deploy and configure your gateway within your network infrastructure.
+  </Card>
+  <Card title="Relay Deployment" href="/documentation/platform/gateways/relay-deployment">
+    Set up relay servers if using self-deployed infrastructure.
+  </Card>
+</Columns>
+<Columns cols={1}>
+  <Card title="Security Architecture" href="/documentation/platform/gateways/security">
+    Learn about the security model and implementation best practices.
+  </Card>
+</Columns>
