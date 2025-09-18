@@ -188,7 +188,13 @@ export enum TableName {
   Relay = "relays",
   GatewayV2 = "gateways_v2",
 
-  KeyValueStore = "key_value_store"
+  KeyValueStore = "key_value_store",
+
+  // PAM
+  PamFolder = "pam_folders",
+  PamResource = "pam_resources",
+  PamAccount = "pam_accounts",
+  PamSession = "pam_sessions"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

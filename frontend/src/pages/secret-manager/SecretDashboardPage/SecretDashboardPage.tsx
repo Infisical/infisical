@@ -570,6 +570,9 @@ const Page = () => {
     const newChecks = { ...selectedSecrets };
 
     secrets?.forEach((secret) => {
+      // bulk actions don't apply to rotation secrets (move/delete)
+      if (secret.isRotatedSecret) return;
+
       if (allRowsSelectedOnPage.isChecked) {
         delete newChecks[secret.id];
       } else {

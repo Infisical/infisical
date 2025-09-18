@@ -40,13 +40,9 @@ To interact with various resources in Infisical, Machine Identities can authenti
 
 ## Identity Lockout
 
-Lockout is a feature that prevents brute-force attacks on identity login endpoints. Auth methods that support lockout include: [Universal Auth](/documentation/platform/identities/universal-auth).
+Lockout is a feature that prevents brute-force attacks on identity login endpoints. Auth methods that support lockout include: [Universal Auth](/documentation/platform/identities/universal-auth), [LDAP Auth](/documentation/platform/identities/ldap-auth/general).
 
 Supported auth methods have lockout enabled by default. If triggered, lockout temporarily disables the login endpoint for 5 minutes after 3 consecutive failed login attempts within a 30-second window. Lockout can be configured and disabled in the identity auth method settings.
-
-<Warning>
-    When Lockout is enabled, a rate limit of approximately 10 requests per second is enforced on relevant authentication endpoints. This security measure employs a protective lock to mitigate parallel login attacks. If this rate limitation interferes with your operational requirements, you may consider disabling Lockout.
-</Warning>
 
 ## FAQ
 
