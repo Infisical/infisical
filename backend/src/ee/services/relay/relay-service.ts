@@ -1,9 +1,11 @@
+import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts, prependCertToPemChain } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import {
@@ -14,6 +16,9 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
+import { TLicenseServiceFactory } from "../license/license-service";
+import { OrgPermissionRelayActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { createSshCert, createSshKeyPair } from "../ssh/ssh-certificate-authority-fns";
 import { SshCertType } from "../ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "../ssh-certificate/ssh-certificate-types";
@@ -29,12 +34,16 @@ export const relayServiceFactory = ({
   instanceRelayConfigDAL,
   orgRelayConfigDAL,
   relayDAL,
-  kmsService
+  kmsService,
+  licenseService,
+  permissionService
 }: {
   instanceRelayConfigDAL: TInstanceRelayConfigDALFactory;
   orgRelayConfigDAL: TOrgRelayConfigDALFactory;
   relayDAL: TRelayDALFactory;
   kmsService: TKmsServiceFactory;
+  licenseService: TLicenseServiceFactory;
+  permissionService: TPermissionServiceFactory;
 }) => {
   const $getInstanceCAs = async () => {
     const instanceConfig = await instanceRelayConfigDAL.transaction(async (tx) => {
@@ -819,10 +828,10 @@ export const relayServiceFactory = ({
     const relayClientSshCert = await createSshCert({
       caPrivateKey: orgCAs.relaySshClientCaPrivateKey.toString("utf8"),
       clientPublicKey: relayClientSshPublicKey,
-      keyId: `relay-client-${relay.id}`,
+      keyId: `client-${relayName}`,
       principals: [gatewayId],
       certType: SshCertType.USER,
-      requestedTtl: "30d"
+      requestedTtl: "1d"
     });
 
     return {
@@ -895,11 +904,13 @@ export const relayServiceFactory = ({
     host,
     name,
     identityId,
+    actorAuthMethod,
     orgId
   }: {
     host: string;
     name: string;
     identityId?: string;
+    actorAuthMethod?: ActorAuthMethod;
     orgId?: string;
   }) => {
     let relay: TRelays;
@@ -908,6 +919,27 @@ export const relayServiceFactory = ({
     await verifyHostInputValidity(host);
 
     if (isOrgRelay) {
+      const orgLicensePlan = await licenseService.getPlan(orgId);
+      if (!orgLicensePlan.gateway) {
+        throw new BadRequestError({
+          message:
+            "Relay registration failed due to organization plan restrictions. Please upgrade your instance to Infisical's Enterprise plan."
+        });
+      }
+
+      const { permission } = await permissionService.getOrgPermission(
+        ActorType.IDENTITY,
+        identityId,
+        orgId,
+        actorAuthMethod!,
+        orgId
+      );
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionRelayActions.CreateRelays,
+        OrgPermissionSubjects.Relay
+      );
+
       relay = await relayDAL.transaction(async (tx) => {
         const existingRelay = await relayDAL.findOne(
           {
@@ -995,9 +1027,75 @@ export const relayServiceFactory = ({
     });
   };
 
+  const getRelays = async ({
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    actorId: string;
+    actor: ActorType;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+  }) => {
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.ListRelays, OrgPermissionSubjects.Relay);
+
+    const instanceRelays = await relayDAL.find({
+      orgId: null
+    });
+
+    const orgRelays = await relayDAL.find({
+      orgId: actorOrgId
+    });
+
+    return [...instanceRelays, ...orgRelays];
+  };
+
+  const deleteRelay = async ({
+    id,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    id: string;
+    actorId: string;
+    actor: ActorType;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+  }) => {
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.DeleteRelays, OrgPermissionSubjects.Relay);
+
+    const relay = await relayDAL.findById(id);
+    if (!relay || relay.orgId !== actorOrgId) {
+      throw new NotFoundError({ message: "Relay not found" });
+    }
+
+    const deletedRelay = await relayDAL.deleteById(id);
+    return deletedRelay;
+  };
+
   return {
     registerRelay,
     getCredentialsForGateway,
-    getCredentialsForClient
+    getCredentialsForClient,
+    getRelays,
+    deleteRelay
   };
 };

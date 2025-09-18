@@ -58,6 +58,13 @@ export enum OrgPermissionGatewayActions {
   AttachGateways = "attach-gateways"
 }
 
+export enum OrgPermissionRelayActions {
+  CreateRelays = "create-relays",
+  ListRelays = "list-relays",
+  EditRelays = "edit-relays",
+  DeleteRelays = "delete-relays"
+}
+
 export enum OrgPermissionIdentityActions {
   Read = "read",
   Create = "create",
@@ -109,6 +116,7 @@ export enum OrgPermissionSubjects {
   AppConnections = "app-connections",
   Kmip = "kmip",
   Gateway = "gateway",
+  Relay = "relay",
   SecretShare = "secret-share"
 }
 
@@ -136,6 +144,7 @@ export type OrgPermissionSet =
   | [OrgPermissionAuditLogsActions, OrgPermissionSubjects.AuditLogs]
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
   | [OrgPermissionGatewayActions, OrgPermissionSubjects.Gateway]
+  | [OrgPermissionRelayActions, OrgPermissionSubjects.Relay]
   | [
       OrgPermissionAppConnectionActions,
       (
@@ -279,6 +288,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionGatewayActions).describe(
       "Describe what action an entity can take."
     )
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.Relay).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionRelayActions).describe(
+      "Describe what action an entity can take."
+    )
   })
 ]);
 
@@ -383,6 +398,11 @@ const buildAdminPermission = () => {
   can(OrgPermissionGatewayActions.DeleteGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.AttachGateways, OrgPermissionSubjects.Gateway);
 
+  can(OrgPermissionRelayActions.ListRelays, OrgPermissionSubjects.Relay);
+  can(OrgPermissionRelayActions.CreateRelays, OrgPermissionSubjects.Relay);
+  can(OrgPermissionRelayActions.EditRelays, OrgPermissionSubjects.Relay);
+  can(OrgPermissionRelayActions.DeleteRelays, OrgPermissionSubjects.Relay);
+
   can(OrgPermissionAdminConsoleAction.AccessAllProjects, OrgPermissionSubjects.AdminConsole);
 
   can(OrgPermissionKmipActions.Setup, OrgPermissionSubjects.Kmip);
@@ -444,6 +464,10 @@ const buildMemberPermission = () => {
   can(OrgPermissionGatewayActions.ListGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.CreateGateways, OrgPermissionSubjects.Gateway);
   can(OrgPermissionGatewayActions.AttachGateways, OrgPermissionSubjects.Gateway);
+
+  can(OrgPermissionRelayActions.ListRelays, OrgPermissionSubjects.Relay);
+  can(OrgPermissionRelayActions.CreateRelays, OrgPermissionSubjects.Relay);
+  can(OrgPermissionRelayActions.EditRelays, OrgPermissionSubjects.Relay);
 
   can(OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates, OrgPermissionSubjects.MachineIdentityAuthTemplate);
   can(

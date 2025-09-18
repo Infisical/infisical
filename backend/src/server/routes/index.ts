@@ -1110,7 +1110,9 @@ export const registerRoutes = async (
     instanceRelayConfigDAL,
     orgRelayConfigDAL,
     relayDAL,
-    kmsService
+    kmsService,
+    licenseService,
+    permissionService
   });
 
   const gatewayV2Service = gatewayV2ServiceFactory({
