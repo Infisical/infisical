@@ -40,6 +40,7 @@ export enum ApiDocsTags {
   ProjectRoles = "Project Roles",
   NamespaceRoles = "Namespace Roles",
   NamespaceUserMemberships = "Namespace User Memberships",
+  NamespaceIdentityMemberships = "Namespace Identity Memberships",
   ProjectTemplates = "Project Templates",
   Environments = "Environments",
   Folders = "Folders",
@@ -882,6 +883,51 @@ export const PROJECT_IDENTITIES = {
     roles: {
       description: "A list of role slugs to assign to the newly created identity project membership.",
       role: "The role slug to assign to the newly created identity project membership.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
+      temporaryMode: "Type of temporary expiry.",
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s, 2m, 3h, etc.",
+      temporaryAccessStartTime: "Time to which the temporary access starts."
+    }
+  }
+};
+
+export const NAMESPACE_IDENTITY_MEMBERSHIPS = {
+  LIST_IDENTITY_MEMBERSHIPS: {
+    namespaceSlug: "The slug of the namespace to get identity memberships from.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity membership.",
+    limit: "The number of identity memberships to return.",
+    orderBy: "The column to order identity memberships by.",
+    orderDirection: "The direction identity memberships will be sorted in.",
+    search: "The text string that identity membership names will be filtered by."
+  },
+  GET_IDENTITY_MEMBERSHIP_BY_ID: {
+    identityId: "The ID of the identity to get the membership for.",
+    namespaceSlug: "The slug of the namespace to get the identity membership for."
+  },
+  UPDATE_IDENTITY_MEMBERSHIP: {
+    namespaceSlug: "The slug of the namespace to update the identity membership for.",
+    identityId: "The ID of the identity to update the membership for.",
+    roles: {
+      description: "A list of role slugs to assign to the identity namespace membership.",
+      role: "The role slug to assign to the identity namespace membership.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
+      temporaryMode: "Type of temporary expiry.",
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s, 2m, 3h, etc.",
+      temporaryAccessStartTime: "Time to which the temporary access starts."
+    }
+  },
+  DELETE_IDENTITY_MEMBERSHIP: {
+    namespaceSlug: "The slug of the namespace to delete the identity membership from.",
+    identityId: "The ID of the identity to delete the membership from."
+  },
+  CREATE_IDENTITY_MEMBERSHIP: {
+    namespaceSlug: "The slug of the namespace to create the identity membership for.",
+    identityId: "The ID of the identity to create the membership for.",
+    roles: {
+      description: "A list of role slugs to assign to the newly created identity namespace membership.",
+      role: "The role slug to assign to the newly created identity namespace membership.",
       isTemporary:
         "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
       temporaryMode: "Type of temporary expiry.",
