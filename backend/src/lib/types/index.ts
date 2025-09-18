@@ -21,6 +21,14 @@ export type TOrgPermission = {
   actorOrgId: string;
 };
 
+export type TNamespacePermission = {
+  actor: ActorType;
+  actorId: string;
+  namespaceId: string;
+  actorAuthMethod: ActorAuthMethod;
+  actorOrgId: string;
+};
+
 export type TProjectPermission = {
   actor: ActorType;
   actorId: string;

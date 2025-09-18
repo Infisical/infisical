@@ -38,6 +38,7 @@ export enum ApiDocsTags {
   ProjectGroups = "Project Groups",
   ProjectIdentities = "Project Identities",
   ProjectRoles = "Project Roles",
+  NamespaceRoles = "Namespace Roles",
   ProjectTemplates = "Project Templates",
   Environments = "Environments",
   Folders = "Folders",
@@ -2065,6 +2066,38 @@ export const PROJECT_ROLE = {
   LIST: {
     projectSlug: "The slug of the project to list the roles of.",
     projectId: "The ID of the project."
+  }
+};
+
+export const NAMESPACE_ROLE = {
+  CREATE: {
+    namespaceName: "Name of the namespace to create the role for.",
+    slug: "The slug of the role.",
+    name: "The name of the role.",
+    description: "The description for the role.",
+    permissions: "The permissions assigned to the role."
+  },
+  UPDATE: {
+    namespaceName: "The name of the namespace to update the role for.",
+    roleId: "The ID of the role to update",
+    slug: "The slug of the role.",
+    name: "The name of the role.",
+    description: "The description for the role.",
+    permissions: "The permissions assigned to the role."
+  },
+  DELETE: {
+    namespaceName: "The name of the namespace to delete this role for.",
+    roleId: "The ID of the role to delete"
+  },
+  GET_ROLE_BY_SLUG: {
+    namespaceName: "The name of the namespace.",
+    roleSlug: "The slug of the role to get details."
+  },
+  LIST: {
+    namespaceName: "The name of the namespace to list the roles of."
+  },
+  GET_USER_PERMISSIONS: {
+    namespaceName: "The name of the namespace to get user permissions for."
   }
 };
 
