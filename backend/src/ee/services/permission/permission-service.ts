@@ -30,6 +30,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { TServiceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 
+import { TNamespaceRoleDALFactory } from "../namespace-role/namespace-role-dal";
 import {
   namespaceAdminPermissions,
   namespaceMemberPermissions,
@@ -55,6 +56,7 @@ import { buildServiceTokenProjectPermission, ProjectPermissionSet } from "./proj
 type TPermissionServiceFactoryDep = {
   orgRoleDAL: Pick<TOrgRoleDALFactory, "findOne">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "findOne">;
+  namespaceRoleDAL: Pick<TNamespaceRoleDALFactory, "findOne">;
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionDAL: TPermissionDALFactory;
@@ -65,7 +67,8 @@ export const permissionServiceFactory = ({
   orgRoleDAL,
   projectRoleDAL,
   serviceTokenDAL,
-  projectDAL
+  projectDAL,
+  namespaceRoleDAL
 }: TPermissionServiceFactoryDep): TPermissionServiceFactory => {
   const buildOrgPermission = (orgUserRoles: TBuildOrgPermissionDTO) => {
     const rules = orgUserRoles
@@ -850,6 +853,33 @@ export const permissionServiceFactory = ({
     return { permission };
   };
 
+  const getNamespacePermissionByRole: TPermissionServiceFactory["getNamespacePermissionByRole"] = async (
+    role,
+    namespaceId
+  ) => {
+    const isCustomRole = !Object.values(NamespaceMembershipRole).includes(role as NamespaceMembershipRole);
+    if (isCustomRole) {
+      const namespaceRole = await namespaceRoleDAL.findOne({ slug: role, namespaceId });
+      if (!namespaceRole) throw new NotFoundError({ message: `Specified role was not found: ${role}` });
+
+      const rules = buildNamespacePermission([
+        { role: NamespaceMembershipRole.Custom, permissions: namespaceRole.permissions }
+      ]);
+      return {
+        permission: createMongoAbility<NamespacePermissionSet>(rules.rules, {
+          conditionsMatcher
+        }),
+        role: namespaceRole
+      };
+    }
+
+    const rules = buildNamespacePermission([{ role, permissions: [] }]);
+    const permission = createMongoAbility<NamespacePermissionSet>(rules.rules, {
+      conditionsMatcher
+    });
+    return { permission };
+  };
+
   const checkGroupProjectPermission: TPermissionServiceFactory["checkGroupProjectPermission"] = async ({
     groupId,
     projectId,
@@ -887,6 +917,7 @@ export const permissionServiceFactory = ({
     checkGroupProjectPermission,
     buildNamespacePermission,
     getUserNamespacePermission,
-    getNamespacePermission
+    getNamespacePermission,
+    getNamespacePermissionByRole
   };
 };

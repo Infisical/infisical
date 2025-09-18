@@ -160,6 +160,7 @@ export interface TPermissionDALFactory {
         orgGoogleSsoAuthEnforced: boolean;
         orgRole: OrgMembershipRole;
         bypassOrgAuthEnabled: boolean;
+        shouldUseNewPrivilegeSystem: boolean;
         userId: string;
         id: string;
         createdAt: Date;
@@ -214,6 +215,7 @@ export interface TPermissionDALFactory {
         }[];
         id: string;
         identityId: string;
+        shouldUseNewPrivilegeSystem: boolean;
         username: string;
         createdAt: Date;
         updatedAt: Date;
@@ -1298,6 +1300,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           db.ref("id").withSchema(TableName.NamespaceMembershipRole).as("userNamespaceMembershipRoleId"),
           db.ref("role").withSchema(TableName.NamespaceMembershipRole).as("userNamespaceMembershipRole"),
           db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
+          db.ref("shouldUseNewPrivilegeSystem").withSchema(TableName.Organization).as("orgShouldUseNewPrivilegeSystem"),
           db.ref("googleSsoAuthEnforced").withSchema(TableName.Organization).as("orgGoogleSsoAuthEnforced"),
           db.ref("bypassOrgAuthEnabled").withSchema(TableName.Organization).as("bypassOrgAuthEnabled"),
           db.ref("role").withSchema(TableName.OrgMembership).as("orgRole"),
@@ -1366,6 +1369,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           orgAuthEnforced,
           orgGoogleSsoAuthEnforced,
           bypassOrgAuthEnabled,
+          orgShouldUseNewPrivilegeSystem,
           orgRole
         }) => ({
           orgId,
@@ -1376,7 +1380,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           orgAuthEnforced,
           orgGoogleSsoAuthEnforced,
           bypassOrgAuthEnabled,
-          orgRole: orgRole as OrgMembershipRole
+          orgRole: orgRole as OrgMembershipRole,
+          shouldUseNewPrivilegeSystem: orgShouldUseNewPrivilegeSystem
         }),
         childrenMapper: [
           {
@@ -1475,7 +1480,13 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           `${TableName.NamespaceMembership}.orgIdentityMembershipId`,
           `${TableName.IdentityOrgMembership}.id`
         )
+        .join(TableName.Organization, `${TableName.IdentityOrgMembership}.orgId`, `${TableName.Organization}.id`)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.IdentityOrgMembership}.identityId`)
+        .leftJoin(
+          TableName.NamespaceMembershipRole,
+          `${TableName.NamespaceMembershipRole}.namespaceMembershipId`,
+          `${TableName.NamespaceMembership}.id`
+        )
         .leftJoin(
           TableName.NamespaceRole,
           `${TableName.NamespaceMembershipRole}.customRoleId`,
@@ -1497,6 +1508,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .select(
           db.ref("id").withSchema(TableName.NamespaceMembership).as("membershipId"),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
+          db.ref("shouldUseNewPrivilegeSystem").withSchema(TableName.Organization),
           db.ref("orgId").withSchema(TableName.IdentityOrgMembership).as("orgId"), // Now you can select orgId from Project
           db.ref("type").withSchema(TableName.Project).as("projectType"),
           db.ref("createdAt").withSchema(TableName.NamespaceMembership).as("membershipCreatedAt"),
@@ -1524,13 +1536,21 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
       const permission = sqlNestRelationships({
         data: docs,
         key: "membershipId",
-        parentMapper: ({ membershipId, membershipCreatedAt, membershipUpdatedAt, orgId, identityName }) => ({
+        parentMapper: ({
+          membershipId,
+          membershipCreatedAt,
+          membershipUpdatedAt,
+          orgId,
+          identityName,
+          shouldUseNewPrivilegeSystem
+        }) => ({
           id: membershipId,
           identityId,
           username: identityName,
           createdAt: membershipCreatedAt,
           updatedAt: membershipUpdatedAt,
-          orgId
+          orgId,
+          shouldUseNewPrivilegeSystem
         }),
         childrenMapper: [
           {

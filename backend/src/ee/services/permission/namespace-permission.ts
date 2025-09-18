@@ -70,6 +70,10 @@ export enum NamespacePermissionIdentityActions {
   DeleteToken = "delete-token"
 }
 
+export type NamespacePermissionIdentitySubjectFields = {
+  identityId: string;
+};
+
 export enum NamespacePermissionGroupActions {
   Read = "read",
   Create = "create",
@@ -95,7 +99,7 @@ export enum NamespacePermissionSubjects {
   Gateway = "gateway"
 }
 
-export type AppConnectionSubjectFields = {
+export type NamespacePermissionAppConnectionSubjectFields = {
   connectionId: string;
 };
 
@@ -105,7 +109,13 @@ export type NamespacePermissionSet =
   | [NamespacePermissionActions, NamespacePermissionSubjects.Member]
   | [NamespacePermissionActions, NamespacePermissionSubjects.Settings]
   | [NamespacePermissionGroupActions, NamespacePermissionSubjects.Groups]
-  | [NamespacePermissionIdentityActions, NamespacePermissionSubjects.Identity]
+  | [
+      NamespacePermissionIdentityActions,
+      (
+        | NamespacePermissionSubjects.Identity
+        | (ForcedSubject<NamespacePermissionSubjects.Identity> & NamespacePermissionIdentitySubjectFields)
+      )
+    ]
   | [NamespacePermissionActions, NamespacePermissionSubjects.Kms]
   | [NamespacePermissionAuditLogsActions, NamespacePermissionSubjects.AuditLogs]
   | [NamespacePermissionActions, NamespacePermissionSubjects.ProjectTemplates]
@@ -114,7 +124,7 @@ export type NamespacePermissionSet =
       NamespacePermissionAppConnectionActions,
       (
         | NamespacePermissionSubjects.AppConnections
-        | (ForcedSubject<NamespacePermissionSubjects.AppConnections> & AppConnectionSubjectFields)
+        | (ForcedSubject<NamespacePermissionSubjects.AppConnections> & NamespacePermissionAppConnectionSubjectFields)
       )
     ]
   | [NamespacePermissionMachineIdentityAuthTemplateActions, NamespacePermissionSubjects.MachineIdentityAuthTemplate];
