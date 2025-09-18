@@ -3513,6 +3513,7 @@ interface ProjectDeleteEvent {
 interface ProjectRoleCreateEvent {
   type: EventType.CREATE_PROJECT_ROLE;
   metadata: {
+    roleId: string;
     slug: string;
     name: string;
     description?: string | null;
@@ -3523,7 +3524,7 @@ interface ProjectRoleCreateEvent {
 interface ProjectRoleUpdateEvent {
   type: EventType.UPDATE_PROJECT_ROLE;
   metadata: {
-    originalName: string;
+    roleId: string;
     slug?: string;
     name?: string;
     description?: string | null;
@@ -3534,6 +3535,7 @@ interface ProjectRoleUpdateEvent {
 interface ProjectRoleDeleteEvent {
   type: EventType.DELETE_PROJECT_ROLE;
   metadata: {
+    roleId: string;
     slug: string;
     name: string;
   };
@@ -3542,6 +3544,7 @@ interface ProjectRoleDeleteEvent {
 interface OrgRoleCreateEvent {
   type: EventType.CREATE_ORG_ROLE;
   metadata: {
+    roleId: string;
     slug: string;
     name: string;
     description?: string | null;
@@ -3552,7 +3555,7 @@ interface OrgRoleCreateEvent {
 interface OrgRoleUpdateEvent {
   type: EventType.UPDATE_ORG_ROLE;
   metadata: {
-    originalName: string;
+    roleId: string;
     slug?: string;
     name?: string;
     description?: string | null;
@@ -3563,6 +3566,7 @@ interface OrgRoleUpdateEvent {
 interface OrgRoleDeleteEvent {
   type: EventType.DELETE_ORG_ROLE;
   metadata: {
+    roleId: string;
     slug: string;
     name: string;
   };

@@ -50,6 +50,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.CREATE_ORG_ROLE,
           metadata: {
+            roleId: role.id,
             slug: req.body.slug,
             name: req.body.name,
             description: req.body.description,
@@ -139,7 +140,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.UPDATE_ORG_ROLE,
           metadata: {
-            originalName: role.name,
+            roleId: role.id,
             slug: req.body.slug,
             name: req.body.name,
             description: req.body.description,
@@ -184,7 +185,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         orgId: req.permission.orgId,
         event: {
           type: EventType.DELETE_ORG_ROLE,
-          metadata: { slug: role.slug, name: role.name }
+          metadata: { roleId: role.id, slug: role.slug, name: role.name }
         }
       });
 

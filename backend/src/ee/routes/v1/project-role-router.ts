@@ -77,6 +77,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.CREATE_PROJECT_ROLE,
           metadata: {
+            roleId: role.id,
             slug: req.body.slug,
             name: req.body.name,
             description: req.body.description,
@@ -151,7 +152,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.UPDATE_PROJECT_ROLE,
           metadata: {
-            originalName: role.name,
+            roleId: role.id,
             slug: req.body.slug,
             name: req.body.name,
             description: req.body.description,
@@ -206,6 +207,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.DELETE_PROJECT_ROLE,
           metadata: {
+            roleId: role.id,
             slug: role.slug,
             name: role.name
           }
