@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { OrgMembershipRole, OrgMembershipsSchema, OrgRolesSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -42,6 +43,21 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.authMethod,
         req.permission.orgId
       );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.CREATE_ORG_ROLE,
+          metadata: {
+            slug: req.body.slug,
+            name: req.body.name,
+            description: req.body.description,
+            permissions: JSON.stringify(req.body.permissions)
+          }
+        }
+      });
+
       return { role };
     }
   });
@@ -116,6 +132,22 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.authMethod,
         req.permission.orgId
       );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.UPDATE_ORG_ROLE,
+          metadata: {
+            originalName: role.name,
+            slug: req.body.slug,
+            name: req.body.name,
+            description: req.body.description,
+            permissions: req.body.permissions ? JSON.stringify(req.body.permissions) : undefined
+          }
+        }
+      });
+
       return { role };
     }
   });
@@ -146,6 +178,16 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.authMethod,
         req.permission.orgId
       );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.DELETE_ORG_ROLE,
+          metadata: { slug: role.slug, name: role.name }
+        }
+      });
+
       return { role };
     }
   });
