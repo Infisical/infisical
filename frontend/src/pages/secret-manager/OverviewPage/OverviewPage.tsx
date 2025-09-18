@@ -731,6 +731,9 @@ export const OverviewPage = () => {
 
     userAvailableEnvs.forEach((env) => {
       secrets?.forEach((secret) => {
+        // bulk actions don't apply to rotation secrets (move/delete)
+        if (secret.isRotatedSecret) return;
+
         if (allRowsSelectedOnPage.isChecked) {
           delete newChecks[EntryType.SECRET][secret.key];
         } else {
