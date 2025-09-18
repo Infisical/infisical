@@ -12,8 +12,8 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TNamespaceRoleDALFactory } from "./namespace-role-dal";
 import { getPredefinedRoles } from "./namespace-role-fns";
 import {
@@ -156,7 +156,16 @@ export const namespaceRoleServiceFactory = ({
     return { ...deletedRole, permissions: unpackPermissions(deletedRole.permissions) };
   };
 
-  const listRoles = async ({ namespaceName, actor, actorId, actorAuthMethod, actorOrgId }: TListNamespaceRolesDTO) => {
+  const listRoles = async ({
+    namespaceName,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    limit = 50,
+    offset = 0,
+    search
+  }: TListNamespaceRolesDTO) => {
     const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: actorOrgId });
     if (!namespace) throw new NotFoundError({ message: "Namespace not found" });
 
@@ -170,13 +179,19 @@ export const namespaceRoleServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(NamespacePermissionActions.Read, NamespacePermissionSubjects.Role);
 
     const customRoles = await namespaceRoleDAL.find(
-      { namespaceId: namespace.id },
-      { sort: [[`${TableName.NamespaceRole}.name` as "name", "asc"]] }
+      {
+        namespaceId: namespace.id,
+        $search: {
+          name: search
+        }
+      },
+      { sort: [[`${TableName.NamespaceRole}.name` as "name", "asc"]], count: true, limit, offset }
     );
 
-    const roles = [...getPredefinedRoles(namespace.id), ...(customRoles || [])];
+    const predefinedRoles = getPredefinedRoles(namespace.id);
+    const roles = [...predefinedRoles, ...(customRoles || [])];
 
-    return roles;
+    return { roles, totalCount: predefinedRoles.length + Number(customRoles?.[0]?.count || 0) };
   };
 
   const getUserPermission = async (

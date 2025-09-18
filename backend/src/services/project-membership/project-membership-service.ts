@@ -501,7 +501,7 @@ export const projectMembershipServiceFactory = ({
           // we don't want to include custom in this check;
           // this unintentionally enables setting slug to custom which is reserved
           .filter((r) => r !== ProjectMembershipRole.Custom)
-          .includes(role as ProjectMembershipRole)
+          .includes(role as ProjectMembershipRole.Member)
     );
     const hasCustomRole = Boolean(customInputRoles.length);
     if (hasCustomRole) {

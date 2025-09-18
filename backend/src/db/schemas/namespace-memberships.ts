@@ -9,6 +9,7 @@ import { TImmutableDBKeys } from "./models";
 
 export const NamespaceMembershipsSchema = z.object({
   id: z.string().uuid(),
+  namespaceId: z.string().uuid(),
   orgUserMembershipId: z.string().uuid().nullable().optional(),
   orgIdentityMembershipId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
