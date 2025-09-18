@@ -112,6 +112,29 @@ export const SecretVersionItem = ({
     }
   };
 
+  const handleCopyValue = async (
+    e: React.MouseEvent<HTMLButtonElement> | React.KeyboardEvent<HTMLButtonElement>
+  ) => {
+    const value = await handleGetSecretValue();
+    navigator.clipboard.writeText(value || "");
+    const target = e.currentTarget;
+    target.style.borderBottom = "1px dashed";
+    target.style.paddingBottom = "-1px";
+
+    // Create and insert popup
+    const popup = document.createElement("div");
+    popup.className =
+      "w-16 flex justify-center absolute top-6 left-0 text-xs text-primary-100 bg-mineshaft-800 px-1 py-0.5 rounded-md border border-primary-500/50";
+    popup.textContent = "Copied!";
+    target.parentElement?.appendChild(popup);
+
+    // Remove popup and border after delay
+    setTimeout(() => {
+      popup.remove();
+      target.style.borderBottom = "none";
+    }, 3000);
+  };
+
   return (
     <div className="flex flex-row">
       <div className="flex w-full flex-col space-y-1">
@@ -158,47 +181,13 @@ export const SecretVersionItem = ({
                     onClick={async (e) => {
                       if (secretValueHidden) return;
 
-                      const value = await handleGetSecretValue();
-                      navigator.clipboard.writeText(value || "");
-                      const target = e.currentTarget;
-                      target.style.borderBottom = "1px dashed";
-                      target.style.paddingBottom = "-1px";
-
-                      // Create and insert popup
-                      const popup = document.createElement("div");
-                      popup.className =
-                        "w-16 flex justify-center absolute top-6 left-0 text-xs text-primary-100 bg-mineshaft-800 px-1 py-0.5 rounded-md border border-primary-500/50";
-                      popup.textContent = "Copied!";
-                      target.parentElement?.appendChild(popup);
-
-                      // Remove popup and border after delay
-                      setTimeout(() => {
-                        popup.remove();
-                        target.style.borderBottom = "none";
-                      }, 3000);
+                      await handleCopyValue(e);
                     }}
                     onKeyDown={async (e) => {
                       if (secretValueHidden) return;
 
                       if (e.key === "Enter" || e.key === " ") {
-                        const value = await handleGetSecretValue();
-                        navigator.clipboard.writeText(value || "");
-                        const target = e.currentTarget;
-                        target.style.borderBottom = "1px dashed";
-                        target.style.paddingBottom = "-1px";
-
-                        // Create and insert popup
-                        const popup = document.createElement("div");
-                        popup.className =
-                          "w-16 flex justify-center absolute top-6 left-0 text-xs text-primary-100 bg-mineshaft-800 px-1 py-0.5 rounded-md border border-primary-500/50";
-                        popup.textContent = "Copied!";
-                        target.parentElement?.appendChild(popup);
-
-                        // Remove popup and border after delay
-                        setTimeout(() => {
-                          popup.remove();
-                          target.style.borderBottom = "none";
-                        }, 3000);
+                        await handleCopyValue(e);
                       }
                     }}
                   >
