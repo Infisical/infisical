@@ -8,7 +8,7 @@ export enum NamespaceUserMembershipTemporaryMode {
 export type TCreateNamespaceUserMembershipDTO = {
   permission: OrgServiceActor;
   namespaceSlug: string;
-  usernames: string[];
+  validatedUsers: { id: string; username: string }[];
   roleSlugs: string[];
 };
 
