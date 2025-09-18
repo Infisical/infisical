@@ -75,7 +75,7 @@ class RailwayPublicClient {
   async send<T extends TRailwayResponse>(
     query: string,
     options: RailwaySendReqOptions,
-    variables: Record<string, string | Record<string, string>> = {},
+    variables: Record<string, unknown> = {},
     retryAttempt: number = 0
   ): Promise<T["data"] | undefined> {
     const body = {
@@ -115,6 +115,22 @@ class RailwayPublicClient {
       default:
         throw new Error(`Unsupported Railway connection method`);
     }
+  }
+
+  async getDeployments(config: RailwaySendReqOptions, variables: { input: { serviceId: string; environmentId: string }, first?: number }) {
+    return await this.send<TRailwayResponse<{ deployments: { edges: { node: { id: string } }[] } }>>(
+      `query deployments($input: DeploymentListInput!, $first: Int) { deployments(first: $first, input: $input) { edges { node { id } } } }`,
+      config,
+      variables
+    );
+  }
+
+  async redeployDeployment(config: RailwaySendReqOptions, variables: { input: { deploymentId: string } }) {
+    return await this.send<TRailwayResponse<{ deploymentRedeploy: { id: string } }>>(
+      `mutation deploymentRedeploy($deploymentId: String!) { deploymentRedeploy(id: $deploymentId) { id } }`,
+      config,
+      { deploymentId: variables.input.deploymentId }
+    );
   }
 
   async getSubscriptionType(config: RailwaySendReqOptions & { projectId: string }) {
@@ -213,12 +229,23 @@ class RailwayPublicClient {
 
   async deleteVariable(
     config: RailwaySendReqOptions,
-    variables: { input: { projectId: string; environmentId: string; name: string; serviceId?: string } }
+    variables: { input: { projectId: string; environmentId: string; name: string; skipDeploys?: boolean; serviceId?: string } }
   ) {
     await this.send<TRailwayResponse<{ variables: Record<string, string> }>>(
       `mutation variableDelete($input: VariableDeleteInput!) { variableDelete(input: $input) }`,
       config,
       variables
+    );
+  }
+
+  async upsertCollection(
+    config: RailwaySendReqOptions,
+    variables: { input: { projectId: string; environmentId: string; variables: Record<string, string>; skipDeploys?: boolean; serviceId?: string, replace?: boolean } }
+  ) {
+    return await this.send<TRailwayResponse<boolean>>(
+      `mutation variableCollectionUpsert($input: VariableCollectionUpsertInput!) { variableCollectionUpsert(input: $input) }`,
+      config,
+      variables,
     );
   }
 
