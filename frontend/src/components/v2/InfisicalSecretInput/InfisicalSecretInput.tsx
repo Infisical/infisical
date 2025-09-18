@@ -55,6 +55,8 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "val
   secretPath?: string;
   environment?: string;
   containerClassName?: string;
+  isLoadingValue?: boolean;
+  isErrorLoadingValue?: boolean;
 };
 
 type ReferenceItem = {

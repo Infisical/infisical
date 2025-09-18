@@ -408,7 +408,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
                 const mergedUpdate: PendingSecretUpdate = {
                   ...existingUpdate,
                   secretKey: existingUpdate.secretKey,
-                  originalValue: existingUpdate.originalValue,
+                  originalValue: change.originalValue,
                   originalComment: existingUpdate.originalComment,
                   originalSkipMultilineEncoding: existingUpdate.originalSkipMultilineEncoding,
                   originalTags: existingUpdate.originalTags,

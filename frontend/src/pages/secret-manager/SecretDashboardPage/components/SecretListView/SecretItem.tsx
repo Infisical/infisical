@@ -126,9 +126,7 @@ export const SecretItem = memo(
     const [isFieldFocused, setIsFieldFocused] = useToggle();
     const queryClient = useQueryClient();
 
-    const canFetchSecretValue =
-      // TODO NOTE FOR PR PROGRESS: may need to remove !isPending, messes with key edits not fetching proper value
-      !originalSecret.secretValueHidden && !originalSecret.isEmpty && !isPending;
+    const canFetchSecretValue = !originalSecret.secretValueHidden && !originalSecret.isEmpty;
 
     const fetchSecretValueParams = {
       environment,
@@ -179,25 +177,25 @@ export const SecretItem = memo(
     );
 
     const getDefaultValue = () => {
-      if (isLoadingSecretValue) return HIDDEN_SECRET_VALUE;
+      if (isLoadingSecretValue) return undefined;
 
       if (secret.secretValueHidden && !isPending) {
         return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
       }
 
-      if (isErrorFetchingSecretValue) return "Error loading secret value...";
+      if (isErrorFetchingSecretValue) return undefined;
 
       return secret.value || "";
     };
 
     const getOverrideDefaultValue = () => {
-      if (isLoadingSecretValue) return HIDDEN_SECRET_VALUE;
+      if (isLoadingSecretValue) return undefined;
 
       if (secret.secretValueHidden && !isPending) {
         return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
       }
 
-      if (isErrorFetchingSecretValue) return "Error loading secret value...";
+      if (isErrorFetchingSecretValue) return undefined;
 
       return secret.valueOverride || "";
     };
@@ -510,6 +508,8 @@ export const SecretItem = memo(
                   control={control}
                   render={({ field }) => (
                     <SecretInput
+                      isLoadingValue={isLoadingSecretValue}
+                      isErrorLoadingValue={isErrorFetchingSecretValue}
                       key="value-overriden"
                       isVisible={isVisible}
                       isReadOnly={isReadOnly}
@@ -530,6 +530,8 @@ export const SecretItem = memo(
                   control={control}
                   render={({ field }) => (
                     <InfisicalSecretInput
+                      isLoadingValue={isLoadingSecretValue}
+                      isErrorLoadingValue={isErrorFetchingSecretValue}
                       isReadOnly={isReadOnlySecret}
                       key="secret-value"
                       isVisible={isVisible && (!secretValueHidden || isPending)}
