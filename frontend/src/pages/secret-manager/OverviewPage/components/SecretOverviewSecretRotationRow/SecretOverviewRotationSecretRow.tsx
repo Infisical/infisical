@@ -29,7 +29,7 @@ export const SecretOverviewRotationSecretRow = ({
 
   const { data: secretValueData, isError } = useGetSecretValue(
     {
-      secretKey: secret!.key,
+      secretKey: secret?.key ?? "",
       environment,
       secretPath,
       projectId: currentProject.id

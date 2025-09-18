@@ -117,7 +117,7 @@ export const SecretEditRow = ({
     ? {
         environment: importedSecret.environment,
         secretPath: importedSecret.secretPath,
-        secretKey: importedSecret.secret!.key,
+        secretKey: importedSecret.secret?.key ?? "",
         projectId: currentProject.id
       }
     : {

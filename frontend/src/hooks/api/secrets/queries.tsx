@@ -272,13 +272,7 @@ export const useGetSecretVersion = (dto: GetSecretVersionsDTO) =>
 
 export const fetchSecretVersionValue = async (secretId: string, version: number) => {
   const { data } = await apiRequest.get<TSecretVersionValue>(
-    `/api/v1/dashboard/secret-versions/${secretId}/value/${version}`,
-    {
-      params: {
-        secretId,
-        version
-      }
-    }
+    `/api/v1/dashboard/secret-versions/${secretId}/value/${version}`
   );
   return data.value;
 };

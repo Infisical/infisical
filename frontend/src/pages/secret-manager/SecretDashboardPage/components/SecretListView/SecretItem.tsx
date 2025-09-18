@@ -126,7 +126,10 @@ export const SecretItem = memo(
     const [isFieldFocused, setIsFieldFocused] = useToggle();
     const queryClient = useQueryClient();
 
-    const canFetchSecretValue = !originalSecret.secretValueHidden && !originalSecret.isEmpty;
+    const canFetchSecretValue =
+      !originalSecret.secretValueHidden &&
+      !originalSecret.isEmpty &&
+      pendingAction !== PendingAction.Create;
 
     const fetchSecretValueParams = {
       environment,
@@ -508,13 +511,15 @@ export const SecretItem = memo(
                   control={control}
                   render={({ field }) => (
                     <SecretInput
-                      isLoadingValue={isLoadingSecretValue}
+                      isLoadingValue={isLoadingSecretValue && Boolean(secret.idOverride)}
                       isErrorLoadingValue={isErrorFetchingSecretValue}
                       key="value-overriden"
                       isVisible={isVisible}
                       isReadOnly={isReadOnly}
                       {...field}
-                      onFocus={() => setIsFieldFocused.on()}
+                      onFocus={() => {
+                        if (secret.idOverride) setIsFieldFocused.on();
+                      }}
                       onBlur={() => {
                         setIsFieldFocused.off();
                         field.onBlur();

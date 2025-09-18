@@ -27,7 +27,7 @@ export const SecretRotationSecretRow = ({
     {
       environment,
       secretPath,
-      secretKey: secret!.key,
+      secretKey: secret?.key ?? "",
       projectId: currentProject.id
     },
     {

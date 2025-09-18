@@ -143,7 +143,7 @@ const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
             {
               version: 1, // placeholder, not used
               secretKey,
-              secretValue
+              secretValue: secretValue || undefined
             }
           ]
         }}
