@@ -22,11 +22,7 @@ import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
 import { OrderByDirection } from "@app/lib/types";
-import {
-  OrgIdentityOrderBy,
-  TListOrgIdentitiesByOrgIdDTO,
-  TSearchOrgIdentitiesByOrgIdDAL
-} from "@app/services/identity/identity-types";
+import { OrgIdentityOrderBy, TListIdentitiesDTO, TSearchIdentitiesDAL } from "@app/services/identity/identity-types";
 
 import { buildAuthMethods } from "./identity-fns";
 
@@ -150,7 +146,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       search,
       ...filter
     }: Partial<TIdentityOrgMemberships> &
-      Pick<TListOrgIdentitiesByOrgIdDTO, "offset" | "limit" | "orderBy" | "orderDirection" | "search">,
+      Pick<TListIdentitiesDTO, "offset" | "limit" | "orderBy" | "orderDirection" | "search">,
     tx?: Knex
   ) => {
     try {
@@ -390,7 +386,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       orderDirection = OrderByDirection.ASC,
       searchFilter,
       orgId
-    }: TSearchOrgIdentitiesByOrgIdDAL,
+    }: TSearchIdentitiesDAL,
     tx?: Knex
   ) => {
     try {
@@ -646,7 +642,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
   };
 
   const countAllOrgIdentities = async (
-    { search, ...filter }: Partial<TIdentityOrgMemberships> & Pick<TListOrgIdentitiesByOrgIdDTO, "search">,
+    { search, ...filter }: Partial<TIdentityOrgMemberships> & Pick<TListIdentitiesDTO, "search">,
     tx?: Knex
   ) => {
     try {

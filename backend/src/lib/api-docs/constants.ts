@@ -905,6 +905,18 @@ export const NAMESPACE_IDENTITY_MEMBERSHIPS = {
     identityId: "The ID of the identity to get the membership for.",
     namespaceSlug: "The slug of the namespace to get the identity membership for."
   },
+  SEARCH: {
+    namespaceSlug: "The slug of the namespace to search identity memberships in.",
+    orderBy: "The column to order identity memberships by.",
+    orderDirection: "The direction identity memberships will be sorted in.",
+    limit: "The number of identity memberships to return.",
+    offset: "The offset to start from.",
+    search: {
+      desc: "Advanced search filter for identity memberships.",
+      name: "Filter by identity name.",
+      role: "Filter by role."
+    }
+  },
   UPDATE_IDENTITY_MEMBERSHIP: {
     namespaceSlug: "The slug of the namespace to update the identity membership for.",
     identityId: "The ID of the identity to update the membership for.",

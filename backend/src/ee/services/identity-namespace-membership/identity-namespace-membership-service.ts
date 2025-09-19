@@ -25,6 +25,7 @@ import {
   TDeleteIdentityNameespaceMembershipDTO,
   TGetIdentityNameespaceMembershipByIdentityIdDTO,
   TListIdentityNameespaceMembershipDTO,
+  TSearchNamespaceIdentitiesDTO,
   TUpdateIdentityNameespaceMembershipDTO
 } from "./identity-namespace-membership-types";
 
@@ -412,11 +413,49 @@ export const identityNamespaceMembershipServiceFactory = ({
     return identityMembership;
   };
 
+  const searchNamespaceIdentities = async ({
+    limit,
+    offset,
+    orderBy,
+    orderDirection,
+    searchFilter = {},
+    permission
+  }: TSearchNamespaceIdentitiesDTO) => {
+    const { namespaceSlug } = permission;
+    const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.actorOrgId });
+    if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
+
+    const { permission: namespacePermission } = await permissionService.getNamespacePermission({
+      actor: permission.actor,
+      actorAuthMethod: permission.actorAuthMethod,
+      actorId: permission.actorId,
+      actorOrgId: permission.actorOrgId,
+      namespaceId: namespace.id
+    });
+
+    ForbiddenError.from(namespacePermission).throwUnlessCan(
+      NamespacePermissionIdentityActions.Read,
+      NamespacePermissionSubjects.Identity
+    );
+
+    const { totalCount, docs } = await identityNamespaceMembershipDAL.searchIdentities({
+      limit,
+      offset,
+      orderBy,
+      orderDirection,
+      searchFilter,
+      namespaceId: namespace.id
+    });
+
+    return { identityMemberships: docs, totalCount };
+  };
+
   return {
     createIdentityNamespaceMembership,
     updateIdentityNamespaceMembership,
     deleteIdentityNamespaceMembership,
     listIdentityNamespaceMemberships,
-    getIdentityNamespaceMembershipByIdentityId
+    getIdentityNamespaceMembershipByIdentityId,
+    searchNamespaceIdentities
   };
 };

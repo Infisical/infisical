@@ -1,6 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrgMembershipRole, TableName, TOrgRoles } from "@app/db/schemas";
+import {
+  NamespaceMembershipRole,
+  OrgMembershipRole,
+  TableName,
+  TIdentityOrgMemberships,
+  TOrgRoles
+} from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -20,24 +26,38 @@ import {
   TCreateIdentityDTO,
   TDeleteIdentityDTO,
   TGetIdentityByIdDTO,
-  TListOrgIdentitiesByOrgIdDTO,
+  TListIdentitiesDTO,
   TListProjectIdentitiesByIdentityIdDTO,
   TSearchOrgIdentitiesByOrgIdDTO,
   TUpdateIdentityDTO
 } from "./identity-types";
+import { TIdentityNamespaceMembershipDALFactory } from "@app/ee/services/identity-namespace-membership/identity-namespace-membership-dal";
+import { TNamespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
+import {
+  NamespacePermissionIdentityActions,
+  NamespacePermissionSubjects
+} from "@app/ee/services/permission/namespace-permission";
+import { TNamespaceMembershipRoleDALFactory } from "@app/ee/services/namespace-role/namespace-membership-role-dal";
 
 type TIdentityServiceFactoryDep = {
   identityDAL: TIdentityDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
+  namespaceDAL: Pick<TNamespaceDALFactory, "findOne">;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRole">;
+  identityNamespaceMembershipDAL: TIdentityNamespaceMembershipDALFactory;
+  namespaceMembershipRoleDAL: Pick<TNamespaceMembershipRoleDALFactory, "create">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getOrgPermission" | "getOrgPermissionByRole" | "getNamespacePermission"
+  >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
 
+// TODO(namespace): check  resource constraint over org, namespace etc
 export const identityServiceFactory = ({
   identityDAL,
   identityMetadataDAL,
@@ -45,7 +65,10 @@ export const identityServiceFactory = ({
   identityProjectDAL,
   permissionService,
   licenseService,
-  keyStore
+  keyStore,
+  identityNamespaceMembershipDAL,
+  namespaceDAL,
+  namespaceMembershipRoleDAL
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({
     name,
@@ -56,40 +79,65 @@ export const identityServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    metadata
+    metadata,
+    namespaceSlug
   }: TCreateIdentityDTO) => {
-    const { permission, membership } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+    let isCustomOrgRole = false;
+    let orgCustomRoleId: string | null = null;
+    let namespaceId: string | null = null;
+    if (namespaceSlug) {
+      const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: actorOrgId });
+      if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
 
-    const { permission: rolePermission, role: customRole } = await permissionService.getOrgPermissionByRole(
-      role,
-      orgId
-    );
-    const isCustomRole = Boolean(customRole);
-    if (role !== OrgMembershipRole.NoAccess) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        membership.shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.GrantPrivileges,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
+      namespaceId = namespace.id;
+      const { permission } = await permissionService.getNamespacePermission({
+        actor,
+        actorAuthMethod,
+        actorId,
+        actorOrgId,
+        namespaceId: namespace.id
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        NamespacePermissionIdentityActions.Create,
+        NamespacePermissionSubjects.Identity
       );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to create identity",
-            membership.shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.GrantPrivileges,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+    } else {
+      const { permission, membership } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        orgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.Create,
+        OrgPermissionSubjects.Identity
+      );
+      const { permission: rolePermission, role: customRole } = await permissionService.getOrgPermissionByRole(
+        role,
+        orgId
+      );
+      isCustomOrgRole = Boolean(customRole);
+      orgCustomRoleId = customRole?.id || null;
+      if (role !== OrgMembershipRole.NoAccess) {
+        const permissionBoundary = validatePrivilegeChangeOperation(
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.GrantPrivileges,
+          OrgPermissionSubjects.Identity,
+          permission,
+          rolePermission
+        );
+        if (!permissionBoundary.isValid)
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to create identity",
+              membership.shouldUseNewPrivilegeSystem,
+              OrgPermissionIdentityActions.GrantPrivileges,
+              OrgPermissionSubjects.Identity
+            ),
+            details: { missingPermissions: permissionBoundary.missingPermissions }
+          });
+      }
     }
 
     const plan = await licenseService.getPlan(orgId);
@@ -102,16 +150,35 @@ export const identityServiceFactory = ({
     }
 
     const identity = await identityDAL.transaction(async (tx) => {
-      const newIdentity = await identityDAL.create({ name, hasDeleteProtection }, tx);
-      await identityOrgMembershipDAL.create(
+      const newIdentity = await identityDAL.create({ name, hasDeleteProtection, namespaceId }, tx);
+      // on namespace and project creation this would be no access
+      const orgIdentityMembership = await identityOrgMembershipDAL.create(
         {
           identityId: newIdentity.id,
           orgId,
-          role: isCustomRole ? OrgMembershipRole.Custom : role,
-          roleId: customRole?.id
+          role: isCustomOrgRole ? OrgMembershipRole.Custom : role,
+          roleId: orgCustomRoleId
         },
         tx
       );
+
+      if (namespaceId) {
+        const namespaceIdentityMembership = await identityNamespaceMembershipDAL.create(
+          {
+            orgIdentityMembershipId: orgIdentityMembership.id,
+            namespaceId
+          },
+          tx
+        );
+
+        await namespaceMembershipRoleDAL.create(
+          {
+            namespaceMembershipId: namespaceIdentityMembership.id,
+            role: NamespaceMembershipRole.NoAccess
+          },
+          tx
+        );
+      }
 
       let insertedMetadata: Array<{
         id: string;
@@ -151,49 +218,77 @@ export const identityServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     metadata,
-    isActorSuperAdmin
+    isActorSuperAdmin,
+    namespaceSlug
   }: TUpdateIdentityDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
 
-    const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
-    if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
+    let isCustomOrgRole = false;
+    let orgCustomRoleId: string | undefined | null = null;
+    let namespaceId: string | null = null;
 
-    const { permission, membership } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityOrgMembership.orgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+    let identityOrgMembership: TIdentityOrgMemberships;
+    if (namespaceSlug) {
+      const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: actorOrgId });
+      if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
+      namespaceId = namespace.id;
 
-    let customRole: TOrgRoles | undefined;
-    if (role) {
-      const { permission: rolePermission, role: customOrgRole } = await permissionService.getOrgPermissionByRole(
-        role,
-        identityOrgMembership.orgId
+      const temp = await identityOrgMembershipDAL.findOne({ identityId: id, orgId: namespace.orgId });
+      if (!temp) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
+      identityOrgMembership = temp;
+
+      const { permission } = await permissionService.getNamespacePermission({
+        actor,
+        actorAuthMethod,
+        actorId,
+        actorOrgId,
+        namespaceId: namespace.id
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        NamespacePermissionIdentityActions.Edit,
+        NamespacePermissionSubjects.Identity
       );
+    } else {
+      const temp = await identityOrgMembershipDAL.findOne({ identityId: id });
+      if (!temp) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
+      identityOrgMembership = temp;
 
-      const isCustomRole = Boolean(customOrgRole);
-      const appliedRolePermissionBoundary = validatePrivilegeChangeOperation(
-        membership.shouldUseNewPrivilegeSystem,
-        OrgPermissionIdentityActions.GrantPrivileges,
-        OrgPermissionSubjects.Identity,
-        permission,
-        rolePermission
+      const { permission, membership } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityOrgMembership.orgId,
+        actorAuthMethod,
+        actorOrgId
       );
-      if (!appliedRolePermissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to update identity",
-            membership.shouldUseNewPrivilegeSystem,
-            OrgPermissionIdentityActions.GrantPrivileges,
-            OrgPermissionSubjects.Identity
-          ),
-          details: { missingPermissions: appliedRolePermissionBoundary.missingPermissions }
-        });
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-      if (isCustomRole) customRole = customOrgRole;
+      if (role) {
+        const { permission: rolePermission, role: customOrgRole } = await permissionService.getOrgPermissionByRole(
+          role,
+          identityOrgMembership.orgId
+        );
+
+        isCustomOrgRole = Boolean(customOrgRole);
+        const appliedRolePermissionBoundary = validatePrivilegeChangeOperation(
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.GrantPrivileges,
+          OrgPermissionSubjects.Identity,
+          permission,
+          rolePermission
+        );
+        if (!appliedRolePermissionBoundary.isValid)
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to update identity",
+              membership.shouldUseNewPrivilegeSystem,
+              OrgPermissionIdentityActions.GrantPrivileges,
+              OrgPermissionSubjects.Identity
+            ),
+            details: { missingPermissions: appliedRolePermissionBoundary.missingPermissions }
+          });
+
+        if (isCustomOrgRole) orgCustomRoleId = customOrgRole?.id;
+      }
     }
 
     const identity = await identityDAL.transaction(async (tx) => {
@@ -202,16 +297,17 @@ export const identityServiceFactory = ({
           ? await identityDAL.updateById(id, { name, hasDeleteProtection }, tx)
           : await identityDAL.findById(id, tx);
 
-      if (role) {
+      if (role && !namespaceId) {
         await identityOrgMembershipDAL.updateById(
           identityOrgMembership.id,
           {
-            role: customRole ? OrgMembershipRole.Custom : role,
-            roleId: customRole?.id || null
+            role: isCustomOrgRole ? OrgMembershipRole.Custom : role,
+            roleId: orgCustomRoleId || null
           },
           tx
         );
       }
+
       let insertedMetadata: Array<{
         id: string;
         key: string;
@@ -286,25 +382,55 @@ export const identityServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     id,
-    isActorSuperAdmin
+    isActorSuperAdmin,
+    namespaceSlug
   }: TDeleteIdentityDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
 
-    const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
-    if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
+    let namespaceId: string | null = null;
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityOrgMembership.orgId,
-      actorAuthMethod,
-      actorOrgId
-    );
+    let identityOrgMembership: TIdentityOrgMemberships & { identity: { hasDeleteProtection: boolean } };
+    if (namespaceSlug) {
+      const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: actorOrgId });
+      if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
+      namespaceId = namespace.id;
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
+      const temp = await identityOrgMembershipDAL.findOne({ identityId: id, orgId: namespace.orgId });
+      if (!temp) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
+      identityOrgMembership = temp;
 
-    if (identityOrgMembership.identity.hasDeleteProtection)
-      throw new BadRequestError({ message: "Identity has delete protection" });
+      const { permission } = await permissionService.getNamespacePermission({
+        actor,
+        actorAuthMethod,
+        actorId,
+        actorOrgId,
+        namespaceId: namespace.id
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        NamespacePermissionIdentityActions.Delete,
+        NamespacePermissionSubjects.Identity
+      );
+    } else {
+      const tempDoc = await identityOrgMembershipDAL.findOne({ identityId: id });
+      if (!tempDoc) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
+      identityOrgMembership = tempDoc;
+
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityOrgMembership.orgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.Delete,
+        OrgPermissionSubjects.Identity
+      );
+
+      if (identityOrgMembership.identity.hasDeleteProtection)
+        throw new BadRequestError({ message: "Identity has delete protection" });
+    }
 
     const deletedIdentity = await identityDAL.deleteById(id);
 
@@ -324,7 +450,7 @@ export const identityServiceFactory = ({
     orderBy,
     orderDirection,
     search
-  }: TListOrgIdentitiesByOrgIdDTO) => {
+  }: TListIdentitiesDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 

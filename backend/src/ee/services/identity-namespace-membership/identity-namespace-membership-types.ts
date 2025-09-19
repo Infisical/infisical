@@ -1,5 +1,6 @@
 import { OrderByDirection, TNamespacePermission } from "@app/lib/types";
 import { NamespaceUserMembershipTemporaryMode } from "../namespace-user-membership/namespace-user-membership-types";
+import { TSearchResourceOperator } from "@app/lib/search-resource/search";
 
 // TODO(namespace): add audit log for various events
 export type TCreateIdentityNamespaceMembershipDTO = {
@@ -64,4 +65,24 @@ export type TGetIdentityNameespaceMembershipByMembershipIdDTO = {
 
 export enum IdentityNameespaceMembershipOrderBy {
   Name = "name"
+}
+
+export enum NamespaceIdentityOrderBy {
+  Name = "name",
+  Role = "role"
+}
+
+export type TSearchNamespaceIdentitiesDAL = {
+  limit?: number;
+  offset?: number;
+  orderBy?: NamespaceIdentityOrderBy;
+  orderDirection?: OrderByDirection;
+  searchFilter?: Partial<{
+    name: Omit<TSearchResourceOperator, "number">;
+    role: Omit<TSearchResourceOperator, "number">;
+  }>;
+};
+
+export interface TSearchNamespaceIdentitiesDTO extends TSearchNamespaceIdentitiesDAL {
+  permission: TNamespacePermission;
 }

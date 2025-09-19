@@ -7,6 +7,7 @@ export type TCreateIdentityDTO = {
   name: string;
   hasDeleteProtection: boolean;
   metadata?: { key: string; value: string }[];
+  namespaceSlug?: string;
 } & TOrgPermission;
 
 export type TUpdateIdentityDTO = {
@@ -16,15 +17,18 @@ export type TUpdateIdentityDTO = {
   name?: string;
   metadata?: { key: string; value: string }[];
   isActorSuperAdmin?: boolean;
+  namespaceSlug?: string;
 } & Omit<TOrgPermission, "orgId">;
 
 export type TDeleteIdentityDTO = {
   id: string;
   isActorSuperAdmin?: boolean;
+  namespaceSlug?: string;
 } & Omit<TOrgPermission, "orgId">;
 
 export type TGetIdentityByIdDTO = {
   id: string;
+  namespaceSlug?: string;
 } & Omit<TOrgPermission, "orgId">;
 
 export interface TIdentityTrustedIp {
@@ -35,9 +39,10 @@ export interface TIdentityTrustedIp {
 
 export type TListProjectIdentitiesByIdentityIdDTO = {
   identityId: string;
+  namespaceSlug?: string;
 } & Omit<TOrgPermission, "orgId">;
 
-export type TListOrgIdentitiesByOrgIdDTO = {
+export type TListIdentitiesDTO = {
   limit?: number;
   offset?: number;
   orderBy?: OrgIdentityOrderBy;
@@ -45,12 +50,21 @@ export type TListOrgIdentitiesByOrgIdDTO = {
   search?: string;
 } & TOrgPermission;
 
+export type TListNamespaceIdentitiesDTO = {
+  limit?: number;
+  offset?: number;
+  orderBy?: OrgIdentityOrderBy;
+  orderDirection?: OrderByDirection;
+  search?: string;
+  anem: string;
+} & TOrgPermission;
+
 export enum OrgIdentityOrderBy {
   Name = "name",
   Role = "role"
 }
 
-export type TSearchOrgIdentitiesByOrgIdDAL = {
+export type TSearchIdentitiesDAL = {
   limit?: number;
   offset?: number;
   orderBy?: OrgIdentityOrderBy;
@@ -62,4 +76,4 @@ export type TSearchOrgIdentitiesByOrgIdDAL = {
   }>;
 };
 
-export type TSearchOrgIdentitiesByOrgIdDTO = TSearchOrgIdentitiesByOrgIdDAL & TOrgPermission;
+export type TSearchOrgIdentitiesByOrgIdDTO = TSearchIdentitiesDAL & TOrgPermission;
