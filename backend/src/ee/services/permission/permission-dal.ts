@@ -659,13 +659,17 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
     filterGroupId?: string
   ) => {
     try {
-      const projectInfo = await db.replicaNode()(TableName.Project).where("id", projectId).select("orgId").first();
+      const projectInfo = await db
+        .replicaNode()(TableName.Project)
+        .where("id", projectId)
+        .select("orgId", "type")
+        .first();
 
       if (!projectInfo) {
         return [];
       }
 
-      const { orgId } = projectInfo;
+      const { orgId, type: projectType } = projectInfo;
 
       const cachedPermissionDalVersion = await keyStore.pgGetIntItem(
         PermissionServiceCacheKeys.getPermissionDalVersion(orgId, projectId)
@@ -678,11 +682,13 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
         filterGroupId
       );
 
+      // Use project-specific encryption for SecretManager projects, org-level for others
       const { decryptor: permissionDecryptor, encryptor: permissionEncryptor } =
-        await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId
-        });
+        await kmsService.createCipherPairWithDataKey(
+          projectType === ProjectType.SecretManager
+            ? { type: KmsDataKey.SecretManager, projectId }
+            : { type: KmsDataKey.Organization, orgId }
+        );
 
       const encryptedCachedPermission = await keyStore.getItem(cacheKey);
       if (encryptedCachedPermission) {
@@ -835,13 +841,17 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
 
   const getProjectUserPermissions: TPermissionDALFactory["getProjectUserPermissions"] = async (projectId: string) => {
     try {
-      const projectInfo = await db.replicaNode()(TableName.Project).where("id", projectId).select("orgId").first();
+      const projectInfo = await db
+        .replicaNode()(TableName.Project)
+        .where("id", projectId)
+        .select("orgId", "type")
+        .first();
 
       if (!projectInfo) {
         return [];
       }
 
-      const { orgId } = projectInfo;
+      const { orgId, type: projectType } = projectInfo;
 
       const cachedPermissionDalVersion = await keyStore.pgGetIntItem(
         PermissionServiceCacheKeys.getPermissionDalVersion(orgId, projectId)
@@ -849,11 +859,13 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
       const permissionDalVersion = Number(cachedPermissionDalVersion || 0);
       const cacheKey = PermissionServiceCacheKeys.getProjectUserPermissions(orgId, projectId, permissionDalVersion);
 
+      // Use project-specific encryption for SecretManager projects, org-level for others
       const { decryptor: permissionDecryptor, encryptor: permissionEncryptor } =
-        await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId
-        });
+        await kmsService.createCipherPairWithDataKey(
+          projectType === ProjectType.SecretManager
+            ? { type: KmsDataKey.SecretManager, projectId }
+            : { type: KmsDataKey.Organization, orgId }
+        );
 
       const encryptedCachedPermission = await keyStore.getItem(cacheKey);
       if (encryptedCachedPermission) {
@@ -1036,7 +1048,7 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
           groupMembershipCreatedAt,
           groupMembershipUpdatedAt,
           membershipUpdatedAt,
-          projectType,
+          projectType: userProjectType,
           userId
         }) => ({
           orgId: userOrgId,
@@ -1044,7 +1056,7 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
           userId,
           projectId,
           username,
-          projectType,
+          projectType: userProjectType,
           id: membershipId || groupMembershipId,
           createdAt: membershipCreatedAt || groupMembershipCreatedAt,
           updatedAt: membershipUpdatedAt || groupMembershipUpdatedAt
@@ -1192,13 +1204,17 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
     projectId: string
   ) => {
     try {
-      const projectInfo = await db.replicaNode()(TableName.Project).where("id", projectId).select("orgId").first();
+      const projectInfo = await db
+        .replicaNode()(TableName.Project)
+        .where("id", projectId)
+        .select("orgId", "type")
+        .first();
 
       if (!projectInfo) {
         return undefined;
       }
 
-      const { orgId } = projectInfo;
+      const { orgId, type: projectType } = projectInfo;
 
       const cachedPermissionDalVersion = await keyStore.pgGetIntItem(
         PermissionServiceCacheKeys.getPermissionDalVersion(orgId, projectId)
@@ -1206,11 +1222,13 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
       const permissionDalVersion = Number(cachedPermissionDalVersion || 0);
       const cacheKey = PermissionServiceCacheKeys.getProjectPermission(orgId, projectId, permissionDalVersion, userId);
 
+      // Use project-specific encryption for SecretManager projects, org-level for others
       const { decryptor: permissionDecryptor, encryptor: permissionEncryptor } =
-        await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId
-        });
+        await kmsService.createCipherPairWithDataKey(
+          projectType === ProjectType.SecretManager
+            ? { type: KmsDataKey.SecretManager, projectId }
+            : { type: KmsDataKey.Organization, orgId }
+        );
 
       const encryptedCachedPermission = await keyStore.getItem(cacheKey);
       if (encryptedCachedPermission) {
@@ -1419,7 +1437,7 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
           groupMembershipCreatedAt,
           groupMembershipUpdatedAt,
           membershipUpdatedAt,
-          projectType,
+          projectType: singleUserProjectType,
           shouldUseNewPrivilegeSystem,
           bypassOrgAuthEnabled
         }) => ({
@@ -1430,7 +1448,7 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
           userId,
           projectId,
           username,
-          projectType,
+          projectType: singleUserProjectType,
           id: membershipId || groupMembershipId,
           createdAt: membershipCreatedAt || groupMembershipCreatedAt,
           updatedAt: membershipUpdatedAt || groupMembershipUpdatedAt,
@@ -1575,13 +1593,17 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
     projectId: string
   ) => {
     try {
-      const projectInfo = await db.replicaNode()(TableName.Project).where("id", projectId).select("orgId").first();
+      const projectInfo = await db
+        .replicaNode()(TableName.Project)
+        .where("id", projectId)
+        .select("orgId", "type")
+        .first();
 
       if (!projectInfo) {
         return [];
       }
 
-      const { orgId } = projectInfo;
+      const { orgId, type: projectType } = projectInfo;
 
       const cachedPermissionDalVersion = await keyStore.pgGetIntItem(
         PermissionServiceCacheKeys.getPermissionDalVersion(orgId, projectId)
@@ -1589,11 +1611,13 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
       const permissionDalVersion = Number(cachedPermissionDalVersion || 0);
       const cacheKey = PermissionServiceCacheKeys.getProjectIdentityPermissions(orgId, projectId, permissionDalVersion);
 
+      // Use project-specific encryption for SecretManager projects, org-level for others
       const { decryptor: permissionDecryptor, encryptor: permissionEncryptor } =
-        await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId
-        });
+        await kmsService.createCipherPairWithDataKey(
+          projectType === ProjectType.SecretManager
+            ? { type: KmsDataKey.SecretManager, projectId }
+            : { type: KmsDataKey.Organization, orgId }
+        );
 
       const encryptedCachedPermission = await keyStore.getItem(cacheKey);
       if (encryptedCachedPermission) {
@@ -1703,7 +1727,7 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
           membershipUpdatedAt,
           orgId: membershipOrgId,
           identityName,
-          projectType,
+          projectType: identityProjectType,
           identityId
         }) => ({
           id: membershipId,
@@ -1713,7 +1737,7 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
           createdAt: membershipCreatedAt,
           updatedAt: membershipUpdatedAt,
           orgId: membershipOrgId,
-          projectType,
+          projectType: identityProjectType,
           // just a prefilled value
           orgAuthEnforced: false
         }),
