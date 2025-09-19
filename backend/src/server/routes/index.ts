@@ -45,6 +45,7 @@ import { githubOrgSyncDALFactory } from "@app/ee/services/github-org-sync/github
 import { githubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
+import { identityGroupServiceFactory } from "@app/ee/services/identity-group/identity-group-service";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { HsmModule } from "@app/ee/services/hsm/hsm-types";
@@ -329,6 +330,7 @@ import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
 import { registerV4Routes } from "./v4";
+import { identityGroupDALFactory } from "@app/ee/services/identity-group/identity-group-dal";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
@@ -427,6 +429,8 @@ export const registerRoutes = async (
   const identityJwtAuthDAL = identityJwtAuthDALFactory(db);
   const identityAzureAuthDAL = identityAzureAuthDALFactory(db);
   const identityLdapAuthDAL = identityLdapAuthDALFactory(db);
+
+  const identityGroupDAL = identityGroupDALFactory(db);
 
   const auditLogDAL = auditLogDALFactory(auditLogDb ?? db);
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
@@ -634,6 +638,12 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     oidcConfigDAL
+  });
+  const identityGroupService = identityGroupServiceFactory({
+    identityDAL,
+    identityGroupDAL,
+    permissionService,
+    licenseService
   });
   const groupProjectService = groupProjectServiceFactory({
     groupDAL,
@@ -2083,6 +2093,7 @@ export const registerRoutes = async (
     signup: signupService,
     user: userService,
     group: groupService,
+    identityGroup: identityGroupService,
     groupProject: groupProjectService,
     permission: permissionService,
     org: orgService,

@@ -17,6 +17,7 @@ export * from "./groups";
 export * from "./identities";
 export * from "./identityAuthTemplates";
 export * from "./identityProjectAdditionalPrivilege";
+export * from "./identityGroups";
 export * from "./incidentContacts";
 export * from "./integrationAuth";
 export * from "./integrations";

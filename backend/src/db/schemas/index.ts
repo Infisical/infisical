@@ -38,6 +38,7 @@ export * from "./github-org-sync-configs";
 export * from "./group-project-membership-roles";
 export * from "./group-project-memberships";
 export * from "./groups";
+export * from "./identity-groups";
 export * from "./identities";
 export * from "./identity-access-tokens";
 export * from "./identity-alicloud-auths";

@@ -92,6 +92,9 @@ export enum TableName {
   IdentityProjectMembershipRole = "identity_project_membership_role",
   IdentityProjectAdditionalPrivilege = "identity_project_additional_privilege",
   IdentityAuthTemplate = "identity_auth_templates",
+  IdentityGroups = "identity_groups",
+  IdentityGroupMembership = "identity_group_membership",
+  IdentityGroupProjectMembership = "identity_group_project_membership",
   // used by both identity and users
   IdentityMetadata = "identity_metadata",
   ResourceMetadata = "resource_metadata",
