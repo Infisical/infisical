@@ -19,7 +19,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { useDeletePkiSubscriber, useGetPkiSubscriber } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -29,8 +29,8 @@ import { PkiSubscriberCertificatesSection, PkiSubscriberDetailsSection } from ".
 
 const Page = () => {
   const navigate = useNavigate();
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace.id;
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const subscriberName = useParams({
     from: ROUTE_PATHS.CertManager.PkiSubscriberDetailsByIDPage.id,
     select: (el) => el.subscriberName

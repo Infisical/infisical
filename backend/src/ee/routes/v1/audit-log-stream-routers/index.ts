@@ -1,5 +1,10 @@
 import { LogProvider } from "@app/ee/services/audit-log-stream/audit-log-stream-enums";
 import {
+  CreateAzureProviderLogStreamSchema,
+  SanitizedAzureProviderSchema,
+  UpdateAzureProviderLogStreamSchema
+} from "@app/ee/services/audit-log-stream/azure/azure-provider-schemas";
+import {
   CreateCriblProviderLogStreamSchema,
   SanitizedCriblProviderSchema,
   UpdateCriblProviderLogStreamSchema
@@ -26,6 +31,15 @@ export * from "./audit-log-stream-router";
 
 export const AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP: Record<LogProvider, (server: FastifyZodProvider) => Promise<void>> =
   {
+    [LogProvider.Azure]: async (server: FastifyZodProvider) => {
+      registerAuditLogStreamEndpoints({
+        server,
+        provider: LogProvider.Azure,
+        sanitizedResponseSchema: SanitizedAzureProviderSchema,
+        createSchema: CreateAzureProviderLogStreamSchema,
+        updateSchema: UpdateAzureProviderLogStreamSchema
+      });
+    },
     [LogProvider.Custom]: async (server: FastifyZodProvider) => {
       registerAuditLogStreamEndpoints({
         server,

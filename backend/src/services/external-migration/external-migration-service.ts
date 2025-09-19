@@ -73,6 +73,8 @@ export const externalMigrationServiceFactory = ({
     const encrypted = crypto.encryption().symmetric().encryptWithRootEncryptionKey(stringifiedJson);
 
     await externalMigrationQueue.startImport({
+      actorId: user.id,
+      orgId: actorOrgId,
       actorEmail: user.email!,
       importType: ExternalPlatforms.EnvKey,
       data: {
@@ -131,6 +133,8 @@ export const externalMigrationServiceFactory = ({
     const encrypted = crypto.encryption().symmetric().encryptWithRootEncryptionKey(stringifiedJson);
 
     await externalMigrationQueue.startImport({
+      actorId: user.id,
+      orgId: actorOrgId,
       actorEmail: user.email!,
       importType: ExternalPlatforms.Vault,
       data: {

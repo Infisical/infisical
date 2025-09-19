@@ -20,7 +20,10 @@ export const useCreateAppConnection = () => {
 
       return data.appConnection;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: appConnectionKeys.list() })
+    onSuccess: ({ projectId, app }) => {
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.list(projectId) });
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.listAvailable(app, projectId) });
+    }
   });
 };
 
@@ -35,9 +38,10 @@ export const useUpdateAppConnection = () => {
 
       return data.appConnection;
     },
-    onSuccess: (_, { connectionId, app }) => {
-      queryClient.invalidateQueries({ queryKey: appConnectionKeys.list() });
-      queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
+    onSuccess: ({ projectId, app }) => {
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.list(projectId) });
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.listAvailable(app, projectId) });
+      // queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
     }
   });
 };
@@ -50,9 +54,10 @@ export const useDeleteAppConnection = () => {
 
       return data;
     },
-    onSuccess: (_, { connectionId, app }) => {
-      queryClient.invalidateQueries({ queryKey: appConnectionKeys.list() });
-      queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
+    onSuccess: ({ projectId, app }) => {
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.list(projectId) });
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.listAvailable(app, projectId) });
+      // queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
     }
   });
 };

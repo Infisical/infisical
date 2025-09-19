@@ -8,7 +8,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FilterableSelect, FormControl, Input } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
-import { WorkspaceEnv } from "@app/hooks/api/types";
+import { ProjectEnv } from "@app/hooks/api/types";
 
 const validateTTL = (val: string, ctx: z.RefinementCtx) => {
   if (!val) return;
@@ -49,7 +49,7 @@ type Props = {
   onCancel: () => void;
   secretPath: string;
   projectSlug: string;
-  environments: WorkspaceEnv[];
+  environments: ProjectEnv[];
   isSingleEnvironmentMode?: boolean;
 };
 

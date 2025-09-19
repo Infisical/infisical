@@ -1,12 +1,7 @@
-import { useState } from "react";
 import { faBan, faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import ms from "ms";
 
-import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, EmptyState, IconButton, Spinner, Tooltip } from "@app/components/v2";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
+import { EmptyState, IconButton, Spinner, Tooltip } from "@app/components/v2";
 import { useTimedReset } from "@app/hooks";
 import {
   useClearIdentityUniversalAuthLockouts,
@@ -16,6 +11,7 @@ import {
 import { IdentityUniversalAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityUniversalAuthForm";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
+import { LockoutFields } from "./IdentityAuthLockoutFields";
 import { IdentityUniversalAuthClientSecretsTable } from "./IdentityUniversalAuthClientSecretsTable";
 import { ViewAuthMethodProps } from "./types";
 import { ViewIdentityContentWrapper } from "./ViewIdentityContentWrapper";
@@ -32,32 +28,11 @@ export const ViewIdentityUniversalAuthContent = ({
   const { data, isPending } = useGetIdentityUniversalAuth(identityId);
   const { data: clientSecrets = [], isPending: clientSecretsPending } =
     useGetIdentityUniversalAuthClientSecrets(identityId);
-  const { mutateAsync: clearLockoutsFn, isPending: isClearLockoutsPending } =
-    useClearIdentityUniversalAuthLockouts();
-
-  const [lockedOutState, setLockedOutState] = useState(lockedOut);
+  const clearLockoutsResult = useClearIdentityUniversalAuthLockouts();
 
   const [copyTextClientId, isCopyingClientId, setCopyTextClientId] = useTimedReset<string>({
     initialState: "Copy Client ID to clipboard"
   });
-
-  async function clearLockouts() {
-    try {
-      const deleted = await clearLockoutsFn({ identityId });
-      createNotification({
-        text: `Successfully cleared ${deleted} lockout${deleted === 1 ? "" : "s"}`,
-        type: "success"
-      });
-      setLockedOutState(false);
-      onResetAllLockouts();
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to clear lockouts. Please try again.",
-        type: "error"
-      });
-    }
-  }
 
   if (isPending || clientSecretsPending) {
     return (
@@ -119,36 +94,13 @@ export const ViewIdentityUniversalAuthContent = ({
         {data.lockoutEnabled ? "Enabled" : "Disabled"}
       </IdentityAuthFieldDisplay>
       {data.lockoutEnabled && (
-        <>
-          <div className="col-span-2 mt-3 flex justify-between border-b border-mineshaft-500 pb-2">
-            <span className="text-bunker-300">Lockout Options</span>
-            <OrgPermissionCan
-              I={OrgPermissionIdentityActions.Edit}
-              a={OrgPermissionSubjects.Identity}
-            >
-              {(isAllowed) => (
-                <Button
-                  isDisabled={!isAllowed || !lockedOutState || isClearLockoutsPending}
-                  size="xs"
-                  onClick={() => clearLockouts()}
-                  isLoading={isClearLockoutsPending}
-                  colorSchema="secondary"
-                >
-                  Reset All Lockouts
-                </Button>
-              )}
-            </OrgPermissionCan>
-          </div>
-          <IdentityAuthFieldDisplay label="Lockout Threshold">
-            {data.lockoutThreshold}
-          </IdentityAuthFieldDisplay>
-          <IdentityAuthFieldDisplay label="Lockout Duration">
-            {ms(data.lockoutDurationSeconds * 1000, { long: true })}
-          </IdentityAuthFieldDisplay>
-          <IdentityAuthFieldDisplay label="Lockout Counter Reset">
-            {ms(data.lockoutCounterResetSeconds * 1000, { long: true })}
-          </IdentityAuthFieldDisplay>
-        </>
+        <LockoutFields
+          identityId={identityId}
+          lockedOut={lockedOut}
+          clearLockoutsResult={clearLockoutsResult}
+          data={data}
+          onResetAllLockouts={onResetAllLockouts}
+        />
       )}
       <div className="col-span-2 my-3">
         <div className="mb-3 border-b border-mineshaft-500 pb-2">

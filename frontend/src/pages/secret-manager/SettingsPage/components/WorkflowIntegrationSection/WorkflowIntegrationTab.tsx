@@ -15,7 +15,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useWorkspace } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useProject } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteProjectWorkflowIntegration,
@@ -47,16 +47,16 @@ export const WorkflowIntegrationTab = () => {
     "editIntegration"
   ] as const);
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { data: slackConfig, isPending: isSlackConfigLoading } =
     useGetWorkspaceWorkflowIntegrationConfig({
-      workspaceId: currentWorkspace?.id ?? "",
+      projectId: currentProject?.id ?? "",
       integration: WorkflowIntegrationPlatform.SLACK
     });
 
   const { data: microsoftTeamsConfig, isPending: isMicrosoftTeamsConfigLoading } =
     useGetWorkspaceWorkflowIntegrationConfig({
-      workspaceId: currentWorkspace?.id ?? "",
+      projectId: currentProject?.id ?? "",
       integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS
     });
 
@@ -66,12 +66,12 @@ export const WorkflowIntegrationTab = () => {
     integrationType: WorkflowIntegrationPlatform,
     integrationId: string
   ) => {
-    if (!currentWorkspace.id) {
+    if (!currentProject.id) {
       return;
     }
 
     await deleteIntegration({
-      projectId: currentWorkspace?.id ?? "",
+      projectId: currentProject?.id ?? "",
       integration: integrationType,
       integrationId
     });

@@ -12,7 +12,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -47,8 +47,8 @@ export const MoveSecretsModal = ({ popUp, handlePopUpToggle, onMoveApproved }: P
     formState: { isSubmitting }
   } = useForm<TFormSchema>({ resolver: zodResolver(formSchema) });
 
-  const { currentWorkspace } = useWorkspace();
-  const environments = currentWorkspace?.environments || [];
+  const { currentProject } = useProject();
+  const environments = currentProject?.environments || [];
   const selectedEnvironment = watch("environment");
 
   const handleFormSubmit = (data: TFormSchema) => {

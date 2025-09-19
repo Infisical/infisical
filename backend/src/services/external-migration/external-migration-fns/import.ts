@@ -55,7 +55,7 @@ export const importDataIntoInfisicalFn = async ({
           actorId,
           actorOrgId,
           actorAuthMethod,
-          workspaceName: project.name,
+          projectName: project.name,
           createDefaultEnvs: false,
           tx
         })

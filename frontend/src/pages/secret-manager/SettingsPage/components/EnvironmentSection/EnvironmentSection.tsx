@@ -8,9 +8,9 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
-  useSubscription,
-  useWorkspace
+  useSubscription
 } from "@app/context";
 import { useDeleteWsEnvironment } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -21,14 +21,14 @@ import { UpdateEnvironmentModal } from "./UpdateEnvironmentModal";
 
 export const EnvironmentSection = () => {
   const { subscription } = useSubscription();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { permission } = useProjectPermission();
 
   const deleteWsEnvironment = useDeleteWsEnvironment();
 
   const isMoreEnvironmentsAllowed =
-    subscription?.environmentLimit && currentWorkspace?.environments
-      ? currentWorkspace.environments.length < subscription.environmentLimit
+    subscription?.environmentLimit && currentProject?.environments
+      ? currentProject.environments.length < subscription.environmentLimit
       : true;
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -40,10 +40,10 @@ export const EnvironmentSection = () => {
 
   const onEnvDeleteSubmit = async (id: string) => {
     try {
-      if (!currentWorkspace?.id) return;
+      if (!currentProject?.id) return;
 
       await deleteWsEnvironment.mutateAsync({
-        workspaceId: currentWorkspace.id,
+        projectId: currentProject.id,
         id
       });
 

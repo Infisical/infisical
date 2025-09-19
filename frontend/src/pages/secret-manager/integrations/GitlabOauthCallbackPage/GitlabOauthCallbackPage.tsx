@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateAppConnection, useUpdateAppConnection } from "@app/hooks/api/appConnections";
 import { GitLabConnectionMethod } from "@app/hooks/api/appConnections/types/gitlab-connection";
 
@@ -14,7 +14,7 @@ export const GitLabOAuthCallbackPage = () => {
   const { code, state } = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.GitlabOauthCallbackPage.id
   });
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   useEffect(() => {
     (async () => {
@@ -65,7 +65,7 @@ export const GitLabOAuthCallbackPage = () => {
           });
         } else {
           appConnection = await createAppConnection({
-            workspaceId: currentWorkspace.id,
+            workspaceId: currentProject.id,
             ...connectionData
           });
         }
@@ -87,7 +87,7 @@ export const GitLabOAuthCallbackPage = () => {
         });
       }
     })();
-  }, [code, state, navigate, createAppConnection, updateAppConnection, currentWorkspace.id]);
+  }, [code, state, navigate, createAppConnection, updateAppConnection, currentProject.id]);
 
   return (
     <div className="flex h-screen items-center justify-center">

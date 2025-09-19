@@ -26,7 +26,7 @@ export enum EventType {
   CREATE_SECRET = "create-secret",
   UPDATE_SECRET = "update-secret",
   DELETE_SECRET = "delete-secret",
-  GET_WORKSPACE_KEY = "get-workspace-key",
+  GET_PROJECT_KEY = "get-project-key",
   AUTHORIZE_INTEGRATION = "authorize-integration",
   UPDATE_INTEGRATION_AUTH = "update-integration-auth",
   UNAUTHORIZE_INTEGRATION = "unauthorize-integration",
@@ -54,12 +54,13 @@ export enum EventType {
   UPDATE_IDENTITY_LDAP_AUTH = "update-identity-ldap-auth",
   GET_IDENTITY_LDAP_AUTH = "get-identity-ldap-auth",
   REVOKE_IDENTITY_LDAP_AUTH = "revoke-identity-ldap-auth",
+  CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS = "clear-identity-ldap-auth-lockouts",
 
   CREATE_ENVIRONMENT = "create-environment",
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
-  ADD_WORKSPACE_MEMBER = "add-workspace-member",
-  REMOVE_WORKSPACE_MEMBER = "remove-workspace-member",
+  ADD_PROJECT_MEMBER = "add-project-member",
+  REMOVE_PROJECT_MEMBER = "remove-project-member",
   CREATE_FOLDER = "create-folder",
   UPDATE_FOLDER = "update-folder",
   DELETE_FOLDER = "delete-folder",
@@ -71,8 +72,8 @@ export enum EventType {
   CREATE_SECRET_IMPORT = "create-secret-import",
   UPDATE_SECRET_IMPORT = "update-secret-import",
   DELETE_SECRET_IMPORT = "delete-secret-import",
-  UPDATE_USER_WORKSPACE_ROLE = "update-user-workspace-role",
-  UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS = "update-user-workspace-denied-permissions",
+  UPDATE_USER_PROJECT_ROLE = "update-user-project-role",
+  UPDATE_USER_PROJECT_DENIED_PERMISSIONS = "update-user-project-denied-permissions",
   CREATE_CA = "create-certificate-authority",
   GET_CA = "get-certificate-authority",
   UPDATE_CA = "update-certificate-authority",
@@ -140,6 +141,8 @@ export enum EventType {
   CREATE_APP_CONNECTION = "create-app-connection",
   UPDATE_APP_CONNECTION = "update-app-connection",
   DELETE_APP_CONNECTION = "delete-app-connection",
+  GET_APP_CONNECTION_USAGE = "get-app-connection-usage",
+  MIGRATE_APP_CONNECTION = "migrate-app-connection",
   GET_SECRET_SYNCS = "get-secret-syncs",
   GET_SECRET_SYNC = "get-secret-sync",
   CREATE_SECRET_SYNC = "create-secret-sync",
@@ -213,5 +216,21 @@ export enum EventType {
 
   CREATE_PROJECT = "create-project",
   UPDATE_PROJECT = "update-project",
-  DELETE_PROJECT = "delete-project"
+  DELETE_PROJECT = "delete-project",
+
+  CREATE_SECRET_REMINDER = "create-secret-reminder",
+  GET_SECRET_REMINDER = "get-secret-reminder",
+  DELETE_SECRET_REMINDER = "delete-secret-reminder",
+
+  DASHBOARD_LIST_SECRETS = "dashboard-list-secrets",
+  DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
+  DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value",
+
+  CREATE_PROJECT_ROLE = "create-project-role",
+  UPDATE_PROJECT_ROLE = "update-project-role",
+  DELETE_PROJECT_ROLE = "delete-project-role",
+
+  CREATE_ORG_ROLE = "create-org-role",
+  UPDATE_ORG_ROLE = "update-org-role",
+  DELETE_ORG_ROLE = "delete-org-role"
 }

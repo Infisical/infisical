@@ -1,6 +1,6 @@
 import { TProjectRole } from "@app/hooks/api/roles/types";
 
-import { ProjectType } from "../workspace/types";
+import { ProjectType } from "../projects/types";
 
 export type TProjectTemplate = {
   id: string;

@@ -328,6 +328,7 @@ import { registerV1Routes } from "./v1";
 import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
+import { registerV4Routes } from "./v4";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
@@ -772,7 +773,8 @@ export const registerRoutes = async (
     orgDAL,
     totpService,
     orgMembershipDAL,
-    auditLogService
+    auditLogService,
+    notificationService
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -886,7 +888,8 @@ export const registerRoutes = async (
     projectDAL,
     permissionService,
     projectUserMembershipRoleDAL,
-    projectMembershipDAL
+    projectMembershipDAL,
+    notificationService
   });
 
   const rateLimitService = rateLimitServiceFactory({
@@ -925,7 +928,8 @@ export const registerRoutes = async (
     projectRoleDAL,
     groupProjectDAL,
     secretReminderRecipientsDAL,
-    licenseService
+    licenseService,
+    notificationService
   });
   const projectUserAdditionalPrivilegeService = projectUserAdditionalPrivilegeServiceFactory({
     permissionService,
@@ -1106,7 +1110,9 @@ export const registerRoutes = async (
     instanceRelayConfigDAL,
     orgRelayConfigDAL,
     relayDAL,
-    kmsService
+    kmsService,
+    licenseService,
+    permissionService
   });
 
   const gatewayV2Service = gatewayV2ServiceFactory({
@@ -1144,7 +1150,8 @@ export const registerRoutes = async (
     appConnectionDAL,
     licenseService,
     gatewayService,
-    gatewayV2Service
+    gatewayV2Service,
+    notificationService
   });
 
   const secretQueueService = secretQueueFactory({
@@ -1228,7 +1235,8 @@ export const registerRoutes = async (
     projectTemplateService,
     groupProjectDAL,
     smtpService,
-    reminderService
+    reminderService,
+    notificationService
   });
 
   const projectEnvService = projectEnvServiceFactory({
@@ -1362,7 +1370,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     projectMicrosoftTeamsConfigDAL,
     microsoftTeamsService,
-    folderCommitService
+    folderCommitService,
+    notificationService
   });
 
   const secretService = secretServiceFactory({
@@ -1680,7 +1689,8 @@ export const registerRoutes = async (
     identityOrgMembershipDAL,
     licenseService,
     identityDAL,
-    identityAuthTemplateDAL
+    identityAuthTemplateDAL,
+    keyStore
   });
 
   const dynamicSecretProviders = buildDynamicSecretProviders({
@@ -1812,7 +1822,8 @@ export const registerRoutes = async (
     secretV2BridgeService,
     resourceMetadataDAL,
     folderCommitService,
-    folderVersionDAL
+    folderVersionDAL,
+    notificationService
   });
 
   const migrationService = externalMigrationServiceFactory({
@@ -1837,7 +1848,8 @@ export const registerRoutes = async (
     gatewayService,
     gatewayV2Service,
     gatewayDAL,
-    gatewayV2DAL
+    gatewayV2DAL,
+    projectDAL
   });
 
   const secretSyncService = secretSyncServiceFactory({
@@ -2014,7 +2026,8 @@ export const registerRoutes = async (
     queueService,
     projectDAL,
     projectMembershipDAL,
-    smtpService
+    smtpService,
+    notificationService
   });
 
   const secretScanningV2Queue = await secretScanningV2QueueServiceFactory({
@@ -2026,7 +2039,8 @@ export const registerRoutes = async (
     smtpService,
     kmsService,
     keyStore,
-    appConnectionDAL
+    appConnectionDAL,
+    notificationService
   });
 
   const secretScanningV2Service = secretScanningV2ServiceFactory({
@@ -2294,6 +2308,7 @@ export const registerRoutes = async (
     { prefix: "/api/v2" }
   );
   await server.register(registerV3Routes, { prefix: "/api/v3" });
+  await server.register(registerV4Routes, { prefix: "/api/v4" });
 
   server.addHook("onClose", async () => {
     cronJobs.forEach((job) => job.stop());

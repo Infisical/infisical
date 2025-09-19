@@ -54,4 +54,62 @@ Now, migrations run automatically during boot-up. This improvement streamlines t
    - Once the migration is complete, all instances will operate with the updated schema.
 
 5. **Verify the Upgrade:**  
-   - Review the logs for any migration errors or warnings. 
+   - Review the logs for any migration errors or warnings.
+   - Test basic functionality to ensure the upgrade was successful.
+
+## Troubleshooting
+
+### UI Caching Issues After Upgrade
+
+After upgrading your Infisical instance, you may encounter UI-related issues such as:
+- Strange loading behavior
+- Components not rendering correctly  
+- Unexpected errors in the browser console
+- Features appearing broken or unresponsive
+
+These issues are often caused by browser caching of the previous version's static assets.
+
+**Solution:**
+1. **Try a private/incognito browser window first** - This is the quickest way to test if the issue is cache-related.
+2. **Clear your browser cache** if the private window works correctly:
+   - **Chrome/Edge:** Press `Ctrl+Shift+Delete` (Windows/Linux) or `Cmd+Shift+Delete` (Mac)
+   - **Firefox:** Press `Ctrl+Shift+Delete` (Windows/Linux) or `Cmd+Shift+Delete` (Mac)
+   - **Safari:** Press `Cmd+Option+E` or go to Develop menu > Empty Caches
+3. **Hard refresh the page** by pressing `Ctrl+F5` (Windows/Linux) or `Cmd+Shift+R` (Mac)
+
+<Note>
+  Caching issues are temporary and typically resolve themselves as the cache expires, but manually clearing the cache provides immediate resolution.
+</Note>
+
+## Downgrade Considerations
+
+While we recommend staying up-to-date with the latest version, there may be scenarios where you need to downgrade your Infisical instance.
+
+<Warning>
+  **Database Compatibility:** Downgrading can be complex due to database schema changes. Always ensure you have proper backups before attempting any version changes.
+</Warning>
+
+### Safe Downgrade Process
+
+1. **Prepare Database Snapshot:**
+   - Create a database snapshot/backup **before** upgrading to the target version
+   - Ensure the snapshot is from a version compatible with your desired downgrade target
+
+2. **Stop Infisical Services:**
+   - Gracefully shut down all Infisical instances to prevent data corruption
+
+3. **Restore Database:**
+   - Restore your database from the pre-upgrade snapshot
+   - **Critical:** Do not attempt to downgrade with a database that has run migrations from a newer version
+
+4. **Deploy Previous Version:**
+   - Deploy the previous Infisical version
+   - Verify that the version matches the database schema in your snapshot
+
+5. **Verify Functionality:**
+   - Test critical functionality to ensure the downgrade was successful
+   - Monitor logs for any compatibility issues
+
+<Note>
+  The safest approach for downgrades is to restore to a known good state (both application and database) rather than attempting to reverse individual migrations.
+</Note>

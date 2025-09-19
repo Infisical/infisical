@@ -17,7 +17,7 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthById } from "@app/hooks/api/integrationAuth";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
@@ -44,7 +44,7 @@ export const RundeckConfigurePage = () => {
   });
   const navigate = useNavigate();
   const { mutateAsync } = useCreateIntegration();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.RundeckConfigurePage.id,
@@ -73,7 +73,7 @@ export const RundeckConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -138,7 +138,7 @@ export const RundeckConfigurePage = () => {
                     field.onChange(val);
                   }}
                 >
-                  {currentWorkspace?.environments.map((sourceEnvironment) => (
+                  {currentProject?.environments.map((sourceEnvironment) => (
                     <SelectItem
                       value={sourceEnvironment.slug}
                       key={`source-environment-${sourceEnvironment.slug}`}
@@ -171,7 +171,7 @@ export const RundeckConfigurePage = () => {
                 isError={Boolean(error)}
               >
                 <Input
-                  placeholder={`keys/project/${currentWorkspace.name
+                  placeholder={`keys/project/${currentProject.name
                     .toLowerCase()
                     .replace(/ /g, "-")}/${selectedSourceEnvironment}`}
                   {...field}

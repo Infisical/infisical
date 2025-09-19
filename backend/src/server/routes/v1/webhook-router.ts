@@ -39,7 +39,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           type: z.nativeEnum(WebhookType).default(WebhookType.GENERAL),
-          workspaceId: z.string().trim(),
+          projectId: z.string().trim(),
           environment: z.string().trim(),
           webhookUrl: z.string().url().trim(),
           webhookSecretKey: z.string().trim().optional(),
@@ -67,13 +67,12 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        projectId: req.body.workspaceId,
         ...req.body
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.body.workspaceId,
+        projectId: req.body.projectId,
         event: {
           type: EventType.CREATE_WEBHOOK,
           metadata: {
@@ -216,7 +215,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
       querystring: z.object({
-        workspaceId: z.string().trim(),
+        projectId: z.string().trim(),
         environment: z.string().trim().optional(),
         secretPath: z
           .string()
@@ -238,7 +237,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.query,
-        projectId: req.query.workspaceId
+        projectId: req.query.projectId
       });
       return { message: "Successfully fetched webhook", webhooks };
     }

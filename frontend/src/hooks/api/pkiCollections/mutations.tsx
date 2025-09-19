@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace";
+import { projectKeys } from "../projects";
 import { pkiCollectionKeys } from "./queries";
 import {
   TAddItemToPkiCollectionDTO,
@@ -26,7 +26,7 @@ export const useCreatePkiCollection = () => {
     },
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspacePkiCollections(projectId)
+        queryKey: projectKeys.getProjectPkiCollections(projectId)
       });
     }
   });
@@ -44,7 +44,7 @@ export const useUpdatePkiCollection = () => {
     },
     onSuccess: (_, { projectId, collectionId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspacePkiCollections(projectId)
+        queryKey: projectKeys.getProjectPkiCollections(projectId)
       });
       queryClient.invalidateQueries({
         queryKey: pkiCollectionKeys.getPkiCollectionById(collectionId)
@@ -64,7 +64,7 @@ export const useDeletePkiCollection = () => {
     },
     onSuccess: (_, { projectId, collectionId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspacePkiCollections(projectId)
+        queryKey: projectKeys.getProjectPkiCollections(projectId)
       });
       queryClient.invalidateQueries({
         queryKey: pkiCollectionKeys.getPkiCollectionById(collectionId)

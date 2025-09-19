@@ -20,11 +20,13 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { EmptyState, IconButton, SecretInput, TableContainer, Tooltip } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { EmptyState, IconButton, TableContainer, Tooltip } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useResyncSecretReplication } from "@app/hooks/api";
 import { TSecretImport } from "@app/hooks/api/types";
+
+import { SecretImportSecretRow } from "./SecretImportSecretRow";
 
 type Props = {
   onDelete: () => void;
@@ -35,7 +37,10 @@ type Props = {
   importedSecrets: {
     key: string;
     value?: string;
-    overriden: { env: string; secretPath: string };
+    overridden: { env: string; secretPath: string };
+    environment: string;
+    secretPath?: string;
+    isEmpty?: boolean;
   }[];
   searchTerm: string;
   onExpandReplicateSecrets: (id: string) => void;
@@ -82,7 +87,7 @@ export const SecretImportItem = ({
     lastReplicated,
     importEnv
   } = secretImport as TSecretImport;
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const [isExpanded, setIsExpanded] = useToggle();
   const { attributes, listeners, transform, transition, setNodeRef, isDragging } = useSortable({
     id
@@ -118,7 +123,7 @@ export const SecretImportItem = ({
         id,
         environment,
         path: secretPath,
-        projectId: currentWorkspace?.id || ""
+        projectId: currentProject?.id || ""
       });
       createNotification({
         text: "Please refresh the dashboard to view changes",
@@ -299,7 +304,6 @@ export const SecretImportItem = ({
                   <tr>
                     <td style={{ padding: "0.25rem 1rem" }}>Key</td>
                     <td style={{ padding: "0.25rem 1rem" }}>Value</td>
-                    {/* <td style={{ padding: "0.25rem 1rem" }}>Override</td> */}
                   </tr>
                 </thead>
                 <tbody>
@@ -317,18 +321,11 @@ export const SecretImportItem = ({
                       </td>
                     </tr>
                   )}
-                  {filteredImportedSecrets.map(({ key, value }, index) => (
-                    <tr key={`${id}-${key}-${index + 1}`}>
-                      <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
-                        {key}
-                      </td>
-                      <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
-                        <SecretInput value={value} isReadOnly />
-                      </td>
-                      {/* <td className="h-10" style={{ padding: "0.25rem 1rem" }}>
-                          <EnvFolderIcon env={overriden?.env} secretPath={overriden?.secretPath} />
-                        </td> */}
-                    </tr>
+                  {filteredImportedSecrets.map((secret, index) => (
+                    <SecretImportSecretRow
+                      secret={secret}
+                      key={`${id}-${secret.key}-${index + 1}`}
+                    />
                   ))}
                 </tbody>
               </table>

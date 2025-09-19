@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 
+import { TSecretScanningDataSourceForm } from "@app/components/secret-scanning/forms/schemas";
 import { Modal, ModalContent } from "@app/components/v2";
 import {
   SecretScanningDataSource,
@@ -21,16 +23,19 @@ type ContentProps = {
   onComplete: (dataSource: TSecretScanningDataSource) => void;
   selectedDataSource: SecretScanningDataSource | null;
   setSelectedDataSource: (selectedDataSource: SecretScanningDataSource | null) => void;
+  initialFormData?: Partial<TSecretScanningDataSourceForm>;
+  onCancel: () => void;
 };
 
-const Content = ({ setSelectedDataSource, selectedDataSource, ...props }: ContentProps) => {
+const Content = ({
+  setSelectedDataSource,
+  selectedDataSource,
+  onCancel,
+  ...props
+}: ContentProps) => {
   if (selectedDataSource) {
     return (
-      <SecretScanningDataSourceForm
-        onCancel={() => setSelectedDataSource(null)}
-        type={selectedDataSource}
-        {...props}
-      />
+      <SecretScanningDataSourceForm onCancel={onCancel} type={selectedDataSource} {...props} />
     );
   }
 
@@ -41,12 +46,60 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
   const [selectedDataSource, setSelectedDataSource] = useState<SecretScanningDataSource | null>(
     null
   );
+  const [initialFormData, setInitialFormData] = useState<Partial<TSecretScanningDataSourceForm>>();
+
+  const {
+    location: {
+      search: { connectionId, connectionName, ...search },
+      pathname
+    }
+  } = useRouterState();
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (connectionId && connectionName) {
+      const storedFormData = localStorage.getItem("secretScanningDataSourceFormData");
+
+      if (!storedFormData) return;
+
+      let form: Partial<TSecretScanningDataSourceForm> = {};
+      try {
+        form = JSON.parse(storedFormData) as TSecretScanningDataSourceForm;
+      } catch {
+        return;
+      } finally {
+        localStorage.removeItem("secretScanningDataSourceFormData");
+      }
+
+      onOpenChange(true);
+
+      setSelectedDataSource(form.type ?? null);
+
+      setInitialFormData({
+        ...form,
+        connection: { id: connectionId, name: connectionName }
+      });
+
+      navigate({
+        to: pathname,
+        search
+      });
+    }
+  }, [connectionId, connectionName]);
+
+  const resetModal = () => {
+    setSelectedDataSource(null);
+    setInitialFormData(undefined);
+  };
 
   return (
     <Modal
       isOpen={isOpen}
       onOpenChange={(open) => {
-        if (!open) setSelectedDataSource(null);
+        if (!open) {
+          resetModal();
+        }
         onOpenChange(open);
       }}
     >
@@ -83,11 +136,13 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
       >
         <Content
           onComplete={() => {
-            setSelectedDataSource(null);
+            resetModal();
             onOpenChange(false);
           }}
+          onCancel={resetModal}
           selectedDataSource={selectedDataSource}
           setSelectedDataSource={setSelectedDataSource}
+          initialFormData={initialFormData}
           {...props}
         />
       </ModalContent>

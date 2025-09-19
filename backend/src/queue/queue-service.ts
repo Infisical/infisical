@@ -231,6 +231,8 @@ export type TQueueJobTypes = {
   [QueueName.ImportSecretsFromExternalSource]: {
     name: QueueJobs.ImportSecretsFromExternalSource;
     payload: {
+      orgId: string;
+      actorId: string;
       actorEmail: string;
       importType: ExternalPlatforms;
       data: {

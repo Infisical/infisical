@@ -61,6 +61,8 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import { TNotificationServiceFactory } from "../notification/notification-service";
+import { NotificationType } from "../notification/notification-types";
 
 export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
 
@@ -100,6 +102,7 @@ type TSecretSyncQueueFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 type SecretSyncActionJob = Job<
@@ -142,7 +145,8 @@ export const secretSyncQueueFactory = ({
   folderCommitService,
   licenseService,
   gatewayService,
-  gatewayV2Service
+  gatewayV2Service,
+  notificationService
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -484,13 +488,14 @@ export const secretSyncQueueFactory = ({
 
     try {
       const {
-        connection: { orgId, encryptedCredentials }
+        connection: { orgId, encryptedCredentials, projectId }
       } = secretSync;
 
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        kmsService
+        kmsService,
+        projectId
       });
 
       const secretSyncWithCredentials = {
@@ -624,13 +629,14 @@ export const secretSyncQueueFactory = ({
 
     try {
       const {
-        connection: { orgId, encryptedCredentials }
+        connection: { orgId, encryptedCredentials, projectId }
       } = secretSync;
 
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        kmsService
+        kmsService,
+        projectId
       });
 
       await $importSecrets(
@@ -744,13 +750,14 @@ export const secretSyncQueueFactory = ({
 
     try {
       const {
-        connection: { orgId, encryptedCredentials }
+        connection: { orgId, encryptedCredentials, projectId }
       } = secretSync;
 
       const credentials = await decryptAppConnectionCredentials({
         orgId,
         encryptedCredentials,
-        kmsService
+        kmsService,
+        projectId
       });
 
       const secretMap = await $getInfisicalSecrets(secretSync);
@@ -895,6 +902,19 @@ export const secretSyncQueueFactory = ({
         break;
     }
 
+    const syncPath = `/projects/secret-management/${projectId}/integrations/secret-syncs/${destination}/${secretSync.id}`;
+
+    await notificationService.createUserNotifications(
+      projectAdmins.map((admin) => ({
+        userId: admin.userId,
+        orgId: project.orgId,
+        type: NotificationType.SECRET_SYNC_FAILED,
+        title: `Secret Sync Failed to ${actionLabel} Secrets`,
+        body: `Your **${syncDestination}** sync **${name}** failed to complete${failureMessage ? `: \`${failureMessage}\`` : ""}`,
+        link: syncPath
+      }))
+    );
+
     await smtpService.sendMail({
       recipients: projectAdmins.map((member) => member.user.email!).filter(Boolean),
       template: SmtpTemplates.SecretSyncFailed,
@@ -907,7 +927,7 @@ export const secretSyncQueueFactory = ({
         secretPath: folder?.path,
         environment: environment?.name,
         projectName: project.name,
-        syncUrl: `${appCfg.SITE_URL}/projects/secret-management/${projectId}/integrations/secret-syncs/${destination}/${secretSync.id}`
+        syncUrl: `${appCfg.SITE_URL}${syncPath}`
       }
     });
   };

@@ -19,7 +19,7 @@ import {
   SelectItem,
   Switch
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub
@@ -95,13 +95,13 @@ type Props = {
 };
 
 export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { data: microsoftTeamsConfig } = useGetWorkspaceWorkflowIntegrationConfig({
-    workspaceId: currentWorkspace?.id ?? "",
+    projectId: currentProject?.id ?? "",
     integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS
   });
   const { data: microsoftTeamsIntegrations } = useGetMicrosoftTeamsIntegrations(
-    currentWorkspace?.orgId
+    currentProject?.orgId
   );
 
   const { mutateAsync: updateProjectMicrosoftTeamsConfig } =
@@ -131,12 +131,12 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
 
   const handleIntegrationSave = async (data: TMicrosoftTeamsConfigForm) => {
     try {
-      if (!currentWorkspace) {
+      if (!currentProject) {
         return;
       }
 
       await updateProjectMicrosoftTeamsConfig({
-        workspaceId: currentWorkspace.id,
+        projectId: currentProject.id,
         isAccessRequestNotificationEnabled: data.isAccessRequestNotificationEnabled,
         isSecretRequestNotificationEnabled: data.isSecretRequestNotificationEnabled,
         ...(data.isAccessRequestNotificationEnabled && {

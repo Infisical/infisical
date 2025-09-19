@@ -777,6 +777,20 @@ export const accessApprovalRequestServiceFactory = ({
               .map((appUser) => appUser.email)
               .filter((email): email is string => !!email);
 
+            const approvalPath = `/projects/secret-management/${project.id}/approval`;
+            const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
+
+            await notificationService.createUserNotifications(
+              approverUsersForEmail.map((approver) => ({
+                userId: approver.id,
+                orgId: actorOrgId,
+                type: NotificationType.ACCESS_POLICY_BYPASSED,
+                title: "Secret Access Policy Bypassed",
+                body: `**${actingUser.firstName} ${actingUser.lastName}** (${actingUser.email}) has accessed a secret in **${policy.secretPath || "/"}** in the **${environment?.name || permissionEnvironment}** environment for project **${project.name}** without obtaining the required approval.`,
+                link: approvalPath
+              }))
+            );
+
             if (recipientEmails.length > 0) {
               await smtpService.sendMail({
                 recipients: recipientEmails,
@@ -788,7 +802,7 @@ export const accessApprovalRequestServiceFactory = ({
                   bypassReason: bypassReason || "No reason provided",
                   secretPath: policy.secretPath || "/",
                   environment: environment?.name || permissionEnvironment,
-                  approvalUrl: `${cfg.SITE_URL}/projects/secret-management/${project.id}/approval`,
+                  approvalUrl,
                   requestType: "access"
                 },
                 template: SmtpTemplates.AccessSecretRequestBypassed

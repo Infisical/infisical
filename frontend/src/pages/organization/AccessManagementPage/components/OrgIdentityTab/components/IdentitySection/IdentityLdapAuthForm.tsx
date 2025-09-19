@@ -3,6 +3,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faQuestionCircle, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import ms from "ms";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -25,6 +26,7 @@ import {
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { getObjectFromSeconds } from "@app/helpers/datetime";
 import {
   MachineIdentityAuthMethod,
   useAddIdentityLdapAuth,
@@ -35,6 +37,8 @@ import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { useGetAvailableTemplates } from "@app/hooks/api/identityAuthTemplates/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { LockoutTab } from "./lockout/LockoutTab";
+import { superRefineLockout } from "./lockout/super-refine";
 import { IdentityFormTab } from "./types";
 
 const schema = z
@@ -74,9 +78,28 @@ const schema = z
           ipAddress: z.string().max(50)
         })
       )
-      .min(1)
+      .min(1),
+
+    lockoutEnabled: z.boolean().default(true),
+    lockoutThreshold: z
+      .string()
+      .refine(
+        (value) => Number(value) <= 30 && Number(value) >= 1,
+        "Lockout threshold must be between 1 and 30"
+      ),
+    lockoutDurationValue: z.string(),
+    lockoutDurationUnit: z.enum(["s", "m", "h", "d"], {
+      invalid_type_error: "Please select a valid time unit"
+    }),
+    lockoutCounterResetValue: z.string(),
+    lockoutCounterResetUnit: z.enum(["s", "m", "h"], {
+      invalid_type_error: "Please select a valid time unit"
+    })
   })
+  .required()
   .superRefine((data, ctx) => {
+    superRefineLockout(data, ctx);
+
     // Validation based on scope
     if (data.scope === "template") {
       if (!data.templateId) {
@@ -178,11 +201,24 @@ export const IdentityLdapAuthForm = ({
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "0",
-      accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
+      accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+      lockoutEnabled: true,
+      lockoutThreshold: "3",
+      lockoutDurationValue: "5",
+      lockoutDurationUnit: "m",
+      lockoutCounterResetValue: "30",
+      lockoutCounterResetUnit: "s"
     }
   });
 
   const scope = watch("scope");
+
+  const lockoutEnabledWatch = watch("lockoutEnabled");
+  const lockoutThresholdWatch = watch("lockoutThreshold");
+  const lockoutDurationValueWatch = watch("lockoutDurationValue");
+  const lockoutDurationUnitWatch = watch("lockoutDurationUnit");
+  const lockoutCounterResetValueWatch = watch("lockoutCounterResetValue");
+  const lockoutCounterResetUnitWatch = watch("lockoutCounterResetUnit");
 
   const {
     fields: accessTokenTrustedIpsFields,
@@ -210,6 +246,9 @@ export const IdentityLdapAuthForm = ({
     if (data) {
       const detectedScope = determineScope(data);
 
+      const lockoutDurationObj = getObjectFromSeconds(data.lockoutDurationSeconds);
+      const lockoutCounterResetObj = getObjectFromSeconds(data.lockoutCounterResetSeconds);
+
       reset({
         scope: detectedScope,
         templateId: data.templateId || "",
@@ -229,7 +268,13 @@ export const IdentityLdapAuthForm = ({
               ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
             };
           }
-        )
+        ),
+        lockoutEnabled: data.lockoutEnabled,
+        lockoutThreshold: String(data.lockoutThreshold),
+        lockoutDurationValue: String(lockoutDurationObj.value),
+        lockoutDurationUnit: lockoutDurationObj.unit as "s" | "m" | "h" | "d",
+        lockoutCounterResetValue: String(lockoutCounterResetObj.value),
+        lockoutCounterResetUnit: lockoutCounterResetObj.unit as "s" | "m" | "h"
       });
       return;
     }
@@ -247,7 +292,13 @@ export const IdentityLdapAuthForm = ({
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "0",
-      accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
+      accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+      lockoutEnabled: true,
+      lockoutThreshold: "3",
+      lockoutDurationValue: "5",
+      lockoutDurationUnit: "m",
+      lockoutCounterResetValue: "30",
+      lockoutCounterResetUnit: "s"
     });
   }, [data, reset]);
 
@@ -275,8 +326,18 @@ export const IdentityLdapAuthForm = ({
         accessTokenTTL,
         accessTokenMaxTTL,
         accessTokenNumUsesLimit,
-        accessTokenTrustedIps
+        accessTokenTrustedIps,
+        lockoutEnabled,
+        lockoutThreshold,
+        lockoutDurationValue,
+        lockoutDurationUnit,
+        lockoutCounterResetValue,
+        lockoutCounterResetUnit
       } = formData;
+
+      const lockoutDurationSeconds = ms(`${lockoutDurationValue}${lockoutDurationUnit}`) / 1000;
+      const lockoutCounterResetSeconds =
+        ms(`${lockoutCounterResetValue}${lockoutCounterResetUnit}`) / 1000;
 
       const basePayload = {
         organizationId: orgId,
@@ -287,7 +348,11 @@ export const IdentityLdapAuthForm = ({
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
         accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-        accessTokenTrustedIps
+        accessTokenTrustedIps,
+        lockoutEnabled,
+        lockoutThreshold: Number(lockoutThreshold),
+        lockoutDurationSeconds,
+        lockoutCounterResetSeconds
       };
 
       // Add scope-specific fields
@@ -327,7 +392,10 @@ export const IdentityLdapAuthForm = ({
   return (
     <form
       onSubmit={handleSubmit(onFormSubmit, (fields) => {
-        setTabValue(
+        const firstErrorField = Object.keys(fields)[0];
+        let tab = IdentityFormTab.Advanced;
+
+        if (
           [
             "scope",
             "templateId",
@@ -340,15 +408,29 @@ export const IdentityLdapAuthForm = ({
             "allowedFields",
             "accessTokenMaxTTL",
             "accessTokenNumUsesLimit"
-          ].includes(Object.keys(fields)[0])
-            ? IdentityFormTab.Configuration
-            : IdentityFormTab.Advanced
-        );
+          ].includes(firstErrorField)
+        ) {
+          tab = IdentityFormTab.Configuration;
+        } else if (
+          [
+            "lockoutEnabled",
+            "lockoutThreshold",
+            "lockoutDurationValue",
+            "lockoutDurationUnit",
+            "lockoutCounterResetValue",
+            "lockoutCounterResetUnit"
+          ].includes(firstErrorField)
+        ) {
+          tab = IdentityFormTab.Lockout;
+        }
+
+        setTabValue(tab);
       })}
     >
       <Tabs value={tabValue} onValueChange={(value) => setTabValue(value as IdentityFormTab)}>
         <TabList>
           <Tab value={IdentityFormTab.Configuration}>Configuration</Tab>
+          <Tab value={IdentityFormTab.Lockout}>Lockout</Tab>
           <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
         </TabList>
         <TabPanel value={IdentityFormTab.Configuration}>
@@ -691,6 +773,15 @@ export const IdentityLdapAuthForm = ({
             )}
           />
         </TabPanel>
+        <LockoutTab
+          control={control}
+          lockoutEnabled={lockoutEnabledWatch}
+          lockoutThreshold={lockoutThresholdWatch}
+          lockoutDurationValue={lockoutDurationValueWatch}
+          lockoutDurationUnit={lockoutDurationUnitWatch}
+          lockoutCounterResetValue={lockoutCounterResetValueWatch}
+          lockoutCounterResetUnit={lockoutCounterResetUnitWatch}
+        />
         <TabPanel value={IdentityFormTab.Advanced}>
           <Controller
             control={control}

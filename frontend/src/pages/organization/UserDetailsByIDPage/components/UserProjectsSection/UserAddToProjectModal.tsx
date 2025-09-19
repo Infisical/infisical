@@ -9,9 +9,9 @@ import { useOrganization } from "@app/context";
 import {
   useAddUserToWsNonE2EE,
   useGetOrgMembershipProjectMemberships,
-  useGetUserWorkspaces
+  useGetUserProjects
 } from "@app/hooks/api";
-import { ProjectVersion } from "@app/hooks/api/workspace/types";
+import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
@@ -34,7 +34,7 @@ type Props = {
 const UserAddToProjectModalChild = ({ membershipId, popUp, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
-  const { data: workspaces = [] } = useGetUserWorkspaces();
+  const { data: workspaces = [] } = useGetUserProjects();
 
   const { mutateAsync: addUserToWorkspaceNonE2EE } = useAddUserToWsNonE2EE();
 

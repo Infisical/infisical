@@ -1,4 +1,5 @@
 import { LogProvider } from "../enums";
+import { TAzureProviderLogStream } from "./providers/azure-provider";
 import { TCriblProviderLogStream } from "./providers/cribl-provider";
 import { TCustomProviderLogStream } from "./providers/custom-provider";
 import { TDatadogProviderLogStream } from "./providers/datadog-provider";
@@ -8,9 +9,11 @@ export type TAuditLogStream =
   | TCustomProviderLogStream
   | TDatadogProviderLogStream
   | TSplunkProviderLogStream
+  | TAzureProviderLogStream
   | TCriblProviderLogStream;
 
 export type TAuditLogStreamProviderMap = {
+  [LogProvider.Azure]: TAzureProviderLogStream;
   [LogProvider.Cribl]: TCriblProviderLogStream;
   [LogProvider.Custom]: TCustomProviderLogStream;
   [LogProvider.Datadog]: TDatadogProviderLogStream;

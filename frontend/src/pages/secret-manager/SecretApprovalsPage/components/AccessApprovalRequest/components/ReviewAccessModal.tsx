@@ -25,7 +25,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
-import { ProjectPermissionActions, useUser, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useListWorkspaceGroups, useReviewAccessRequest } from "@app/hooks/api";
 import {
@@ -102,8 +102,8 @@ export const ReviewAccessRequestModal = ({
   const [bypassApproval, setBypassApproval] = useState(false);
 
   const [bypassReason, setBypassReason] = useState("");
-  const { currentWorkspace } = useWorkspace();
-  const { data: groupMemberships = [] } = useListWorkspaceGroups(currentWorkspace?.id || "");
+  const { currentProject } = useProject();
+  const { data: groupMemberships = [] } = useListWorkspaceGroups(currentProject?.id || "");
   const { user } = useUser();
 
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["editRequest"] as const);

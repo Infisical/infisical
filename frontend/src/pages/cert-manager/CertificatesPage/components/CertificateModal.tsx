@@ -22,7 +22,7 @@ import {
   SelectItem,
   Tooltip
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   CaStatus,
   useCreateCertificate,
@@ -89,22 +89,22 @@ const CERT_TEMPLATE_NONE_VALUE = "none";
 
 export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
   const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { data: cert } = useGetCert(
     (popUp?.certificate?.data as { serialNumber: string })?.serialNumber || ""
   );
 
   const { data: cas } = useListWorkspaceCas({
-    projectSlug: currentWorkspace?.slug ?? "",
+    projectId: currentProject.id,
     status: CaStatus.ACTIVE
   });
 
   const { data } = useListWorkspacePkiCollections({
-    workspaceId: currentWorkspace?.id || ""
+    projectId: currentProject?.id || ""
   });
 
   const { data: templatesData } = useListWorkspaceCertificateTemplates({
-    workspaceId: currentWorkspace?.id || ""
+    projectId: currentProject?.id || ""
   });
 
   const { mutateAsync: createCertificate } = useCreateCertificate();
@@ -191,12 +191,12 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     extendedKeyUsages
   }: FormData) => {
     try {
-      if (!currentWorkspace?.slug) return;
+      if (!currentProject?.slug) return;
 
       const { serialNumber, certificate, certificateChain, privateKey } = await createCertificate({
         caId: !selectedCertTemplate ? caId : undefined,
         certificateTemplateId: selectedCertTemplate ? selectedCertTemplateId : undefined,
-        projectSlug: currentWorkspace.slug,
+        projectSlug: currentProject.slug,
         pkiCollectionId: collectionId,
         friendlyName,
         commonName,

@@ -2,6 +2,7 @@ import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability"
 
 import {
   ProjectPermissionActions,
+  ProjectPermissionAppConnectionActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCmekActions,
@@ -264,6 +265,17 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SecretEvents
   );
 
+  can(
+    [
+      ProjectPermissionAppConnectionActions.Create,
+      ProjectPermissionAppConnectionActions.Edit,
+      ProjectPermissionAppConnectionActions.Delete,
+      ProjectPermissionAppConnectionActions.Read,
+      ProjectPermissionAppConnectionActions.Connect
+    ],
+    ProjectPermissionSub.AppConnections
+  );
+
   return rules;
 };
 
@@ -476,6 +488,8 @@ const buildMemberPermissionRules = () => {
     ],
     ProjectPermissionSub.SecretEvents
   );
+
+  can(ProjectPermissionAppConnectionActions.Connect, ProjectPermissionSub.AppConnections);
 
   return rules;
 };

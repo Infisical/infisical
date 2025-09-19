@@ -57,6 +57,8 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { validateMicrosoftTeamsChannelsSchema } from "../microsoft-teams/microsoft-teams-fns";
 import { TMicrosoftTeamsIntegrationDALFactory } from "../microsoft-teams/microsoft-teams-integration-dal";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "../microsoft-teams/project-microsoft-teams-config-dal";
+import { TNotificationServiceFactory } from "../notification/notification-service";
+import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TPkiAlertDALFactory } from "../pki-alert/pki-alert-dal";
 import { TPkiCollectionDALFactory } from "../pki-collection/pki-collection-dal";
@@ -183,6 +185,7 @@ type TProjectServiceFactoryDep = {
   >;
   projectTemplateService: TProjectTemplateServiceFactory;
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -227,7 +230,8 @@ export const projectServiceFactory = ({
   projectTemplateService,
   groupProjectDAL,
   smtpService,
-  reminderService
+  reminderService,
+  notificationService
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -237,8 +241,8 @@ export const projectServiceFactory = ({
     actorId,
     actorOrgId,
     actorAuthMethod,
-    workspaceName,
-    workspaceDescription,
+    projectName: workspaceName,
+    projectDescription: workspaceDescription,
     slug: projectSlug,
     kmsKeyId,
     tx: trx,
@@ -254,7 +258,13 @@ export const projectServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
+
+    if (
+      permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace) &&
+      permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Project)
+    ) {
+      throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
+    }
 
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
@@ -591,7 +601,8 @@ export const projectServiceFactory = ({
       secretSharing: update.secretSharing,
       defaultProduct: update.defaultProduct,
       showSnapshotsLegacy: update.showSnapshotsLegacy,
-      secretDetectionIgnoreValues: update.secretDetectionIgnoreValues
+      secretDetectionIgnoreValues: update.secretDetectionIgnoreValues,
+      pitVersionLimit: update.pitVersionLimit
     });
 
     return updatedProject;
@@ -684,19 +695,21 @@ export const projectServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     auditLogsRetentionDays,
-    workspaceSlug
+    filter
   }: TUpdateAuditLogsRetentionDTO) => {
-    const project = await projectDAL.findProjectBySlug(workspaceSlug, actorOrgId);
+    const project = await projectDAL.findProjectByFilter(filter);
+    const projectId = project.id;
+
     if (!project) {
       throw new NotFoundError({
-        message: `Project with slug '${workspaceSlug}' not found`
+        message: `Project not found`
       });
     }
 
     const { hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
-      projectId: project.id,
+      projectId,
       actorAuthMethod,
       actorOrgId,
       actionProjectType: ActionProjectType.Any
@@ -1806,7 +1819,8 @@ export const projectServiceFactory = ({
     limit,
     type,
     orderBy,
-    orderDirection
+    orderDirection,
+    projectIds
   }: TSearchProjectsDTO) => {
     // check user belong to org
     await permissionService.getOrgPermission(
@@ -1822,6 +1836,7 @@ export const projectServiceFactory = ({
       offset,
       name,
       type,
+      projectIds,
       orgId: permission.orgId,
       actor: permission.type,
       actorId: permission.id,
@@ -1913,6 +1928,21 @@ export const projectServiceFactory = ({
       projectTypeUrl = "cert-management";
     }
 
+    const callbackPath = `/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`;
+
+    await notificationService.createUserNotifications(
+      projectMembers
+        .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
+        .map((member) => ({
+          userId: member.userId,
+          orgId: project.orgId,
+          type: NotificationType.PROJECT_ACCESS_REQUEST,
+          title: "Project Access Request",
+          body: `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to the project **${project.name}**.`,
+          link: callbackPath
+        }))
+    );
+
     await smtpService.sendMail({
       template: SmtpTemplates.ProjectAccessRequest,
       recipients: filteredProjectMembers,
@@ -1923,7 +1953,7 @@ export const projectServiceFactory = ({
         projectName: project?.name,
         orgName: org?.name,
         note: comment,
-        callback_url: `${appCfg.SITE_URL}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`
+        callback_url: `${appCfg.SITE_URL}${callbackPath}`
       }
     });
   };

@@ -26,7 +26,11 @@ export const Notification = ({ notification, onDelete }: Props) => {
           {!notification.isRead && (
             <FontAwesomeIcon icon={faCircle} className="mt-1.5 size-2 text-yellow-400" />
           )}
-          <Tooltip content={<Markdown>{notification.title}</Markdown>} delayDuration={300}>
+          <Tooltip
+            content={<Markdown>{notification.title}</Markdown>}
+            delayDuration={300}
+            className="z-[1000]"
+          >
             <span className="overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium leading-5 text-mineshaft-100">
               <Markdown components={{ p: "span" }}>{notification.title}</Markdown>
             </span>

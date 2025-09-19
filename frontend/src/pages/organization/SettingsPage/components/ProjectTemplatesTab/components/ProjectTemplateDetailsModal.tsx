@@ -15,12 +15,12 @@ import {
   TextArea
 } from "@app/components/v2";
 import { getProjectLottieIcon } from "@app/helpers/project";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   TProjectTemplate,
   useCreateProjectTemplate,
   useUpdateProjectTemplate
 } from "@app/hooks/api/projectTemplates";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({

@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
   PageHeader
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { useDeleteProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -33,8 +33,8 @@ const Page = () => {
     strict: false,
     select: (el) => el.roleSlug as string
   });
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id || "";
 
   const { data } = useGetProjectRoleBySlug(projectId, roleSlug as string);
 
@@ -48,7 +48,7 @@ const Page = () => {
 
   const onDeleteRoleSubmit = async () => {
     try {
-      if (!currentWorkspace?.slug || !data?.id) return;
+      if (!currentProject?.slug || !data?.id) return;
 
       await deleteProjectRole({
         projectId,
@@ -61,7 +61,7 @@ const Page = () => {
       });
       handlePopUpClose("deleteRole");
       navigate({
-        to: `${getProjectBaseURL(currentWorkspace.type)}/access-management` as const,
+        to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
         params: {
           projectId
         },

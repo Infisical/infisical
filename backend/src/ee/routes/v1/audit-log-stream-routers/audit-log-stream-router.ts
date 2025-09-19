@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import {
+  AzureProviderListItemSchema,
+  SanitizedAzureProviderSchema
+} from "@app/ee/services/audit-log-stream/azure/azure-provider-schemas";
+import {
   CriblProviderListItemSchema,
   SanitizedCriblProviderSchema
 } from "@app/ee/services/audit-log-stream/cribl/cribl-provider-schemas";
@@ -24,6 +28,7 @@ const SanitizedAuditLogStreamSchema = z.union([
   SanitizedCustomProviderSchema,
   SanitizedDatadogProviderSchema,
   SanitizedSplunkProviderSchema,
+  SanitizedAzureProviderSchema,
   SanitizedCriblProviderSchema
 ]);
 
@@ -31,6 +36,7 @@ const ProviderOptionsSchema = z.discriminatedUnion("provider", [
   CustomProviderListItemSchema,
   DatadogProviderListItemSchema,
   SplunkProviderListItemSchema,
+  AzureProviderListItemSchema,
   CriblProviderListItemSchema
 ]);
 

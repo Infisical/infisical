@@ -16,7 +16,7 @@ import {
   SelectItem,
   Switch
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   useCreateSshCertTemplate,
   useGetSshCaById,
@@ -77,7 +77,7 @@ type Props = {
 };
 
 export const SshCertificateTemplateModal = ({ popUp, handlePopUpToggle, sshCaId }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { data: ca } = useGetSshCaById(sshCaId);
 
@@ -85,7 +85,7 @@ export const SshCertificateTemplateModal = ({ popUp, handlePopUpToggle, sshCaId 
     (popUp?.sshCertificateTemplate?.data as { id: string })?.id || ""
   );
 
-  const { data: cas } = useListWorkspaceSshCas(currentWorkspace?.id || "");
+  const { data: cas } = useListWorkspaceSshCas(currentProject?.id || "");
 
   const { mutateAsync: createSshCertTemplate } = useCreateSshCertTemplate();
   const { mutateAsync: updateSshCertTemplate } = useUpdateSshCertTemplate();

@@ -3,7 +3,7 @@ import { faFolder, faKey, faLayerGroup, faSearch } from "@fortawesome/free-solid
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
 
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useDebounce, useToggle } from "@app/hooks";
 import { useGetProjectFolders, useGetProjectSecrets } from "@app/hooks/api";
 
@@ -55,6 +55,8 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "val
   secretPath?: string;
   environment?: string;
   containerClassName?: string;
+  isLoadingValue?: boolean;
+  isErrorLoadingValue?: boolean;
 };
 
 type ReferenceItem = {
@@ -76,8 +78,8 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     },
     ref
   ) => {
-    const { currentWorkspace } = useWorkspace();
-    const workspaceId = currentWorkspace?.id || "";
+    const { currentProject } = useProject();
+    const projectId = currentProject?.id || "";
 
     const [debouncedValue] = useDebounce(value, 100);
 
@@ -101,7 +103,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       let predicate = suggestionSourceValue;
       if (isDeep) {
         const [envSlug, ...folderPaths] = suggestionSourceValue.split(".");
-        const isValidEnvSlug = currentWorkspace?.environments.find((e) => e.slug === envSlug);
+        const isValidEnvSlug = currentProject?.environments.find((e) => e.slug === envSlug);
         suggestionSourceEnv = isValidEnvSlug ? envSlug : undefined;
         suggestionSourceSecretPath = `/${folderPaths.slice(0, -1)?.join("/")}`;
         predicate = folderPaths[folderPaths.length - 1];
@@ -125,7 +127,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       viewSecretValue: false,
       environment: suggestionSource.environment || "",
       secretPath: suggestionSource.secretPath || "",
-      workspaceId,
+      projectId,
       options: {
         enabled: isPopupOpen
       }
@@ -133,7 +135,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const { data: folders } = useGetProjectFolders({
       environment: suggestionSource.environment || "",
       path: suggestionSource.secretPath || "",
-      projectId: workspaceId,
+      projectId,
       options: {
         enabled: isPopupOpen
       }
@@ -148,7 +150,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
       if (!suggestionSource.isDeep) {
         // At first level only environments and secrets
-        (currentWorkspace?.environments || []).forEach(({ name, slug }) => {
+        (currentProject?.environments || []).forEach(({ name, slug }) => {
           if (name.toLowerCase().startsWith(predicate))
             suggestionsArr.push({
               label: name,
@@ -185,7 +187,14 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       }
 
       return suggestionsArr;
-    }, [secrets, folders, currentWorkspace?.environments, isPopupOpen, suggestionSource.predicate]);
+    }, [
+      secrets,
+      folders,
+      currentProject?.environments,
+      isPopupOpen,
+      suggestionSource.value,
+      suggestionSource.predicate
+    ]);
 
     const handleSuggestionSelect = (selectIndex?: number) => {
       const selectedSuggestion =
@@ -307,11 +316,16 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             ref={handleRef}
             onKeyDown={handleKeyDown}
             value={value}
-            onFocus={() => setIsFocused.on()}
+            onFocus={(evt) => {
+              if (props.onFocus) props.onFocus(evt);
+              setIsFocused.on();
+            }}
             onBlur={(evt) => {
               // should not on blur when its mouse down selecting a item from suggestion
               if (!(evt.relatedTarget?.getAttribute("aria-label") === "suggestion-item"))
                 setIsFocused.off();
+
+              if (props.onBlur) props.onBlur(evt);
             }}
             onChange={(e) => onChange?.(e.target.value)}
             containerClassName={containerClassName}

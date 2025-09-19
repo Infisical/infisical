@@ -1,17 +1,19 @@
 import { TAuditLogs } from "@app/db/schemas";
 
 import { LogProvider } from "./audit-log-stream-enums";
+import { TAzureProvider, TAzureProviderCredentials } from "./azure/azure-provider-types";
 import { TCriblProvider, TCriblProviderCredentials } from "./cribl/cribl-provider-types";
 import { TCustomProvider, TCustomProviderCredentials } from "./custom/custom-provider-types";
 import { TDatadogProvider, TDatadogProviderCredentials } from "./datadog/datadog-provider-types";
 import { TSplunkProvider, TSplunkProviderCredentials } from "./splunk/splunk-provider-types";
 
-export type TAuditLogStream = TDatadogProvider | TSplunkProvider | TCustomProvider | TCriblProvider;
+export type TAuditLogStream = TDatadogProvider | TSplunkProvider | TCustomProvider | TAzureProvider | TCriblProvider;
 
 export type TAuditLogStreamCredentials =
   | TDatadogProviderCredentials
   | TSplunkProviderCredentials
   | TCustomProviderCredentials
+  | TAzureProviderCredentials
   | TCriblProviderCredentials;
 
 export type TCreateAuditLogStreamDTO = {
