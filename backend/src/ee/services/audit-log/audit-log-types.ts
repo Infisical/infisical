@@ -825,6 +825,7 @@ interface CreateIdentityEvent {
     identityId: string;
     name: string;
     hasDeleteProtection: boolean;
+    namespaceSlug?: string;
   };
 }
 
@@ -834,6 +835,7 @@ interface UpdateIdentityEvent {
     identityId: string;
     name?: string;
     hasDeleteProtection?: boolean;
+    namespaceSlug?: string;
   };
 }
 
@@ -841,6 +843,7 @@ interface DeleteIdentityEvent {
   type: EventType.DELETE_IDENTITY;
   metadata: {
     identityId: string;
+    namespaceSlug?: string;
   };
 }
 

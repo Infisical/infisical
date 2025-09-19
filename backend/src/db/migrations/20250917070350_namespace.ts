@@ -95,9 +95,28 @@ export async function up(knex: Knex): Promise<void> {
 
     await createOnUpdateTrigger(knex, TableName.NamespaceAdditionalPrivilege);
   }
+
+  if (await knex.schema.hasTable(TableName.Identity)) {
+    await knex.schema.alterTable(TableName.Identity, (t) => {
+      t.uuid("namespaceId");
+      t.foreign("namespaceId").references("id").inTable(TableName.Namespace).onDelete("CASCADE");
+
+      t.string("projectId");
+      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
+  if (await knex.schema.hasTable(TableName.Identity)) {
+    const hasNamespaceId = await knex.schema.hasColumn(TableName.Identity, "namespaceId");
+    const hasProjectId = await knex.schema.hasColumn(TableName.Identity, "projectId");
+    await knex.schema.alterTable(TableName.Identity, (t) => {
+      if (hasNamespaceId) t.dropColumn("namespaceId");
+      if (hasProjectId) t.dropColumn("projectId");
+    });
+  }
+
   await dropOnUpdateTrigger(knex, TableName.NamespaceAdditionalPrivilege);
   await knex.schema.dropTableIfExists(TableName.NamespaceAdditionalPrivilege);
 
