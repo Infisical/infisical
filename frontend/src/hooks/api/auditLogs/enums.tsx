@@ -218,6 +218,14 @@ export enum EventType {
   UPDATE_PROJECT = "update-project",
   DELETE_PROJECT = "delete-project",
 
+  CREATE_SECRET_REMINDER = "create-secret-reminder",
+  GET_SECRET_REMINDER = "get-secret-reminder",
+  DELETE_SECRET_REMINDER = "delete-secret-reminder",
+
+  DASHBOARD_LIST_SECRETS = "dashboard-list-secrets",
+  DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
+  DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value",
+
   CREATE_PROJECT_ROLE = "create-project-role",
   UPDATE_PROJECT_ROLE = "update-project-role",
   DELETE_PROJECT_ROLE = "delete-project-role",

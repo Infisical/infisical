@@ -28,7 +28,7 @@ export type TImportedSecrets = {
   environmentInfo: ProjectEnv;
   secretPath: string;
   folderId: string;
-  secrets: SecretV3Raw[];
+  secrets: Omit<SecretV3Raw, "secretValue">[];
 };
 
 export type TGetSecretImports = {

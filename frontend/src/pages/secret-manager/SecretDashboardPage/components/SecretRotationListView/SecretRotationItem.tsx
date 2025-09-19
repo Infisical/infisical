@@ -15,12 +15,12 @@ import { twMerge } from "tailwind-merge";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretRotationV2StatusBadge } from "@app/components/secret-rotations-v2/SecretRotationV2StatusBadge";
 import { IconButton, Modal, ModalContent, TableContainer, Tag, Tooltip } from "@app/components/v2";
-import { Blur } from "@app/components/v2/Blur";
-import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretRotationActions } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
+
+import { SecretRotationSecretRow } from "./SecretRotationSecretRow";
 
 type Props = {
   secretRotation: TSecretRotationV2;
@@ -209,43 +209,13 @@ export const SecretRotationItem = ({
               <tbody>
                 {secrets.map((secret, index) => {
                   return (
-                    <Tooltip
-                      className="max-w-sm"
-                      content={
-                        secret ? undefined : "You do not have permission to view this secret."
-                      }
-                    >
-                      <tr
-                        // eslint-disable-next-line react/no-array-index-key
-                        key={`rotation-secret-${secretRotation.id}-${index}`}
-                        className="h-full last:!border-b-0 hover:bg-mineshaft-700"
-                      >
-                        <td className="flex h-full items-center" style={{ padding: "0.5rem 1rem" }}>
-                          <span className={twMerge(!secret && "blur")}>
-                            {secret?.key ?? "********"}
-                          </span>
-                        </td>
-                        <td className="col-span-2 h-full w-full" style={{ padding: "0.5rem 1rem" }}>
-                          {/* eslint-disable-next-line no-nested-ternary */}
-                          {!secret ? (
-                            <div className="h-full pl-4 blur">********</div>
-                          ) : secret.secretValueHidden ? (
-                            <Blur
-                              className="py-0"
-                              tooltipText="You do not have permission to read the value of this secret."
-                            />
-                          ) : (
-                            <InfisicalSecretInput
-                              isReadOnly
-                              value={secret.value}
-                              secretPath={secretRotation.folder.path}
-                              environment={secretRotation.environment.slug}
-                              onChange={() => {}}
-                            />
-                          )}
-                        </td>
-                      </tr>
-                    </Tooltip>
+                    <SecretRotationSecretRow
+                      // eslint-disable-next-line react/no-array-index-key
+                      key={`rotation-secret-${secretRotation.id}-${index}`}
+                      secret={secret}
+                      environment={secretRotation.environment.slug}
+                      secretPath={secretRotation.folder.path}
+                    />
                   );
                 })}
               </tbody>

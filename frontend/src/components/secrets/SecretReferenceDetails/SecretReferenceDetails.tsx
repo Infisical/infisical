@@ -130,6 +130,14 @@ export const SecretReferenceTree = ({ secretPath, environment, secretKey }: Prop
     );
   }
 
+  if (tree?.children?.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <span className="text-mineshaft-400">This secret does not contain references</span>
+      </div>
+    );
+  }
+
   return (
     <div>
       <FormControl label="Expanded value">

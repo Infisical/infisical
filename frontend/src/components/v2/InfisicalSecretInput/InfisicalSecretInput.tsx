@@ -55,6 +55,8 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "val
   secretPath?: string;
   environment?: string;
   containerClassName?: string;
+  isLoadingValue?: boolean;
+  isErrorLoadingValue?: boolean;
 };
 
 type ReferenceItem = {
@@ -279,11 +281,16 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             ref={handleRef}
             onKeyDown={handleKeyDown}
             value={value}
-            onFocus={() => setIsFocused.on()}
+            onFocus={(evt) => {
+              if (props.onFocus) props.onFocus(evt);
+              setIsFocused.on();
+            }}
             onBlur={(evt) => {
               // should not on blur when its mouse down selecting a item from suggestion
               if (!(evt.relatedTarget?.getAttribute("aria-label") === "suggestion-item"))
                 setIsFocused.off();
+
+              if (props.onBlur) props.onBlur(evt);
             }}
             onChange={(e) => onChange?.(e.target.value)}
             containerClassName={containerClassName}

@@ -488,7 +488,11 @@ export enum EventType {
 
   CREATE_SECRET_REMINDER = "create-secret-reminder",
   GET_SECRET_REMINDER = "get-secret-reminder",
-  DELETE_SECRET_REMINDER = "delete-secret-reminder"
+  DELETE_SECRET_REMINDER = "delete-secret-reminder",
+
+  DASHBOARD_LIST_SECRETS = "dashboard-list-secrets",
+  DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
+  DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -3510,6 +3514,34 @@ interface ProjectDeleteEvent {
   };
 }
 
+interface DashboardListSecretsEvent {
+  type: EventType.DASHBOARD_LIST_SECRETS;
+  metadata: {
+    environment: string;
+    secretPath: string;
+    numberOfSecrets: number;
+    secretIds: string[];
+  };
+}
+
+interface DashboardGetSecretValueEvent {
+  type: EventType.DASHBOARD_GET_SECRET_VALUE;
+  metadata: {
+    secretId: string;
+    secretKey: string;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface DashboardGetSecretVersionValueEvent {
+  type: EventType.DASHBOARD_GET_SECRET_VERSION_VALUE;
+  metadata: {
+    secretId: string;
+    version: string;
+  };
+}
+
 interface ProjectRoleCreateEvent {
   type: EventType.CREATE_PROJECT_ROLE;
   metadata: {
@@ -3889,6 +3921,9 @@ export type Event =
   | SecretReminderCreateEvent
   | SecretReminderGetEvent
   | SecretReminderDeleteEvent
+  | DashboardListSecretsEvent
+  | DashboardGetSecretValueEvent
+  | DashboardGetSecretVersionValueEvent
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent
   | ProjectRoleDeleteEvent

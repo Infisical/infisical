@@ -16,8 +16,6 @@ import { twMerge } from "tailwind-merge";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretRotationV2StatusBadge } from "@app/components/secret-rotations-v2/SecretRotationV2StatusBadge";
 import { Badge, IconButton, TableContainer, Tag, Td, Tooltip, Tr } from "@app/components/v2";
-import { Blur } from "@app/components/v2/Blur";
-import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
@@ -26,6 +24,8 @@ import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import { useToggle } from "@app/hooks";
 import { SecretRotationStatus, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { getExpandedRowStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
+
+import { SecretOverviewRotationSecretRow } from "./SecretOverviewRotationSecretRow";
 
 type Props = {
   secretRotationName: string;
@@ -256,52 +256,13 @@ export const SecretOverviewSecretRotationRow = ({
                       <tbody className="border-t-2 border-mineshaft-600">
                         {secrets.map((secret, index) => {
                           return (
-                            <Tooltip
-                              className="max-w-sm"
-                              content={
-                                secret
-                                  ? undefined
-                                  : "You do not have permission to view this secret."
-                              }
-                            >
-                              <tr
-                                // eslint-disable-next-line react/no-array-index-key
-                                key={`rotation-secret-${secretRotation.id}-${index}`}
-                                className="!last:border-b-0 h-full hover:bg-mineshaft-700"
-                              >
-                                <td
-                                  className="flex h-full items-center"
-                                  style={{ padding: "0.5rem 1rem" }}
-                                >
-                                  <span className={twMerge(!secret && "blur")}>
-                                    {secret?.key ?? "********"}
-                                  </span>
-                                </td>
-                                <td
-                                  className="col-span-2 h-full w-full"
-                                  style={{ padding: "0.5rem 1rem" }}
-                                >
-                                  {/* eslint-disable-next-line no-nested-ternary */}
-                                  {!secret ? (
-                                    <div className="h-full pl-4 blur">********</div>
-                                  ) : secret.secretValueHidden ? (
-                                    <Blur
-                                      className="py-0"
-                                      tooltipText="You do not have permission to read the value of this secret."
-                                    />
-                                  ) : (
-                                    <InfisicalSecretInput
-                                      isReadOnly
-                                      value={secret.value}
-                                      isVisible={isSecretVisible}
-                                      secretPath={secretRotation.folder.path}
-                                      environment={secretRotation.environment.slug}
-                                      onChange={() => {}}
-                                    />
-                                  )}
-                                </td>
-                              </tr>
-                            </Tooltip>
+                            <SecretOverviewRotationSecretRow
+                              key={`rotation-secret-${secretRotation.id}-${index + 1}`}
+                              secret={secret}
+                              secretPath={secretRotation.folder.path}
+                              environment={secretRotation.environment.slug}
+                              isSecretVisible={isSecretVisible}
+                            />
                           );
                         })}
                       </tbody>

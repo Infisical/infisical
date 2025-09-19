@@ -1,16 +1,16 @@
 import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { SecretFoldersSchema, SecretImportsSchema, UsersSchema } from "@app/db/schemas";
+import { SecretFoldersSchema, SecretImportsSchema, SecretType, UsersSchema } from "@app/db/schemas";
 import { RemindersSchema } from "@app/db/schemas/reminders";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
 import { DASHBOARD } from "@app/lib/api-docs";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
-import { secretsLimit } from "@app/server/config/rateLimiter";
+import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -111,6 +111,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               SecretRotationV2Schema,
               z.object({
                 secrets: secretRawSchema
+                  .omit({ secretValue: true })
                   .extend({
                     secretValueHidden: z.boolean(),
                     secretPath: z.string().optional(),
@@ -124,7 +125,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .array()
             .optional(),
           secrets: secretRawSchema
+            .omit({ secretValue: true })
             .extend({
+              isEmpty: z.boolean(),
               secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataSchema.optional(),
@@ -219,7 +222,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       let imports: Awaited<ReturnType<typeof server.services.secretImport.getImportsMultiEnv>> | undefined;
       let folders: Awaited<ReturnType<typeof server.services.folder.getFoldersMultiEnv>> | undefined;
-      let secrets: Awaited<ReturnType<typeof server.services.secret.getSecretsRawMultiEnv>> | undefined;
+      let secrets:
+        | (Awaited<ReturnType<typeof server.services.secret.getSecretsRawMultiEnv>>[number] & { isEmpty: boolean })[]
+        | undefined;
       let dynamicSecrets:
         | Awaited<ReturnType<typeof server.services.dynamicSecret.listDynamicSecretsByEnvs>>
         | undefined;
@@ -426,43 +431,51 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         });
 
         if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
-          secrets = await server.services.secret.getSecretsRawMultiEnv({
-            viewSecretValue: true,
-            actorId: req.permission.id,
-            actor: req.permission.type,
-            actorOrgId: req.permission.orgId,
-            environments,
-            actorAuthMethod: req.permission.authMethod,
-            projectId,
-            path: secretPath,
-            orderBy,
-            orderDirection,
-            search,
-            limit: remainingLimit,
-            offset: adjustedOffset,
-            isInternal: true
-          });
+          secrets = (
+            await server.services.secret.getSecretsRawMultiEnv({
+              viewSecretValue: true,
+              actorId: req.permission.id,
+              actor: req.permission.type,
+              actorOrgId: req.permission.orgId,
+              environments,
+              actorAuthMethod: req.permission.authMethod,
+              projectId,
+              path: secretPath,
+              orderBy,
+              orderDirection,
+              search,
+              limit: remainingLimit,
+              offset: adjustedOffset,
+              isInternal: true
+            })
+          ).map((secret) => ({ ...secret, isEmpty: !secret.secretValue }));
         }
       }
 
       if (secrets?.length || secretRotations?.length) {
         for await (const environment of environments) {
-          const secretCountFromEnv =
-            (secrets?.filter((secret) => secret.environment === environment).length ?? 0) +
-            (secretRotations
-              ?.filter((rotation) => rotation.environment.slug === environment)
-              .flatMap((rotation) => rotation.secrets.filter((secret) => Boolean(secret))).length ?? 0);
+          const secretIds = [
+            ...new Set(
+              [
+                ...(secrets?.filter((secret) => secret.environment === environment) ?? []),
+                ...(secretRotations
+                  ?.filter((rotation) => rotation.environment.slug === environment)
+                  .flatMap((rotation) => rotation.secrets.filter((secret) => Boolean(secret))) ?? [])
+              ].map((secret) => secret.id)
+            )
+          ];
 
-          if (secretCountFromEnv) {
+          if (secretIds) {
             await server.services.auditLog.createAuditLog({
               projectId,
               ...req.auditLogInfo,
               event: {
-                type: EventType.GET_SECRETS,
+                type: EventType.DASHBOARD_LIST_SECRETS,
                 metadata: {
                   environment,
                   secretPath,
-                  numberOfSecrets: secretCountFromEnv
+                  numberOfSecrets: secretIds.length,
+                  secretIds
                 }
               }
             });
@@ -473,7 +486,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 distinctId: getTelemetryDistinctId(req),
                 organizationId: req.permission.orgId,
                 properties: {
-                  numberOfSecrets: secretCountFromEnv,
+                  numberOfSecrets: secretIds.length,
                   projectId,
                   environment,
                   secretPath,
@@ -584,7 +597,6 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           .optional(),
         search: z.string().trim().describe(DASHBOARD.SECRET_DETAILS_LIST.search).optional(),
         tags: z.string().trim().transform(decodeURIComponent).describe(DASHBOARD.SECRET_DETAILS_LIST.tags).optional(),
-        viewSecretValue: booleanSchema.default(true),
         includeSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeSecrets),
         includeFolders: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeFolders),
         includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeDynamicSecrets),
@@ -606,7 +618,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               SecretRotationV2Schema,
               z.object({
                 secrets: secretRawSchema
+                  .omit({ secretValue: true })
                   .extend({
+                    isEmpty: z.boolean(),
                     secretValueHidden: z.boolean(),
                     secretPath: z.string().optional(),
                     secretMetadata: ResourceMetadataSchema.optional(),
@@ -619,7 +633,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .array()
             .optional(),
           secrets: secretRawSchema
+            .omit({ secretValue: true })
             .extend({
+              isEmpty: z.boolean(),
               secretReminderRecipients: z
                 .object({
                   user: UsersSchema.pick({ id: true, email: true, username: true }),
@@ -715,12 +731,21 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       let folders: Awaited<ReturnType<typeof server.services.folder.getFolders>> | undefined;
       let secrets:
         | (Awaited<ReturnType<typeof server.services.secret.getSecretsRaw>>["secrets"][number] & {
+            isEmpty: boolean;
             reminder: Awaited<ReturnType<typeof server.services.reminder.getRemindersForDashboard>>[string] | null;
           })[]
         | undefined;
       let dynamicSecrets: Awaited<ReturnType<typeof server.services.dynamicSecret.listDynamicSecretsByEnv>> | undefined;
       let secretRotations:
-        | Awaited<ReturnType<typeof server.services.secretRotationV2.getDashboardSecretRotations>>
+        | (Awaited<ReturnType<typeof server.services.secretRotationV2.getDashboardSecretRotations>>[number] & {
+            secrets: (NonNullable<
+              Awaited<
+                ReturnType<typeof server.services.secretRotationV2.getDashboardSecretRotations>
+              >[number]["secrets"][number] & {
+                isEmpty: boolean;
+              }
+            > | null)[];
+          })[]
         | undefined;
 
       let totalImportCount: number | undefined;
@@ -822,19 +847,31 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         );
 
         if (remainingLimit > 0 && totalSecretRotationCount > adjustedOffset) {
-          secretRotations = await server.services.secretRotationV2.getDashboardSecretRotations(
-            {
-              projectId,
-              search,
-              orderBy,
-              orderDirection,
-              environments: [environment],
-              secretPath,
-              limit: remainingLimit,
-              offset: adjustedOffset
-            },
-            req.permission
-          );
+          secretRotations = (
+            await server.services.secretRotationV2.getDashboardSecretRotations(
+              {
+                projectId,
+                search,
+                orderBy,
+                orderDirection,
+                environments: [environment],
+                secretPath,
+                limit: remainingLimit,
+                offset: adjustedOffset
+              },
+              req.permission
+            )
+          ).map((rotation) => ({
+            ...rotation,
+            secrets: rotation.secrets.map((secret) =>
+              secret
+                ? {
+                    ...secret,
+                    isEmpty: !secret.secretValue
+                  }
+                : secret
+            )
+          }));
 
           await server.services.auditLog.createAuditLog({
             projectId,
@@ -919,7 +956,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               await server.services.secret.getSecretsRaw({
                 actorId: req.permission.id,
                 actor: req.permission.type,
-                viewSecretValue: req.query.viewSecretValue,
+                viewSecretValue: true,
                 throwOnMissingReadValuePermission: false,
                 actorOrgId: req.permission.orgId,
                 environment,
@@ -943,6 +980,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
             secrets = rawSecrets.map((secret) => ({
               ...secret,
+              isEmpty: !secret.secretValue,
               reminder: reminders[secret.id] ?? null
             }));
           }
@@ -977,19 +1015,25 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }));
 
       if (secrets?.length || secretRotations?.length) {
-        const secretCount =
-          (secrets?.length ?? 0) +
-          (secretRotations?.flatMap((rotation) => rotation.secrets.filter((secret) => Boolean(secret))).length ?? 0);
+        const secretIds = [
+          ...new Set(
+            [
+              ...(secrets ?? []),
+              ...(secretRotations?.flatMap((rotation) => rotation.secrets.filter((secret) => Boolean(secret))) ?? [])
+            ].map((secret) => secret.id)
+          )
+        ];
 
         await server.services.auditLog.createAuditLog({
           projectId,
           ...req.auditLogInfo,
           event: {
-            type: EventType.GET_SECRETS,
+            type: EventType.DASHBOARD_LIST_SECRETS,
             metadata: {
               environment,
               secretPath,
-              numberOfSecrets: secretCount
+              numberOfSecrets: secretIds.length,
+              secretIds
             }
           }
         });
@@ -1000,7 +1044,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             distinctId: getTelemetryDistinctId(req),
             organizationId: req.permission.orgId,
             properties: {
-              numberOfSecrets: secretCount,
+              numberOfSecrets: secretIds.length,
               projectId,
               environment,
               secretPath,
@@ -1060,6 +1104,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .array()
             .optional(),
           secrets: secretRawSchema
+            .omit({ secretValue: true })
             .extend({
               secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
@@ -1145,18 +1190,20 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           );
 
       for await (const environment of environments) {
-        const secretCountForEnv = secrets.filter((secret) => secret.environment === environment).length;
+        const envSecrets = secrets.filter((secret) => secret.environment === environment);
+        const secretCountForEnv = envSecrets.length;
 
         if (secretCountForEnv) {
           await server.services.auditLog.createAuditLog({
             projectId,
             ...req.auditLogInfo,
             event: {
-              type: EventType.GET_SECRETS,
+              type: EventType.DASHBOARD_LIST_SECRETS,
               metadata: {
                 environment,
                 secretPath,
-                numberOfSecrets: secretCountForEnv
+                numberOfSecrets: secretCountForEnv,
+                secretIds: envSecrets.map((secret) => secret.id)
               }
             }
           });
@@ -1259,6 +1306,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
+          // TODO(scott): omit secretValue here, but requires refactor of uploading env/copy from board
           secrets: secretRawSchema
             .extend({
               secretPath: z.string().optional(),
@@ -1310,6 +1358,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
+          // TODO(scott): omit secretValue here, but requires refactor of uploading env/copy from board
           secrets: secretRawSchema
             .extend({
               secretValueHidden: z.boolean(),
@@ -1345,11 +1394,12 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         projectId,
         ...req.auditLogInfo,
         event: {
-          type: EventType.GET_SECRETS,
+          type: EventType.DASHBOARD_LIST_SECRETS,
           metadata: {
             environment,
             secretPath,
-            numberOfSecrets: secrets.length
+            numberOfSecrets: secrets.length,
+            secretIds: secrets.map((secret) => secret.id)
           }
         }
       });
@@ -1371,6 +1421,253 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }
 
       return { secrets };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secret-value",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      querystring: z.object({
+        projectId: z.string().trim(),
+        environment: z.string().trim(),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        secretKey: z.string().trim(),
+        isOverride: z
+          .enum(["true", "false"])
+          .transform((value) => value === "true")
+          .optional()
+      }),
+      response: {
+        200: z.object({
+          valueOverride: z.string().optional(),
+          value: z.string().optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { secretPath, projectId, environment, secretKey, isOverride } = req.query;
+
+      const { secrets } = await server.services.secret.getSecretsRaw({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        viewSecretValue: true,
+        throwOnMissingReadValuePermission: false,
+        actorOrgId: req.permission.orgId,
+        environment,
+        actorAuthMethod: req.permission.authMethod,
+        projectId,
+        path: secretPath,
+        search: secretKey,
+        includeTagsInSearch: true,
+        includeMetadataInSearch: true
+      });
+
+      if (isOverride) {
+        const personalSecret = secrets.find((secret) => secret.type === SecretType.Personal);
+
+        if (!personalSecret)
+          throw new BadRequestError({
+            message: `Could not find personal secret with key "${secretKey}" at secret path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
+          });
+
+        if (personalSecret)
+          return {
+            valueOverride: personalSecret.secretValue
+          };
+      }
+
+      const sharedSecret = secrets.find((secret) => secret.type === SecretType.Shared);
+
+      if (!sharedSecret)
+        throw new BadRequestError({
+          message: `Could not find secret with key "${secretKey}" at secret path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
+        });
+
+      // only audit if not personal
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.DASHBOARD_GET_SECRET_VALUE,
+          metadata: {
+            environment: req.query.environment,
+            secretPath: req.query.secretPath,
+            secretKey,
+            secretId: sharedSecret.id
+          }
+        }
+      });
+
+      return { value: sharedSecret.secretValue };
+    }
+  });
+
+  server.route({
+    url: "/secret-imports",
+    method: "GET",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      querystring: z.object({
+        projectId: z.string().trim(),
+        environment: z.string().trim(),
+        path: z.string().trim().default("/").transform(removeTrailingSlash)
+      }),
+      response: {
+        200: z.object({
+          secrets: z
+            .object({
+              secretPath: z.string(),
+              environment: z.string(),
+              environmentInfo: z.object({
+                id: z.string(),
+                name: z.string(),
+                slug: z.string()
+              }),
+              folderId: z.string().optional(),
+              secrets: secretRawSchema.omit({ secretValue: true }).extend({ isEmpty: z.boolean() }).array()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: req.query.projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.DASHBOARD_LIST_SECRETS,
+          metadata: {
+            environment: req.query.environment,
+            secretPath: req.query.path,
+            numberOfSecrets: importedSecrets.length,
+            secretIds: importedSecrets.map((secret) => secret.id)
+          }
+        }
+      });
+
+      return {
+        secrets: importedSecrets.map((importData) => ({
+          ...importData,
+          secrets: importData.secrets.map((secret) => ({
+            ...secret,
+            isEmpty: !secret.secretValue
+          }))
+        }))
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secret-versions/:secretId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        secretId: z.string()
+      }),
+      querystring: z.object({
+        offset: z.coerce.number(),
+        limit: z.coerce.number()
+      }),
+      response: {
+        200: z.object({
+          secretVersions: secretRawSchema
+            .omit({ secretValue: true })
+            .extend({
+              secretValueHidden: z.boolean()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const secretVersions = await server.services.secret.getSecretVersions({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        limit: req.query.limit,
+        offset: req.query.offset,
+        secretId: req.params.secretId
+      });
+
+      return { secretVersions };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/secret-versions/:secretId/value/:version",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        secretId: z.string(),
+        version: z.string()
+      }),
+
+      response: {
+        200: z.object({
+          value: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { version, secretId } = req.params;
+
+      const [secretVersion] = await server.services.secret.getSecretVersions({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        secretId,
+        secretVersions: [version]
+      });
+
+      if (!secretVersion)
+        throw new NotFoundError({
+          message: `Could not find secret version "${version}" for secret with ID "${secretId}`
+        });
+
+      await server.services.auditLog.createAuditLog({
+        projectId: secretVersion.workspace,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.DASHBOARD_GET_SECRET_VERSION_VALUE,
+          metadata: {
+            secretId,
+            version
+          }
+        }
+      });
+
+      return { value: secretVersion.secretValue };
     }
   });
 };

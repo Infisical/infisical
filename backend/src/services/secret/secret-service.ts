@@ -2568,7 +2568,8 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     limit = 20,
     offset = 0,
-    secretId
+    secretId,
+    secretVersions: filterSecretVersions
   }: TGetSecretVersionsDTO) => {
     const secretVersionV2 = await secretV2BridgeService
       .getSecretVersions({
@@ -2578,7 +2579,8 @@ export const secretServiceFactory = ({
         actorAuthMethod,
         limit,
         offset,
-        secretId
+        secretId,
+        secretVersions: filterSecretVersions
       })
       .catch((err) => {
         if ((err as Error).message === "BadRequest: Failed to find secret") {
