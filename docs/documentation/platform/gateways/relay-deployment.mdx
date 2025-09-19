@@ -3,8 +3,8 @@ title: "Relay Deployment"
 description: "How to deploy Infisical Relay Servers"
 ---
 
-Infisical Relay is a secure routing layer that allows Infisical to connect to your private network resources, such as databases or internal APIs, without exposing them to the public internet. 
-The relay acts as an intermediary, forwarding encrypted traffic between Infisical and your deployed gateways. This ensures that your sensitive data remains protected and never leaves your network unencrypted. 
+Infisical Relay is a secure routing layer that allows Infisical to connect to your private network resources, such as databases or internal APIs, without exposing them to the public internet.
+The relay acts as an intermediary, forwarding encrypted traffic between Infisical and your deployed gateways. This ensures that your sensitive data remains protected and never leaves your network unencrypted.
 With this architecture, you can achieve secure, firewall-friendly access across network boundaries, making it possible for Infisical to interact with resources even in highly restricted environments.
 
 Before diving in, it's important to determine whether you actually need to deploy your own relay server or if you can use Infisical's managed infrastructure.
@@ -20,165 +20,98 @@ Not all users need to deploy their own relay servers. Infisical provides managed
 
 If you are using Infisical Cloud and do not have specific requirements, you can use the managed relays provided by Infisical and skip the rest of this guide.
 
+## Deployment Steps
 
-
-
-## Deploying a Relay
-
-Deploying a relay allows Infisical to securely connect to your private network resources. This method applies to all Infisical environments—Cloud (US/EU), Dedicated, and Self-Hosted. You have full control over the relay infrastructure and can meet compliance or custom network requirements as needed.
-
+To successfully deploy an Infisical Relay for use, follow these steps in order.
 
 <Steps>
-<Step title="Prepare Your Environment">
-all the steps should go here
-</Step>
+  <Step title="Prepare Your Environment">
+    Before deploying your relay server, ensure you have:
+    
+    - A server with a static IP address or DNS
+    - Administrative access to configure firewall rules
+    - Access to create machine identities in your Infisical organization
+    - The Infisical CLI installed on your deployment environment
+    
+  </Step>
+
+   <Step title="Provision a Machine Identity">
+   Create a machine identity with the appropriate permissions for your relay:
+   
+   1. **Create a machine identity** in your Infisical organization with permissions to create and manage relays.
+
+   2. **Choose an authentication method** from the supported [machine identity auth methods](/documentation/platform/identities/machine-identities)
+
+   3. **Configure environment variables** corresponding to your chosen authentication method when deploying the relay The relay will use this machine identity to authenticate with Infisical and register itself within your organization.
+   
+   </Step>
+
+   <Step title="Install the Infisical CLI">
+    Make sure the Infisical CLI is installed on the server where you plan to deploy the relay. The CLI is required for relay installation and management.
+
+    See the [CLI Installation Guide](/cli/overview) for instructions.
+
+   </Step>
+
+   <Step title="Configure Network & Firewall">
+    Ensure your network and firewall settings allow the server to accept inbound connections and make outbound connections:
+
+    **Inbound Connections:**
+    | Protocol | Source             | Port | Purpose                          |
+    | -------- | ------------------ | ---- | -------------------------------- |
+    | TCP      | Gateways           | 2222 | SSH reverse tunnel establishment |
+    | TCP      | Infisical instance host (US/EU, other) | 8443 | Platform-to-relay communication  |
+
+    **Outbound Connections:**
+    | Protocol | Destination                          | Port | Purpose                                    |
+    | -------- | ------------------------------------ | ---- | ------------------------------------------ |
+    | TCP      | Infisical instance host (US/EU, other) | 443  | API communication and certificate requests |
+
+  </Step>
+
+   <Step title="Select a Deployment Method">
+      The Infisical CLI is used to install and start the relay in your chosen environment. The CLI provides commands for both production and development scenarios, and supports a variety of options/flags to configure your deployment.
+
+      To view all available flags and equivalent environment variables for relay deployment, see the [Relay CLI Command Reference](/cli/commands/relay).
+    <Tabs>
+       <Tab title="Linux Server">
+          For production deployments on Linux servers, install the Relay as a systemd service. This installation method only supports [Token Auth](/documentation/platform/identities/token-auth).
+
+          ```bash
+          sudo infisical relay systemd install \
+             --token <your-machine-identity-token> \
+             --name <relay-name> \
+             --domain <your-infisical-domain> \
+             --host <static-ip-or-dns-of-server>
+
+          # Start the relay service
+          sudo systemctl start infisical-relay
+          sudo systemctl enable infisical-relay
+          ```
+
+          <Warning>
+            The systemd install command requires a Linux operating system with root/sudo privileges.
+          </Warning>
+       </Tab>
+
+       <Tab title="Manual Start">
+          For non-Linux systems or when you need more control over the relay process:
+
+          ```bash
+          infisical relay start \
+             --type=<type> \
+             --host=<host> \
+             --name=<name> \
+             --auth-method=<auth-method>
+          ```
+
+          This method supports all [machine identity auth methods](/documentation/platform/identities/machine-identities) and runs in the foreground. Suitable for production use on non-Linux systems or development environments.
+       </Tab>
+    </Tabs>
+
+   </Step>
 
 </Steps>
-
-## Network Configuration
-
-### Relay Server Network Requirements
-
-The relay server must accept inbound connections and make outbound connections to function properly:
-
-#### Inbound Connections (Required)
-
-The relay server must accept the following inbound connections:
-
-| Protocol | Source             | Port | Purpose                          |
-| -------- | ------------------ | ---- | -------------------------------- |
-| TCP      | Gateways           | 2222 | SSH reverse tunnel establishment |
-| TCP      | Infisical Platform | 8443 | Platform-to-relay communication  |
-
-#### Outbound Connections (Required)
-
-The relay server requires outbound connectivity to:
-
-| Protocol | Destination                          | Port | Purpose                                    |
-| -------- | ------------------------------------ | ---- | ------------------------------------------ |
-| TCP      | app.infisical.com / eu.infisical.com | 443  | API communication and certificate requests |
-
-## Firewall Configuration
-
-### Relay Firewall Rules
-
-Configure your firewall to allow:
-
-1. **SSH on port 2222** - For gateway connections
-
-   ```bash
-   # Example iptables rule
-   iptables -A INPUT -p tcp --dport 2222 -j ACCEPT
-   ```
-
-2. **TCP with TLS on port 8443** - For platform connections
-
-   ```bash
-   # Example iptables rule
-   iptables -A INPUT -p tcp --dport 8443 -j ACCEPT
-   ```
-
-3. **HTTPS to Infisical API** - For certificate requests and API communication
-   ```bash
-   # Example iptables rule
-   iptables -A OUTPUT -p tcp --dport 443 -d app.infisical.com -j ACCEPT
-   ```
-
-
-
-## Protocol Details
-
-### SSH over TCP
-
-The gateway uses SSH reverse tunnels for primary communication:
-
-- **Port 2222**: SSH connection from gateways to relay servers
-- **Built-in features**: Automatic reconnection, certificate-based authentication, encrypted tunneling
-- **Encryption**: SSH with certificate-based authentication and key exchange
-
-### TCP Connection Handling
-
-SSH connections over TCP are stateful and handled seamlessly by all modern firewalls:
-
-- **Established connections** are automatically tracked
-- **Return traffic** is allowed for established outbound connections
-- **No special configuration** needed for connection tracking
-- **Standard SSH protocol** that enterprise firewalls handle well
-
-## Performance Considerations
-
-### Network Optimization
-
-- **Deploy close to gateways** - Reduce latency by placing relay servers geographically close to your gateways
-- **Use high-bandwidth connections** - Ensure adequate bandwidth for encrypted traffic
-- **Monitor network performance** - Track latency and throughput metrics
-- **Consider multiple relays** - Deploy multiple relay servers for redundancy and load distribution
-
-## Best Practices
-
-### Relay Security
-
-- **Secure secret management** - For instance relays, ensure `RELAY_AUTH_SECRET` and `INFISICAL_RELAY_AUTH_SECRET` are stored securely
-- **Network isolation** - Use security groups and network ACLs to restrict relay access
-- **Regular updates** - Keep relay servers updated and patched
-- **Monitor traffic** - Watch for unusual connection patterns or traffic volume
-
-### Performance & Reliability
-
-- **Deploy relays strategically** - Deploy close to gateways to minimize latency
-- **Use multiple instances** - Deploy multiple relay servers for redundancy
-- **Monitor resource usage** - Track CPU, memory, and network usage for relays
-- **Health monitoring** - Set up monitoring for relay connection status
-- **Automatic restart** - Use systemd to automatically restart failed services
-
-## Troubleshooting
-
-### Common Issues
-
-**Relay not accessible from gateways:**
-
-- Check firewall rules allow inbound SSH on port 2222
-- Verify public IP is correctly configured
-- Test connectivity: `telnet <relay-ip> 2222`
-
-**Platform cannot connect to relay:**
-
-- Check firewall rules allow inbound TCP with TLS on port 8443
-- Verify SSL certificate is properly configured
-- Test connectivity: `openssl s_client -connect <relay-ip>:8443`
-
-**Authentication failures:**
-
-- For instance relays: Verify `RELAY_AUTH_SECRET` matches `INFISICAL_RELAY_AUTH_SECRET`
-- For organization relays: Check machine identity credentials and permissions
-- Ensure authentication method is properly configured
-
-### Logs
-
-Check relay logs for detailed error information:
-
-```bash
-# systemd service
-sudo journalctl -u infisical-relay -f
-
-# Local installation
-# Logs appear in the terminal where you started the relay
-```
-
-### Network Testing
-
-Test relay connectivity:
-
-```bash
-# Test SSH port from gateway
-nc -zv <relay-ip> 2222
-
-# Test TCP with TLS port from platform
-openssl s_client -connect <relay-ip>:8443
-
-# Test outbound API access
-curl -I https://app.infisical.com
-```
 
 ## Frequently Asked Questions
 
@@ -189,32 +122,42 @@ No, relay servers cannot decrypt any traffic passing through them due to end-to-
 - **SSH tunnel encryption**: The mTLS-encrypted traffic is then transmitted through SSH reverse tunnels to relay servers
 - **Double encryption**: Traffic is encrypted twice - once by client mTLS and again by SSH tunnels
 - **Relay only routes traffic**: The relay server only routes the doubly-encrypted traffic without access to either encryption layer
-- **No data storage**: Relay servers do not store any traffic or sensitive information
-- **Certificate isolation**: Each connection uses unique certificates, ensuring complete tenant isolation
 
 The relay infrastructure is designed as a secure routing mechanism where only the client and gateway can decrypt the actual application traffic.
 
 </Accordion>
 
-<Accordion title="How do I choose between instance relays and organization relays?">
-Choose based on your specific requirements:
+<Accordion title="What are the benefits of deploying my own relay?">
+Deploying your own relay provides several advantages:
 
-**Use Instance Relays when:**
+- **Dedicated resources**: Full control over relay infrastructure and performance
+- **Lower latency**: Deploy closer to your gateways for optimal performance
+- **Compliance**: Meet specific data routing and compliance requirements
+- **Custom network policies**: Implement organization-specific network configurations
+- **Geographic proximity**: Reduce network congestion and improve response times
+- **High availability**: Deploy multiple relays for redundancy and load distribution
 
-- Getting started quickly is a priority
-- You want minimal operational overhead
-- Shared infrastructure is acceptable
-- You don't have specific latency requirements
+Organization-deployed relays give you complete control over your secure communication infrastructure.
 
-**Use Organization Relays when:**
+</Accordion>
 
-- You need dedicated relay resources
-- Lower latency is critical (deploy closer to gateways)
-- You have compliance requirements for data routing
-- You want full control over relay infrastructure
-- You need custom network policies
+<Accordion title="How do I troubleshoot connectivity issues?">
+For detailed troubleshooting:
 
-Most users should start with Instance Relays and migrate to Organization Relays only if they have specific requirements that aren't met by the managed infrastructure.
+**Platform cannot connect to relay:**
+
+- Check firewall rules allow inbound TCP with TLS on port 8443
+- Test connectivity: `openssl s_client -connect <relay-ip>:8443`
+
+**Test network connectivity:**
+
+```bash
+# Test outbound API access from relay
+curl -I https://app.infisical.com
+
+# Test TCP with TLS port from platform
+openssl s_client -connect <relay-ip>:8443
+```
 
 </Accordion>
 
