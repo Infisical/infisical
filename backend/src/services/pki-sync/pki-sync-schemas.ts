@@ -1,20 +1,48 @@
+import RE2 from "re2";
 import { z } from "zod";
 
-import { AzureKeyVaultPkiSyncConfigSchema } from "./azure-key-vault/azure-key-vault-pki-sync-types";
 import { PkiSync } from "./pki-sync-enums";
 
 // Schema for PKI sync options configuration
 export const PkiSyncOptionsSchema = z.object({
-  canImportCertificates: z.boolean()
+  canImportCertificates: z.boolean(),
+  canRemoveCertificates: z.boolean().optional(),
+  certificateNameSchema: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true;
+
+        const allowedOptionalPlaceholders = ["{{environment}}"];
+
+        const allowedPlaceholdersRegexPart = ["{{certificateId}}", ...allowedOptionalPlaceholders]
+          .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")) // Escape regex special characters
+          .join("|");
+
+        const allowedContentRegex = new RE2(`^([a-zA-Z0-9_\\-/]|${allowedPlaceholdersRegexPart})*$`);
+        const contentIsValid = allowedContentRegex.test(val);
+
+        if (val.trim()) {
+          const certificateIdRegex = new RE2(/\{\{certificateId\}\}/);
+          const certificateIdIsPresent = certificateIdRegex.test(val);
+          return contentIsValid && certificateIdIsPresent;
+        }
+
+        return contentIsValid;
+      },
+      {
+        message:
+          "Certificate name schema must include exactly one {{certificateId}} placeholder. It can also include {{environment}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
+      }
+    )
 });
 
 // Schema for destination-specific configurations
-export const PkiSyncDestinationConfigSchema = z.discriminatedUnion("destination", [
-  z.object({
-    destination: z.literal(PkiSync.AzureKeyVault),
-    config: AzureKeyVaultPkiSyncConfigSchema
-  })
-]);
+export const PkiSyncDestinationConfigSchema = z.object({
+  destination: z.nativeEnum(PkiSync),
+  config: z.record(z.unknown())
+});
 
 // Base PKI sync schema for API responses
 export const PkiSyncSchema = z.object({
@@ -33,18 +61,3 @@ export const PkiSyncSchema = z.object({
   syncStatus: z.string().nullable().optional(),
   lastSyncedAt: z.date().nullable().optional()
 });
-
-// Schema for PKI sync list items (includes app connection info)
-export const PkiSyncListItemSchema = PkiSyncSchema.extend({
-  appConnectionName: z.string().max(255),
-  appConnectionApp: z.string().max(255)
-});
-
-export const PkiSyncDetailsSchema = PkiSyncSchema.extend({
-  appConnectionName: z.string().max(255),
-  appConnectionApp: z.string().max(255)
-});
-
-export type TPkiSyncSchema = z.infer<typeof PkiSyncSchema>;
-export type TPkiSyncListItemSchema = z.infer<typeof PkiSyncListItemSchema>;
-export type TPkiSyncDetailsSchema = z.infer<typeof PkiSyncDetailsSchema>;

@@ -2,12 +2,19 @@ import { Controller, useFormContext } from "react-hook-form";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { FormControl, Switch, Tooltip } from "@app/components/v2";
+import { FormControl, Input, Switch, Tooltip } from "@app/components/v2";
+import { PkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "../schemas";
 
-export const PkiSyncOptionsFields = () => {
-  const { control } = useFormContext<TPkiSyncForm>();
+type Props = {
+  destination?: PkiSync;
+};
+
+export const PkiSyncOptionsFields = ({ destination }: Props) => {
+  const { control, watch } = useFormContext<TPkiSyncForm>();
+  const currentDestination = destination || watch("destination");
+  const { syncOption } = usePkiSyncOption(currentDestination);
 
   return (
     <>
@@ -84,6 +91,66 @@ export const PkiSyncOptionsFields = () => {
                 </Tooltip>
               </p>
             </Switch>
+          </FormControl>
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="syncOptions.certificateNameSchema"
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl
+            tooltipClassName="max-w-md"
+            tooltipText={
+              <div className="flex flex-col gap-3">
+                <span>
+                  When a certificate is synced, values will be injected into the certificate name
+                  schema before it reaches the destination. This is useful for organization.
+                </span>
+
+                <div className="flex flex-col">
+                  <span>Available placeholders:</span>
+                  <ul className="list-disc pl-4 text-sm">
+                    <li>
+                      <code>{"{{certificateId}}"}</code> - The unique ID of the certificate
+                    </li>
+                    <li>
+                      <code>{"{{environment}}"}</code> - The environment which the certificate is in
+                      (e.g. dev, staging, prod)
+                    </li>
+                  </ul>
+                </div>
+                {syncOption?.forbiddenCharacters && syncOption.forbiddenCharacters.length > 0 && (
+                  <div className="flex flex-col">
+                    <span className="text-yellow">
+                      Character restrictions for {syncOption.name}:
+                    </span>
+                    <div className="text-xs text-bunker-300">
+                      The following characters are not allowed:{" "}
+                      {syncOption.forbiddenCharacters.split("").join(" ")}
+                    </div>
+                    {syncOption.allowedCharacterPattern && (
+                      <div className="mt-1 text-xs text-bunker-300">
+                        Only alphanumeric characters and hyphens are allowed (a-z, A-Z, 0-9, -)
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            }
+            isError={Boolean(error)}
+            isOptional
+            errorText={error?.message}
+            label="Certificate Name Schema"
+            helperText="Infisical strongly advises setting a Certificate Name Schema to ensure that Infisical only manages the specific certificates you intend, keeping everything else untouched."
+          >
+            <Input
+              value={value || ""}
+              onChange={(e) => onChange(e.target.value || undefined)}
+              placeholder={
+                syncOption?.defaultCertificateNameSchema || "INFISICAL_{{certificateId}}"
+              }
+            />
           </FormControl>
         )}
       />

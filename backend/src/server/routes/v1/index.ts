@@ -148,6 +148,15 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
       await pkiRouter.register(registerPkiCollectionRouter, { prefix: "/collections" });
       await pkiRouter.register(registerPkiSubscriberRouter, { prefix: "/subscribers" });
+      await pkiRouter.register(
+        async (pkiSyncRouter) => {
+          await pkiSyncRouter.register(registerPkiSyncRouter);
+          for await (const [destination, router] of Object.entries(PKI_SYNC_REGISTER_ROUTER_MAP)) {
+            await pkiSyncRouter.register(router, { prefix: `/${destination}` });
+          }
+        },
+        { prefix: "/syncs" }
+      );
     },
     { prefix: "/pki" }
   );
@@ -157,16 +166,6 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerIntegrationAuthRouter, { prefix: "/integration-auth" });
   await server.register(registerWebhookRouter, { prefix: "/webhooks" });
   await server.register(registerIdentityRouter, { prefix: "/identities" });
-  await server.register(
-    async (pkiSyncRouter) => {
-      // register generic pki sync endpoints
-      await pkiSyncRouter.register(registerPkiSyncRouter);
-      for await (const [destination, router] of Object.entries(PKI_SYNC_REGISTER_ROUTER_MAP)) {
-        await pkiSyncRouter.register(router, { prefix: `/${destination}` });
-      }
-    },
-    { prefix: "/pki-syncs" }
-  );
 
   await server.register(
     async (secretSharingRouter) => {

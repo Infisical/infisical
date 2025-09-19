@@ -21,7 +21,38 @@ export const PkiSyncFormSchema = z.object({
   }),
   syncOptions: z.object({
     canImportCertificates: z.boolean().default(false),
-    canRemoveCertificates: z.boolean().default(true)
+    canRemoveCertificates: z.boolean().default(false),
+    certificateNameSchema: z
+      .string()
+      .optional()
+      .refine(
+        (val) => {
+          if (!val) return true;
+
+          const allowedOptionalPlaceholders = ["{{environment}}"];
+
+          const allowedPlaceholdersRegexPart = ["{{certificateId}}", ...allowedOptionalPlaceholders]
+            .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")) // Escape regex special characters
+            .join("|");
+
+          const allowedContentRegex = new RegExp(
+            `^([a-zA-Z0-9_\\-/]|${allowedPlaceholdersRegexPart})*$`
+          );
+          const contentIsValid = allowedContentRegex.test(val);
+
+          if (val.trim()) {
+            const certificateIdRegex = /\{\{certificateId\}\}/;
+            const certificateIdIsPresent = certificateIdRegex.test(val);
+            return contentIsValid && certificateIdIsPresent;
+          }
+
+          return contentIsValid;
+        },
+        {
+          message:
+            "Certificate name schema must include exactly one {{certificateId}} placeholder. It can also include {{environment}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
+        }
+      )
   })
 });
 

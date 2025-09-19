@@ -1844,52 +1844,6 @@ export const registerRoutes = async (
     licenseService
   });
 
-  const certificateAuthorityQueue = certificateAuthorityQueueFactory({
-    certificateAuthorityCrlDAL,
-    certificateAuthorityDAL,
-    certificateAuthoritySecretDAL,
-    certificateDAL,
-    projectDAL,
-    kmsService,
-    queueService,
-    pkiSubscriberDAL,
-    certificateBodyDAL,
-    certificateSecretDAL,
-    externalCertificateAuthorityDAL,
-    keyStore,
-    appConnectionDAL,
-    appConnectionService
-  });
-
-  const internalCertificateAuthorityService = internalCertificateAuthorityServiceFactory({
-    certificateAuthorityDAL,
-    certificateAuthorityCertDAL,
-    certificateAuthoritySecretDAL,
-    certificateAuthorityCrlDAL,
-    certificateTemplateDAL,
-    certificateAuthorityQueue,
-    certificateDAL,
-    certificateBodyDAL,
-    certificateSecretDAL,
-    pkiCollectionDAL,
-    pkiCollectionItemDAL,
-    projectDAL,
-    internalCertificateAuthorityDAL,
-    kmsService,
-    permissionService
-  });
-
-  const certificateEstService = certificateEstServiceFactory({
-    internalCertificateAuthorityService,
-    certificateTemplateService,
-    certificateTemplateDAL,
-    certificateAuthorityCertDAL,
-    certificateAuthorityDAL,
-    projectDAL,
-    kmsService,
-    licenseService
-  });
-
   const kmipService = kmipServiceFactory({
     kmipClientDAL,
     permissionService,
@@ -1932,6 +1886,71 @@ export const registerRoutes = async (
     gatewayV2Service
   });
 
+  const pkiSyncQueue = pkiSyncQueueFactory({
+    queueService,
+    kmsService,
+    appConnectionDAL,
+    keyStore,
+    pkiSyncDAL,
+    auditLogService,
+    projectDAL,
+    licenseService,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL
+  });
+
+  const internalCaFns = InternalCertificateAuthorityFns({
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthoritySecretDAL,
+    certificateAuthorityCrlDAL,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    projectDAL,
+    kmsService,
+    pkiSyncDAL,
+    pkiSyncQueue
+  });
+
+  const certificateAuthorityQueue = certificateAuthorityQueueFactory({
+    certificateAuthorityCrlDAL,
+    certificateAuthorityDAL,
+    certificateAuthoritySecretDAL,
+    certificateDAL,
+    projectDAL,
+    kmsService,
+    queueService,
+    pkiSubscriberDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    externalCertificateAuthorityDAL,
+    keyStore,
+    appConnectionDAL,
+    appConnectionService,
+    pkiSyncDAL,
+    pkiSyncQueue
+  });
+
+  const internalCertificateAuthorityService = internalCertificateAuthorityServiceFactory({
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    certificateAuthoritySecretDAL,
+    certificateAuthorityCrlDAL,
+    certificateTemplateDAL,
+    certificateAuthorityQueue,
+    certificateDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    pkiCollectionDAL,
+    pkiCollectionItemDAL,
+    projectDAL,
+    internalCertificateAuthorityDAL,
+    kmsService,
+    permissionService
+  });
+
   const certificateAuthorityService = certificateAuthorityServiceFactory({
     certificateAuthorityDAL,
     permissionService,
@@ -1944,19 +1963,20 @@ export const registerRoutes = async (
     certificateSecretDAL,
     kmsService,
     pkiSubscriberDAL,
-    projectDAL
+    projectDAL,
+    pkiSyncDAL,
+    pkiSyncQueue
   });
 
-  const internalCaFns = InternalCertificateAuthorityFns({
-    certificateAuthorityDAL,
+  const certificateEstService = certificateEstServiceFactory({
+    internalCertificateAuthorityService,
+    certificateTemplateService,
+    certificateTemplateDAL,
     certificateAuthorityCertDAL,
-    certificateAuthoritySecretDAL,
-    certificateAuthorityCrlDAL,
-    certificateDAL,
-    certificateBodyDAL,
-    certificateSecretDAL,
+    certificateAuthorityDAL,
     projectDAL,
-    kmsService
+    kmsService,
+    licenseService
   });
 
   const pkiSubscriberQueue = pkiSubscriberQueueServiceFactory({
@@ -1967,21 +1987,6 @@ export const registerRoutes = async (
     certificateDAL,
     auditLogService,
     internalCaFns
-  });
-
-  const pkiSyncQueue = pkiSyncQueueFactory({
-    queueService,
-    kmsService,
-    appConnectionDAL,
-    keyStore,
-    pkiSyncDAL,
-    auditLogService,
-    projectMembershipDAL,
-    projectDAL,
-    licenseService,
-    certificateDAL,
-    certificateBodyDAL,
-    certificateSecretDAL
   });
 
   const certificateService = certificateServiceFactory({

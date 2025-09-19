@@ -50,8 +50,9 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
       destination,
       isAutoSyncEnabled: true,
       syncOptions: {
-        canImportCertificates: syncOption?.canImportCertificates ?? true,
-        canRemoveCertificates: syncOption?.canRemoveCertificates ?? true
+        canImportCertificates: syncOption?.canImportCertificates ?? false,
+        canRemoveCertificates: syncOption?.canRemoveCertificates ?? false,
+        certificateNameSchema: syncOption?.defaultCertificateNameSchema
       }
     } as Partial<TPkiSyncForm>,
     reValidateMode: "onChange"
@@ -129,10 +130,11 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
             Certificate Sync Behavior
           </div>
           <p className="mt-1 text-sm text-bunker-200">
-            Certificate Syncs are the source of truth for connected third-party services. Any
-            certificate, including associated data, not present or imported in Infisical before
-            syncing will be overwritten, and changes made directly in the connected service outside
-            of infisical may also be overwritten by future syncs.
+            Certificate Syncs manage certificates that are prefixed with &quot;Infisical-&quot; in
+            the destination. Only certificates managed by Infisical will be affected during sync
+            operations. Certificates not created or managed by Infisical will remain untouched, and
+            changes made to Infisical-managed certificates directly in the destination service may
+            be overwritten by future syncs.
           </p>
         </div>
         <div className="mt-4 flex gap-4">
@@ -190,7 +192,7 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
               <PkiSyncDestinationFields />
             </Tab.Panel>
             <Tab.Panel>
-              <PkiSyncOptionsFields />
+              <PkiSyncOptionsFields destination={destination} />
               <Controller
                 control={control}
                 name="isAutoSyncEnabled"

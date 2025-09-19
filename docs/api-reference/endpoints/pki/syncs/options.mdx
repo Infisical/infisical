@@ -1,0 +1,57 @@
+---
+title: "List PKI Sync Options"
+openapi: "GET /api/v1/pki/syncs/options"
+---
+
+<Info>
+This endpoint lists all available PKI sync destination options and their capabilities.
+</Info>
+
+## Request
+
+<ParamField query="projectId" type="string" optional>
+  Project ID (for authorization purposes, but the options are global)
+</ParamField>
+
+## Response
+
+<ResponseField name="pkiSyncOptions" type="array">
+Array of available PKI sync options
+  <Expandable title="properties">
+    <ResponseField name="name" type="string">
+      Display name of the PKI sync destination
+    </ResponseField>
+
+    <ResponseField name="connection" type="string">
+      App connection type required for this destination
+    </ResponseField>
+
+    <ResponseField name="destination" type="string">
+      PKI sync destination identifier
+    </ResponseField>
+
+    <ResponseField name="canImportCertificates" type="boolean">
+      Whether this destination supports importing certificates from the destination to Infisical
+    </ResponseField>
+
+    <ResponseField name="canRemoveCertificates" type="boolean">
+      Whether this destination supports removing certificates from the destination
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseExample>
+```json Response
+{
+  "pkiSyncOptions": [
+    {
+      "name": "Azure Key Vault",
+      "connection": "azure-key-vault",
+      "destination": "azure-key-vault",
+      "canImportCertificates": false,
+      "canRemoveCertificates": true
+    }
+  ]
+}
+```
+</ResponseExample>

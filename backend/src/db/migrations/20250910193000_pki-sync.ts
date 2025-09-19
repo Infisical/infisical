@@ -19,7 +19,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("subscriberId");
       t.foreign("subscriberId").references("id").inTable(TableName.PkiSubscriber).onDelete("SET NULL");
       t.uuid("connectionId").notNullable();
-      t.foreign("connectionId").references("id").inTable(TableName.AppConnection).onDelete("CASCADE");
+      t.foreign("connectionId").references("id").inTable(TableName.AppConnection);
       t.timestamps(true, true, true);
       t.string("syncStatus");
       t.string("lastSyncJobId");

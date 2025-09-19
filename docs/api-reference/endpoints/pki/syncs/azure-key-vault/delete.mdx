@@ -1,0 +1,113 @@
+---
+title: "Delete Azure Key Vault PKI Sync"
+openapi: "DELETE /api/v1/pki/syncs/azure-key-vault/{pkiSyncId}"
+---
+
+<Warning>
+This action is irreversible. Deleting a PKI sync will stop all automatic certificate synchronization to the Azure Key Vault, but it will not remove certificates that have already been synced.
+</Warning>
+
+<Info>
+This endpoint deletes an existing Azure Key Vault PKI sync.
+</Info>
+
+## Request
+
+<ParamField path="pkiSyncId" type="string" required>
+  The ID of the Azure Key Vault PKI sync to delete
+</ParamField>
+
+<ParamField query="projectId" type="string" optional>
+  Project ID for additional authorization (will be inferred if not provided)
+</ParamField>
+
+## Response
+
+Returns the deleted Azure Key Vault PKI sync object.
+
+<ResponseField name="id" type="string">
+  Unique identifier for the deleted PKI sync
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Name of the deleted PKI sync
+</ResponseField>
+
+<ResponseField name="description" type="string" optional>
+  Description of the deleted PKI sync
+</ResponseField>
+
+<ResponseField name="destination" type="string">
+  Always "azure-key-vault"
+</ResponseField>
+
+<ResponseField name="isAutoSyncEnabled" type="boolean">
+  Whether automatic synchronization was enabled
+</ResponseField>
+
+<ResponseField name="destinationConfig" type="object">
+  Azure Key Vault specific configuration
+</ResponseField>
+
+<ResponseField name="syncOptions" type="object">
+  Sync-specific options and settings
+</ResponseField>
+
+<ResponseField name="projectId" type="string">
+  ID of the project this sync belonged to
+</ResponseField>
+
+<ResponseField name="subscriberId" type="string" optional>
+  ID of the PKI subscriber this sync was connected to
+</ResponseField>
+
+<ResponseField name="connectionId" type="string">
+  ID of the Azure Key Vault app connection that was used for this sync
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  Timestamp when the PKI sync was created
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  Timestamp when the PKI sync was last updated
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://app.infisical.com/api/v1/pki/syncs/azure-key-vault/ps_12345" \
+  -H "Authorization: Bearer <your-api-key>"
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "ps_12345",
+  "name": "Production Azure Key Vault Sync",
+  "description": "Sync certificates to production Key Vault",
+  "destination": "azure-key-vault",
+  "isAutoSyncEnabled": true,
+  "destinationConfig": {
+    "vaultBaseUrl": "https://my-vault.vault.azure.net/"
+  },
+  "syncOptions": {},
+  "projectId": "proj_12345",
+  "subscriberId": "sub_12345",
+  "connectionId": "conn_12345",
+  "syncStatus": "succeeded",
+  "lastSyncedAt": "2023-12-01T10:00:00Z",
+  "lastSyncMessage": "Successfully synced 3 certificates",
+  "removeStatus": null,
+  "lastRemovedAt": null,
+  "lastRemoveMessage": null,
+  "connection": {
+    "id": "conn_12345",
+    "name": "Azure Production Connection",
+    "app": "azure-key-vault"
+  },
+  "createdAt": "2023-11-01T10:00:00Z",
+  "updatedAt": "2023-12-01T10:00:00Z"
+}
+```
+</ResponseExample>

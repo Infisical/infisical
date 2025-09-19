@@ -27,8 +27,7 @@ import { TCreateUserNotificationDTO } from "@app/services/notification/notificat
 import {
   TQueuePkiSyncImportCertificatesByIdDTO,
   TQueuePkiSyncRemoveCertificatesByIdDTO,
-  TQueuePkiSyncSyncCertificatesByIdDTO,
-  TQueueSendPkiSyncActionFailedNotificationsDTO
+  TQueuePkiSyncSyncCertificatesByIdDTO
 } from "@app/services/pki-sync/pki-sync-types";
 import {
   TFailedIntegrationSyncEmailsPayload,
@@ -110,7 +109,6 @@ export enum QueueJobs {
   PkiSyncSyncCertificates = "pki-sync-sync-certificates",
   PkiSyncImportCertificates = "pki-sync-import-certificates",
   PkiSyncRemoveCertificates = "pki-sync-remove-certificates",
-  PkiSyncSendActionFailedNotifications = "pki-sync-send-action-failed-notifications",
   SecretRotationV2QueueRotations = "secret-rotation-v2-queue-rotations",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
@@ -242,10 +240,6 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.PkiSyncRemoveCertificates;
         payload: TQueuePkiSyncRemoveCertificatesByIdDTO;
-      }
-    | {
-        name: QueueJobs.PkiSyncSendActionFailedNotifications;
-        payload: TQueueSendPkiSyncActionFailedNotificationsDTO;
       };
   [QueueName.ProjectV3Migration]: {
     name: QueueJobs.ProjectV3Migration;

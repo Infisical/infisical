@@ -5,6 +5,8 @@ import { PkiSyncStatus } from "../enums";
 export type RootPkiSyncOptions = {
   canImportCertificates: boolean;
   canRemoveCertificates: boolean;
+  certificateNamePrefix?: string;
+  certificateNameSchema?: string;
 };
 
 export type TRootPkiSync = {

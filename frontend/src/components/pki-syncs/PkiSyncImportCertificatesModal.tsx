@@ -15,7 +15,7 @@ type ContentProps = {
 };
 
 const Content = ({ pkiSync, onComplete }: ContentProps) => {
-  const { id: syncId, destination, projectId } = pkiSync;
+  const { id: syncId, destination } = pkiSync;
   const destinationName = PKI_SYNC_MAP[destination].name;
 
   const triggerImportCertificates = useTriggerPkiSyncImportCertificates();
@@ -24,7 +24,6 @@ const Content = ({ pkiSync, onComplete }: ContentProps) => {
     try {
       await triggerImportCertificates.mutateAsync({
         syncId,
-        projectId,
         destination
       });
 
@@ -57,7 +56,7 @@ const Content = ({ pkiSync, onComplete }: ContentProps) => {
       </p>
       <p className="mb-6 text-xs text-bunker-300">
         This operation will retrieve certificates from {destinationName} and make them available in
-        your PKI collection. Only certificates that are not already imported will be processed.
+        your PKI subscriber. Only certificates that are not already imported will be processed.
       </p>
       <div className="mt-8 flex w-full items-center justify-between gap-2">
         <ModalClose asChild>

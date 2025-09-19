@@ -9,6 +9,11 @@ export type TPkiSyncOption = {
   canImportCertificates: boolean;
   canRemoveCertificates: boolean;
   enterprise?: boolean;
+  defaultCertificateNameSchema?: string;
+  forbiddenCharacters?: string;
+  allowedCharacterPattern?: string;
+  maxCertificateNameLength?: number;
+  minCertificateNameLength?: number;
 };
 
 export type TPkiSync = TAzureKeyVaultPkiSync;
@@ -16,7 +21,6 @@ export type TPkiSync = TAzureKeyVaultPkiSync;
 export type TListPkiSyncs = { pkiSyncs: TPkiSync[] };
 
 export type TListPkiSyncOptions = { pkiSyncOptions: TPkiSyncOption[] };
-export type TPkiSyncResponse = { pkiSync: TPkiSync };
 
 export type TCreatePkiSyncDTO = DiscriminativePick<
   TPkiSync,
@@ -43,19 +47,16 @@ export type TDeletePkiSyncDTO = {
 
 export type TTriggerPkiSyncSyncCertificatesDTO = {
   syncId: string;
-  projectId: string;
   destination: PkiSync;
 };
 
 export type TTriggerPkiSyncImportCertificatesDTO = {
   syncId: string;
-  projectId: string;
   destination: PkiSync;
 };
 
 export type TTriggerPkiSyncRemoveCertificatesDTO = {
   syncId: string;
-  projectId: string;
   destination: PkiSync;
 };
 

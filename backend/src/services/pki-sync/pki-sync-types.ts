@@ -13,7 +13,6 @@ export type TPkiSync = {
   description?: string;
   destination: PkiSync;
   isAutoSyncEnabled: boolean;
-  version: number;
   destinationConfig: Record<string, unknown>;
   syncOptions: Record<string, unknown>;
   projectId: string;
@@ -33,11 +32,23 @@ export type TPkiSync = {
   lastRemoveJobId?: string;
   lastRemoveMessage?: string;
   lastRemovedAt?: Date;
-};
-
-export type TPkiSyncListItem = TPkiSync & {
   appConnectionName: string;
   appConnectionApp: string;
+  connection: {
+    id: string;
+    name: string;
+    app: string;
+    encryptedCredentials: unknown;
+    orgId: string;
+    projectId?: string;
+    method: string;
+    description?: string;
+    version: number;
+    gatewayId?: string;
+    createdAt: Date;
+    updatedAt: Date;
+    isPlatformManagedCredentials?: boolean;
+  };
 };
 
 export type TPkiSyncWithCredentials = TPkiSync & {
@@ -48,6 +59,11 @@ export type TPkiSyncWithCredentials = TPkiSync & {
     credentials: Record<string, unknown>;
     orgId: string;
   };
+};
+
+export type TPkiSyncListItem = TPkiSync & {
+  appConnectionName: string;
+  appConnectionApp: string;
 };
 
 export type TCertificateMap = Record<string, { cert: string; privateKey: string }>;
@@ -68,7 +84,7 @@ export type TCreatePkiSyncDTO = {
 
 export type TUpdatePkiSyncDTO = {
   id: string;
-  projectId: string;
+  projectId?: string;
   name?: string;
   description?: string;
   isAutoSyncEnabled?: boolean;
@@ -82,7 +98,7 @@ export type TUpdatePkiSyncDTO = {
 
 export type TDeletePkiSyncDTO = {
   id: string;
-  projectId: string;
+  projectId?: string;
   auditLogInfo: AuditLogInfo;
 };
 
@@ -90,50 +106,28 @@ export type TListPkiSyncsByProjectId = {
   projectId: string;
 };
 
-export type TListPkiSyncsBySubscriberId = {
-  subscriberId: string;
-};
-
 export type TFindPkiSyncByIdDTO = {
   id: string;
-  projectId: string;
-};
-
-export type TFindPkiSyncByNameDTO = {
-  name: string;
-  projectId: string;
+  projectId?: string;
 };
 
 export type TTriggerPkiSyncSyncCertificatesByIdDTO = {
   id: string;
-  projectId: string;
+  projectId?: string;
   auditLogInfo: AuditLogInfo;
 };
 
 export type TTriggerPkiSyncImportCertificatesByIdDTO = {
   id: string;
-  projectId: string;
+  projectId?: string;
   auditLogInfo: AuditLogInfo;
 };
 
 export type TTriggerPkiSyncRemoveCertificatesByIdDTO = {
   id: string;
-  projectId: string;
+  projectId?: string;
   auditLogInfo: AuditLogInfo;
 };
-
-export enum PkiSyncStatus {
-  Pending = "pending",
-  Running = "running",
-  Succeeded = "succeeded",
-  Failed = "failed"
-}
-
-export enum PkiSyncAction {
-  SyncCertificates = "sync-certificates",
-  ImportCertificates = "import-certificates",
-  RemoveCertificates = "remove-certificates"
-}
 
 export type TPkiSyncRaw = NonNullable<Awaited<ReturnType<TPkiSyncDALFactory["findById"]>>>;
 
@@ -154,12 +148,6 @@ export type TQueuePkiSyncRemoveCertificatesByIdDTO = {
   deleteSyncOnComplete?: boolean;
 };
 
-export type TQueueSendPkiSyncActionFailedNotificationsDTO = {
-  pkiSync: TPkiSyncRaw;
-  auditLogInfo?: AuditLogInfo;
-  action: PkiSyncAction;
-};
-
 export type TPkiSyncSyncCertificatesDTO = Job<
   TQueuePkiSyncSyncCertificatesByIdDTO,
   void,
@@ -174,10 +162,4 @@ export type TPkiSyncRemoveCertificatesDTO = Job<
   TQueuePkiSyncRemoveCertificatesByIdDTO,
   void,
   QueueJobs.PkiSyncRemoveCertificates
->;
-
-export type TSendPkiSyncFailedNotificationsJobDTO = Job<
-  TQueueSendPkiSyncActionFailedNotificationsDTO,
-  void,
-  QueueJobs.PkiSyncSendActionFailedNotifications
 >;

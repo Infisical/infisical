@@ -68,6 +68,12 @@ type TCertificateAuthorityServiceFactoryDep = {
     "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
   >;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
+  pkiSyncDAL: {
+    find: (filter: { subscriberId: string; isAutoSyncEnabled: boolean }) => Promise<Array<{ id: string }>>;
+  };
+  pkiSyncQueue: {
+    queuePkiSyncSyncCertificatesById: (params: { syncId: string }) => Promise<void>;
+  };
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -84,7 +90,9 @@ export const certificateAuthorityServiceFactory = ({
   certificateBodyDAL,
   certificateSecretDAL,
   kmsService,
-  pkiSubscriberDAL
+  pkiSubscriberDAL,
+  pkiSyncDAL,
+  pkiSyncQueue
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -96,7 +104,9 @@ export const certificateAuthorityServiceFactory = ({
     certificateSecretDAL,
     kmsService,
     pkiSubscriberDAL,
-    projectDAL
+    projectDAL,
+    pkiSyncDAL,
+    pkiSyncQueue
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({
@@ -109,7 +119,9 @@ export const certificateAuthorityServiceFactory = ({
     certificateSecretDAL,
     kmsService,
     pkiSubscriberDAL,
-    projectDAL
+    projectDAL,
+    pkiSyncDAL,
+    pkiSyncQueue
   });
 
   const createCertificateAuthority = async (

@@ -2492,19 +2492,18 @@
               {
                 "group": "Certificate Syncs",
                 "pages": [
-                  "api-reference/endpoints/certificate-syncs/list",
-                  "api-reference/endpoints/certificate-syncs/options",
+                  "api-reference/endpoints/pki/syncs/list",
+                  "api-reference/endpoints/pki/syncs/get-by-id",
                   {
                     "group": "Azure Key Vault",
                     "pages": [
-                      "api-reference/endpoints/certificate-syncs/azure-key-vault/list",
-                      "api-reference/endpoints/certificate-syncs/azure-key-vault/get-by-id",
-                      "api-reference/endpoints/certificate-syncs/azure-key-vault/create",
-                      "api-reference/endpoints/certificate-syncs/azure-key-vault/update",
-                      "api-reference/endpoints/certificate-syncs/azure-key-vault/delete",
-                      "api-reference/endpoints/certificate-syncs/azure-key-vault/sync-certificates",
-                      "api-reference/endpoints/certificate-syncs/azure-key-vault/import-certificates",
-                      "api-reference/endpoints/certificate-syncs/azure-key-vault/remove-certificates"
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/list",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/get-by-id",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/create",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/update",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/delete",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/remove-certificates"
                     ]
                   }
                 ]
@@ -2647,9 +2646,9 @@
     "href": "https://infisical.com"
   },
   "api": {
-    "openapi": "https://5e8f77f30103.ngrok-free.app/api/docs/json",
+    "openapi": "https://api.infisical.com/api/docs/json",
     "mdx": {
-      "server": ["https://5e8f77f30103.ngrok-free.app"]
+      "server": ["https://api.infisical.com"]
     }
   },
   "appearance": {

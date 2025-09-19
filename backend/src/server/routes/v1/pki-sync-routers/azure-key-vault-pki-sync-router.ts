@@ -1,4 +1,5 @@
 import {
+  AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION,
   AzureKeyVaultPkiSyncSchema,
   CreateAzureKeyVaultPkiSyncSchema,
   UpdateAzureKeyVaultPkiSyncSchema
@@ -13,5 +14,9 @@ export const registerAzureKeyVaultPkiSyncRouter = async (server: FastifyZodProvi
     server,
     responseSchema: AzureKeyVaultPkiSyncSchema,
     createSchema: CreateAzureKeyVaultPkiSyncSchema,
-    updateSchema: UpdateAzureKeyVaultPkiSyncSchema
+    updateSchema: UpdateAzureKeyVaultPkiSyncSchema,
+    syncOptions: {
+      canImportCertificates: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION.canImportCertificates,
+      canRemoveCertificates: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION.canRemoveCertificates
+    }
   });

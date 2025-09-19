@@ -46,8 +46,8 @@ import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   PkiSync,
-  PkiSyncData,
   PkiSyncStatus,
+  TPkiSync,
   useTriggerPkiSyncSyncCertificates,
   useUpdatePkiSync
 } from "@app/hooks/api/pkiSyncs";
@@ -82,7 +82,7 @@ const getSyncStatusOrderValue = (syncStatus: PkiSyncStatus | null) => {
 };
 
 type Props = {
-  pkiSyncs: PkiSyncData[];
+  pkiSyncs: TPkiSync[];
 };
 
 const STATUS_ICON_MAP = {
@@ -213,15 +213,15 @@ export const PkiSyncsTable = ({ pkiSyncs }: Props) => {
 
   const isTableFiltered = Boolean(filters.destinations.length || filters.status.length);
 
-  const handleDelete = (pkiSync: PkiSyncData) => handlePopUpOpen("deleteSync", pkiSync);
+  const handleDelete = (pkiSync: TPkiSync) => handlePopUpOpen("deleteSync", pkiSync);
 
-  const handleTriggerImportCertificates = (pkiSync: PkiSyncData) =>
+  const handleTriggerImportCertificates = (pkiSync: TPkiSync) =>
     handlePopUpOpen("importCertificates", pkiSync);
 
-  const handleTriggerRemoveCertificates = (pkiSync: PkiSyncData) =>
+  const handleTriggerRemoveCertificates = (pkiSync: TPkiSync) =>
     handlePopUpOpen("removeCertificates", pkiSync);
 
-  const handleToggleEnableSync = async (pkiSync: PkiSyncData) => {
+  const handleToggleEnableSync = async (pkiSync: TPkiSync) => {
     const destinationName = PKI_SYNC_MAP[pkiSync.destination].name;
 
     const isAutoSyncEnabled = !pkiSync.isAutoSyncEnabled;
@@ -246,13 +246,12 @@ export const PkiSyncsTable = ({ pkiSyncs }: Props) => {
     }
   };
 
-  const handleTriggerSync = async (pkiSync: PkiSyncData) => {
+  const handleTriggerSync = async (pkiSync: TPkiSync) => {
     const destinationName = PKI_SYNC_MAP[pkiSync.destination].name;
 
     try {
       await triggerSync.mutateAsync({
         syncId: pkiSync.id,
-        projectId: pkiSync.projectId,
         destination: pkiSync.destination
       });
 
@@ -462,11 +461,13 @@ export const PkiSyncsTable = ({ pkiSyncs }: Props) => {
         isOpen={popUp.deleteSync.isOpen}
         pkiSync={popUp.deleteSync.data}
       />
-      <PkiSyncImportCertificatesModal
-        onOpenChange={(isOpen) => handlePopUpToggle("importCertificates", isOpen)}
-        isOpen={popUp.importCertificates.isOpen}
-        pkiSync={popUp.importCertificates.data}
-      />
+      {popUp.importCertificates.data && (
+        <PkiSyncImportCertificatesModal
+          onOpenChange={(isOpen) => handlePopUpToggle("importCertificates", isOpen)}
+          isOpen={popUp.importCertificates.isOpen}
+          pkiSync={popUp.importCertificates.data}
+        />
+      )}
       <PkiSyncRemoveCertificatesModal
         onOpenChange={(isOpen) => handlePopUpToggle("removeCertificates", isOpen)}
         isOpen={popUp.removeCertificates.isOpen}

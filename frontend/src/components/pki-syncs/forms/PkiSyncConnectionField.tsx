@@ -4,8 +4,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
 import { FilterableSelect, FormControl } from "@app/components/v2";
-import { OrgPermissionSubjects, useOrgPermission, useProject } from "@app/context";
-import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
+import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
+import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { PKI_SYNC_CONNECTION_MAP } from "@app/helpers/pkiSyncs";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
@@ -17,7 +17,7 @@ type Props = {
 };
 
 export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
-  const { permission } = useOrgPermission();
+  const { permission } = useProjectPermission();
   const { control, watch } = useFormContext<TPkiSyncForm>();
   const { currentProject } = useProject();
 
@@ -32,8 +32,8 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
   const connectionName = APP_CONNECTION_MAP[app].name;
 
   const canCreateConnection = permission.can(
-    OrgPermissionAppConnectionActions.Create,
-    OrgPermissionSubjects.AppConnections
+    ProjectPermissionAppConnectionActions.Create,
+    ProjectPermissionSub.AppConnections
   );
 
   const appName = APP_CONNECTION_MAP[PKI_SYNC_CONNECTION_MAP[destination]].name;
@@ -47,7 +47,6 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
-            tooltipText="App Connections can be created from the Organization Settings page."
             isError={Boolean(error)}
             errorText={error?.message}
             label={`${connectionName} Connection`}

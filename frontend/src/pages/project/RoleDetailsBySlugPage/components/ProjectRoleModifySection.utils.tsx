@@ -1752,7 +1752,6 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.SecretApproval]: enabled,
   [ProjectPermissionSub.Integrations]: enabled,
   [ProjectPermissionSub.SecretSyncs]: enabled,
-  [ProjectPermissionSub.PkiSyncs]: enabled,
   [ProjectPermissionSub.Kms]: enabled,
   [ProjectPermissionSub.Environments]: enabled,
   [ProjectPermissionSub.Tags]: enabled,
@@ -1774,6 +1773,7 @@ const CertificateManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.PkiCollections]: enabled,
   [ProjectPermissionSub.PkiAlerts]: enabled,
   [ProjectPermissionSub.PkiSubscribers]: enabled,
+  [ProjectPermissionSub.PkiSyncs]: enabled,
   [ProjectPermissionSub.CertificateAuthorities]: enabled,
   [ProjectPermissionSub.CertificateTemplates]: enabled,
   [ProjectPermissionSub.Certificates]: enabled
@@ -2021,6 +2021,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
             ProjectPermissionCertificateActions.Read,
             ProjectPermissionCertificateActions.ReadPrivateKey
           ]
+        },
+        {
+          subject: ProjectPermissionSub.PkiSyncs,
+          actions: [ProjectPermissionPkiSyncActions.Read]
         }
       ]
     },
@@ -2048,6 +2052,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.Certificates,
           actions: Object.values(ProjectPermissionCertificateActions)
+        },
+        {
+          subject: ProjectPermissionSub.PkiSyncs,
+          actions: Object.values(ProjectPermissionPkiSyncActions)
         }
       ]
     },
@@ -2149,10 +2157,6 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
           actions: [ProjectPermissionSecretSyncActions.Read]
         },
         {
-          subject: ProjectPermissionSub.PkiSyncs,
-          actions: [ProjectPermissionPkiSyncActions.Read]
-        },
-        {
           subject: ProjectPermissionSub.Commits,
           actions: [ProjectPermissionCommitsActions.Read]
         }
@@ -2212,10 +2216,6 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.SecretSyncs,
           actions: Object.values(ProjectPermissionSecretSyncActions)
-        },
-        {
-          subject: ProjectPermissionSub.PkiSyncs,
-          actions: Object.values(ProjectPermissionPkiSyncActions)
         },
         {
           subject: ProjectPermissionSub.Commits,

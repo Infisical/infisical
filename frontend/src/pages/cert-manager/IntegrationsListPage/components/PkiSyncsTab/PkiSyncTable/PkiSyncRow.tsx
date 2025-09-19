@@ -44,18 +44,18 @@ import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { useToggle } from "@app/hooks";
-import { PkiSyncData, PkiSyncStatus } from "@app/hooks/api/pkiSyncs";
+import { PkiSyncStatus, TPkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
 import { PkiSyncDestinationCol } from "./PkiSyncDestinationCol";
 import { PkiSyncTableCell } from "./PkiSyncTableCell";
 
 type Props = {
-  pkiSync: PkiSyncData;
-  onDelete: (pkiSync: PkiSyncData) => void;
-  onTriggerSyncCertificates: (pkiSync: PkiSyncData) => void;
-  onTriggerImportCertificates: (pkiSync: PkiSyncData) => void;
-  onTriggerRemoveCertificates: (pkiSync: PkiSyncData) => void;
-  onToggleEnable: (pkiSync: PkiSyncData) => void;
+  pkiSync: TPkiSync;
+  onDelete: (pkiSync: TPkiSync) => void;
+  onTriggerSyncCertificates: (pkiSync: TPkiSync) => void;
+  onTriggerImportCertificates: (pkiSync: TPkiSync) => void;
+  onTriggerRemoveCertificates: (pkiSync: TPkiSync) => void;
+  onToggleEnable: (pkiSync: TPkiSync) => void;
 };
 
 export const PkiSyncRow = ({
@@ -81,6 +81,8 @@ export const PkiSyncRow = ({
   } = pkiSync;
 
   const destinationName = PKI_SYNC_MAP[destination].name;
+
+  const { syncOption } = usePkiSyncOption(destination);
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
@@ -227,7 +229,7 @@ export const PkiSyncRow = ({
           {!isAutoSyncEnabled && (
             <Tooltip
               className="text-xs"
-              content="Auto-Sync is disabled. Changes to the PKI subscriber will not be automatically synced to the destination."
+              content="Auto-Sync is disabled. Certificate changes in the PKI subscriber will not be automatically synced to the destination."
             >
               <div>
                 <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
@@ -237,7 +239,7 @@ export const PkiSyncRow = ({
               </div>
             </Tooltip>
           )}
-          <PkiSyncImportStatusBadge mini pkiSync={pkiSync} />
+          {syncOption?.canImportCertificates && <PkiSyncImportStatusBadge mini pkiSync={pkiSync} />}
           <PkiSyncRemoveStatusBadge mini pkiSync={pkiSync} />
         </div>
       </Td>
@@ -294,36 +296,38 @@ export const PkiSyncRow = ({
                   </DropdownMenuItem>
                 )}
               </ProjectPermissionCan>
-              <ProjectPermissionCan
-                I={ProjectPermissionPkiSyncActions.ImportCertificates}
-                a={permissionSubject}
-              >
-                {(isAllowed: boolean) => (
-                  <DropdownMenuItem
-                    icon={<FontAwesomeIcon icon={faDownload} />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTriggerImportCertificates(pkiSync);
-                    }}
-                    isDisabled={!isAllowed}
-                  >
-                    <Tooltip
-                      position="left"
-                      sideOffset={42}
-                      content={`Import certificates from this ${destinationName} destination into Infisical.`}
+              {syncOption?.canImportCertificates && (
+                <ProjectPermissionCan
+                  I={ProjectPermissionPkiSyncActions.ImportCertificates}
+                  a={permissionSubject}
+                >
+                  {(isAllowed: boolean) => (
+                    <DropdownMenuItem
+                      icon={<FontAwesomeIcon icon={faDownload} />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTriggerImportCertificates(pkiSync);
+                      }}
+                      isDisabled={!isAllowed}
                     >
-                      <div className="flex h-full w-full items-center justify-between gap-1">
-                        <span>Import Certificates</span>
-                        <FontAwesomeIcon
-                          className="text-bunker-300"
-                          size="sm"
-                          icon={faInfoCircle}
-                        />
-                      </div>
-                    </Tooltip>
-                  </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
+                      <Tooltip
+                        position="left"
+                        sideOffset={42}
+                        content={`Import certificates from this ${destinationName} destination into Infisical.`}
+                      >
+                        <div className="flex h-full w-full items-center justify-between gap-1">
+                          <span>Import Certificates</span>
+                          <FontAwesomeIcon
+                            className="text-bunker-300"
+                            size="sm"
+                            icon={faInfoCircle}
+                          />
+                        </div>
+                      </Tooltip>
+                    </DropdownMenuItem>
+                  )}
+                </ProjectPermissionCan>
+              )}
               <ProjectPermissionCan
                 I={ProjectPermissionPkiSyncActions.RemoveCertificates}
                 a={permissionSubject}

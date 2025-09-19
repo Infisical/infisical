@@ -3,8 +3,8 @@ import opentelemetry from "@opentelemetry/api";
 import * as x509 from "@peculiar/x509";
 import { AxiosError } from "axios";
 import { Job } from "bullmq";
+import handlebars from "handlebars";
 
-import { ProjectMembershipRole } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -16,20 +16,17 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
-import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { getCertificateCredentials } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { CertStatus } from "../certificate/certificate-types";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
-import { PkiSyncAction } from "./pki-sync-enums";
+import { PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
 import { enterprisePkiSyncCheck, parsePkiSyncErrorMessage, PkiSyncFns } from "./pki-sync-fns";
 import {
-  PkiSyncStatus,
   TCertificateMap,
   TPkiSyncImportCertificatesDTO,
   TPkiSyncRaw,
@@ -38,9 +35,7 @@ import {
   TPkiSyncWithCredentials,
   TQueuePkiSyncImportCertificatesByIdDTO,
   TQueuePkiSyncRemoveCertificatesByIdDTO,
-  TQueuePkiSyncSyncCertificatesByIdDTO,
-  TQueueSendPkiSyncActionFailedNotificationsDTO,
-  TSendPkiSyncFailedNotificationsJobDTO
+  TQueuePkiSyncSyncCertificatesByIdDTO
 } from "./pki-sync-types";
 
 export type TPkiSyncQueueFactory = ReturnType<typeof pkiSyncQueueFactory>;
@@ -55,7 +50,6 @@ type TPkiSyncQueueFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "findById" | "find" | "updateById" | "deleteById" | "update">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: TProjectDALFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificateDAL: Pick<
@@ -88,7 +82,6 @@ export const pkiSyncQueueFactory = ({
   keyStore,
   pkiSyncDAL,
   auditLogService,
-  projectMembershipDAL,
   projectDAL,
   licenseService,
   certificateDAL,
@@ -151,89 +144,6 @@ export const pkiSyncQueueFactory = ({
     );
   };
 
-  const $createCertificatesInSubscriber = async (
-    pkiSync: TPkiSyncWithCredentials,
-    certificatesToCreate: Array<{
-      name: string;
-      certificate: string;
-      privateKey?: string;
-    }>
-  ) => {
-    const { projectId, subscriberId } = pkiSync;
-
-    if (!subscriberId) {
-      throw new Error("PKI Sync subscriber ID is required for certificate creation");
-    }
-
-    logger.info(`Creating ${certificatesToCreate.length} certificates in PKI subscriber ${subscriberId}`);
-
-    for (const certData of certificatesToCreate) {
-      try {
-        // Validate certificate data
-        if (!certData.certificate || certData.certificate.trim() === "") {
-          logger.error(`Skipping certificate ${certData.name}: empty certificate data`);
-          // eslint-disable-next-line no-continue
-          continue;
-        }
-
-        // Parse certificate to extract metadata
-        const cert = new x509.X509Certificate(certData.certificate);
-        const { serialNumber } = cert;
-        const { notBefore } = cert;
-        const { notAfter } = cert;
-        const commonName =
-          cert.subject
-            .split(",")
-            .find((part) => part.trim().startsWith("CN="))
-            ?.split("=")[1]
-            ?.trim() || certData.name;
-
-        // Get KMS key for encryption
-        const kmsKeyId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-        const kmsEncryptor = await kmsService.encryptWithKmsKey({
-          kmsId: kmsKeyId
-        });
-
-        // Create certificate record
-        const createdCert = await certificateDAL.create({
-          pkiSubscriberId: subscriberId,
-          status: CertStatus.ACTIVE,
-          serialNumber,
-          notBefore,
-          notAfter,
-          commonName,
-          friendlyName: certData.name,
-          projectId
-        });
-
-        // Create certificate body record with encrypted certificate
-        const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
-          plainText: Buffer.from(certData.certificate)
-        });
-
-        await certificateBodyDAL.create({
-          certId: createdCert.id,
-          encryptedCertificate
-        });
-
-        if (certData.privateKey) {
-          const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
-            plainText: Buffer.from(certData.privateKey)
-          });
-
-          await certificateSecretDAL.create({
-            certId: createdCert.id,
-            encryptedPrivateKey
-          });
-        }
-
-        logger.info(`Successfully created certificate ${certData.name} with ID ${createdCert.id}`);
-      } catch (error) {
-        logger.error(`Failed to create certificate ${certData.name}: ${String(error)}`);
-      }
-    }
-  };
-
   const $getInfisicalCertificates = async (
     pkiSync: TPkiSyncRaw | TPkiSyncWithCredentials
   ): Promise<TCertificateMap> => {
@@ -254,34 +164,8 @@ export const pkiSyncQueueFactory = ({
         subscriberId
       });
 
-      logger.info(
-        { subscriberId, certificateCount: certificates.length },
-        "Found active certificates for PKI sync subscriber"
-      );
-
       for (const certificate of certificates) {
         try {
-          // Only sync certificates issued by Infisical (not imported ones)
-          if (!certificate.caId) {
-            logger.debug(
-              { certificateId: certificate.id, subscriberId },
-              "Skipping imported certificate - not syncing to destination"
-            );
-            // eslint-disable-next-line no-continue
-            continue;
-          }
-
-          // Check if certificate is expired
-          const now = new Date();
-          if (certificate.notAfter < now) {
-            logger.debug(
-              { certificateId: certificate.id, subscriberId, expiredAt: certificate.notAfter },
-              "Skipping expired certificate"
-            );
-            // eslint-disable-next-line no-continue
-            continue;
-          }
-
           // Get the certificate body and decrypt the certificate data
           const certBody = await certificateBodyDAL.findOne({ certId: certificate.id });
 
@@ -323,19 +207,24 @@ export const pkiSyncQueueFactory = ({
               certPrivateKey = undefined;
             }
 
-            // Use Infisical-prefixed ID for clear identification in destination
-            // Azure Key Vault doesn't allow underscores, so use hyphens and remove UUID hyphens
-            const certificateName = `Infisical-${certificate.id.replace(/-/g, "")}`;
+            let certificateName: string;
+            const syncOptions = pkiSync.syncOptions as { certificateNameSchema?: string } | undefined;
+            const certificateNameSchema = syncOptions?.certificateNameSchema;
+
+            if (certificateNameSchema) {
+              const environment = "global";
+              certificateName = handlebars.compile(certificateNameSchema)({
+                certificateId: certificate.id.replace(/-/g, ""),
+                environment
+              });
+            } else {
+              certificateName = `Infisical-${certificate.id.replace(/-/g, "")}`;
+            }
 
             certificateMap[certificateName] = {
               cert: certificatePem,
               privateKey: certPrivateKey || ""
             };
-
-            logger.info(
-              { certificateId: certificate.id, certificateName, subscriberId },
-              "Successfully prepared certificate for PKI sync"
-            );
           } else {
             logger.warn({ certificateId: certificate.id, subscriberId }, "Certificate body not found for certificate");
           }
@@ -395,83 +284,8 @@ export const pkiSyncQueueFactory = ({
       removeOnFail: true
     });
 
-  const $queueSendPkiSyncFailedNotifications = async (payload: TQueueSendPkiSyncActionFailedNotificationsDTO) => {
-    if (!appCfg.isSmtpConfigured) return;
-
-    await queueService.queue(QueueName.PkiSync, QueueJobs.PkiSyncSendActionFailedNotifications, payload, {
-      jobId: `pki-sync-${payload.pkiSync.id}-failed-notifications`,
-      attempts: 5,
-      delay: 1000 * 60,
-      backoff: {
-        type: "exponential",
-        delay: 3000
-      },
-      removeOnFail: true,
-      removeOnComplete: true
-    });
-  };
-
-  const $importCertificates = async (pkiSync: TPkiSyncWithCredentials): Promise<TCertificateMap> => {
-    const {
-      projectId,
-      destination,
-      connection: { orgId }
-    } = pkiSync;
-
-    await enterprisePkiSyncCheck(
-      licenseService,
-      orgId,
-      destination,
-      "Failed to import certificates due to plan restriction. Upgrade plan to access enterprise PKI syncs."
-    );
-
-    if (!projectId) {
-      throw new Error("Invalid PKI Sync source configuration: project no longer exists.");
-    }
-
-    const importedCertificates = await PkiSyncFns.getCertificates(pkiSync, {
-      appConnectionDAL,
-      kmsService
-    });
-
-    if (!Object.keys(importedCertificates).length) return {};
-
-    const importedCertificateMap: TCertificateMap = {};
-
-    const certificateMap = await $getInfisicalCertificates(pkiSync);
-
-    // Compare existing certificates with imported ones and determine which need to be created/updated
-    const certificatesToCreate: Array<{
-      name: string;
-      certificate: string;
-      privateKey?: string;
-    }> = [];
-
-    Object.entries(importedCertificates).forEach(([name, certificateData]) => {
-      const { cert: certificate, privateKey } = certificateData;
-
-      if (!Object.prototype.hasOwnProperty.call(certificateMap, name)) {
-        // Certificate doesn't exist in Infisical, create it
-        certificatesToCreate.push({
-          name,
-          certificate,
-          privateKey
-        });
-        importedCertificateMap[name] = certificateData;
-      } else {
-        // Certificate exists - could compare and update if needed
-        // For now, we'll skip updating existing certificates to avoid conflicts
-        importedCertificateMap[name] = certificateData;
-      }
-    });
-
-    // Create new certificates in Infisical
-    if (certificatesToCreate.length > 0) {
-      logger.info(`PKI Sync Import: Creating ${certificatesToCreate.length} new certificates`);
-      await $createCertificatesInSubscriber(pkiSync, certificatesToCreate);
-    }
-
-    return importedCertificateMap;
+  const $importCertificates = async (): Promise<TCertificateMap> => {
+    throw new Error("Certificate import functionality is not implemented");
   };
 
   const $handleSyncCertificatesJob = async (job: TPkiSyncSyncCertificatesDTO, pkiSync: TPkiSyncRaw) => {
@@ -586,24 +400,14 @@ export const pkiSyncQueueFactory = ({
       });
 
       if (isSynced || isFinalAttempt) {
-        const updatedPkiSync = await pkiSyncDAL.updateById(pkiSync.id, {
+        await pkiSyncDAL.updateById(pkiSync.id, {
           syncStatus,
           lastSyncJobId: job.id,
           lastSyncMessage: syncMessage,
           lastSyncedAt: isSynced ? ranAt : undefined
         });
-
-        if (!isSynced) {
-          await $queueSendPkiSyncFailedNotifications({
-            pkiSync: updatedPkiSync,
-            action: PkiSyncAction.SyncCertificates,
-            auditLogInfo
-          });
-        }
       }
     }
-
-    logger.info("PkiSync Sync Job with ID %s Completed", job.id);
   };
 
   const $handleImportCertificatesJob = async (job: TPkiSyncImportCertificatesDTO, pkiSync: TPkiSyncRaw) => {
@@ -624,24 +428,7 @@ export const pkiSyncQueueFactory = ({
     let isFinalAttempt = job.attemptsStarted === job.opts.attempts;
 
     try {
-      const {
-        connection: { orgId, encryptedCredentials, projectId: appConnectionProjectId }
-      } = pkiSync;
-
-      const credentials = await decryptAppConnectionCredentials({
-        orgId,
-        encryptedCredentials,
-        kmsService,
-        projectId: appConnectionProjectId
-      });
-
-      await $importCertificates({
-        ...pkiSync,
-        connection: {
-          ...pkiSync.connection,
-          credentials
-        }
-      } as TPkiSyncWithCredentials);
+      await $importCertificates();
 
       isSuccess = true;
     } catch (err) {
@@ -693,24 +480,14 @@ export const pkiSyncQueueFactory = ({
       });
 
       if (isSuccess || isFinalAttempt) {
-        const updatedPkiSync = await pkiSyncDAL.updateById(pkiSync.id, {
+        await pkiSyncDAL.updateById(pkiSync.id, {
           importStatus,
           lastImportJobId: job.id,
           lastImportMessage: importMessage,
           lastImportedAt: isSuccess ? ranAt : undefined
         });
-
-        if (!isSuccess) {
-          await $queueSendPkiSyncFailedNotifications({
-            pkiSync: updatedPkiSync,
-            action: PkiSyncAction.ImportCertificates,
-            auditLogInfo
-          });
-        }
       }
     }
-
-    logger.info("PkiSync Import Job with ID %s Completed", job.id);
   };
 
   const $handleRemoveCertificatesJob = async (job: TPkiSyncRemoveCertificatesDTO, pkiSync: TPkiSyncRaw) => {
@@ -819,72 +596,19 @@ export const pkiSyncQueueFactory = ({
         if (isSuccess && deleteSyncOnComplete) {
           await pkiSyncDAL.deleteById(pkiSync.id);
         } else {
-          const updatedPkiSync = await pkiSyncDAL.updateById(pkiSync.id, {
+          await pkiSyncDAL.updateById(pkiSync.id, {
             removeStatus,
             lastRemoveJobId: job.id,
             lastRemoveMessage: removeMessage,
             lastRemovedAt: isSuccess ? ranAt : undefined
           });
-
-          if (!isSuccess) {
-            await $queueSendPkiSyncFailedNotifications({
-              pkiSync: updatedPkiSync,
-              action: PkiSyncAction.RemoveCertificates,
-              auditLogInfo
-            });
-          }
         }
       }
-    }
-
-    logger.info("PkiSync Remove Job with ID %s Completed", job.id);
-  };
-
-  const $sendPkiSyncFailedNotifications = async (job: TSendPkiSyncFailedNotificationsJobDTO) => {
-    const {
-      data: { pkiSync, auditLogInfo, action }
-    } = job;
-
-    const { projectId, name, lastSyncMessage, lastRemoveMessage, lastImportMessage } = pkiSync;
-
-    const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
-    const project = await projectDAL.findById(projectId);
-
-    // Filter for project admins similar to secret sync
-    let projectAdmins = projectMembers.filter((member) =>
-      member.roles.some((role) => role.role === ProjectMembershipRole.Admin)
-    );
-
-    const triggeredByUserId = auditLogInfo?.actor?.type === ActorType.USER ? auditLogInfo.actor.metadata?.userId : null;
-
-    if (triggeredByUserId) {
-      // Don't send notification to the user who triggered the action
-      projectAdmins = projectAdmins.filter((member) => member.user.id !== triggeredByUserId);
-    }
-
-    // Get appropriate error message based on action type
-    let errorMessage: string | null = null;
-    if (action === PkiSyncAction.SyncCertificates) {
-      errorMessage = lastSyncMessage || null;
-    } else if (action === PkiSyncAction.ImportCertificates) {
-      errorMessage = lastImportMessage || null;
-    } else {
-      errorMessage = lastRemoveMessage || null;
-    }
-
-    if (projectAdmins.length > 0) {
-      logger.info(
-        `PKI Sync ${action} failure notification would be sent to ${projectAdmins.length} admin(s) for sync "${name}" in project "${project.name}". Error: ${errorMessage}`
-      );
-    } else {
-      logger.info(
-        `PKI Sync ${action} failure occurred for sync "${name}" in project "${project.name}" but no admins to notify. Error: ${errorMessage}`
-      );
     }
   };
 
   const $handleAcquireLockFailure = async (job: PkiSyncActionJob) => {
-    const { syncId, auditLogInfo } = job.data;
+    const { syncId } = job.data;
 
     switch (job.name) {
       case QueueJobs.PkiSyncSyncCertificates: {
@@ -895,49 +619,31 @@ export const pkiSyncQueueFactory = ({
           return;
         }
 
-        const pkiSync = await pkiSyncDAL.updateById(syncId, {
+        await pkiSyncDAL.updateById(syncId, {
           syncStatus: PkiSyncStatus.Failed,
           lastSyncMessage:
             "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
           lastSyncJobId: job.id
         });
 
-        await $queueSendPkiSyncFailedNotifications({
-          pkiSync,
-          action: PkiSyncAction.SyncCertificates,
-          auditLogInfo
-        });
-
         break;
       }
       case QueueJobs.PkiSyncImportCertificates: {
-        const pkiSync = await pkiSyncDAL.updateById(syncId, {
+        await pkiSyncDAL.updateById(syncId, {
           importStatus: PkiSyncStatus.Failed,
           lastImportMessage:
             "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
           lastImportJobId: job.id
         });
 
-        await $queueSendPkiSyncFailedNotifications({
-          pkiSync,
-          action: PkiSyncAction.ImportCertificates,
-          auditLogInfo
-        });
-
         break;
       }
       case QueueJobs.PkiSyncRemoveCertificates: {
-        const pkiSync = await pkiSyncDAL.updateById(syncId, {
+        await pkiSyncDAL.updateById(syncId, {
           removeStatus: PkiSyncStatus.Failed,
           lastRemoveMessage:
             "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
           lastRemoveJobId: job.id
-        });
-
-        await $queueSendPkiSyncFailedNotifications({
-          pkiSync,
-          action: PkiSyncAction.RemoveCertificates,
-          auditLogInfo
         });
 
         break;
@@ -949,15 +655,7 @@ export const pkiSyncQueueFactory = ({
   };
 
   queueService.start(QueueName.PkiSync, async (job) => {
-    if (job.name === QueueJobs.PkiSyncSendActionFailedNotifications) {
-      await $sendPkiSyncFailedNotifications(job as TSendPkiSyncFailedNotificationsJobDTO);
-      return;
-    }
-
-    const { syncId } = job.data as
-      | TQueuePkiSyncSyncCertificatesByIdDTO
-      | TQueuePkiSyncImportCertificatesByIdDTO
-      | TQueuePkiSyncRemoveCertificatesByIdDTO;
+    const { syncId } = job.data;
 
     const pkiSync = await pkiSyncDAL.findById(syncId);
 
@@ -969,10 +667,6 @@ export const pkiSyncQueueFactory = ({
       const isConcurrentLimitReached = await $isConnectionConcurrencyLimitReached(connectionId);
 
       if (isConcurrentLimitReached) {
-        logger.info(
-          `PkiSync Concurrency limit reached [syncId=${syncId}] [job=${job.name}] [connectionId=${connectionId}]`
-        );
-
         await $handleAcquireLockFailure(job as PkiSyncActionJob);
 
         return;
@@ -988,8 +682,6 @@ export const pkiSyncQueueFactory = ({
         5 * 60 * 1000
       );
     } catch (e) {
-      logger.info(`PkiSync Failed to acquire lock [syncId=${syncId}] [job=${job.name}]`);
-
       await $handleAcquireLockFailure(job as PkiSyncActionJob);
 
       return;

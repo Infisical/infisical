@@ -1,6 +1,6 @@
-import { PkiSyncData } from "@app/hooks/api/pkiSyncs";
+import { TPkiSync } from "@app/hooks/api/pkiSyncs";
 
-export const getPkiSyncDestinationColValues = (pkiSync: PkiSyncData) => {
+export const getPkiSyncDestinationColValues = (pkiSync: TPkiSync) => {
   const { destination } = pkiSync;
 
   switch (destination) {

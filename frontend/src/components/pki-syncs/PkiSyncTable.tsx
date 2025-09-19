@@ -13,13 +13,13 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { PkiSyncData } from "@app/hooks/api/pkiSyncs";
+import { TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 type Props = {
-  pkiSyncs: PkiSyncData[];
-  onEdit: (pkiSync: PkiSyncData) => void;
-  onDelete: (pkiSync: PkiSyncData) => void;
-  onTrigger: (pkiSync: PkiSyncData) => void;
+  pkiSyncs: TPkiSync[];
+  onEdit: (pkiSync: TPkiSync) => void;
+  onDelete: (pkiSync: TPkiSync) => void;
+  onTrigger: (pkiSync: TPkiSync) => void;
 };
 
 const getSyncStatusBadge = (status?: string) => {

@@ -256,7 +256,7 @@ export type SecretSyncSubjectFields = {
 };
 
 export type PkiSyncSubjectFields = {
-  projectId: string;
+  subscriberName: string;
 };
 
 export type DynamicSecretSubjectFields = {
@@ -501,7 +501,17 @@ const SecretSyncConditionV2Schema = z
 
 const PkiSyncConditionSchema = z
   .object({
-    projectId: z.string()
+    subscriberName: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ])
   })
   .partial();
 

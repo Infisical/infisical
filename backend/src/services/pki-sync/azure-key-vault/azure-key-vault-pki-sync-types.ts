@@ -1,6 +1,13 @@
 import { z } from "zod";
 
-import { TPkiSyncWithCredentials } from "../pki-sync-types";
+import { TAzureKeyVaultConnection } from "@app/services/app-connection/azure-key-vault";
+
+import {
+  AzureKeyVaultPkiSyncConfigSchema,
+  AzureKeyVaultPkiSyncSchema,
+  CreateAzureKeyVaultPkiSyncSchema,
+  UpdateAzureKeyVaultPkiSyncSchema
+} from "./azure-key-vault-pki-sync-schemas";
 
 export type GetAzureKeyVaultCertificate = {
   id: string;
@@ -18,12 +25,14 @@ export type GetAzureKeyVaultCertificate = {
   cer?: string;
 };
 
-export const AzureKeyVaultPkiSyncConfigSchema = z.object({
-  vaultBaseUrl: z.string().url()
-});
-
 export type TAzureKeyVaultPkiSyncConfig = z.infer<typeof AzureKeyVaultPkiSyncConfigSchema>;
 
-export type TAzureKeyVaultPkiSyncWithCredentials = TPkiSyncWithCredentials & {
-  destinationConfig: TAzureKeyVaultPkiSyncConfig;
+export type TAzureKeyVaultPkiSync = z.infer<typeof AzureKeyVaultPkiSyncSchema>;
+
+export type TAzureKeyVaultPkiSyncInput = z.infer<typeof CreateAzureKeyVaultPkiSyncSchema>;
+
+export type TAzureKeyVaultPkiSyncUpdate = z.infer<typeof UpdateAzureKeyVaultPkiSyncSchema>;
+
+export type TAzureKeyVaultPkiSyncWithCredentials = TAzureKeyVaultPkiSync & {
+  connection: TAzureKeyVaultConnection;
 };

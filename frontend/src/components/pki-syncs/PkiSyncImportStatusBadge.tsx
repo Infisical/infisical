@@ -13,10 +13,10 @@ import { twMerge } from "tailwind-merge";
 import { Badge, Tooltip } from "@app/components/v2";
 import { BadgeProps } from "@app/components/v2/Badge/Badge";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
-import { PkiSyncData, PkiSyncStatus } from "@app/hooks/api/pkiSyncs";
+import { PkiSyncStatus, TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 type Props = {
-  pkiSync: PkiSyncData;
+  pkiSync: TPkiSync;
   className?: string;
   mini?: boolean;
 };

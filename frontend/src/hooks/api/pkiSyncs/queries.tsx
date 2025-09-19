@@ -2,12 +2,7 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { PkiSync, TPkiSyncOption } from "@app/hooks/api/pkiSyncs";
-import {
-  TListPkiSyncOptions,
-  TListPkiSyncs,
-  TPkiSync,
-  TPkiSyncResponse
-} from "@app/hooks/api/pkiSyncs/types";
+import { TListPkiSyncOptions, TListPkiSyncs, TPkiSync } from "@app/hooks/api/pkiSyncs/types";
 
 export const pkiSyncKeys = {
   all: ["pki-sync"] as const,
@@ -31,7 +26,7 @@ export const usePkiSyncOptions = (
   return useQuery({
     queryKey: pkiSyncKeys.options(),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TListPkiSyncOptions>("/api/v1/pki-syncs/options");
+      const { data } = await apiRequest.get<TListPkiSyncOptions>("/api/v1/pki/syncs/options");
 
       return data.pkiSyncOptions;
     },
@@ -47,7 +42,7 @@ export const usePkiSyncOption = (destination: PkiSync) => {
 };
 
 export const fetchPkiSyncsByProjectId = async (projectId: string) => {
-  const { data } = await apiRequest.get<TListPkiSyncs>("/api/v1/pki-syncs", {
+  const { data } = await apiRequest.get<TListPkiSyncs>("/api/v1/pki/syncs", {
     params: { projectId }
   });
 
@@ -78,11 +73,11 @@ export const useGetPkiSync = (
   return useQuery({
     queryKey: pkiSyncKeys.byId(syncId, projectId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<TPkiSyncResponse>(`/api/v1/pki-syncs/${syncId}`, {
+      const { data } = await apiRequest.get<TPkiSync>(`/api/v1/pki/syncs/${syncId}`, {
         params: { projectId }
       });
 
-      return data.pkiSync;
+      return data;
     },
     ...options
   });

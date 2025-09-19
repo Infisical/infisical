@@ -61,7 +61,12 @@ const PkiSyncOptionsSchema = z.object({
   connection: z.nativeEnum(AppConnection),
   destination: z.nativeEnum(PkiSync),
   canImportCertificates: z.boolean(),
-  canRemoveCertificates: z.boolean()
+  canRemoveCertificates: z.boolean(),
+  defaultCertificateNameSchema: z.string().optional(),
+  forbiddenCharacters: z.string().optional(),
+  allowedCharacterPattern: z.string().optional(),
+  maxCertificateNameLength: z.number().optional(),
+  minCertificateNameLength: z.number().optional()
 });
 
 export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
@@ -81,7 +86,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: () => {
       const pkiSyncOptions = server.services.pkiSync.getPkiSyncOptions();
       return { pkiSyncOptions };
@@ -105,7 +110,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
         200: z.object({ pkiSyncs: PkiSyncSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
         query: { projectId },
@@ -142,19 +147,15 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         pkiSyncId: z.string()
       }),
-      querystring: z.object({
-        projectId: z.string().trim().min(1)
-      }),
       response: {
-        200: z.object({ pkiSync: PkiSyncSchema })
+        200: PkiSyncSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
-      const { projectId } = req.query;
 
-      const pkiSync = await server.services.pkiSync.findPkiSyncById({ id: pkiSyncId, projectId }, req.permission);
+      const pkiSync = await server.services.pkiSync.findPkiSyncById({ id: pkiSyncId }, req.permission);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -168,7 +169,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { pkiSync };
+      return pkiSync;
     }
   });
 };

@@ -13,7 +13,8 @@ export const registerSyncPkiEndpoints = ({
   destination,
   createSchema,
   updateSchema,
-  responseSchema
+  responseSchema,
+  syncOptions
 }: {
   destination: PkiSync;
   server: FastifyZodProvider;
@@ -37,6 +38,10 @@ export const registerSyncPkiEndpoints = ({
     subscriberId?: string;
   }>;
   responseSchema: z.ZodTypeAny;
+  syncOptions: {
+    canImportCertificates: boolean;
+    canRemoveCertificates: boolean;
+  };
 }) => {
   const destinationName = PKI_SYNC_NAME_MAP[destination];
 
@@ -57,7 +62,7 @@ export const registerSyncPkiEndpoints = ({
         200: z.object({ pkiSyncs: responseSchema.array() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
         query: { projectId }
@@ -93,19 +98,15 @@ export const registerSyncPkiEndpoints = ({
       params: z.object({
         pkiSyncId: z.string()
       }),
-      querystring: z.object({
-        projectId: z.string().trim().min(1)
-      }),
       response: {
-        200: z.object({ pkiSync: responseSchema })
+        200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
-      const { projectId } = req.query;
 
-      const pkiSync = await server.services.pkiSync.findPkiSyncById({ id: pkiSyncId, projectId }, req.permission);
+      const pkiSync = await server.services.pkiSync.findPkiSyncById({ id: pkiSyncId }, req.permission);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -119,7 +120,7 @@ export const registerSyncPkiEndpoints = ({
         }
       });
 
-      return { pkiSync };
+      return pkiSync;
     }
   });
 
@@ -135,10 +136,10 @@ export const registerSyncPkiEndpoints = ({
       description: `Create a ${destinationName} PKI Sync for the specified project.`,
       body: createSchema,
       response: {
-        200: z.object({ pkiSync: responseSchema })
+        200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const pkiSync = await server.services.pkiSync.createPkiSync({ ...req.body, destination }, req.permission);
 
@@ -155,7 +156,7 @@ export const registerSyncPkiEndpoints = ({
         }
       });
 
-      return { pkiSync };
+      return pkiSync;
     }
   });
 
@@ -172,27 +173,20 @@ export const registerSyncPkiEndpoints = ({
       params: z.object({
         pkiSyncId: z.string()
       }),
-      querystring: z.object({
-        projectId: z.string().trim().min(1)
-      }),
       body: updateSchema,
       response: {
-        200: z.object({ pkiSync: responseSchema })
+        200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
-      const { projectId } = req.query;
 
-      const pkiSync = await server.services.pkiSync.updatePkiSync(
-        { ...req.body, id: pkiSyncId, projectId },
-        req.permission
-      );
+      const pkiSync = await server.services.pkiSync.updatePkiSync({ ...req.body, id: pkiSyncId }, req.permission);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId,
+        projectId: pkiSync.projectId,
         event: {
           type: EventType.UPDATE_PKI_SYNC,
           metadata: {
@@ -202,7 +196,7 @@ export const registerSyncPkiEndpoints = ({
         }
       });
 
-      return { pkiSync };
+      return pkiSync;
     }
   });
 
@@ -219,23 +213,19 @@ export const registerSyncPkiEndpoints = ({
       params: z.object({
         pkiSyncId: z.string()
       }),
-      querystring: z.object({
-        projectId: z.string().trim().min(1)
-      }),
       response: {
-        200: z.object({ pkiSync: responseSchema })
+        200: responseSchema
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
-      const { projectId } = req.query;
 
-      const pkiSync = await server.services.pkiSync.deletePkiSync({ id: pkiSyncId, projectId }, req.permission);
+      const pkiSync = await server.services.pkiSync.deletePkiSync({ id: pkiSyncId }, req.permission);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId,
+        projectId: pkiSync.projectId,
         event: {
           type: EventType.DELETE_PKI_SYNC,
           metadata: {
@@ -246,7 +236,7 @@ export const registerSyncPkiEndpoints = ({
         }
       });
 
-      return { pkiSync };
+      return pkiSync;
     }
   });
 
@@ -263,22 +253,17 @@ export const registerSyncPkiEndpoints = ({
       params: z.object({
         pkiSyncId: z.string()
       }),
-      querystring: z.object({
-        projectId: z.string().trim().min(1)
-      }),
       response: {
         200: z.object({ message: z.string() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
-      const { projectId } = req.query;
 
       const result = await server.services.pkiSync.triggerPkiSyncSyncCertificatesById(
         {
-          id: pkiSyncId,
-          projectId
+          id: pkiSyncId
         },
         req.permission
       );
@@ -287,42 +272,40 @@ export const registerSyncPkiEndpoints = ({
     }
   });
 
-  server.route({
-    method: "POST",
-    url: "/:pkiSyncId/import",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      hide: false,
-      tags: [ApiDocsTags.PkiSyncs],
-      description: `Import certificates from the specified ${destinationName} PKI Sync destination.`,
-      params: z.object({
-        pkiSyncId: z.string()
-      }),
-      querystring: z.object({
-        projectId: z.string().trim().min(1)
-      }),
-      response: {
-        200: z.object({ message: z.string() })
+  // Only register import route if the destination supports it
+  if (syncOptions.canImportCertificates) {
+    server.route({
+      method: "POST",
+      url: "/:pkiSyncId/import",
+      config: {
+        rateLimit: writeLimit
+      },
+      schema: {
+        hide: false,
+        tags: [ApiDocsTags.PkiSyncs],
+        description: `Import certificates from the specified ${destinationName} PKI Sync destination.`,
+        params: z.object({
+          pkiSyncId: z.string()
+        }),
+        response: {
+          200: z.object({ message: z.string() })
+        }
+      },
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      handler: async (req) => {
+        const { pkiSyncId } = req.params;
+
+        const result = await server.services.pkiSync.triggerPkiSyncImportCertificatesById(
+          {
+            id: pkiSyncId
+          },
+          req.permission
+        );
+
+        return result;
       }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]),
-    handler: async (req) => {
-      const { pkiSyncId } = req.params;
-      const { projectId } = req.query;
-
-      const result = await server.services.pkiSync.triggerPkiSyncImportCertificatesById(
-        {
-          id: pkiSyncId,
-          projectId
-        },
-        req.permission
-      );
-
-      return result;
-    }
-  });
+    });
+  }
 
   server.route({
     method: "POST",
@@ -337,22 +320,17 @@ export const registerSyncPkiEndpoints = ({
       params: z.object({
         pkiSyncId: z.string()
       }),
-      querystring: z.object({
-        projectId: z.string().trim().min(1)
-      }),
       response: {
         200: z.object({ message: z.string() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.SERVICE_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { pkiSyncId } = req.params;
-      const { projectId } = req.query;
 
       const result = await server.services.pkiSync.triggerPkiSyncRemoveCertificatesById(
         {
-          id: pkiSyncId,
-          projectId
+          id: pkiSyncId
         },
         req.permission
       );

@@ -45,6 +45,7 @@ description: "Learn how to configure an Azure Key Vault Certificate Sync for Inf
 
             - **Auto-Sync Enabled**: If enabled, certificates will automatically be synced from the source PKI subscriber when changes occur. Disable to enforce manual syncing only.
             - **Enable Certificate Removal**: If enabled, Infisical will remove expired certificates from the destination during sync operations. Disable this option if you intend to manage certificate cleanup manually.
+            - **Certificate Name Schema** (Optional): Customize how certificate names are generated in Azure Key Vault. Use `{{certificateId}}` as a placeholder for the certificate ID. If not specified, defaults to `Infisical-{{certificateId}}`.
 
         6. Configure the **Details** of your Azure Key Vault Certificate Sync, then click **Next**.
         ![Configure Details](/images/certificate-syncs/azure-key-vault/vault-details.png)
@@ -60,13 +61,13 @@ description: "Learn how to configure an Azure Key Vault Certificate Sync for Inf
 
     </Tab>
     <Tab title="API">
-        To create an **Azure Key Vault Certificate Sync**, make an API request to the [Create Azure Key Vault Certificate Sync](/api-reference/endpoints/certificate-syncs/azure-key-vault/create) API endpoint.
+        To create an **Azure Key Vault Certificate Sync**, make an API request to the [Create Azure Key Vault Certificate Sync](/api-reference/endpoints/pki/syncs/azure-key-vault/create) API endpoint.
 
         ### Sample request
 
         ```bash Request
         curl --request POST \
-        --url https://app.infisical.com/api/v1/pki-syncs \
+        --url https://app.infisical.com/api/v1/pki/syncs/azure-key-vault \
         --header 'Content-Type: application/json' \
         --data '{
             "name": "my-key-vault-cert-sync",
@@ -77,7 +78,8 @@ description: "Learn how to configure an Azure Key Vault Certificate Sync for Inf
             "destination": "azure-key-vault",
             "isAutoSyncEnabled": true,
             "syncOptions": {
-                "canRemoveCertificates": true
+                "canRemoveCertificates": true,
+                "certificateNameSchema": "myapp-{{certificateId}}"
             },
             "destinationConfig": {
                 "vaultBaseUrl": "https://my-key-vault.vault.azure.net"
@@ -99,7 +101,8 @@ description: "Learn how to configure an Azure Key Vault Certificate Sync for Inf
                     "vaultBaseUrl": "https://my-key-vault.vault.azure.net"
                 },
                 "syncOptions": {
-                    "canRemoveCertificates": true
+                    "canRemoveCertificates": true,
+                    "certificateNameSchema": "myapp-{{certificateId}}"
                 },
                 "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                 "subscriberId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
@@ -125,12 +128,17 @@ Your Azure Key Vault Certificate Sync will:
     Azure Key Vault Certificate Syncs support both automatic and manual synchronization modes. When auto-sync is enabled, certificates are automatically deployed as they are issued or renewed.
 </Note>
 
-## Manual Certificate Import
+## Manual Certificate Sync
 
-You can manually import existing certificates from your PKI subscriber to Azure Key Vault using the import certificates functionality. This is useful for:
+You can manually trigger certificate synchronization from your PKI subscriber to Azure Key Vault using the sync certificates functionality. This is useful for:
 
-- Initial setup when you have existing certificates to migrate
-- One-time imports of specific certificates
+- Initial setup when you have existing certificates to deploy
+- One-time sync of specific certificates
 - Testing certificate sync configurations
+- Force sync after making changes
 
-To manually import certificates, use the [Import Certificates](/api-reference/endpoints/certificate-syncs/azure-key-vault/import) API endpoint or the manual import option in the Infisical UI.
+To manually sync certificates, use the [Sync Certificates](/api-reference/endpoints/pki/syncs/azure-key-vault/sync-certificates) API endpoint or the manual sync option in the Infisical UI.
+
+<Note>
+Azure Key Vault does not support importing certificates back into Infisical due to security limitations where private keys cannot be extracted from Azure Key Vault.
+</Note>

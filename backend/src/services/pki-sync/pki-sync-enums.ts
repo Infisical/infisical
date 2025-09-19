@@ -3,16 +3,10 @@ export enum PkiSync {
 }
 
 export enum PkiSyncStatus {
-  Pending = "PENDING",
-  Running = "RUNNING",
-  Success = "SUCCESS",
-  Failed = "FAILED"
-}
-
-export enum PkiSyncImportBehavior {
-  ImportAllSecrets = "IMPORT_ALL_SECRETS",
-  PreferInfisicalSecrets = "PREFER_INFISICAL_SECRETS",
-  PreferExternalSecrets = "PREFER_EXTERNAL_SECRETS"
+  Pending = "pending",
+  Running = "running",
+  Succeeded = "succeeded",
+  Failed = "failed"
 }
 
 export enum PkiSyncAction {

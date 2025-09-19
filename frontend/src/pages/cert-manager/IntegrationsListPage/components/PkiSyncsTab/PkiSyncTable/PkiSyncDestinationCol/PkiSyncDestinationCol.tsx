@@ -1,10 +1,10 @@
-import { PkiSyncData } from "@app/hooks/api/pkiSyncs";
+import { TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 import { getPkiSyncDestinationColValues } from "../helpers";
 import { PkiSyncTableCell } from "../PkiSyncTableCell";
 
 type Props = {
-  pkiSync: PkiSyncData;
+  pkiSync: TPkiSync;
 };
 
 export const PkiSyncDestinationCol = ({ pkiSync }: Props) => {
