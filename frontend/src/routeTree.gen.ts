@@ -62,6 +62,7 @@ import { Route as organizationIdentityDetailsByIDPageRouteImport } from './pages
 import { Route as organizationGroupDetailsByIDPageRouteImport } from './pages/organization/GroupDetailsByIDPage/route'
 import { Route as organizationSettingsPageRouteImport } from './pages/organization/SettingsPage/route'
 import { Route as organizationSecretSharingPageRouteImport } from './pages/organization/SecretSharingPage/route'
+import { Route as organizationGatewaysRelayRelayListPageRouteImport } from './pages/organization/Gateways/Relay/RelayListPage/route'
 import { Route as organizationGatewaysGatewayListPageRouteImport } from './pages/organization/Gateways/GatewayListPage/route'
 import { Route as organizationAppConnectionsAppConnectionsPageRouteImport } from './pages/organization/AppConnections/AppConnectionsPage/route'
 import { Route as sshLayoutImport } from './pages/ssh/layout'
@@ -254,6 +255,10 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsImport =
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingImport =
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing',
+  )()
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysImport =
+  createFileRoute(
+    '/_authenticate/_inject-org-details/_org-layout/organization/relays',
   )()
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysImport =
   createFileRoute(
@@ -559,6 +564,14 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRoute =
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
   } as any)
 
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysRoute =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysImport.update({
+    id: '/relays',
+    path: '/relays',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
+  } as any)
+
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRoute =
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysImport.update({
     id: '/gateways',
@@ -763,6 +776,14 @@ const organizationSecretSharingPageRouteRoute =
     path: '/',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRoute,
+  } as any)
+
+const organizationGatewaysRelayRelayListPageRouteRoute =
+  organizationGatewaysRelayRelayListPageRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysRoute,
   } as any)
 
 const organizationGatewaysGatewayListPageRouteRoute =
@@ -2376,6 +2397,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organization/relays': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/relays'
+      path: '/relays'
+      fullPath: '/organization/relays'
+      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing': {
       id: '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing'
       path: '/secret-sharing'
@@ -2410,6 +2438,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/organization/gateways/'
       preLoaderRoute: typeof organizationGatewaysGatewayListPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organization/relays/': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/relays/'
+      path: '/'
+      fullPath: '/organization/relays/'
+      preLoaderRoute: typeof organizationGatewaysRelayRelayListPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/': {
       id: '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/'
@@ -3734,6 +3769,21 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRouteWithChildren
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRouteChildren,
   )
 
+interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysRouteChildren {
+  organizationGatewaysRelayRelayListPageRouteRoute: typeof organizationGatewaysRelayRelayListPageRouteRoute
+}
+
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysRouteChildren =
+  {
+    organizationGatewaysRelayRelayListPageRouteRoute:
+      organizationGatewaysRelayRelayListPageRouteRoute,
+  }
+
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysRouteWithChildren =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysRoute._addFileChildren(
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysRouteChildren,
+  )
+
 interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRouteChildren {
   organizationSecretSharingPageRouteRoute: typeof organizationSecretSharingPageRouteRoute
   organizationSecretSharingSettingsPageRouteRoute: typeof organizationSecretSharingSettingsPageRouteRoute
@@ -3776,6 +3826,7 @@ interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren {
   organizationProjectsPageRouteRoute: typeof organizationProjectsPageRouteRoute
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRouteWithChildren
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRouteWithChildren
   organizationGroupDetailsByIDPageRouteRoute: typeof organizationGroupDetailsByIDPageRouteRoute
@@ -3795,6 +3846,8 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: Authentica
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRoute:
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRouteWithChildren,
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysRoute:
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRoute:
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRoute:
@@ -4694,11 +4747,13 @@ export interface FileRoutesByFullPath {
   '/admin/integrations': typeof adminIntegrationsPageRouteRoute
   '/organization/app-connections': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren
   '/organization/gateways': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRouteWithChildren
+  '/organization/relays': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysRouteWithChildren
   '/organization/secret-sharing': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRouteWithChildren
   '/organization/settings': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRouteWithChildren
   '/secret-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdRouteWithChildren
   '/organization/app-connections/': typeof organizationAppConnectionsAppConnectionsPageRouteRoute
   '/organization/gateways/': typeof organizationGatewaysGatewayListPageRouteRoute
+  '/organization/relays/': typeof organizationGatewaysRelayRelayListPageRouteRoute
   '/organization/secret-sharing/': typeof organizationSecretSharingPageRouteRoute
   '/organization/settings/': typeof organizationSettingsPageRouteRoute
   '/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
@@ -4915,6 +4970,7 @@ export interface FileRoutesByTo {
   '/secret-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdRouteWithChildren
   '/organization/app-connections': typeof organizationAppConnectionsAppConnectionsPageRouteRoute
   '/organization/gateways': typeof organizationGatewaysGatewayListPageRouteRoute
+  '/organization/relays': typeof organizationGatewaysRelayRelayListPageRouteRoute
   '/organization/secret-sharing': typeof organizationSecretSharingPageRouteRoute
   '/organization/settings': typeof organizationSettingsPageRouteRoute
   '/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
@@ -5134,11 +5190,13 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/admin/_admin-layout/integrations': typeof adminIntegrationsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/app-connections': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organization/gateways': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationGatewaysRouteWithChildren
+  '/_authenticate/_inject-org-details/_org-layout/organization/relays': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationRelaysRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSecretSharingRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organization/settings': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutSecretManagerProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/': typeof organizationAppConnectionsAppConnectionsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/gateways/': typeof organizationGatewaysGatewayListPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organization/relays/': typeof organizationGatewaysRelayRelayListPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/': typeof organizationSecretSharingPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/settings/': typeof organizationSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId': typeof organizationGroupDetailsByIDPageRouteRoute
@@ -5365,11 +5423,13 @@ export interface FileRouteTypes {
     | '/admin/integrations'
     | '/organization/app-connections'
     | '/organization/gateways'
+    | '/organization/relays'
     | '/organization/secret-sharing'
     | '/organization/settings'
     | '/secret-manager/$projectId'
     | '/organization/app-connections/'
     | '/organization/gateways/'
+    | '/organization/relays/'
     | '/organization/secret-sharing/'
     | '/organization/settings/'
     | '/organization/groups/$groupId'
@@ -5585,6 +5645,7 @@ export interface FileRouteTypes {
     | '/secret-manager/$projectId'
     | '/organization/app-connections'
     | '/organization/gateways'
+    | '/organization/relays'
     | '/organization/secret-sharing'
     | '/organization/settings'
     | '/organization/groups/$groupId'
@@ -5802,11 +5863,13 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/admin/_admin-layout/integrations'
     | '/_authenticate/_inject-org-details/_org-layout/organization/app-connections'
     | '/_authenticate/_inject-org-details/_org-layout/organization/gateways'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/relays'
     | '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing'
     | '/_authenticate/_inject-org-details/_org-layout/organization/settings'
     | '/_authenticate/_inject-org-details/_org-layout/secret-manager/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/'
     | '/_authenticate/_inject-org-details/_org-layout/organization/gateways/'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/relays/'
     | '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/'
     | '/_authenticate/_inject-org-details/_org-layout/organization/settings/'
     | '/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId'
@@ -6228,6 +6291,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organization/projects",
         "/_authenticate/_inject-org-details/_org-layout/organization/app-connections",
         "/_authenticate/_inject-org-details/_org-layout/organization/gateways",
+        "/_authenticate/_inject-org-details/_org-layout/organization/relays",
         "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing",
         "/_authenticate/_inject-org-details/_org-layout/organization/settings",
         "/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId",
@@ -6309,6 +6373,13 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organization/gateways/"
       ]
     },
+    "/_authenticate/_inject-org-details/_org-layout/organization/relays": {
+      "filePath": "",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization",
+      "children": [
+        "/_authenticate/_inject-org-details/_org-layout/organization/relays/"
+      ]
+    },
     "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing": {
       "filePath": "",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization",
@@ -6339,6 +6410,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organization/gateways/": {
       "filePath": "organization/Gateways/GatewayListPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization/gateways"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organization/relays/": {
+      "filePath": "organization/Gateways/Relay/RelayListPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization/relays"
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/": {
       "filePath": "organization/SecretSharingPage/route.tsx",
