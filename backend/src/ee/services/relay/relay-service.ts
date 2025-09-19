@@ -24,6 +24,7 @@ import { SshCertType } from "../ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "../ssh-certificate/ssh-certificate-types";
 import { TInstanceRelayConfigDALFactory } from "./instance-relay-config-dal";
 import { TOrgRelayConfigDALFactory } from "./org-relay-config-dal";
+import { RELAY_CONNECTING_GATEWAY_INFO } from "./relay-constants";
 import { TRelayDALFactory } from "./relay-dal";
 
 export type TRelayServiceFactory = ReturnType<typeof relayServiceFactory>;
@@ -698,6 +699,7 @@ export const relayServiceFactory = ({
 
   const $generateRelayClientCredentials = async ({
     gatewayId,
+    gatewayName,
     orgId,
     orgName,
     relayPkiClientCaCertificate,
@@ -706,6 +708,7 @@ export const relayServiceFactory = ({
     relayPkiServerCaCertificateChain
   }: {
     gatewayId: string;
+    gatewayName: string;
     orgId: string;
     orgName: string;
     relayPkiClientCaCertificate: Buffer;
@@ -736,6 +739,16 @@ export const relayServiceFactory = ({
     const clientCertPrivateKey = crypto.nativeCrypto.KeyObject.from(clientKeys.privateKey);
     const clientCertSerialNumber = createSerialNumber();
 
+    const connectingGatewayInfoExtension = new x509.Extension(
+      RELAY_CONNECTING_GATEWAY_INFO,
+      false,
+      Buffer.from(
+        JSON.stringify({
+          name: gatewayName
+        })
+      )
+    );
+
     // Build standard extensions
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
@@ -749,7 +762,8 @@ export const relayServiceFactory = ({
           x509.KeyUsageFlags[CertKeyUsage.KEY_AGREEMENT],
         true
       ),
-      new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.CLIENT_AUTH]], true)
+      new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.CLIENT_AUTH]], true),
+      connectingGatewayInfoExtension
     ];
 
     const clientCert = await x509.X509CertificateGenerator.create({
@@ -777,11 +791,13 @@ export const relayServiceFactory = ({
   const getCredentialsForGateway = async ({
     relayName,
     orgId,
-    gatewayId
+    gatewayId,
+    gatewayName
   }: {
     relayName: string;
     orgId: string;
     gatewayId: string;
+    gatewayName: string;
   }) => {
     let relay: TRelays | null = await relayDAL.findOne({
       orgId,
@@ -829,7 +845,7 @@ export const relayServiceFactory = ({
       caPrivateKey: orgCAs.relaySshClientCaPrivateKey.toString("utf8"),
       clientPublicKey: relayClientSshPublicKey,
       keyId: `client-${relayName}`,
-      principals: [gatewayId],
+      principals: [gatewayId, gatewayName],
       certType: SshCertType.USER,
       requestedTtl: "1d"
     });
@@ -846,12 +862,14 @@ export const relayServiceFactory = ({
     relayId,
     orgId,
     orgName,
-    gatewayId
+    gatewayId,
+    gatewayName
   }: {
     relayId: string;
     orgId: string;
     orgName: string;
     gatewayId: string;
+    gatewayName: string;
   }) => {
     const relay = await relayDAL.findOne({
       id: relayId
@@ -869,6 +887,7 @@ export const relayServiceFactory = ({
       const instanceCAs = await $getInstanceCAs();
       const relayCertificateCredentials = await $generateRelayClientCredentials({
         gatewayId,
+        gatewayName,
         orgId,
         orgName,
         relayPkiClientCaCertificate: instanceCAs.instanceRelayPkiClientCaCertificate,
@@ -886,6 +905,7 @@ export const relayServiceFactory = ({
     const orgCAs = await $getOrgCAs(orgId);
     const relayCertificateCredentials = await $generateRelayClientCredentials({
       gatewayId,
+      gatewayName,
       orgId,
       orgName,
       relayPkiClientCaCertificate: orgCAs.relayPkiClientCaCertificate,
