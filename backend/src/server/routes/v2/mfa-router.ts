@@ -143,4 +143,65 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
       };
     }
   });
+
+  server.route({
+    url: "/mfa/verify/recovery-code",
+    method: "POST",
+    config: {
+      rateLimit: mfaRateLimit
+    },
+    schema: {
+      body: z.object({
+        recoveryCode: z.string().trim().length(8, "Recovery code must be 8 characters")
+      }),
+      response: {
+        200: z.object({
+          encryptionVersion: z.number().default(1).nullable().optional(),
+          protectedKey: z.string().nullish(),
+          protectedKeyIV: z.string().nullish(),
+          protectedKeyTag: z.string().nullish(),
+          publicKey: z.string().nullish(),
+          encryptedPrivateKey: z.string().nullish(),
+          iv: z.string().nullish(),
+          tag: z.string().nullish(),
+          token: z.string()
+        })
+      }
+    },
+    handler: async (req, res) => {
+      const userAgent = req.headers["user-agent"];
+      const mfaJwtToken = req.headers.authorization?.replace("Bearer ", "");
+      if (!userAgent) throw new Error("user agent header is required");
+      if (!mfaJwtToken) throw new Error("authorization header is required");
+      const appCfg = getConfig();
+
+      const { user, token } = await server.services.login.verifyMfaToken({
+        userAgent,
+        mfaJwtToken,
+        ip: req.realIp,
+        userId: req.mfa.userId,
+        orgId: req.mfa.orgId,
+        mfaToken: req.body.recoveryCode,
+        mfaMethod: MfaMethod.TOTP,
+        isRecoveryCode: true
+      });
+
+      void res.setCookie("jid", token.refresh, {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: appCfg.HTTPS_ENABLED
+      });
+
+      addAuthOriginDomainCookie(res);
+
+      return {
+        ...user,
+        token: token.access,
+        protectedKey: user.protectedKey || null,
+        protectedKeyIV: user.protectedKeyIV || null,
+        protectedKeyTag: user.protectedKeyTag || null
+      };
+    }
+  });
 };
