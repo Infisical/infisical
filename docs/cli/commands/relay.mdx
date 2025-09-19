@@ -24,8 +24,6 @@ description: "Relay-related commands for Infisical"
 
 Relay-related commands for Infisical that provide identity-aware relay infrastructure for routing encrypted traffic. Relays are organization-deployed servers that route encrypted traffic between Infisical and your gateways.
 
-The relay system uses SSH reverse tunnels over TCP, eliminating firewall complexity and providing excellent performance for enterprise environments.
-
 ## Subcommands & flags
 
 <Accordion title="infisical relay start" defaultOpen="true">
@@ -51,7 +49,7 @@ infisical relay start --host=<host> --name=<name> --auth-method=<auth-method>
   </Accordion>
 
   <Accordion title="--name">
-    The name of the relay.
+    The name of the relay. This is an arbitrary identifier for your relay instance.
 
     ```bash
     # Example
@@ -69,7 +67,7 @@ Relays support all standard Infisical authentication methods. Choose the authent
 infisical relay start --host=192.168.1.100 --name=my-relay --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret>
 ```
 
-### Authentication Methods
+### Available Authentication Methods
 
 The Infisical CLI supports multiple authentication methods for relays. Below are the available authentication methods, with their respective flags.
 
