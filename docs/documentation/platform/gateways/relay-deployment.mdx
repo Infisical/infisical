@@ -1,151 +1,39 @@
 ---
 title: "Relay Deployment"
-description: "Complete guide to deploying Infisical Relay Servers including network configuration and firewall requirements"
+description: "How to deploy Infisical Relay Servers"
 ---
 
-This guide covers everything you need to deploy and configure Infisical Relay Servers, including prerequisites, step-by-step deployment instructions, network configuration, and troubleshooting.
+Infisical Relay is a secure routing layer that allows Infisical to connect to your private network resources, such as databases or internal APIs, without exposing them to the public internet. 
+The relay acts as an intermediary, forwarding encrypted traffic between Infisical and your deployed gateways. This ensures that your sensitive data remains protected and never leaves your network unencrypted. 
+With this architecture, you can achieve secure, firewall-friendly access across network boundaries, making it possible for Infisical to interact with resources even in highly restricted environments.
 
-## Prerequisites
+Before diving in, it's important to determine whether you actually need to deploy your own relay server or if you can use Infisical's managed infrastructure.
 
-Before deploying relays, ensure you have:
+## Do You Need to Deploy a Relay?
 
-1. **Server Infrastructure** - A server or cloud instance to host the relay
-2. **Network Connectivity** - Ability to accept inbound connections on ports 2222 and 8443, plus outbound HTTPS access to Infisical API
-3. **Machine Identity** - Only required for organization relays; configured with appropriate permissions to create and manage relays
+Not all users need to deploy their own relay servers. Infisical provides managed relay infrastructure in US/EU regions for Infisical Cloud users, which requires no setup or maintenance. You only need to deploy a relay if you:
 
-<Info>
-  **Instance relays** don't require machine identities - they use a shared
-  secret configured by the instance administrator.
-</Info>
+- Are self-hosting Infisical
+- Have a dedicated Infisical instance (managed by Infisical)
+- Require dedicated relays for your organization (for compliance, custom network policies, or regional proximity)
+- Need full control over relay infrastructure and traffic routing
 
-## Understanding Relay Types
+If you are using Infisical Cloud and do not have specific requirements, you can use the managed relays provided by Infisical and skip the rest of this guide.
 
-Relays are the routing infrastructure that enables secure communication between Infisical and your gateways. There are two main approaches to relay deployment:
 
-**Managed Relays** - Use Infisical's hosted relay infrastructure in US/EU regions for quick setup with minimal operational overhead.
 
-**Self-Deployed Relays** - Deploy your own relay servers for regional proximity, enhanced control, and custom network policies.
 
-### Managed Relays (Recommended for Most Users)
+## Deploying a Relay
 
-Managed relays are pre-configured relay servers hosted by Infisical that can serve multiple organizations with minimal operational overhead.
+Deploying a relay allows Infisical to securely connect to your private network resources. This method applies to all Infisical environments—Cloud (US/EU), Dedicated, and Self-Hosted. You have full control over the relay infrastructure and can meet compliance or custom network requirements as needed.
 
-**Infisical Cloud (US/EU Regions):**
 
-- Pre-configured relays in US and EU regions
-- No setup or maintenance required
-- Shared across all Infisical Cloud organizations
-- Managed and monitored by Infisical
-- Best for getting started quickly
+<Steps>
+<Step title="Prepare Your Environment">
+all the steps should go here
+</Step>
 
-**Self-Hosted Instance Relays:**
-
-- Instance administrators can deploy shared relays for their entire instance
-- All organizations on the instance can use these relays
-- Reduces operational burden for individual Organizations
-- Ideal for self-hosted instances wanting shared relay infrastructure
-
-### Self-Deployed Relays (Organization-Specific)
-
-Organizations can deploy and manage their own dedicated relay servers for regional proximity, network control, compliance requirements, or enhanced security.
-
-**Key Benefits:**
-
-- Deploy in any region or cloud provider for lower latency
-- Custom network configurations and security policies
-- Dedicated resources not shared with other organizations
-- Full control over relay infrastructure
-- Uses standard Infisical authentication methods
-
-## Relay Deployment Methods
-
-If you've decided to deploy your own relay servers, choose the deployment type that best fits your needs:
-
-- **Instance Relays** - Deploy shared relays for your entire self-hosted Infisical instance. All organizations on the instance can use these relays without deploying their own.
-
-- **Organization Relays** - Deploy and manage your own dedicated relay servers. Choose this for lower latency, custom network policies, compliance requirements, or when you need full control over the relay infrastructure.
-
-<Info>
-  **Note:** If you're using Infisical Cloud, you likely don't need to deploy
-  relays at all - you can use the managed US/EU relays. This guide is for users
-  who need to deploy their own relay infrastructure.
-</Info>
-
-<AccordionGroup>
-  <Accordion title="Instance Relays">
-    Instance relays require **two-step configuration** with matching secrets:
-
-    **Step 1: Instance Admin Configuration**
-
-    The Infisical instance administrator must first set the relay auth secret in the instance environment:
-
-    ```bash
-    # In the Infisical instance environment variables
-    RELAY_AUTH_SECRET=<shared-secret-value>
-    ```
-
-    **Step 2: Relay Deployment**
-
-    Deploy the relay using the **same secret value**:
-
-    ```bash
-    # Set the matching secret for relay deployment
-    export INFISICAL_RELAY_AUTH_SECRET=<shared-secret-value>
-
-    # Start the instance relay
-    infisical relay start --type=instance --host=<public-ip> --name=<relay-name>
-    ```
-
-    **Install as daemon (Linux only):**
-
-    ```bash
-    # Instance relay
-    sudo infisical relay systemd install --type=instance --name=<name> --host=<host> --relay-auth-secret=<secret>
-
-    # Start the service
-    sudo systemctl start infisical-relay
-
-    # Uninstall
-    sudo infisical relay systemd uninstall
-    ```
-
-    <Warning>
-      The `RELAY_AUTH_SECRET` (instance environment) and
-      `INFISICAL_RELAY_AUTH_SECRET` (relay environment) **must match exactly** for
-      authentication to work.
-    </Warning>
-
-  </Accordion>
-
-  <Accordion title="Organization Relays">
-    Deploy your own relay server for full control. Organization relays support all authentication methods:
-
-    ```bash
-    # Token auth
-    infisical relay start --type=org --host=<public-ip> --name=<relay-name> --token=<token>
-
-    # Universal auth
-    infisical relay start --type=org --host=<public-ip> --name=<relay-name> --auth-method=universal-auth --client-id=<id> --client-secret=<secret>
-
-    # Other auth methods (kubernetes, aws-iam, gcp-id-token, azure, etc.)
-    infisical relay start --type=org --host=<public-ip> --name=<relay-name> --auth-method=<method> --machine-identity-id=<id>
-    ```
-
-    **Install as daemon (Linux only):**
-
-    ```bash
-    # Organization relay
-    sudo infisical relay systemd install --token=<token> --name=<name> --host=<host> --type=org
-
-    # Start the service
-    sudo systemctl start infisical-relay
-
-    # Uninstall
-    sudo infisical relay systemd uninstall
-    ```
-
-  </Accordion>
-</AccordionGroup>
+</Steps>
 
 ## Network Configuration
 
@@ -196,87 +84,7 @@ Configure your firewall to allow:
    iptables -A OUTPUT -p tcp --dport 443 -d app.infisical.com -j ACCEPT
    ```
 
-## Cloud Provider Configuration
 
-### AWS EC2
-
-Configure security groups:
-
-```json
-{
-  "SecurityGroupRules": [
-    {
-      "IpProtocol": "tcp",
-      "FromPort": 2222,
-      "ToPort": 2222,
-      "CidrIpv4": "0.0.0.0/0",
-      "Description": "SSH for gateway connections"
-    },
-    {
-      "IpProtocol": "tcp",
-      "FromPort": 8443,
-      "ToPort": 8443,
-      "CidrIpv4": "0.0.0.0/0",
-      "Description": "TCP with TLS for platform connections"
-    }
-  ]
-}
-```
-
-### Google Cloud Platform
-
-Configure firewall rules:
-
-```bash
-# Allow SSH from gateways
-gcloud compute firewall-rules create allow-gateway-ssh \
-  --allow tcp:2222 \
-  --source-ranges 0.0.0.0/0 \
-  --description "Allow SSH from gateways"
-
-# Allow TCP with TLS from platform
-gcloud compute firewall-rules create allow-platform-tls \
-  --allow tcp:8443 \
-  --source-ranges 0.0.0.0/0 \
-  --description "Allow TCP with TLS from platform"
-```
-
-### Azure
-
-Configure Network Security Groups:
-
-```json
-{
-  "securityRules": [
-    {
-      "name": "AllowGatewaySSH",
-      "properties": {
-        "protocol": "Tcp",
-        "sourcePortRange": "*",
-        "destinationPortRange": "2222",
-        "sourceAddressPrefix": "*",
-        "destinationAddressPrefix": "*",
-        "access": "Allow",
-        "priority": 100,
-        "direction": "Inbound"
-      }
-    },
-    {
-      "name": "AllowPlatformTLS",
-      "properties": {
-        "protocol": "Tcp",
-        "sourcePortRange": "*",
-        "destinationPortRange": "8443",
-        "sourceAddressPrefix": "*",
-        "destinationAddressPrefix": "*",
-        "access": "Allow",
-        "priority": 110,
-        "direction": "Inbound"
-      }
-    }
-  ]
-}
-```
 
 ## Protocol Details
 
