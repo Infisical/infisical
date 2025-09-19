@@ -1,3 +1,5 @@
+import { isIP } from "node:net";
+
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
@@ -649,8 +651,9 @@ export const relayServiceFactory = ({
         true
       ),
       new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.SERVER_AUTH]], true),
+
       // san
-      new x509.SubjectAlternativeNameExtension([{ type: "ip", value: host }], false)
+      new x509.SubjectAlternativeNameExtension([{ type: isIP(host) ? "ip" : "dns", value: host }], false)
     ];
 
     const relayServerSerialNumber = createSerialNumber();
