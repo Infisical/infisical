@@ -363,10 +363,10 @@ sudo systemctl disable infisical-gateway  # Disable auto-start on boot
 
 ## Legacy Gateway Commands
 
-<Accordion title="infisical gateway">
+<Accordion title="infisical gateway (deprecated)">
   <Warning>
-  **This command is to be deprecated and will be removed in a future release.**
-  
+  **This command is deprecated and will be removed in a future release.**
+
   Please migrate to `infisical gateway start` for the new TCP-based SSH tunnel architecture.
 
 **Migration required:** If you are currently using Gateway v1 (via `infisical gateway`), moving to Gateway v2 is not in-place. Gateway v2 provisions new gateway instances with new gateway IDs. Update any resources that reference a gateway ID (for example: dynamic secret configs, app connections, or other gateway-bound resources) to use the new Gateway v2 gateway ID. Until you update those references, traffic will continue to target the old v1 gateway.
@@ -590,9 +590,9 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
   </Accordion>
 </Accordion>
 
-<Accordion title="infisical gateway install">
+<Accordion title="infisical gateway install (deprecated)">
   <Warning>
-  **This command is to be deprecated and will be removed in a future release.**
+  **This command is deprecated and will be removed in a future release.**
 
   Please migrate to `infisical gateway systemd install` for the new TCP-based SSH tunnel architecture with enhanced security and better performance.
 
