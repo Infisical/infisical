@@ -14,8 +14,8 @@ Before diving in, it's important to determine whether you actually need to deplo
 Not all users need to deploy their own relay servers. Infisical provides managed relay infrastructure in US/EU regions for Infisical Cloud users, which requires no setup or maintenance. You only need to deploy a relay if you:
 
 - Are self-hosting Infisical
-- Have a dedicated Infisical instance (managed by Infisical)
-- Require dedicated relays for your organization (for compliance, custom network policies, or regional proximity)
+- Have a dedicated enterprise instance of Infisical (managed by Infisical)
+- Require closer geographic proximity to target resources than managed relays provide for lower latency and reduced network congestion when accessing resources through the relay
 - Need full control over relay infrastructure and traffic routing
 
 If you are using Infisical Cloud and do not have specific requirements, you can use the managed relays provided by Infisical and skip the rest of this guide.
@@ -25,44 +25,107 @@ If you are using Infisical Cloud and do not have specific requirements, you can 
 To successfully deploy an Infisical Relay for use, follow these steps in order.
 
 <Steps>
-  <Step title="Prepare Your Environment">
-    Before deploying your relay server, ensure you have:
-    
-    - A server with a static IP address or DNS
-    - Administrative access to configure firewall rules
-    - Access to create machine identities in your Infisical organization
-    - The Infisical CLI installed on your deployment environment
-    
-  </Step>
-
    <Step title="Provision a Machine Identity">
-   Create a machine identity with the appropriate permissions for your relay:
-   
-   1. **Create a machine identity** in your Infisical organization with permissions to create and manage relays.
+   Create a machine identity with the correct permissions to create and manage relays. This identity is used by the relay to authenticate with Infisical and should be provisioned in advance.
+   The relay supports several [machine identity auth methods](/documentation/platform/identities/machine-identities) for authentication, as listed below. Choose the one that best fits your environment and set the corresponding environment variables when deploying the relay.
 
-   2. **Choose an authentication method** from the supported [machine identity auth methods](/documentation/platform/identities/machine-identities)
-
-   3. **Configure environment variables** corresponding to your chosen authentication method when deploying the relay The relay will use this machine identity to authenticate with Infisical and register itself within your organization.
-   
+   <AccordionGroup>
+      <Accordion title="Universal Auth">
+        Simple and secure authentication using client ID and client secret.
+        
+        **Environment Variables:**
+        - `INFISICAL_AUTH_METHOD=universal-auth`
+        - `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>`
+        - `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>`
+      </Accordion>
+      
+      <Accordion title="Token Auth">
+        Direct authentication using a machine identity access token.
+        
+        **Environment Variables:**
+        - `INFISICAL_TOKEN=<token>`
+      </Accordion>
+      
+      <Accordion title="Native Kubernetes">
+        Authentication using Kubernetes service account tokens.
+        
+        **Environment Variables:**
+        - `INFISICAL_AUTH_METHOD=kubernetes`
+        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
+      </Accordion>
+      
+      <Accordion title="Native AWS IAM">
+        Authentication using AWS IAM roles.
+        
+        **Environment Variables:**
+        - `INFISICAL_AUTH_METHOD=aws-iam`
+        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
+      </Accordion>
+      
+      <Accordion title="Native GCP ID Token">
+        Authentication using GCP identity tokens.
+        
+        **Environment Variables:**
+        - `INFISICAL_AUTH_METHOD=gcp-id-token`
+        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
+      </Accordion>
+      
+      <Accordion title="GCP IAM">
+        Authentication using GCP service account keys.
+        
+        **Environment Variables:**
+        - `INFISICAL_AUTH_METHOD=gcp-iam`
+        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
+        - `INFISICAL_GCP_SERVICE_ACCOUNT_KEY_FILE_PATH=<path-to-key-file>`
+      </Accordion>
+      
+      <Accordion title="Native Azure">
+        Authentication using Azure managed identity.
+        
+        **Environment Variables:**
+        - `INFISICAL_AUTH_METHOD=azure`
+        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
+      </Accordion>
+      
+      <Accordion title="OIDC Auth">
+        Authentication using OIDC identity tokens.
+        
+        **Environment Variables:**
+        - `INFISICAL_AUTH_METHOD=oidc-auth`
+        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
+        - `INFISICAL_JWT=<oidc-jwt>`
+      </Accordion>
+      
+      <Accordion title="JWT Auth">
+        Authentication using JWT tokens.
+        
+        **Environment Variables:**
+        - `INFISICAL_AUTH_METHOD=jwt-auth`
+        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
+        - `INFISICAL_JWT=<jwt>`
+      </Accordion>
+    </AccordionGroup>
    </Step>
 
    <Step title="Install the Infisical CLI">
-    Make sure the Infisical CLI is installed on the server where you plan to deploy the relay. The CLI is required for relay installation and management.
+    Install the Infisical CLI on the server where you plan to deploy the relay. The CLI is required for relay installation and management.
 
-    See the [CLI Installation Guide](/cli/overview) for instructions.
+   See the [CLI Installation Guide](/cli/overview) for instructions.
+
+    This server must have a static IP address or DNS name to be identifiable by the Infisical platform.
 
    </Step>
 
    <Step title="Configure Network & Firewall">
     Ensure your network and firewall settings allow the server to accept inbound connections and make outbound connections:
 
-    **Inbound Connections:**
+    **Inbound Connections Rules:**
     | Protocol | Source             | Port | Purpose                          |
     | -------- | ------------------ | ---- | -------------------------------- |
     | TCP      | Gateways           | 2222 | SSH reverse tunnel establishment |
     | TCP      | Infisical instance host (US/EU, other) | 8443 | Platform-to-relay communication  |
 
-    **Outbound Connections:**
+    **Outbound Connections Rules:**
     | Protocol | Destination                          | Port | Purpose                                    |
     | -------- | ------------------------------------ | ---- | ------------------------------------------ |
     | TCP      | Infisical instance host (US/EU, other) | 443  | API communication and certificate requests |
@@ -75,26 +138,32 @@ To successfully deploy an Infisical Relay for use, follow these steps in order.
       To view all available flags and equivalent environment variables for relay deployment, see the [Relay CLI Command Reference](/cli/commands/relay).
     <Tabs>
        <Tab title="Linux Server">
-          For production deployments on Linux servers, install the Relay as a systemd service. This installation method only supports [Token Auth](/documentation/platform/identities/token-auth).
+          For production deployments on Linux servers, install the Relay as a systemd service. This installation method only supports [Token Auth](/documentation/platform/identities/token-auth) at the moment.
+
+          Once you have a [Token Auth](/documentation/platform/identities/token-auth) token, set the following environment variables for relay authentication:
+
+          ```bash
+          export INFISICAL_TOKEN=<your-machine-identity-token>
+          ```
+
+          <Warning>
+            The systemd install command requires a Linux operating system with root/sudo privileges.
+          </Warning>
 
           ```bash
           sudo infisical relay systemd install \
              --token <your-machine-identity-token> \
              --name <relay-name> \
              --domain <your-infisical-domain> \
-             --host <static-ip-or-dns-of-server>
+             --host <static-ip-or-dns-of-the-server>
 
           # Start the relay service
           sudo systemctl start infisical-relay
           sudo systemctl enable infisical-relay
           ```
-
-          <Warning>
-            The systemd install command requires a Linux operating system with root/sudo privileges.
-          </Warning>
        </Tab>
 
-       <Tab title="Manual Start">
+       <Tab title="Other Environments">
           For non-Linux systems or when you need more control over the relay process:
 
           ```bash
@@ -106,6 +175,7 @@ To successfully deploy an Infisical Relay for use, follow these steps in order.
           ```
 
           This method supports all [machine identity auth methods](/documentation/platform/identities/machine-identities) and runs in the foreground. Suitable for production use on non-Linux systems or development environments.
+          Set the appropriate environment variables for your chosen auth method as described in Step 1 before running the relay start command.
        </Tab>
     </Tabs>
 
@@ -134,7 +204,7 @@ Deploying your own relay provides several advantages:
 - **Lower latency**: Deploy closer to your gateways for optimal performance
 - **Compliance**: Meet specific data routing and compliance requirements
 - **Custom network policies**: Implement organization-specific network configurations
-- **Geographic proximity**: Reduce network congestion and improve response times
+- **Geographic proximity**: Reduce network congestion and improve response times to access resources
 - **High availability**: Deploy multiple relays for redundancy and load distribution
 
 Organization-deployed relays give you complete control over your secure communication infrastructure.
@@ -152,22 +222,20 @@ For detailed troubleshooting:
 **Test network connectivity:**
 
 ```bash
-# Test outbound API access from relay
+# Test outbound API access from relay. Replace URL with your Infisical instance if self-hosted
 curl -I https://app.infisical.com
 
 # Test TCP with TLS port from platform
 openssl s_client -connect <relay-ip>:8443
 ```
-
 </Accordion>
 
 <Accordion title="What happens if my relay server goes down?">
 Relay server outages affect gateway connectivity:
 
 - **Gateway reconnection**: Gateways will automatically attempt to reconnect when the relay comes back online
-- **Service interruption**: While the relay is down, the Infisical platform cannot reach gateways through that relay
+- **Service interruption**: While the relay is down, the Infisical platform cannot reach gateways through that relay. As a result, any secrets or resources accessed via those gateways will be temporarily unavailable until connectivity is restored.
 - **Multiple relays**: Deploy multiple relay servers for redundancy and high availability
-- **Monitoring**: Set up monitoring to detect relay outages quickly
 - **Automatic restart**: Use systemd or container orchestration to automatically restart failed relay services
 
 For production environments, consider deploying multiple relay servers to avoid single points of failure.
