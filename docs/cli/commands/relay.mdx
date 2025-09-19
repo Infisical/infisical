@@ -6,13 +6,13 @@ description: "Relay-related commands for Infisical"
 <Tabs>
   <Tab title="Start relay">
     ```bash
-    infisical relay start --type=<type> --host=<host> --name=<name> --auth-method=<auth-method>
+    infisical relay start --host=<host> --name=<name> --auth-method=<auth-method>
     ```
   </Tab>
   <Tab title="Start relay as background daemon (Linux only)">
     ```bash
     # Install systemd service
-    sudo infisical relay systemd install --type=<type> --host=<host> --name=<name> --token=<token>
+    sudo infisical relay systemd install --host=<host> --name=<name> --token=<token>
     
     # Uninstall systemd service
     sudo infisical relay systemd uninstall
@@ -22,48 +22,30 @@ description: "Relay-related commands for Infisical"
 
 ## Description
 
-Relay-related commands for Infisical that provide identity-aware relay infrastructure for routing encrypted traffic:
-
-- **Relay**: Identity-aware server that routes encrypted traffic (can be instance-wide or organization-specific)
+Relay-related commands for Infisical that provide identity-aware relay infrastructure for routing encrypted traffic. Relays are organization-deployed servers that route encrypted traffic between Infisical and your gateways.
 
 The relay system uses SSH reverse tunnels over TCP, eliminating firewall complexity and providing excellent performance for enterprise environments.
 
 ## Subcommands & flags
 
 <Accordion title="infisical relay start" defaultOpen="true">
-  Run the Infisical relay component. The relay handles network traffic routing and can operate in different modes.
+  Run the Infisical relay component. The relay handles network traffic routing between Infisical and your gateways.
 
 ```bash
-infisical relay start --type=<type> --host=<host> --name=<name> --auth-method=<auth-method>
+infisical relay start --host=<host> --name=<name> --auth-method=<auth-method>
 ```
 
 ### Flags
-
-  <Accordion title="--type">
-    The type of relay to run. Must be either 'instance' or 'org'.
-    
-    - **`instance`**: Shared relay server that can be used by all organizations on your Infisical instance. Set up by the instance administrator. Uses `INFISICAL_RELAY_AUTH_SECRET` environment variable for authentication, which must be configured by the instance admin.
-    - **`org`**: Dedicated relay server that individual organizations deploy and manage in their own infrastructure. Provides enhanced security, custom geographic placement, and compliance benefits. Uses standard Infisical authentication methods.
-
-    ```bash
-    # Organization relay (customer-deployed)
-    infisical relay start --type=org --host=192.168.1.100 --name=my-org-relay
-
-    # Instance relay (configured by instance admin)
-    INFISICAL_RELAY_AUTH_SECRET=<secret> infisical relay start --type=instance --host=10.0.1.50 --name=shared-relay
-    ```
-
-  </Accordion>
 
   <Accordion title="--host">
     The host (IP address or hostname) of the instance where the relay is deployed. This must be a static public IP or resolvable hostname that gateways can reach.
 
     ```bash
     # Example with IP address
-    infisical relay start --host=203.0.113.100 --type=org --name=my-relay
+    infisical relay start --host=203.0.113.100 --name=my-relay
 
     # Example with hostname
-    infisical relay start --host=relay.example.com --type=org --name=my-relay
+    infisical relay start --host=relay.example.com --name=my-relay
     ```
 
   </Accordion>
@@ -73,30 +55,23 @@ infisical relay start --type=<type> --host=<host> --name=<name> --auth-method=<a
 
     ```bash
     # Example
-    infisical relay start --name=my-relay --type=org --host=192.168.1.100
+    infisical relay start --name=my-relay --host=192.168.1.100
     ```
 
   </Accordion>
 
 ### Authentication
 
-**Organization Relays (`--type=org`):**
-Deploy your own relay server in your infrastructure for enhanced security and reduced latency. Supports all standard Infisical authentication methods documented below.
-
-**Instance Relays (`--type=instance`):**
-Shared relay servers that serve all organizations on your Infisical instance. For Infisical Cloud, these are already running and ready to use. For self-hosted deployments, they're set up by the instance administrator. Authentication is handled via the `INFISICAL_RELAY_AUTH_SECRET` environment variable.
+Relays support all standard Infisical authentication methods. Choose the authentication method that best fits your environment and set the corresponding flags when starting the relay.
 
 ```bash
-# Organization relay with Universal Auth (customer-deployed)
-infisical relay start --type=org --host=192.168.1.100 --name=my-org-relay --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret>
-
-# Instance relay (configured by instance admin)
-INFISICAL_RELAY_AUTH_SECRET=<secret> infisical relay start --type=instance --host=10.0.1.50 --name=shared-relay
+# Example with Universal Auth
+infisical relay start --host=192.168.1.100 --name=my-relay --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret>
 ```
 
 ### Authentication Methods
 
-The Infisical CLI supports multiple authentication methods for organization relays. Below are the available authentication methods, with their respective flags.
+The Infisical CLI supports multiple authentication methods for relays. Below are the available authentication methods, with their respective flags.
 
 <AccordionGroup>
   <Accordion title="Universal Auth">
@@ -117,7 +92,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
     </ParamField>
 
     ```bash
-      infisical relay start --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --type=org --host=<host> --name=<name>
+      infisical relay start --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --host=<host> --name=<name>
     ```
 
   </Accordion>
@@ -141,7 +116,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
 
 
     ```bash
-      infisical relay start --auth-method=kubernetes --machine-identity-id=<machine-identity-id> --type=org --host=<host> --name=<name>
+      infisical relay start --auth-method=kubernetes --machine-identity-id=<machine-identity-id> --host=<host> --name=<name>
     ```
 
   </Accordion>
@@ -162,7 +137,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
 
 
     ```bash
-      infisical relay start --auth-method=azure --machine-identity-id=<machine-identity-id> --type=org --host=<host> --name=<name>
+      infisical relay start --auth-method=azure --machine-identity-id=<machine-identity-id> --host=<host> --name=<name>
     ```
 
   </Accordion>
@@ -183,7 +158,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
 
 
     ```bash
-      infisical relay start --auth-method=gcp-id-token --machine-identity-id=<machine-identity-id> --type=org --host=<host> --name=<name>
+      infisical relay start --auth-method=gcp-id-token --machine-identity-id=<machine-identity-id> --host=<host> --name=<name>
     ```
 
   </Accordion>
@@ -205,7 +180,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
     </ParamField>
 
     ```bash
-      infisical relay start --auth-method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path> --type=org --host=<host> --name=<name>
+      infisical relay start --auth-method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path> --host=<host> --name=<name>
     ```
 
   </Accordion>
@@ -224,7 +199,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
     </ParamField>
 
       ```bash
-        infisical relay start --auth-method=aws-iam --machine-identity-id=<machine-identity-id> --type=org --host=<host> --name=<name>
+        infisical relay start --auth-method=aws-iam --machine-identity-id=<machine-identity-id> --host=<host> --name=<name>
       ```
 
   </Accordion>
@@ -246,7 +221,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
     </ParamField>
 
     ```bash
-      infisical relay start --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt> --type=org --host=<host> --name=<name>
+      infisical relay start --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt> --host=<host> --name=<name>
     ```
 
   </Accordion>
@@ -270,7 +245,7 @@ The Infisical CLI supports multiple authentication methods for organization rela
 
 
     ```bash
-      infisical relay start --auth-method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id> --type=org --host=<host> --name=<name>
+      infisical relay start --auth-method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id> --host=<host> --name=<name>
     ```
 
   </Accordion>
@@ -286,31 +261,11 @@ The Infisical CLI supports multiple authentication methods for organization rela
     </ParamField>
 
     ```bash
-      infisical relay start --token=<token> --type=org --host=<host> --name=<name>
+      infisical relay start --token=<token> --host=<host> --name=<name>
     ```
 
   </Accordion>
 </AccordionGroup>
-
-### Deployment Considerations
-
-**When to use Instance Relays (`--type=instance`):**
-
-- You want to get started quickly without setting up your own relay infrastructure
-- You're using Infisical Cloud and want to leverage the existing relay infrastructure
-- You're on a self-hosted instance where the admin has already set up shared relays
-- You don't need custom geographic placement of relay servers
-- You don't have specific compliance requirements that require dedicated infrastructure
-- You want to minimize operational overhead by using shared infrastructure
-
-**When to use Organization Relays (`--type=org`):**
-
-- You need lower latency by deploying relay servers closer to your resources
-- You have security requirements that mandate running infrastructure in your own environment
-- You have compliance requirements such as data sovereignty or air-gapped environments
-- You need custom network policies or specific networking configurations
-- You have high-scale performance requirements that shared infrastructure can't meet
-- You want full control over your relay infrastructure and its configuration
 
 </Accordion>
 
@@ -331,36 +286,20 @@ infisical relay systemd <subcommand>
   Install and enable systemd service for the relay. Must be run with sudo on Linux systems.
 
 ```bash
-sudo infisical relay systemd install --type=<type> --host=<host> --name=<name> [flags]
+sudo infisical relay systemd install --host=<host> --name=<name> --token=<token> [flags]
 ```
 
 #### Flags
-
-<Accordion title="--type">
-  The type of relay to run. Must be either 'instance' or 'org'.
-  
-  - **`instance`**: Shared relay server that can be used by all organizations on your Infisical instance. Requires `--relay-auth-secret` flag or `INFISICAL_RELAY_AUTH_SECRET` environment variable.
-  - **`org`**: Dedicated relay server that individual organizations deploy and manage in their own infrastructure. Requires `--token` flag.
-
-```bash
-# Organization relay
-sudo infisical relay systemd install --type=org --host=192.168.1.100 --name=my-org-relay --token=<token>
-
-# Instance relay
-sudo infisical relay systemd install --type=instance --host=10.0.1.50 --name=shared-relay --relay-auth-secret=<secret>
-```
-
-</Accordion>
 
 <Accordion title="--host">
   The host (IP address or hostname) of the instance where the relay is deployed. This must be a static public IP or resolvable hostname that gateways can reach.
 
 ```bash
 # Example with IP address
-sudo infisical relay systemd install --host=203.0.113.100 --type=org --name=my-relay --token=<token>
+sudo infisical relay systemd install --host=203.0.113.100 --name=my-relay --token=<token>
 
 # Example with hostname
-sudo infisical relay systemd install --host=relay.example.com --type=org --name=my-relay --token=<token>
+sudo infisical relay systemd install --host=relay.example.com --name=my-relay --token=<token>
 ```
 
 </Accordion>
@@ -370,17 +309,17 @@ sudo infisical relay systemd install --host=relay.example.com --type=org --name=
 
 ```bash
 # Example
-sudo infisical relay systemd install --name=my-relay --type=org --host=192.168.1.100 --token=<token>
+sudo infisical relay systemd install --name=my-relay --host=192.168.1.100 --token=<token>
 ```
 
 </Accordion>
 
 <Accordion title="--token">
-  Connect with Infisical using machine identity access token. Required for organization relays (`--type=org`).
+  Connect with Infisical using machine identity access token.
 
 ```bash
 # Example
-sudo infisical relay systemd install --token=<machine-identity-token> --type=org --host=<host> --name=<name>
+sudo infisical relay systemd install --token=<machine-identity-token> --host=<host> --name=<name>
 ```
 
 </Accordion>
@@ -390,17 +329,7 @@ sudo infisical relay systemd install --token=<machine-identity-token> --type=org
 
 ```bash
 # Example
-sudo infisical relay systemd install --domain=http://localhost:8080 --token=<token> --type=org --host=<host> --name=<name>
-```
-
-</Accordion>
-
-<Accordion title="--relay-auth-secret">
-  Relay auth secret. Required for instance relays (`--type=instance`) if the `INFISICAL_RELAY_AUTH_SECRET` environment variable is not set.
-
-```bash
-# Example
-sudo infisical relay systemd install --relay-auth-secret=<secret> --type=instance --host=<host> --name=<name>
+sudo infisical relay systemd install --domain=http://localhost:8080 --token=<token> --host=<host> --name=<name>
 ```
 
 </Accordion>
@@ -408,14 +337,11 @@ sudo infisical relay systemd install --relay-auth-secret=<secret> --type=instanc
 #### Examples
 
 ```bash
-# Install organization relay with token authentication
-sudo infisical relay systemd install --type=org --host=192.168.1.100 --name=my-org-relay --token=<machine-identity-token>
-
-# Install instance relay with auth secret
-sudo infisical relay systemd install --type=instance --host=10.0.1.50 --name=shared-relay --relay-auth-secret=<secret>
+# Install relay with token authentication
+sudo infisical relay systemd install --host=192.168.1.100 --name=my-relay --token=<machine-identity-token>
 
 # Install with custom domain
-sudo infisical relay systemd install --domain=http://localhost:8080 --token=<token> --type=org --host=<host> --name=<name>
+sudo infisical relay systemd install --domain=http://localhost:8080 --token=<token> --host=<host> --name=<name>
 ```
 
 #### Post-installation
