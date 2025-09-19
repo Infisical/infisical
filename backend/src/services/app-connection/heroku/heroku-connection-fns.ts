@@ -22,13 +22,13 @@ interface HerokuOAuthTokenResponse {
 }
 
 export const getHerokuConnectionListItem = () => {
-  const { CLIENT_ID_HEROKU } = getConfig();
+  const { INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID } = getConfig();
 
   return {
     name: "Heroku" as const,
     app: AppConnection.Heroku as const,
     methods: Object.values(HerokuConnectionMethod) as [HerokuConnectionMethod.AuthToken, HerokuConnectionMethod.OAuth],
-    oauthClientId: CLIENT_ID_HEROKU
+    oauthClientId: INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID
   };
 };
 
