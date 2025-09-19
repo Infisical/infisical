@@ -82,7 +82,7 @@ export const RelayListPage = withPermission(
                   <span>Relays</span>
                   <a
                     className="-mt-1.5"
-                    href="https://infisical.com/docs/documentation/platform/relays/overview"
+                    href="https://infisical.com/docs/documentation/platform/gateways/relay-deployment"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -130,9 +130,9 @@ export const RelayListPage = withPermission(
                             <div className="flex items-center gap-2">
                               <span>{el.name}</span>
                               {!el.orgId && (
-                                <Tooltip content="This is an instance-level relay available to all organizations">
+                                <Tooltip content="This is a managed relay provided by Infisical">
                                   <span className="rounded bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
-                                    Instance
+                                    Managed
                                   </span>
                                 </Tooltip>
                               )}

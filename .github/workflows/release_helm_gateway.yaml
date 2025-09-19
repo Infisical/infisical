@@ -35,7 +35,7 @@ jobs:
         run: kubectl create namespace infisical-gateway
 
       - name: Create gateway secret
-        run: kubectl create secret generic infisical-gateway-environment --from-literal=TOKEN=my-test-token -n infisical-gateway
+        run: kubectl create secret generic infisical-gateway-environment --from-literal=TOKEN=my-test-token --from-literal=INFISICAL_RELAY_NAME=my-test-relay -n infisical-gateway
 
       - name: Run chart-testing (install)
         run: |
