@@ -1,13 +1,9 @@
 ---
-title: "Gateway Security Architecture"
-sidebarTitle: "Architecture"
-description: "Understand the security model and tenant isolation of Infisical's Gateway"
+title: "Security Architecture"
+description: "Security model, tenant isolation, and best practices for Infisical Gateways and Relays"
 ---
 
-# Gateway Security Architecture
-
 The Infisical Gateway enables secure access to private resources using SSH reverse tunnels, certificate-based authentication, and a comprehensive PKI (Public Key Infrastructure) system. The architecture provides end-to-end encryption and complete tenant isolation through multiple certificate authorities.
-This document explains the internal security architecture and how tenant isolation is maintained.
 
 ## Security Model Overview
 
@@ -82,16 +78,16 @@ The platform establishes secure direct connections with gateways through a **TLS
 2. **Connection Flow**:
 
    ```
-   Platform ←→ [SSH Reverse Tunnel] ←→ Gateway
+   Platform ←→ [TCP with TLS] ←→ Relay ←→ [SSH Reverse Tunnel] ←→ Gateway
    ```
 
    - Gateway maintains persistent outbound SSH tunnel to relay server
-   - Platform connects directly to gateway through this tunnel
-   - TLS handshake occurs over the SSH tunnel, establishing mTLS connection
-   - Application traffic flows through the TLS-pinned tunnel
+   - Platform connects to relay server using TCP with TLS
+   - Relay routes encrypted traffic between platform and gateway
+   - TLS handshake occurs between platform and gateway through the relay
+   - Application traffic flows through the TLS-pinned tunnel via relay routing
 
 3. **Security Benefits**:
-
    - **No inbound connections**: Gateway never needs to accept incoming connections
    - **Certificate-based authentication**: Uses Organization Gateway certificates for mutual TLS
    - **Double encryption**: TLS traffic within SSH tunnel provides layered security
@@ -132,7 +128,6 @@ The architecture provides tenant isolation through multiple certificate authorit
    - Ephemeral certificate validation ensures time-bound access
 
 2. **Network Isolation**:
-
    - Each organization's traffic flows through isolated certificate-authenticated channels
    - Relay servers route traffic based on certificate validation without content access
    - Gateway validates all incoming connections against Organization Gateway Client CA
