@@ -627,7 +627,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             secretId: secret.id,
             secretKey: req.params.secretName,
             secretVersion: secret.version,
-            secretMetadata: req.body.secretMetadata
+            secretMetadata: req.body.secretMetadata,
+            secretTags: secret.tags?.map((tag) => tag.name)
           }
         }
       });
@@ -780,7 +781,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             secretId: secret.id,
             secretKey: req.params.secretName,
             secretVersion: secret.version,
-            secretMetadata: req.body.secretMetadata
+            secretMetadata: req.body.secretMetadata,
+            secretTags: secret.tags?.map((tag) => tag.name)
           }
         }
       });
@@ -2154,7 +2156,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
               secretId: secret.id,
               secretKey: secret.secretKey,
               secretVersion: secret.version,
-              secretMetadata: secretMetadataMap.get(secret.secretKey)
+              secretMetadata: secretMetadataMap.get(secret.secretKey),
+              secretTags: secret.tags?.map((tag) => tag.name)
             }))
           }
         }
@@ -2288,7 +2291,6 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         return { approval: secretOperation.approval };
       }
       const { secrets } = secretOperation;
-
       const secretMetadataMap = new Map(
         inputSecrets.map(({ secretKey, secretMetadata }) => [secretKey, secretMetadata])
       );
@@ -2308,7 +2310,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
                 secretPath: secret.secretPath,
                 secretKey: secret.secretKey,
                 secretVersion: secret.version,
-                secretMetadata: secretMetadataMap.get(secret.secretKey)
+                secretMetadata: secretMetadataMap.get(secret.secretKey),
+                secretTags: secret.tags?.map((tag) => tag.name)
               }))
           }
         }
@@ -2328,7 +2331,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
                 secretPath: secret.secretPath,
                 secretKey: secret.secretKey,
                 secretVersion: secret.version,
-                secretMetadata: secretMetadataMap.get(secret.secretKey)
+                secretMetadata: secretMetadataMap.get(secret.secretKey),
+                secretTags: secret.tags?.map((tag) => tag.name)
               }))
             }
           }

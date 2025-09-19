@@ -1084,7 +1084,9 @@ export const secretApprovalRequestServiceFactory = ({
               // @ts-expect-error not present on v1 secrets
               secretKey: secret.key as string,
               // @ts-expect-error not present on v1 secrets
-              secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+              secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+              // @ts-expect-error not present on v1 secrets
+              secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
             }))
           }
         });
@@ -1100,7 +1102,9 @@ export const secretApprovalRequestServiceFactory = ({
             // @ts-expect-error not present on v1 secrets
             secretKey: secret.key as string,
             // @ts-expect-error not present on v1 secrets
-            secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+            secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+            // @ts-expect-error not present on v1 secrets
+            secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
           }
         });
       }
@@ -1119,7 +1123,9 @@ export const secretApprovalRequestServiceFactory = ({
               // @ts-expect-error not present on v1 secrets
               secretKey: secret.key as string,
               // @ts-expect-error not present on v1 secrets
-              secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+              secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+              // @ts-expect-error not present on v1 secrets
+              secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
             }))
           }
         });
@@ -1135,7 +1141,9 @@ export const secretApprovalRequestServiceFactory = ({
             // @ts-expect-error not present on v1 secrets
             secretKey: secret.key as string,
             // @ts-expect-error not present on v1 secrets
-            secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+            secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+            // @ts-expect-error not present on v1 secrets
+            secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
           }
         });
       }
