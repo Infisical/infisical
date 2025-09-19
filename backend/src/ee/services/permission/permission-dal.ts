@@ -73,6 +73,7 @@ export const MAX_PERMISSION_CACHE_BYTES = 25 * 1024 * 1024;
 export interface TPermissionDALFactory {
   invalidatePermissionCacheByOrgId: (orgId: string, tx?: Knex) => Promise<void>;
   invalidatePermissionCacheByProjectId: (projectId: string, orgId: string, tx?: Knex) => Promise<void>;
+  invalidatePermissionCacheByProjectIds: (projectIds: string[], orgId: string, tx?: Knex) => Promise<void>;
   getOrgPermission: (
     userId: string,
     orgId: string
@@ -399,6 +400,24 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
       await invalidatePermissionCacheByOrgId(orgId, tx);
     } catch (error) {
       logger.error(error, "Failed to invalidate project permission cache", { projectId, orgId });
+    }
+  };
+
+  const invalidatePermissionCacheByProjectIds = async (projectIds: string[], orgId: string, tx?: Knex) => {
+    try {
+      await Promise.all(
+        projectIds.map(async (projectId) => {
+          const projectPermissionDalVersionKey = PermissionServiceCacheKeys.getPermissionDalVersion(orgId, projectId);
+          return keyStore.pgIncrementBy(projectPermissionDalVersionKey, {
+            incr: 1,
+            tx,
+            expiry: PERMISSION_DAL_VERSION_TTL
+          });
+        })
+      );
+      await invalidatePermissionCacheByOrgId(orgId, tx);
+    } catch (error) {
+      logger.error(error, "Failed to invalidate project permission caches", { projectIds, orgId });
     }
   };
 
@@ -1567,8 +1586,8 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
         additionalPrivileges: activeAdditionalPrivileges
       };
 
-      if (result) {
-        try {
+      try {
+        if (result) {
           const serializedResult = JSON.stringify(result);
           if (Buffer.byteLength(serializedResult, "utf8") < MAX_PERMISSION_CACHE_BYTES) {
             const encryptedResult = permissionEncryptor({ plainText: Buffer.from(serializedResult, "utf8") });
@@ -1578,9 +1597,9 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
               encryptedResult.cipherTextBlob.toString("base64")
             );
           }
-        } catch (cacheError) {
-          logger.error(cacheError, "Failed to cache project permission", { userId, projectId, orgId });
         }
+      } catch (cacheError) {
+        logger.error(cacheError, "Failed to cache project permission", { userId, projectId, orgId });
       }
 
       return result;
@@ -1986,6 +2005,7 @@ export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissio
   return {
     invalidatePermissionCacheByOrgId,
     invalidatePermissionCacheByProjectId,
+    invalidatePermissionCacheByProjectIds,
     getOrgPermission,
     getOrgIdentityPermission,
     getProjectPermission,

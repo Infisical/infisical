@@ -135,7 +135,9 @@ type TOrgServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   permissionDAL: Pick<
     TPermissionDALFactory,
-    "invalidatePermissionCacheByOrgId" | "invalidatePermissionCacheByProjectId"
+    | "invalidatePermissionCacheByOrgId"
+    | "invalidatePermissionCacheByProjectId"
+    | "invalidatePermissionCacheByProjectIds"
   >;
   licenseService: Pick<
     TLicenseServiceFactory,
@@ -1162,9 +1164,12 @@ export const orgServiceFactory = ({
 
       // Invalidate permission cache for org and project membership creation
       await permissionDAL.invalidatePermissionCacheByOrgId(orgId, tx);
-      for (const project of projectsToInvite) {
-        // eslint-disable-next-line no-await-in-loop
-        await permissionDAL.invalidatePermissionCacheByProjectId(project.id, orgId, tx);
+      if (projectsToInvite.length > 0) {
+        await permissionDAL.invalidatePermissionCacheByProjectIds(
+          projectsToInvite.map((project) => project.id),
+          orgId,
+          tx
+        );
       }
 
       return users;
