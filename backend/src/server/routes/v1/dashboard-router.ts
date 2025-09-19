@@ -1457,6 +1457,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { secretPath, projectId, environment, secretKey, isOverride } = req.query;
 
+      // TODO (scott): just get the secret instead of searching for it in list
       const { secrets } = await server.services.secret.getSecretsRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -1473,7 +1474,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       });
 
       if (isOverride) {
-        const personalSecret = secrets.find((secret) => secret.type === SecretType.Personal);
+        const personalSecret = secrets.find(
+          (secret) => secret.type === SecretType.Personal && secret.secretKey === secretKey
+        );
 
         if (!personalSecret)
           throw new BadRequestError({
@@ -1486,7 +1489,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           };
       }
 
-      const sharedSecret = secrets.find((secret) => secret.type === SecretType.Shared);
+      const sharedSecret = secrets.find(
+        (secret) => secret.type === SecretType.Shared && secret.secretKey === secretKey
+      );
 
       if (!sharedSecret)
         throw new BadRequestError({
