@@ -162,7 +162,7 @@ export const accessApprovalPolicyServiceFactory = ({
 
       if (invalidUsernames.length) {
         throw new BadRequestError({
-          message: `Invalid approver user: ${invalidUsernames.join(", ")}`
+          message: `Invalid approver user: ${invalidUsernames.map((i) => i.username).join(", ")}`
         });
       }
 
@@ -172,6 +172,22 @@ export const accessApprovalPolicyServiceFactory = ({
           sequence: el.sequence
         }))
       );
+    }
+
+    if (approverUserIds.length > 0) {
+      const allApproverUserIds = approverUserIds.map((au) => au.id);
+      const approverMembers = await orgMembershipDAL.find({
+        $in: { userId: allApproverUserIds },
+        orgId: actorOrgId
+      });
+
+      if (approverMembers.length !== allApproverUserIds.length) {
+        const approverMemberUserIds = new Set(approverMembers.map((member) => member.userId as string));
+        const userIdsNotInOrg = allApproverUserIds.filter((id) => !approverMemberUserIds.has(id));
+        throw new BadRequestError({
+          message: `Some approvers are not in the organization: ${userIdsNotInOrg.join(", ")}`
+        });
+      }
     }
     let groupBypassers: string[] = [];
     let bypasserUserIds: string[] = [];
@@ -488,7 +504,7 @@ export const accessApprovalPolicyServiceFactory = ({
 
           if (invalidUsernames.length) {
             throw new BadRequestError({
-              message: `Invalid approver user: ${invalidUsernames.join(", ")}`
+              message: `Invalid approver user: ${invalidUsernames.map((i) => i.username).join(", ")}`
             });
           }
 
@@ -498,6 +514,22 @@ export const accessApprovalPolicyServiceFactory = ({
               sequence: el.sequence
             }))
           );
+        }
+
+        if (approverUserIds.length > 0) {
+          const allApproverUserIds = approverUserIds.map((au) => au.id);
+          const approverMembers = await orgMembershipDAL.find({
+            $in: { userId: allApproverUserIds },
+            orgId: actorOrgId
+          });
+
+          if (approverMembers.length !== allApproverUserIds.length) {
+            const approverMemberUserIds = new Set(approverMembers.map((member) => member.userId as string));
+            const userIdsNotInOrg = allApproverUserIds.filter((id) => !approverMemberUserIds.has(id));
+            throw new BadRequestError({
+              message: `Some approvers are not in the organization: ${userIdsNotInOrg.join(", ")}`
+            });
+          }
         }
         await accessApprovalPolicyApproverDAL.insertMany(
           approverUserIds.map((el) => ({

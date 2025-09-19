@@ -7,6 +7,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { containsGlobPatterns } from "@app/lib/picomatch";
+import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -39,6 +40,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   secretApprovalPolicyDAL: TSecretApprovalPolicyDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   userDAL: Pick<TUserDALFactory, "find">;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   secretApprovalPolicyBypasserDAL: TSecretApprovalPolicyBypasserDALFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -56,6 +58,7 @@ export const secretApprovalPolicyServiceFactory = ({
   secretApprovalPolicyEnvironmentDAL,
   projectEnvDAL,
   userDAL,
+  orgMembershipDAL,
   licenseService,
   secretApprovalRequestDAL
 }: TSecretApprovalPolicyServiceFactoryDep) => {
@@ -231,6 +234,24 @@ export const secretApprovalPolicyServiceFactory = ({
         }
 
         userApproverIds = userApproverIds.concat(approverUsers.map((user) => user.id));
+      }
+
+      if (userApproverIds.length > 0) {
+        const approverMembers = await orgMembershipDAL.find(
+          {
+            $in: { userId: userApproverIds },
+            orgId: actorOrgId
+          },
+          { tx }
+        );
+
+        if (approverMembers.length !== userApproverIds.length) {
+          const approverMemberUserIds = new Set(approverMembers.map((member) => member.userId as string));
+          const userIdsNotInOrg = userApproverIds.filter((id) => !approverMemberUserIds.has(id));
+          throw new BadRequestError({
+            message: `Some approvers are not in the organization: ${userIdsNotInOrg.join(", ")}`
+          });
+        }
       }
 
       await secretApprovalPolicyApproverDAL.insertMany(
@@ -423,6 +444,24 @@ export const secretApprovalPolicyServiceFactory = ({
           }
 
           userApproverIds = userApproverIds.concat(approverUsers.map((user) => user.id));
+        }
+
+        if (userApproverIds.length > 0) {
+          const approverMembers = await orgMembershipDAL.find(
+            {
+              $in: { userId: userApproverIds },
+              orgId: actorOrgId
+            },
+            { tx }
+          );
+
+          if (approverMembers.length !== userApproverIds.length) {
+            const approverMemberUserIds = new Set(approverMembers.map((member) => member.userId as string));
+            const userIdsNotInOrg = userApproverIds.filter((id) => !approverMemberUserIds.has(id));
+            throw new BadRequestError({
+              message: `Some approvers are not in the organization: ${userIdsNotInOrg.join(", ")}`
+            });
+          }
         }
 
         await secretApprovalPolicyApproverDAL.insertMany(
