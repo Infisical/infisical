@@ -24,13 +24,15 @@ interface SecretVersionItemProps {
   secret: SecretV3RawSanitized;
   currentVersion: number;
   onRevert: (secretValue: string) => void;
+  canReadValue: boolean;
 }
 
 export const SecretVersionItem = ({
   secretVersion: { createdAt, version, actor, secretValueHidden },
   secret,
   currentVersion,
-  onRevert
+  onRevert,
+  canReadValue
 }: SecretVersionItemProps) => {
   const { currentProject } = useProject();
 
@@ -244,7 +246,7 @@ export const SecretVersionItem = ({
           </div>
         </div>
       </div>
-      {!secret?.isRotatedSecret && (
+      {!secret?.isRotatedSecret && canReadValue && (
         <div
           className={`flex items-center justify-center ${version === currentVersion ? "hidden" : ""}`}
         >

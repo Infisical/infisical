@@ -403,6 +403,7 @@ export const SecretDetailSidebar = ({
                             isLoadingSecretValue ||
                             isErrorFetchingSecretValue
                           }
+                          canEditButNotView={secret.secretValueHidden && canEditSecretValue}
                           environment={environment}
                           secretPath={secretPath}
                           key="secret-value"
@@ -703,6 +704,7 @@ export const SecretDetailSidebar = ({
               <div className="thin-scrollbar flex flex-1 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:[color-scheme:dark]">
                 {secretVersion?.map((version) => (
                   <SecretVersionItem
+                    canReadValue={!cannotReadSecretValue}
                     secretVersion={version}
                     secret={secret}
                     currentVersion={secretVersion.length}
