@@ -50,6 +50,7 @@ export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefi
     connection: z.object({ name: z.string(), id: z.string().uuid() }),
     environment: z.object({ slug: z.string(), id: z.string(), name: z.string() }),
     secretPath: z.string().min(1, "Secret path required"),
+    recursive: z.boolean().optional().default(false),
     syncOptions: syncOptionsSchema,
     isAutoSyncEnabled: z.boolean()
   });
