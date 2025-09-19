@@ -603,6 +603,7 @@ interface CreateSecretEvent {
     secretKey: string;
     secretVersion: number;
     secretMetadata?: TSecretMetadata;
+    secretTags?: string[];
   };
 }
 
@@ -617,6 +618,7 @@ interface CreateSecretBatchEvent {
       secretPath?: string;
       secretVersion: number;
       secretMetadata?: TSecretMetadata;
+      secretTags?: string[];
     }>;
   };
 }
@@ -630,6 +632,7 @@ interface UpdateSecretEvent {
     secretKey: string;
     secretVersion: number;
     secretMetadata?: TSecretMetadata;
+    secretTags?: string[];
   };
 }
 
@@ -644,6 +647,7 @@ interface UpdateSecretBatchEvent {
       secretVersion: number;
       secretMetadata?: TSecretMetadata;
       secretPath?: string;
+      secretTags?: string[];
     }>;
   };
 }

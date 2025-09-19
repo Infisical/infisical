@@ -754,7 +754,8 @@ export const pitServiceFactory = ({
             secrets: newSecrets.map((secret) => ({
               secretId: secret.id,
               secretKey: secret.secretKey,
-              secretVersion: secret.version
+              secretVersion: secret.version,
+              secretTags: secret.tags?.map((tag) => tag.name)
             }))
           }
         });
@@ -781,7 +782,8 @@ export const pitServiceFactory = ({
             secrets: updatedSecrets.map((secret) => ({
               secretId: secret.id,
               secretKey: secret.secretKey,
-              secretVersion: secret.version
+              secretVersion: secret.version,
+              secretTags: secret.tags?.map((tag) => tag.name)
             }))
           }
         });
