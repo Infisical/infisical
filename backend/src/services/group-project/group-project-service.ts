@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole, ProjectVersion, SecretKeyEncoding, TGroups } from "@app/db/schemas";
 import { TListProjectGroupUsersDTO } from "@app/ee/services/group/group-types";
+import { TPermissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -44,6 +45,7 @@ type TGroupProjectServiceFactoryDep = {
   projectBotDAL: TProjectBotDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findOne" | "findAllGroupPossibleMembers">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRole">;
+  permissionDAL: Pick<TPermissionDALFactory, "invalidatePermissionCacheByProjectId">;
 };
 
 export type TGroupProjectServiceFactory = ReturnType<typeof groupProjectServiceFactory>;
@@ -57,7 +59,8 @@ export const groupProjectServiceFactory = ({
   projectKeyDAL,
   projectBotDAL,
   projectRoleDAL,
-  permissionService
+  permissionService,
+  permissionDAL
 }: TGroupProjectServiceFactoryDep) => {
   const addGroupToProject = async ({
     actor,
@@ -263,6 +266,9 @@ export const groupProjectServiceFactory = ({
       return groupProjectMembership;
     });
 
+    // Invalidate permission cache for project group changes
+    await permissionDAL.invalidatePermissionCacheByProjectId(project.id, project.orgId);
+
     return projectGroup;
   };
 
@@ -372,6 +378,9 @@ export const groupProjectServiceFactory = ({
       return groupProjectMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
     });
 
+    // Invalidate permission cache for project group role changes
+    await permissionDAL.invalidatePermissionCacheByProjectId(project.id, project.orgId);
+
     return updatedRoles;
   };
 
@@ -421,6 +430,9 @@ export const groupProjectServiceFactory = ({
       const [projectGroup] = await groupProjectDAL.delete({ groupId: group.id, projectId: project.id }, tx);
       return projectGroup;
     });
+
+    // Invalidate permission cache for project group removal
+    await permissionDAL.invalidatePermissionCacheByProjectId(project.id, project.orgId);
 
     return deletedProjectGroup;
   };

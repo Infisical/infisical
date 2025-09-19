@@ -1,3 +1,4 @@
+import { Knex } from "knex";
 import { z } from "zod";
 
 import { TDbClient } from "@app/db";
@@ -5,15 +6,73 @@ import {
   IdentityProjectMembershipRoleSchema,
   OrgMembershipRole,
   OrgMembershipsSchema,
+  ProjectType,
   TableName,
   TIdentityOrgMemberships,
   TProjectRoles,
   TProjects
 } from "@app/db/schemas";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
+import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
+import { applyJitter } from "@app/lib/dates";
 import { DatabaseError } from "@app/lib/errors";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import { logger } from "@app/lib/logger";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
+
+export const PermissionServiceCacheKeys = {
+  get productKey() {
+    const { INFISICAL_PLATFORM_VERSION } = getConfig();
+    return `${ProjectType.SecretManager}:permissions:${INFISICAL_PLATFORM_VERSION || 0}`;
+  },
+  getPermissionDalVersion: (orgId: string, projectId?: string) => {
+    const baseKey = `${PermissionServiceCacheKeys.productKey}:${orgId}`;
+    return projectId ? `${baseKey}:${projectId}:permission-dal-version` : `${baseKey}:permission-dal-version`;
+  },
+  getOrgPermission: (orgId: string, version: number, userId: string) => {
+    const baseKey = `${PermissionServiceCacheKeys.productKey}:${orgId}:v${version}:org-permission`;
+    return `${baseKey}:${userId}-${generateCacheKeyFromData({ userId, orgId, version })}`;
+  },
+  getOrgIdentityPermission: (orgId: string, version: number, identityId: string) => {
+    const baseKey = `${PermissionServiceCacheKeys.productKey}:${orgId}:v${version}:org-identity-permission`;
+    return `${baseKey}:${identityId}-${generateCacheKeyFromData({ identityId, orgId, version })}`;
+  },
+  getProjectPermission: (orgId: string, projectId: string, version: number, userId: string) => {
+    const baseKey = `${PermissionServiceCacheKeys.productKey}:${orgId}:${projectId}:v${version}:project-permission`;
+    return `${baseKey}:${userId}-${generateCacheKeyFromData({ userId, orgId, projectId, version })}`;
+  },
+  getProjectIdentityPermission: (orgId: string, projectId: string, version: number, identityId: string) => {
+    const baseKey = `${PermissionServiceCacheKeys.productKey}:${orgId}:${projectId}:v${version}:project-identity-permission`;
+    return `${baseKey}:${identityId}-${generateCacheKeyFromData({ identityId, orgId, projectId, version })}`;
+  },
+  getProjectUserPermissions: (orgId: string, projectId: string, version: number) => {
+    const baseKey = `${PermissionServiceCacheKeys.productKey}:${orgId}:${projectId}:v${version}:project-user-permissions`;
+    return `${baseKey}-${generateCacheKeyFromData({ orgId, projectId, version })}`;
+  },
+  getProjectIdentityPermissions: (orgId: string, projectId: string, version: number) => {
+    const baseKey = `${PermissionServiceCacheKeys.productKey}:${orgId}:${projectId}:v${version}:project-identity-permissions`;
+    return `${baseKey}-${generateCacheKeyFromData({ orgId, projectId, version })}`;
+  },
+  getProjectGroupPermissions: (orgId: string, projectId: string, version: number, filterGroupId?: string) => {
+    const baseKey = `${PermissionServiceCacheKeys.productKey}:${orgId}:${projectId}:v${version}:project-group-permissions`;
+    const dataKey = generateCacheKeyFromData({ orgId, projectId, version, filterGroupId });
+    return filterGroupId ? `${baseKey}:${filterGroupId}-${dataKey}` : `${baseKey}-${dataKey}`;
+  },
+  getProjectIdentityPermissionByIdentity: (orgId: string, projectId: string, version: number, identityId: string) => {
+    const baseKey = `${PermissionServiceCacheKeys.productKey}:${orgId}:${projectId}:v${version}:project-identity-permission-by-identity`;
+    return `${baseKey}:${identityId}-${generateCacheKeyFromData({ identityId, orgId, projectId, version })}`;
+  }
+};
+
+export const PERMISSION_DAL_TTL = () => applyJitter(10 * 60, 2 * 60);
+export const PERMISSION_DAL_VERSION_TTL = "15m";
+export const MAX_PERMISSION_CACHE_BYTES = 25 * 1024 * 1024;
 
 export interface TPermissionDALFactory {
+  invalidatePermissionCacheByOrgId: (orgId: string, tx?: Knex) => Promise<void>;
+  invalidatePermissionCacheByProjectId: (projectId: string, orgId: string, tx?: Knex) => Promise<void>;
   getOrgPermission: (
     userId: string,
     orgId: string
@@ -312,9 +371,88 @@ export interface TPermissionDALFactory {
   >;
 }
 
-export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
+export type TPermissionDALFactoryDep = {
+  db: TDbClient;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    "getItem" | "setItemWithExpiry" | "deleteItem" | "setExpiry" | "pgGetIntItem" | "pgIncrementBy"
+  >;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+};
+
+export const permissionDALFactory = (deps: TPermissionDALFactoryDep): TPermissionDALFactory => {
+  const { db, keyStore, kmsService } = deps;
+  const invalidatePermissionCacheByOrgId = async (orgId: string, tx?: Knex) => {
+    try {
+      const orgPermissionDalVersionKey = PermissionServiceCacheKeys.getPermissionDalVersion(orgId);
+      await keyStore.pgIncrementBy(orgPermissionDalVersionKey, { incr: 1, tx, expiry: PERMISSION_DAL_VERSION_TTL });
+    } catch (error) {
+      logger.error(error, "Failed to invalidate org permission cache", { orgId });
+    }
+  };
+
+  const invalidatePermissionCacheByProjectId = async (projectId: string, orgId: string, tx?: Knex) => {
+    try {
+      const projectPermissionDalVersionKey = PermissionServiceCacheKeys.getPermissionDalVersion(orgId, projectId);
+      await keyStore.pgIncrementBy(projectPermissionDalVersionKey, { incr: 1, tx, expiry: PERMISSION_DAL_VERSION_TTL });
+
+      await invalidatePermissionCacheByOrgId(orgId, tx);
+    } catch (error) {
+      logger.error(error, "Failed to invalidate project permission cache", { projectId, orgId });
+    }
+  };
+
   const getOrgPermission: TPermissionDALFactory["getOrgPermission"] = async (userId: string, orgId: string) => {
     try {
+      const cachedPermissionDalVersion = await keyStore.pgGetIntItem(
+        PermissionServiceCacheKeys.getPermissionDalVersion(orgId)
+      );
+      const permissionDalVersion = Number(cachedPermissionDalVersion || 0);
+      const cacheKey = PermissionServiceCacheKeys.getOrgPermission(orgId, permissionDalVersion, userId);
+
+      const { decryptor: permissionDecryptor, encryptor: permissionEncryptor } =
+        await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.Organization,
+          orgId
+        });
+
+      const encryptedCachedPermission = await keyStore.getItem(cacheKey);
+      if (encryptedCachedPermission) {
+        try {
+          await keyStore.setExpiry(cacheKey, PERMISSION_DAL_TTL());
+
+          const cachedPermission = permissionDecryptor({
+            cipherTextBlob: Buffer.from(encryptedCachedPermission, "base64")
+          });
+
+          const parsed = JSON.parse(cachedPermission.toString("utf8")) as {
+            createdAt: string;
+            updatedAt: string;
+            lastLoginTime?: string | null;
+            lastInvitedAt?: string | null;
+            groups?: Array<{ createdAt: string; updatedAt: string; [key: string]: unknown }>;
+            [key: string]: unknown;
+          };
+
+          const result = {
+            ...parsed,
+            createdAt: new Date(parsed.createdAt),
+            updatedAt: new Date(parsed.updatedAt),
+            lastLoginTime: parsed.lastLoginTime ? new Date(parsed.lastLoginTime) : null,
+            lastInvitedAt: parsed.lastInvitedAt ? new Date(parsed.lastInvitedAt) : null,
+            groups:
+              parsed.groups?.map((group) => ({
+                ...group,
+                createdAt: new Date(group.createdAt),
+                updatedAt: new Date(group.updatedAt)
+              })) || []
+          };
+          return result as unknown as Awaited<ReturnType<TPermissionDALFactory["getOrgPermission"]>>;
+        } catch (cacheError) {
+          logger.error(cacheError, "Permission org cache miss", { userId, orgId });
+          await keyStore.deleteItem(cacheKey);
+        }
+      }
       const groupSubQuery = db(TableName.Groups)
         .where(`${TableName.Groups}.orgId`, orgId)
         .join(TableName.UserGroupMembership, (queryBuilder) => {
@@ -406,6 +544,30 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         ]
       });
 
+      if (formatedDoc) {
+        try {
+          const cachedPermissionVersion = await keyStore
+            .pgGetIntItem(PermissionServiceCacheKeys.getPermissionDalVersion(orgId))
+            .catch(() => 0);
+          const permissionCacheKey = PermissionServiceCacheKeys.getOrgPermission(
+            orgId,
+            Number(cachedPermissionVersion || 0),
+            userId
+          );
+          const serializedResult = JSON.stringify(formatedDoc);
+          if (Buffer.byteLength(serializedResult, "utf8") < MAX_PERMISSION_CACHE_BYTES) {
+            const encryptedResult = permissionEncryptor({ plainText: Buffer.from(serializedResult, "utf8") });
+            await keyStore.setItemWithExpiry(
+              permissionCacheKey,
+              PERMISSION_DAL_TTL(),
+              encryptedResult.cipherTextBlob.toString("base64")
+            );
+          }
+        } catch (cacheError) {
+          logger.error(cacheError, "Failed to cache org permission", { userId, orgId });
+        }
+      }
+
       return formatedDoc;
     } catch (error) {
       throw new DatabaseError({ error, name: "GetOrgPermission" });
@@ -417,6 +579,47 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
     orgId: string
   ) => {
     try {
+      const cachedPermissionDalVersion = await keyStore.pgGetIntItem(
+        PermissionServiceCacheKeys.getPermissionDalVersion(orgId)
+      );
+      const permissionDalVersion = Number(cachedPermissionDalVersion || 0);
+      const cacheKey = PermissionServiceCacheKeys.getOrgIdentityPermission(orgId, permissionDalVersion, identityId);
+
+      const { decryptor: permissionDecryptor, encryptor: permissionEncryptor } =
+        await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.Organization,
+          orgId
+        });
+
+      const encryptedCachedPermission = await keyStore.getItem(cacheKey);
+      if (encryptedCachedPermission) {
+        try {
+          await keyStore.setExpiry(cacheKey, PERMISSION_DAL_TTL());
+
+          const cachedPermission = permissionDecryptor({
+            cipherTextBlob: Buffer.from(encryptedCachedPermission, "base64")
+          });
+
+          const parsed = JSON.parse(cachedPermission.toString("utf8")) as {
+            createdAt: string;
+            updatedAt: string;
+            lastLoginTime?: string | null;
+            [key: string]: unknown;
+          };
+
+          const result = {
+            ...parsed,
+            createdAt: new Date(parsed.createdAt),
+            updatedAt: new Date(parsed.updatedAt),
+            lastLoginTime: parsed.lastLoginTime ? new Date(parsed.lastLoginTime) : null
+          };
+          return result as Awaited<ReturnType<TPermissionDALFactory["getOrgIdentityPermission"]>>;
+        } catch (cacheError) {
+          logger.error(cacheError, "Permission org identity cache miss", { identityId, orgId });
+          await keyStore.deleteItem(cacheKey);
+        }
+      }
+
       const membership = await db
         .replicaNode()(TableName.IdentityOrgMembership)
         .leftJoin(TableName.OrgRoles, `${TableName.IdentityOrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
@@ -429,6 +632,22 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .select(db.ref("shouldUseNewPrivilegeSystem").withSchema(TableName.Organization))
         .first();
 
+      if (membership) {
+        try {
+          const serializedResult = JSON.stringify(membership);
+          if (Buffer.byteLength(serializedResult, "utf8") < MAX_PERMISSION_CACHE_BYTES) {
+            const encryptedResult = permissionEncryptor({ plainText: Buffer.from(serializedResult, "utf8") });
+            await keyStore.setItemWithExpiry(
+              cacheKey,
+              PERMISSION_DAL_TTL(),
+              encryptedResult.cipherTextBlob.toString("base64")
+            );
+          }
+        } catch (cacheError) {
+          logger.error(cacheError, "Failed to cache org identity permission", { identityId, orgId });
+        }
+      }
+
       return membership;
     } catch (error) {
       throw new DatabaseError({ error, name: "GetOrgIdentityPermission" });
@@ -440,6 +659,51 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
     filterGroupId?: string
   ) => {
     try {
+      const projectInfo = await db.replicaNode()(TableName.Project).where("id", projectId).select("orgId").first();
+
+      if (!projectInfo) {
+        return [];
+      }
+
+      const { orgId } = projectInfo;
+
+      const cachedPermissionDalVersion = await keyStore.pgGetIntItem(
+        PermissionServiceCacheKeys.getPermissionDalVersion(orgId, projectId)
+      );
+      const permissionDalVersion = Number(cachedPermissionDalVersion || 0);
+      const cacheKey = PermissionServiceCacheKeys.getProjectGroupPermissions(
+        orgId,
+        projectId,
+        permissionDalVersion,
+        filterGroupId
+      );
+
+      const { decryptor: permissionDecryptor, encryptor: permissionEncryptor } =
+        await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
+
+      const encryptedCachedPermission = await keyStore.getItem(cacheKey);
+      if (encryptedCachedPermission) {
+        try {
+          await keyStore.setExpiry(cacheKey, PERMISSION_DAL_TTL());
+
+          const cachedPermission = permissionDecryptor({
+            cipherTextBlob: Buffer.from(encryptedCachedPermission, "base64")
+          });
+
+          const parsed = JSON.parse(cachedPermission.toString("utf8")) as Array<{
+            [key: string]: unknown;
+          }>;
+
+          return parsed as Awaited<ReturnType<TPermissionDALFactory["getProjectGroupPermissions"]>>;
+        } catch (cacheError) {
+          logger.error(cacheError, "Permission project group cache miss", { projectId, orgId, filterGroupId });
+          await keyStore.deleteItem(cacheKey);
+        }
+      }
+
       const docs = await db
         .replicaNode()(TableName.GroupProjectMembership)
         .join(TableName.Groups, `${TableName.Groups}.id`, `${TableName.GroupProjectMembership}.groupId`)
@@ -530,7 +794,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         ]
       });
 
-      return groupPermissions
+      const result = groupPermissions
         .map((groupPermission) => {
           if (!groupPermission) return undefined;
 
@@ -546,6 +810,24 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           };
         })
         .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+      if (result.length > 0) {
+        try {
+          const serializedResult = JSON.stringify(result);
+          if (Buffer.byteLength(serializedResult, "utf8") < MAX_PERMISSION_CACHE_BYTES) {
+            const encryptedResult = permissionEncryptor({ plainText: Buffer.from(serializedResult, "utf8") });
+            await keyStore.setItemWithExpiry(
+              cacheKey,
+              PERMISSION_DAL_TTL(),
+              encryptedResult.cipherTextBlob.toString("base64")
+            );
+          }
+        } catch (cacheError) {
+          logger.error(cacheError, "Failed to cache project group permissions", { projectId, orgId, filterGroupId });
+        }
+      }
+
+      return result;
     } catch (error) {
       throw new DatabaseError({ error, name: "GetProjectGroupPermissions" });
     }
@@ -553,6 +835,52 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
 
   const getProjectUserPermissions: TPermissionDALFactory["getProjectUserPermissions"] = async (projectId: string) => {
     try {
+      const projectInfo = await db.replicaNode()(TableName.Project).where("id", projectId).select("orgId").first();
+
+      if (!projectInfo) {
+        return [];
+      }
+
+      const { orgId } = projectInfo;
+
+      const cachedPermissionDalVersion = await keyStore.pgGetIntItem(
+        PermissionServiceCacheKeys.getPermissionDalVersion(orgId, projectId)
+      );
+      const permissionDalVersion = Number(cachedPermissionDalVersion || 0);
+      const cacheKey = PermissionServiceCacheKeys.getProjectUserPermissions(orgId, projectId, permissionDalVersion);
+
+      const { decryptor: permissionDecryptor, encryptor: permissionEncryptor } =
+        await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
+
+      const encryptedCachedPermission = await keyStore.getItem(cacheKey);
+      if (encryptedCachedPermission) {
+        try {
+          await keyStore.setExpiry(cacheKey, PERMISSION_DAL_TTL());
+
+          const cachedPermission = permissionDecryptor({
+            cipherTextBlob: Buffer.from(encryptedCachedPermission, "base64")
+          });
+
+          const parsed = JSON.parse(cachedPermission.toString("utf8")) as Array<{
+            createdAt: string;
+            updatedAt: string;
+            [key: string]: unknown;
+          }>;
+
+          const result = parsed.map((permission) => ({
+            ...permission,
+            createdAt: new Date(permission.createdAt),
+            updatedAt: new Date(permission.updatedAt)
+          }));
+          return result as Awaited<ReturnType<TPermissionDALFactory["getProjectUserPermissions"]>>;
+        } catch (cacheError) {
+          logger.error(cacheError, "Permission project users cache miss", { projectId, orgId });
+          await keyStore.deleteItem(cacheKey);
+        }
+      }
       const docs = await db
         .replicaNode()(TableName.Users)
         .where("isGhost", "=", false)
@@ -699,7 +1027,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         data: docs,
         key: "userId",
         parentMapper: ({
-          orgId,
+          orgId: userOrgId,
           username,
           orgAuthEnforced,
           membershipId,
@@ -711,7 +1039,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           projectType,
           userId
         }) => ({
-          orgId,
+          orgId: userOrgId,
           orgAuthEnforced,
           userId,
           projectId,
@@ -805,7 +1133,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         ]
       });
 
-      return userPermissions
+      const result = userPermissions
         .map((userPermission) => {
           if (!userPermission) return undefined;
           if (!userPermission?.userGroupRoles?.[0] && !userPermission?.projectMembershipRoles?.[0]) return undefined;
@@ -836,6 +1164,24 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           };
         })
         .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+      if (result.length > 0) {
+        try {
+          const serializedResult = JSON.stringify(result);
+          if (Buffer.byteLength(serializedResult, "utf8") < MAX_PERMISSION_CACHE_BYTES) {
+            const encryptedResult = permissionEncryptor({ plainText: Buffer.from(serializedResult, "utf8") });
+            await keyStore.setItemWithExpiry(
+              cacheKey,
+              PERMISSION_DAL_TTL(),
+              encryptedResult.cipherTextBlob.toString("base64")
+            );
+          }
+        } catch (cacheError) {
+          logger.error(cacheError, "Failed to cache project user permissions", { projectId, orgId });
+        }
+      }
+
+      return result;
     } catch (error) {
       throw new DatabaseError({ error, name: "GetProjectUserPermissions" });
     }
@@ -846,6 +1192,63 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
     projectId: string
   ) => {
     try {
+      const projectInfo = await db.replicaNode()(TableName.Project).where("id", projectId).select("orgId").first();
+
+      if (!projectInfo) {
+        return undefined;
+      }
+
+      const { orgId } = projectInfo;
+
+      const cachedPermissionDalVersion = await keyStore.pgGetIntItem(
+        PermissionServiceCacheKeys.getPermissionDalVersion(orgId, projectId)
+      );
+      const permissionDalVersion = Number(cachedPermissionDalVersion || 0);
+      const cacheKey = PermissionServiceCacheKeys.getProjectPermission(orgId, projectId, permissionDalVersion, userId);
+
+      const { decryptor: permissionDecryptor, encryptor: permissionEncryptor } =
+        await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
+
+      const encryptedCachedPermission = await keyStore.getItem(cacheKey);
+      if (encryptedCachedPermission) {
+        try {
+          await keyStore.setExpiry(cacheKey, PERMISSION_DAL_TTL());
+
+          const cachedPermission = permissionDecryptor({
+            cipherTextBlob: Buffer.from(encryptedCachedPermission, "base64")
+          });
+
+          const parsed = JSON.parse(cachedPermission.toString("utf8")) as {
+            createdAt: string;
+            updatedAt: string;
+            roles?: Array<{ createdAt: string; updatedAt: string; [key: string]: unknown }>;
+            additionalPrivileges?: Array<{ [key: string]: unknown }>;
+            userGroupRoles?: Array<{ [key: string]: unknown }>;
+            projecMembershiptRoles?: Array<{ [key: string]: unknown }>;
+            metadata?: Array<{ [key: string]: unknown }>;
+            [key: string]: unknown;
+          };
+
+          const result = {
+            ...parsed,
+            createdAt: new Date(parsed.createdAt),
+            updatedAt: new Date(parsed.updatedAt),
+            roles:
+              parsed.roles?.map((role) => ({
+                ...role,
+                createdAt: new Date(role.createdAt),
+                updatedAt: new Date(role.updatedAt)
+              })) || []
+          };
+          return result as unknown as Awaited<ReturnType<TPermissionDALFactory["getProjectPermission"]>>;
+        } catch (cacheError) {
+          logger.error(cacheError, "Permission project cache miss", { userId, projectId, orgId });
+          await keyStore.deleteItem(cacheKey);
+        }
+      }
       const subQueryUserGroups = db(TableName.UserGroupMembership).where("userId", userId).select("groupId");
       const docs = await db
         .replicaNode()(TableName.Users)
@@ -1005,7 +1408,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         data: docs,
         key: "projectId",
         parentMapper: ({
-          orgId,
+          orgId: queryOrgId,
           username,
           orgAuthEnforced,
           orgGoogleSsoAuthEnforced,
@@ -1020,7 +1423,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           shouldUseNewPrivilegeSystem,
           bypassOrgAuthEnabled
         }) => ({
-          orgId,
+          orgId: queryOrgId,
           orgAuthEnforced,
           orgGoogleSsoAuthEnforced,
           orgRole: orgRole as OrgMembershipRole,
@@ -1140,11 +1543,29 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             !isTemporary || (isTemporary && temporaryAccessEndTime && new Date() < temporaryAccessEndTime)
         ) ?? [];
 
-      return {
+      const result = {
         ...userPermission,
         roles: [...activeRoles, ...activeGroupRoles],
         additionalPrivileges: activeAdditionalPrivileges
       };
+
+      if (result) {
+        try {
+          const serializedResult = JSON.stringify(result);
+          if (Buffer.byteLength(serializedResult, "utf8") < MAX_PERMISSION_CACHE_BYTES) {
+            const encryptedResult = permissionEncryptor({ plainText: Buffer.from(serializedResult, "utf8") });
+            await keyStore.setItemWithExpiry(
+              cacheKey,
+              PERMISSION_DAL_TTL(),
+              encryptedResult.cipherTextBlob.toString("base64")
+            );
+          }
+        } catch (cacheError) {
+          logger.error(cacheError, "Failed to cache project permission", { userId, projectId, orgId });
+        }
+      }
+
+      return result;
     } catch (error) {
       throw new DatabaseError({ error, name: "GetProjectPermission" });
     }
@@ -1154,6 +1575,60 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
     projectId: string
   ) => {
     try {
+      const projectInfo = await db.replicaNode()(TableName.Project).where("id", projectId).select("orgId").first();
+
+      if (!projectInfo) {
+        return [];
+      }
+
+      const { orgId } = projectInfo;
+
+      const cachedPermissionDalVersion = await keyStore.pgGetIntItem(
+        PermissionServiceCacheKeys.getPermissionDalVersion(orgId, projectId)
+      );
+      const permissionDalVersion = Number(cachedPermissionDalVersion || 0);
+      const cacheKey = PermissionServiceCacheKeys.getProjectIdentityPermissions(orgId, projectId, permissionDalVersion);
+
+      const { decryptor: permissionDecryptor, encryptor: permissionEncryptor } =
+        await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
+
+      const encryptedCachedPermission = await keyStore.getItem(cacheKey);
+      if (encryptedCachedPermission) {
+        try {
+          await keyStore.setExpiry(cacheKey, PERMISSION_DAL_TTL());
+
+          const cachedPermission = permissionDecryptor({
+            cipherTextBlob: Buffer.from(encryptedCachedPermission, "base64")
+          });
+
+          const parsed = JSON.parse(cachedPermission.toString("utf8")) as Array<{
+            createdAt: string;
+            updatedAt: string;
+            roles?: Array<{ createdAt: string; updatedAt: string; [key: string]: unknown }>;
+            [key: string]: unknown;
+          }>;
+
+          const result = parsed.map((permission) => ({
+            ...permission,
+            createdAt: new Date(permission.createdAt),
+            updatedAt: new Date(permission.updatedAt),
+            roles:
+              permission.roles?.map((role) => ({
+                ...role,
+                createdAt: new Date(role.createdAt),
+                updatedAt: new Date(role.updatedAt)
+              })) || []
+          }));
+          return result as Awaited<ReturnType<TPermissionDALFactory["getProjectIdentityPermissions"]>>;
+        } catch (cacheError) {
+          logger.error(cacheError, "Permission project identity cache miss", { projectId, orgId });
+          await keyStore.deleteItem(cacheKey);
+        }
+      }
+
       const docs = await db
         .replicaNode()(TableName.IdentityProjectMembership)
         .join(
@@ -1226,7 +1701,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           membershipId,
           membershipCreatedAt,
           membershipUpdatedAt,
-          orgId,
+          orgId: membershipOrgId,
           identityName,
           projectType,
           identityId
@@ -1237,7 +1712,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           projectId,
           createdAt: membershipCreatedAt,
           updatedAt: membershipUpdatedAt,
-          orgId,
+          orgId: membershipOrgId,
           projectType,
           // just a prefilled value
           orgAuthEnforced: false
@@ -1285,7 +1760,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         ]
       });
 
-      return permissions
+      const result = permissions
         .map((permission) => {
           if (!permission) {
             return undefined;
@@ -1304,6 +1779,24 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           return { ...permission, roles: activeRoles, additionalPrivileges: activeAdditionalPrivileges };
         })
         .filter((item): item is NonNullable<typeof item> => Boolean(item));
+
+      if (result.length > 0) {
+        try {
+          const serializedResult = JSON.stringify(result);
+          if (Buffer.byteLength(serializedResult, "utf8") < MAX_PERMISSION_CACHE_BYTES) {
+            const encryptedResult = permissionEncryptor({ plainText: Buffer.from(serializedResult, "utf8") });
+            await keyStore.setItemWithExpiry(
+              cacheKey,
+              PERMISSION_DAL_TTL(),
+              encryptedResult.cipherTextBlob.toString("base64")
+            );
+          }
+        } catch (cacheError) {
+          logger.error(cacheError, "Failed to cache project identity permissions", { projectId, orgId });
+        }
+      }
+
+      return result;
     } catch (error) {
       throw new DatabaseError({ error, name: "GetProjectIdentityPermissions" });
     }
@@ -1467,6 +1960,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
   };
 
   return {
+    invalidatePermissionCacheByOrgId,
+    invalidatePermissionCacheByProjectId,
     getOrgPermission,
     getOrgIdentityPermission,
     getProjectPermission,

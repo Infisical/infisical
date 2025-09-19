@@ -9,6 +9,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
+import { TPermissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
@@ -20,6 +21,7 @@ import { TOrgRoleDALFactory } from "./org-role-dal";
 type TOrgRoleServiceFactoryDep = {
   orgRoleDAL: TOrgRoleDALFactory;
   permissionService: TPermissionServiceFactory;
+  permissionDAL: Pick<TPermissionDALFactory, "invalidatePermissionCacheByOrgId">;
   orgDAL: TOrgDALFactory;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
 };
@@ -30,6 +32,7 @@ export const orgRoleServiceFactory = ({
   orgRoleDAL,
   orgDAL,
   permissionService,
+  permissionDAL,
   externalGroupOrgRoleMappingDAL
 }: TOrgRoleServiceFactoryDep) => {
   const createRole = async (
@@ -48,6 +51,9 @@ export const orgRoleServiceFactory = ({
       orgId,
       permissions: JSON.stringify(data.permissions)
     });
+
+    await permissionDAL.invalidatePermissionCacheByOrgId(orgId);
+
     return role;
   };
 
@@ -126,6 +132,9 @@ export const orgRoleServiceFactory = ({
       { ...data, permissions: data.permissions ? JSON.stringify(data.permissions) : undefined }
     );
     if (!updatedRole) throw new NotFoundError({ message: `Organization role with ID '${roleId}' not found` });
+
+    await permissionDAL.invalidatePermissionCacheByOrgId(orgId);
+
     return updatedRole;
   };
 
@@ -165,6 +174,8 @@ export const orgRoleServiceFactory = ({
     const [deletedRole] = await orgRoleDAL.delete({ id: roleId, orgId });
     if (!deletedRole)
       throw new NotFoundError({ message: `Organization role with ID '${roleId}' not found`, name: "UpdateRole" });
+
+    await permissionDAL.invalidatePermissionCacheByOrgId(orgId);
 
     return deletedRole;
   };

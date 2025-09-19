@@ -25,6 +25,7 @@ import {
   OrgPermissionSecretShareAction,
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
+import { TPermissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -132,6 +133,10 @@ type TOrgServiceFactoryDep = {
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
   permissionService: TPermissionServiceFactory;
+  permissionDAL: Pick<
+    TPermissionDALFactory,
+    "invalidatePermissionCacheByOrgId" | "invalidatePermissionCacheByProjectId"
+  >;
   licenseService: Pick<
     TLicenseServiceFactory,
     "getPlan" | "updateSubscriptionOrgMemberCount" | "generateOrgCustomerId" | "removeOrgCustomer"
@@ -157,6 +162,7 @@ export const orgServiceFactory = ({
   orgRoleDAL,
   incidentContactDAL,
   permissionService,
+  permissionDAL,
   smtpService,
   projectDAL,
   projectMembershipDAL,
@@ -786,6 +792,9 @@ export const orgServiceFactory = ({
           );
         }
       }
+
+      await permissionDAL.invalidatePermissionCacheByOrgId(orgId, tx);
+
       return updatedOrgMembership;
     });
     return membership;
@@ -1150,6 +1159,14 @@ export const orgServiceFactory = ({
           projectName: project.name
         });
       }
+
+      // Invalidate permission cache for org and project membership creation
+      await permissionDAL.invalidatePermissionCacheByOrgId(orgId, tx);
+      for (const project of projectsToInvite) {
+        // eslint-disable-next-line no-await-in-loop
+        await permissionDAL.invalidatePermissionCacheByProjectId(project.id, orgId, tx);
+      }
+
       return users;
     });
 
@@ -1322,6 +1339,8 @@ export const orgServiceFactory = ({
       userId
     });
 
+    await permissionDAL.invalidatePermissionCacheByOrgId(orgId);
+
     return deletedMembership;
   };
 
@@ -1350,6 +1369,8 @@ export const orgServiceFactory = ({
       licenseService,
       userId
     });
+
+    await permissionDAL.invalidatePermissionCacheByOrgId(orgId);
 
     return deletedMemberships;
   };
