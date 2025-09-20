@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { IdentitiesSchema, NamespaceMembershipRolesSchema, NamespaceMembershipsSchema } from "@app/db/schemas";
-import { IdentityNameespaceMembershipOrderBy } from "@app/ee/services/identity-namespace-membership/identity-namespace-membership-types";
+import { NamespaceIdentityMembershipOrderBy } from "@app/ee/services/namespace-identity-membership/namespace-identity-membership-types";
 import { NamespaceUserMembershipTemporaryMode } from "@app/ee/services/namespace-user-membership/namespace-user-membership-types";
 import { ApiDocsTags, NAMESPACE_IDENTITY_MEMBERSHIPS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
@@ -96,7 +96,7 @@ export const registerIdentityNamespaceMembershipRouter = async (server: FastifyZ
       }
     },
     handler: async (req) => {
-      const identityMembership = await server.services.identityNamespaceMembership.createIdentityNamespaceMembership({
+      const identityMembership = await server.services.namespaceIdentityMembership.createNamespaceIdentityMembership({
         identityId: req.params.identityId,
         roles: req.body.roles,
         permission: {
@@ -171,7 +171,7 @@ export const registerIdentityNamespaceMembershipRouter = async (server: FastifyZ
       }
     },
     handler: async (req) => {
-      const roles = await server.services.identityNamespaceMembership.updateIdentityNamespaceMembership({
+      const roles = await server.services.namespaceIdentityMembership.updateNamespaceIdentityMembership({
         identityId: req.params.identityId,
         roles: req.body.roles,
         permission: {
@@ -213,7 +213,7 @@ export const registerIdentityNamespaceMembershipRouter = async (server: FastifyZ
       }
     },
     handler: async (req) => {
-      const identityMembership = await server.services.identityNamespaceMembership.deleteIdentityNamespaceMembership({
+      const identityMembership = await server.services.namespaceIdentityMembership.deleteNamespaceIdentityMembership({
         identityId: req.params.identityId,
         permission: {
           actor: req.permission.type,
@@ -261,8 +261,8 @@ export const registerIdentityNamespaceMembershipRouter = async (server: FastifyZ
           .describe(NAMESPACE_IDENTITY_MEMBERSHIPS.LIST_IDENTITY_MEMBERSHIPS.limit)
           .optional(),
         orderBy: z
-          .nativeEnum(IdentityNameespaceMembershipOrderBy)
-          .default(IdentityNameespaceMembershipOrderBy.Name)
+          .nativeEnum(NamespaceIdentityMembershipOrderBy)
+          .default(NamespaceIdentityMembershipOrderBy.Name)
           .describe(NAMESPACE_IDENTITY_MEMBERSHIPS.LIST_IDENTITY_MEMBERSHIPS.orderBy)
           .optional(),
         orderDirection: z
@@ -281,7 +281,7 @@ export const registerIdentityNamespaceMembershipRouter = async (server: FastifyZ
     },
     handler: async (req) => {
       const { identityMemberships, totalCount } =
-        await server.services.identityNamespaceMembership.listIdentityNamespaceMemberships({
+        await server.services.namespaceIdentityMembership.listNamespaceIdentityMemberships({
           limit: req.query.limit,
           offset: req.query.offset,
           orderBy: req.query.orderBy,
@@ -330,7 +330,7 @@ export const registerIdentityNamespaceMembershipRouter = async (server: FastifyZ
     },
     handler: async (req) => {
       const identityMembership =
-        await server.services.identityNamespaceMembership.getIdentityNamespaceMembershipByIdentityId({
+        await server.services.namespaceIdentityMembership.getNamespaceIdentityMembershipByIdentityId({
           identityId: req.params.identityId,
           permission: {
             actor: req.permission.type,

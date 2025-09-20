@@ -31,7 +31,7 @@ import {
   TSearchOrgIdentitiesByOrgIdDTO,
   TUpdateIdentityDTO
 } from "./identity-types";
-import { TIdentityNamespaceMembershipDALFactory } from "@app/ee/services/identity-namespace-membership/identity-namespace-membership-dal";
+import { TNamespaceIdentityMembershipDALFactory } from "@app/ee/services/namespace-identity-membership/namespace-identity-membership-dal";
 import { TNamespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
 import {
   NamespacePermissionIdentityActions,
@@ -45,7 +45,7 @@ type TIdentityServiceFactoryDep = {
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
   namespaceDAL: Pick<TNamespaceDALFactory, "findOne">;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
-  identityNamespaceMembershipDAL: TIdentityNamespaceMembershipDALFactory;
+  namespaceIdentityMembershipDAL: TNamespaceIdentityMembershipDALFactory;
   namespaceMembershipRoleDAL: Pick<TNamespaceMembershipRoleDALFactory, "create">;
   permissionService: Pick<
     TPermissionServiceFactory,
@@ -66,7 +66,7 @@ export const identityServiceFactory = ({
   permissionService,
   licenseService,
   keyStore,
-  identityNamespaceMembershipDAL,
+  namespaceIdentityMembershipDAL,
   namespaceDAL,
   namespaceMembershipRoleDAL
 }: TIdentityServiceFactoryDep) => {
@@ -163,7 +163,7 @@ export const identityServiceFactory = ({
       );
 
       if (namespaceId) {
-        const namespaceIdentityMembership = await identityNamespaceMembershipDAL.create(
+        const namespaceIdentityMembership = await namespaceIdentityMembershipDAL.create(
           {
             orgIdentityMembershipId: orgIdentityMembership.id,
             namespaceId

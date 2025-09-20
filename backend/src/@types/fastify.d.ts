@@ -122,7 +122,7 @@ import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integ
 import { TNamespaceServiceFactory } from "@app/ee/services/namespace/namespace-service";
 import { TNamespaceRoleServiceFactory } from "@app/services/namespace-role/namespace-role-service";
 import { TNamespaceUserMembershipServiceFactory } from "@app/ee/services/namespace-user-membership/namespace-user-membership-service";
-import { TIdentityNamespaceMembershipServiceFactory } from "@app/ee/services/identity-namespace-membership/identity-namespace-membership-service";
+import { TNamespaceIdentityMembershipServiceFactory } from "@app/ee/services/namespace-identity-membership/namespace-identity-membership-service";
 
 declare module "@fastify/request-context" {
   interface RequestContextData {
@@ -319,7 +319,7 @@ declare module "fastify" {
       namespace: TNamespaceServiceFactory;
       namespaceRole: TNamespaceRoleServiceFactory;
       namespaceUserMembership: TNamespaceUserMembershipServiceFactory;
-      identityNamespaceMembership: TIdentityNamespaceMembershipServiceFactory;
+      namespaceIdentityMembership: TNamespaceIdentityMembershipServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

@@ -4,6 +4,7 @@ export type SubscriptionPlan = {
   memberLimit: number;
   identitiesUsed: number;
   identityLimit: number;
+  namespace: boolean;
   auditLogs: boolean;
   dynamicSecret: boolean;
   auditLogsRetentionDays: number;

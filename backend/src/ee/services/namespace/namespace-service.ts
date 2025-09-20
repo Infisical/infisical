@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { TNamespaces } from "@app/db/schemas";
+import { NamespaceMembershipRole, TNamespaces } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { OrgPermissionNamespaceActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -12,28 +12,38 @@ import {
   TDeleteNamespaceDTO,
   TGetByNameNamespaceDTO,
   TListNamespaceDTO,
+  TSearchNamespaceDTO,
   TUpdateNamespaceDTO
 } from "./namespace-types";
+import { TNamespaceMembershipRoleDALFactory } from "../namespace-role/namespace-membership-role-dal";
+import { TNamespaceUserMembershipDALFactory } from "../namespace-user-membership/namespace-user-membership-dal";
 
 type TNamespaceServiceFactoryDep = {
   namespaceDAL: TNamespaceDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  namespaceMembershipRoleDAL: Pick<TNamespaceMembershipRoleDALFactory, "create">;
+  namespaceUserMembershipDAL: Pick<TNamespaceUserMembershipDALFactory, "create">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getNamespacePermission">;
 };
 
 export type TNamespaceServiceFactory = {
   createNamespace: (dto: TCreateNamespaceDTO) => Promise<TNamespaces>;
   updateNamespace: (dto: TUpdateNamespaceDTO) => Promise<TNamespaces>;
   deleteNamespace: (dto: TDeleteNamespaceDTO) => Promise<TNamespaces>;
-  listNamespaces: (dto: TListNamespaceDTO) => Promise<TNamespaces[]>;
+  listNamespaces: (dto: TListNamespaceDTO) => Promise<{ namespaces: TNamespaces[]; totalCount: number }>;
   getNamespaceByName: (dto: TGetByNameNamespaceDTO) => Promise<TNamespaces>;
+  searchNamespaces: (
+    dto: TSearchNamespaceDTO
+  ) => Promise<{ namespaces: Array<TNamespaces & { isMember: boolean }>; totalCount: number }>;
 };
 
 export const namespaceServiceFactory = ({
   namespaceDAL,
-  permissionService
+  permissionService,
+  namespaceUserMembershipDAL,
+  namespaceMembershipRoleDAL
 }: TNamespaceServiceFactoryDep): TNamespaceServiceFactory => {
   const createNamespace: TNamespaceServiceFactory["createNamespace"] = async ({ permission, name, description }) => {
-    const { permission: orgPermission } = await permissionService.getOrgPermission(
+    const { permission: orgPermission, membership } = await permissionService.getOrgPermission(
       permission.type,
       permission.id,
       permission.orgId,
@@ -50,10 +60,30 @@ export const namespaceServiceFactory = ({
       throw new BadRequestError({ message: `Namespace with name '${name}' already exists` });
     }
 
-    const namespace = await namespaceDAL.create({
-      name,
-      description,
-      orgId: permission.orgId
+    const namespace = await namespaceDAL.transaction(async (tx) => {
+      const newNamespace = await namespaceDAL.create(
+        {
+          name,
+          description,
+          orgId: permission.orgId
+        },
+        tx
+      );
+      const namespaceMembership = await namespaceUserMembershipDAL.create(
+        {
+          namespaceId: newNamespace.id,
+          orgUserMembershipId: membership.id
+        },
+        tx
+      );
+      await namespaceMembershipRoleDAL.create(
+        {
+          namespaceMembershipId: namespaceMembership.id,
+          role: NamespaceMembershipRole.Admin
+        },
+        tx
+      );
+      return newNamespace;
     });
 
     return namespace;
@@ -131,52 +161,76 @@ export const namespaceServiceFactory = ({
     limit,
     search
   }: TListNamespaceDTO) => {
-    const { permission: orgPermission } = await permissionService.getOrgPermission(
+    await permissionService.getOrgPermission(
       permission.type,
       permission.id,
       permission.orgId,
       permission.authMethod,
       permission.orgId
     );
-    ForbiddenError.from(orgPermission).throwUnlessCan(
-      OrgPermissionNamespaceActions.Read,
-      OrgPermissionSubjects.Namespace
-    );
 
-    const namespaces = await namespaceDAL.find(
-      { orgId: permission.orgId, $search: { name: search } },
-      {
-        offset,
-        limit,
-        sort: [["name", "asc"]]
-      }
-    );
+    const { docs: namespaces, totalCount } = await namespaceDAL.listActorNamespaces({
+      orgId: permission.orgId,
+      name: search,
+      actor: permission.type,
+      actorId: permission.id,
+      offset,
+      limit
+    });
 
-    return namespaces;
+    return { namespaces, totalCount };
   };
 
   const getNamespaceByName: TNamespaceServiceFactory["getNamespaceByName"] = async ({
     permission,
     name
   }: TGetByNameNamespaceDTO) => {
-    const { permission: orgPermission } = await permissionService.getOrgPermission(
+    const namespace = await namespaceDAL.findOne({ name, orgId: permission.orgId });
+    if (!namespace) {
+      throw new NotFoundError({ message: `Namespace with name '${name}' not found` });
+    }
+
+    await permissionService.getNamespacePermission({
+      actor: permission.type,
+      actorId: permission.id,
+      actorOrgId: permission.orgId,
+      actorAuthMethod: permission.authMethod,
+      namespaceId: namespace.id
+    });
+
+    return namespace;
+  };
+
+  const searchNamespaces: TNamespaceServiceFactory["searchNamespaces"] = async ({
+    permission,
+    name,
+    limit,
+    offset,
+    orderBy,
+    namespaceIds,
+    orderDirection
+  }: TSearchNamespaceDTO) => {
+    await permissionService.getOrgPermission(
       permission.type,
       permission.id,
       permission.orgId,
       permission.authMethod,
       permission.orgId
     );
-    ForbiddenError.from(orgPermission).throwUnlessCan(
-      OrgPermissionNamespaceActions.Read,
-      OrgPermissionSubjects.Namespace
-    );
 
-    const namespace = await namespaceDAL.findOne({ name, orgId: permission.orgId });
-    if (!namespace) {
-      throw new NotFoundError({ message: `Namespace with name '${name}' not found` });
-    }
+    const { docs: namespaces, totalCount } = await namespaceDAL.searchNamespaces({
+      orgId: permission.orgId,
+      actor: permission.type,
+      actorId: permission.id,
+      name,
+      limit,
+      offset,
+      sortBy: orderBy,
+      sortDir: orderDirection,
+      namespaceIds
+    });
 
-    return namespace;
+    return { namespaces, totalCount };
   };
 
   return {
@@ -184,6 +238,7 @@ export const namespaceServiceFactory = ({
     updateNamespace,
     deleteNamespace,
     listNamespaces,
-    getNamespaceByName
+    getNamespaceByName,
+    searchNamespaces
   };
 };

@@ -3,7 +3,7 @@ import { NamespaceUserMembershipTemporaryMode } from "../namespace-user-membersh
 import { TSearchResourceOperator } from "@app/lib/search-resource/search";
 
 // TODO(namespace): add audit log for various events
-export type TCreateIdentityNamespaceMembershipDTO = {
+export type TCreateNamespaceIdentityMembershipDTO = {
   identityId: string;
   roles: (
     | {
@@ -21,7 +21,7 @@ export type TCreateIdentityNamespaceMembershipDTO = {
   permission: TNamespacePermission;
 };
 
-export type TUpdateIdentityNameespaceMembershipDTO = {
+export type TUpdateNamespaceIdentityMembershipDTO = {
   roles: (
     | {
         role: string;
@@ -39,31 +39,31 @@ export type TUpdateIdentityNameespaceMembershipDTO = {
   permission: TNamespacePermission;
 };
 
-export type TDeleteIdentityNameespaceMembershipDTO = {
+export type TDeleteNamespaceIdentityMembershipDTO = {
   identityId: string;
   permission: TNamespacePermission;
 };
 
-export type TListIdentityNameespaceMembershipDTO = {
+export type TListNamespaceIdentityMembershipDTO = {
   limit?: number;
   offset?: number;
-  orderBy?: IdentityNameespaceMembershipOrderBy;
+  orderBy?: NamespaceIdentityMembershipOrderBy;
   orderDirection?: OrderByDirection;
   search?: string;
   permission: TNamespacePermission;
 };
 
-export type TGetIdentityNameespaceMembershipByIdentityIdDTO = {
+export type TGetNamespaceIdentityMembershipByIdentityIdDTO = {
   identityId: string;
   permission: TNamespacePermission;
 };
 
-export type TGetIdentityNameespaceMembershipByMembershipIdDTO = {
+export type TGetNamespaceIdentityMembershipByMembershipIdDTO = {
   identityMembershipId: string;
   permission: TNamespacePermission;
 };
 
-export enum IdentityNameespaceMembershipOrderBy {
+export enum NamespaceIdentityMembershipOrderBy {
   Name = "name"
 }
 

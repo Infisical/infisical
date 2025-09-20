@@ -1,46 +1,46 @@
-import { SortDirection } from "@app/db/schemas";
-import { OrgServiceActor } from "@app/lib/types";
+export type TNamespace = {
+  id: string;
+  name: string;
+  description?: string;
+  orgId: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type TCreateNamespaceDTO = {
-  permission: OrgServiceActor;
   name: string;
   description?: string;
 };
 
 export type TUpdateNamespaceDTO = {
-  permission: OrgServiceActor;
   name: string;
   newName?: string;
   description?: string;
 };
 
 export type TDeleteNamespaceDTO = {
-  permission: OrgServiceActor;
   name: string;
 };
 
-export type TListNamespaceDTO = {
-  permission: OrgServiceActor;
+export type TGetNamespaceDTO = {
+  name: string;
+};
+
+export type TListNamespacesDTO = {
   offset?: number;
   limit?: number;
   search?: string;
-};
-
-export type TGetByNameNamespaceDTO = {
-  permission: OrgServiceActor;
-  name: string;
 };
 
 export enum SearchNamespaceSortBy {
   NAME = "name"
 }
 
-export type TSearchNamespaceDTO = {
-  permission: OrgServiceActor;
+export type TSearchNamespacesDTO = {
   name?: string;
   limit?: number;
   offset?: number;
   orderBy?: SearchNamespaceSortBy;
+  orderDirection?: "asc" | "desc";
   namespaceIds?: string[];
-  orderDirection?: SortDirection;
 };

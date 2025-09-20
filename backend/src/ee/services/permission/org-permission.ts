@@ -66,10 +66,8 @@ export enum OrgPermissionRelayActions {
 }
 
 export enum OrgPermissionNamespaceActions {
-  Read = "read",
   Create = "create",
-  Edit = "edit",
-  Delete = "delete"
+  AccessAllNamespace = "access-all-namespace"
 }
 
 export type NamespaceSubjectFields = {
@@ -344,6 +342,9 @@ const buildAdminPermission = () => {
   // ws permissions
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Project);
+
+  can(OrgPermissionNamespaceActions.Create, OrgPermissionSubjects.Namespace);
+  can(OrgPermissionNamespaceActions.AccessAllNamespace, OrgPermissionSubjects.Namespace);
   // role permission
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Role);
@@ -483,6 +484,9 @@ const buildMemberPermission = () => {
 
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Project);
+
+  can(OrgPermissionNamespaceActions.Create, OrgPermissionSubjects.Namespace);
+
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
   can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
