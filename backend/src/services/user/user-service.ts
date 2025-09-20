@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { TPermissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -42,6 +43,7 @@ type TUserServiceFactoryDep = {
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
   permissionService: TPermissionServiceFactory;
+  permissionDAL: Pick<TPermissionDALFactory, "invalidatePermissionCacheByOrgId">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
 };
 
@@ -56,6 +58,7 @@ export const userServiceFactory = ({
   tokenService,
   smtpService,
   permissionService,
+  permissionDAL,
   userAliasDAL
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (token: string) => {
@@ -346,8 +349,19 @@ export const userServiceFactory = ({
   };
 
   const deleteUser = async (userId: string) => {
-    const user = await userDAL.deleteById(userId);
-    return user;
+    const deletedUser = await userDAL.transaction(async (tx) => {
+      const orgMemberships = await orgMembershipDAL.find({ userId }, { tx });
+
+      const user = await userDAL.deleteById(userId, tx);
+
+      for (const membership of orgMemberships) {
+        // eslint-disable-next-line no-await-in-loop
+        await permissionDAL.invalidatePermissionCacheByOrgId(membership.orgId, tx);
+      }
+
+      return user;
+    });
+    return deletedUser;
   };
 
   // user actions operations

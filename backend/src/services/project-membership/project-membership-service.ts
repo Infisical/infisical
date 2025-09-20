@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TPermissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -44,6 +45,10 @@ import { TProjectUserMembershipRoleDALFactory } from "./project-user-membership-
 
 type TProjectMembershipServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRole">;
+  permissionDAL: Pick<
+    TPermissionDALFactory,
+    "invalidatePermissionCacheByOrgId" | "invalidatePermissionCacheByProjectId"
+  >;
   smtpService: TSmtpService;
   projectBotDAL: TProjectBotDALFactory;
   projectMembershipDAL: TProjectMembershipDALFactory;
@@ -65,6 +70,7 @@ export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembersh
 
 export const projectMembershipServiceFactory = ({
   permissionService,
+  permissionDAL,
   projectMembershipDAL,
   projectUserMembershipRoleDAL,
   smtpService,
@@ -237,6 +243,8 @@ export const projectMembershipServiceFactory = ({
           })),
         tx
       );
+
+      await permissionDAL.invalidatePermissionCacheByProjectId(projectId, project.orgId, tx);
     });
 
     if (sendEmails) {
@@ -368,7 +376,14 @@ export const projectMembershipServiceFactory = ({
 
     const updatedRoles = await projectMembershipDAL.transaction(async (tx) => {
       await projectUserMembershipRoleDAL.delete({ projectMembershipId: membershipId }, tx);
-      return projectUserMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
+      const result = await projectUserMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
+
+      const project = await projectDAL.findById(projectId, tx);
+      if (project) {
+        await permissionDAL.invalidatePermissionCacheByProjectId(projectId, project.orgId, tx);
+      }
+
+      return result;
     });
 
     return updatedRoles;
@@ -412,6 +427,12 @@ export const projectMembershipServiceFactory = ({
         },
         tx
       );
+
+      const project = await projectDAL.findById(projectId, tx);
+      if (project) {
+        await permissionDAL.invalidatePermissionCacheByProjectId(projectId, project.orgId, tx);
+      }
+
       return deletedMembership;
     });
     return membership;
@@ -512,6 +533,8 @@ export const projectMembershipServiceFactory = ({
         },
         tx
       );
+
+      await permissionDAL.invalidatePermissionCacheByProjectId(projectId, project.orgId, tx);
 
       return deletedMemberships;
     });

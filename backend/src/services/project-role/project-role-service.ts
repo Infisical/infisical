@@ -3,6 +3,7 @@ import { PackRule, packRules, unpackRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 
 import { ActionProjectType, ProjectMembershipRole, ProjectType, TableName, TProjects } from "@app/db/schemas";
+import { TPermissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
@@ -36,6 +37,7 @@ type TProjectRoleServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findProjectById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getUserProjectPermission">;
+  permissionDAL: Pick<TPermissionDALFactory, "invalidatePermissionCacheByProjectId">;
   identityProjectMembershipRoleDAL: TIdentityProjectMembershipRoleDALFactory;
   projectUserMembershipRoleDAL: TProjectUserMembershipRoleDALFactory;
 };
@@ -50,6 +52,7 @@ const unpackPermissions = (permissions: unknown) =>
 export const projectRoleServiceFactory = ({
   projectRoleDAL,
   permissionService,
+  permissionDAL,
   identityProjectMembershipRoleDAL,
   projectUserMembershipRoleDAL,
   projectDAL,
@@ -87,6 +90,12 @@ export const projectRoleServiceFactory = ({
       ...data,
       projectId
     });
+
+    const project = await projectDAL.findProjectById(projectId);
+    if (project) {
+      await permissionDAL.invalidatePermissionCacheByProjectId(projectId, project.orgId);
+    }
+
     return { ...role, permissions: unpackPermissions(role.permissions) };
   };
 
@@ -162,6 +171,11 @@ export const projectRoleServiceFactory = ({
     });
     if (!updatedRole) throw new NotFoundError({ message: "Project role not found", name: "Update role" });
 
+    const project = await projectDAL.findProjectById(projectRole.projectId);
+    if (project) {
+      await permissionDAL.invalidatePermissionCacheByProjectId(projectRole.projectId, project.orgId);
+    }
+
     return { ...updatedRole, permissions: unpackPermissions(updatedRole.permissions) };
   };
 
@@ -196,6 +210,11 @@ export const projectRoleServiceFactory = ({
 
     const deletedRole = await projectRoleDAL.deleteById(roleId);
     if (!deletedRole) throw new NotFoundError({ message: "Project role not found", name: "Delete role" });
+
+    const project = await projectDAL.findProjectById(projectRole.projectId);
+    if (project) {
+      await permissionDAL.invalidatePermissionCacheByProjectId(projectRole.projectId, project.orgId);
+    }
 
     return { ...deletedRole, permissions: unpackPermissions(deletedRole.permissions) };
   };

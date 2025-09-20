@@ -437,7 +437,6 @@ export const registerRoutes = async (
   const userNotificationDAL = userNotificationDALFactory(db);
 
   // ee db layer ops
-  const permissionDAL = permissionDALFactory(db);
   const samlConfigDAL = samlConfigDALFactory(db);
   const scimDAL = scimDALFactory(db);
   const ldapConfigDAL = ldapConfigDALFactory(db);
@@ -521,27 +520,6 @@ export const registerRoutes = async (
   const eventBusService = eventBusFactory(server.redis);
   const sseService = sseServiceFactory(eventBusService, server.redis);
 
-  const permissionService = permissionServiceFactory({
-    permissionDAL,
-    orgRoleDAL,
-    projectRoleDAL,
-    serviceTokenDAL,
-    projectDAL
-  });
-  const assumePrivilegeService = assumePrivilegeServiceFactory({
-    projectDAL,
-    permissionService
-  });
-
-  const licenseService = licenseServiceFactory({
-    permissionService,
-    orgDAL,
-    licenseDAL,
-    keyStore,
-    identityOrgMembershipDAL,
-    projectDAL
-  });
-
   const hsmService = hsmServiceFactory({
     hsmModule,
     envConfig
@@ -556,6 +534,30 @@ export const registerRoutes = async (
     projectDAL,
     hsmService,
     envConfig
+  });
+
+  const permissionDAL = permissionDALFactory({ db, keyStore, kmsService });
+
+  const permissionService = permissionServiceFactory({
+    permissionDAL,
+    orgRoleDAL,
+    projectRoleDAL,
+    serviceTokenDAL,
+    projectDAL
+  });
+
+  const licenseService = licenseServiceFactory({
+    permissionService,
+    orgDAL,
+    licenseDAL,
+    keyStore,
+    identityOrgMembershipDAL,
+    projectDAL
+  });
+
+  const assumePrivilegeService = assumePrivilegeServiceFactory({
+    projectDAL,
+    permissionService
   });
 
   const externalKmsService = externalKmsServiceFactory({
@@ -632,6 +634,7 @@ export const registerRoutes = async (
     projectBotDAL,
     projectKeyDAL,
     permissionService,
+    permissionDAL,
     licenseService,
     oidcConfigDAL
   });
@@ -644,7 +647,8 @@ export const registerRoutes = async (
     projectKeyDAL,
     projectBotDAL,
     projectRoleDAL,
-    permissionService
+    permissionService,
+    permissionDAL
   });
 
   const folderCommitChangesDAL = folderCommitChangesDALFactory(db);
@@ -754,6 +758,7 @@ export const registerRoutes = async (
     orgMembershipDAL,
     tokenService,
     permissionService,
+    permissionDAL,
     groupProjectDAL,
     smtpService,
     projectMembershipDAL,
@@ -805,6 +810,7 @@ export const registerRoutes = async (
     samlConfigDAL,
     orgRoleDAL,
     permissionService,
+    permissionDAL,
     orgDAL,
     incidentContactDAL,
     tokenService,
@@ -843,6 +849,7 @@ export const registerRoutes = async (
   });
   const orgRoleService = orgRoleServiceFactory({
     permissionService,
+    permissionDAL,
     orgRoleDAL,
     orgDAL,
     externalGroupOrgRoleMappingDAL
@@ -918,6 +925,7 @@ export const registerRoutes = async (
     projectUserMembershipRoleDAL,
     projectDAL,
     permissionService,
+    permissionDAL,
     projectBotDAL,
     orgDAL,
     userDAL,
@@ -1252,6 +1260,7 @@ export const registerRoutes = async (
 
   const projectRoleService = projectRoleServiceFactory({
     permissionService,
+    permissionDAL,
     projectRoleDAL,
     projectUserMembershipRoleDAL,
     identityProjectMembershipRoleDAL,

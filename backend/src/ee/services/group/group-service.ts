@@ -14,6 +14,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "../permission/org-permission";
+import { TPermissionDALFactory } from "../permission/permission-dal";
 import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TGroupDALFactory } from "./group-dal";
@@ -45,6 +46,7 @@ type TGroupServiceFactoryDep = {
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRole">;
+  permissionDAL: Pick<TPermissionDALFactory, "invalidatePermissionCacheByOrgId">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
 };
@@ -61,6 +63,7 @@ export const groupServiceFactory = ({
   projectBotDAL,
   projectKeyDAL,
   permissionService,
+  permissionDAL,
   licenseService,
   oidcConfigDAL
 }: TGroupServiceFactoryDep) => {
@@ -129,6 +132,8 @@ export const groupServiceFactory = ({
 
       return newGroup;
     });
+
+    await permissionDAL.invalidatePermissionCacheByOrgId(actorOrgId);
 
     return group;
   };
@@ -225,6 +230,8 @@ export const groupServiceFactory = ({
       return updated;
     });
 
+    await permissionDAL.invalidatePermissionCacheByOrgId(actorOrgId);
+
     return updatedGroup;
   };
 
@@ -251,6 +258,8 @@ export const groupServiceFactory = ({
       id,
       orgId: actorOrgId
     });
+
+    await permissionDAL.invalidatePermissionCacheByOrgId(actorOrgId);
 
     return group;
   };
@@ -398,6 +407,8 @@ export const groupServiceFactory = ({
       projectBotDAL
     });
 
+    await permissionDAL.invalidatePermissionCacheByOrgId(actorOrgId);
+
     return users[0];
   };
 
@@ -478,6 +489,8 @@ export const groupServiceFactory = ({
       groupProjectDAL,
       projectKeyDAL
     });
+
+    await permissionDAL.invalidatePermissionCacheByOrgId(actorOrgId);
 
     return users[0];
   };
