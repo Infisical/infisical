@@ -597,19 +597,27 @@ export const expandSecretReferencesFactory = ({
       return secretCache[cacheKey][secretKey] || { value: "", tags: [] };
     }
 
-    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-    if (!folder) return { value: "", tags: [] };
-    const secrets = await secretDAL.findByFolderId({ folderId: folder.id });
+    try {
+      const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+      if (!folder) return { value: "", tags: [] };
+      const secrets = await secretDAL.findByFolderId({ folderId: folder.id });
 
-    const decryptedSecret = secrets.reduce<Record<string, { value: string; tags: string[] }>>((prev, secret) => {
-      // eslint-disable-next-line no-param-reassign
-      prev[secret.key] = { value: decryptSecret(secret.encryptedValue) || "", tags: secret.tags?.map((el) => el.slug) };
-      return prev;
-    }, {});
+      const decryptedSecret = secrets.reduce<Record<string, { value: string; tags: string[] }>>((prev, secret) => {
+        // eslint-disable-next-line no-param-reassign
+        prev[secret.key] = {
+          value: decryptSecret(secret.encryptedValue) || "",
+          tags: secret.tags?.map((el) => el.slug)
+        };
+        return prev;
+      }, {});
 
-    secretCache[cacheKey] = decryptedSecret;
+      secretCache[cacheKey] = decryptedSecret;
 
-    return secretCache[cacheKey][secretKey] || { value: "", tags: [] };
+      return secretCache[cacheKey][secretKey] || { value: "", tags: [] };
+    } catch (error) {
+      secretCache[cacheKey] = {};
+      return { value: "", tags: [] };
+    }
   };
 
   const recursivelyExpandSecret = async (dto: {
@@ -669,6 +677,7 @@ export const expandSecretReferencesFactory = ({
               });
 
             const cacheKey = getCacheUniqueKey(environment, secretPath);
+            if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
             secretCache[cacheKey][secretKey] = referredValue;
 
             referencedSecretValue = referredValue.value;
@@ -688,6 +697,7 @@ export const expandSecretReferencesFactory = ({
               });
 
             const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
+            if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
             secretCache[cacheKey][secretReferenceKey] = referedValue;
 
             referencedSecretValue = referedValue.value;

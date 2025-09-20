@@ -159,17 +159,14 @@ export const secretV2BridgeServiceFactory = ({
     const uniqueReferenceEnvironmentSlugs = Array.from(new Set(references.map((el) => el.environment)));
     const referencesEnvironments = await projectEnvDAL.findBySlugs(projectId, uniqueReferenceEnvironmentSlugs, tx);
 
-    if (referencesEnvironments.length !== uniqueReferenceEnvironmentSlugs.length)
-      throw new BadRequestError({
-        message: `Referenced environment not found. Missing ${diff(
-          uniqueReferenceEnvironmentSlugs,
-          referencesEnvironments.map((el) => el.slug)
-        ).join(",")}`
-      });
-
+    // Filter out references to non-existent environments
     const referencesEnvironmentGroupBySlug = groupBy(referencesEnvironments, (i) => i.slug);
+    const validEnvironmentReferences = references.filter((el) => referencesEnvironmentGroupBySlug[el.environment]);
+
+    if (validEnvironmentReferences.length === 0) return;
+
     const referredFolders = await folderDAL.findByManySecretPath(
-      references.map((el) => ({
+      validEnvironmentReferences.map((el) => ({
         secretPath: el.secretPath,
         envId: referencesEnvironmentGroupBySlug[el.environment][0].id
       })),
@@ -177,58 +174,71 @@ export const secretV2BridgeServiceFactory = ({
     );
 
     const referencesFolderGroupByPath = groupBy(referredFolders.filter(Boolean), (i) => `${i?.envId}-${i?.path}`);
+
+    // Find only references that have valid folders (don't throw for missing paths)
+    const validReferences = validEnvironmentReferences.filter((el) => {
+      const folderId =
+        referencesFolderGroupByPath[`${referencesEnvironmentGroupBySlug[el.environment][0].id}-${el.secretPath}`]?.[0]
+          ?.id;
+      return folderId;
+    });
+
+    if (validReferences.length === 0) return;
+
     const referredSecrets = await secretDAL.find(
       {
         $complex: {
           operator: "or",
-          value: references.map((el) => {
-            const folderId =
-              referencesFolderGroupByPath[
-                `${referencesEnvironmentGroupBySlug[el.environment][0].id}-${el.secretPath}`
-              ][0]?.id;
-            if (!folderId) throw new BadRequestError({ message: `Referenced path ${el.secretPath} doesn't exist` });
+          value: validReferences
+            .map((el) => {
+              const folderGroup =
+                referencesFolderGroupByPath[
+                  `${referencesEnvironmentGroupBySlug[el.environment][0].id}-${el.secretPath}`
+                ];
+              if (!folderGroup || !folderGroup[0]) return null;
 
-            return {
-              operator: "and",
-              value: [
-                {
-                  operator: "eq",
-                  field: "folderId",
-                  value: folderId
-                },
-                {
-                  operator: "eq",
-                  field: `${TableName.SecretV2}.key` as "key",
-                  value: el.secretKey
-                }
-              ]
-            };
-          })
+              const folderId = folderGroup[0].id;
+
+              return {
+                operator: "and",
+                value: [
+                  {
+                    operator: "eq",
+                    field: "folderId",
+                    value: folderId
+                  },
+                  {
+                    operator: "eq",
+                    field: `${TableName.SecretV2}.key` as "key",
+                    value: el.secretKey
+                  }
+                ]
+              };
+            })
+            .filter((query) => query !== null) as Array<{
+            operator: "and";
+            value: Array<{
+              operator: "eq";
+              field: "folderId" | "key";
+              value: string;
+            }>;
+          }>
         }
       },
       { tx }
     );
 
-    if (
-      referredSecrets.length !==
-      new Set(references.map(({ secretKey, secretPath, environment }) => `${secretKey}.${secretPath}.${environment}`))
-        .size // only count unique references
-    )
-      throw new BadRequestError({
-        message: `Referenced secret(s) not found: ${diff(
-          references.map((el) => el.secretKey),
-          referredSecrets.map((el) => el.key)
-        ).join(",")}`
-      });
-
-    const referredSecretsGroupBySecretKey = groupBy(referredSecrets, (i) => i.key);
-    references.forEach((el) => {
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-        environment: el.environment,
-        secretPath: el.secretPath,
-        secretName: el.secretKey,
-        secretTags: referredSecretsGroupBySecretKey[el.secretKey][0]?.tags?.map((i) => i.slug)
-      });
+    // Only check permissions for secrets that actually exist
+    referredSecrets.forEach((secret) => {
+      const reference = validReferences.find((ref) => ref.secretKey === secret.key);
+      if (reference) {
+        throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment: reference.environment,
+          secretPath: reference.secretPath,
+          secretName: reference.secretKey,
+          secretTags: secret.tags?.map((i) => i.slug)
+        });
+      }
     });
 
     return referredSecrets;
@@ -546,6 +556,14 @@ export const secretV2BridgeServiceFactory = ({
         ],
         project.secretDetectionIgnoreValues || []
       );
+    }
+
+    if (secretValue) {
+      const { nestedReferences, localReferences } = getAllSecretReferences(secretValue);
+      const allSecretReferences = nestedReferences.concat(
+        localReferences.map((el) => ({ secretKey: el, secretPath, environment }))
+      );
+      await $validateSecretReferences(projectId, permission, allSecretReferences);
     }
 
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
@@ -3161,6 +3179,7 @@ export const secretV2BridgeServiceFactory = ({
     getSecretById,
     getAccessibleSecrets,
     getSecretVersionsByIds,
-    findSecretIdsByFolderIdAndKeys
+    findSecretIdsByFolderIdAndKeys,
+    $validateSecretReferences
   };
 };

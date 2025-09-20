@@ -29,7 +29,8 @@ const syntaxHighlight = (
       skipNext = true;
       return (
         <span className="ph-no-capture text-yellow" key={`secret-value-${i + 1}`}>
-          &#36;&#123;<span className="ph-no-capture text-yellow-200/80">{el.slice(2, -1)}</span>
+          &#36;&#123;
+          <span className="ph-no-capture text-yellow-200/80">{el.slice(2, -1)}</span>
           &#125;
         </span>
       );
