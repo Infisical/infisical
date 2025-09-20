@@ -92,9 +92,9 @@ export const MyNamespaceView = ({
     <div
       onClick={() => {
         navigate({
-          to: `/organization/namespaces/${namespace.name}`,
+          to: "/organization/namespaces/$namespaceName/projects",
           params: {
-            namespaceId: namespace.id
+            namespaceName: namespace.name
           }
         });
       }}
@@ -122,9 +122,9 @@ export const MyNamespaceView = ({
     <div
       onClick={() => {
         navigate({
-          to: `/organization/namespaces/${namespace.name}`,
+          to: "/organization/namespaces/$namespaceName/projects",
           params: {
-            namespaceId: namespace.id
+            namespaceName: namespace.name
           }
         });
       }}

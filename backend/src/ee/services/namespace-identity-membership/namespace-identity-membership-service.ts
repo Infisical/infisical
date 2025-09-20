@@ -58,7 +58,7 @@ export const namespaceIdentityMembershipServiceFactory = ({
     roles,
     permission
   }: TCreateNamespaceIdentityMembershipDTO) => {
-    const { namespaceSlug } = permission;
+    const { namespaceName: namespaceSlug } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
 
@@ -183,7 +183,7 @@ export const namespaceIdentityMembershipServiceFactory = ({
     roles,
     permission
   }: TUpdateNamespaceIdentityMembershipDTO) => {
-    const { namespaceSlug } = permission;
+    const { namespaceName: namespaceSlug } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
 
@@ -302,7 +302,7 @@ export const namespaceIdentityMembershipServiceFactory = ({
     identityId,
     permission
   }: TDeleteNamespaceIdentityMembershipDTO) => {
-    const { namespaceSlug } = permission;
+    const { namespaceName: namespaceSlug } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
 
@@ -352,7 +352,7 @@ export const namespaceIdentityMembershipServiceFactory = ({
     search,
     permission
   }: TListNamespaceIdentityMembershipDTO) => {
-    const { namespaceSlug } = permission;
+    const { namespaceName: namespaceSlug } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
 
@@ -385,7 +385,7 @@ export const namespaceIdentityMembershipServiceFactory = ({
     identityId,
     permission
   }: TGetNamespaceIdentityMembershipByIdentityIdDTO) => {
-    const { namespaceSlug } = permission;
+    const { namespaceName: namespaceSlug } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
 
@@ -421,7 +421,7 @@ export const namespaceIdentityMembershipServiceFactory = ({
     searchFilter = {},
     permission
   }: TSearchNamespaceIdentitiesDTO) => {
-    const { namespaceSlug } = permission;
+    const { namespaceName: namespaceSlug } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
 

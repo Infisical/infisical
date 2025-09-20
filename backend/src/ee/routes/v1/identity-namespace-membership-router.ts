@@ -104,7 +104,7 @@ export const registerIdentityNamespaceMembershipRouter = async (server: FastifyZ
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
-          namespaceSlug: req.params.namespaceSlug
+          namespaceName: req.params.namespaceSlug
         }
       });
       return { identityMembership };
@@ -179,7 +179,7 @@ export const registerIdentityNamespaceMembershipRouter = async (server: FastifyZ
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
-          namespaceSlug: req.params.namespaceSlug
+          namespaceName: req.params.namespaceSlug
         }
       });
       return { roles };
@@ -220,7 +220,7 @@ export const registerIdentityNamespaceMembershipRouter = async (server: FastifyZ
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
-          namespaceSlug: req.params.namespaceSlug
+          namespaceName: req.params.namespaceSlug
         }
       });
       return { identityMembership };
@@ -292,7 +292,7 @@ export const registerIdentityNamespaceMembershipRouter = async (server: FastifyZ
             actorId: req.permission.id,
             actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId,
-            namespaceSlug: req.params.namespaceSlug
+            namespaceName: req.params.namespaceSlug
           }
         });
 
@@ -337,7 +337,7 @@ export const registerIdentityNamespaceMembershipRouter = async (server: FastifyZ
             actorId: req.permission.id,
             actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId,
-            namespaceSlug: req.params.namespaceSlug
+            namespaceName: req.params.namespaceSlug
           }
         });
       return { identityMembership };

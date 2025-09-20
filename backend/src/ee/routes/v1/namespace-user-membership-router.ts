@@ -276,8 +276,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      // This endpoint would need to integrate with the addUserToNamespace method
-      // For now, returning an empty response since TCreateNamespaceUserMembershipDTO was excluded
+      const {};
       return { memberships: [] };
     }
   });

@@ -24,7 +24,7 @@ export type TOrgPermission = {
 export type TNamespacePermission = {
   actor: ActorType;
   actorId: string;
-  namespaceSlug: string;
+  namespaceName: string;
   actorAuthMethod: ActorAuthMethod;
   actorOrgId: string;
 };
