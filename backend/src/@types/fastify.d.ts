@@ -27,6 +27,10 @@ import { TKmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operati
 import { TKmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TNamespaceServiceFactory } from "@app/ee/services/namespace/namespace-service";
+import { TNamespaceIdentityMembershipServiceFactory } from "@app/ee/services/namespace-identity-membership/namespace-identity-membership-service";
+import { TNamespaceRoleServiceFactory } from "@app/ee/services/namespace-role/namespace-role-service";
+import { TNamespaceUserMembershipServiceFactory } from "@app/ee/services/namespace-user-membership/namespace-user-membership-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
@@ -119,10 +123,6 @@ import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
-import { TNamespaceServiceFactory } from "@app/ee/services/namespace/namespace-service";
-import { TNamespaceRoleServiceFactory } from "@app/services/namespace-role/namespace-role-service";
-import { TNamespaceUserMembershipServiceFactory } from "@app/ee/services/namespace-user-membership/namespace-user-membership-service";
-import { TNamespaceIdentityMembershipServiceFactory } from "@app/ee/services/namespace-identity-membership/namespace-identity-membership-service";
 
 declare module "@fastify/request-context" {
   interface RequestContextData {

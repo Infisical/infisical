@@ -217,7 +217,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
             actorId: req.permission.id,
             actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId,
-            namespaceSlug: req.params.namespaceSlug
+            namespaceName: req.params.namespaceSlug
           }
         });
 
@@ -290,7 +290,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
             actorId: req.permission.id,
             actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId,
-            namespaceSlug: req.params.namespaceSlug
+            namespaceName: req.params.namespaceSlug
           }
         });
 
@@ -335,7 +335,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
             actorId: req.permission.id,
             actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId,
-            namespaceSlug: req.params.namespaceSlug
+            namespaceName: req.params.namespaceSlug
           }
         });
       return { identityMembership };

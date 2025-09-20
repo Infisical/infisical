@@ -1,4 +1,3 @@
-// REFACTOR(akhilmhdh): This file needs to be split into multiple components too complex
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
@@ -17,11 +16,7 @@ import { NamespaceListView } from "./components/NamespacetListToggle";
 import { MyNamespaceView } from "./components/MyNamespaceView";
 import { AllNamespaceView } from "./components/AllNamespaceView";
 
-type Props = {
-  isNamespacePage: boolean;
-};
-
-export const ProjectsPage = ({ isNamespacePage }: Props) => {
+export const ProjectsPage = () => {
   const { t } = useTranslation();
 
   const [projectListView, setProjectListView] = useState<ProjectListView>(() => {
@@ -68,7 +63,7 @@ export const ProjectsPage = ({ isNamespacePage }: Props) => {
   ] as const);
 
   const { subscription } = useSubscription();
-  const shouldRenderNamespaces = subscription?.namespace && !isNamespacePage;
+  const shouldRenderNamespaces = subscription?.namespace;
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit

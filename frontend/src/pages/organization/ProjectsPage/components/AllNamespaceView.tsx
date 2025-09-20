@@ -176,9 +176,9 @@ export const AllNamespaceView = ({
               onKeyDown={(evt) => {
                 if (evt.key === "Enter" && namespace.isMember) {
                   navigate({
-                    to: `/organization/namespaces/${namespace.name}`,
+                    to: "/organization/namespaces/$namespaceName/projects",
                     params: {
-                      namespaceId: namespace.id
+                      namespaceName: namespace.name
                     }
                   });
                 }
@@ -186,9 +186,9 @@ export const AllNamespaceView = ({
               onClick={() => {
                 if (namespace.isMember) {
                   navigate({
-                    to: `/organization/namespaces/${namespace.name}`,
+                    to: "/organization/namespaces/$namespaceName/projects",
                     params: {
-                      namespaceId: namespace.id
+                      namespaceName: namespace.name
                     }
                   });
                 }

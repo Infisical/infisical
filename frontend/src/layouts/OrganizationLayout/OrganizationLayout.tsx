@@ -23,7 +23,13 @@ export const OrganizationLayout = () => {
     strict: false,
     select: (el) => el?.projectId
   });
-  const isInsideProject = Boolean(projectId);
+
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
+
+  const isInsideProject = Boolean(projectId) || Boolean(namespaceName);
 
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
 
@@ -33,7 +39,6 @@ export const OrganizationLayout = () => {
 
   const { data: serverDetails, isLoading } = useFetchServerStatus();
   const { subscription } = useSubscription();
-
   return (
     <>
       <Banner />

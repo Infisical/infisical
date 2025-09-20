@@ -16,6 +16,13 @@ const adminRoute = route("/admin", [
   ])
 ]);
 
+const namespaceRoutes = route("/namespaces/$namespaceName", [
+  layout("namespace-layout", "namespace/layout.tsx", [
+    route("/projects", "namespace/ProjectsPage/route.tsx"),
+    route("/access-management", "namespace/AccessManagementPage/route.tsx")
+  ])
+]);
+
 const organizationRoutes = route("/organization", [
   route("/projects", "organization/ProjectsPage/route.tsx"),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
@@ -40,7 +47,9 @@ const organizationRoutes = route("/organization", [
       "organization/AppConnections/OauthCallbackPage/route.tsx"
     )
   ]),
-  route("/networking", [index("organization/NetworkingPage/route.tsx")])
+  route("/networking", [index("organization/NetworkingPage/route.tsx")]),
+  route("/gateways", [index("organization/Gateways/GatewayListPage/route.tsx")]),
+  namespaceRoutes
 ]);
 
 const secretManagerRoutes = route("/projects/secret-management/$projectId", [

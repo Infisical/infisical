@@ -69,6 +69,7 @@ import { Route as secretScanningLayoutImport } from './pages/secret-scanning/lay
 import { Route as secretManagerLayoutImport } from './pages/secret-manager/layout'
 import { Route as kmsLayoutImport } from './pages/kms/layout'
 import { Route as certManagerLayoutImport } from './pages/cert-manager/layout'
+import { Route as namespaceLayoutImport } from './pages/namespace/layout'
 import { Route as secretManagerIntegrationsRouteVercelOauthRedirectImport } from './pages/secret-manager/integrations/route-vercel-oauth-redirect'
 import { Route as secretManagerIntegrationsRouteNetlifyOauthRedirectImport } from './pages/secret-manager/integrations/route-netlify-oauth-redirect'
 import { Route as secretManagerIntegrationsRouteHerokuOauthRedirectImport } from './pages/secret-manager/integrations/route-heroku-oauth-redirect'
@@ -110,6 +111,8 @@ import { Route as certManagerSettingsPageRouteImport } from './pages/cert-manage
 import { Route as certManagerCertificatesPageRouteImport } from './pages/cert-manager/CertificatesPage/route'
 import { Route as certManagerCertificateAuthoritiesPageRouteImport } from './pages/cert-manager/CertificateAuthoritiesPage/route'
 import { Route as certManagerAlertingPageRouteImport } from './pages/cert-manager/AlertingPage/route'
+import { Route as namespaceProjectsPageRouteImport } from './pages/namespace/ProjectsPage/route'
+import { Route as namespaceAccessManagementPageRouteImport } from './pages/namespace/AccessManagementPage/route'
 import { Route as organizationAppConnectionsOauthCallbackPageRouteImport } from './pages/organization/AppConnections/OauthCallbackPage/route'
 import { Route as projectRoleDetailsBySlugPageRouteSshImport } from './pages/project/RoleDetailsBySlugPage/route-ssh'
 import { Route as projectMemberDetailsByIDPageRouteSshImport } from './pages/project/MemberDetailsByIDPage/route-ssh'
@@ -282,6 +285,10 @@ const AuthenticateInjectOrgDetailsOrgLayoutProjectsKmsProjectIdImport =
 const AuthenticateInjectOrgDetailsOrgLayoutProjectsCertManagementProjectIdImport =
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId',
+  )()
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameImport =
+  createFileRoute(
+    '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName',
   )()
 const AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretScanningProjectIdSecretScanningLayoutDataSourcesImport =
   createFileRoute(
@@ -702,6 +709,16 @@ const AuthenticateInjectOrgDetailsOrgLayoutProjectsCertManagementProjectIdRoute 
     } as any,
   )
 
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameRoute =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameImport.update(
+    {
+      id: '/namespaces/$namespaceName',
+      path: '/namespaces/$namespaceName',
+      getParentRoute: () =>
+        AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
+    } as any,
+  )
+
 const adminResourceOverviewPageRouteRoute =
   adminResourceOverviewPageRouteImport.update({
     id: '/resources/overview',
@@ -809,6 +826,12 @@ const certManagerLayoutRoute = certManagerLayoutImport.update({
   id: '/_cert-manager-layout',
   getParentRoute: () =>
     AuthenticateInjectOrgDetailsOrgLayoutProjectsCertManagementProjectIdRoute,
+} as any)
+
+const namespaceLayoutRoute = namespaceLayoutImport.update({
+  id: '/_namespace-layout',
+  getParentRoute: () =>
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameRoute,
 } as any)
 
 const secretManagerIntegrationsRouteVercelOauthRedirectRoute =
@@ -1137,6 +1160,21 @@ const certManagerAlertingPageRouteRoute =
     id: '/alerting',
     path: '/alerting',
     getParentRoute: () => certManagerLayoutRoute,
+  } as any)
+
+const namespaceProjectsPageRouteRoute = namespaceProjectsPageRouteImport.update(
+  {
+    id: '/projects',
+    path: '/projects',
+    getParentRoute: () => namespaceLayoutRoute,
+  } as any,
+)
+
+const namespaceAccessManagementPageRouteRoute =
+  namespaceAccessManagementPageRouteImport.update({
+    id: '/access-management',
+    path: '/access-management',
+    getParentRoute: () => namespaceLayoutRoute,
   } as any)
 
 const organizationAppConnectionsOauthCallbackPageRouteRoute =
@@ -2467,6 +2505,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof adminResourceOverviewPageRouteImport
       parentRoute: typeof adminLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName'
+      path: '/namespaces/$namespaceName'
+      fullPath: '/organization/namespaces/$namespaceName'
+      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId': {
       id: '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId'
       path: '/projects/cert-management/$projectId'
@@ -2579,6 +2624,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof secretManagerIntegrationsRouteVercelOauthRedirectImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout'
+      path: ''
+      fullPath: '/organization/namespaces/$namespaceName'
+      preLoaderRoute: typeof namespaceLayoutImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout': {
       id: '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout'
       path: ''
@@ -2620,6 +2672,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/organization/app-connections/$appConnection/oauth/callback'
       preLoaderRoute: typeof organizationAppConnectionsOauthCallbackPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/access-management': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/access-management'
+      path: '/access-management'
+      fullPath: '/organization/namespaces/$namespaceName/access-management'
+      preLoaderRoute: typeof namespaceAccessManagementPageRouteImport
+      parentRoute: typeof namespaceLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/projects': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/projects'
+      path: '/projects'
+      fullPath: '/organization/namespaces/$namespaceName/projects'
+      preLoaderRoute: typeof namespaceProjectsPageRouteImport
+      parentRoute: typeof namespaceLayoutImport
     }
     '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/alerting': {
       id: '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/alerting'
@@ -3768,6 +3834,35 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRouteWithChildren
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRouteChildren,
   )
 
+interface namespaceLayoutRouteChildren {
+  namespaceAccessManagementPageRouteRoute: typeof namespaceAccessManagementPageRouteRoute
+  namespaceProjectsPageRouteRoute: typeof namespaceProjectsPageRouteRoute
+}
+
+const namespaceLayoutRouteChildren: namespaceLayoutRouteChildren = {
+  namespaceAccessManagementPageRouteRoute:
+    namespaceAccessManagementPageRouteRoute,
+  namespaceProjectsPageRouteRoute: namespaceProjectsPageRouteRoute,
+}
+
+const namespaceLayoutRouteWithChildren = namespaceLayoutRoute._addFileChildren(
+  namespaceLayoutRouteChildren,
+)
+
+interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameRouteChildren {
+  namespaceLayoutRoute: typeof namespaceLayoutRouteWithChildren
+}
+
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameRouteChildren =
+  {
+    namespaceLayoutRoute: namespaceLayoutRouteWithChildren,
+  }
+
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameRouteWithChildren =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameRoute._addFileChildren(
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameRouteChildren,
+  )
+
 interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren {
   organizationAccessManagementPageRouteRoute: typeof organizationAccessManagementPageRouteRoute
   organizationAuditLogsPageRouteRoute: typeof organizationAuditLogsPageRouteRoute
@@ -3781,6 +3876,7 @@ interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren {
   organizationIdentityDetailsByIDPageRouteRoute: typeof organizationIdentityDetailsByIDPageRouteRoute
   organizationUserDetailsByIDPageRouteRoute: typeof organizationUserDetailsByIDPageRouteRoute
   organizationRoleByIDPageRouteRoute: typeof organizationRoleByIDPageRouteRoute
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameRouteWithChildren
 }
 
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren =
@@ -3805,6 +3901,8 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: Authentica
     organizationUserDetailsByIDPageRouteRoute:
       organizationUserDetailsByIDPageRouteRoute,
     organizationRoleByIDPageRouteRoute: organizationRoleByIDPageRouteRoute,
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameRoute:
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameRouteWithChildren,
   }
 
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteWithChildren =
@@ -4706,6 +4804,7 @@ export interface FileRoutesByFullPath {
   '/organization/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/organization/secret-sharing/settings': typeof organizationSecretSharingSettingsPageRouteRoute
   '/admin/resources/overview': typeof adminResourceOverviewPageRouteRoute
+  '/organization/namespaces/$namespaceName': typeof namespaceLayoutRouteWithChildren
   '/projects/cert-management/$projectId': typeof certManagerLayoutRouteWithChildren
   '/projects/kms/$projectId': typeof kmsLayoutRouteWithChildren
   '/projects/secret-management/$projectId': typeof secretManagerLayoutRouteWithChildren
@@ -4723,6 +4822,8 @@ export interface FileRoutesByFullPath {
   '/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
   '/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
   '/organization/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
+  '/organization/namespaces/$namespaceName/access-management': typeof namespaceAccessManagementPageRouteRoute
+  '/organization/namespaces/$namespaceName/projects': typeof namespaceProjectsPageRouteRoute
   '/projects/cert-management/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
   '/projects/cert-management/$projectId/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/projects/cert-management/$projectId/certificates': typeof certManagerCertificatesPageRouteRoute
@@ -4922,6 +5023,7 @@ export interface FileRoutesByTo {
   '/organization/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/organization/secret-sharing/settings': typeof organizationSecretSharingSettingsPageRouteRoute
   '/admin/resources/overview': typeof adminResourceOverviewPageRouteRoute
+  '/organization/namespaces/$namespaceName': typeof namespaceLayoutRouteWithChildren
   '/projects/cert-management/$projectId': typeof certManagerLayoutRouteWithChildren
   '/projects/kms/$projectId': typeof kmsLayoutRouteWithChildren
   '/projects/secret-management/$projectId': typeof secretManagerLayoutRouteWithChildren
@@ -4939,6 +5041,8 @@ export interface FileRoutesByTo {
   '/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
   '/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
   '/organization/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
+  '/organization/namespaces/$namespaceName/access-management': typeof namespaceAccessManagementPageRouteRoute
+  '/organization/namespaces/$namespaceName/projects': typeof namespaceProjectsPageRouteRoute
   '/projects/cert-management/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
   '/projects/cert-management/$projectId/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/projects/cert-management/$projectId/certificates': typeof certManagerCertificatesPageRouteRoute
@@ -5146,6 +5250,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organization/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/settings': typeof organizationSecretSharingSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview': typeof adminResourceOverviewPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationNamespacesNamespaceNameRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsCertManagementProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/projects/kms/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsKmsProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretManagementProjectIdRouteWithChildren
@@ -5162,12 +5267,15 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsRouteHerokuOauthRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
+  '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout': typeof namespaceLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout': typeof certManagerLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/projects/kms/$projectId/_kms-layout': typeof kmsLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout': typeof secretManagerLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-scanning/$projectId/_secret-scanning-layout': typeof secretScanningLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout': typeof sshLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/access-management': typeof namespaceAccessManagementPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/projects': typeof namespaceProjectsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/alerting': typeof certManagerAlertingPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/certificates': typeof certManagerCertificatesPageRouteRoute
@@ -5377,6 +5485,7 @@ export interface FileRouteTypes {
     | '/organization/roles/$roleId'
     | '/organization/secret-sharing/settings'
     | '/admin/resources/overview'
+    | '/organization/namespaces/$namespaceName'
     | '/projects/cert-management/$projectId'
     | '/projects/kms/$projectId'
     | '/projects/secret-management/$projectId'
@@ -5394,6 +5503,8 @@ export interface FileRouteTypes {
     | '/integrations/netlify/oauth2/callback'
     | '/integrations/vercel/oauth2/callback'
     | '/organization/app-connections/$appConnection/oauth/callback'
+    | '/organization/namespaces/$namespaceName/access-management'
+    | '/organization/namespaces/$namespaceName/projects'
     | '/projects/cert-management/$projectId/alerting'
     | '/projects/cert-management/$projectId/certificate-authorities'
     | '/projects/cert-management/$projectId/certificates'
@@ -5592,6 +5703,7 @@ export interface FileRouteTypes {
     | '/organization/roles/$roleId'
     | '/organization/secret-sharing/settings'
     | '/admin/resources/overview'
+    | '/organization/namespaces/$namespaceName'
     | '/projects/cert-management/$projectId'
     | '/projects/kms/$projectId'
     | '/projects/secret-management/$projectId'
@@ -5609,6 +5721,8 @@ export interface FileRouteTypes {
     | '/integrations/netlify/oauth2/callback'
     | '/integrations/vercel/oauth2/callback'
     | '/organization/app-connections/$appConnection/oauth/callback'
+    | '/organization/namespaces/$namespaceName/access-management'
+    | '/organization/namespaces/$namespaceName/projects'
     | '/projects/cert-management/$projectId/alerting'
     | '/projects/cert-management/$projectId/certificate-authorities'
     | '/projects/cert-management/$projectId/certificates'
@@ -5814,6 +5928,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organization/roles/$roleId'
     | '/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/settings'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName'
     | '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/projects/kms/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId'
@@ -5830,12 +5945,15 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/integrations/heroku/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/netlify/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/vercel/oauth2/callback'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout'
     | '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout'
     | '/_authenticate/_inject-org-details/_org-layout/projects/kms/$projectId/_kms-layout'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-scanning/$projectId/_secret-scanning-layout'
     | '/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout'
     | '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/access-management'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/projects'
     | '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/alerting'
     | '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/certificate-authorities'
     | '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/certificates'
@@ -6232,7 +6350,8 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organization/groups/$groupId",
         "/_authenticate/_inject-org-details/_org-layout/organization/identities/$identityId",
         "/_authenticate/_inject-org-details/_org-layout/organization/members/$membershipId",
-        "/_authenticate/_inject-org-details/_org-layout/organization/roles/$roleId"
+        "/_authenticate/_inject-org-details/_org-layout/organization/roles/$roleId",
+        "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName"
       ]
     },
     "/_authenticate/_inject-org-details/admin/_admin-layout": {
@@ -6371,6 +6490,13 @@ export const routeTree = rootRoute
       "filePath": "admin/ResourceOverviewPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/admin/_admin-layout"
     },
+    "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName": {
+      "filePath": "",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization",
+      "children": [
+        "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout"
+      ]
+    },
     "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId": {
       "filePath": "",
       "parent": "/_authenticate/_inject-org-details/_org-layout",
@@ -6449,6 +6575,14 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/integrations/vercel/oauth2/callback": {
       "filePath": "secret-manager/integrations/route-vercel-oauth-redirect.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout": {
+      "filePath": "namespace/layout.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName",
+      "children": [
+        "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/access-management",
+        "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/projects"
+      ]
     },
     "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout": {
       "filePath": "cert-manager/layout.tsx",
@@ -6544,6 +6678,14 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback": {
       "filePath": "organization/AppConnections/OauthCallbackPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization/app-connections"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/access-management": {
+      "filePath": "namespace/AccessManagementPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/projects": {
+      "filePath": "namespace/ProjectsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/alerting": {
       "filePath": "cert-manager/AlertingPage/route.tsx",
