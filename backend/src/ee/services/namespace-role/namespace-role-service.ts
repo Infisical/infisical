@@ -99,6 +99,12 @@ export const namespaceRoleServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(NamespacePermissionActions.Read, NamespacePermissionSubjects.Role);
 
+    const predefinedRoles = getPredefinedRoles(namespace.id);
+    const selectedPredefinedRole = predefinedRoles.find((el) => el.slug === roleName);
+    if (selectedPredefinedRole) {
+      return { ...selectedPredefinedRole, permissions: selectedPredefinedRole.permissions };
+    }
+
     const role = await namespaceRoleDAL.findOne({ slug: roleName, namespaceId: namespace.id });
     if (!role) throw new NotFoundError({ message: `Namespace role with slug '${roleName}' not found` });
 

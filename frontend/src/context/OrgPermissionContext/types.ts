@@ -38,10 +38,7 @@ export enum OrgPermissionMachineIdentityAuthTemplateActions {
 }
 
 export enum OrgPermissionNamespaceActions {
-  Read = "read",
-  Create = "create",
-  Edit = "edit",
-  Delete = "delete"
+  Create = "create"
 }
 
 export type NamespaceSubjectFields = {
