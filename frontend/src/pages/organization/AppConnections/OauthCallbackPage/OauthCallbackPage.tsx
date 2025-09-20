@@ -12,6 +12,7 @@ import {
   AzureKeyVaultConnectionMethod,
   GitHubConnectionMethod,
   GitLabConnectionMethod,
+  HerokuConnectionMethod,
   TAppConnection,
   useCreateAppConnection,
   useUpdateAppConnection
@@ -28,7 +29,8 @@ const formDataStorageFieldMap: Partial<Record<AppConnection, string>> = {
   [AppConnection.AzureKeyVault]: "azureKeyVaultConnectionFormData",
   [AppConnection.AzureAppConfiguration]: "azureAppConfigurationConnectionFormData",
   [AppConnection.AzureClientSecrets]: "azureClientSecretsConnectionFormData",
-  [AppConnection.AzureDevOps]: "azureDevOpsConnectionFormData"
+  [AppConnection.AzureDevOps]: "azureDevOpsConnectionFormData",
+  [AppConnection.Heroku]: "herokuConnectionFormData"
 };
 
 export const OAuthCallbackPage = () => {
@@ -83,7 +85,7 @@ export const OAuthCallbackPage = () => {
     }
   };
 
-  const handleGitlab = useCallback(async () => {
+  const handleGitLab = useCallback(async () => {
     const formData = getFormData(AppConnection.GitLab);
     if (formData === null) return null;
 
@@ -375,7 +377,7 @@ export const OAuthCallbackPage = () => {
     };
   }, []);
 
-  const handleGithub = useCallback(async () => {
+  const handleGitHub = useCallback(async () => {
     const formData = getFormData(AppConnection.GitHub);
     if (formData === null) return null;
 
@@ -463,7 +465,7 @@ export const OAuthCallbackPage = () => {
     };
   }, []);
 
-  const handleGithubRadar = useCallback(async () => {
+  const handleGitHubRadar = useCallback(async () => {
     const formData = getFormData(AppConnection.GitHubRadar);
     if (formData === null) return null;
 
@@ -520,6 +522,61 @@ export const OAuthCallbackPage = () => {
     };
   }, []);
 
+  const handleHeroku = useCallback(async () => {
+    const formData = getFormData(AppConnection.Heroku);
+    if (formData === null) return null;
+
+    clearState(AppConnection.Heroku);
+
+    const { connectionId, name, description, returnUrl, projectId } = formData;
+
+    let connection: TAppConnection;
+
+    try {
+      if (connectionId) {
+        connection = await updateAppConnection.mutateAsync({
+          app: AppConnection.Heroku,
+          connectionId,
+          credentials: {
+            code: code as string
+          }
+        });
+      } else {
+        connection = await createAppConnection.mutateAsync({
+          app: AppConnection.Heroku,
+          name,
+          description,
+          method: HerokuConnectionMethod.OAuth,
+          projectId,
+          credentials: {
+            code: code as string
+          }
+        });
+      }
+    } catch (e: any) {
+      createNotification({
+        title: `Failed to ${connectionId ? "update" : "add"} Heroku Connection`,
+        text: e.message,
+        type: "error"
+      });
+      navigate({
+        to: returnUrl,
+        params: {
+          projectId
+        }
+      });
+      return null;
+    }
+
+    return {
+      connectionId,
+      returnUrl,
+      appConnectionName: formData.app,
+      projectId,
+      connection
+    };
+  }, []);
+
   // Ensure that the localstorage is ready for use, to avoid the form data being malformed
   useEffect(() => {
     if (!isReady) {
@@ -540,11 +597,11 @@ export const OAuthCallbackPage = () => {
       } | null = null;
 
       if (appConnection === AppConnection.GitHub) {
-        data = await handleGithub();
+        data = await handleGitHub();
       } else if (appConnection === AppConnection.GitHubRadar) {
-        data = await handleGithubRadar();
+        data = await handleGitHubRadar();
       } else if (appConnection === AppConnection.GitLab) {
-        data = await handleGitlab();
+        data = await handleGitLab();
       } else if (appConnection === AppConnection.AzureKeyVault) {
         data = await handleAzureKeyVault();
       } else if (appConnection === AppConnection.AzureAppConfiguration) {
@@ -553,6 +610,8 @@ export const OAuthCallbackPage = () => {
         data = await handleAzureClientSecrets();
       } else if (appConnection === AppConnection.AzureDevOps) {
         data = await handleAzureDevOps();
+      } else if (appConnection === AppConnection.Heroku) {
+        data = await handleHeroku();
       }
 
       if (data) {

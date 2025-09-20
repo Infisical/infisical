@@ -19,7 +19,7 @@ import {
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
-import { GithubRadarFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
+import { GitHubRadarFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -76,7 +76,7 @@ export const GitHubRadarConnectionForm = ({ appConnection, projectId }: Props) =
         connectionId: appConnection?.id,
         projectId,
         returnUrl
-      } as GithubRadarFormData)
+      } as GitHubRadarFormData)
     );
 
     switch (formData.method) {

@@ -39,7 +39,7 @@ import {
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
-import { GithubFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
+import { GitHubFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -118,7 +118,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId }: Props) => {
         connectionId: appConnection?.id,
         projectId,
         returnUrl
-      } as GithubFormData)
+      } as GitHubFormData)
     );
 
     const githubHost =

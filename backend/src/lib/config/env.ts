@@ -323,6 +323,10 @@ const envSchema = z
     INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET: zpStr(z.string().optional()),
 
+    // Heroku App Connection
+    INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
+
     // datadog
     SHOULD_USE_DATADOG_TRACER: zodStrBool.default("false"),
     DATADOG_PROFILING_ENABLED: zodStrBool.default("false"),
@@ -734,6 +738,19 @@ export const overwriteSchema: {
       {
         key: "CLIENT_SECRET_GOOGLE_LOGIN",
         description: "The Client Secret of your GCP OAuth2 application."
+      }
+    ]
+  },
+  heroku: {
+    name: "Heroku",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID",
+        description: "The Client ID of your Heroku application."
+      },
+      {
+        key: "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET",
+        description: "The Client Secret of your Heroku application."
       }
     ]
   }

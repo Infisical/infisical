@@ -6,7 +6,8 @@ import {
   TAzureKeyVaultConnection,
   TGitHubConnection,
   TGitHubRadarConnection,
-  TGitLabConnection
+  TGitLabConnection,
+  THerokuConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
@@ -17,10 +18,10 @@ type BaseFormData = {
   projectId: string;
 };
 
-export type GithubFormData = BaseFormData &
+export type GitHubFormData = BaseFormData &
   Pick<TGitHubConnection, "name" | "method" | "description" | "gatewayId" | "credentials">;
 
-export type GithubRadarFormData = BaseFormData &
+export type GitHubRadarFormData = BaseFormData &
   Pick<TGitHubRadarConnection, "name" | "method" | "description">;
 
 export type GitLabFormData = BaseFormData &
@@ -51,9 +52,12 @@ export type AzureDevOpsFormData = BaseFormData &
   Pick<TAzureDevOpsConnection, "name" | "method" | "description"> &
   (Pick<OAuthCredentials, "tenantId" | "orgName"> | Pick<AccessTokenCredentials, "orgName">);
 
+export type HerokuFormData = BaseFormData &
+  Pick<THerokuConnection, "name" | "method" | "description">;
+
 export type FormDataMap = {
-  [AppConnection.GitHub]: GithubFormData & { app: AppConnection.GitHub };
-  [AppConnection.GitHubRadar]: GithubRadarFormData & { app: AppConnection.GitHubRadar };
+  [AppConnection.GitHub]: GitHubFormData & { app: AppConnection.GitHub };
+  [AppConnection.GitHubRadar]: GitHubRadarFormData & { app: AppConnection.GitHubRadar };
   [AppConnection.GitLab]: GitLabFormData & { app: AppConnection.GitLab };
   [AppConnection.AzureKeyVault]: AzureKeyVaultFormData & { app: AppConnection.AzureKeyVault };
   [AppConnection.AzureAppConfiguration]: AzureAppConfigurationFormData & {
@@ -64,5 +68,8 @@ export type FormDataMap = {
   };
   [AppConnection.AzureDevOps]: AzureDevOpsFormData & {
     app: AppConnection.AzureDevOps;
+  };
+  [AppConnection.Heroku]: HerokuFormData & {
+    app: AppConnection.Heroku;
   };
 };

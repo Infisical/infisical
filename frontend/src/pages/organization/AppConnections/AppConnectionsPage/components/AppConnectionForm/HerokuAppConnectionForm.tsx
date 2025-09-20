@@ -15,7 +15,11 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  getAppConnectionMethodDetails,
+  useGetAppConnectionOauthReturnUrl
+} from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useGetAppConnectionOption } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -32,6 +36,7 @@ import {
 type Props = {
   appConnection?: THerokuConnection;
   onSubmit: (formData: FormData) => Promise<void>;
+  projectId: string | undefined | null;
 };
 
 const formSchema = z.discriminatedUnion("method", [
@@ -53,9 +58,11 @@ const formSchema = z.discriminatedUnion("method", [
 
 type FormData = z.infer<typeof formSchema>;
 
-export const HerokuConnectionForm = ({ appConnection, onSubmit: formSubmit }: Props) => {
+export const HerokuConnectionForm = ({ appConnection, onSubmit: formSubmit, projectId }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [isRedirecting, setIsRedirecting] = useState(false);
+
+  const returnUrl = useGetAppConnectionOauthReturnUrl();
 
   const {
     option: { oauthClientId },
@@ -110,7 +117,8 @@ export const HerokuConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
             JSON.stringify({
               ...formData,
               connectionId: appConnection?.id,
-              isUpdate
+              returnUrl,
+              projectId
             })
           );
 
