@@ -630,11 +630,16 @@ export const expandSecretReferencesFactory = ({
     const stackTrace = { ...dto, key: "root", children: [] } as TSecretReferenceTraceNode;
 
     if (!dto.value) return { expandedValue: "", stackTrace };
-    const stack = [{ ...dto, depth: 0, trace: stackTrace }];
+
+    // Track visited secrets to prevent circular references
+    const createSecretId = (env: string, secretPath: string, key: string) => `${env}:${secretPath}:${key}`;
+
+    const currentSecretId = createSecretId(dto.environment, dto.secretPath, dto.secretKey);
+    const stack = [{ ...dto, depth: 0, trace: stackTrace, visitedSecrets: new Set<string>([currentSecretId]) }];
     let expandedValue = dto.value;
 
     while (stack.length) {
-      const { value, secretPath, environment, depth, trace } = stack.pop()!;
+      const { value, secretPath, environment, depth, trace, visitedSecrets } = stack.pop()!;
 
       // eslint-disable-next-line no-continue
       if (depth > MAX_SECRET_REFERENCE_DEPTH) continue;
@@ -710,17 +715,27 @@ export const expandSecretReferencesFactory = ({
             trace
           };
 
-          const shouldExpandMore = INTERPOLATION_TEST_REGEX.test(referencedSecretValue);
+          // Check for circular reference
+          const referencedSecretId = createSecretId(
+            referencedSecretEnvironmentSlug,
+            referencedSecretPath,
+            referencedSecretKey
+          );
+          const isCircular = visitedSecrets.has(referencedSecretId);
+
+          const newVisitedSecrets = new Set([...visitedSecrets, referencedSecretId]);
+
+          const shouldExpandMore = INTERPOLATION_TEST_REGEX.test(referencedSecretValue) && !isCircular;
           if (dto.shouldStackTrace) {
             const stackTraceNode = { ...node, children: [], key: referencedSecretKey, trace: null };
             trace?.children.push(stackTraceNode);
             // if stack trace this would be child node
             if (shouldExpandMore) {
-              stack.push({ ...node, trace: stackTraceNode });
+              stack.push({ ...node, trace: stackTraceNode, visitedSecrets: newVisitedSecrets });
             }
           } else if (shouldExpandMore) {
             // if no stack trace is needed we just keep going with root node
-            stack.push(node);
+            stack.push({ ...node, visitedSecrets: newVisitedSecrets });
           }
 
           if (referencedSecretValue) {
