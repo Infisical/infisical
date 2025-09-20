@@ -30,7 +30,7 @@ import {
 type TNamespaceUserMembershipServiceFactoryDep = {
   namespaceUserMembershipDAL: TNamespaceUserMembershipDALFactory;
   namespaceDAL: Pick<TNamespaceDALFactory, "findOne">;
-  orgMembershipDAL: Pick<TOrgDALFactory, "findMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership">;
   namespaceRoleDAL: Pick<TNamespaceRoleDALFactory, "find" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getNamespacePermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -46,7 +46,7 @@ export const namespaceUserMembershipServiceFactory = ({
   permissionService,
   licenseService,
   namespaceMembershipRoleDAL,
-  orgMembershipDAL
+  orgDAL
 }: TNamespaceUserMembershipServiceFactoryDep) => {
   const addUserToNamespace = async ({
     namespaceSlug,
@@ -106,7 +106,7 @@ export const namespaceUserMembershipServiceFactory = ({
     }
 
     const nonExistingUsers = validatedUsers.filter((user) => !existingMembers.find((i) => user.id === i.user.id));
-    const orgMembership = await orgMembershipDAL.findMembership({
+    const orgMembership = await orgDAL.findMembership({
       $in: { userId: nonExistingUsers.map((el) => el.id) }
     });
 

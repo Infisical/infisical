@@ -3,9 +3,9 @@ import { z } from "zod";
 import { IdentitiesSchema, NamespaceMembershipsSchema, OrgMembershipRole } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
-  IdentityNameespaceMembershipOrderBy,
+  NamespaceIdentityMembershipOrderBy,
   NamespaceIdentityOrderBy
-} from "@app/ee/services/identity-namespace-membership/identity-namespace-membership-types";
+} from "@app/ee/services/namespace-identity-membership/namespace-identity-membership-types";
 import { ApiDocsTags, IDENTITIES, NAMESPACE_IDENTITY_MEMBERSHIPS } from "@app/lib/api-docs";
 import { buildSearchZodSchema, SearchResourceOperators } from "@app/lib/search-resource/search";
 import { OrderByDirection } from "@app/lib/types";
@@ -206,7 +206,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const { identityMemberships, totalCount } =
-        await server.services.identityNamespaceMembership.searchNamespaceIdentities({
+        await server.services.namespaceIdentityMembership.searchNamespaceIdentities({
           searchFilter: req.body.search,
           limit: req.body.limit,
           offset: req.body.offset,
@@ -259,8 +259,8 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
           .describe(NAMESPACE_IDENTITY_MEMBERSHIPS.LIST_IDENTITY_MEMBERSHIPS.limit)
           .optional(),
         orderBy: z
-          .nativeEnum(IdentityNameespaceMembershipOrderBy)
-          .default(IdentityNameespaceMembershipOrderBy.Name)
+          .nativeEnum(NamespaceIdentityMembershipOrderBy)
+          .default(NamespaceIdentityMembershipOrderBy.Name)
           .describe(NAMESPACE_IDENTITY_MEMBERSHIPS.LIST_IDENTITY_MEMBERSHIPS.orderBy)
           .optional(),
         orderDirection: z
@@ -279,7 +279,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const { identityMemberships, totalCount } =
-        await server.services.identityNamespaceMembership.listIdentityNamespaceMemberships({
+        await server.services.namespaceIdentityMembership.listNamespaceIdentityMemberships({
           limit: req.query.limit,
           offset: req.query.offset,
           orderBy: req.query.orderBy,
@@ -328,7 +328,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const identityMembership =
-        await server.services.identityNamespaceMembership.getIdentityNamespaceMembershipByIdentityId({
+        await server.services.namespaceIdentityMembership.getNamespaceIdentityMembershipByIdentityId({
           identityId: req.params.identityId,
           permission: {
             actor: req.permission.type,

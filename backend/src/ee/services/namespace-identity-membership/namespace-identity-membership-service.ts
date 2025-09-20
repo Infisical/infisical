@@ -19,18 +19,18 @@ import { TNamespaceDALFactory } from "../namespace/namespace-dal";
 import { TNamespaceMembershipRoleDALFactory } from "../namespace-role/namespace-membership-role-dal";
 import { TNamespaceRoleDALFactory } from "../namespace-role/namespace-role-dal";
 import { NamespaceUserMembershipTemporaryMode } from "../namespace-user-membership/namespace-user-membership-types";
-import { TIdentityNamespaceMembershipDALFactory } from "./identity-namespace-membership-dal";
+import { TNamespaceIdentityMembershipDALFactory } from "./namespace-identity-membership-dal";
 import {
-  TCreateIdentityNamespaceMembershipDTO,
-  TDeleteIdentityNameespaceMembershipDTO,
-  TGetIdentityNameespaceMembershipByIdentityIdDTO,
-  TListIdentityNameespaceMembershipDTO,
+  TCreateNamespaceIdentityMembershipDTO,
+  TDeleteNamespaceIdentityMembershipDTO,
+  TGetNamespaceIdentityMembershipByIdentityIdDTO,
+  TListNamespaceIdentityMembershipDTO,
   TSearchNamespaceIdentitiesDTO,
-  TUpdateIdentityNameespaceMembershipDTO
-} from "./identity-namespace-membership-types";
+  TUpdateNamespaceIdentityMembershipDTO
+} from "./namespace-identity-membership-types";
 
-type TIdentityNamespaceMembershipServiceFactoryDep = {
-  identityNamespaceMembershipDAL: TIdentityNamespaceMembershipDALFactory;
+type TNamespaceIdentityMembershipServiceFactoryDep = {
+  namespaceIdentityMembershipDAL: TNamespaceIdentityMembershipDALFactory;
   namespaceMembershipRoleDAL: Pick<
     TNamespaceMembershipRoleDALFactory,
     "create" | "transaction" | "insertMany" | "delete"
@@ -41,23 +41,23 @@ type TIdentityNamespaceMembershipServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getNamespacePermission" | "getNamespacePermissionByRole">;
 };
 
-export type TIdentityNamespaceMembershipServiceFactory = ReturnType<typeof identityNamespaceMembershipServiceFactory>;
+export type TNamespaceIdentityMembershipServiceFactory = ReturnType<typeof namespaceIdentityMembershipServiceFactory>;
 
 // TODO(namespace): check all deletes are correct
 // TODO(namespace): check shouldUseNewPrivilege thingy
-export const identityNamespaceMembershipServiceFactory = ({
-  identityNamespaceMembershipDAL,
+export const namespaceIdentityMembershipServiceFactory = ({
+  namespaceIdentityMembershipDAL,
   permissionService,
   identityOrgMembershipDAL,
   namespaceMembershipRoleDAL,
   namespaceDAL,
   namespaceRoleDAL
-}: TIdentityNamespaceMembershipServiceFactoryDep) => {
-  const createIdentityNamespaceMembership = async ({
+}: TNamespaceIdentityMembershipServiceFactoryDep) => {
+  const createNamespaceIdentityMembership = async ({
     identityId,
     roles,
     permission
-  }: TCreateIdentityNamespaceMembershipDTO) => {
+  }: TCreateNamespaceIdentityMembershipDTO) => {
     const { namespaceSlug } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
@@ -87,7 +87,7 @@ export const identityNamespaceMembershipServiceFactory = ({
         message: `Failed to find identity with ID ${identityId}`
       });
 
-    const existingIdentity = await identityNamespaceMembershipDAL.findOne({
+    const existingIdentity = await namespaceIdentityMembershipDAL.findOne({
       orgIdentityMembershipId: identityOrgMembership.id,
       namespaceId: namespace.id
     });
@@ -139,8 +139,8 @@ export const identityNamespaceMembershipServiceFactory = ({
       throw new NotFoundError({ message: "One or more custom namespace roles not found" });
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
-    const namespaceIdentity = await identityNamespaceMembershipDAL.transaction(async (tx) => {
-      const identityNamespaceMembership = await identityNamespaceMembershipDAL.create(
+    const namespaceIdentity = await namespaceIdentityMembershipDAL.transaction(async (tx) => {
+      const identityNamespaceMembership = await namespaceIdentityMembershipDAL.create(
         {
           orgIdentityMembershipId: identityOrgMembership.id,
           namespaceId: namespace.id
@@ -178,11 +178,11 @@ export const identityNamespaceMembershipServiceFactory = ({
     return namespaceIdentity;
   };
 
-  const updateIdentityNamespaceMembership = async ({
+  const updateNamespaceIdentityMembership = async ({
     identityId,
     roles,
     permission
-  }: TUpdateIdentityNameespaceMembershipDTO) => {
+  }: TUpdateNamespaceIdentityMembershipDTO) => {
     const { namespaceSlug } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
@@ -209,7 +209,7 @@ export const identityNamespaceMembershipServiceFactory = ({
         message: `Failed to find identity with ID ${identityId}`
       });
 
-    const namespaceIdentity = await identityNamespaceMembershipDAL.findOne({
+    const namespaceIdentity = await namespaceIdentityMembershipDAL.findOne({
       orgIdentityMembershipId: identityOrgMembership.id,
       namespaceId: namespace.id
     });
@@ -298,10 +298,10 @@ export const identityNamespaceMembershipServiceFactory = ({
     return updatedRoles;
   };
 
-  const deleteIdentityNamespaceMembership = async ({
+  const deleteNamespaceIdentityMembership = async ({
     identityId,
     permission
-  }: TDeleteIdentityNameespaceMembershipDTO) => {
+  }: TDeleteNamespaceIdentityMembershipDTO) => {
     const { namespaceSlug } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
@@ -329,7 +329,7 @@ export const identityNamespaceMembershipServiceFactory = ({
         message: `Failed to find identity with ID ${identityId}`
       });
 
-    const identityNamespaceMembership = await identityNamespaceMembershipDAL.findOne({
+    const identityNamespaceMembership = await namespaceIdentityMembershipDAL.findOne({
       orgIdentityMembershipId: identityOrgMembership.id,
       namespaceId: namespace.id
     });
@@ -337,21 +337,21 @@ export const identityNamespaceMembershipServiceFactory = ({
       throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     }
 
-    const [deletedIdentity] = await identityNamespaceMembershipDAL.delete({
+    const [deletedIdentity] = await namespaceIdentityMembershipDAL.delete({
       orgIdentityMembershipId: identityId,
       namespaceId: namespace.id
     });
     return deletedIdentity;
   };
 
-  const listIdentityNamespaceMemberships = async ({
+  const listNamespaceIdentityMemberships = async ({
     limit,
     offset,
     orderBy,
     orderDirection,
     search,
     permission
-  }: TListIdentityNameespaceMembershipDTO) => {
+  }: TListNamespaceIdentityMembershipDTO) => {
     const { namespaceSlug } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
@@ -368,7 +368,7 @@ export const identityNamespaceMembershipServiceFactory = ({
       NamespacePermissionSubjects.Identity
     );
 
-    const identityMemberships = await identityNamespaceMembershipDAL.findByNamespaceId(namespace.id, {
+    const identityMemberships = await namespaceIdentityMembershipDAL.findByNamespaceId(namespace.id, {
       limit,
       offset,
       orderBy,
@@ -376,15 +376,15 @@ export const identityNamespaceMembershipServiceFactory = ({
       search
     });
 
-    const totalCount = await identityNamespaceMembershipDAL.getCountByNamespaceId(namespace.id, { search });
+    const totalCount = await namespaceIdentityMembershipDAL.getCountByNamespaceId(namespace.id, { search });
 
     return { identityMemberships, totalCount };
   };
 
-  const getIdentityNamespaceMembershipByIdentityId = async ({
+  const getNamespaceIdentityMembershipByIdentityId = async ({
     identityId,
     permission
-  }: TGetIdentityNameespaceMembershipByIdentityIdDTO) => {
+  }: TGetNamespaceIdentityMembershipByIdentityIdDTO) => {
     const { namespaceSlug } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
@@ -402,7 +402,7 @@ export const identityNamespaceMembershipServiceFactory = ({
       subject(NamespacePermissionSubjects.Identity, { identityId })
     );
 
-    const [identityMembership] = await identityNamespaceMembershipDAL.findByNamespaceId(namespace.id, {
+    const [identityMembership] = await namespaceIdentityMembershipDAL.findByNamespaceId(namespace.id, {
       identityId
     });
     if (!identityMembership)
@@ -438,7 +438,7 @@ export const identityNamespaceMembershipServiceFactory = ({
       NamespacePermissionSubjects.Identity
     );
 
-    const { totalCount, docs } = await identityNamespaceMembershipDAL.searchIdentities({
+    const { totalCount, docs } = await namespaceIdentityMembershipDAL.searchIdentities({
       limit,
       offset,
       orderBy,
@@ -451,11 +451,11 @@ export const identityNamespaceMembershipServiceFactory = ({
   };
 
   return {
-    createIdentityNamespaceMembership,
-    updateIdentityNamespaceMembership,
-    deleteIdentityNamespaceMembership,
-    listIdentityNamespaceMemberships,
-    getIdentityNamespaceMembershipByIdentityId,
+    createNamespaceIdentityMembership,
+    updateNamespaceIdentityMembership,
+    deleteNamespaceIdentityMembership,
+    listNamespaceIdentityMemberships,
+    getNamespaceIdentityMembershipByIdentityId,
     searchNamespaceIdentities
   };
 };

@@ -5,11 +5,11 @@ import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex"
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
 import { OrderByDirection } from "@app/lib/types";
 import { buildAuthMethods } from "@app/services/identity/identity-fns";
-import { NamespaceIdentityOrderBy, TSearchNamespaceIdentitiesDAL } from "./identity-namespace-membership-types";
+import { NamespaceIdentityOrderBy, TSearchNamespaceIdentitiesDAL } from "./namespace-identity-membership-types";
 
-export type TIdentityNamespaceMembershipDALFactory = ReturnType<typeof identityNamespaceMembershipDALFactory>;
+export type TNamespaceIdentityMembershipDALFactory = ReturnType<typeof namespaceIdentityMembershipDALFactory>;
 
-export const identityNamespaceMembershipDALFactory = (db: TDbClient) => {
+export const namespaceIdentityMembershipDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.NamespaceMembership);
 
   const findByNamespaceId = async (

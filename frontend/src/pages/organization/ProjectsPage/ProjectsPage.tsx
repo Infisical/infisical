@@ -12,20 +12,16 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { AllProjectView } from "./components/AllProjectView";
 import { MyProjectView } from "./components/MyProjectView";
 import { ProjectListView } from "./components/ProjectListToggle";
+import { NewNamespaceModal } from "@app/components/namespaces";
+import { NamespaceListView } from "./components/NamespacetListToggle";
+import { MyNamespaceView } from "./components/MyNamespaceView";
+import { AllNamespaceView } from "./components/AllNamespaceView";
 
-// const formatDescription = (type: ProjectType) => {
-//   if (type === ProjectType.SecretManager)
-//     return "Securely store, manage, and rotate various application secrets, such as database credentials, API keys, etc.";
-//   if (type === ProjectType.CertificateManager)
-//     return "Manage your PKI infrastructure and issue digital certificates for services, applications, and devices.";
-//   if (type === ProjectType.KMS)
-//     return "Centralize the management of keys for cryptographic operations, such as encryption and decryption.";
-//   if (type === ProjectType.SecretScanning)
-//     return "Connect and monitor data sources to prevent secret leaks.";
-//   return "Infisical SSH lets you issue SSH credentials to users for short-lived, secure SSH access to infrastructure.";
-// };
+type Props = {
+  isNamespacePage: boolean;
+};
 
-export const ProjectsPage = () => {
+export const ProjectsPage = ({ isNamespacePage }: Props) => {
   const { t } = useTranslation();
 
   const [projectListView, setProjectListView] = useState<ProjectListView>(() => {
@@ -41,17 +37,38 @@ export const ProjectsPage = () => {
     return ProjectListView.MyProjects;
   });
 
+  const [namespaceListView, setNamespaceListView] = useState<NamespaceListView>(() => {
+    const storedView = localStorage.getItem("namespaceListView");
+
+    if (
+      storedView &&
+      (storedView === NamespaceListView.AllNamespaces ||
+        storedView === NamespaceListView.MyNamespaces)
+    ) {
+      return storedView;
+    }
+
+    return NamespaceListView.MyNamespaces;
+  });
+
   const handleSetProjectListView = (value: ProjectListView) => {
     localStorage.setItem("projectListView", value);
     setProjectListView(value);
   };
 
+  const handleSetNamespaceListView = (value: NamespaceListView) => {
+    localStorage.setItem("namespaceListView", value);
+    setNamespaceListView(value);
+  };
+
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addNewWs",
+    "addNewNamespace",
     "upgradePlan"
   ] as const);
 
   const { subscription } = useSubscription();
+  const shouldRenderNamespaces = subscription?.namespace && !isNamespacePage;
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
@@ -64,11 +81,52 @@ export const ProjectsPage = () => {
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <div className="mb-4 flex flex-col items-start justify-start">
-        <PageHeader
-          title="Projects"
-          description="Your team's complete security toolkit - organized and ready when you need them."
-        />
+        {shouldRenderNamespaces && (
+          <PageHeader
+            title={shouldRenderNamespaces ? "Overview" : "Projects"}
+            description={
+              shouldRenderNamespaces
+                ? "Your team's complete security toolkit - workspaces and organization level projects"
+                : "Your team's complete security toolkit - organized and ready when you need them."
+            }
+          />
+        )}
       </div>
+      {shouldRenderNamespaces && (
+        <div>
+          <div className="mb-2">
+            <div className="text-lg font-medium text-white">Namespaces</div>
+            <div className="text-sm text-mineshaft-300">
+              Organize projects with scoped access control
+            </div>
+          </div>
+          {namespaceListView === NamespaceListView.MyNamespaces ? (
+            <MyNamespaceView
+              onAddNewNamespace={() => handlePopUpOpen("addNewNamespace")}
+              onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
+              isAddingNamespacesAllowed={subscription.namespace}
+              namespaceListView={namespaceListView}
+              onNamespaceListViewChange={handleSetNamespaceListView}
+            />
+          ) : (
+            <AllNamespaceView
+              onAddNewNamespace={() => handlePopUpOpen("addNewNamespace")}
+              onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
+              isAddingNamespacesAllowed={subscription.namespace}
+              namespaceListView={namespaceListView}
+              onNamespaceListViewChange={handleSetNamespaceListView}
+            />
+          )}
+        </div>
+      )}
+      {shouldRenderNamespaces && (
+        <div className="mb-2 mt-8">
+          <div className="text-lg font-medium text-white">Organization Projects</div>
+          <div className="text-sm text-mineshaft-300">
+            Projects available across the entire organization
+          </div>
+        </div>
+      )}
       {projectListView === ProjectListView.MyProjects ? (
         <MyProjectView
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
@@ -89,6 +147,10 @@ export const ProjectsPage = () => {
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
+      />
+      <NewNamespaceModal
+        isOpen={popUp.addNewNamespace.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("addNewNamespace", isOpen)}
       />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}

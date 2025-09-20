@@ -6,15 +6,8 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { slugSchema } from "@app/server/lib/schemas";
-
-const SanitizedNamespaceSchema = NamespacesSchema.pick({
-  id: true,
-  name: true,
-  description: true,
-  orgId: true,
-  createdAt: true,
-  updatedAt: true
-});
+import { SortDirection } from "@app/db/schemas";
+import { SearchNamespaceSortBy } from "@app/ee/services/namespace/namespace-types";
 
 export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -38,7 +31,7 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          namespace: SanitizedNamespaceSchema
+          namespace: NamespacesSchema
         })
       }
     },
@@ -75,19 +68,71 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          namespaces: SanitizedNamespaceSchema.array()
+          namespaces: NamespacesSchema.array(),
+          totalCount: z.number()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const namespaces = await server.services.namespace.listNamespaces({
+      const { namespaces, totalCount } = await server.services.namespace.listNamespaces({
         permission: req.permission,
         offset: req.query.offset,
         limit: req.query.limit,
         search: req.query.search
       });
-      return { namespaces };
+      return { namespaces, totalCount };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/search",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.Namespaces],
+      description: "Search namespaces",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      body: z.object({
+        name: z.string().optional().describe(NAMESPACES.SEARCH.name),
+        limit: z.coerce.number().min(1).max(100).default(20).describe(NAMESPACES.SEARCH.limit),
+        offset: z.coerce.number().min(0).default(0).describe(NAMESPACES.SEARCH.offset),
+        orderBy: z
+          .nativeEnum(SearchNamespaceSortBy)
+          .default(SearchNamespaceSortBy.NAME)
+          .describe(NAMESPACES.SEARCH.orderBy),
+        orderDirection: z
+          .nativeEnum(SortDirection)
+          .default(SortDirection.ASC)
+          .describe(NAMESPACES.SEARCH.orderDirection),
+        namespaceIds: z.string().array().optional().describe(NAMESPACES.SEARCH.namespaceIds)
+      }),
+      response: {
+        200: z.object({
+          namespaces: NamespacesSchema.extend({ isMember: z.boolean() }).array(),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { namespaces, totalCount } = await server.services.namespace.searchNamespaces({
+        permission: req.permission,
+        name: req.body.name,
+        limit: req.body.limit,
+        offset: req.body.offset,
+        orderBy: req.body.orderBy,
+        orderDirection: req.body.orderDirection,
+        namespaceIds: req.body.namespaceIds
+      });
+      return { namespaces, totalCount };
     }
   });
 
@@ -111,7 +156,7 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          namespace: SanitizedNamespaceSchema
+          namespace: NamespacesSchema
         })
       }
     },
@@ -149,7 +194,7 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          namespace: SanitizedNamespaceSchema
+          namespace: NamespacesSchema
         })
       }
     },
@@ -185,7 +230,7 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          namespace: SanitizedNamespaceSchema
+          namespace: NamespacesSchema
         })
       }
     },

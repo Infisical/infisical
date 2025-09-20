@@ -3040,6 +3040,14 @@ export const NAMESPACES = {
   },
   DELETE: {
     name: "The name of the namespace to delete."
+  },
+  SEARCH: {
+    name: "Search term to filter namespaces by name.",
+    limit: "The number of namespaces to return. Maximum is 100.",
+    offset: "The offset to start from.",
+    orderBy: "The field to order by.",
+    orderDirection: "The direction to order by (ASC or DESC).",
+    namespaceIds: "Array of namespace IDs to filter by."
   }
 };
 

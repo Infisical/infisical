@@ -103,6 +103,7 @@ export type TMachineIdentityCreatedEvent = {
     hasDeleteProtection: boolean;
     orgId: string;
     identityId: string;
+    namespaceSlug?: string;
   };
 };
 
