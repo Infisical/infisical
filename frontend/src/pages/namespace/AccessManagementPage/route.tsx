@@ -1,28 +1,29 @@
-import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
-import { z } from 'zod'
+import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
-import { OrgAccessControlTabSections } from '@app/types/org'
+import { OrgAccessControlTabSections } from "@app/types/org";
+import { AccessManagementPage } from "./AccessManagementPage";
 
 const AccessControlPageQuerySchema = z.object({
   selectedTab: z.string().catch(OrgAccessControlTabSections.Member),
-  action: z.string().catch(''),
-})
+  action: z.string().catch("")
+});
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/access-management',
+  "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/access-management"
 )({
-  component: () => <div> Access Management Page</div>,
+  component: AccessManagementPage,
   validateSearch: zodValidator(AccessControlPageQuerySchema),
   search: {
     // strip default values
-    middlewares: [stripSearchParams({ action: '' })],
+    middlewares: [stripSearchParams({ action: "" })]
   },
   context: () => ({
     breadcrumbs: [
       {
-        label: 'Access Control',
-      },
-    ],
-  }),
-})
+        label: "Access Control"
+      }
+    ]
+  })
+});

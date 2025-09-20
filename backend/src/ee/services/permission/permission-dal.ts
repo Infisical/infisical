@@ -1341,7 +1341,6 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             .ref("temporaryRange")
             .withSchema(TableName.NamespaceAdditionalPrivilege)
             .as("userAdditionalPrivilegesTemporaryRange"),
-          db.ref("userId").withSchema(TableName.NamespaceAdditionalPrivilege).as("userAdditionalPrivilegesUserId"),
           db
             .ref("temporaryAccessStartTime")
             .withSchema(TableName.NamespaceAdditionalPrivilege)

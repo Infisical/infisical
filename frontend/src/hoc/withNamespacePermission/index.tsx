@@ -1,0 +1,1 @@
+export { withNamespacePermission } from "./withNamespacePermission";

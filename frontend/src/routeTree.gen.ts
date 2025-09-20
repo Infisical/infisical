@@ -142,6 +142,7 @@ import { Route as secretManagerIntegrationsSelectIntegrationAuthPageRouteImport 
 import { Route as secretManagerIntegrationsDetailsByIDPageRouteImport } from './pages/secret-manager/IntegrationsDetailsByIDPage/route'
 import { Route as certManagerPkiSubscriberDetailsByIDPageRouteImport } from './pages/cert-manager/PkiSubscriberDetailsByIDPage/route'
 import { Route as certManagerCertAuthDetailsByIDPageRouteImport } from './pages/cert-manager/CertAuthDetailsByIDPage/route'
+import { Route as namespaceRoleDetailsBySlugPageRouteImport } from './pages/namespace/RoleDetailsBySlugPage/route'
 import { Route as secretScanningSecretScanningDataSourcesPageRouteImport } from './pages/secret-scanning/SecretScanningDataSourcesPage/route'
 import { Route as secretManagerIntegrationsListPageRouteImport } from './pages/secret-manager/IntegrationsListPage/route'
 import { Route as certManagerPkiSubscribersPageRouteImport } from './pages/cert-manager/PkiSubscribersPage/route'
@@ -1381,6 +1382,13 @@ const certManagerCertAuthDetailsByIDPageRouteRoute =
     id: '/ca/$caName',
     path: '/ca/$caName',
     getParentRoute: () => certManagerLayoutRoute,
+  } as any)
+
+const namespaceRoleDetailsBySlugPageRouteRoute =
+  namespaceRoleDetailsBySlugPageRouteImport.update({
+    id: '/roles/$roleSlug',
+    path: '/roles/$roleSlug',
+    getParentRoute: () => namespaceLayoutRoute,
   } as any)
 
 const secretScanningSecretScanningDataSourcesPageRouteRoute =
@@ -2960,6 +2968,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof secretScanningSecretScanningDataSourcesPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretScanningProjectIdSecretScanningLayoutDataSourcesImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/roles/$roleSlug': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/roles/$roleSlug'
+      path: '/roles/$roleSlug'
+      fullPath: '/organization/namespaces/$namespaceName/roles/$roleSlug'
+      preLoaderRoute: typeof namespaceRoleDetailsBySlugPageRouteImport
+      parentRoute: typeof namespaceLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/ca/$caName': {
       id: '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/ca/$caName'
       path: '/ca/$caName'
@@ -3838,12 +3853,15 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationSettingsRouteWithChildren
 interface namespaceLayoutRouteChildren {
   namespaceAccessManagementPageRouteRoute: typeof namespaceAccessManagementPageRouteRoute
   namespaceProjectsPageRouteRoute: typeof namespaceProjectsPageRouteRoute
+  namespaceRoleDetailsBySlugPageRouteRoute: typeof namespaceRoleDetailsBySlugPageRouteRoute
 }
 
 const namespaceLayoutRouteChildren: namespaceLayoutRouteChildren = {
   namespaceAccessManagementPageRouteRoute:
     namespaceAccessManagementPageRouteRoute,
   namespaceProjectsPageRouteRoute: namespaceProjectsPageRouteRoute,
+  namespaceRoleDetailsBySlugPageRouteRoute:
+    namespaceRoleDetailsBySlugPageRouteRoute,
 }
 
 const namespaceLayoutRouteWithChildren = namespaceLayoutRoute._addFileChildren(
@@ -4864,6 +4882,7 @@ export interface FileRoutesByFullPath {
   '/projects/cert-management/$projectId/subscribers/': typeof certManagerPkiSubscribersPageRouteRoute
   '/projects/secret-management/$projectId/integrations/': typeof secretManagerIntegrationsListPageRouteRoute
   '/projects/secret-scanning/$projectId/data-sources/': typeof secretScanningSecretScanningDataSourcesPageRouteRoute
+  '/organization/namespaces/$namespaceName/roles/$roleSlug': typeof namespaceRoleDetailsBySlugPageRouteRoute
   '/projects/cert-management/$projectId/ca/$caName': typeof certManagerCertAuthDetailsByIDPageRouteRoute
   '/projects/cert-management/$projectId/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/projects/secret-management/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
@@ -5079,6 +5098,7 @@ export interface FileRoutesByTo {
   '/projects/cert-management/$projectId/subscribers': typeof certManagerPkiSubscribersPageRouteRoute
   '/projects/secret-management/$projectId/integrations': typeof secretManagerIntegrationsListPageRouteRoute
   '/projects/secret-scanning/$projectId/data-sources': typeof secretScanningSecretScanningDataSourcesPageRouteRoute
+  '/organization/namespaces/$namespaceName/roles/$roleSlug': typeof namespaceRoleDetailsBySlugPageRouteRoute
   '/projects/cert-management/$projectId/ca/$caName': typeof certManagerCertAuthDetailsByIDPageRouteRoute
   '/projects/cert-management/$projectId/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/projects/secret-management/$projectId/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
@@ -5316,6 +5336,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/subscribers/': typeof certManagerPkiSubscribersPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/': typeof secretManagerIntegrationsListPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-scanning/$projectId/_secret-scanning-layout/data-sources/': typeof secretScanningSecretScanningDataSourcesPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/roles/$roleSlug': typeof namespaceRoleDetailsBySlugPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/ca/$caName': typeof certManagerCertAuthDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/subscribers/$subscriberName': typeof certManagerPkiSubscriberDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId': typeof secretManagerIntegrationsDetailsByIDPageRouteRoute
@@ -5545,6 +5566,7 @@ export interface FileRouteTypes {
     | '/projects/cert-management/$projectId/subscribers/'
     | '/projects/secret-management/$projectId/integrations/'
     | '/projects/secret-scanning/$projectId/data-sources/'
+    | '/organization/namespaces/$namespaceName/roles/$roleSlug'
     | '/projects/cert-management/$projectId/ca/$caName'
     | '/projects/cert-management/$projectId/subscribers/$subscriberName'
     | '/projects/secret-management/$projectId/integrations/$integrationId'
@@ -5759,6 +5781,7 @@ export interface FileRouteTypes {
     | '/projects/cert-management/$projectId/subscribers'
     | '/projects/secret-management/$projectId/integrations'
     | '/projects/secret-scanning/$projectId/data-sources'
+    | '/organization/namespaces/$namespaceName/roles/$roleSlug'
     | '/projects/cert-management/$projectId/ca/$caName'
     | '/projects/cert-management/$projectId/subscribers/$subscriberName'
     | '/projects/secret-management/$projectId/integrations/$integrationId'
@@ -5994,6 +6017,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/subscribers/'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-scanning/$projectId/_secret-scanning-layout/data-sources/'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/roles/$roleSlug'
     | '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/ca/$caName'
     | '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/subscribers/$subscriberName'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/$integrationId'
@@ -6582,7 +6606,8 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName",
       "children": [
         "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/access-management",
-        "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/projects"
+        "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/projects",
+        "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/roles/$roleSlug"
       ]
     },
     "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout": {
@@ -6934,6 +6959,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/projects/secret-scanning/$projectId/_secret-scanning-layout/data-sources/": {
       "filePath": "secret-scanning/SecretScanningDataSourcesPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/projects/secret-scanning/$projectId/_secret-scanning-layout/data-sources"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/roles/$roleSlug": {
+      "filePath": "namespace/RoleDetailsBySlugPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/ca/$caName": {
       "filePath": "cert-manager/CertAuthDetailsByIDPage/route.tsx",

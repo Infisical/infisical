@@ -19,7 +19,8 @@ const adminRoute = route("/admin", [
 const namespaceRoutes = route("/namespaces/$namespaceName", [
   layout("namespace-layout", "namespace/layout.tsx", [
     route("/projects", "namespace/ProjectsPage/route.tsx"),
-    route("/access-management", "namespace/AccessManagementPage/route.tsx")
+    route("/access-management", "namespace/AccessManagementPage/route.tsx"),
+    route("/roles/$roleSlug", "namespace/RoleDetailsBySlugPage/route.tsx")
   ])
 ]);
 
