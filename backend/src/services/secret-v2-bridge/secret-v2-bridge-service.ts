@@ -159,17 +159,14 @@ export const secretV2BridgeServiceFactory = ({
     const uniqueReferenceEnvironmentSlugs = Array.from(new Set(references.map((el) => el.environment)));
     const referencesEnvironments = await projectEnvDAL.findBySlugs(projectId, uniqueReferenceEnvironmentSlugs, tx);
 
-    if (referencesEnvironments.length !== uniqueReferenceEnvironmentSlugs.length)
-      throw new BadRequestError({
-        message: `Referenced environment not found. Missing ${diff(
-          uniqueReferenceEnvironmentSlugs,
-          referencesEnvironments.map((el) => el.slug)
-        ).join(",")}`
-      });
-
+    // Filter out references to non-existent environments
     const referencesEnvironmentGroupBySlug = groupBy(referencesEnvironments, (i) => i.slug);
+    const validEnvironmentReferences = references.filter((el) => referencesEnvironmentGroupBySlug[el.environment]);
+
+    if (validEnvironmentReferences.length === 0) return;
+
     const referredFolders = await folderDAL.findByManySecretPath(
-      references.map((el) => ({
+      validEnvironmentReferences.map((el) => ({
         secretPath: el.secretPath,
         envId: referencesEnvironmentGroupBySlug[el.environment][0].id
       })),
@@ -179,7 +176,7 @@ export const secretV2BridgeServiceFactory = ({
     const referencesFolderGroupByPath = groupBy(referredFolders.filter(Boolean), (i) => `${i?.envId}-${i?.path}`);
 
     // Find only references that have valid folders (don't throw for missing paths)
-    const validReferences = references.filter((el) => {
+    const validReferences = validEnvironmentReferences.filter((el) => {
       const folderId =
         referencesFolderGroupByPath[`${referencesEnvironmentGroupBySlug[el.environment][0].id}-${el.secretPath}`]?.[0]
           ?.id;
