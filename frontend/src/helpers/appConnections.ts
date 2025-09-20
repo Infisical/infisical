@@ -113,7 +113,8 @@ export const APP_CONNECTION_MAP: Record<
     name: "Netlify",
     image: "Netlify.png"
   },
-  [AppConnection.Okta]: { name: "Okta", image: "Okta.png" }
+  [AppConnection.Okta]: { name: "Okta", image: "Okta.png" },
+  [AppConnection.Redis]: { name: "Redis", image: "Redis.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {

@@ -2685,9 +2685,16 @@ export const SecretRotations = {
     },
     OKTA_CLIENT_SECRET: {
       clientId: "The ID of the Okta Application to rotate the client secret for."
+    },
+    REDIS_CREDENTIALS: {
+      permissionScope: "The ACL permission scope to assign to the issued Redis users."
     }
   },
   SECRETS_MAPPING: {
+    REDIS_CREDENTIALS: {
+      username: "The name of the secret that the username will be mapped to.",
+      password: "The name of the secret that the rotated password will be mapped to."
+    },
     SQL_CREDENTIALS: {
       username: "The name of the secret that the active username will be mapped to.",
       password: "The name of the secret that the generated password will be mapped to."

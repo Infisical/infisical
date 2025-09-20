@@ -44,6 +44,11 @@ import {
   TOracleDBCredentialsRotation,
   TOracleDBCredentialsRotationGeneratedCredentialsResponse
 } from "./oracledb-credentials-rotation";
+import {
+  TRedisCredentialsRotation,
+  TRedisCredentialsRotationGeneratedCredentialsResponse,
+  TRedisCredentialsRotationOption
+} from "./redis-credentials-rotation";
 
 export type TSecretRotationV2 = (
   | TPostgresCredentialsRotation
@@ -55,6 +60,7 @@ export type TSecretRotationV2 = (
   | TLdapPasswordRotation
   | TAwsIamUserSecretRotation
   | TOktaClientSecretRotation
+  | TRedisCredentialsRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
@@ -65,7 +71,8 @@ export type TSecretRotationV2Option =
   | TAzureClientSecretRotationOption
   | TLdapPasswordRotationOption
   | TAwsIamUserSecretRotationOption
-  | TOktaClientSecretRotationOption;
+  | TOktaClientSecretRotationOption
+  | TRedisCredentialsRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -80,7 +87,8 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TAzureClientSecretRotationGeneratedCredentialsResponse
   | TLdapPasswordRotationGeneratedCredentialsResponse
   | TAwsIamUserSecretRotationGeneratedCredentialsResponse
-  | TOktaClientSecretRotationGeneratedCredentialsResponse;
+  | TOktaClientSecretRotationGeneratedCredentialsResponse
+  | TRedisCredentialsRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -133,6 +141,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.LdapPassword]: TLdapPasswordRotationOption;
   [SecretRotation.AwsIamUserSecret]: TAwsIamUserSecretRotationOption;
   [SecretRotation.OktaClientSecret]: TOktaClientSecretRotationOption;
+  [SecretRotation.RedisCredentials]: TRedisCredentialsRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -145,4 +154,5 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.LdapPassword]: TLdapPasswordRotationGeneratedCredentialsResponse;
   [SecretRotation.AwsIamUserSecret]: TAwsIamUserSecretRotationGeneratedCredentialsResponse;
   [SecretRotation.OktaClientSecret]: TOktaClientSecretRotationGeneratedCredentialsResponse;
+  [SecretRotation.RedisCredentials]: TRedisCredentialsRotationGeneratedCredentialsResponse;
 };
