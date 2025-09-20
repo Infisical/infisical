@@ -707,7 +707,7 @@ export const authLoginServiceFactory = ({
         } else {
           if (mfaToken.length !== 6) {
             throw new BadRequestError({
-              message: "Invalid TOTP code. Please use a valid recovery code."
+              message: "Please use a valid TOTP code."
             });
           }
           await totpService.verifyUserTotp({

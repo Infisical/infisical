@@ -35,7 +35,7 @@ const TotpRegistration = ({ onComplete, shouldCenterQr }: Props) => {
         type: "success"
       });
 
-      if (result.recoveryCodes) {
+      if (result.recoveryCodes && result.recoveryCodes.length > 0) {
         setRecoveryCodes(result.recoveryCodes);
         setShowRecoveryModal(true);
       } else if (onComplete) {
