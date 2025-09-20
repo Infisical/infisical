@@ -255,7 +255,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         totp: z.string()
       }),
       response: {
-        200: z.object({})
+        200: z.object({
+          recoveryCodes: z.string().array()
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT], {
