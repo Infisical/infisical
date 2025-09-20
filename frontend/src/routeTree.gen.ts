@@ -15,6 +15,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './pages/root'
 import { Route as middlewaresRestrictLoginSignupImport } from './pages/middlewares/restrict-login-signup'
 import { Route as middlewaresAuthenticateImport } from './pages/middlewares/authenticate'
+import { Route as publicUpgradePathPageRouteImport } from './pages/public/UpgradePathPage/route'
 import { Route as publicShareSecretPageRouteImport } from './pages/public/ShareSecretPage/route'
 import { Route as authCliRedirectPageRouteImport } from './pages/auth/CliRedirectPage/route'
 import { Route as indexImport } from './pages/index'
@@ -325,6 +326,14 @@ const middlewaresAuthenticateRoute = middlewaresAuthenticateImport.update({
   id: '/_authenticate',
   getParentRoute: () => rootRoute,
 } as any)
+
+const publicUpgradePathPageRouteRoute = publicUpgradePathPageRouteImport.update(
+  {
+    id: '/upgrade-path',
+    path: '/upgrade-path',
+    getParentRoute: () => rootRoute,
+  } as any,
+)
 
 const publicShareSecretPageRouteRoute = publicShareSecretPageRouteImport.update(
   {
@@ -2080,6 +2089,13 @@ declare module '@tanstack/react-router' {
       path: '/share-secret'
       fullPath: '/share-secret'
       preLoaderRoute: typeof publicShareSecretPageRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/upgrade-path': {
+      id: '/upgrade-path'
+      path: '/upgrade-path'
+      fullPath: '/upgrade-path'
+      preLoaderRoute: typeof publicUpgradePathPageRouteImport
       parentRoute: typeof rootRoute
     }
     '/_authenticate': {
@@ -4707,6 +4723,7 @@ export interface FileRoutesByFullPath {
   '/': typeof indexRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
   '/share-secret': typeof publicShareSecretPageRouteRoute
+  '/upgrade-path': typeof publicUpgradePathPageRouteRoute
   '': typeof organizationLayoutRouteWithChildren
   '/password-setup': typeof authPasswordSetupPageRouteRoute
   '/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
@@ -4933,6 +4950,7 @@ export interface FileRoutesByTo {
   '/': typeof indexRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
   '/share-secret': typeof publicShareSecretPageRouteRoute
+  '/upgrade-path': typeof publicUpgradePathPageRouteRoute
   '': typeof organizationLayoutRouteWithChildren
   '/password-setup': typeof authPasswordSetupPageRouteRoute
   '/email-not-verified': typeof authEmailNotVerifiedPageRouteRoute
@@ -5145,6 +5163,7 @@ export interface FileRoutesById {
   '/': typeof indexRoute
   '/cli-redirect': typeof authCliRedirectPageRouteRoute
   '/share-secret': typeof publicShareSecretPageRouteRoute
+  '/upgrade-path': typeof publicUpgradePathPageRouteRoute
   '/_authenticate': typeof middlewaresAuthenticateRouteWithChildren
   '/_restrict-login-signup': typeof middlewaresRestrictLoginSignupRouteWithChildren
   '/_authenticate/password-setup': typeof authPasswordSetupPageRouteRoute
@@ -5383,6 +5402,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cli-redirect'
     | '/share-secret'
+    | '/upgrade-path'
     | ''
     | '/password-setup'
     | '/email-not-verified'
@@ -5608,6 +5628,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cli-redirect'
     | '/share-secret'
+    | '/upgrade-path'
     | ''
     | '/password-setup'
     | '/email-not-verified'
@@ -5818,6 +5839,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cli-redirect'
     | '/share-secret'
+    | '/upgrade-path'
     | '/_authenticate'
     | '/_restrict-login-signup'
     | '/_authenticate/password-setup'
@@ -6055,6 +6077,7 @@ export interface RootRouteChildren {
   indexRoute: typeof indexRoute
   authCliRedirectPageRouteRoute: typeof authCliRedirectPageRouteRoute
   publicShareSecretPageRouteRoute: typeof publicShareSecretPageRouteRoute
+  publicUpgradePathPageRouteRoute: typeof publicUpgradePathPageRouteRoute
   middlewaresAuthenticateRoute: typeof middlewaresAuthenticateRouteWithChildren
   middlewaresRestrictLoginSignupRoute: typeof middlewaresRestrictLoginSignupRouteWithChildren
   publicViewSecretRequestByIDPageRouteRoute: typeof publicViewSecretRequestByIDPageRouteRoute
@@ -6065,6 +6088,7 @@ const rootRouteChildren: RootRouteChildren = {
   indexRoute: indexRoute,
   authCliRedirectPageRouteRoute: authCliRedirectPageRouteRoute,
   publicShareSecretPageRouteRoute: publicShareSecretPageRouteRoute,
+  publicUpgradePathPageRouteRoute: publicUpgradePathPageRouteRoute,
   middlewaresAuthenticateRoute: middlewaresAuthenticateRouteWithChildren,
   middlewaresRestrictLoginSignupRoute:
     middlewaresRestrictLoginSignupRouteWithChildren,
@@ -6087,6 +6111,7 @@ export const routeTree = rootRoute
         "/",
         "/cli-redirect",
         "/share-secret",
+        "/upgrade-path",
         "/_authenticate",
         "/_restrict-login-signup",
         "/secret-request/secret/$secretRequestId",
@@ -6101,6 +6126,9 @@ export const routeTree = rootRoute
     },
     "/share-secret": {
       "filePath": "public/ShareSecretPage/route.tsx"
+    },
+    "/upgrade-path": {
+      "filePath": "public/UpgradePathPage/route.tsx"
     },
     "/_authenticate": {
       "filePath": "middlewares/authenticate.tsx",
