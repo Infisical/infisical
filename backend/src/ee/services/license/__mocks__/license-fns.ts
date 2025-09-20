@@ -31,6 +31,7 @@ export const getDefaultOnPremFeatures = () => {
     caCrl: false,
     sshHostGroups: false,
     enterpriseSecretSyncs: false,
+    enterpriseCertificateSyncs: false,
     enterpriseAppConnections: true,
     machineIdentityAuthTemplates: false
   };

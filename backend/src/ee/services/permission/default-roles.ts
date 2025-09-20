@@ -13,6 +13,7 @@ import {
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
+  ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretEventActions,
@@ -207,6 +208,19 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionSecretSyncActions.RemoveSecrets
     ],
     ProjectPermissionSub.SecretSyncs
+  );
+
+  can(
+    [
+      ProjectPermissionPkiSyncActions.Create,
+      ProjectPermissionPkiSyncActions.Edit,
+      ProjectPermissionPkiSyncActions.Delete,
+      ProjectPermissionPkiSyncActions.Read,
+      ProjectPermissionPkiSyncActions.SyncCertificates,
+      ProjectPermissionPkiSyncActions.ImportCertificates,
+      ProjectPermissionPkiSyncActions.RemoveCertificates
+    ],
+    ProjectPermissionSub.PkiSyncs
   );
 
   can(
@@ -464,6 +478,19 @@ const buildMemberPermissionRules = () => {
 
   can(
     [
+      ProjectPermissionPkiSyncActions.Create,
+      ProjectPermissionPkiSyncActions.Edit,
+      ProjectPermissionPkiSyncActions.Delete,
+      ProjectPermissionPkiSyncActions.Read,
+      ProjectPermissionPkiSyncActions.SyncCertificates,
+      ProjectPermissionPkiSyncActions.ImportCertificates,
+      ProjectPermissionPkiSyncActions.RemoveCertificates
+    ],
+    ProjectPermissionSub.PkiSyncs
+  );
+
+  can(
+    [
       ProjectPermissionSecretScanningDataSourceActions.Read,
       ProjectPermissionSecretScanningDataSourceActions.TriggerScans,
       ProjectPermissionSecretScanningDataSourceActions.ReadScans,
@@ -526,6 +553,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
   can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
+  can(ProjectPermissionPkiSyncActions.Read, ProjectPermissionSub.PkiSyncs);
   can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
 
   can(

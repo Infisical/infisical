@@ -50,6 +50,12 @@ type TCertificateAuthorityQueueFactoryDep = {
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   queueService: TQueueServiceFactory;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById" | "updateById">;
+  pkiSyncDAL: {
+    find: (filter: { subscriberId: string; isAutoSyncEnabled: boolean }) => Promise<Array<{ id: string }>>;
+  };
+  pkiSyncQueue: {
+    queuePkiSyncSyncCertificatesById: (params: { syncId: string }) => Promise<void>;
+  };
 };
 
 export type TCertificateAuthorityQueueFactory = ReturnType<typeof certificateAuthorityQueueFactory>;
@@ -68,7 +74,9 @@ export const certificateAuthorityQueueFactory = ({
   externalCertificateAuthorityDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  pkiSubscriberDAL
+  pkiSubscriberDAL,
+  pkiSyncDAL,
+  pkiSyncQueue
 }: TCertificateAuthorityQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -80,7 +88,9 @@ export const certificateAuthorityQueueFactory = ({
     certificateSecretDAL,
     kmsService,
     pkiSubscriberDAL,
-    projectDAL
+    projectDAL,
+    pkiSyncDAL,
+    pkiSyncQueue
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({
@@ -93,7 +103,9 @@ export const certificateAuthorityQueueFactory = ({
     certificateSecretDAL,
     kmsService,
     pkiSubscriberDAL,
-    projectDAL
+    projectDAL,
+    pkiSyncDAL,
+    pkiSyncQueue
   });
 
   // TODO 1: auto-periodic rotation

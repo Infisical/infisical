@@ -8,7 +8,8 @@ type Props = {
   type:
     | ProjectPermissionSub.SecretFolders
     | ProjectPermissionSub.SecretImports
-    | ProjectPermissionSub.SecretRotation;
+    | ProjectPermissionSub.SecretRotation
+    | ProjectPermissionSub.PkiSyncs;
 };
 
 export const GeneralPermissionConditions = ({ position = 0, isDisabled, type }: Props) => {

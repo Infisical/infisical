@@ -75,6 +75,7 @@ export type TFeatureSet = {
   sshHostGroups: false;
   secretScanning: false;
   enterpriseSecretSyncs: false;
+  enterpriseCertificateSyncs: false;
   enterpriseAppConnections: false;
   machineIdentityAuthTemplates: false;
   fips: false;

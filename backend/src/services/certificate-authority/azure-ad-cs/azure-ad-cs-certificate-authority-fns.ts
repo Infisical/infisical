@@ -26,6 +26,7 @@ import {
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TPkiSubscriberProperties } from "@app/services/pki-subscriber/pki-subscriber-types";
+import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-fns";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
@@ -55,6 +56,12 @@ type TAzureAdCsCertificateAuthorityFnsDeps = {
     "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
   >;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
+  pkiSyncDAL: {
+    find: (filter: { subscriberId: string; isAutoSyncEnabled: boolean }) => Promise<Array<{ id: string }>>;
+  };
+  pkiSyncQueue: {
+    queuePkiSyncSyncCertificatesById: (params: { syncId: string }) => Promise<void>;
+  };
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
 };
 
@@ -584,7 +591,9 @@ export const AzureAdCsCertificateAuthorityFns = ({
   certificateSecretDAL,
   kmsService,
   projectDAL,
-  pkiSubscriberDAL
+  pkiSubscriberDAL,
+  pkiSyncDAL,
+  pkiSyncQueue
 }: TAzureAdCsCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
     name,
@@ -1023,6 +1032,8 @@ export const AzureAdCsCertificateAuthorityFns = ({
         tx
       );
     });
+
+    await triggerAutoSyncForSubscriber(subscriber.id, { pkiSyncDAL, pkiSyncQueue });
 
     return {
       certificate: certificatePem,

@@ -1,0 +1,138 @@
+---
+title: "List Azure Key Vault PKI Syncs"
+openapi: "GET /api/v1/pki/syncs/azure-key-vault"
+---
+
+<Info>
+This endpoint lists all Azure Key Vault PKI syncs for a specified project.
+</Info>
+
+## Request
+
+<ParamField query="projectId" type="string" required>
+  The ID of the project to list Azure Key Vault PKI syncs for
+</ParamField>
+
+## Response
+
+<ResponseField name="pkiSyncs" type="array">
+Array of Azure Key Vault PKI syncs for the project
+  <Expandable title="properties">
+    <ResponseField name="id" type="string">
+      Unique identifier for the PKI sync
+    </ResponseField>
+
+    <ResponseField name="name" type="string">
+      Name of the PKI sync
+    </ResponseField>
+
+    <ResponseField name="description" type="string" optional>
+      Description of the PKI sync
+    </ResponseField>
+
+    <ResponseField name="destination" type="string">
+      Always "azure-key-vault" for this endpoint
+    </ResponseField>
+
+    <ResponseField name="isAutoSyncEnabled" type="boolean">
+      Whether automatic synchronization is enabled
+    </ResponseField>
+
+    <ResponseField name="destinationConfig" type="object">
+      Azure Key Vault specific configuration
+      <Expandable title="properties">
+        <ResponseField name="vaultBaseUrl" type="string">
+          Base URL of the Azure Key Vault (e.g., "https://my-vault.vault.azure.net/")
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+
+    <ResponseField name="syncOptions" type="object">
+      Sync-specific options and settings
+    </ResponseField>
+
+    <ResponseField name="projectId" type="string">
+      ID of the project this sync belongs to
+    </ResponseField>
+
+    <ResponseField name="subscriberId" type="string" optional>
+      ID of the PKI subscriber this sync is connected to
+    </ResponseField>
+
+    <ResponseField name="connectionId" type="string">
+      ID of the Azure Key Vault app connection used for this sync
+    </ResponseField>
+
+    <ResponseField name="syncStatus" type="string" optional>
+      Current status of the last sync operation ("pending", "running", "succeeded", "failed")
+    </ResponseField>
+
+    <ResponseField name="lastSyncedAt" type="string" optional>
+      Timestamp of the last successful sync
+    </ResponseField>
+
+    <ResponseField name="lastSyncMessage" type="string" optional>
+      Message from the last sync operation
+    </ResponseField>
+
+    <ResponseField name="removeStatus" type="string" optional>
+      Current status of the last remove operation
+    </ResponseField>
+
+    <ResponseField name="lastRemovedAt" type="string" optional>
+      Timestamp of the last certificate removal
+    </ResponseField>
+
+    <ResponseField name="lastRemoveMessage" type="string" optional>
+      Message from the last remove operation
+    </ResponseField>
+
+    <ResponseField name="connection" type="object">
+      Details about the associated Azure Key Vault app connection
+    </ResponseField>
+
+    <ResponseField name="createdAt" type="string">
+      Timestamp when the PKI sync was created
+    </ResponseField>
+
+    <ResponseField name="updatedAt" type="string">
+      Timestamp when the PKI sync was last updated
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseExample>
+```json Response
+{
+  "pkiSyncs": [
+    {
+      "id": "ps_12345",
+      "name": "Production Azure Key Vault Sync",
+      "description": "Sync certificates to production Key Vault",
+      "destination": "azure-key-vault",
+      "isAutoSyncEnabled": true,
+      "destinationConfig": {
+        "vaultBaseUrl": "https://my-vault.vault.azure.net/"
+      },
+      "syncOptions": {},
+      "projectId": "proj_12345",
+      "subscriberId": "sub_12345",
+      "connectionId": "conn_12345",
+      "syncStatus": "succeeded",
+      "lastSyncedAt": "2023-12-01T10:00:00Z",
+      "lastSyncMessage": "Successfully synced 3 certificates",
+      "removeStatus": null,
+      "lastRemovedAt": null,
+      "lastRemoveMessage": null,
+      "connection": {
+        "id": "conn_12345",
+        "name": "Azure Production Connection",
+        "app": "azure-key-vault"
+      },
+      "createdAt": "2023-11-01T10:00:00Z",
+      "updatedAt": "2023-12-01T10:00:00Z"
+    }
+  ]
+}
+```
+</ResponseExample>

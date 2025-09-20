@@ -712,6 +712,19 @@
                       "documentation/platform/pki/pki-issuer",
                       "documentation/platform/pki/integration-guides/gloo-mesh"
                     ]
+                  },
+                  {
+                    "group": "Certificate Syncs",
+                    "pages": [
+                      "documentation/platform/pki/certificate-syncs",
+                      "documentation/platform/pki/certificate-syncs/overview",
+                      {
+                        "group": "Syncs",
+                        "pages": [
+                          "documentation/platform/pki/certificate-syncs/azure-key-vault"
+                        ]
+                      }
+                    ]
                   }
                 ]
               }
@@ -2476,6 +2489,25 @@
                   "api-reference/endpoints/pki-alerts/update",
                   "api-reference/endpoints/pki-alerts/delete"
                 ]
+              },
+              {
+                "group": "Certificate Syncs",
+                "pages": [
+                  "api-reference/endpoints/pki/syncs/list",
+                  "api-reference/endpoints/pki/syncs/get-by-id",
+                  {
+                    "group": "Azure Key Vault",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/list",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/get-by-id",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/create",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/update",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/delete",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/remove-certificates"
+                    ]
+                  }
+                ]
               }
             ]
           },
@@ -2615,9 +2647,9 @@
     "href": "https://infisical.com"
   },
   "api": {
-    "openapi": "https://app.infisical.com/api/docs/json",
+    "openapi": "https://api.infisical.com/api/docs/json",
     "mdx": {
-      "server": ["https://app.infisical.com"]
+      "server": ["https://api.infisical.com"]
     }
   },
   "appearance": {
