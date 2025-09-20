@@ -626,7 +626,8 @@ export const expandSecretReferencesFactory = ({
     // Track visited secrets to prevent circular references
     const createSecretId = (env: string, secretPath: string, key: string) => `${env}:${secretPath}:${key}`;
 
-    const stack = [{ ...dto, depth: 0, trace: stackTrace, visitedSecrets: new Set<string>() }];
+    const currentSecretId = createSecretId(dto.environment, dto.secretPath, dto.secretKey);
+    const stack = [{ ...dto, depth: 0, trace: stackTrace, visitedSecrets: new Set<string>([currentSecretId]) }];
     let expandedValue = dto.value;
 
     while (stack.length) {
