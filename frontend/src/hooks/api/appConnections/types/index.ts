@@ -31,6 +31,7 @@ import { TOktaConnection } from "./okta-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TRailwayConnection } from "./railway-connection";
+import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
 import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
@@ -68,6 +69,7 @@ export * from "./okta-connection";
 export * from "./oracledb-connection";
 export * from "./postgres-connection";
 export * from "./railway-connection";
+export * from "./redis-connection";
 export * from "./render-connection";
 export * from "./supabase-connection";
 export * from "./teamcity-connection";
@@ -114,7 +116,8 @@ export type TAppConnection =
   | TSupabaseConnection
   | TDigitalOceanConnection
   | TNetlifyConnection
-  | TOktaConnection;
+  | TOktaConnection
+  | TRedisConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

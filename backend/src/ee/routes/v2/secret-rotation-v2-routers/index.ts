@@ -9,6 +9,7 @@ import { registerMySqlCredentialsRotationRouter } from "./mysql-credentials-rota
 import { registerOktaClientSecretRotationRouter } from "./okta-client-secret-rotation-router";
 import { registerOracleDBCredentialsRotationRouter } from "./oracledb-credentials-rotation-router";
 import { registerPostgresCredentialsRotationRouter } from "./postgres-credentials-rotation-router";
+import { registerRedisCredentialsRotationRouter } from "./redis-credentials-rotation-router";
 
 export * from "./secret-rotation-v2-router";
 
@@ -24,5 +25,6 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.AzureClientSecret]: registerAzureClientSecretRotationRouter,
   [SecretRotation.AwsIamUserSecret]: registerAwsIamUserSecretRotationRouter,
   [SecretRotation.LdapPassword]: registerLdapPasswordRotationRouter,
-  [SecretRotation.OktaClientSecret]: registerOktaClientSecretRotationRouter
+  [SecretRotation.OktaClientSecret]: registerOktaClientSecretRotationRouter,
+  [SecretRotation.RedisCredentials]: registerRedisCredentialsRotationRouter
 };

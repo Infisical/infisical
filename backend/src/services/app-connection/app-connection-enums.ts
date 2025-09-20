@@ -36,7 +36,8 @@ export enum AppConnection {
   Supabase = "supabase",
   DigitalOcean = "digital-ocean",
   Netlify = "netlify",
-  Okta = "okta"
+  Okta = "okta",
+  Redis = "redis"
 }
 
 export enum AWSRegion {

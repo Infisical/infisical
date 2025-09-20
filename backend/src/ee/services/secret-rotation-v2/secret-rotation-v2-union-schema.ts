@@ -9,6 +9,7 @@ import { MySqlCredentialsRotationSchema } from "@app/ee/services/secret-rotation
 import { OktaClientSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/okta-client-secret";
 import { OracleDBCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/oracledb-credentials";
 import { PostgresCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
+import { RedisCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/redis-credentials";
 
 export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   PostgresCredentialsRotationSchema,
@@ -19,5 +20,6 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   AzureClientSecretRotationSchema,
   LdapPasswordRotationSchema,
   AwsIamUserSecretRotationSchema,
-  OktaClientSecretRotationSchema
+  OktaClientSecretRotationSchema,
+  RedisCredentialsRotationSchema
 ]);

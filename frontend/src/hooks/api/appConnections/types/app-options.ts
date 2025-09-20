@@ -168,6 +168,10 @@ export type TAzureAdCsConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.AzureADCS;
 };
 
+export type TRedisConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Redis;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -247,4 +251,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Netlify]: TNetlifyConnectionOption;
   [AppConnection.Okta]: TOktaConnectionOption;
   [AppConnection.AzureADCS]: TAzureAdCsConnectionOption;
+  [AppConnection.Redis]: TRedisConnectionOption;
 };

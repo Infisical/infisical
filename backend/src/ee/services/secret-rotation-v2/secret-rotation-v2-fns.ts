@@ -14,6 +14,7 @@ import { MYSQL_CREDENTIALS_ROTATION_LIST_OPTION } from "./mysql-credentials";
 import { OKTA_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./okta-client-secret";
 import { ORACLEDB_CREDENTIALS_ROTATION_LIST_OPTION } from "./oracledb-credentials";
 import { POSTGRES_CREDENTIALS_ROTATION_LIST_OPTION } from "./postgres-credentials";
+import { REDIS_CREDENTIALS_ROTATION_LIST_OPTION } from "./redis-credentials";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 import { SecretRotation, SecretRotationStatus } from "./secret-rotation-v2-enums";
 import { TSecretRotationV2ServiceFactory, TSecretRotationV2ServiceFactoryDep } from "./secret-rotation-v2-service";
@@ -35,7 +36,8 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.AzureClientSecret]: AZURE_CLIENT_SECRET_ROTATION_LIST_OPTION,
   [SecretRotation.AwsIamUserSecret]: AWS_IAM_USER_SECRET_ROTATION_LIST_OPTION,
   [SecretRotation.LdapPassword]: LDAP_PASSWORD_ROTATION_LIST_OPTION,
-  [SecretRotation.OktaClientSecret]: OKTA_CLIENT_SECRET_ROTATION_LIST_OPTION
+  [SecretRotation.OktaClientSecret]: OKTA_CLIENT_SECRET_ROTATION_LIST_OPTION,
+  [SecretRotation.RedisCredentials]: REDIS_CREDENTIALS_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {

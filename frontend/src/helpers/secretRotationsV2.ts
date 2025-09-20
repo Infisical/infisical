@@ -49,6 +49,11 @@ export const SECRET_ROTATION_MAP: Record<
     name: "Okta Client Secret",
     image: "Okta.png",
     size: 50
+  },
+  [SecretRotation.RedisCredentials]: {
+    name: "Redis Credentials",
+    image: "Redis.png",
+    size: 50
   }
 };
 
@@ -61,7 +66,8 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.AzureClientSecret]: AppConnection.AzureClientSecrets,
   [SecretRotation.LdapPassword]: AppConnection.LDAP,
   [SecretRotation.AwsIamUserSecret]: AppConnection.AWS,
-  [SecretRotation.OktaClientSecret]: AppConnection.Okta
+  [SecretRotation.OktaClientSecret]: AppConnection.Okta,
+  [SecretRotation.RedisCredentials]: AppConnection.Redis
 };
 
 // if a rotation can potentially have downtime due to rotating a single credential set this to false
@@ -74,7 +80,8 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.AzureClientSecret]: true,
   [SecretRotation.LdapPassword]: false,
   [SecretRotation.AwsIamUserSecret]: true,
-  [SecretRotation.OktaClientSecret]: true
+  [SecretRotation.OktaClientSecret]: true,
+  [SecretRotation.RedisCredentials]: true
 };
 
 export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {

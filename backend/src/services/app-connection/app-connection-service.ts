@@ -99,6 +99,7 @@ import { oktaConnectionService } from "./okta/okta-connection-service";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
+import { ValidateRedisConnectionCredentialsSchema } from "./redis";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
 import { ValidateSupabaseConnectionCredentialsSchema } from "./supabase";
@@ -166,7 +167,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Supabase]: ValidateSupabaseConnectionCredentialsSchema,
   [AppConnection.DigitalOcean]: ValidateDigitalOceanConnectionCredentialsSchema,
   [AppConnection.Netlify]: ValidateNetlifyConnectionCredentialsSchema,
-  [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema
+  [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema,
+  [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
