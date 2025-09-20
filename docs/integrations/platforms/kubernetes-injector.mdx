@@ -59,9 +59,10 @@ The Infisical Agent Injector supports the following annotations:
   The inject annotation is used to enable the injector on a pod. Set the value to `true` and the pod will be patched with an Infisical Agent container on update or create.
 </Accordion>
 <Accordion title="org.infisical.com/inject-mode">
-  The inject mode annotation is used to specify the mode to use to inject the secrets into the pod. Currently only `init` mode is supported.
+  The inject mode annotation is used to specify the mode to use to inject the secrets into the pod.
 
   - `init`: The init method will create an init container for the pod that will render the secrets into a shared volume mount within the pod. The agent init container will run before any other containers in the pod runs, including other init containers.
+  - `sidecar`: The sidecar method will create a sidecar container for the pod that will render the secrets into a shared volume mount within the pod. The agent sidecar container will run alongside the main container in the pod. This means that the secrets rendered will always be in sync with your Infisical secrets.
 </Accordion>
 <Accordion title="org.infisical.com/agent-config-map">
   The agent config map annotation is used to specify the name of the config map that contains the configuration for the injector. The config map must be in the same namespace as the pod.
@@ -203,7 +204,7 @@ metadata:
     app: demo
   annotations:
     org.infisical.com/inject: "true" # Set to true for the injector to patch the pod on create/update events
-    org.infisical.com/inject-mode: "init" # The mode to use to inject the secrets into the pod. Currently only `init` mode is supported.
+    org.infisical.com/inject-mode: "init" # The mode to use to inject the secrets into the pod. init|sidecar
     org.infisical.com/agent-config-map: "name-of-config-map" # The name of the config map that you created above, which contains all the settings for injecting the secrets into the pod
 spec:
   # ...

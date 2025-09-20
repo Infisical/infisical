@@ -366,3 +366,21 @@ password = "{{ .Value }}"
 **Returns**: A list of secret objects with the following keys `Key, WorkspaceId, Value, Type, ID, and Comment`
 
 </Accordion>
+
+<Accordion title="dynamic_secret">
+  ```bash
+  dynamic_secret "<project-slug>" "<environment-slug>" "<secret-path>" "<dynamic-secret-name>" "<lease-ttl>"
+  ```
+
+  ```bash example-redis-dynamic-secret
+    {{ with dynamic_secret "aaa-o7en-s5qm" "dev" "/" "redis" "1m" }}
+    {{ .DB_USERNAME }}={{ .DB_PASSWORD }}
+    {{- end }}
+
+    **Function Name**: dynamic_secret
+
+    **Description**: This function can be used to render a dynamic secret lease credentials. The credentials are automatically renewed before they expire, ensuring that the rendered credentials are always up-to-date.
+
+    **Returns**: An object with keys corresponding to the dynamic secret lease credentials.
+  ```
+</Accordion>
