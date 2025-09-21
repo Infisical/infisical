@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { NamespaceMembershipsSchema, NamespaceMembershipRolesSchema, UsersSchema } from "@app/db/schemas";
+import {
+  NamespaceMembershipsSchema,
+  NamespaceMembershipRolesSchema,
+  UsersSchema,
+  OrgMembershipRole
+} from "@app/db/schemas";
 import { ApiDocsTags, NAMESPACE_USER_MEMBERSHIPS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -54,7 +59,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
       }),
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0).describe(NAMESPACE_USER_MEMBERSHIPS.LIST.offset),
-        limit: z.coerce.number().min(1).max(1000).default(50).describe(NAMESPACE_USER_MEMBERSHIPS.LIST.limit)
+        limit: z.coerce.number().min(1).max(10000).default(50).describe(NAMESPACE_USER_MEMBERSHIPS.LIST.limit)
       }),
       response: {
         200: z.object({
@@ -248,7 +253,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
 
   server.route({
     method: "POST",
-    url: "/:namespaceSlug/memberships",
+    url: "/:namespaceName/memberships",
     config: {
       rateLimit: writeLimit
     },
@@ -262,7 +267,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
         }
       ],
       params: z.object({
-        namespaceSlug: slugSchema().describe(NAMESPACE_USER_MEMBERSHIPS.ADD_USER.namespaceSlug)
+        namespaceName: slugSchema().describe(NAMESPACE_USER_MEMBERSHIPS.ADD_USER.namespaceSlug)
       }),
       body: z.object({
         usernames: z.array(z.string().trim()).describe(NAMESPACE_USER_MEMBERSHIPS.ADD_USER.usernames),
@@ -270,14 +275,37 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
       }),
       response: {
         200: z.object({
-          memberships: SanitizedNamespaceMembershipSchema.array().optional()
+          message: z.string(),
+          completeInviteLinks: z
+            .array(
+              z.object({
+                email: z.string(),
+                link: z.string()
+              })
+            )
+            .optional()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const {};
-      return { memberships: [] };
+      const { users = [], signupTokens: completeInviteLinks } = await server.services.org.inviteUserToOrganization({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.permission.orgId,
+        inviteeEmails: req.body.usernames,
+        organizationRoleSlug: OrgMembershipRole.NoAccess,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+      console.log(">>>users", users);
+      await server.services.namespaceUserMembership.addUserToNamespace({
+        namespaceSlug: req.params.namespaceName,
+        permission: req.permission,
+        roleSlugs: req.body.roleSlugs,
+        validatedUsers: users
+      });
+      return { completeInviteLinks, message: "Successfully invited users to namespace" };
     }
   });
 };

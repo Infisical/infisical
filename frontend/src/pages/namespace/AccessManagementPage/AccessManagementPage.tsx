@@ -1,15 +1,13 @@
 import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useNamespace, useProject } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
 import { OrgAccessControlTabSections } from "@app/types/org";
 import { NamespaceRoleListTab } from "./components/NamespaceRoleListTab";
+import { MembersTab } from "./components/MembersTab/MembersTab";
 
 export const AccessManagementPage = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { namespaceName } = useNamespace();
   const selectedTab = useSearch({
@@ -30,7 +28,7 @@ export const AccessManagementPage = () => {
   return (
     <>
       <Helmet>
-        <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
+        <title>Namespace Access Control</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -51,7 +49,7 @@ export const AccessManagementPage = () => {
               <Tab value={OrgAccessControlTabSections.Roles}>Namespace Roles</Tab>
             </TabList>
             <TabPanel value={OrgAccessControlTabSections.Member}>
-              <div>Member</div>
+              <MembersTab />
             </TabPanel>
             <TabPanel value={OrgAccessControlTabSections.Groups}>
               <div>Group</div>

@@ -46,6 +46,7 @@ import { registerTrustedIpRouter } from "./trusted-ip-router";
 import { registerUserAdditionalPrivilegeRouter } from "./user-additional-privilege-router";
 import { registerNamespaceRouter } from "./namespace-router";
 import { registerNamespaceRoleRouter } from "./namespace-role-router";
+import { registerNamespaceUserMembershipRouter } from "./namespace-user-membership-router";
 
 export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   // org role starts with organization
@@ -136,6 +137,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     async (namespaceRouter) => {
       await namespaceRouter.register(registerNamespaceRouter);
       await namespaceRouter.register(registerNamespaceRoleRouter);
+      await namespaceRouter.register(registerNamespaceUserMembershipRouter);
     },
     { prefix: "/namespaces" }
   );

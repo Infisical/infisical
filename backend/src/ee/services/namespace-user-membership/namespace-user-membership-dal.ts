@@ -12,7 +12,7 @@ export const namespaceUserMembershipDALFactory = (db: TDbClient) => {
     try {
       const members = await db
         .replicaNode()(TableName.NamespaceMembership)
-        .where({ [`${TableName.NamespaceMembership}.namespaceid` as "namespaceId"]: namespaceId })
+        .where({ [`${TableName.NamespaceMembership}.namespaceId` as "namespaceId"]: namespaceId })
         .whereNotNull(`${TableName.NamespaceMembership}.orgUserMembershipId` as "orgUserMembershipId")
         .join(
           TableName.OrgMembership,
@@ -48,11 +48,15 @@ export const namespaceUserMembershipDALFactory = (db: TDbClient) => {
     try {
       const docs = await db
         .replicaNode()(TableName.NamespaceMembership)
-        .where({ [`${TableName.NamespaceMembership}.namespaceid` as "namespaceId"]: namespaceId })
+        .where({ [`${TableName.NamespaceMembership}.namespaceId` as "namespaceId"]: namespaceId })
         // only pull user memberships
         .whereNotNull(`${TableName.NamespaceMembership}.orgUserMembershipId` as "orgUserMembershipId")
         .join(TableName.Namespace, `${TableName.NamespaceMembership}.namespaceId`, `${TableName.Namespace}.id`)
-        .join(TableName.OrgMembership, `${TableName.Namespace}.orgId`, `${TableName.OrgMembership}.orgId`)
+        .join(
+          TableName.OrgMembership,
+          `${TableName.NamespaceMembership}.orgUserMembershipId`,
+          `${TableName.OrgMembership}.id`
+        )
         .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
         .where((qb) => {
           if (filter.usernames) {
@@ -76,7 +80,7 @@ export const namespaceUserMembershipDALFactory = (db: TDbClient) => {
                 )
                 .whereRaw("??.?? = ??.??", [
                   TableName.NamespaceMembershipRole,
-                  "projectMembershipId",
+                  "namespaceMembershipId",
                   TableName.NamespaceMembership,
                   "id"
                 ])
@@ -195,7 +199,7 @@ export const namespaceUserMembershipDALFactory = (db: TDbClient) => {
         })
       }));
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find all project members" });
+      throw new DatabaseError({ error, name: "Find all namespace members" });
     }
   };
 

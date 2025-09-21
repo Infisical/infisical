@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { NamespaceMembershipRole, TNamespaceMembershipRolesInsert } from "@app/db/schemas";
+import { NamespaceMembershipRole, TableName, TNamespaceMembershipRolesInsert } from "@app/db/schemas";
 import { TNamespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
 import {
   NamespacePermissionActions,
@@ -74,7 +74,6 @@ export const namespaceUserMembershipServiceFactory = ({
       namespace.id,
       validatedUsers?.map((el) => el.username)
     );
-
     if (existingMembers.length === validatedUsers.length) return { namespaceUsers: existingMembers };
 
     // validate custom roles input
@@ -107,7 +106,7 @@ export const namespaceUserMembershipServiceFactory = ({
 
     const nonExistingUsers = validatedUsers.filter((user) => !existingMembers.find((i) => user.id === i.user.id));
     const orgMembership = await orgDAL.findMembership({
-      $in: { userId: nonExistingUsers.map((el) => el.id) }
+      $in: { [`${TableName.OrgMembership}.userId` as "userId"]: nonExistingUsers.map((el) => el.id) }
     });
 
     const customRoleGroupBySlug = groupBy(customRoles, (i) => i.slug);
@@ -120,7 +119,7 @@ export const namespaceUserMembershipServiceFactory = ({
         tx
       );
 
-      const roles = customInputRoles.map((el) =>
+      const roles = roleSlugs.map((el) =>
         customRoleGroupBySlug?.[el]?.[0]
           ? {
               role: NamespaceMembershipRole.Custom,
