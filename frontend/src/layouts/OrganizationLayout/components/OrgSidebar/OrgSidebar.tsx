@@ -124,8 +124,6 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                       </MenuItem>
                     )}
                   </Link>
-                </MenuGroup>
-                <MenuGroup title="Others">
                   <Link to="/organization/networking">
                     {({ isActive }) => (
                       <MenuItem isSelected={isActive}>
