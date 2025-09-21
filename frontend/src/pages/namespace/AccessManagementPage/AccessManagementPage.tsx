@@ -6,6 +6,7 @@ import { useNamespace, useProject } from "@app/context";
 import { OrgAccessControlTabSections } from "@app/types/org";
 import { NamespaceRoleListTab } from "./components/NamespaceRoleListTab";
 import { MembersTab } from "./components/MembersTab/MembersTab";
+import { IdentityTab } from "./components/IdentityTab/IdentityTab";
 
 export const AccessManagementPage = () => {
   const navigate = useNavigate();
@@ -55,9 +56,8 @@ export const AccessManagementPage = () => {
               <div>Group</div>
             </TabPanel>
             <TabPanel value={OrgAccessControlTabSections.Identities}>
-              <div>Identity</div>
+              <IdentityTab />
             </TabPanel>
-
             <TabPanel value={OrgAccessControlTabSections.Roles}>
               <NamespaceRoleListTab />
             </TabPanel>

@@ -10,7 +10,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
-import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DropdownMenu,
@@ -21,12 +20,18 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { identityAuthToNameMap, useGetIdentityById } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { NamespacePermissionCan } from "@app/components/permissions";
+import {
+  NamespacePermissionIdentityActions,
+  NamespacePermissionSubjects
+} from "@app/context/NamespacePermissionContext/types";
+import { useQuery } from "@tanstack/react-query";
+import { namespaceIdentityQueryKeys } from "@app/hooks/api/namespaceIdentity";
+import { useNamespace } from "@app/context";
 
-// TODO(namespace): add permissiong for invite an identity from organization
 type Props = {
   identityId: string;
   handlePopUpOpen: (
@@ -39,8 +44,13 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
   const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
-
-  const { data } = useGetIdentityById(identityId);
+  const { namespaceName } = useNamespace();
+  const { data } = useQuery(
+    namespaceIdentityQueryKeys.detail({
+      identityId,
+      namespaceSlug: namespaceName
+    })
+  );
   return data ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
@@ -62,9 +72,9 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="mt-3 min-w-[120px]" align="end">
-            <OrgPermissionCan
-              I={OrgPermissionIdentityActions.Edit}
-              a={OrgPermissionSubjects.Identity}
+            <NamespacePermissionCan
+              I={NamespacePermissionIdentityActions.Edit}
+              a={NamespacePermissionSubjects.Identity}
             >
               {(isAllowed) => (
                 <DropdownMenuItem
@@ -76,9 +86,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
                     handlePopUpOpen("identity", {
                       identityId,
                       name: data.identity.name,
-                      hasDeleteProtection: data.identity.hasDeleteProtection,
-                      role: data.role,
-                      customRole: data.customRole
+                      hasDeleteProtection: data.identity.hasDeleteProtection
                     });
                   }}
                   disabled={!isAllowed}
@@ -86,10 +94,10 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
                   Edit Identity
                 </DropdownMenuItem>
               )}
-            </OrgPermissionCan>
-            <OrgPermissionCan
-              I={OrgPermissionIdentityActions.Delete}
-              a={OrgPermissionSubjects.Identity}
+            </NamespacePermissionCan>
+            <NamespacePermissionCan
+              I={NamespacePermissionIdentityActions.Delete}
+              a={NamespacePermissionSubjects.Identity}
             >
               {(isAllowed) => (
                 <DropdownMenuItem
@@ -110,7 +118,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
                   Delete Identity
                 </DropdownMenuItem>
               )}
-            </OrgPermissionCan>
+            </NamespacePermissionCan>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -157,10 +165,6 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
           <p className="text-sm text-mineshaft-300">
             {data.identity.hasDeleteProtection ? "On" : "Off"}
           </p>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Organization Role</p>
-          <p className="text-sm text-mineshaft-300">{data.role}</p>
         </div>
         <div>
           <p className="text-sm font-semibold text-mineshaft-300">Metadata</p>

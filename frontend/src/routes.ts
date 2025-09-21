@@ -20,7 +20,8 @@ const namespaceRoutes = route("/namespaces/$namespaceName", [
   layout("namespace-layout", "namespace/layout.tsx", [
     route("/projects", "namespace/ProjectsPage/route.tsx"),
     route("/access-management", "namespace/AccessManagementPage/route.tsx"),
-    route("/roles/$roleSlug", "namespace/RoleDetailsBySlugPage/route.tsx")
+    route("/roles/$roleSlug", "namespace/RoleDetailsBySlugPage/route.tsx"),
+    route("/identities/$identityId", "namespace/IdentityDetailsByIdPage/route.tsx")
   ])
 ]);
 

@@ -161,7 +161,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
           .default(OrderByDirection.ASC)
           .describe(NAMESPACE_IDENTITY_MEMBERSHIPS.SEARCH.orderDirection)
           .optional(),
-        limit: z.number().max(100).default(50).describe(NAMESPACE_IDENTITY_MEMBERSHIPS.SEARCH.limit),
+        limit: z.number().max(20000).default(50).describe(NAMESPACE_IDENTITY_MEMBERSHIPS.SEARCH.limit),
         offset: z.number().default(0).describe(NAMESPACE_IDENTITY_MEMBERSHIPS.SEARCH.offset),
         search: buildSearchZodSchema(
           z
@@ -254,7 +254,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
         limit: z.coerce
           .number()
           .min(1)
-          .max(100)
+          .max(20000)
           .default(50)
           .describe(NAMESPACE_IDENTITY_MEMBERSHIPS.LIST_IDENTITY_MEMBERSHIPS.limit)
           .optional(),

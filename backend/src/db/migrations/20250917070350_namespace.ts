@@ -14,6 +14,16 @@ export async function up(knex: Knex): Promise<void> {
     });
 
     await createOnUpdateTrigger(knex, TableName.Namespace);
+
+    if (await knex.schema.hasTable(TableName.Identity)) {
+      await knex.schema.alterTable(TableName.Identity, (t) => {
+        t.uuid("namespaceId");
+        t.foreign("namespaceId").references("id").inTable(TableName.Namespace).onDelete("CASCADE");
+
+        t.string("projectId");
+        t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+      });
+    }
   }
 
   if (!(await knex.schema.hasTable(TableName.NamespaceMembership))) {
@@ -94,16 +104,6 @@ export async function up(knex: Knex): Promise<void> {
     });
 
     await createOnUpdateTrigger(knex, TableName.NamespaceAdditionalPrivilege);
-  }
-
-  if (await knex.schema.hasTable(TableName.Identity)) {
-    await knex.schema.alterTable(TableName.Identity, (t) => {
-      t.uuid("namespaceId");
-      t.foreign("namespaceId").references("id").inTable(TableName.Namespace).onDelete("CASCADE");
-
-      t.string("projectId");
-      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
-    });
   }
 }
 

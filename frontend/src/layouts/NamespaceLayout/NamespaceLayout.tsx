@@ -15,7 +15,6 @@ export const NamespaceLayout = () => {
   const { t } = useTranslation();
 
   const containerHeight = config.pageFrameContent ? "h-[94vh]" : "h-screen";
-  console.log("hello");
   return (
     <>
       <Banner />

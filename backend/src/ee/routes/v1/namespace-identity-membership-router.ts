@@ -17,7 +17,9 @@ const SanitizedNamespaceIdentityMembershipSchema = NamespaceMembershipsSchema.ex
     name: true
   }).extend({
     authMethods: z.array(z.string()),
-    hasDeleteProtection: z.boolean()
+    hasDeleteProtection: z.boolean(),
+    lastLoginAuthMethod: z.string().nullable().optional(),
+    lastLoginTime: z.date().nullable().optional()
   }),
   roles: z.array(
     z.object({
@@ -32,10 +34,11 @@ const SanitizedNamespaceIdentityMembershipSchema = NamespaceMembershipsSchema.ex
       temporaryAccessStartTime: z.date().nullable().optional(),
       temporaryAccessEndTime: z.date().nullable().optional()
     })
-  )
+  ),
+  metadata: z.object({ id: z.string(), key: z.string(), value: z.string() }).array()
 });
 
-export const registerIdentityNamespaceMembershipRouter = async (server: FastifyZodProvider) => {
+export const registerNamespaceIdentityMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:namespaceSlug/identity-memberships/:identityId",
@@ -256,7 +259,7 @@ export const registerIdentityNamespaceMembershipRouter = async (server: FastifyZ
         limit: z.coerce
           .number()
           .min(1)
-          .max(100)
+          .max(20000)
           .default(50)
           .describe(NAMESPACE_IDENTITY_MEMBERSHIPS.LIST_IDENTITY_MEMBERSHIPS.limit)
           .optional(),

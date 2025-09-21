@@ -164,7 +164,7 @@ export const registerNamespaceRoleRouter = async (server: FastifyZodProvider) =>
       }),
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0).describe(NAMESPACE_ROLE.LIST.offset),
-        limit: z.coerce.number().min(1).max(1000).default(50).describe(NAMESPACE_ROLE.LIST.limit),
+        limit: z.coerce.number().min(1).max(10000).default(50).describe(NAMESPACE_ROLE.LIST.limit),
         search: z.string().optional().describe(NAMESPACE_ROLE.LIST.search)
       }),
       response: {

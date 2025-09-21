@@ -1,0 +1,98 @@
+import { OrderByDirection } from "../generic/types";
+import { IdentityAuthMethod } from "../identities";
+
+export enum NamespaceIdentityOrderBy {
+  Name = "name"
+}
+
+export enum NamespaceIdentityMembershipOrderBy {
+  Name = "name"
+}
+
+export type TNamespaceIdentity = {
+  id: string;
+  name: string;
+  authMethods: string[];
+  hasDeleteProtection: boolean;
+};
+
+export type TNamespaceIdentityMembershipRole = {
+  id: string;
+  role: string;
+  customRoleId?: string | null;
+  customRoleName?: string | null;
+  customRoleSlug?: string | null;
+  isTemporary: boolean;
+  temporaryMode?: string | null;
+  temporaryRange?: string | null;
+  temporaryAccessStartTime?: string | null;
+  temporaryAccessEndTime?: string | null;
+};
+
+export type TNamespaceIdentityMembership = {
+  id: string;
+  identity: TNamespaceIdentity;
+  roles: TNamespaceIdentityMembershipRole[];
+  lastLoginAuthMethod?: IdentityAuthMethod;
+  lastLoginTime?: string;
+  metadata: Array<{ key: string; value: string; id: string }>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TCreateNamespaceIdentityDTO = {
+  namespaceSlug: string;
+  name: string;
+  hasDeleteProtection?: boolean;
+  metadata?: Array<{ key: string; value: string }>;
+};
+
+export type TSearchNamespaceIdentitiesDTO = {
+  namespaceSlug: string;
+  orderBy?: NamespaceIdentityOrderBy;
+  orderDirection?: OrderByDirection;
+  limit?: number;
+  offset?: number;
+  search?: {
+    name?:
+      | string
+      | {
+          $eq?: string;
+          $contains?: string;
+          $in?: string[];
+        };
+    role?:
+      | string
+      | {
+          $eq?: string;
+          $in?: string[];
+        };
+  };
+};
+
+export type TListNamespaceIdentityMembershipsDTO = {
+  namespaceSlug: string;
+  offset?: number;
+  limit?: number;
+  orderBy?: NamespaceIdentityMembershipOrderBy;
+  orderDirection?: OrderByDirection;
+  search?: string;
+};
+
+export type TGetNamespaceIdentityMembershipByIdDTO = {
+  namespaceSlug: string;
+  identityId: string;
+};
+
+export type TUpdateNamespaceIdentityDTO = {
+  namespaceSlug: string;
+  identityId: string;
+  name?: string;
+  hasDeleteProtection?: boolean;
+  metadata?: Array<{ key: string; value: string }>;
+};
+
+export type TDeleteNamespaceIdentityDTO = {
+  namespaceSlug: string;
+  identityId: string;
+};

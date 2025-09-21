@@ -1,5 +1,6 @@
 import { subject } from "@casl/ability";
 import {
+  faAngleDown,
   faArrowDown,
   faArrowUp,
   faArrowUpRightFromSquare,
@@ -7,6 +8,7 @@ import {
   faCircleXmark,
   faClock,
   faEllipsisV,
+  faLink,
   faMagnifyingGlass,
   faPlus,
   faServer
@@ -18,7 +20,6 @@ import { motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
@@ -32,6 +33,8 @@ import {
   HoverCardTrigger,
   IconButton,
   Input,
+  Modal,
+  ModalContent,
   Pagination,
   Spinner,
   Table,
@@ -45,28 +48,38 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
-import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { withProjectPermission } from "@app/hoc";
+import { withNamespacePermission } from "@app/hoc";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { useDeleteIdentityFromWorkspace, useGetWorkspaceIdentityMemberships } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectIdentityOrderBy } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { IdentityModal } from "./components/IdentityModal";
+import { LinkOrgIdentityModal } from "./components/LinkOrgIdentityModal";
+import { useNamespace } from "@app/context";
+import { useQuery } from "@tanstack/react-query";
+import {
+  NamespaceIdentityMembershipOrderBy,
+  namespaceIdentityMembershipQueryKeys,
+  useDeleteNamespaceIdentityMembership
+} from "@app/hooks/api/namespaceIdentityMembership";
+import { useDeleteNamespaceIdentity } from "@app/hooks/api/namespaceIdentity";
+import { NamespacePermissionCan } from "@app/components/permissions";
+import {
+  NamespacePermissionActions,
+  NamespacePermissionIdentityActions,
+  NamespacePermissionSubjects
+} from "@app/context/NamespacePermissionContext/types";
+import { NamespaceIdentityModal } from "./components/NamespaceIdentityModal";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
-export const IdentityTab = withProjectPermission(
+export const IdentityTab = withNamespacePermission(
   () => {
-    const { currentProject, projectId } = useProject();
+    const { namespaceName } = useNamespace();
     const navigate = useNavigate();
 
     const {
@@ -83,8 +96,8 @@ export const IdentityTab = withProjectPermission(
       perPage,
       page,
       setPerPage
-    } = usePagination(ProjectIdentityOrderBy.Name, {
-      initPerPage: getUserTablePreference("projectIdentityTable", PreferenceKey.PerPage, 20)
+    } = usePagination(NamespaceIdentityMembershipOrderBy.Name, {
+      initPerPage: getUserTablePreference("namespaceIdentityTable", PreferenceKey.PerPage, 20)
     });
 
     const handlePerPageChange = (newPerPage: number) => {
@@ -92,17 +105,17 @@ export const IdentityTab = withProjectPermission(
       setUserTablePreference("projectIdentityTable", PreferenceKey.PerPage, newPerPage);
     };
 
-    const { data, isPending, isFetching } = useGetWorkspaceIdentityMemberships(
-      {
-        projectId,
-        offset,
+    const { data, isPending, isFetching } = useQuery({
+      ...namespaceIdentityMembershipQueryKeys.list({
         limit,
-        orderDirection,
+        offset,
+        search,
+        namespaceSlug: namespaceName,
         orderBy,
-        search: debouncedSearch
-      },
-      { placeholderData: (prevData) => prevData }
-    );
+        orderDirection
+      }),
+      placeholderData: (prevData) => prevData
+    });
 
     const { totalCount = 0 } = data ?? {};
 
@@ -112,23 +125,27 @@ export const IdentityTab = withProjectPermission(
       setPage
     });
 
-    const { mutateAsync: deleteMutateAsync } = useDeleteIdentityFromWorkspace();
+    const { mutateAsync: deleteNamespaceIdentity } = useDeleteNamespaceIdentity();
+    const { mutateAsync: deleteNamespaceIdentityMembership } =
+      useDeleteNamespaceIdentityMembership();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "linkOrgIdentity",
       "deleteIdentity",
+      "createNamespaceIdentity",
+      "unlinkFromNamespace",
       "upgradePlan"
     ] as const);
 
     const onRemoveIdentitySubmit = async (identityId: string) => {
       try {
-        await deleteMutateAsync({
+        await deleteNamespaceIdentity({
           identityId,
-          projectId
+          namespaceSlug: namespaceName
         });
 
         createNotification({
-          text: "Successfully removed identity from project",
+          text: "Successfully deleted identity",
           type: "success"
         });
 
@@ -145,7 +162,32 @@ export const IdentityTab = withProjectPermission(
       }
     };
 
-    const handleSort = (column: ProjectIdentityOrderBy) => {
+    const onUnlinkOrgIdentitySubmit = async (identityId: string) => {
+      try {
+        await deleteNamespaceIdentityMembership({
+          identityId,
+          namespaceSlug: namespaceName
+        });
+
+        createNotification({
+          text: "Successfully removed identity from namespace",
+          type: "success"
+        });
+
+        handlePopUpClose("deleteIdentity");
+      } catch (err) {
+        console.error(err);
+        const error = err as any;
+        const text = error?.response?.data?.message ?? "Failed to remove identity from project";
+
+        createNotification({
+          text,
+          type: "error"
+        });
+      }
+    };
+
+    const handleSort = (column: NamespaceIdentityMembershipOrderBy) => {
       if (column === orderBy) {
         setOrderDirection((prev) =>
           prev === OrderByDirection.ASC ? OrderByDirection.DESC : OrderByDirection.ASC
@@ -184,22 +226,59 @@ export const IdentityTab = withProjectPermission(
                 </div>
               </a>
             </div>
-            <ProjectPermissionCan
-              I={ProjectPermissionActions.Create}
-              a={ProjectPermissionSub.Identity}
-            >
-              {(isAllowed) => (
-                <Button
-                  colorSchema="secondary"
-                  type="submit"
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  onClick={() => handlePopUpOpen("identity")}
-                  isDisabled={!isAllowed}
-                >
-                  Add Identity
-                </Button>
-              )}
-            </ProjectPermissionCan>
+            <div>
+              <NamespacePermissionCan
+                I={NamespacePermissionActions.Create}
+                a={NamespacePermissionSubjects.Identity}
+              >
+                {(isAllowed) => (
+                  <Button
+                    variant="outline_bg"
+                    type="submit"
+                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                    onClick={() => handlePopUpOpen("createNamespaceIdentity")}
+                    isDisabled={!isAllowed}
+                    className="h-10 rounded-r-none"
+                  >
+                    Create Identity
+                  </Button>
+                )}
+              </NamespacePermissionCan>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    ariaLabel="add-folder-or-import"
+                    variant="outline_bg"
+                    className="rounded-l-none bg-mineshaft-600 p-3"
+                  >
+                    <FontAwesomeIcon icon={faAngleDown} />
+                  </IconButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" sideOffset={5}>
+                  <div className="flex flex-col space-y-1 p-1.5">
+                    <NamespacePermissionCan
+                      I={NamespacePermissionActions.Create}
+                      a={NamespacePermissionSubjects.Identity}
+                    >
+                      {(isAllowed) => (
+                        <Button
+                          leftIcon={<FontAwesomeIcon icon={faLink} className="pr-2" />}
+                          onClick={() => {
+                            handlePopUpOpen("linkOrgIdentity");
+                          }}
+                          isDisabled={!isAllowed}
+                          variant="outline_bg"
+                          className="h-10 text-left"
+                          isFullWidth
+                        >
+                          Link Org Identity
+                        </Button>
+                      )}
+                    </NamespacePermissionCan>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
           <Input
             containerClassName="mb-4"
@@ -218,15 +297,15 @@ export const IdentityTab = withProjectPermission(
                       <IconButton
                         variant="plain"
                         className={`ml-2 ${
-                          orderBy === ProjectIdentityOrderBy.Name ? "" : "opacity-30"
+                          orderBy === NamespaceIdentityMembershipOrderBy.Name ? "" : "opacity-30"
                         }`}
                         ariaLabel="sort"
-                        onClick={() => handleSort(ProjectIdentityOrderBy.Name)}
+                        onClick={() => handleSort(NamespaceIdentityMembershipOrderBy.Name)}
                       >
                         <FontAwesomeIcon
                           icon={
                             orderDirection === OrderByDirection.DESC &&
-                            orderBy === ProjectIdentityOrderBy.Name
+                            orderBy === NamespaceIdentityMembershipOrderBy.Name
                               ? faArrowUp
                               : faArrowDown
                           }
@@ -259,9 +338,9 @@ export const IdentityTab = withProjectPermission(
                         onKeyDown={(evt) => {
                           if (evt.key === "Enter") {
                             navigate({
-                              to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId` as const,
+                              to: "/organization/namespaces/$namespaceName/identities/$identityId",
                               params: {
-                                projectId: currentProject.id,
+                                namespaceName,
                                 identityId: id
                               }
                             });
@@ -269,16 +348,15 @@ export const IdentityTab = withProjectPermission(
                         }}
                         onClick={() =>
                           navigate({
-                            to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId` as const,
+                            to: "/organization/namespaces/$namespaceName/identities/$identityId",
                             params: {
-                              projectId: currentProject.id,
+                              namespaceName,
                               identityId: id
                             }
                           })
                         }
                       >
                         <Td>{name}</Td>
-
                         <Td>
                           <div className="flex items-center space-x-2">
                             {roles
@@ -296,9 +374,7 @@ export const IdentityTab = withProjectPermission(
                                   return (
                                     <Tag key={roleId}>
                                       <div className="flex items-center space-x-2">
-                                        <div className="capitalize">
-                                          {formatProjectRoleName(role, customRoleName)}
-                                        </div>
+                                        <div className="capitalize">{customRoleName || role}</div>
                                         {isTemporary && (
                                           <div>
                                             <Tooltip
@@ -342,9 +418,7 @@ export const IdentityTab = withProjectPermission(
                                         return (
                                           <Tag key={roleId} className="capitalize">
                                             <div className="flex items-center space-x-2">
-                                              <div>
-                                                {formatProjectRoleName(role, customRoleName)}
-                                              </div>
+                                              <div>{customRoleName || role}</div>
                                               {isTemporary && (
                                                 <div>
                                                   <Tooltip
@@ -391,9 +465,9 @@ export const IdentityTab = withProjectPermission(
                                 </IconButton>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent sideOffset={2} align="end">
-                                <ProjectPermissionCan
-                                  I={ProjectPermissionActions.Delete}
-                                  a={subject(ProjectPermissionSub.Identity, {
+                                <NamespacePermissionCan
+                                  I={NamespacePermissionActions.Delete}
+                                  a={subject(NamespacePermissionSubjects.Identity, {
                                     identityId: id
                                   })}
                                 >
@@ -410,10 +484,10 @@ export const IdentityTab = withProjectPermission(
                                         });
                                       }}
                                     >
-                                      Remove Identity From Project
+                                      Remove Identity From Namespace
                                     </DropdownMenuItem>
                                   )}
-                                </ProjectPermissionCan>
+                                </NamespacePermissionCan>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </Tooltip>
@@ -443,12 +517,37 @@ export const IdentityTab = withProjectPermission(
               />
             )}
           </TableContainer>
-          <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+          <LinkOrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+          <Modal
+            isOpen={popUp?.createNamespaceIdentity?.isOpen}
+            onOpenChange={(isOpen) => {
+              handlePopUpToggle("createNamespaceIdentity", isOpen);
+            }}
+          >
+            <ModalContent title="Add Identity to Namespace" bodyClassName="overflow-visible">
+              <NamespaceIdentityModal
+                handlePopUpToggle={() => handlePopUpToggle("createNamespaceIdentity")}
+              />
+            </ModalContent>
+          </Modal>
+          <DeleteActionModal
+            isOpen={popUp.unlinkFromNamespace.isOpen}
+            title={`Are you sure you want to remove ${
+              (popUp?.deleteIdentity?.data as { name: string })?.name || ""
+            } from the namespace?`}
+            onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
+            deleteKey="confirm"
+            onDeleteApproved={() =>
+              onRemoveIdentitySubmit(
+                (popUp?.deleteIdentity?.data as { identityId: string })?.identityId
+              )
+            }
+          />
           <DeleteActionModal
             isOpen={popUp.deleteIdentity.isOpen}
             title={`Are you sure you want to remove ${
               (popUp?.deleteIdentity?.data as { name: string })?.name || ""
-            } from the project?`}
+            } from the namespace?`}
             onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
             deleteKey="confirm"
             onDeleteApproved={() =>
@@ -461,5 +560,5 @@ export const IdentityTab = withProjectPermission(
       </motion.div>
     );
   },
-  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Identity }
+  { action: NamespacePermissionIdentityActions.Read, subject: NamespacePermissionSubjects.Identity }
 );
