@@ -1,4 +1,5 @@
 import { Knex } from "knex";
+
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
@@ -8,9 +9,9 @@ export async function up(knex: Knex): Promise<void> {
 
   if (hasAllowedNamespaces || hasAllowedNames || hasAllowedAudience) {
     await knex.schema.alterTable(TableName.IdentityKubernetesAuth, (t) => {
-      if (hasAllowedNames) t.string("allowedNames", 1000).alter();
-      if (hasAllowedNamespaces) t.string("allowedNamespaces", 1000).alter();
-      if (hasAllowedAudience) t.string("allowedAudience", 1000).alter();
+      if (hasAllowedNames) t.string("allowedNames", 1000).notNullable().alter();
+      if (hasAllowedNamespaces) t.string("allowedNamespaces", 1000).notNullable().alter();
+      if (hasAllowedAudience) t.string("allowedAudience", 1000).notNullable().alter();
     });
   }
 }
@@ -22,9 +23,9 @@ export async function down(knex: Knex): Promise<void> {
 
   if (hasAllowedNamespaces || hasAllowedNames || hasAllowedAudience) {
     await knex.schema.alterTable(TableName.IdentityKubernetesAuth, (t) => {
-      if (hasAllowedNames) t.string("allowedNames", 255).alter();
-      if (hasAllowedNamespaces) t.string("allowedNamespaces", 255).alter();
-      if (hasAllowedAudience) t.string("allowedAudience", 255).alter();
+      if (hasAllowedNames) t.string("allowedNames", 255).notNullable().alter();
+      if (hasAllowedNamespaces) t.string("allowedNamespaces", 255).notNullable().alter();
+      if (hasAllowedAudience) t.string("allowedAudience", 255).notNullable().alter();
     });
   }
 }
