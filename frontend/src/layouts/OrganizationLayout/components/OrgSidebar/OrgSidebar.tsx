@@ -1,11 +1,10 @@
 import {
   faBook,
   faCog,
-  faDoorClosed,
   faInfinity,
   faMoneyBill,
+  faNetworkWired,
   faPlug,
-  faRoute,
   faShare,
   faTable,
   faUsers,
@@ -125,26 +124,16 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                       </MenuItem>
                     )}
                   </Link>
-                  <Link to="/organization/gateways">
+                </MenuGroup>
+                <MenuGroup title="Others">
+                  <Link to="/organization/networking">
                     {({ isActive }) => (
                       <MenuItem isSelected={isActive}>
                         <div className="mx-1 flex gap-2">
                           <div className="w-6">
-                            <FontAwesomeIcon icon={faDoorClosed} className="mr-4" />
+                            <FontAwesomeIcon icon={faNetworkWired} className="mr-4" />
                           </div>
-                          Gateways
-                        </div>
-                      </MenuItem>
-                    )}
-                  </Link>
-                  <Link to="/organization/relays">
-                    {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
-                        <div className="mx-1 flex gap-2">
-                          <div className="w-6">
-                            <FontAwesomeIcon icon={faRoute} className="mr-4" />
-                          </div>
-                          Relays
+                          Networking
                         </div>
                       </MenuItem>
                     )}
