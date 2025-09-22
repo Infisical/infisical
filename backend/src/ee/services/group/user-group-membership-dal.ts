@@ -140,7 +140,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
         tx
       );
 
-      return members.map(({ userId, username, groupId, orgId, name, slug, role, roleId }) => ({
+      return members.map(({ userId, username, groupId, orgId, name, slug, role, roleId, type }) => ({
         user: {
           id: userId,
           username
@@ -152,6 +152,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
           slug,
           role,
           roleId,
+          type,
           createdAt: new Date(),
           updatedAt: new Date()
         }

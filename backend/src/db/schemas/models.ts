@@ -89,6 +89,7 @@ export enum TableName {
   IdentityTlsCertAuth = "identity_tls_cert_auths",
   IdentityOrgMembership = "identity_org_memberships",
   IdentityProjectMembership = "identity_project_memberships",
+  IdentityGroupMembership = "identity_group_membership",
   IdentityProjectMembershipRole = "identity_project_membership_role",
   IdentityProjectAdditionalPrivilege = "identity_project_additional_privilege",
   IdentityAuthTemplate = "identity_auth_templates",
@@ -296,4 +297,9 @@ export enum ActionProjectType {
 export enum SortDirection {
   ASC = "asc",
   DESC = "desc"
+}
+
+export enum GroupType {
+  Users = "USERS",
+  Identities = "IDENTITIES"
 }

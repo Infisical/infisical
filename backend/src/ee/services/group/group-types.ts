@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { TGroups } from "@app/db/schemas";
+import { GroupType, TGroups } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TGenericPermission } from "@app/lib/types";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
@@ -14,6 +14,7 @@ export type TCreateGroupDTO = {
   name: string;
   slug?: string;
   role: string;
+  type?: GroupType;
 } & TGenericPermission;
 
 export type TUpdateGroupDTO = {
@@ -22,6 +23,7 @@ export type TUpdateGroupDTO = {
   name: string;
   slug: string;
   role: string;
+  type: GroupType;
 }> &
   TGenericPermission;
 
@@ -111,3 +113,26 @@ export enum EFilterReturnedUsers {
   EXISTING_MEMBERS = "existingMembers",
   NON_MEMBERS = "nonMembers"
 }
+
+export enum EFilterReturnedIdentities {
+  EXISTING_MEMBERS = "existingMembers",
+  NON_MEMBERS = "nonMembers"
+}
+
+export type TListGroupIdentitiesDTO = {
+  id: string;
+  offset: number;
+  limit: number;
+  search?: string;
+  filter?: EFilterReturnedIdentities;
+} & TGenericPermission;
+
+export type TAddIdentityToGroupDTO = {
+  id: string;
+  identityId: string;
+} & TGenericPermission;
+
+export type TRemoveIdentityFromGroupDTO = {
+  id: string;
+  identityId: string;
+} & TGenericPermission;

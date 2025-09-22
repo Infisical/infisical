@@ -6,6 +6,8 @@ import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
@@ -19,27 +21,44 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { TGroupDALFactory } from "./group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "./group-fns";
 import {
+  TAddIdentityToGroupDTO,
   TAddUserToGroupDTO,
   TCreateGroupDTO,
   TDeleteGroupDTO,
   TGetGroupByIdDTO,
+  TListGroupIdentitiesDTO,
   TListGroupUsersDTO,
+  TRemoveIdentityFromGroupDTO,
   TRemoveUserFromGroupDTO,
   TUpdateGroupDTO
 } from "./group-types";
+import { TIdentityGroupMembershipDALFactory } from "./identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 
 type TGroupServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction" | "findUserByUsername">;
   groupDAL: Pick<
     TGroupDALFactory,
-    "create" | "findOne" | "update" | "delete" | "findAllGroupPossibleMembers" | "findById" | "transaction"
+    | "create"
+    | "findOne"
+    | "update"
+    | "delete"
+    | "findAllGroupPossibleMembers"
+    | "findAllGroupPossibleIdentityMembers"
+    | "findById"
+    | "transaction"
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
     "findOne" | "delete" | "filterProjectsByUserMembership" | "transaction" | "insertMany" | "find"
+  >;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
+  identityGroupMembershipDAL: Pick<
+    TIdentityGroupMembershipDALFactory,
+    "findOne" | "delete" | "transaction" | "insertMany" | "find"
   >;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
@@ -57,6 +76,9 @@ export const groupServiceFactory = ({
   groupProjectDAL,
   orgDAL,
   userGroupMembershipDAL,
+  identityDAL,
+  identityOrgMembershipDAL,
+  identityGroupMembershipDAL,
   projectDAL,
   projectBotDAL,
   projectKeyDAL,
@@ -64,7 +86,16 @@ export const groupServiceFactory = ({
   licenseService,
   oidcConfigDAL
 }: TGroupServiceFactoryDep) => {
-  const createGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateGroupDTO) => {
+  const createGroup = async ({
+    name,
+    slug,
+    role,
+    type,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TCreateGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
     const { permission, membership } = await permissionService.getOrgPermission(
@@ -122,7 +153,8 @@ export const groupServiceFactory = ({
           slug: slug || slugify(`${name}-${alphaNumericNanoId(4)}`),
           orgId: actorOrgId,
           role: isCustomRole ? OrgMembershipRole.Custom : role,
-          roleId: customRole?.id
+          roleId: customRole?.id,
+          ...(type && { type })
         },
         tx
       );
@@ -138,6 +170,7 @@ export const groupServiceFactory = ({
     name,
     slug,
     role,
+    type,
     actor,
     actorId,
     actorAuthMethod,
@@ -212,6 +245,7 @@ export const groupServiceFactory = ({
         {
           name,
           slug: slug ? slugify(slug) : undefined,
+          ...(type && { type }),
           ...(role
             ? {
                 role: customRole ? OrgMembershipRole.Custom : role,
@@ -482,6 +516,214 @@ export const groupServiceFactory = ({
     return users[0];
   };
 
+  const listGroupIdentities = async ({
+    id,
+    offset,
+    limit,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    search,
+    filter
+  }: TListGroupIdentitiesDTO) => {
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+
+    const { permission } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+
+    const group = await groupDAL.findOne({
+      orgId: actorOrgId,
+      id
+    });
+
+    if (!group)
+      throw new NotFoundError({
+        message: `Failed to find group with ID ${id}`
+      });
+
+    return groupDAL.findAllGroupPossibleIdentityMembers({
+      orgId: group.orgId,
+      groupId: group.id,
+      offset,
+      limit,
+      search,
+      filter
+    });
+  };
+
+  const addIdentityToGroup = async ({
+    id,
+    identityId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TAddIdentityToGroupDTO) => {
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+
+    const { permission, membership } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
+
+    // check if group with id exists
+    const group = await groupDAL.findOne({
+      orgId: actorOrgId,
+      id
+    });
+
+    if (!group)
+      throw new NotFoundError({
+        message: `Failed to find group with ID ${id}`
+      });
+
+    const oidcConfig = await oidcConfigDAL.findOne({
+      orgId: group.orgId,
+      isActive: true
+    });
+
+    if (oidcConfig?.manageGroupMemberships) {
+      throw new BadRequestError({
+        message:
+          "Cannot add identity to group: OIDC group membership mapping is enabled - identity must be assigned to this group in your OIDC provider."
+      });
+    }
+
+    const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
+
+    // check if user has broader or equal to privileges than group
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
+      OrgPermissionGroupActions.AddMembers,
+      OrgPermissionSubjects.Groups,
+      permission,
+      groupRolePermission
+    );
+
+    if (!permissionBoundary.isValid)
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(
+          "Failed to add identity to more privileged group",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionGroupActions.AddMembers,
+          OrgPermissionSubjects.Groups
+        ),
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
+
+    const identity = await identityDAL.findById(identityId);
+    if (!identity) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+
+    // Check if identity belongs to the organization
+    const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId, orgId: actorOrgId });
+    if (!identityOrgMembership) {
+      throw new NotFoundError({ message: `Identity ${identityId} is not a member of organization ${actorOrgId}` });
+    }
+
+    // Check if identity is already in the group
+    const existingMembership = await identityGroupMembershipDAL.findOne({ identityId, groupId: id });
+    if (existingMembership) {
+      throw new BadRequestError({ message: `Identity ${identityId} is already a member of group ${id}` });
+    }
+
+    await identityGroupMembershipDAL.insertMany([
+      {
+        identityId,
+        groupId: id
+      }
+    ]);
+
+    return { id: identityId, name: identity.name };
+  };
+
+  const removeIdentityFromGroup = async ({
+    id,
+    identityId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TRemoveIdentityFromGroupDTO) => {
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+
+    const { permission, membership } = await permissionService.getOrgPermission(
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
+
+    // check if group with id exists
+    const group = await groupDAL.findOne({
+      orgId: actorOrgId,
+      id
+    });
+
+    if (!group)
+      throw new NotFoundError({
+        message: `Failed to find group with ID ${id}`
+      });
+
+    const oidcConfig = await oidcConfigDAL.findOne({
+      orgId: group.orgId,
+      isActive: true
+    });
+
+    if (oidcConfig?.manageGroupMemberships) {
+      throw new BadRequestError({
+        message:
+          "Cannot remove identity from group: OIDC group membership mapping is enabled - identity must be removed from this group in your OIDC provider."
+      });
+    }
+
+    const { permission: groupRolePermission } = await permissionService.getOrgPermissionByRole(group.role, actorOrgId);
+
+    // check if user has broader or equal to privileges than group
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      membership.shouldUseNewPrivilegeSystem,
+      OrgPermissionGroupActions.RemoveMembers,
+      OrgPermissionSubjects.Groups,
+      permission,
+      groupRolePermission
+    );
+    if (!permissionBoundary.isValid)
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(
+          "Failed to delete identity from more privileged group",
+          membership.shouldUseNewPrivilegeSystem,
+          OrgPermissionGroupActions.RemoveMembers,
+          OrgPermissionSubjects.Groups
+        ),
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
+
+    const identity = await identityDAL.findById(identityId);
+    if (!identity) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+
+    // Check if identity is in the group
+    const identityMembership = await identityGroupMembershipDAL.findOne({ identityId, groupId: id });
+    if (!identityMembership) {
+      throw new NotFoundError({ message: `Identity ${identityId} is not a member of group ${id}` });
+    }
+
+    await identityGroupMembershipDAL.delete({ identityId, groupId: id });
+
+    return { id: identityId, name: identity.name };
+  };
+
   return {
     createGroup,
     updateGroup,
@@ -489,6 +731,9 @@ export const groupServiceFactory = ({
     listGroupUsers,
     addUserToGroup,
     removeUserFromGroup,
+    listGroupIdentities,
+    addIdentityToGroup,
+    removeIdentityFromGroup,
     getGroupById
   };
 };

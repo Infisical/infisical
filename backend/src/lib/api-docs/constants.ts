@@ -78,13 +78,15 @@ export const GROUPS = {
   CREATE: {
     name: "The name of the group to create.",
     slug: "The slug of the group to create.",
-    role: "The role of the group to create."
+    role: "The role of the group to create.",
+    type: "The type of the group to create. Either 'USERS' or 'IDENTITIES'."
   },
   UPDATE: {
     id: "The ID of the group to update.",
     name: "The new name of the group to update to.",
     slug: "The new slug of the group to update to.",
-    role: "The new role of the group to update to."
+    role: "The new role of the group to update to.",
+    type: "The new type of the group to update to. Either 'USERS' or 'IDENTITIES'."
   },
   DELETE: {
     id: "The ID of the group to delete.",
@@ -110,6 +112,22 @@ export const GROUPS = {
   DELETE_USER: {
     id: "The ID of the group to remove the user from.",
     username: "The username of the user to remove from the group."
+  },
+  LIST_IDENTITIES: {
+    id: "The ID of the group to list identities for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
+    limit: "The number of identities to return.",
+    search: "The text string that identity name will be filtered by.",
+    filterIdentities:
+      "Whether to filter the list of returned identities. 'existingMembers' will only return existing identities in the group, 'nonMembers' will only return identities not in the group, undefined will return all identities in the organization."
+  },
+  ADD_IDENTITY: {
+    id: "The ID of the group to add the identity to.",
+    identityId: "The ID of the identity to add to the group."
+  },
+  DELETE_IDENTITY: {
+    id: "The ID of the group to remove the identity from.",
+    identityId: "The ID of the identity to remove from the group."
   }
 } as const;
 

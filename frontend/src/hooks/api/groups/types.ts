@@ -14,6 +14,7 @@ export type TGroup = {
   createdAt: string;
   updatedAt: string;
   role: string;
+  type: "USERS" | "IDENTITIES";
 };
 
 export type TGroupMembership = {

@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 
-import { TImmutableDBKeys } from "./models";
+import { GroupType, TImmutableDBKeys } from "./models";
 
 export const GroupsSchema = z.object({
   id: z.string().uuid(),
@@ -15,7 +15,8 @@ export const GroupsSchema = z.object({
   role: z.string(),
   roleId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  type: z.nativeEnum(GroupType).default(GroupType.Users)
 });
 
 export type TGroups = z.infer<typeof GroupsSchema>;

@@ -518,6 +518,11 @@ import {
   TIdentityAuthTemplatesUpdate
 } from "@app/db/schemas/identity-auth-templates";
 import {
+  TIdentityGroupMembership,
+  TIdentityGroupMembershipInsert,
+  TIdentityGroupMembershipUpdate
+} from "@app/db/schemas/identity-group-membership";
+import {
   TIdentityLdapAuths,
   TIdentityLdapAuthsInsert,
   TIdentityLdapAuthsUpdate
@@ -592,6 +597,11 @@ declare module "knex/types/tables" {
       TSshCertificateTemplates,
       TSshCertificateTemplatesInsert,
       TSshCertificateTemplatesUpdate
+    >;
+    [TableName.IdentityGroupMembership]: KnexOriginal.CompositeTableType<
+      TIdentityGroupMembership,
+      TIdentityGroupMembershipInsert,
+      TIdentityGroupMembershipUpdate
     >;
     [TableName.SshCertificate]: KnexOriginal.CompositeTableType<
       TSshCertificates,
