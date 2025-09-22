@@ -36,6 +36,7 @@ import {
   OnePassConnectionMethod,
   OracleDBConnectionMethod,
   PostgresConnectionMethod,
+  RedisConnectionMethod,
   TAppConnection,
   TeamCityConnectionMethod,
   TerraformCloudConnectionMethod,
@@ -156,6 +157,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case MySqlConnectionMethod.UsernameAndPassword:
     case OracleDBConnectionMethod.UsernameAndPassword:
     case AzureADCSConnectionMethod.UsernamePassword:
+    case RedisConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:

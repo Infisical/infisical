@@ -1,5 +1,6 @@
 import Redis from "ioredis";
 
+import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -16,11 +17,13 @@ export const getRedisConnectionListItem = () => {
 };
 
 export const validateRedisConnectionCredentials = async (config: TRedisConnectionConfig) => {
+  const [hostIp] = await verifyHostInputValidity(config.credentials.host);
+
   let connection: Redis | null = null;
   try {
     connection = new Redis({
       username: config.credentials.username,
-      host: config.credentials.host,
+      host: hostIp,
       port: config.credentials.port,
       password: config.credentials.password,
       ...(config.credentials.sslEnabled && {
