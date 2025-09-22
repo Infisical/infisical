@@ -23,7 +23,13 @@ const GroupFormSchema = z.object({
     .string()
     .min(5, "Slug must be at least 5 characters long")
     .max(36, "Slug must be 36 characters or fewer"),
-  role: z.object({ name: z.string(), slug: z.string() })
+  role: z.object({ name: z.string(), slug: z.string() }),
+  type: z
+    .object({
+      label: z.string(),
+      value: z.enum(["USERS", "IDENTITIES"])
+    })
+    .default({ label: "Users", value: "USERS" })
 });
 
 export type TGroupFormData = z.infer<typeof GroupFormSchema>;
@@ -50,6 +56,7 @@ export const OrgGroupModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Pr
       name: string;
       slug: string;
       role: string;
+      type: "USERS" | "IDENTITIES";
       customRole: {
         name: string;
         slug: string;
@@ -62,18 +69,23 @@ export const OrgGroupModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Pr
       reset({
         name: group.name,
         slug: group.slug,
-        role: group?.customRole ?? findOrgMembershipRole(roles, group.role)
+        role: group?.customRole ?? findOrgMembershipRole(roles, group.role),
+        type: {
+          label: group.type === "USERS" ? "Users" : "Identities",
+          value: group.type
+        }
       });
     } else {
       reset({
         name: "",
         slug: "",
-        role: findOrgMembershipRole(roles, currentOrg!.defaultMembershipRole)
+        role: findOrgMembershipRole(roles, currentOrg!.defaultMembershipRole),
+        type: { label: "Users", value: "USERS" }
       });
     }
   }, [popUp?.group?.data, roles]);
 
-  const onGroupModalSubmit = async ({ name, slug, role }: TGroupFormData) => {
+  const onGroupModalSubmit = async ({ name, slug, role, type }: TGroupFormData) => {
     try {
       if (!currentOrg?.id) return;
 
@@ -88,14 +100,16 @@ export const OrgGroupModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Pr
           id: group.groupId,
           name,
           slug,
-          role: role.slug || undefined
+          role: role.slug || undefined,
+          type: type.value
         });
       } else {
         await createMutateAsync({
           name,
           slug,
           organizationId: currentOrg.id,
-          role: role.slug || undefined
+          role: role.slug || undefined,
+          type: type.value
         });
       }
       handlePopUpToggle("group", false);
@@ -141,6 +155,30 @@ export const OrgGroupModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Pr
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Slug" errorText={error?.message} isError={Boolean(error)}>
                 <Input {...field} placeholder="engineering" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="type"
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <FormControl
+                label="Type"
+                errorText={error?.message}
+                isError={Boolean(error)}
+                className="mt-4"
+              >
+                <FilterableSelect
+                  options={[
+                    { label: "Users", value: "USERS" },
+                    { label: "Identities", value: "IDENTITIES" }
+                  ]}
+                  placeholder="Select type..."
+                  onChange={onChange}
+                  value={value}
+                  getOptionValue={(option) => option.value}
+                  getOptionLabel={(option) => option.label}
+                />
               </FormControl>
             )}
           />

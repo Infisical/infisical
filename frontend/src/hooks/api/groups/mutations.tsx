@@ -5,7 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { organizationKeys } from "../organization/queries";
 import { userKeys } from "../users/query-keys";
 import { groupKeys } from "./queries";
-import { TGroup } from "./types";
+import { TGroup, TGroupIdentity } from "./types";
 
 export const useCreateGroup = () => {
   const queryClient = useQueryClient();
@@ -13,17 +13,20 @@ export const useCreateGroup = () => {
     mutationFn: async ({
       name,
       slug,
-      role
+      role,
+      type
     }: {
       name: string;
       slug: string;
       organizationId: string;
       role?: string;
+      type?: "USERS" | "IDENTITIES";
     }) => {
       const { data: group } = await apiRequest.post<TGroup>("/api/v1/groups", {
         name,
         slug,
-        role
+        role,
+        type
       });
 
       return group;
@@ -41,17 +44,20 @@ export const useUpdateGroup = () => {
       id,
       name,
       slug,
-      role
+      role,
+      type
     }: {
       id: string;
       name?: string;
       slug?: string;
       role?: string;
+      type?: "USERS" | "IDENTITIES";
     }) => {
       const { data: group } = await apiRequest.patch<TGroup>(`/api/v1/groups/${id}`, {
         name,
         slug,
-        role
+        role,
+        type
       });
 
       return group;
@@ -119,6 +125,52 @@ export const useRemoveUserFromGroup = () => {
     onSuccess: (_, { slug, username }) => {
       queryClient.invalidateQueries({ queryKey: groupKeys.forGroupUserMemberships(slug) });
       queryClient.invalidateQueries({ queryKey: userKeys.listUserGroupMemberships(username) });
+    }
+  });
+};
+
+export const useAddIdentityToGroup = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      groupId,
+      identityId
+    }: {
+      groupId: string;
+      identityId: string;
+      slug: string;
+    }) => {
+      const { data } = await apiRequest.post<TGroupIdentity>(
+        `/api/v1/groups/${groupId}/identities/${identityId}`
+      );
+
+      return data;
+    },
+    onSuccess: (_, { slug }) => {
+      queryClient.invalidateQueries({ queryKey: groupKeys.forGroupIdentityMemberships(slug) });
+    }
+  });
+};
+
+export const useRemoveIdentityFromGroup = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      identityId,
+      groupId
+    }: {
+      slug: string;
+      identityId: string;
+      groupId: string;
+    }) => {
+      const { data } = await apiRequest.delete<TGroupIdentity>(
+        `/api/v1/groups/${groupId}/identities/${identityId}`
+      );
+
+      return data;
+    },
+    onSuccess: (_, { slug }) => {
+      queryClient.invalidateQueries({ queryKey: groupKeys.forGroupIdentityMemberships(slug) });
     }
   });
 };

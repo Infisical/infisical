@@ -1,8 +1,11 @@
 export {
+  useAddIdentityToGroup,
   useAddUserToGroup,
   useCreateGroup,
   useDeleteGroup,
+  useRemoveIdentityFromGroup,
   useRemoveUserFromGroup,
   useUpdateGroup
 } from "./mutations";
-export { useGetGroupById, useListGroupUsers } from "./queries";
+export { useGetGroupById, useListGroupIdentities, useListGroupUsers } from "./queries";
+export type { EFilterReturnedIdentities, TGroupIdentity } from "./types";
