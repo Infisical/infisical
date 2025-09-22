@@ -37,6 +37,7 @@ export const groupProjectDALFactory = (db: TDbClient) => {
           db.ref("id").as("groupId").withSchema(TableName.Groups),
           db.ref("name").as("groupName").withSchema(TableName.Groups),
           db.ref("slug").as("groupSlug").withSchema(TableName.Groups),
+          db.ref("type").as("groupType").withSchema(TableName.Groups),
           db.ref("id").withSchema(TableName.GroupProjectMembership),
           db.ref("role").withSchema(TableName.GroupProjectMembershipRole),
           db.ref("id").withSchema(TableName.GroupProjectMembershipRole).as("membershipRoleId"),
@@ -52,7 +53,7 @@ export const groupProjectDALFactory = (db: TDbClient) => {
 
       const members = sqlNestRelationships({
         data: docs,
-        parentMapper: ({ groupId, groupName, groupSlug, id, createdAt, updatedAt }) => ({
+        parentMapper: ({ groupId, groupName, groupSlug, id, groupType, createdAt, updatedAt }) => ({
           id,
           groupId,
           createdAt,
@@ -60,7 +61,8 @@ export const groupProjectDALFactory = (db: TDbClient) => {
           group: {
             id: groupId,
             name: groupName,
-            slug: groupSlug
+            slug: groupSlug,
+            type: groupType
           }
         }),
         key: "id",

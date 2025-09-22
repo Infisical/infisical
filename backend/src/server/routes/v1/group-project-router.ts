@@ -7,7 +7,7 @@ import {
   ProjectUserMembershipRolesSchema,
   UsersSchema
 } from "@app/db/schemas";
-import { EFilterReturnedUsers } from "@app/ee/services/group/group-types";
+import { EFilterReturnedIdentities, EFilterReturnedUsers } from "@app/ee/services/group/group-types";
 import { ApiDocsTags, GROUPS, PROJECTS } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -358,6 +358,79 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       });
 
       return { users, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/groups/:groupId/identities",
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.ProjectGroups],
+      description: "Return project group identities",
+      params: z.object({
+        projectId: z
+          .string()
+          .trim()
+          .describe(GROUPS.LIST_IDENTITIES.projectId as unknown as string),
+        groupId: z
+          .string()
+          .trim()
+          .describe(GROUPS.LIST_IDENTITIES.id as unknown as string)
+      }),
+      querystring: z.object({
+        offset: z.coerce
+          .number()
+          .min(0)
+          .max(100)
+          .default(0)
+          .describe(GROUPS.LIST_IDENTITIES.offset as unknown as string),
+        limit: z.coerce
+          .number()
+          .min(1)
+          .max(100)
+          .default(10)
+          .describe(GROUPS.LIST_IDENTITIES.limit as unknown as string),
+        search: z
+          .string()
+          .trim()
+          .optional()
+          .describe(GROUPS.LIST_IDENTITIES.search as unknown as string),
+        filter: z
+          .nativeEnum(EFilterReturnedIdentities)
+          .optional()
+          .describe(GROUPS.LIST_IDENTITIES.filterIdentities as unknown as string)
+      }),
+      response: {
+        200: z.object({
+          identities: z
+            .object({
+              id: z.string(),
+              name: z.string().nullable().optional(),
+              isPartOfGroup: z.boolean(),
+              joinedGroupAt: z.date().nullable()
+            })
+            .array(),
+          totalCount: z.number()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { identities, totalCount } = await server.services.groupProject.listProjectGroupIdentities({
+        id: req.params.groupId,
+        projectId: req.params.projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query
+      });
+
+      return { identities, totalCount };
     }
   });
 };

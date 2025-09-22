@@ -127,6 +127,10 @@ export type TListGroupIdentitiesDTO = {
   filter?: EFilterReturnedIdentities;
 } & TGenericPermission;
 
+export type TListProjectGroupIdentitiesDTO = TListGroupIdentitiesDTO & {
+  projectId: string;
+};
+
 export type TAddIdentityToGroupDTO = {
   id: string;
   identityId: string;

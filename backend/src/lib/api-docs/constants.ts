@@ -118,6 +118,7 @@ export const GROUPS = {
     offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
     limit: "The number of identities to return.",
     search: "The text string that identity name will be filtered by.",
+    projectId: "The ID of the project the group belongs to.",
     filterIdentities:
       "Whether to filter the list of returned identities. 'existingMembers' will only return existing identities in the group, 'nonMembers' will only return identities not in the group, undefined will return all identities in the organization."
   },

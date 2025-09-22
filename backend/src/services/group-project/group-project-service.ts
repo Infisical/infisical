@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole, ProjectVersion, SecretKeyEncoding, TGroups } from "@app/db/schemas";
-import { TListProjectGroupUsersDTO } from "@app/ee/services/group/group-types";
+import { TListProjectGroupIdentitiesDTO, TListProjectGroupUsersDTO } from "@app/ee/services/group/group-types";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -42,7 +42,7 @@ type TGroupProjectServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany" | "transaction">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
   projectBotDAL: TProjectBotDALFactory;
-  groupDAL: Pick<TGroupDALFactory, "findOne" | "findAllGroupPossibleMembers">;
+  groupDAL: Pick<TGroupDALFactory, "findOne" | "findAllGroupPossibleMembers" | "findAllGroupPossibleIdentityMembers">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRole">;
 };
 
@@ -531,12 +531,53 @@ export const groupProjectServiceFactory = ({
     return { users: members, totalCount };
   };
 
+  const listProjectGroupIdentities = async ({
+    id,
+    projectId,
+    offset,
+    limit,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    search,
+    filter
+  }: TListProjectGroupIdentitiesDTO) => {
+    const project = await projectDAL.findById(projectId);
+
+    if (!project) {
+      throw new NotFoundError({ message: `Failed to find project with ID ${projectId}` });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.Any
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
+
+    const { identities, totalCount } = await groupDAL.findAllGroupPossibleIdentityMembers({
+      orgId: project.orgId,
+      groupId: id,
+      offset,
+      limit,
+      search,
+      filter
+    });
+
+    return { identities, totalCount };
+  };
+
   return {
     addGroupToProject,
     updateGroupInProject,
     removeGroupFromProject,
     listGroupsInProject,
     getGroupInProject,
-    listProjectGroupUsers
+    listProjectGroupUsers,
+    listProjectGroupIdentities
   };
 };

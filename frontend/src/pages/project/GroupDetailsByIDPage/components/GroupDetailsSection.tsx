@@ -18,7 +18,7 @@ import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app
 import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
-import { TGroupMembership } from "@app/hooks/api/groups/types";
+import { TGroupMembership, TGroupType } from "@app/hooks/api/groups/types";
 import { GroupRoles } from "@app/pages/project/AccessControlPage/components/GroupsTab/components/GroupsSection/GroupRoles";
 
 type Props = {
@@ -122,6 +122,12 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
             <p className="text-sm text-mineshaft-300">{groupMembership.group.slug}</p>
             <CopyButton value={groupMembership.group.slug} name="Slug" size="xs" variant="plain" />
           </div>
+        </div>
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Type</p>
+          <p className="text-sm text-mineshaft-300">
+            {groupMembership.group.type === TGroupType.USERS ? "Users" : "Identities"}
+          </p>
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Project Role</p>

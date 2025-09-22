@@ -171,6 +171,53 @@ export const useListProjectGroupUsers = ({
   });
 };
 
+export const useListProjectGroupIdentities = ({
+  id,
+  projectId,
+  groupSlug,
+  offset = 0,
+  limit = 10,
+  search,
+  filter
+}: {
+  id: string;
+  groupSlug: string;
+  projectId: string;
+  offset: number;
+  limit: number;
+  search: string;
+  filter?: EFilterReturnedIdentities;
+}) => {
+  return useQuery({
+    queryKey: groupKeys.specificGroupIdentityMemberships({
+      slug: groupSlug,
+      offset,
+      limit,
+      search,
+      filter
+    }),
+    enabled: Boolean(groupSlug),
+    placeholderData: (previousData) => previousData,
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        offset: String(offset),
+        limit: String(limit),
+        search,
+        ...(filter && { filter })
+      });
+
+      const { data } = await apiRequest.get<{ identities: TGroupIdentity[]; totalCount: number }>(
+        `/api/v1/projects/${projectId}/groups/${id}/identities`,
+        {
+          params
+        }
+      );
+
+      return data;
+    }
+  });
+};
+
 export const useListGroupIdentities = ({
   id,
   groupSlug,
