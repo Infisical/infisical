@@ -64,7 +64,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
 
   const { currentProject } = useProject();
   const { data, isPending } = useListWorkspaceCertificates({
-    projectId: currentProject?.slug ?? "",
+    projectId: currentProject?.id ?? "",
     offset: (page - 1) * perPage,
     limit: perPage
   });
