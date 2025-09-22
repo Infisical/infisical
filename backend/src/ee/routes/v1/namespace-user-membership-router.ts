@@ -20,8 +20,11 @@ const SanitizedNamespaceMembershipSchema = NamespaceMembershipsSchema.extend({
     firstName: true,
     lastName: true,
     id: true,
-    username: true
+    username: true,
+    isEmailVerified: true
   }),
+  lastLoginAuthMethod: z.string().nullable().optional(),
+  lastLoginTime: z.date().nullable().optional(),
   roles: z.array(
     z.object({
       id: z.string(),
@@ -35,7 +38,8 @@ const SanitizedNamespaceMembershipSchema = NamespaceMembershipsSchema.extend({
       temporaryAccessStartTime: z.date().nullable().optional(),
       temporaryAccessEndTime: z.date().nullable().optional()
     })
-  )
+  ),
+  metadata: z.object({ id: z.string(), key: z.string(), value: z.string() }).array()
 });
 
 export const registerNamespaceUserMembershipRouter = async (server: FastifyZodProvider) => {
@@ -298,7 +302,6 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
-      console.log(">>>users", users);
       await server.services.namespaceUserMembership.addUserToNamespace({
         namespaceSlug: req.params.namespaceName,
         permission: req.permission,

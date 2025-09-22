@@ -4,7 +4,12 @@ export type TNamespaceUser = {
   lastName: string;
   id: string;
   username: string;
+  isEmailVerified?: boolean;
 };
+
+export enum NamespaceUserMembershipTemporaryMode {
+  Relative = "relative"
+}
 
 export type TNamespaceMembershipRole = {
   id: string;
@@ -25,6 +30,13 @@ export type TNamespaceMembership = {
   roles: TNamespaceMembershipRole[];
   createdAt: string;
   updatedAt: string;
+  lastLoginAuthMethod?: string | null;
+  lastLoginTime?: string | null;
+  metadata?: {
+    id: string;
+    key: string;
+    value: string;
+  }[];
 };
 
 export type TListNamespaceMembershipsDTO = {

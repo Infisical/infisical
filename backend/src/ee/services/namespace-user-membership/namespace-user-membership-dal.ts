@@ -102,6 +102,11 @@ export const namespaceUserMembershipDALFactory = (db: TDbClient) => {
           `${TableName.NamespaceMembershipRole}.customRoleId`,
           `${TableName.NamespaceRole}.id`
         )
+        .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
+          void queryBuilder
+            .on(`${TableName.Users}.id`, `${TableName.IdentityMetadata}.userId`)
+            .andOn(`${TableName.OrgMembership}.orgId`, `${TableName.IdentityMetadata}.orgId`);
+        })
         .select(
           db.ref("id").withSchema(TableName.NamespaceMembership),
           db.ref("createdAt").withSchema(TableName.NamespaceMembership),
@@ -109,6 +114,7 @@ export const namespaceUserMembershipDALFactory = (db: TDbClient) => {
           db.ref("username").withSchema(TableName.Users),
           db.ref("email").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
+          db.ref("isEmailVerified").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("id").withSchema(TableName.Users).as("userId"),
           db.ref("role").withSchema(TableName.NamespaceMembershipRole),
@@ -122,7 +128,12 @@ export const namespaceUserMembershipDALFactory = (db: TDbClient) => {
           db.ref("temporaryAccessStartTime").withSchema(TableName.NamespaceMembershipRole),
           db.ref("temporaryAccessEndTime").withSchema(TableName.NamespaceMembershipRole),
           db.ref("name").as("namespaceName").withSchema(TableName.Namespace),
-          db.ref("isActive").withSchema(TableName.OrgMembership)
+          db.ref("isActive").withSchema(TableName.OrgMembership),
+          db.ref("lastLoginAuthMethod").withSchema(TableName.OrgMembership),
+          db.ref("lastLoginTime").withSchema(TableName.OrgMembership),
+          db.ref("id").withSchema(TableName.IdentityMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue")
         )
         .where({ isGhost: false })
         .orderBy(`${TableName.Users}.username` as "username");
@@ -139,17 +150,23 @@ export const namespaceUserMembershipDALFactory = (db: TDbClient) => {
           namespaceName,
           createdAt,
           isActive,
-          updatedAt
+          updatedAt,
+          isEmailVerified,
+          lastLoginAuthMethod,
+          lastLoginTime
         }) => ({
           id,
           userId,
           namespaceId,
+          lastLoginAuthMethod,
+          lastLoginTime,
           user: {
             email,
             username,
             firstName,
             lastName,
             id: userId,
+            isEmailVerified,
             isOrgMembershipActive: isActive
           },
           namespace: {
@@ -186,6 +203,15 @@ export const namespaceUserMembershipDALFactory = (db: TDbClient) => {
               temporaryAccessEndTime,
               temporaryAccessStartTime,
               isTemporary
+            })
+          },
+          {
+            key: "metadataId",
+            label: "metadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
             })
           }
         ]
