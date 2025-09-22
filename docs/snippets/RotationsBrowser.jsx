@@ -14,6 +14,7 @@ export const RotationsBrowser = () => {
     {"name": "LDAP Password", "slug": "ldap-password", "path": "/documentation/platform/secret-rotation/ldap-password", "description": "Learn how to automatically rotate LDAP user passwords.", "category": "Identity & Auth"},
     {"name": "MySQL", "slug": "mysql-credentials", "path": "/documentation/platform/secret-rotation/mysql-credentials", "description": "Learn how to automatically rotate MySQL database credentials.", "category": "Databases"},
     {"name": "PostgreSQL", "slug": "postgres-credentials", "path": "/documentation/platform/secret-rotation/postgres-credentials", "description": "Learn how to automatically rotate PostgreSQL database credentials.", "category": "Databases"},
+    {"name": "Redis", "slug": "redis-credentials", "path": "/documentation/platform/secret-rotation/redis-credentials", "description": "Learn how to automatically rotate Redis database credentials.", "category": "Databases"},
     {"name": "Microsoft SQL Server", "slug": "mssql-credentials", "path": "/documentation/platform/secret-rotation/mssql-credentials", "description": "Learn how to automatically rotate Microsoft SQL Server credentials.", "category": "Databases"},
     {"name": "Oracle Database", "slug": "oracledb-credentials", "path": "/documentation/platform/secret-rotation/oracledb-credentials", "description": "Learn how to automatically rotate Oracle Database credentials.", "category": "Databases"}
   ].sort(function(a, b) {
