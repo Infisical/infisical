@@ -17,6 +17,7 @@ import {
 } from "./namespace-types";
 import { TNamespaceMembershipRoleDALFactory } from "../namespace-role/namespace-membership-role-dal";
 import { TNamespaceUserMembershipDALFactory } from "../namespace-user-membership/namespace-user-membership-dal";
+import { NamespacePermissionActions, NamespacePermissionSubjects } from "../permission/namespace-permission";
 
 type TNamespaceServiceFactoryDep = {
   namespaceDAL: TNamespaceDALFactory;
@@ -95,22 +96,22 @@ export const namespaceServiceFactory = ({
     newName,
     description
   }: TUpdateNamespaceDTO) => {
-    const { permission: orgPermission } = await permissionService.getOrgPermission(
-      permission.type,
-      permission.id,
-      permission.orgId,
-      permission.authMethod,
-      permission.orgId
-    );
-    ForbiddenError.from(orgPermission).throwUnlessCan(
-      OrgPermissionNamespaceActions.Edit,
-      OrgPermissionSubjects.Namespace
-    );
-
     const existingNamespace = await namespaceDAL.findOne({ name, orgId: permission.orgId });
     if (!existingNamespace) {
       throw new NotFoundError({ message: `Namespace with name '${name}' not found` });
     }
+
+    const { permission: namespacePermission } = await permissionService.getNamespacePermission({
+      actor: permission.type,
+      actorId: permission.id,
+      namespaceId: existingNamespace.id,
+      actorAuthMethod: permission.authMethod,
+      actorOrgId: permission.orgId
+    });
+    ForbiddenError.from(namespacePermission).throwUnlessCan(
+      NamespacePermissionActions.Edit,
+      NamespacePermissionSubjects.Settings
+    );
 
     if (newName && newName !== name) {
       const namespaceWithNewName = await namespaceDAL.findOne({ name: newName, orgId: permission.orgId });
@@ -134,22 +135,22 @@ export const namespaceServiceFactory = ({
     permission,
     name
   }: TDeleteNamespaceDTO) => {
-    const { permission: orgPermission } = await permissionService.getOrgPermission(
-      permission.type,
-      permission.id,
-      permission.orgId,
-      permission.authMethod,
-      permission.orgId
-    );
-    ForbiddenError.from(orgPermission).throwUnlessCan(
-      OrgPermissionNamespaceActions.Delete,
-      OrgPermissionSubjects.Namespace
-    );
-
     const existingNamespace = await namespaceDAL.findOne({ name, orgId: permission.orgId });
     if (!existingNamespace) {
       throw new NotFoundError({ message: `Namespace with name '${name}' not found` });
     }
+
+    const { permission: namespacePermission } = await permissionService.getNamespacePermission({
+      actor: permission.type,
+      actorId: permission.id,
+      namespaceId: existingNamespace.id,
+      actorAuthMethod: permission.authMethod,
+      actorOrgId: permission.orgId
+    });
+    ForbiddenError.from(namespacePermission).throwUnlessCan(
+      NamespacePermissionActions.Edit,
+      NamespacePermissionSubjects.Settings
+    );
 
     const [deletedNamespace] = await namespaceDAL.delete({ id: existingNamespace.id });
     return deletedNamespace;

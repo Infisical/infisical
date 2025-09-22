@@ -55,12 +55,12 @@ export type TAddUsersToProjectV1DTO = {
 
 export type TAddUsersToProjectV2DTO = {
   sendEmails?: boolean;
-  validatedInvitedUsers: { id: string; username: string; email?: string }[];
+  validatedInvitedUsers: { id: string; username: string; email?: string | null }[];
   projects?: {
     id: string;
     projectRoleSlug?: string[];
   }[];
-} & TProjectPermission;
+} & Omit<TProjectPermission, "projectId">;
 
 export type TAddUsersToProjectNonE2EEDTO = {
   sendEmails?: boolean;

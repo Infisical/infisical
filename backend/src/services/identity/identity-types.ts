@@ -48,6 +48,7 @@ export type TListIdentitiesDTO = {
   orderBy?: OrgIdentityOrderBy;
   orderDirection?: OrderByDirection;
   search?: string;
+  includeScopedIdentities?: boolean;
 } & TOrgPermission;
 
 export type TListNamespaceIdentitiesDTO = {

@@ -3,11 +3,11 @@ import { ForbiddenError } from "@casl/ability";
 import { NamespaceMembershipRole, TableName, TNamespaceMembershipRolesInsert } from "@app/db/schemas";
 import { TNamespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
 import {
-  NamespacePermissionActions,
+  NamespacePermissionMemberActions,
   NamespacePermissionSubjects
 } from "@app/ee/services/permission/namespace-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -26,13 +26,14 @@ import {
   TSearchNamespaceMembershipDTO,
   TUpdateNamespaceUserMembershipDTO
 } from "./namespace-user-membership-types";
+import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } from "../permission/permission-fns";
 
 type TNamespaceUserMembershipServiceFactoryDep = {
   namespaceUserMembershipDAL: TNamespaceUserMembershipDALFactory;
   namespaceDAL: Pick<TNamespaceDALFactory, "findOne">;
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
   namespaceRoleDAL: Pick<TNamespaceRoleDALFactory, "find" | "findOne">;
-  permissionService: Pick<TPermissionServiceFactory, "getNamespacePermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getNamespacePermission" | "getNamespacePermissionByRole">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   namespaceMembershipRoleDAL: Pick<TNamespaceMembershipRoleDALFactory, "delete" | "insertMany">;
 };
@@ -57,7 +58,7 @@ export const namespaceUserMembershipServiceFactory = ({
     const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: permission.orgId });
     if (!namespace) throw new NotFoundError({ message: "Namespace not found" });
 
-    const { permission: namespacePermission } = await permissionService.getNamespacePermission({
+    const { permission: namespacePermission, membership } = await permissionService.getNamespacePermission({
       actor: permission.type,
       actorId: permission.id,
       namespaceId: namespace.id,
@@ -66,7 +67,7 @@ export const namespaceUserMembershipServiceFactory = ({
     });
 
     ForbiddenError.from(namespacePermission).throwUnlessCan(
-      NamespacePermissionActions.Create,
+      NamespacePermissionMemberActions.Create,
       NamespacePermissionSubjects.Member
     );
 
@@ -90,6 +91,34 @@ export const namespaceUserMembershipServiceFactory = ({
         throw new BadRequestError({
           message: "Failed to set custom role: Plan restriction. Upgrade plan to continue."
         });
+      }
+    }
+
+    for await (const invitedRole of roleSlugs) {
+      const { permission: rolePermission } = await permissionService.getNamespacePermissionByRole(
+        invitedRole,
+        namespace.id
+      );
+
+      if (invitedRole !== NamespaceMembershipRole.NoAccess) {
+        const permissionBoundary = validatePrivilegeChangeOperation(
+          membership.shouldUseNewPrivilegeSystem,
+          NamespacePermissionMemberActions.GrantPrivileges,
+          NamespacePermissionSubjects.Member,
+          namespacePermission,
+          rolePermission
+        );
+
+        if (!permissionBoundary.isValid)
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to invite user to the namespace",
+              membership.shouldUseNewPrivilegeSystem,
+              NamespacePermissionMemberActions.GrantPrivileges,
+              NamespacePermissionSubjects.Member
+            ),
+            details: { missingPermissions: permissionBoundary.missingPermissions }
+          });
       }
     }
 
@@ -159,7 +188,7 @@ export const namespaceUserMembershipServiceFactory = ({
     });
 
     ForbiddenError.from(namespacePermission).throwUnlessCan(
-      NamespacePermissionActions.Read,
+      NamespacePermissionMemberActions.Read,
       NamespacePermissionSubjects.Member
     );
 
@@ -186,7 +215,7 @@ export const namespaceUserMembershipServiceFactory = ({
       actorOrgId: permission.orgId
     });
     ForbiddenError.from(namespacePermission).throwUnlessCan(
-      NamespacePermissionActions.Read,
+      NamespacePermissionMemberActions.Read,
       NamespacePermissionSubjects.Member
     );
 
@@ -215,7 +244,7 @@ export const namespaceUserMembershipServiceFactory = ({
       actorOrgId: permission.orgId
     });
     ForbiddenError.from(namespacePermission).throwUnlessCan(
-      NamespacePermissionActions.Read,
+      NamespacePermissionMemberActions.Read,
       NamespacePermissionSubjects.Member
     );
 
@@ -236,7 +265,7 @@ export const namespaceUserMembershipServiceFactory = ({
     const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: permission.orgId });
     if (!namespace) throw new NotFoundError({ message: "Namespace not found" });
 
-    const { permission: namespacePermission } = await permissionService.getNamespacePermission({
+    const { permission: namespacePermission, membership } = await permissionService.getNamespacePermission({
       actor: permission.type,
       actorId: permission.id,
       namespaceId: namespace.id,
@@ -244,7 +273,7 @@ export const namespaceUserMembershipServiceFactory = ({
       actorOrgId: permission.orgId
     });
     ForbiddenError.from(namespacePermission).throwUnlessCan(
-      NamespacePermissionActions.Edit,
+      NamespacePermissionMemberActions.Edit,
       NamespacePermissionSubjects.Member
     );
 
@@ -265,6 +294,34 @@ export const namespaceUserMembershipServiceFactory = ({
         throw new BadRequestError({
           message: "Failed to set custom role: Plan restriction. Upgrade plan to continue."
         });
+      }
+    }
+
+    for await (const invitedRole of roles) {
+      const { permission: rolePermission } = await permissionService.getNamespacePermissionByRole(
+        invitedRole,
+        namespace.id
+      );
+
+      if (invitedRole !== NamespaceMembershipRole.NoAccess) {
+        const permissionBoundary = validatePrivilegeChangeOperation(
+          membership.shouldUseNewPrivilegeSystem,
+          NamespacePermissionMemberActions.GrantPrivileges,
+          NamespacePermissionSubjects.Member,
+          namespacePermission,
+          rolePermission
+        );
+
+        if (!permissionBoundary.isValid)
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to update user role in namespace",
+              membership.shouldUseNewPrivilegeSystem,
+              NamespacePermissionMemberActions.GrantPrivileges,
+              NamespacePermissionSubjects.Member
+            ),
+            details: { missingPermissions: permissionBoundary.missingPermissions }
+          });
       }
     }
 
@@ -335,7 +392,7 @@ export const namespaceUserMembershipServiceFactory = ({
     });
 
     ForbiddenError.from(namespacePermission).throwUnlessCan(
-      NamespacePermissionActions.Delete,
+      NamespacePermissionMemberActions.Delete,
       NamespacePermissionSubjects.Member
     );
 

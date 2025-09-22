@@ -99,6 +99,14 @@ export enum NamespacePermissionSubjects {
   Gateway = "gateway"
 }
 
+export enum NamespacePermissionMemberActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  GrantPrivileges = "grant-privileges"
+}
+
 export type NamespacePermissionAppConnectionSubjectFields = {
   connectionId: string;
 };
@@ -106,7 +114,7 @@ export type NamespacePermissionAppConnectionSubjectFields = {
 export type NamespacePermissionSet =
   | [NamespacePermissionActions.Create, NamespacePermissionSubjects.Project]
   | [NamespacePermissionActions, NamespacePermissionSubjects.Role]
-  | [NamespacePermissionActions, NamespacePermissionSubjects.Member]
+  | [NamespacePermissionMemberActions, NamespacePermissionSubjects.Member]
   | [NamespacePermissionActions, NamespacePermissionSubjects.Settings]
   | [NamespacePermissionGroupActions, NamespacePermissionSubjects.Groups]
   | [

@@ -1,12 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import {
-  NamespaceMembershipRole,
-  OrgMembershipRole,
-  TableName,
-  TIdentityOrgMemberships,
-  TOrgRoles
-} from "@app/db/schemas";
+import { NamespaceMembershipRole, OrgMembershipRole, TableName, TIdentityOrgMemberships } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -15,7 +9,7 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -227,15 +221,23 @@ export const identityServiceFactory = ({
     let orgCustomRoleId: string | undefined | null = null;
     let namespaceId: string | null = null;
 
-    let identityOrgMembership: TIdentityOrgMemberships;
+    const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id, orgId: actorOrgId });
+    if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
+
     if (namespaceName) {
-      const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: actorOrgId });
+      if (!identityOrgMembership.identity.namespace) {
+        throw new ForbiddenRequestError({
+          message: "Identity is not scoped to a namespace"
+        });
+      }
+
+      const namespace = await namespaceDAL.findOne({
+        name: namespaceName,
+        id: identityOrgMembership.identity.namespace.id,
+        orgId: actorOrgId
+      });
       if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceName} not found` });
       namespaceId = namespace.id;
-
-      const temp = await identityOrgMembershipDAL.findOne({ identityId: id, orgId: namespace.orgId });
-      if (!temp) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
-      identityOrgMembership = temp;
 
       const { permission } = await permissionService.getNamespacePermission({
         actor,
@@ -249,10 +251,6 @@ export const identityServiceFactory = ({
         NamespacePermissionSubjects.Identity
       );
     } else {
-      const temp = await identityOrgMembershipDAL.findOne({ identityId: id });
-      if (!temp) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
-      identityOrgMembership = temp;
-
       const { permission, membership } = await permissionService.getOrgPermission(
         actor,
         actorId,
@@ -261,6 +259,12 @@ export const identityServiceFactory = ({
         actorOrgId
       );
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+
+      if (identityOrgMembership.identity.namespace) {
+        throw new ForbiddenRequestError({
+          message: "Identity is scoped to a namespace"
+        });
+      }
 
       if (role) {
         const { permission: rolePermission, role: customOrgRole } = await permissionService.getOrgPermissionByRole(
@@ -387,17 +391,22 @@ export const identityServiceFactory = ({
   }: TDeleteIdentityDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
 
-    let namespaceId: string | null = null;
+    const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id, orgId: actorOrgId });
+    if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
 
-    let identityOrgMembership: TIdentityOrgMemberships & { identity: { hasDeleteProtection: boolean } };
     if (namespaceName) {
-      const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: actorOrgId });
-      if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceName} not found` });
-      namespaceId = namespace.id;
+      if (!identityOrgMembership.identity.namespace) {
+        throw new ForbiddenRequestError({
+          message: "Identity is not scoped to a namespace"
+        });
+      }
 
-      const temp = await identityOrgMembershipDAL.findOne({ identityId: id, orgId: namespace.orgId });
-      if (!temp) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
-      identityOrgMembership = temp;
+      const namespace = await namespaceDAL.findOne({
+        name: namespaceName,
+        orgId: actorOrgId,
+        id: identityOrgMembership.identity.namespace.id
+      });
+      if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceName} not found` });
 
       const { permission } = await permissionService.getNamespacePermission({
         actor,
@@ -411,9 +420,11 @@ export const identityServiceFactory = ({
         NamespacePermissionSubjects.Identity
       );
     } else {
-      const tempDoc = await identityOrgMembershipDAL.findOne({ identityId: id });
-      if (!tempDoc) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
-      identityOrgMembership = tempDoc;
+      if (identityOrgMembership.identity.namespace) {
+        throw new ForbiddenRequestError({
+          message: "Identity is scoped to a namespace"
+        });
+      }
 
       const { permission } = await permissionService.getOrgPermission(
         actor,

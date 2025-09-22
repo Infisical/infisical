@@ -44,7 +44,6 @@ type TNamespaceIdentityMembershipServiceFactoryDep = {
 export type TNamespaceIdentityMembershipServiceFactory = ReturnType<typeof namespaceIdentityMembershipServiceFactory>;
 
 // TODO(namespace): check all deletes are correct
-// TODO(namespace): check shouldUseNewPrivilege thingy
 export const namespaceIdentityMembershipServiceFactory = ({
   namespaceIdentityMembershipDAL,
   permissionService,
@@ -58,7 +57,7 @@ export const namespaceIdentityMembershipServiceFactory = ({
     roles,
     permission
   }: TCreateNamespaceIdentityMembershipDTO) => {
-    const { namespaceName: namespaceName } = permission;
+    const { namespaceName } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceName} not found` });
 
@@ -183,7 +182,7 @@ export const namespaceIdentityMembershipServiceFactory = ({
     roles,
     permission
   }: TUpdateNamespaceIdentityMembershipDTO) => {
-    const { namespaceName: namespaceName } = permission;
+    const { namespaceName } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceName} not found` });
 
@@ -302,7 +301,7 @@ export const namespaceIdentityMembershipServiceFactory = ({
     identityId,
     permission
   }: TDeleteNamespaceIdentityMembershipDTO) => {
-    const { namespaceName: namespaceName } = permission;
+    const { namespaceName } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceName} not found` });
 
@@ -329,6 +328,11 @@ export const namespaceIdentityMembershipServiceFactory = ({
         message: `Failed to find identity with ID ${identityId}`
       });
 
+    if (!identityOrgMembership.identity.namespace)
+      throw new BadRequestError({
+        message: `Namespace identity with  id ${identityId} membership cannot be deleted`
+      });
+
     const identityNamespaceMembership = await namespaceIdentityMembershipDAL.findOne({
       orgIdentityMembershipId: identityOrgMembership.id,
       namespaceId: namespace.id
@@ -352,7 +356,7 @@ export const namespaceIdentityMembershipServiceFactory = ({
     search,
     permission
   }: TListNamespaceIdentityMembershipDTO) => {
-    const { namespaceName: namespaceName } = permission;
+    const { namespaceName } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceName} not found` });
 
@@ -385,7 +389,7 @@ export const namespaceIdentityMembershipServiceFactory = ({
     identityId,
     permission
   }: TGetNamespaceIdentityMembershipByIdentityIdDTO) => {
-    const { namespaceName: namespaceName } = permission;
+    const { namespaceName } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceName} not found` });
 
@@ -421,7 +425,7 @@ export const namespaceIdentityMembershipServiceFactory = ({
     searchFilter = {},
     permission
   }: TSearchNamespaceIdentitiesDTO) => {
-    const { namespaceName: namespaceName } = permission;
+    const { namespaceName } = permission;
     const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: permission.actorOrgId });
     if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceName} not found` });
 

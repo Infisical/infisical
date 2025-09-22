@@ -50,16 +50,26 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
 
-      const { signupTokens: completeInviteLinks } = await server.services.org.inviteUserToOrganization({
+      const { signupTokens: completeInviteLinks, users } = await server.services.org.inviteUserToOrganization({
         orgId: req.body.organizationId,
         actor: req.permission.type,
         actorId: req.permission.id,
         inviteeEmails: req.body.inviteeEmails,
-        projects: req.body.projects,
         organizationRoleSlug: req.body.organizationRoleSlug,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+
+      if (users?.length) {
+        await server.services.projectMembership.addUsersToProjectV2({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          projects: req.body.projects,
+          validatedInvitedUsers: users
+        });
+      }
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserOrgInvitation,

@@ -40,7 +40,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           });
         })
         .join(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`)
-
         .leftJoin<TIdentityUniversalAuths>(
           TableName.IdentityUniversalAuth,
           `${TableName.IdentityOrgMembership}.identityId`,
@@ -103,7 +102,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         )
         .select(
           selectAllTableCols(TableName.IdentityOrgMembership),
-
+          db.ref("namespaceId").withSchema(TableName.Identity),
+          db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
           db.ref("id").as("alicloudId").withSchema(TableName.IdentityAliCloudAuth),
@@ -121,14 +121,15 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         );
 
       if (data) {
-        const { name, hasDeleteProtection } = data;
+        const { name, hasDeleteProtection, namespaceId } = data;
         return {
           ...data,
           identity: {
             id: data.identityId,
             name,
             hasDeleteProtection,
-            authMethods: buildAuthMethods(data)
+            authMethods: buildAuthMethods(data),
+            namespace: namespaceId ? { id: namespaceId } : undefined
           }
         };
       }
@@ -144,9 +145,13 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       orderBy = OrgIdentityOrderBy.Name,
       orderDirection = OrderByDirection.ASC,
       search,
+      includeScopedIdentities,
       ...filter
     }: Partial<TIdentityOrgMemberships> &
-      Pick<TListIdentitiesDTO, "offset" | "limit" | "orderBy" | "orderDirection" | "search">,
+      Pick<
+        TListIdentitiesDTO,
+        "offset" | "limit" | "orderBy" | "orderDirection" | "search" | "includeScopedIdentities"
+      >,
     tx?: Knex
   ) => {
     try {
@@ -165,6 +170,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .where(filter)
         .as("paginatedIdentity");
 
+      if (!includeScopedIdentities) {
+        void paginatedIdentity.whereNull(`${TableName.Identity}.namespaceId`);
+        void paginatedIdentity.whereNull(`${TableName.Identity}.projectId`);
+      }
+
       if (search?.length) {
         void paginatedIdentity.whereILike(`${TableName.Identity}.name`, `%${search}%`);
       }
@@ -178,13 +188,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       const query = (tx || db.replicaNode())
         .from<TSubquery[number], TSubquery>(paginatedIdentity)
         .leftJoin<TOrgRoles>(TableName.OrgRoles, `paginatedIdentity.roleId`, `${TableName.OrgRoles}.id`)
-
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
           void queryBuilder
             .on(`paginatedIdentity.identityId`, `${TableName.IdentityMetadata}.identityId`)
             .andOn(`paginatedIdentity.orgId`, `${TableName.IdentityMetadata}.orgId`);
         })
-
         .leftJoin<TIdentityUniversalAuths>(
           TableName.IdentityUniversalAuth,
           "paginatedIdentity.identityId",
@@ -642,7 +650,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
   };
 
   const countAllOrgIdentities = async (
-    { search, ...filter }: Partial<TIdentityOrgMemberships> & Pick<TListIdentitiesDTO, "search">,
+    {
+      search,
+      includeScopedIdentities,
+      ...filter
+    }: Partial<TIdentityOrgMemberships> & Pick<TListIdentitiesDTO, "search" | "includeScopedIdentities">,
     tx?: Knex
   ) => {
     try {
@@ -650,6 +662,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .where(filter)
         .join(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`)
         .count();
+
+      if (!includeScopedIdentities) {
+        void query.whereNull(`${TableName.Identity}.namespaceId`);
+        void query.whereNull(`${TableName.Identity}.projectId`);
+      }
 
       if (search?.length) {
         void query.whereILike(`${TableName.Identity}.name`, `%${search}%`);

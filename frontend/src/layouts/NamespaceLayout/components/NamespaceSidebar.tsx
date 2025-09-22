@@ -1,4 +1,4 @@
-import { faTable, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { faCog, faTable, faUsers } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
@@ -49,6 +49,18 @@ export const NamespaceSidebar = () => {
                         <FontAwesomeIcon icon={faUsers} />
                       </div>
                       Access Control
+                    </div>
+                  </MenuItem>
+                )}
+              </Link>
+              <Link to="/organization/settings">
+                {({ isActive }) => (
+                  <MenuItem isSelected={isActive}>
+                    <div className="mx-1 flex gap-2">
+                      <div className="w-6">
+                        <FontAwesomeIcon icon={faCog} className="mr-4" />
+                      </div>
+                      Namespace Settings
                     </div>
                   </MenuItem>
                 )}
