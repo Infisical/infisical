@@ -7,7 +7,7 @@ export type TCreateIdentityDTO = {
   name: string;
   hasDeleteProtection: boolean;
   metadata?: { key: string; value: string }[];
-  namespaceSlug?: string;
+  namespaceName?: string;
 } & TOrgPermission;
 
 export type TUpdateIdentityDTO = {
@@ -17,18 +17,18 @@ export type TUpdateIdentityDTO = {
   name?: string;
   metadata?: { key: string; value: string }[];
   isActorSuperAdmin?: boolean;
-  namespaceSlug?: string;
+  namespaceName?: string;
 } & Omit<TOrgPermission, "orgId">;
 
 export type TDeleteIdentityDTO = {
   id: string;
   isActorSuperAdmin?: boolean;
-  namespaceSlug?: string;
+  namespaceName?: string;
 } & Omit<TOrgPermission, "orgId">;
 
 export type TGetIdentityByIdDTO = {
   id: string;
-  namespaceSlug?: string;
+  namespaceName?: string;
 } & Omit<TOrgPermission, "orgId">;
 
 export interface TIdentityTrustedIp {
@@ -39,7 +39,7 @@ export interface TIdentityTrustedIp {
 
 export type TListProjectIdentitiesByIdentityIdDTO = {
   identityId: string;
-  namespaceSlug?: string;
+  namespaceName?: string;
 } & Omit<TOrgPermission, "orgId">;
 
 export type TListIdentitiesDTO = {

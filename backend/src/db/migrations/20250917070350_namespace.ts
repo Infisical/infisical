@@ -1,4 +1,5 @@
 import { Knex } from "knex";
+
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
@@ -11,6 +12,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("orgId").notNullable();
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.timestamps(true, true, true);
+      t.unique(["name", "orgId"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.Namespace);
@@ -64,6 +66,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("namespaceId").notNullable();
       t.foreign("namespaceId").references("id").inTable(TableName.Namespace).onDelete("CASCADE");
       t.timestamps(true, true, true);
+      t.unique(["name", "namespaceId"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.NamespaceRole);

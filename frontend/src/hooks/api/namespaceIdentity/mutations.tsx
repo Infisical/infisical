@@ -14,19 +14,20 @@ import {
 export const useCreateNamespaceIdentity = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ namespaceSlug, ...data }: TCreateNamespaceIdentityDTO) => {
-      return apiRequest.post<{ identity: TNamespaceIdentity & { metadata: Array<{ id: string; key: string; value: string }> } }>(
-        `/api/v1/namespaces/${namespaceSlug}/identities`,
-        data
-      );
+    mutationFn: ({ namespaceName, ...data }: TCreateNamespaceIdentityDTO) => {
+      return apiRequest.post<{
+        identity: TNamespaceIdentity & {
+          metadata: Array<{ id: string; key: string; value: string }>;
+        };
+      }>(`/api/v1/namespaces/${namespaceName}/identities`, data);
     },
-    onSuccess: (_, { namespaceSlug }) => {
+    onSuccess: (_, { namespaceName }) => {
       queryClient.invalidateQueries({
         queryKey: namespaceIdentityQueryKeys.allKey()
       });
       // Also invalidate specific namespace identity lists
       queryClient.invalidateQueries({
-        queryKey: namespaceIdentityQueryKeys.listKey({ namespaceSlug })
+        queryKey: namespaceIdentityQueryKeys.listKey({ namespaceName })
       });
     }
   });
@@ -35,19 +36,20 @@ export const useCreateNamespaceIdentity = () => {
 export const useUpdateNamespaceIdentity = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ namespaceSlug, identityId, ...data }: TUpdateNamespaceIdentityDTO) => {
-      return apiRequest.patch<{ identity: TNamespaceIdentity & { metadata: Array<{ id: string; key: string; value: string }> } }>(
-        `/api/v1/namespaces/${namespaceSlug}/identities/${identityId}`,
-        data
-      );
+    mutationFn: ({ namespaceName, identityId, ...data }: TUpdateNamespaceIdentityDTO) => {
+      return apiRequest.patch<{
+        identity: TNamespaceIdentity & {
+          metadata: Array<{ id: string; key: string; value: string }>;
+        };
+      }>(`/api/v1/namespaces/${namespaceName}/identities/${identityId}`, data);
     },
-    onSuccess: (_, { namespaceSlug }) => {
+    onSuccess: (_, { namespaceName }) => {
       queryClient.invalidateQueries({
         queryKey: namespaceIdentityQueryKeys.allKey()
       });
       // Also invalidate specific namespace identity lists and details
       queryClient.invalidateQueries({
-        queryKey: namespaceIdentityQueryKeys.listKey({ namespaceSlug })
+        queryKey: namespaceIdentityQueryKeys.listKey({ namespaceName })
       });
     }
   });
@@ -56,18 +58,18 @@ export const useUpdateNamespaceIdentity = () => {
 export const useDeleteNamespaceIdentity = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ namespaceSlug, identityId }: TDeleteNamespaceIdentityDTO) => {
+    mutationFn: ({ namespaceName, identityId }: TDeleteNamespaceIdentityDTO) => {
       return apiRequest.delete<{ identity: TNamespaceIdentity }>(
-        `/api/v1/namespaces/${namespaceSlug}/identities/${identityId}`
+        `/api/v1/namespaces/${namespaceName}/identities/${identityId}`
       );
     },
-    onSuccess: (_, { namespaceSlug }) => {
+    onSuccess: (_, { namespaceName }) => {
       queryClient.invalidateQueries({
         queryKey: namespaceIdentityQueryKeys.allKey()
       });
       // Also invalidate specific namespace identity lists
       queryClient.invalidateQueries({
-        queryKey: namespaceIdentityQueryKeys.listKey({ namespaceSlug })
+        queryKey: namespaceIdentityQueryKeys.listKey({ namespaceName })
       });
     }
   });

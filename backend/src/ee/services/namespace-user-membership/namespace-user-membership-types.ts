@@ -7,14 +7,14 @@ export enum NamespaceUserMembershipTemporaryMode {
 
 export type TCreateNamespaceUserMembershipDTO = {
   permission: OrgServiceActor;
-  namespaceSlug: string;
+  namespaceName: string;
   validatedUsers: { id: string; username: string }[];
   roleSlugs: string[];
 };
 
 export type TUpdateNamespaceUserMembershipDTO = {
   permission: OrgServiceActor;
-  namespaceSlug: string;
+  namespaceName: string;
   membershipId: string;
   roles: (
     | {
@@ -33,12 +33,12 @@ export type TUpdateNamespaceUserMembershipDTO = {
 
 export type TDeleteNamespaceMembershipDTO = {
   membershipId: string;
-  namespaceSlug: string;
+  namespaceName: string;
   permission: OrgServiceActor;
 };
 
 export type TListNamespaceMembershipDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   permission: OrgServiceActor;
   limit?: number;
   offset?: number;
@@ -46,12 +46,12 @@ export type TListNamespaceMembershipDTO = {
 
 export type TGetNamespaceMembershipByIdDTO = {
   membershipId: string;
-  namespaceSlug: string;
+  namespaceName: string;
   permission: OrgServiceActor;
 };
 
 export type TSearchNamespaceMembershipDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   permission: OrgServiceActor;
   username?: string;
   limit?: number;

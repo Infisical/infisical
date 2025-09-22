@@ -123,7 +123,7 @@ export const IdentityRoleModify = ({ identityNamespaceMembership }: Props) => {
 
     try {
       await updateIdentityNamespaceRole.mutateAsync({
-        namespaceSlug: namespaceName,
+        namespaceName: namespaceName,
         identityId: identityNamespaceMembership.identity.id,
         roles: sanitizedRoles
       });

@@ -49,12 +49,12 @@ export const namespaceUserMembershipServiceFactory = ({
   orgDAL
 }: TNamespaceUserMembershipServiceFactoryDep) => {
   const addUserToNamespace = async ({
-    namespaceSlug,
+    namespaceName,
     permission,
     roleSlugs,
     validatedUsers
   }: TCreateNamespaceUserMembershipDTO) => {
-    const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.orgId });
+    const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: permission.orgId });
     if (!namespace) throw new NotFoundError({ message: "Namespace not found" });
 
     const { permission: namespacePermission } = await permissionService.getNamespacePermission({
@@ -142,12 +142,12 @@ export const namespaceUserMembershipServiceFactory = ({
 
   const listNamespaceMemberships = async ({
     permission,
-    namespaceSlug,
+    namespaceName,
     // TODO(namespace): add count property here
     limit = 1000,
     offset = 0
   }: TListNamespaceMembershipDTO) => {
-    const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.orgId });
+    const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: permission.orgId });
     if (!namespace) throw new NotFoundError({ message: "Namespace not found" });
 
     const { permission: namespacePermission } = await permissionService.getNamespacePermission({
@@ -172,10 +172,10 @@ export const namespaceUserMembershipServiceFactory = ({
 
   const getNamespaceMembershipById = async ({
     permission,
-    namespaceSlug,
+    namespaceName,
     membershipId
   }: TGetNamespaceMembershipByIdDTO) => {
-    const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.orgId });
+    const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: permission.orgId });
     if (!namespace) throw new NotFoundError({ message: "Namespace not found" });
 
     const { permission: namespacePermission } = await permissionService.getNamespacePermission({
@@ -199,12 +199,12 @@ export const namespaceUserMembershipServiceFactory = ({
 
   const searchNamespaceMemberships = async ({
     permission,
-    namespaceSlug,
+    namespaceName,
     username,
     limit = 50,
     offset = 0
   }: TSearchNamespaceMembershipDTO) => {
-    const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.orgId });
+    const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: permission.orgId });
     if (!namespace) throw new NotFoundError({ message: "Namespace not found" });
 
     const { permission: namespacePermission } = await permissionService.getNamespacePermission({
@@ -229,11 +229,11 @@ export const namespaceUserMembershipServiceFactory = ({
 
   const updateNamespaceMembership = async ({
     permission,
-    namespaceSlug,
+    namespaceName,
     membershipId,
     roles
   }: TUpdateNamespaceUserMembershipDTO) => {
-    const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.orgId });
+    const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: permission.orgId });
     if (!namespace) throw new NotFoundError({ message: "Namespace not found" });
 
     const { permission: namespacePermission } = await permissionService.getNamespacePermission({
@@ -320,10 +320,10 @@ export const namespaceUserMembershipServiceFactory = ({
 
   const deleteNamespaceMembership = async ({
     permission,
-    namespaceSlug,
+    namespaceName,
     membershipId
   }: TDeleteNamespaceMembershipDTO) => {
-    const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: permission.orgId });
+    const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: permission.orgId });
     if (!namespace) throw new NotFoundError({ message: "Namespace not found" });
 
     const { permission: namespacePermission } = await permissionService.getNamespacePermission({

@@ -56,7 +56,7 @@ export const IdentityRoleDetailsSection = ({
     try {
       const updatedRoles = identityMembershipDetails?.roles?.filter((el) => el.id !== id);
       await updateIdentityWorkspaceRole({
-        namespaceSlug: namespaceName,
+        namespaceName: namespaceName,
         identityId: identityMembershipDetails.identity.id,
         roles: updatedRoles.map(
           ({

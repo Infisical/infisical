@@ -48,7 +48,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
   const { data } = useQuery(
     namespaceIdentityQueryKeys.detail({
       identityId,
-      namespaceSlug: namespaceName
+      namespaceName: namespaceName
     })
   );
   return data ? (

@@ -110,7 +110,7 @@ export const IdentityTab = withNamespacePermission(
         limit,
         offset,
         search,
-        namespaceSlug: namespaceName,
+        namespaceName: namespaceName,
         orderBy,
         orderDirection
       }),
@@ -141,7 +141,7 @@ export const IdentityTab = withNamespacePermission(
       try {
         await deleteNamespaceIdentity({
           identityId,
-          namespaceSlug: namespaceName
+          namespaceName: namespaceName
         });
 
         createNotification({
@@ -166,7 +166,7 @@ export const IdentityTab = withNamespacePermission(
       try {
         await deleteNamespaceIdentityMembership({
           identityId,
-          namespaceSlug: namespaceName
+          namespaceName: namespaceName
         });
 
         createNotification({

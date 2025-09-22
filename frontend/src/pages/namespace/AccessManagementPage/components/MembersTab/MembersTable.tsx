@@ -113,7 +113,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
 
   const { data, isPending: isMembersLoading } = useQuery(
     namespaceUserMembershipQueryKeys.list({
-      namespaceSlug: namespaceName,
+      namespaceName: namespaceName,
       limit: 10000,
       offset
     })

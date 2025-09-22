@@ -13,34 +13,34 @@ export const namespaceIdentityMembershipQueryKeys = {
   listKey: (params: TListNamespaceIdentityMembershipsDTO) => [
     ...namespaceIdentityMembershipQueryKeys.allKey(),
     "list",
-    params.namespaceSlug,
+    params.namespaceName,
     params
   ],
-  detailKey: (namespaceSlug: string, identityId: string) => [
+  detailKey: (namespaceName: string, identityId: string) => [
     ...namespaceIdentityMembershipQueryKeys.allKey(),
     "detail",
-    namespaceSlug,
+    namespaceName,
     identityId
   ],
-  list: ({ namespaceSlug, ...params }: TListNamespaceIdentityMembershipsDTO) =>
+  list: ({ namespaceName, ...params }: TListNamespaceIdentityMembershipsDTO) =>
     queryOptions({
-      queryKey: namespaceIdentityMembershipQueryKeys.listKey({ namespaceSlug, ...params }),
+      queryKey: namespaceIdentityMembershipQueryKeys.listKey({ namespaceName, ...params }),
       queryFn: async () => {
-        const { data } = await apiRequest.get<{ identityMemberships: TNamespaceIdentityMembership[]; totalCount: number }>(
-          `/api/v1/namespaces/${namespaceSlug}/identity-memberships`,
-          {
-            params
-          }
-        );
+        const { data } = await apiRequest.get<{
+          identityMemberships: TNamespaceIdentityMembership[];
+          totalCount: number;
+        }>(`/api/v1/namespaces/${namespaceName}/identity-memberships`, {
+          params
+        });
         return data;
       }
     }),
-  detail: ({ namespaceSlug, identityId }: TGetNamespaceIdentityMembershipByIdDTO) =>
+  detail: ({ namespaceName, identityId }: TGetNamespaceIdentityMembershipByIdDTO) =>
     queryOptions({
-      queryKey: namespaceIdentityMembershipQueryKeys.detailKey(namespaceSlug, identityId),
+      queryKey: namespaceIdentityMembershipQueryKeys.detailKey(namespaceName, identityId),
       queryFn: async () => {
         const { data } = await apiRequest.get<{ identityMembership: TNamespaceIdentityMembership }>(
-          `/api/v1/namespaces/${namespaceSlug}/identity-memberships/${identityId}`
+          `/api/v1/namespaces/${namespaceName}/identity-memberships/${identityId}`
         );
         return data.identityMembership;
       }

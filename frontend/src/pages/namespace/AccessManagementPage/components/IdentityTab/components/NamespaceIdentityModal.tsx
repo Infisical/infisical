@@ -59,7 +59,7 @@ export const NamespaceIdentityModal = ({ handlePopUpToggle, identityId }: Props)
   const { data: identityDetails } = useQuery({
     ...namespaceIdentityQueryKeys.detail({
       identityId: identityId as string,
-      namespaceSlug: namespaceName
+      namespaceName: namespaceName
     }),
     enabled: Boolean(identityId)
   });
@@ -105,7 +105,7 @@ export const NamespaceIdentityModal = ({ handlePopUpToggle, identityId }: Props)
           name,
           hasDeleteProtection,
           metadata,
-          namespaceSlug: namespaceName
+          namespaceName: namespaceName
         });
 
         handlePopUpToggle();
@@ -117,11 +117,11 @@ export const NamespaceIdentityModal = ({ handlePopUpToggle, identityId }: Props)
           name,
           hasDeleteProtection,
           metadata,
-          namespaceSlug: namespaceName
+          namespaceName: namespaceName
         });
         await updateNamespaceIdentityMembership({
           identityId: identity.id,
-          namespaceSlug: namespaceName,
+          namespaceName: namespaceName,
           roles: [{ role: role.slug, isTemporary: false }]
         });
 

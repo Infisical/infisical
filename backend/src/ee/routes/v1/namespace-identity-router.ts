@@ -51,7 +51,7 @@ const SanitizedNamespaceIdentityMembershipSchema = NamespaceMembershipsSchema.ex
 export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
-    url: "/:namespaceSlug/identities",
+    url: "/:namespaceName/identities",
     config: {
       rateLimit: writeLimit
     },
@@ -66,7 +66,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        namespaceSlug: slugSchema().describe("The slug of the namespace to create the identity in.")
+        namespaceName: slugSchema().describe("The slug of the namespace to create the identity in.")
       }),
       body: z.object({
         name: z.string().trim().describe(IDENTITIES.CREATE.name),
@@ -95,7 +95,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
         role: OrgMembershipRole.NoAccess,
         hasDeleteProtection: req.body.hasDeleteProtection,
         metadata: req.body.metadata,
-        namespaceSlug: req.params.namespaceSlug,
+        namespaceName: req.params.namespaceName,
         orgId: req.permission.orgId
       });
 
@@ -108,7 +108,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
             name: identity.name,
             hasDeleteProtection: identity.hasDeleteProtection,
             identityId: identity.id,
-            namespaceSlug: req.params.namespaceSlug
+            namespaceName: req.params.namespaceName
           }
         }
       });
@@ -122,7 +122,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
           name: identity.name,
           hasDeleteProtection: identity.hasDeleteProtection,
           identityId: identity.id,
-          namespaceSlug: req.params.namespaceSlug,
+          namespaceName: req.params.namespaceName,
           ...req.auditLogInfo
         }
       });
@@ -133,7 +133,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "POST",
-    url: "/:namespaceSlug/identities/search",
+    url: "/:namespaceName/identities/search",
     config: {
       rateLimit: readLimit
     },
@@ -148,7 +148,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        namespaceSlug: slugSchema().describe(NAMESPACE_IDENTITY_MEMBERSHIPS.SEARCH.namespaceSlug)
+        namespaceName: slugSchema().describe(NAMESPACE_IDENTITY_MEMBERSHIPS.SEARCH.namespaceName)
       }),
       body: z.object({
         orderBy: z
@@ -217,7 +217,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
             actorId: req.permission.id,
             actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId,
-            namespaceName: req.params.namespaceSlug
+            namespaceName: req.params.namespaceName
           }
         });
 
@@ -227,7 +227,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "GET",
-    url: "/:namespaceSlug/identities",
+    url: "/:namespaceName/identities",
     config: {
       rateLimit: readLimit
     },
@@ -242,7 +242,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        namespaceSlug: slugSchema().describe(NAMESPACE_IDENTITY_MEMBERSHIPS.LIST_IDENTITY_MEMBERSHIPS.namespaceSlug)
+        namespaceName: slugSchema().describe(NAMESPACE_IDENTITY_MEMBERSHIPS.LIST_IDENTITY_MEMBERSHIPS.namespaceName)
       }),
       querystring: z.object({
         offset: z.coerce
@@ -290,7 +290,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
             actorId: req.permission.id,
             actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId,
-            namespaceName: req.params.namespaceSlug
+            namespaceName: req.params.namespaceName
           }
         });
 
@@ -300,7 +300,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "GET",
-    url: "/:namespaceSlug/identities/:identityId",
+    url: "/:namespaceName/identities/:identityId",
     config: {
       rateLimit: readLimit
     },
@@ -315,8 +315,8 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        namespaceSlug: slugSchema().describe(
-          NAMESPACE_IDENTITY_MEMBERSHIPS.GET_IDENTITY_MEMBERSHIP_BY_ID.namespaceSlug
+        namespaceName: slugSchema().describe(
+          NAMESPACE_IDENTITY_MEMBERSHIPS.GET_IDENTITY_MEMBERSHIP_BY_ID.namespaceName
         ),
         identityId: z.string().trim().describe(NAMESPACE_IDENTITY_MEMBERSHIPS.GET_IDENTITY_MEMBERSHIP_BY_ID.identityId)
       }),
@@ -335,7 +335,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
             actorId: req.permission.id,
             actorAuthMethod: req.permission.authMethod,
             actorOrgId: req.permission.orgId,
-            namespaceName: req.params.namespaceSlug
+            namespaceName: req.params.namespaceName
           }
         });
       return { identityMembership };
@@ -344,7 +344,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "PATCH",
-    url: "/:namespaceSlug/identities/:identityId",
+    url: "/:namespaceName/identities/:identityId",
     config: {
       rateLimit: writeLimit
     },
@@ -359,7 +359,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        namespaceSlug: slugSchema().describe("The slug of the namespace."),
+        namespaceName: slugSchema().describe("The slug of the namespace."),
         identityId: z.string().describe(IDENTITIES.UPDATE.identityId)
       }),
       body: z.object({
@@ -385,7 +385,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         id: req.params.identityId,
-        namespaceSlug: req.params.namespaceSlug,
+        namespaceName: req.params.namespaceName,
         ...req.body
       });
 
@@ -398,7 +398,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
             name: identity.name,
             hasDeleteProtection: identity.hasDeleteProtection,
             identityId: identity.id,
-            namespaceSlug: req.params.namespaceSlug
+            namespaceName: req.params.namespaceName
           }
         }
       });
@@ -409,7 +409,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "DELETE",
-    url: "/:namespaceSlug/identities/:identityId",
+    url: "/:namespaceName/identities/:identityId",
     config: {
       rateLimit: writeLimit
     },
@@ -424,7 +424,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        namespaceSlug: slugSchema().describe("The slug of the namespace."),
+        namespaceName: slugSchema().describe("The slug of the namespace."),
         identityId: z.string().describe(IDENTITIES.DELETE.identityId)
       }),
       response: {
@@ -440,7 +440,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         id: req.params.identityId,
-        namespaceSlug: req.params.namespaceSlug
+        namespaceName: req.params.namespaceName
       });
 
       await server.services.auditLog.createAuditLog({
@@ -450,7 +450,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
           type: EventType.DELETE_IDENTITY,
           metadata: {
             identityId: identity.id,
-            namespaceSlug: req.params.namespaceSlug
+            namespaceName: req.params.namespaceName
           }
         }
       });

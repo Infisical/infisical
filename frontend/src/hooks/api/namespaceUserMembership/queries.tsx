@@ -14,54 +14,54 @@ export const namespaceUserMembershipQueryKeys = {
   listKey: (params: TListNamespaceMembershipsDTO) => [
     ...namespaceUserMembershipQueryKeys.allKey(),
     "list",
-    params.namespaceSlug,
+    params.namespaceName,
     params
   ],
-  detailKey: (namespaceSlug: string, membershipId: string) => [
+  detailKey: (namespaceName: string, membershipId: string) => [
     ...namespaceUserMembershipQueryKeys.allKey(),
     "detail",
-    namespaceSlug,
+    namespaceName,
     membershipId
   ],
   searchKey: (params: TSearchNamespaceMembershipsDTO) => [
     ...namespaceUserMembershipQueryKeys.allKey(),
     "search",
-    params.namespaceSlug,
+    params.namespaceName,
     params
   ],
-  list: ({ namespaceSlug, ...params }: TListNamespaceMembershipsDTO) =>
+  list: ({ namespaceName, ...params }: TListNamespaceMembershipsDTO) =>
     queryOptions({
-      queryKey: namespaceUserMembershipQueryKeys.listKey({ namespaceSlug, ...params }),
+      queryKey: namespaceUserMembershipQueryKeys.listKey({ namespaceName, ...params }),
       queryFn: async () => {
-        const { data } = await apiRequest.get<{ members: TNamespaceMembership[]; totalCount: number }>(
-          `/api/v1/namespaces/${namespaceSlug}/memberships`,
-          {
-            params
-          }
-        );
+        const { data } = await apiRequest.get<{
+          members: TNamespaceMembership[];
+          totalCount: number;
+        }>(`/api/v1/namespaces/${namespaceName}/memberships`, {
+          params
+        });
         return data;
       }
     }),
-  detail: ({ namespaceSlug, membershipId }: TGetNamespaceMembershipByIdDTO) =>
+  detail: ({ namespaceName, membershipId }: TGetNamespaceMembershipByIdDTO) =>
     queryOptions({
-      queryKey: namespaceUserMembershipQueryKeys.detailKey(namespaceSlug, membershipId),
+      queryKey: namespaceUserMembershipQueryKeys.detailKey(namespaceName, membershipId),
       queryFn: async () => {
         const { data } = await apiRequest.get<{ membership: TNamespaceMembership }>(
-          `/api/v1/namespaces/${namespaceSlug}/memberships/${membershipId}`
+          `/api/v1/namespaces/${namespaceName}/memberships/${membershipId}`
         );
         return data.membership;
       }
     }),
-  search: ({ namespaceSlug, ...params }: TSearchNamespaceMembershipsDTO) =>
+  search: ({ namespaceName, ...params }: TSearchNamespaceMembershipsDTO) =>
     queryOptions({
-      queryKey: namespaceUserMembershipQueryKeys.searchKey({ namespaceSlug, ...params }),
+      queryKey: namespaceUserMembershipQueryKeys.searchKey({ namespaceName, ...params }),
       queryFn: async () => {
-        const { data } = await apiRequest.get<{ members: TNamespaceMembership[]; totalCount: number }>(
-          `/api/v1/namespaces/${namespaceSlug}/memberships/search`,
-          {
-            params
-          }
-        );
+        const { data } = await apiRequest.get<{
+          members: TNamespaceMembership[];
+          totalCount: number;
+        }>(`/api/v1/namespaces/${namespaceName}/memberships/search`, {
+          params
+        });
         return data;
       }
     })

@@ -39,7 +39,7 @@ export const MembersTab = withNamespacePermission(
       try {
         await removeUserFromNamespace({
           membershipId,
-          namespaceSlug: namespaceName
+          namespaceName: namespaceName
         });
         createNotification({
           text: "Successfully removed user from namespace",

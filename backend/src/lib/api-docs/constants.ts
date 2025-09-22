@@ -894,7 +894,7 @@ export const PROJECT_IDENTITIES = {
 
 export const NAMESPACE_IDENTITY_MEMBERSHIPS = {
   LIST_IDENTITY_MEMBERSHIPS: {
-    namespaceSlug: "The slug of the namespace to get identity memberships from.",
+    namespaceName: "The slug of the namespace to get identity memberships from.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th identity membership.",
     limit: "The number of identity memberships to return.",
     orderBy: "The column to order identity memberships by.",
@@ -903,10 +903,10 @@ export const NAMESPACE_IDENTITY_MEMBERSHIPS = {
   },
   GET_IDENTITY_MEMBERSHIP_BY_ID: {
     identityId: "The ID of the identity to get the membership for.",
-    namespaceSlug: "The slug of the namespace to get the identity membership for."
+    namespaceName: "The slug of the namespace to get the identity membership for."
   },
   SEARCH: {
-    namespaceSlug: "The slug of the namespace to search identity memberships in.",
+    namespaceName: "The slug of the namespace to search identity memberships in.",
     orderBy: "The column to order identity memberships by.",
     orderDirection: "The direction identity memberships will be sorted in.",
     limit: "The number of identity memberships to return.",
@@ -918,7 +918,7 @@ export const NAMESPACE_IDENTITY_MEMBERSHIPS = {
     }
   },
   UPDATE_IDENTITY_MEMBERSHIP: {
-    namespaceSlug: "The slug of the namespace to update the identity membership for.",
+    namespaceName: "The slug of the namespace to update the identity membership for.",
     identityId: "The ID of the identity to update the membership for.",
     roles: {
       description: "A list of role slugs to assign to the identity namespace membership.",
@@ -931,11 +931,11 @@ export const NAMESPACE_IDENTITY_MEMBERSHIPS = {
     }
   },
   DELETE_IDENTITY_MEMBERSHIP: {
-    namespaceSlug: "The slug of the namespace to delete the identity membership from.",
+    namespaceName: "The slug of the namespace to delete the identity membership from.",
     identityId: "The ID of the identity to delete the membership from."
   },
   CREATE_IDENTITY_MEMBERSHIP: {
-    namespaceSlug: "The slug of the namespace to create the identity membership for.",
+    namespaceName: "The slug of the namespace to create the identity membership for.",
     identityId: "The ID of the identity to create the membership for.",
     roles: {
       description: "A list of role slugs to assign to the newly created identity namespace membership.",
@@ -3053,31 +3053,31 @@ export const NAMESPACES = {
 
 export const NAMESPACE_USER_MEMBERSHIPS = {
   LIST: {
-    namespaceSlug: "The slug of the namespace to list memberships for.",
+    namespaceName: "The slug of the namespace to list memberships for.",
     limit: "The number of memberships to return. Maximum is 1000.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th membership."
   },
   GET: {
-    namespaceSlug: "The slug of the namespace.",
+    namespaceName: "The slug of the namespace.",
     membershipId: "The ID of the membership to retrieve."
   },
   SEARCH: {
-    namespaceSlug: "The slug of the namespace to search memberships in.",
+    namespaceName: "The slug of the namespace to search memberships in.",
     username: "Search term to filter memberships by username.",
     limit: "The number of memberships to return. Maximum is 100.",
     offset: "The offset to start from."
   },
   UPDATE: {
-    namespaceSlug: "The slug of the namespace.",
+    namespaceName: "The slug of the namespace.",
     membershipId: "The ID of the membership to update.",
     roles: "The roles to assign to the user. Can include temporary role assignments."
   },
   DELETE: {
-    namespaceSlug: "The slug of the namespace.",
+    namespaceName: "The slug of the namespace.",
     membershipId: "The ID of the membership to delete."
   },
   ADD_USER: {
-    namespaceSlug: "The slug of the namespace to add users to.",
+    namespaceName: "The slug of the namespace to add users to.",
     usernames: "Array of usernames to add to the namespace.",
     roleSlugs: "Array of role slugs to assign to the users."
   }

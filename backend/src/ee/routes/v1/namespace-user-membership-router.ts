@@ -45,7 +45,7 @@ const SanitizedNamespaceMembershipSchema = NamespaceMembershipsSchema.extend({
 export const registerNamespaceUserMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
-    url: "/:namespaceSlug/memberships",
+    url: "/:namespaceName/memberships",
     config: {
       rateLimit: readLimit
     },
@@ -59,7 +59,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
         }
       ],
       params: z.object({
-        namespaceSlug: slugSchema().describe(NAMESPACE_USER_MEMBERSHIPS.LIST.namespaceSlug)
+        namespaceName: slugSchema().describe(NAMESPACE_USER_MEMBERSHIPS.LIST.namespaceName)
       }),
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0).describe(NAMESPACE_USER_MEMBERSHIPS.LIST.offset),
@@ -76,7 +76,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
     handler: async (req) => {
       const { members, totalCount } = await server.services.namespaceUserMembership.listNamespaceMemberships({
         permission: req.permission,
-        namespaceSlug: req.params.namespaceSlug,
+        namespaceName: req.params.namespaceName,
         limit: req.query.limit,
         offset: req.query.offset
       });
@@ -86,7 +86,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
 
   server.route({
     method: "GET",
-    url: "/:namespaceSlug/memberships/:membershipId",
+    url: "/:namespaceName/memberships/:membershipId",
     config: {
       rateLimit: readLimit
     },
@@ -100,7 +100,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
         }
       ],
       params: z.object({
-        namespaceSlug: slugSchema().describe(NAMESPACE_USER_MEMBERSHIPS.GET.namespaceSlug),
+        namespaceName: slugSchema().describe(NAMESPACE_USER_MEMBERSHIPS.GET.namespaceName),
         membershipId: z.string().trim().describe(NAMESPACE_USER_MEMBERSHIPS.GET.membershipId)
       }),
       response: {
@@ -113,7 +113,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
     handler: async (req) => {
       const membership = await server.services.namespaceUserMembership.getNamespaceMembershipById({
         permission: req.permission,
-        namespaceSlug: req.params.namespaceSlug,
+        namespaceName: req.params.namespaceName,
         membershipId: req.params.membershipId
       });
       return { membership };
@@ -122,7 +122,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
 
   server.route({
     method: "GET",
-    url: "/:namespaceSlug/memberships/search",
+    url: "/:namespaceName/memberships/search",
     config: {
       rateLimit: readLimit
     },
@@ -136,7 +136,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
         }
       ],
       params: z.object({
-        namespaceSlug: slugSchema().describe(NAMESPACE_USER_MEMBERSHIPS.SEARCH.namespaceSlug)
+        namespaceName: slugSchema().describe(NAMESPACE_USER_MEMBERSHIPS.SEARCH.namespaceName)
       }),
       querystring: z.object({
         username: z.string().optional().describe(NAMESPACE_USER_MEMBERSHIPS.SEARCH.username),
@@ -154,7 +154,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
     handler: async (req) => {
       const { members, totalCount } = await server.services.namespaceUserMembership.searchNamespaceMemberships({
         permission: req.permission,
-        namespaceSlug: req.params.namespaceSlug,
+        namespaceName: req.params.namespaceName,
         username: req.query.username,
         limit: req.query.limit,
         offset: req.query.offset
@@ -165,7 +165,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
 
   server.route({
     method: "PATCH",
-    url: "/:namespaceSlug/memberships/:membershipId",
+    url: "/:namespaceName/memberships/:membershipId",
     config: {
       rateLimit: writeLimit
     },
@@ -179,7 +179,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
         }
       ],
       params: z.object({
-        namespaceSlug: slugSchema().describe(NAMESPACE_USER_MEMBERSHIPS.UPDATE.namespaceSlug),
+        namespaceName: slugSchema().describe(NAMESPACE_USER_MEMBERSHIPS.UPDATE.namespaceName),
         membershipId: z.string().trim().describe(NAMESPACE_USER_MEMBERSHIPS.UPDATE.membershipId)
       }),
       body: z.object({
@@ -211,7 +211,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
     handler: async (req) => {
       const roles = await server.services.namespaceUserMembership.updateNamespaceMembership({
         permission: req.permission,
-        namespaceSlug: req.params.namespaceSlug,
+        namespaceName: req.params.namespaceName,
         membershipId: req.params.membershipId,
         roles: req.body.roles
       });
@@ -221,7 +221,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
 
   server.route({
     method: "DELETE",
-    url: "/:namespaceSlug/memberships/:membershipId",
+    url: "/:namespaceName/memberships/:membershipId",
     config: {
       rateLimit: writeLimit
     },
@@ -235,7 +235,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
         }
       ],
       params: z.object({
-        namespaceSlug: slugSchema().describe(NAMESPACE_USER_MEMBERSHIPS.DELETE.namespaceSlug),
+        namespaceName: slugSchema().describe(NAMESPACE_USER_MEMBERSHIPS.DELETE.namespaceName),
         membershipId: z.string().trim().describe(NAMESPACE_USER_MEMBERSHIPS.DELETE.membershipId)
       }),
       response: {
@@ -248,7 +248,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
     handler: async (req) => {
       const membership = await server.services.namespaceUserMembership.deleteNamespaceMembership({
         permission: req.permission,
-        namespaceSlug: req.params.namespaceSlug,
+        namespaceName: req.params.namespaceName,
         membershipId: req.params.membershipId
       });
       return { membership };
@@ -271,7 +271,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
         }
       ],
       params: z.object({
-        namespaceName: slugSchema().describe(NAMESPACE_USER_MEMBERSHIPS.ADD_USER.namespaceSlug)
+        namespaceName: slugSchema().describe(NAMESPACE_USER_MEMBERSHIPS.ADD_USER.namespaceName)
       }),
       body: z.object({
         usernames: z.array(z.string().trim()).describe(NAMESPACE_USER_MEMBERSHIPS.ADD_USER.usernames),
@@ -303,7 +303,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
         actorOrgId: req.permission.orgId
       });
       await server.services.namespaceUserMembership.addUserToNamespace({
-        namespaceSlug: req.params.namespaceName,
+        namespaceName: req.params.namespaceName,
         permission: req.permission,
         roleSlugs: req.body.roleSlugs,
         validatedUsers: users

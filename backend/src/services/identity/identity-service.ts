@@ -80,14 +80,14 @@ export const identityServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     metadata,
-    namespaceSlug
+    namespaceName
   }: TCreateIdentityDTO) => {
     let isCustomOrgRole = false;
     let orgCustomRoleId: string | null = null;
     let namespaceId: string | null = null;
-    if (namespaceSlug) {
-      const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: actorOrgId });
-      if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
+    if (namespaceName) {
+      const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: actorOrgId });
+      if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceName} not found` });
 
       namespaceId = namespace.id;
       const { permission } = await permissionService.getNamespacePermission({
@@ -219,7 +219,7 @@ export const identityServiceFactory = ({
     actorOrgId,
     metadata,
     isActorSuperAdmin,
-    namespaceSlug
+    namespaceName
   }: TUpdateIdentityDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
 
@@ -228,9 +228,9 @@ export const identityServiceFactory = ({
     let namespaceId: string | null = null;
 
     let identityOrgMembership: TIdentityOrgMemberships;
-    if (namespaceSlug) {
-      const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: actorOrgId });
-      if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
+    if (namespaceName) {
+      const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: actorOrgId });
+      if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceName} not found` });
       namespaceId = namespace.id;
 
       const temp = await identityOrgMembershipDAL.findOne({ identityId: id, orgId: namespace.orgId });
@@ -383,16 +383,16 @@ export const identityServiceFactory = ({
     actorAuthMethod,
     id,
     isActorSuperAdmin,
-    namespaceSlug
+    namespaceName
   }: TDeleteIdentityDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
 
     let namespaceId: string | null = null;
 
     let identityOrgMembership: TIdentityOrgMemberships & { identity: { hasDeleteProtection: boolean } };
-    if (namespaceSlug) {
-      const namespace = await namespaceDAL.findOne({ name: namespaceSlug, orgId: actorOrgId });
-      if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceSlug} not found` });
+    if (namespaceName) {
+      const namespace = await namespaceDAL.findOne({ name: namespaceName, orgId: actorOrgId });
+      if (!namespace) throw new NotFoundError({ message: `Namespace with slug ${namespaceName} not found` });
       namespaceId = namespace.id;
 
       const temp = await identityOrgMembershipDAL.findOne({ identityId: id, orgId: namespace.orgId });

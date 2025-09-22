@@ -50,7 +50,7 @@ const Page = withNamespacePermission(
     const { data: membership } = useQuery(
       namespaceUserMembershipQueryKeys.detail({
         membershipId,
-        namespaceSlug: namespaceName
+        namespaceName: namespaceName
       })
     );
 
@@ -67,7 +67,7 @@ const Page = withNamespacePermission(
       try {
         await deleteNamespaceMembership({
           membershipId,
-          namespaceSlug: namespaceName
+          namespaceName: namespaceName
         });
 
         createNotification({

@@ -73,7 +73,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const { data: { members = [] } = {} } = useQuery(
     namespaceUserMembershipQueryKeys.list({
-      namespaceSlug: namespaceName,
+      namespaceName: namespaceName,
       limit: 1000
     })
   );

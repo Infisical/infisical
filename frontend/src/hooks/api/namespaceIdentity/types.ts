@@ -41,14 +41,14 @@ export type TNamespaceIdentityMembership = {
 };
 
 export type TCreateNamespaceIdentityDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   name: string;
   hasDeleteProtection?: boolean;
   metadata?: Array<{ key: string; value: string }>;
 };
 
 export type TSearchNamespaceIdentitiesDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   orderBy?: NamespaceIdentityOrderBy;
   orderDirection?: OrderByDirection;
   limit?: number;
@@ -71,7 +71,7 @@ export type TSearchNamespaceIdentitiesDTO = {
 };
 
 export type TListNamespaceIdentityMembershipsDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   offset?: number;
   limit?: number;
   orderBy?: NamespaceIdentityMembershipOrderBy;
@@ -80,12 +80,12 @@ export type TListNamespaceIdentityMembershipsDTO = {
 };
 
 export type TGetNamespaceIdentityMembershipByIdDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   identityId: string;
 };
 
 export type TUpdateNamespaceIdentityDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   identityId: string;
   name?: string;
   hasDeleteProtection?: boolean;
@@ -93,6 +93,6 @@ export type TUpdateNamespaceIdentityDTO = {
 };
 
 export type TDeleteNamespaceIdentityDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   identityId: string;
 };

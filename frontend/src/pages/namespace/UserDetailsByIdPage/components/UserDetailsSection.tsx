@@ -47,7 +47,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
   const { data: membership } = useQuery(
     namespaceUserMembershipQueryKeys.detail({
       membershipId,
-      namespaceSlug: namespaceName
+      namespaceName: namespaceName
     })
   );
 

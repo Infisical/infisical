@@ -52,7 +52,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: identityMembershipsData } = useQuery(
     namespaceIdentityMembershipQueryKeys.list({
       limit: 10000,
-      namespaceSlug: namespaceName
+      namespaceName: namespaceName
     })
   );
   const identityMemberships = identityMembershipsData?.identityMemberships;
@@ -90,7 +90,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   const onFormSubmit = async ({ identity, role }: FormData) => {
     try {
       await addIdentityToNamespaceMutateAsync({
-        namespaceSlug: namespaceName,
+        namespaceName: namespaceName,
         identityId: identity.id,
         roles: [{ role: role.slug, isTemporary: false }]
       });

@@ -40,25 +40,25 @@ export type TNamespaceMembership = {
 };
 
 export type TListNamespaceMembershipsDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   offset?: number;
   limit?: number;
 };
 
 export type TGetNamespaceMembershipByIdDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   membershipId: string;
 };
 
 export type TSearchNamespaceMembershipsDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   username?: string;
   offset?: number;
   limit?: number;
 };
 
 export type TUpdateNamespaceMembershipDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   membershipId: string;
   roles: Array<{
     role: string;
@@ -70,7 +70,7 @@ export type TUpdateNamespaceMembershipDTO = {
 };
 
 export type TDeleteNamespaceMembershipDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   membershipId: string;
 };
 

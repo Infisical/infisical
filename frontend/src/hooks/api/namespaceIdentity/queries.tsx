@@ -14,51 +14,51 @@ export const namespaceIdentityQueryKeys = {
   searchKey: (params: TSearchNamespaceIdentitiesDTO) => [
     ...namespaceIdentityQueryKeys.allKey(),
     "search",
-    params.namespaceSlug,
+    params.namespaceName,
     params
   ],
   listKey: (params: TListNamespaceIdentityMembershipsDTO) => [
     ...namespaceIdentityQueryKeys.allKey(),
     "list",
-    params.namespaceSlug,
+    params.namespaceName,
     params
   ],
-  detailKey: (namespaceSlug: string, identityId: string) => [
+  detailKey: (namespaceName: string, identityId: string) => [
     ...namespaceIdentityQueryKeys.allKey(),
     "detail",
-    namespaceSlug,
+    namespaceName,
     identityId
   ],
-  search: ({ namespaceSlug, ...body }: TSearchNamespaceIdentitiesDTO) =>
+  search: ({ namespaceName, ...body }: TSearchNamespaceIdentitiesDTO) =>
     queryOptions({
-      queryKey: namespaceIdentityQueryKeys.searchKey({ namespaceSlug, ...body }),
+      queryKey: namespaceIdentityQueryKeys.searchKey({ namespaceName, ...body }),
       queryFn: async () => {
-        const { data } = await apiRequest.post<{ identities: TNamespaceIdentityMembership[]; totalCount: number }>(
-          `/api/v1/namespaces/${namespaceSlug}/identities/search`,
-          body
-        );
+        const { data } = await apiRequest.post<{
+          identities: TNamespaceIdentityMembership[];
+          totalCount: number;
+        }>(`/api/v1/namespaces/${namespaceName}/identities/search`, body);
         return data;
       }
     }),
-  list: ({ namespaceSlug, ...params }: TListNamespaceIdentityMembershipsDTO) =>
+  list: ({ namespaceName, ...params }: TListNamespaceIdentityMembershipsDTO) =>
     queryOptions({
-      queryKey: namespaceIdentityQueryKeys.listKey({ namespaceSlug, ...params }),
+      queryKey: namespaceIdentityQueryKeys.listKey({ namespaceName, ...params }),
       queryFn: async () => {
-        const { data } = await apiRequest.get<{ identityMemberships: TNamespaceIdentityMembership[]; totalCount: number }>(
-          `/api/v1/namespaces/${namespaceSlug}/identities`,
-          {
-            params
-          }
-        );
+        const { data } = await apiRequest.get<{
+          identityMemberships: TNamespaceIdentityMembership[];
+          totalCount: number;
+        }>(`/api/v1/namespaces/${namespaceName}/identities`, {
+          params
+        });
         return data;
       }
     }),
-  detail: ({ namespaceSlug, identityId }: TGetNamespaceIdentityMembershipByIdDTO) =>
+  detail: ({ namespaceName, identityId }: TGetNamespaceIdentityMembershipByIdDTO) =>
     queryOptions({
-      queryKey: namespaceIdentityQueryKeys.detailKey(namespaceSlug, identityId),
+      queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId),
       queryFn: async () => {
         const { data } = await apiRequest.get<{ identityMembership: TNamespaceIdentityMembership }>(
-          `/api/v1/namespaces/${namespaceSlug}/identities/${identityId}`
+          `/api/v1/namespaces/${namespaceName}/identities/${identityId}`
         );
         return data.identityMembership;
       }

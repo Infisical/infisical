@@ -1,8 +1,6 @@
 import { TNamespaceRolesInsert, TNamespaceRolesUpdate } from "@app/db/schemas";
 import { TNamespacePermission } from "@app/lib/types";
 
-// TODO(namespace): add unique to role slug in name
-// TODO(namespace): add unique to namespace slug in org
 export type TCreateNamespaceRoleDTO = {
   data: Omit<TNamespaceRolesInsert, "namespaceId">;
   namespaceName: string;

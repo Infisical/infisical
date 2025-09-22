@@ -136,7 +136,7 @@ export const MemberRoleModify = ({ namespaceMember, onOpenUpgradeModal }: Props)
 
     try {
       await updateMembershipRole.mutateAsync({
-        namespaceSlug: namespaceName,
+        namespaceName: namespaceName,
         membershipId: namespaceMember.id,
         roles: sanitizedRoles
       });

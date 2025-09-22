@@ -40,7 +40,7 @@ export type TNamespaceIdentityMembership = {
 };
 
 export type TCreateNamespaceIdentityMembershipDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   identityId: string;
   roles: Array<{
     role: string;
@@ -52,7 +52,7 @@ export type TCreateNamespaceIdentityMembershipDTO = {
 };
 
 export type TUpdateNamespaceIdentityMembershipDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   identityId: string;
   roles: Array<{
     role: string;
@@ -64,12 +64,12 @@ export type TUpdateNamespaceIdentityMembershipDTO = {
 };
 
 export type TDeleteNamespaceIdentityMembershipDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   identityId: string;
 };
 
 export type TListNamespaceIdentityMembershipsDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   offset?: number;
   limit?: number;
   orderBy?: NamespaceIdentityMembershipOrderBy;
@@ -78,6 +78,6 @@ export type TListNamespaceIdentityMembershipsDTO = {
 };
 
 export type TGetNamespaceIdentityMembershipByIdDTO = {
-  namespaceSlug: string;
+  namespaceName: string;
   identityId: string;
 };

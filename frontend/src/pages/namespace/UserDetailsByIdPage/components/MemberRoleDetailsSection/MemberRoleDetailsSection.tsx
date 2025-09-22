@@ -63,7 +63,7 @@ export const MemberRoleDetailsSection = ({
     try {
       const updatedRoles = membershipDetails?.roles?.filter((el) => el.id !== id);
       await updateUserNamespaceRole({
-        namespaceSlug: namespaceName,
+        namespaceName: namespaceName,
         roles: updatedRoles.map(
           ({
             role,

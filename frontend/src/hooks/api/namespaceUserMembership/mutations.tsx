@@ -14,19 +14,19 @@ import {
 export const useUpdateNamespaceUserMembership = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ namespaceSlug, membershipId, roles }: TUpdateNamespaceMembershipDTO) => {
+    mutationFn: ({ namespaceName, membershipId, roles }: TUpdateNamespaceMembershipDTO) => {
       return apiRequest.patch<{ roles: TNamespaceMembershipRole[] }>(
-        `/api/v1/namespaces/${namespaceSlug}/memberships/${membershipId}`,
+        `/api/v1/namespaces/${namespaceName}/memberships/${membershipId}`,
         { roles }
       );
     },
-    onSuccess: (_, { namespaceSlug }) => {
+    onSuccess: (_, { namespaceName }) => {
       queryClient.invalidateQueries({
         queryKey: namespaceUserMembershipQueryKeys.allKey()
       });
       // Also invalidate specific namespace membership lists
       queryClient.invalidateQueries({
-        queryKey: namespaceUserMembershipQueryKeys.listKey({ namespaceSlug })
+        queryKey: namespaceUserMembershipQueryKeys.listKey({ namespaceName })
       });
     }
   });
@@ -35,18 +35,18 @@ export const useUpdateNamespaceUserMembership = () => {
 export const useDeleteNamespaceUserMembership = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ namespaceSlug, membershipId }: TDeleteNamespaceMembershipDTO) => {
+    mutationFn: ({ namespaceName, membershipId }: TDeleteNamespaceMembershipDTO) => {
       return apiRequest.delete<{ membership: TNamespaceMembership }>(
-        `/api/v1/namespaces/${namespaceSlug}/memberships/${membershipId}`
+        `/api/v1/namespaces/${namespaceName}/memberships/${membershipId}`
       );
     },
-    onSuccess: (_, { namespaceSlug }) => {
+    onSuccess: (_, { namespaceName }) => {
       queryClient.invalidateQueries({
         queryKey: namespaceUserMembershipQueryKeys.allKey()
       });
       // Also invalidate specific namespace membership lists
       queryClient.invalidateQueries({
-        queryKey: namespaceUserMembershipQueryKeys.listKey({ namespaceSlug })
+        queryKey: namespaceUserMembershipQueryKeys.listKey({ namespaceName })
       });
     }
   });
@@ -70,7 +70,7 @@ export const useAddUsersToNamespace = () => {
       });
       // Also invalidate specific namespace membership lists
       queryClient.invalidateQueries({
-        queryKey: namespaceUserMembershipQueryKeys.listKey({ namespaceSlug: namespaceName })
+        queryKey: namespaceUserMembershipQueryKeys.listKey({ namespaceName: namespaceName })
       });
     }
   });

@@ -41,7 +41,7 @@ const Page = () => {
   const { data, isPending: isMembershipDetailsLoading } = useQuery(
     namespaceIdentityQueryKeys.detail({
       identityId,
-      namespaceSlug: namespaceName
+      namespaceName: namespaceName
     })
   );
   const { mutateAsync: deleteIdentity } = useDeleteNamespaceIdentity();
@@ -58,7 +58,7 @@ const Page = () => {
     try {
       await deleteIdentity({
         identityId: id,
-        namespaceSlug: namespaceName
+        namespaceName: namespaceName
       });
 
       createNotification({
