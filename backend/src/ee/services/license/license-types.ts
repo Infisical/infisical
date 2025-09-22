@@ -24,7 +24,7 @@ export type TOfflineLicense = {
 
 export type TFeatureSet = {
   _id: null;
-  slug: null;
+  slug: string | null;
   tier: -1;
   workspaceLimit: null;
   workspacesUsed: number;

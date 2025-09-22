@@ -1,0 +1,265 @@
+---
+title: "Gateway Deployment"
+description: "Complete guide to deploying Infisical Gateways including network configuration and firewall requirements"
+---
+
+Infisical Gateways enables secure communication between your private resources and the Infisical platform without exposing inbound ports in your network. 
+This guide covers everything you need to deploy and configure Infisical Gateways.
+
+## Deployment Steps
+
+To successfully deploy an Infisical Gateway for use, follow these steps in order.
+
+<Steps>
+  <Step title="Provision a Machine Identity">
+    Create a machine identity with the correct permissions to create and manage gateways. This identity is used by the gateway to authenticate with Infisical and should be provisioned in advance.
+    The gateway supports several [machine identity auth methods](/documentation/platform/identities/machine-identities), as listed below. Choose the one that best fits your environment and set the corresponding environment variables when deploying the gateway.
+
+    <AccordionGroup>
+      <Accordion title="Universal Auth">
+        Simple and secure authentication using client ID and client secret.
+        
+        **Environment Variables:**
+        - `INFISICAL_AUTH_METHOD=universal-auth`
+        - `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>`
+        - `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>`
+      </Accordion>
+      
+      <Accordion title="Token Auth">
+        Direct authentication using a machine identity access token.
+        
+        **Environment Variables:**
+        - `INFISICAL_TOKEN=<token>`
+      </Accordion>
+      
+      <Accordion title="Native Kubernetes">
+        Authentication using Kubernetes service account tokens.
+        
+        **Environment Variables:**
+        - `INFISICAL_AUTH_METHOD=kubernetes`
+        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
+      </Accordion>
+      
+      <Accordion title="Native AWS IAM">
+        Authentication using AWS IAM roles.
+        
+        **Environment Variables:**
+        - `INFISICAL_AUTH_METHOD=aws-iam`
+        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
+      </Accordion>
+      
+      <Accordion title="Native GCP ID Token">
+        Authentication using GCP identity tokens.
+        
+        **Environment Variables:**
+        - `INFISICAL_AUTH_METHOD=gcp-id-token`
+        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
+      </Accordion>
+      
+      <Accordion title="GCP IAM">
+        Authentication using GCP service account keys.
+        
+        **Environment Variables:**
+        - `INFISICAL_AUTH_METHOD=gcp-iam`
+        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
+        - `INFISICAL_GCP_SERVICE_ACCOUNT_KEY_FILE_PATH=<path-to-key-file>`
+      </Accordion>
+      
+      <Accordion title="Native Azure">
+        Authentication using Azure managed identity.
+        
+        **Environment Variables:**
+        - `INFISICAL_AUTH_METHOD=azure`
+        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
+      </Accordion>
+      
+      <Accordion title="OIDC Auth">
+        Authentication using OIDC identity tokens.
+        
+        **Environment Variables:**
+        - `INFISICAL_AUTH_METHOD=oidc-auth`
+        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
+        - `INFISICAL_JWT=<oidc-jwt>`
+      </Accordion>
+      
+      <Accordion title="JWT Auth">
+        Authentication using JWT tokens.
+        
+        **Environment Variables:**
+        - `INFISICAL_AUTH_METHOD=jwt-auth`
+        - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
+        - `INFISICAL_JWT=<jwt>`
+      </Accordion>
+    </AccordionGroup>
+  </Step>
+  <Step title="Set Up a Relay Server">
+  Ensure a relay server is running and accessible before you deploy any gateways. You have two options:
+  - **Managed relay (Infisical Cloud, US/EU only):** Managed relays are only available for Infisical Cloud instances in the US and EU regions. If you are using Infisical Cloud in these regions, you can use the provided managed relay.
+  - **Self-hosted relay:** For all other cases, including all self-hosted and dedicated enterprise instances of Infisical, you must deploy your own relay server. You can also choose to deploy your own relay server when using Infisical Cloud if you require reduced geographic proximity to your target resources for lower latency or to reduce network congestion. For setup instructions, see the <a href="/documentation/platform/gateways/relay-deployment">Relay Deployment Guide</a>.
+  </Step>
+  <Step title="Install the Infisical CLI">
+    Make sure the Infisical CLI is installed on the machine or environment where you plan to deploy the gateway. The CLI is required for gateway installation and management.
+
+    See the [CLI Installation Guide](/cli/overview) for instructions.
+  </Step>
+  <Step title="Configure Network & Firewall">
+    Ensure your network and firewall settings allow the gateway to connect to all required services. All connections are outbound only; no inbound ports need to be opened.
+
+    | Protocol | Destination                          | Port | Purpose                                    |
+    | -------- | ------------------------------------ | ---- | ------------------------------------------ |
+    | TCP      | Relay Server IP/Hostname             | 2222 | SSH reverse tunnel establishment           |
+    | TCP      | Infisical instance host (US/EU, other)  | 443  | API communication and certificate requests |
+
+    For managed relays, allow outbound traffic to the provided relay server IP/hostname. For self-hosted relays, allow outbound traffic to your own relay server address.
+    
+    If you are in a corporate environment with strict egress filtering, ensure outbound TCP 2222 to relay servers and outbound HTTPS 443 to Infisical API endpoints are allowed.
+  </Step>
+  <Step title="Select a Deployment Method">
+    The Infisical CLI is used to install and start the gateway in your chosen environment. The CLI provides commands for both production and development scenarios, and supports a variety of options/flags to configure your deployment.
+
+    To view all available flags and equivalent environment variables for gateway deployment, see the [Gateway CLI Command Reference](/cli/commands/gateway).
+    <Tabs>
+      <Tab title="Linux Server (Production)">
+        For production deployments on Linux servers, install the Gateway as a systemd service so that it runs securely in the background and automatically restarts on failure or system reboot:
+        ```bash
+        sudo infisical gateway systemd install --token <your-machine-identity-token> --domain <your-infisical-domain> --name <gateway-name> --relay <relay-name>
+        sudo systemctl start infisical-gateway
+        ```
+
+
+
+        <Warning>
+          The systemd install command requires a Linux operating system with root/sudo
+          privileges.
+        </Warning>
+      </Tab>
+
+      <Tab title="Kubernetes (Production)">
+        For production deployments on Kubernetes clusters, install the Gateway using the Infisical Helm chart:
+
+        #### Install the latest Helm Chart repository
+
+        ```bash
+        helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
+        helm repo update
+        ```
+
+        #### Create a Kubernetes Secret
+
+        The gateway supports all identity authentication methods through environment variables:
+
+        ```bash
+        kubectl create secret generic infisical-gateway-environment \
+          --from-literal=INFISICAL_AUTH_METHOD=universal-auth \
+          --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id> \
+          --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret> \
+          --from-literal=INFISICAL_RELAY_NAME=<relay-name> \
+          --from-literal=INFISICAL_GATEWAY_NAME=<gateway-name>
+        ```
+
+        #### Install the Gateway
+
+        ```bash
+        helm install infisical-gateway infisical-helm-charts/infisical-gateway
+        ```
+      </Tab>
+
+      <Tab title="Development & Testing">
+        For development or testing environments:
+
+        ```bash
+        infisical gateway start --token <token> --relay=<relay-name> --name=<gateway-name>
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Verify Your Gateway Deployment">
+    After deployment, verify your gateway is working:
+
+      1. **Check logs** for "Gateway started successfully" message indicating the gateway is running and connected to the relay
+
+      2. **Verify registration** in the Infisical by visiting the Gateways section of your organization. The new gateway should appear with a recent heartbeat timestamp.
+
+      3. **Test connectivity** by creating a resource in Infisical that uses the gateway to access a private service. Verify the resource can successfully connect through the gateway.
+  </Step>
+</Steps>
+
+
+
+
+## Frequently Asked Questions
+<Accordion title="Do I need to open any inbound ports on my firewall?">
+No inbound ports need to be opened for gateways. The gateway only makes outbound connections:
+
+- **Outbound SSH** to relay servers on port 2222
+- **Outbound HTTPS** to Infisical API endpoints on port 443
+- **SSH reverse tunnels** handle all communication - no return traffic configuration needed
+
+This design maintains security by avoiding the need for inbound firewall rules that could expose your network to external threats.
+
+</Accordion>
+
+<Accordion title="How do I test network connectivity from the gateway?">
+Test relay connectivity and outbound API access from the gateway:
+
+1. Test SSH port to relay:
+  ```bash
+  nc -zv <relay-ip> 2222
+  ```
+2. Test outbound API access (replace with your Infisical domain if different):
+  ```bash
+  curl -I https://app.infisical.com
+  ```
+</Accordion>
+
+<Accordion title="How do I troubleshoot relay connectivity issues?">
+If the gateway cannot connect to the relay:
+
+1. Verify the relay server is running and accessible
+2. Check firewall rules allow outbound connections on port 2222
+3. Confirm the relay name matches exactly
+4. Test SSH port to relay:
+  ```bash
+  nc -zv <relay-ip> 2222
+  ```
+</Accordion>
+
+<Accordion title="How do I troubleshoot authentication failures?">
+If you encounter authentication failures:
+
+1. Verify machine identity credentials are correct
+2. Check token expiration and renewal
+3. Ensure authentication method is properly configured
+</Accordion>
+
+<Accordion title="Where can I find gateway logs?">
+Check gateway logs for detailed error information:
+
+- **systemd service:**
+  ```bash
+  sudo journalctl -u infisical-gateway -f
+  ```
+- **Kubernetes:**
+  ```bash
+  kubectl logs deployment/infisical-gateway
+  ```
+- **Local installation:** Logs appear in the terminal where you started the gateway
+</Accordion>
+
+<Accordion title="Where is the gateway configuration file stored?">
+For systemd-based installations, the gateway's configuration file is stored at `/etc/infisical/gateway.conf`. You may reference or inspect this file for troubleshooting advanced configuration issues.
+</Accordion>
+
+<Accordion title="What happens if there is a network interruption?">
+The gateway is designed to handle network interruptions gracefully:
+
+- **Automatic reconnection**: The gateway will automatically attempt to reconnect to relay servers if the SSH connection is lost
+- **Connection retry logic**: Built-in retry mechanisms handle temporary network outages without manual intervention
+- **Persistent SSH tunnels**: SSH connections are automatically re-established when connectivity is restored
+- **Certificate rotation**: The gateway handles certificate renewal automatically during reconnection
+- **Graceful degradation**: The gateway logs connection issues and continues attempting to restore connectivity
+
+No manual intervention is typically required during network interruptions.
+
+</Accordion>

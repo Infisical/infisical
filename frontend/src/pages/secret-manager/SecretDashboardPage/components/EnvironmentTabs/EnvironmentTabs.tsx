@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { faArrowRightArrowLeft, faEllipsisH, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsisH, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
@@ -199,14 +199,15 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
               </Tooltip>
             </Tab>
           )}
-          {currentProject.environments.length > 1 && (
+          {/* scott: removing until we have time to update for fetching secret value */}
+          {/* {currentProject.environments.length > 1 && (
             <Tab className="ml-auto" value={COMPARE_ENVIRONMENT_TAB}>
               <div className="flex items-center gap-x-2 whitespace-nowrap">
                 <FontAwesomeIcon icon={faArrowRightArrowLeft} />
                 Compare Environments
               </div>
             </Tab>
-          )}
+          )} */}
         </TabList>
       </Tabs>
       <Modal

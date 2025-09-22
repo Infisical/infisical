@@ -57,6 +57,8 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { validateMicrosoftTeamsChannelsSchema } from "../microsoft-teams/microsoft-teams-fns";
 import { TMicrosoftTeamsIntegrationDALFactory } from "../microsoft-teams/microsoft-teams-integration-dal";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "../microsoft-teams/project-microsoft-teams-config-dal";
+import { TNotificationServiceFactory } from "../notification/notification-service";
+import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TPkiAlertDALFactory } from "../pki-alert/pki-alert-dal";
 import { TPkiCollectionDALFactory } from "../pki-collection/pki-collection-dal";
@@ -183,6 +185,7 @@ type TProjectServiceFactoryDep = {
   >;
   projectTemplateService: TProjectTemplateServiceFactory;
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -227,7 +230,8 @@ export const projectServiceFactory = ({
   projectTemplateService,
   groupProjectDAL,
   smtpService,
-  reminderService
+  reminderService,
+  notificationService
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -1924,6 +1928,21 @@ export const projectServiceFactory = ({
       projectTypeUrl = "cert-management";
     }
 
+    const callbackPath = `/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`;
+
+    await notificationService.createUserNotifications(
+      projectMembers
+        .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
+        .map((member) => ({
+          userId: member.userId,
+          orgId: project.orgId,
+          type: NotificationType.PROJECT_ACCESS_REQUEST,
+          title: "Project Access Request",
+          body: `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to the project **${project.name}**.`,
+          link: callbackPath
+        }))
+    );
+
     await smtpService.sendMail({
       template: SmtpTemplates.ProjectAccessRequest,
       recipients: filteredProjectMembers,
@@ -1934,7 +1953,7 @@ export const projectServiceFactory = ({
         projectName: project?.name,
         orgName: org?.name,
         note: comment,
-        callback_url: `${appCfg.SITE_URL}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`
+        callback_url: `${appCfg.SITE_URL}${callbackPath}`
       }
     });
   };

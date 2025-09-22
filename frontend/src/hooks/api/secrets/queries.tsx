@@ -6,6 +6,7 @@ import axios from "axios";
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 import { useToggle } from "@app/hooks/useToggle";
+import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 import { ERROR_NOT_ALLOWED_READ_SECRETS } from "./constants";
 import {
@@ -21,7 +22,9 @@ import {
   TGetProjectSecretsKey,
   TGetSecretAccessListDTO,
   TGetSecretReferenceTreeDTO,
-  TSecretReferenceTraceNode
+  TGetSecretVersionValue,
+  TSecretReferenceTraceNode,
+  TSecretVersionValue
 } from "./types";
 
 export const secretKeys = {
@@ -34,6 +37,8 @@ export const secretKeys = {
   }: TGetProjectSecretsKey) =>
     [{ projectId, environment, secretPath, viewSecretValue }, "secrets"] as const,
   getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"] as const,
+  getSecretVersionValue: (secretId: string, version: number) =>
+    ["secret-versions", secretId, version] as const,
   getSecretAccessList: ({
     projectId,
     environment,
@@ -67,14 +72,17 @@ export const fetchProjectSecrets = async ({
 };
 
 export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
-  const personalSecrets: Record<string, { id: string; value?: string; env: string }> = {};
+  const personalSecrets: Record<
+    string,
+    { id: string; value?: string; env: string; isEmpty?: boolean }
+  > = {};
   const secrets: SecretV3RawSanitized[] = [];
   rawSecrets.forEach((el) => {
     const decryptedSecret: SecretV3RawSanitized = {
       id: el.id,
       env: el.environment,
       key: el.secretKey,
-      value: el.secretValue,
+      value: el.secretValueHidden ? HIDDEN_SECRET_VALUE : el.secretValue,
       secretValueHidden: el.secretValueHidden,
       tags: el.tags || [],
       comment: el.secretComment || "",
@@ -89,14 +97,16 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       secretMetadata: el.secretMetadata,
       isRotatedSecret: el.isRotatedSecret,
       rotationId: el.rotationId,
-      reminder: el.reminder
+      reminder: el.reminder,
+      isEmpty: el.isEmpty
     };
 
     if (el.type === SecretType.Personal) {
       personalSecrets[decryptedSecret.key] = {
         id: el.id,
         value: el.secretValue,
-        env: el.environment
+        env: el.environment,
+        isEmpty: el.isEmpty
       };
     } else {
       secrets.push(decryptedSecret);
@@ -109,6 +119,8 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       sec.idOverride = personalSecret.id;
       sec.valueOverride = personalSecret.value;
       sec.overrideAction = "modified";
+      sec.isEmpty = personalSecret.isEmpty;
+      sec.secretValueHidden = false;
     }
   });
 
@@ -238,7 +250,7 @@ export const useGetProjectSecretsAllEnv = ({
 
 const fetchEncryptedSecretVersion = async (secretId: string, offset: number, limit: number) => {
   const { data } = await apiRequest.get<{ secretVersions: SecretVersions[] }>(
-    `/api/v1/secret/${secretId}/secret-versions`,
+    `/api/v1/dashboard/secret-versions/${secretId}`,
     {
       params: {
         limit,
@@ -257,6 +269,26 @@ export const useGetSecretVersion = (dto: GetSecretVersionsDTO) =>
     select: useCallback((data: SecretVersions[]) => {
       return data.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     }, [])
+  });
+
+export const fetchSecretVersionValue = async (secretId: string, version: number) => {
+  const { data } = await apiRequest.get<TSecretVersionValue>(
+    `/api/v1/dashboard/secret-versions/${secretId}/value/${version}`
+  );
+  return data.value;
+};
+
+export const useGetSecretVersionValue = (
+  dto: TGetSecretVersionValue,
+  options?: Omit<
+    UseQueryOptions<string, unknown, string, ReturnType<typeof secretKeys.getSecretVersionValue>>,
+    "queryKey" | "queryFn"
+  >
+) =>
+  useQuery({
+    queryKey: secretKeys.getSecretVersionValue(dto.secretId, dto.version),
+    queryFn: () => fetchSecretVersionValue(dto.secretId, dto.version),
+    ...options
   });
 
 export const useGetSecretAccessList = (dto: TGetSecretAccessListDTO) =>

@@ -486,9 +486,21 @@ export enum EventType {
   UPDATE_PROJECT = "update-project",
   DELETE_PROJECT = "delete-project",
 
+  CREATE_PROJECT_ROLE = "create-project-role",
+  UPDATE_PROJECT_ROLE = "update-project-role",
+  DELETE_PROJECT_ROLE = "delete-project-role",
+
+  CREATE_ORG_ROLE = "create-org-role",
+  UPDATE_ORG_ROLE = "update-org-role",
+  DELETE_ORG_ROLE = "delete-org-role",
+
   CREATE_SECRET_REMINDER = "create-secret-reminder",
   GET_SECRET_REMINDER = "get-secret-reminder",
-  DELETE_SECRET_REMINDER = "delete-secret-reminder"
+  DELETE_SECRET_REMINDER = "delete-secret-reminder",
+
+  DASHBOARD_LIST_SECRETS = "dashboard-list-secrets",
+  DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
+  DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -599,6 +611,7 @@ interface CreateSecretEvent {
     secretKey: string;
     secretVersion: number;
     secretMetadata?: TSecretMetadata;
+    secretTags?: string[];
   };
 }
 
@@ -613,6 +626,7 @@ interface CreateSecretBatchEvent {
       secretPath?: string;
       secretVersion: number;
       secretMetadata?: TSecretMetadata;
+      secretTags?: string[];
     }>;
   };
 }
@@ -626,6 +640,7 @@ interface UpdateSecretEvent {
     secretKey: string;
     secretVersion: number;
     secretMetadata?: TSecretMetadata;
+    secretTags?: string[];
   };
 }
 
@@ -640,6 +655,7 @@ interface UpdateSecretBatchEvent {
       secretVersion: number;
       secretMetadata?: TSecretMetadata;
       secretPath?: string;
+      secretTags?: string[];
     }>;
   };
 }
@@ -3581,6 +3597,96 @@ interface ProjectDeleteEvent {
   };
 }
 
+interface DashboardListSecretsEvent {
+  type: EventType.DASHBOARD_LIST_SECRETS;
+  metadata: {
+    environment: string;
+    secretPath: string;
+    numberOfSecrets: number;
+    secretIds: string[];
+  };
+}
+
+interface DashboardGetSecretValueEvent {
+  type: EventType.DASHBOARD_GET_SECRET_VALUE;
+  metadata: {
+    secretId: string;
+    secretKey: string;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface DashboardGetSecretVersionValueEvent {
+  type: EventType.DASHBOARD_GET_SECRET_VERSION_VALUE;
+  metadata: {
+    secretId: string;
+    version: string;
+  };
+}
+
+interface ProjectRoleCreateEvent {
+  type: EventType.CREATE_PROJECT_ROLE;
+  metadata: {
+    roleId: string;
+    slug: string;
+    name: string;
+    description?: string | null;
+    permissions: string;
+  };
+}
+
+interface ProjectRoleUpdateEvent {
+  type: EventType.UPDATE_PROJECT_ROLE;
+  metadata: {
+    roleId: string;
+    slug?: string;
+    name?: string;
+    description?: string | null;
+    permissions?: string;
+  };
+}
+
+interface ProjectRoleDeleteEvent {
+  type: EventType.DELETE_PROJECT_ROLE;
+  metadata: {
+    roleId: string;
+    slug: string;
+    name: string;
+  };
+}
+
+interface OrgRoleCreateEvent {
+  type: EventType.CREATE_ORG_ROLE;
+  metadata: {
+    roleId: string;
+    slug: string;
+    name: string;
+    description?: string | null;
+    permissions: string;
+  };
+}
+
+interface OrgRoleUpdateEvent {
+  type: EventType.UPDATE_ORG_ROLE;
+  metadata: {
+    roleId: string;
+    slug?: string;
+    name?: string;
+    description?: string | null;
+    permissions?: string;
+  };
+}
+
+interface OrgRoleDeleteEvent {
+  type: EventType.DELETE_ORG_ROLE;
+  metadata: {
+    roleId: string;
+    slug: string;
+    name: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -3905,4 +4011,13 @@ export type Event =
   | ProjectDeleteEvent
   | SecretReminderCreateEvent
   | SecretReminderGetEvent
-  | SecretReminderDeleteEvent;
+  | SecretReminderDeleteEvent
+  | DashboardListSecretsEvent
+  | DashboardGetSecretValueEvent
+  | DashboardGetSecretVersionValueEvent
+  | ProjectRoleCreateEvent
+  | ProjectRoleUpdateEvent
+  | ProjectRoleDeleteEvent
+  | OrgRoleCreateEvent
+  | OrgRoleUpdateEvent
+  | OrgRoleDeleteEvent;

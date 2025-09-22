@@ -54,6 +54,7 @@ export interface PendingSecretDelete extends BasePendingChange {
   type: PendingAction.Delete;
   secretKey: string;
   secretValue: string;
+  secretValueHidden: boolean;
 }
 
 // Folder-related change types
@@ -408,7 +409,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
                 const mergedUpdate: PendingSecretUpdate = {
                   ...existingUpdate,
                   secretKey: existingUpdate.secretKey,
-                  originalValue: existingUpdate.originalValue,
+                  originalValue: change.originalValue,
                   originalComment: existingUpdate.originalComment,
                   originalSkipMultilineEncoding: existingUpdate.originalSkipMultilineEncoding,
                   originalTags: existingUpdate.originalTags,

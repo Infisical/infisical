@@ -9,7 +9,7 @@ description: "Run the Infisical gateway or manage its systemd service"
     infisical gateway start --name=<name> --relay=<relay-name> --auth-method=<auth-method>
     ```
   </Tab>
-  <Tab title="Install gateway service">
+  <Tab title="Start gateway as background daemon (Linux only)">
     ```bash
     sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=<name> --relay=<relay-name>
     ```
@@ -25,29 +25,29 @@ The gateway system uses SSH reverse tunnels over TCP, eliminating firewall compl
 <Warning>
 **Deprecation and Migration Notice:** The legacy `infisical gateway` command (v1) will be removed in a future release. Please migrate to `infisical gateway start` (Gateway v2).
 
-If you are moving from Gateway v1 to Gateway v2, this is NOT a drop-in switch. Gateway v2 creates new gateway instances with new gateway IDs. You must update any existing resources that reference gateway IDs (for example: dynamic secret configs, app connections, or other gateway-bound resources) to point to the new Gateway v2 gateway ID. Until you update those references, traffic will continue to target the old v1 gateway.
+If you are moving from Gateway v1 to Gateway v2, this is NOT a drop-in switch. Gateway v2 creates new gateway instances with new gateway IDs. You must update any existing resources that reference gateway IDs (for example: dynamic secret configs, app connections, or other gateway-bound resources) to point to the new Gateway v2 gateway resource. Until you update those references, traffic will continue to target the old v1 gateway.
 
 </Warning>
 
 ## Subcommands & flags
 
 <Accordion title="infisical gateway start" defaultOpen="true">
-  Run the Infisical gateway component within your VPC. The gateway establishes an SSH reverse tunnel to the specified relay server and provides secure access to private resources.
+  Run the Infisical gateway component within your the network where your target resources are located. The gateway establishes an SSH reverse tunnel to the specified relay server and provides secure access to private resources within your network.
 
 ```bash
 infisical gateway start --relay=<relay-name> --name=<name> --auth-method=<auth-method>
 ```
 
-The gateway component:
+Once started, the gateway component will:
 
-- Establishes outbound SSH reverse tunnels to relay servers (no inbound firewall rules needed)
-- Authenticates using SSH certificates issued by Infisical
-- Automatically reconnects if the connection is lost
-- Provides access to private resources within your network
+- Establish outbound SSH reverse tunnels to relay servers (no inbound firewall rules needed)
+- Authenticate using SSH certificates issued by Infisical
+- Automatically reconnect if the connection is lost
+- Provide access to private resources within your network
 
 ### Authentication
 
-The Infisical CLI supports multiple authentication methods. Below are the available authentication methods, with their respective flags.
+The Relay supports multiple authentication methods. Below are the available authentication methods, with their respective flags.
 
 <AccordionGroup>
   <Accordion title="Universal Auth">
@@ -361,12 +361,12 @@ sudo systemctl disable infisical-gateway  # Disable auto-start on boot
 
 </Accordion>
 
-## Legacy Gateway Commands (Deprecated)
+## Legacy Gateway Commands
 
 <Accordion title="infisical gateway (deprecated)">
   <Warning>
   **This command is deprecated and will be removed in a future release.**
-  
+
   Please migrate to `infisical gateway start` for the new TCP-based SSH tunnel architecture.
 
 **Migration required:** If you are currently using Gateway v1 (via `infisical gateway`), moving to Gateway v2 is not in-place. Gateway v2 provisions new gateway instances with new gateway IDs. Update any resources that reference a gateway ID (for example: dynamic secret configs, app connections, or other gateway-bound resources) to use the new Gateway v2 gateway ID. Until you update those references, traffic will continue to target the old v1 gateway.
@@ -593,7 +593,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
 <Accordion title="infisical gateway install (deprecated)">
   <Warning>
   **This command is deprecated and will be removed in a future release.**
-  
+
   Please migrate to `infisical gateway systemd install` for the new TCP-based SSH tunnel architecture with enhanced security and better performance.
 
 **Migration required:** If you previously installed Gateway v1 via `infisical gateway install`, moving to Gateway v2 is not in-place. Gateway v2 provisions new gateway instances with new gateway IDs. Update any resources that reference a gateway ID (for example: dynamic secret configs, app connections, or other gateway-bound resources) to use the new Gateway v2 gateway ID. Until you update those references, traffic will continue to target the old v1 gateway.

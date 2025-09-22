@@ -18,6 +18,7 @@ import { useCreateDynamicSecret } from "@app/hooks/api";
 import { useGetServerConfig } from "@app/hooks/api/admin";
 import {
   DynamicSecretAwsIamAuth,
+  DynamicSecretAwsIamCredentialType,
   DynamicSecretProviders
 } from "@app/hooks/api/dynamicSecret/types";
 import { ProjectEnv } from "@app/hooks/api/types";
@@ -28,6 +29,9 @@ const formSchema = z.object({
   provider: z.discriminatedUnion("method", [
     z.object({
       method: z.literal(DynamicSecretAwsIamAuth.AccessKey),
+      credentialType: z
+        .nativeEnum(DynamicSecretAwsIamCredentialType)
+        .default(DynamicSecretAwsIamCredentialType.IamUser),
       accessKey: z.string().trim().min(1),
       secretAccessKey: z.string().trim().min(1),
       region: z.string().trim().min(1),
@@ -47,6 +51,9 @@ const formSchema = z.object({
     }),
     z.object({
       method: z.literal(DynamicSecretAwsIamAuth.AssumeRole),
+      credentialType: z
+        .nativeEnum(DynamicSecretAwsIamCredentialType)
+        .default(DynamicSecretAwsIamCredentialType.IamUser),
       roleArn: z.string().trim().min(1),
       region: z.string().trim().min(1),
       awsPath: z.string().trim().optional(),
@@ -65,6 +72,9 @@ const formSchema = z.object({
     }),
     z.object({
       method: z.literal(DynamicSecretAwsIamAuth.IRSA),
+      credentialType: z
+        .nativeEnum(DynamicSecretAwsIamCredentialType)
+        .default(DynamicSecretAwsIamCredentialType.IamUser),
       region: z.string().trim().min(1),
       awsPath: z.string().trim().optional(),
       permissionBoundaryPolicyArn: z.string().trim().optional(),
@@ -137,13 +147,15 @@ export const AwsIamInputForm = ({
       environment: isSingleEnvironmentMode ? environments[0] : undefined,
       usernameTemplate: "{{randomUsername}}",
       provider: {
-        method: DynamicSecretAwsIamAuth.AssumeRole
+        method: DynamicSecretAwsIamAuth.AssumeRole,
+        credentialType: DynamicSecretAwsIamCredentialType.IamUser
       }
     }
   });
 
   const createDynamicSecret = useCreateDynamicSecret();
   const method = watch("provider.method");
+  const credentialType = watch("provider.credentialType");
 
   const handleCreateDynamicSecret = async ({
     name,
@@ -264,6 +276,39 @@ export const AwsIamInputForm = ({
                   </FormControl>
                 )}
               />
+              <Controller
+                name="provider.credentialType"
+                control={control}
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <FormControl
+                    errorText={error?.message}
+                    isError={Boolean(error?.message)}
+                    label="Credential Type"
+                  >
+                    <>
+                      <Select
+                        value={value}
+                        onValueChange={(val) => onChange(val)}
+                        className="w-full border border-mineshaft-500"
+                        position="popper"
+                        dropdownContainerClassName="max-w-none"
+                      >
+                        <SelectItem value={DynamicSecretAwsIamCredentialType.IamUser}>
+                          IAM User
+                        </SelectItem>
+                        <SelectItem value={DynamicSecretAwsIamCredentialType.TemporaryCredentials}>
+                          Temporary Credentials
+                        </SelectItem>
+                      </Select>
+                      <div className="mt-1 text-xs text-mineshaft-300">
+                        {value === DynamicSecretAwsIamCredentialType.IamUser
+                          ? "Creates temporary IAM users with access keys"
+                          : "Uses STS to generate temporary credentials from your connection. Duration is controlled by the Default TTL setting above."}
+                      </div>
+                    </>
+                  </FormControl>
+                )}
+              />
               {method === DynamicSecretAwsIamAuth.AccessKey && (
                 <div className="flex items-center space-x-2">
                   <Controller
@@ -318,22 +363,24 @@ export const AwsIamInputForm = ({
                 </div>
               )}
               <div className="flex items-center space-x-2">
-                <Controller
-                  control={control}
-                  name="provider.awsPath"
-                  defaultValue="/"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="AWS IAM Path"
-                      className="flex-grow"
-                      isOptional
-                      isError={Boolean(error?.message)}
-                      errorText={error?.message}
-                    >
-                      <Input {...field} />
-                    </FormControl>
-                  )}
-                />
+                {credentialType !== DynamicSecretAwsIamCredentialType.TemporaryCredentials && (
+                  <Controller
+                    control={control}
+                    name="provider.awsPath"
+                    defaultValue="/"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="AWS IAM Path"
+                        className="flex-grow"
+                        isOptional
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                      >
+                        <Input {...field} />
+                      </FormControl>
+                    )}
+                  />
+                )}
                 <Controller
                   control={control}
                   name="provider.region"
@@ -341,7 +388,11 @@ export const AwsIamInputForm = ({
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="AWS Region"
-                      className="flex-grow"
+                      className={
+                        credentialType === DynamicSecretAwsIamCredentialType.TemporaryCredentials
+                          ? "w-full"
+                          : "flex-grow"
+                      }
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
@@ -350,97 +401,105 @@ export const AwsIamInputForm = ({
                   )}
                 />
               </div>
-              <Controller
-                control={control}
-                name="provider.permissionBoundaryPolicyArn"
-                defaultValue=""
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="IAM User Permission Boundary ARN"
-                    isError={Boolean(error?.message)}
-                    isOptional
-                    errorText={error?.message}
-                    helperText="ARN to be attached to the generated user for AWS Permission Boundary."
-                  >
-                    <Input {...field} />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="provider.userGroups"
-                defaultValue=""
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="AWS IAM Groups"
-                    isError={Boolean(error?.message)}
-                    isOptional
-                    errorText={error?.message}
-                    helperText="Generated users will get attached to given groups."
-                  >
-                    <Input {...field} placeholder="group1,group2" />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="provider.policyArns"
-                defaultValue=""
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="AWS Policy ARNs"
-                    isError={Boolean(error?.message)}
-                    isOptional
-                    errorText={error?.message}
-                    helperText="Generated users will get attached to given policy arns."
-                  >
-                    <Input
-                      {...field}
-                      placeholder="arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="provider.policyDocument"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="AWS IAM Policy Document"
-                    isOptional
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                    helperText="Generated users will have the inline policy."
-                  >
-                    <TextArea
-                      {...field}
-                      reSize="none"
-                      rows={3}
-                      className="border-mineshaft-600 bg-mineshaft-900 text-sm"
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="usernameTemplate"
-                defaultValue=""
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Username Template"
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                  >
-                    <Input
-                      {...field}
-                      value={field.value || undefined}
-                      className="border-mineshaft-600 bg-mineshaft-900 text-sm"
-                      placeholder="{{randomUsername}}"
-                    />
-                  </FormControl>
-                )}
-              />
-              <MetadataForm control={control} name="provider.tags" title="Tags" isValueRequired />
+              {credentialType !== DynamicSecretAwsIamCredentialType.TemporaryCredentials && (
+                <>
+                  <Controller
+                    control={control}
+                    name="provider.permissionBoundaryPolicyArn"
+                    defaultValue=""
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="IAM User Permission Boundary ARN"
+                        isError={Boolean(error?.message)}
+                        isOptional
+                        errorText={error?.message}
+                        helperText="ARN to be attached to the generated user for AWS Permission Boundary."
+                      >
+                        <Input {...field} />
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="provider.userGroups"
+                    defaultValue=""
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="AWS IAM Groups"
+                        isError={Boolean(error?.message)}
+                        isOptional
+                        errorText={error?.message}
+                        helperText="Generated users will get attached to given groups."
+                      >
+                        <Input {...field} placeholder="group1,group2" />
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="provider.policyArns"
+                    defaultValue=""
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="AWS Policy ARNs"
+                        isError={Boolean(error?.message)}
+                        isOptional
+                        errorText={error?.message}
+                        helperText="Generated users will get attached to given policy arns."
+                      >
+                        <Input
+                          {...field}
+                          placeholder="arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="provider.policyDocument"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="AWS IAM Policy Document"
+                        isOptional
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                        helperText="Generated users will have the inline policy."
+                      >
+                        <TextArea
+                          {...field}
+                          reSize="none"
+                          rows={3}
+                          className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                </>
+              )}
+              {credentialType !== DynamicSecretAwsIamCredentialType.TemporaryCredentials && (
+                <Controller
+                  control={control}
+                  name="usernameTemplate"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="Username Template"
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                    >
+                      <Input
+                        {...field}
+                        value={field.value || undefined}
+                        className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                        placeholder="{{randomUsername}}"
+                      />
+                    </FormControl>
+                  )}
+                />
+              )}
+              {credentialType !== DynamicSecretAwsIamCredentialType.TemporaryCredentials && (
+                <MetadataForm control={control} name="provider.tags" title="Tags" isValueRequired />
+              )}
               {!isSingleEnvironmentMode && (
                 <Controller
                   control={control}

@@ -112,7 +112,6 @@ export type TGetDashboardProjectSecretsDetailsDTO = Omit<
   TGetDashboardProjectSecretsOverviewDTO,
   "environments"
 > & {
-  viewSecretValue: boolean;
   environment: string;
   includeImports?: boolean;
   tags: Record<string, boolean>;
@@ -156,3 +155,21 @@ export type TGetAccessibleSecretsDTO = {
     | ProjectPermissionSecretActions.DescribeSecret
     | ProjectPermissionSecretActions.ReadValue;
 };
+
+export type TGetSecretValueDTO = {
+  projectId: string;
+  secretKey: string;
+  environment: string;
+  secretPath: string;
+  isOverride?: boolean;
+};
+
+export type DashboardSecretValue =
+  | {
+      value: string;
+      valueOverride: undefined;
+    }
+  | {
+      value: undefined;
+      valueOverride: string;
+    };
