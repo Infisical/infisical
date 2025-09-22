@@ -45,8 +45,8 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetOrganizationGroups, useGetOrgRoles, useUpdateGroup } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { UsePopUpState } from "@app/hooks/usePopUp";
 import { TGroupType } from "@app/hooks/api/groups/types";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (

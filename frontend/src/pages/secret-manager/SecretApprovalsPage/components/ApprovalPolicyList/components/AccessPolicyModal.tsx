@@ -40,6 +40,7 @@ import {
   BypasserType,
   TAccessApprovalPolicy
 } from "@app/hooks/api/accessApproval/types";
+import { TGroupType } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
@@ -359,10 +360,13 @@ const Form = ({
 
   const groupOptions = useMemo(
     () =>
-      groups?.map(({ group }) => ({
-        id: group.id,
-        type: ApproverType.Group
-      })),
+      groups
+        ?.map(({ group }) => ({
+          id: group.id,
+          type: ApproverType.Group,
+          groupType: group.type
+        }))
+        .filter((group) => group.groupType === TGroupType.USERS),
     [groups]
   );
 
