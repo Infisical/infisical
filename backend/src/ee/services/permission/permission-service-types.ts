@@ -4,9 +4,9 @@ import { MongoQuery } from "@ucast/mongo2js";
 import { ActionProjectType } from "@app/db/schemas";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
+import { NamespacePermissionSet } from "./namespace-permission";
 import { OrgPermissionSet } from "./org-permission";
 import { ProjectPermissionSet } from "./project-permission";
-import { NamespacePermissionSet } from "./namespace-permission";
 
 export type TBuildProjectPermissionDTO = {
   permissions?: unknown;
@@ -177,6 +177,7 @@ export type TPermissionServiceFactory = {
       createdAt: Date;
       updatedAt: Date;
       userId: string;
+      shouldUseNewPrivilegeSystem: boolean;
       orgAuthEnforced: boolean | null | undefined;
       orgId: string;
       roles: Array<{
@@ -209,26 +210,12 @@ export type TPermissionServiceFactory = {
     };
     hasRole: (role: string) => boolean;
   }>;
-  getNamespacePermission: <T extends ActorType>(
-    arg: TGetNamespacePermissionArg
-  ) => Promise<{
+  getNamespacePermission: (arg: TGetNamespacePermissionArg) => Promise<{
     permission: MongoAbility<NamespacePermissionSet, MongoQuery>;
-    membership: (T extends ActorType.USER
-      ? {
-          id: string;
-          createdAt: Date;
-          updatedAt: Date;
-          userId: string;
-          shouldUseNewPrivilegeSystem: boolean;
-        }
-      : {
-          id: string;
-          createdAt: Date;
-          updatedAt: Date;
-          identityId: string;
-          shouldUseNewPrivilegeSystem: boolean;
-        }) & {
-      orgAuthEnforced: boolean | null | undefined;
+    membership: {
+      id: string;
+      shouldUseNewPrivilegeSystem: boolean;
+      orgAuthEnforced?: boolean | null | undefined;
       orgId: string;
       roles: Array<{
         role: string;

@@ -5,6 +5,10 @@ import { JwksClient } from "jwks-rsa";
 
 import { IdentityAuthMethod, TIdentityJwtAuthsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  NamespacePermissionIdentityActions,
+  NamespacePermissionSubjects
+} from "@app/ee/services/permission/namespace-permission";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
@@ -40,10 +44,6 @@ import {
   TRevokeJwtAuthDTO,
   TUpdateJwtAuthDTO
 } from "./identity-jwt-auth-types";
-import {
-  NamespacePermissionIdentityActions,
-  NamespacePermissionSubjects
-} from "@app/ee/services/permission/namespace-permission";
 
 type TIdentityJwtAuthServiceFactoryDep = {
   identityJwtAuthDAL: TIdentityJwtAuthDALFactory;
@@ -310,7 +310,10 @@ export const identityJwtAuthServiceFactory = ({
         actorAuthMethod,
         actorOrgId
       );
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.Create,
+        OrgPermissionSubjects.Identity
+      );
     }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);

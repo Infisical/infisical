@@ -1,13 +1,12 @@
 import { z } from "zod";
 
-import { NamespacesSchema } from "@app/db/schemas";
+import { NamespacesSchema, SortDirection } from "@app/db/schemas";
+import { SearchNamespaceSortBy } from "@app/ee/services/namespace/namespace-types";
 import { ApiDocsTags, NAMESPACES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { slugSchema } from "@app/server/lib/schemas";
-import { SortDirection } from "@app/db/schemas";
-import { SearchNamespaceSortBy } from "@app/ee/services/namespace/namespace-types";
 
 export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
   server.route({

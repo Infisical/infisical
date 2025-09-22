@@ -43,7 +43,6 @@ type TNamespaceIdentityMembershipServiceFactoryDep = {
 
 export type TNamespaceIdentityMembershipServiceFactory = ReturnType<typeof namespaceIdentityMembershipServiceFactory>;
 
-// TODO(namespace): check all deletes are correct
 export const namespaceIdentityMembershipServiceFactory = ({
   namespaceIdentityMembershipDAL,
   permissionService,

@@ -20,7 +20,6 @@ import {
 } from "@app/context/NamespacePermissionContext/types";
 import { useDeleteNamespaceUserMembership } from "@app/hooks/api/namespaceUserMembership";
 
-// TODO(namespace): adjust all namespace slug -> namespace name
 export const MembersTab = withNamespacePermission(
   () => {
     const { namespaceName } = useNamespace();

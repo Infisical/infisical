@@ -1,11 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { NamespaceMembershipRole, TNamespaces } from "@app/db/schemas";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
-
 import { OrgPermissionNamespaceActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
+import { TNamespaceMembershipRoleDALFactory } from "../namespace-role/namespace-membership-role-dal";
+import { TNamespaceUserMembershipDALFactory } from "../namespace-user-membership/namespace-user-membership-dal";
+import { NamespacePermissionActions, NamespacePermissionSubjects } from "../permission/namespace-permission";
 import { TNamespaceDALFactory } from "./namespace-dal";
 import {
   TCreateNamespaceDTO,
@@ -15,9 +17,6 @@ import {
   TSearchNamespaceDTO,
   TUpdateNamespaceDTO
 } from "./namespace-types";
-import { TNamespaceMembershipRoleDALFactory } from "../namespace-role/namespace-membership-role-dal";
-import { TNamespaceUserMembershipDALFactory } from "../namespace-user-membership/namespace-user-membership-dal";
-import { NamespacePermissionActions, NamespacePermissionSubjects } from "../permission/namespace-permission";
 
 type TNamespaceServiceFactoryDep = {
   namespaceDAL: TNamespaceDALFactory;

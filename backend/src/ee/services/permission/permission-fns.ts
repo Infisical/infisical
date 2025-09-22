@@ -7,6 +7,7 @@ import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
 
+import { NamespacePermissionSet } from "./namespace-permission";
 import { OrgPermissionSet } from "./org-permission";
 import {
   ProjectPermissionSecretActions,
@@ -15,7 +16,6 @@ import {
   ProjectPermissionV2Schema,
   SecretSubjectFields
 } from "./project-permission";
-import { NamespacePermissionSet } from "./namespace-permission";
 
 export function throwIfMissingSecretReadValueOrDescribePermission(
   permission: MongoAbility<ProjectPermissionSet> | PureAbility,

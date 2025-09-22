@@ -2,6 +2,7 @@ import { TDbClient } from "@app/db";
 import { SortDirection, TableName, TNamespaces } from "@app/db/schemas";
 import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";
+
 import { SearchNamespaceSortBy } from "./namespace-types";
 
 export interface TNamespaceDALFactory extends TOrmify<TableName.Namespace> {
@@ -50,6 +51,8 @@ export const namespaceDALFactory = (db: TDbClient): TNamespaceDALFactory => {
             )
             .where(`${TableName.OrgMembership}.userId`, dto.actorId)
             .where(`${TableName.OrgMembership}.orgId`, dto.orgId)
+            .select(selectAllTableCols(TableName.Namespace))
+            .select<(TNamespaces & { count: number })[]>(db.raw("COUNT(*) OVER() AS count"))
         : db(TableName.Namespace)
             .join(
               TableName.NamespaceMembership,
@@ -62,13 +65,13 @@ export const namespaceDALFactory = (db: TDbClient): TNamespaceDALFactory => {
               `${TableName.NamespaceMembership}.orgIdentityMembershipId`
             )
             .where(`${TableName.IdentityOrgMembership}.identityId`, dto.actorId)
-            .where(`${TableName.IdentityOrgMembership}.orgId`, dto.orgId);
+            .where(`${TableName.IdentityOrgMembership}.orgId`, dto.orgId)
+            .select(selectAllTableCols(TableName.Namespace))
+            .select<(TNamespaces & { count: number })[]>(db.raw("COUNT(*) OVER() AS count"));
 
     const docs = await query
       .limit(limit)
       .offset(offset)
-      .select(selectAllTableCols(TableName.Namespace))
-      .select<(TNamespaces & { count: number })[]>(db.raw("COUNT(*) OVER() AS count"))
       .where((qb) => {
         if (dto.name) {
           void qb.whereILike(`${TableName.Namespace}.name`, `%${dto.name}%`);

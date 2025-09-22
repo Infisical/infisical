@@ -102,7 +102,10 @@ export const namespaceRoleServiceFactory = ({
     const predefinedRoles = getPredefinedRoles(namespace.id);
     const selectedPredefinedRole = predefinedRoles.find((el) => el.slug === roleName);
     if (selectedPredefinedRole) {
-      return { ...selectedPredefinedRole, permissions: selectedPredefinedRole.permissions };
+      return {
+        ...selectedPredefinedRole,
+        permissions: UnpackedPermissionSchema.array().parse(selectedPredefinedRole.permissions)
+      };
     }
 
     const role = await namespaceRoleDAL.findOne({ slug: roleName, namespaceId: namespace.id });

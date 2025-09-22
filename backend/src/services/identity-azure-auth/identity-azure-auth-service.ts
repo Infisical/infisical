@@ -2,6 +2,10 @@ import { ForbiddenError } from "@casl/ability";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  NamespacePermissionIdentityActions,
+  NamespacePermissionSubjects
+} from "@app/ee/services/permission/namespace-permission";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
@@ -27,10 +31,6 @@ import {
   TRevokeAzureAuthDTO,
   TUpdateAzureAuthDTO
 } from "./identity-azure-auth-types";
-import {
-  NamespacePermissionIdentityActions,
-  NamespacePermissionSubjects
-} from "@app/ee/services/permission/namespace-permission";
 
 type TIdentityAzureAuthServiceFactoryDep = {
   identityAzureAuthDAL: Pick<
@@ -175,7 +175,10 @@ export const identityAzureAuthServiceFactory = ({
         actorAuthMethod,
         actorOrgId
       );
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.Create,
+        OrgPermissionSubjects.Identity
+      );
     }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);

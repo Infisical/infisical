@@ -51,20 +51,28 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const usernamesAndEmails = [...req.body.emails, ...req.body.usernames];
-      const { projectMemberships: memberships } = await server.services.org.inviteUserToOrganization({
+      const { users } = await server.services.org.inviteUserToOrganization({
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actor: req.permission.type,
         inviteeEmails: usernamesAndEmails,
         orgId: req.permission.orgId,
-        organizationRoleSlug: OrgMembershipRole.NoAccess,
+        organizationRoleSlug: OrgMembershipRole.NoAccess
+      });
+
+      const memberships = await server.services.projectMembership.addUsersToProjectV2({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         projects: [
           {
             id: req.params.projectId,
             projectRoleSlug: req.body.roleSlugs || [ProjectMembershipRole.Member]
           }
-        ]
+        ],
+        validatedInvitedUsers: users || []
       });
 
       await server.services.auditLog.createAuditLog({

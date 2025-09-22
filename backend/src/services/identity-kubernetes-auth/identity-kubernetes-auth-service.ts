@@ -10,6 +10,10 @@ import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
+  NamespacePermissionIdentityActions,
+  NamespacePermissionSubjects
+} from "@app/ee/services/permission/namespace-permission";
+import {
   OrgPermissionGatewayActions,
   OrgPermissionIdentityActions,
   OrgPermissionSubjects
@@ -45,10 +49,6 @@ import {
   TRevokeKubernetesAuthDTO,
   TUpdateKubernetesAuthDTO
 } from "./identity-kubernetes-auth-types";
-import {
-  NamespacePermissionIdentityActions,
-  NamespacePermissionSubjects
-} from "@app/ee/services/permission/namespace-permission";
 
 type TIdentityKubernetesAuthServiceFactoryDep = {
   identityKubernetesAuthDAL: Pick<
@@ -533,7 +533,10 @@ export const identityKubernetesAuthServiceFactory = ({
         actorAuthMethod,
         actorOrgId
       );
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.Create,
+        OrgPermissionSubjects.Identity
+      );
     }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);

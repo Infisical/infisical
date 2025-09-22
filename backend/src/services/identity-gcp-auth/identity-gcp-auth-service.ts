@@ -2,6 +2,10 @@ import { ForbiddenError } from "@casl/ability";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  NamespacePermissionIdentityActions,
+  NamespacePermissionSubjects
+} from "@app/ee/services/permission/namespace-permission";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
@@ -28,10 +32,6 @@ import {
   TRevokeGcpAuthDTO,
   TUpdateGcpAuthDTO
 } from "./identity-gcp-auth-types";
-import {
-  NamespacePermissionIdentityActions,
-  NamespacePermissionSubjects
-} from "@app/ee/services/permission/namespace-permission";
 
 type TIdentityGcpAuthServiceFactoryDep = {
   identityGcpAuthDAL: Pick<TIdentityGcpAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
@@ -216,7 +216,10 @@ export const identityGcpAuthServiceFactory = ({
         actorAuthMethod,
         actorOrgId
       );
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.Create,
+        OrgPermissionSubjects.Identity
+      );
     }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);

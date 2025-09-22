@@ -5,6 +5,10 @@ import RE2 from "re2";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  NamespacePermissionIdentityActions,
+  NamespacePermissionSubjects
+} from "@app/ee/services/permission/namespace-permission";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
@@ -32,10 +36,6 @@ import {
   TRevokeAwsAuthDTO,
   TUpdateAwsAuthDTO
 } from "./identity-aws-auth-types";
-import {
-  NamespacePermissionIdentityActions,
-  NamespacePermissionSubjects
-} from "@app/ee/services/permission/namespace-permission";
 
 type TIdentityAwsAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;

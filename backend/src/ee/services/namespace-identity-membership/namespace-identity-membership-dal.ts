@@ -5,6 +5,7 @@ import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex"
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
 import { OrderByDirection } from "@app/lib/types";
 import { buildAuthMethods } from "@app/services/identity/identity-fns";
+
 import { NamespaceIdentityOrderBy, TSearchNamespaceIdentitiesDAL } from "./namespace-identity-membership-types";
 
 export type TNamespaceIdentityMembershipDALFactory = ReturnType<typeof namespaceIdentityMembershipDALFactory>;

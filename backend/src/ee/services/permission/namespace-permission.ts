@@ -246,10 +246,11 @@ const buildAdminPermission = () => {
   can(NamespacePermissionActions.Edit, NamespacePermissionSubjects.Role);
   can(NamespacePermissionActions.Delete, NamespacePermissionSubjects.Role);
 
-  can(NamespacePermissionActions.Read, NamespacePermissionSubjects.Member);
-  can(NamespacePermissionActions.Create, NamespacePermissionSubjects.Member);
-  can(NamespacePermissionActions.Edit, NamespacePermissionSubjects.Member);
-  can(NamespacePermissionActions.Delete, NamespacePermissionSubjects.Member);
+  can(NamespacePermissionMemberActions.Read, NamespacePermissionSubjects.Member);
+  can(NamespacePermissionMemberActions.Create, NamespacePermissionSubjects.Member);
+  can(NamespacePermissionMemberActions.Edit, NamespacePermissionSubjects.Member);
+  can(NamespacePermissionMemberActions.Delete, NamespacePermissionSubjects.Member);
+  can(NamespacePermissionMemberActions.GrantPrivileges, NamespacePermissionSubjects.Member);
 
   can(NamespacePermissionActions.Read, NamespacePermissionSubjects.Settings);
   can(NamespacePermissionActions.Create, NamespacePermissionSubjects.Settings);
@@ -332,7 +333,7 @@ const buildMemberPermission = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<NamespacePermissionSet>>(createMongoAbility);
 
   can(NamespacePermissionActions.Create, NamespacePermissionSubjects.Project);
-  can(NamespacePermissionActions.Read, NamespacePermissionSubjects.Member);
+  can(NamespacePermissionMemberActions.Read, NamespacePermissionSubjects.Member);
   can(NamespacePermissionGroupActions.Read, NamespacePermissionSubjects.Groups);
   can(NamespacePermissionActions.Read, NamespacePermissionSubjects.Role);
   can(NamespacePermissionActions.Read, NamespacePermissionSubjects.Settings);

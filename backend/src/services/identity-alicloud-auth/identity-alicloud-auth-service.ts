@@ -4,6 +4,10 @@ import { AxiosError } from "axios";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  NamespacePermissionIdentityActions,
+  NamespacePermissionSubjects
+} from "@app/ee/services/permission/namespace-permission";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
@@ -31,10 +35,6 @@ import {
   TRevokeAliCloudAuthDTO,
   TUpdateAliCloudAuthDTO
 } from "./identity-alicloud-auth-types";
-import {
-  NamespacePermissionIdentityActions,
-  NamespacePermissionSubjects
-} from "@app/ee/services/permission/namespace-permission";
 
 type TIdentityAliCloudAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
@@ -187,7 +187,10 @@ export const identityAliCloudAuthServiceFactory = ({
         actorAuthMethod,
         actorOrgId
       );
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.Create,
+        OrgPermissionSubjects.Identity
+      );
     }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.orgId);

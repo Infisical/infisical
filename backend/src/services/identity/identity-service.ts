@@ -1,7 +1,14 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { NamespaceMembershipRole, OrgMembershipRole, TableName, TIdentityOrgMemberships } from "@app/db/schemas";
+import { NamespaceMembershipRole, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TNamespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
+import { TNamespaceIdentityMembershipDALFactory } from "@app/ee/services/namespace-identity-membership/namespace-identity-membership-dal";
+import { TNamespaceMembershipRoleDALFactory } from "@app/ee/services/namespace-role/namespace-membership-role-dal";
+import {
+  NamespacePermissionIdentityActions,
+  NamespacePermissionSubjects
+} from "@app/ee/services/permission/namespace-permission";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
@@ -25,13 +32,6 @@ import {
   TSearchOrgIdentitiesByOrgIdDTO,
   TUpdateIdentityDTO
 } from "./identity-types";
-import { TNamespaceIdentityMembershipDALFactory } from "@app/ee/services/namespace-identity-membership/namespace-identity-membership-dal";
-import { TNamespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
-import {
-  NamespacePermissionIdentityActions,
-  NamespacePermissionSubjects
-} from "@app/ee/services/permission/namespace-permission";
-import { TNamespaceMembershipRoleDALFactory } from "@app/ee/services/namespace-role/namespace-membership-role-dal";
 
 type TIdentityServiceFactoryDep = {
   identityDAL: TIdentityDALFactory;
@@ -51,7 +51,6 @@ type TIdentityServiceFactoryDep = {
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
 
-// TODO(namespace): check  resource constraint over org, namespace etc
 export const identityServiceFactory = ({
   identityDAL,
   identityMetadataDAL,

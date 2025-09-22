@@ -443,6 +443,8 @@ export const projectMembershipServiceFactory = ({
           });
         })
     );
+
+    return newProjectMemberships;
   };
 
   const updateProjectMembership = async ({

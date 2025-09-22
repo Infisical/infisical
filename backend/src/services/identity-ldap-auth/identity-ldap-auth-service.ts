@@ -7,6 +7,11 @@ import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
+  NamespacePermissionIdentityActions,
+  NamespacePermissionMachineIdentityAuthTemplateActions,
+  NamespacePermissionSubjects
+} from "@app/ee/services/permission/namespace-permission";
+import {
   OrgPermissionIdentityActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
@@ -48,10 +53,6 @@ import {
   TRevokeLdapAuthDTO,
   TUpdateLdapAuthDTO
 } from "./identity-ldap-auth-types";
-import {
-  NamespacePermissionIdentityActions,
-  NamespacePermissionSubjects
-} from "@app/ee/services/permission/namespace-permission";
 
 type TIdentityLdapAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
@@ -269,8 +270,8 @@ export const identityLdapAuthServiceFactory = ({
 
       if (templateId) {
         ForbiddenError.from(permission).throwUnlessCan(
-          OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
-          OrgPermissionSubjects.MachineIdentityAuthTemplate
+          NamespacePermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+          NamespacePermissionSubjects.MachineIdentityAuthTemplate
         );
       }
     } else {
@@ -281,7 +282,10 @@ export const identityLdapAuthServiceFactory = ({
         actorAuthMethod,
         actorOrgId
       );
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.Create,
+        OrgPermissionSubjects.Identity
+      );
 
       if (templateId) {
         ForbiddenError.from(permission).throwUnlessCan(

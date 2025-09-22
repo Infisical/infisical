@@ -1,6 +1,7 @@
-import { OrderByDirection, TNamespacePermission } from "@app/lib/types";
-import { NamespaceUserMembershipTemporaryMode } from "../namespace-user-membership/namespace-user-membership-types";
 import { TSearchResourceOperator } from "@app/lib/search-resource/search";
+import { OrderByDirection, TNamespacePermission } from "@app/lib/types";
+
+import { NamespaceUserMembershipTemporaryMode } from "../namespace-user-membership/namespace-user-membership-types";
 
 // TODO(namespace): add audit log for various events
 export type TCreateNamespaceIdentityMembershipDTO = {

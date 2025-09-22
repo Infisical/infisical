@@ -16,6 +16,7 @@ import { ActorType } from "../../../services/auth/auth-type";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TNamespaceMembershipRoleDALFactory } from "../namespace-role/namespace-membership-role-dal";
 import { TNamespaceRoleDALFactory } from "../namespace-role/namespace-role-dal";
+import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } from "../permission/permission-fns";
 import { TNamespaceUserMembershipDALFactory } from "./namespace-user-membership-dal";
 import {
   NamespaceUserMembershipTemporaryMode,
@@ -26,7 +27,6 @@ import {
   TSearchNamespaceMembershipDTO,
   TUpdateNamespaceUserMembershipDTO
 } from "./namespace-user-membership-types";
-import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } from "../permission/permission-fns";
 
 type TNamespaceUserMembershipServiceFactoryDep = {
   namespaceUserMembershipDAL: TNamespaceUserMembershipDALFactory;
@@ -277,8 +277,11 @@ export const namespaceUserMembershipServiceFactory = ({
       NamespacePermissionSubjects.Member
     );
 
-    const membership = await namespaceUserMembershipDAL.findOne({ id: membershipId, namespaceId: namespace.id });
-    if (!membership) throw new NotFoundError({ message: "Namespace membership not found" });
+    const isMemberPartOfNamespace = await namespaceUserMembershipDAL.findOne({
+      id: membershipId,
+      namespaceId: namespace.id
+    });
+    if (!isMemberPartOfNamespace) throw new NotFoundError({ message: "Namespace membership not found" });
 
     // validate custom roles input
     const customInputRoles = roles.filter(
@@ -297,13 +300,13 @@ export const namespaceUserMembershipServiceFactory = ({
       }
     }
 
-    for await (const invitedRole of roles) {
+    for await (const { role: requestedRoleChange } of roles) {
       const { permission: rolePermission } = await permissionService.getNamespacePermissionByRole(
-        invitedRole,
+        requestedRoleChange,
         namespace.id
       );
 
-      if (invitedRole !== NamespaceMembershipRole.NoAccess) {
+      if (requestedRoleChange !== NamespaceMembershipRole.NoAccess) {
         const permissionBoundary = validatePrivilegeChangeOperation(
           membership.shouldUseNewPrivilegeSystem,
           NamespacePermissionMemberActions.GrantPrivileges,
