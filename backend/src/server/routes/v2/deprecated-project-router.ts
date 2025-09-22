@@ -180,7 +180,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        slug: slugSchema({ min: 5, max: 36 }).describe("The slug of the project to delete.")
+        slug: slugSchema({ min: 5, max: 64 }).describe("The slug of the project to delete.")
       }),
       response: {
         200: SanitizedProjectSchema
@@ -233,7 +233,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        slug: slugSchema({ max: 36 }).describe("The slug of the project to get.")
+        slug: slugSchema({ max: 64 }).describe("The slug of the project to get.")
       }),
       response: {
         200: projectWithEnv
@@ -266,7 +266,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     },
     schema: {
       params: z.object({
-        slug: slugSchema({ min: 5, max: 36 }).describe("The slug of the project to update.")
+        slug: slugSchema({ min: 5, max: 64 }).describe("The slug of the project to update.")
       }),
       body: z.object({
         name: z.string().trim().optional().describe(PROJECTS.UPDATE.name),
@@ -322,7 +322,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       hide: false,
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       params: z.object({
-        slug: slugSchema({ min: 5, max: 36 }).describe(PROJECTS.LIST_CAS.slug)
+        slug: slugSchema({ min: 5, max: 64 }).describe(PROJECTS.LIST_CAS.slug)
       }),
       querystring: z.object({
         status: z.enum([CaStatus.ACTIVE, CaStatus.PENDING_CERTIFICATE]).optional().describe(PROJECTS.LIST_CAS.status),
@@ -365,7 +365,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
       params: z.object({
-        slug: slugSchema({ min: 5, max: 36 }).describe(PROJECTS.LIST_CERTIFICATES.slug)
+        slug: slugSchema({ min: 5, max: 64 }).describe(PROJECTS.LIST_CERTIFICATES.slug)
       }),
       querystring: z.object({
         friendlyName: z.string().optional().describe(PROJECTS.LIST_CERTIFICATES.friendlyName),
