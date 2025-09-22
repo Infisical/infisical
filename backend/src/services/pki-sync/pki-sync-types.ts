@@ -49,6 +49,10 @@ export type TPkiSync = {
     updatedAt: Date;
     isPlatformManagedCredentials?: boolean;
   };
+  subscriber?: {
+    id: string;
+    name: string;
+  } | null;
 };
 
 export type TPkiSyncWithCredentials = TPkiSync & {
@@ -66,7 +70,7 @@ export type TPkiSyncListItem = TPkiSync & {
   appConnectionApp: string;
 };
 
-export type TCertificateMap = Record<string, { cert: string; privateKey: string }>;
+export type TCertificateMap = Record<string, { cert: string; privateKey: string; certificateChain?: string }>;
 
 export type TCreatePkiSyncDTO = {
   name: string;

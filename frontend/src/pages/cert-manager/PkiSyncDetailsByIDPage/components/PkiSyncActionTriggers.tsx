@@ -89,7 +89,8 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
     try {
       await triggerSyncMutation.mutateAsync({
         syncId: id,
-        destination
+        destination,
+        projectId
       });
       createNotification({
         text: "PKI sync job queued successfully",
@@ -102,7 +103,7 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
         type: "error"
       });
     }
-  }, [triggerSyncMutation, id, destination]);
+  }, [triggerSyncMutation, id, destination, projectId]);
 
   const handleToggleAutoSync = useCallback(async () => {
     try {

@@ -248,6 +248,7 @@ import { pkiCollectionServiceFactory } from "@app/services/pki-collection/pki-co
 import { pkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { pkiSubscriberQueueServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-queue";
 import { pkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
+import { pkiSyncCleanupQueueServiceFactory } from "@app/services/pki-sync/pki-sync-cleanup-queue";
 import { pkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
 import { pkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { pkiSyncServiceFactory } from "@app/services/pki-sync/pki-sync-service";
@@ -1906,7 +1907,15 @@ export const registerRoutes = async (
     licenseService,
     certificateDAL,
     certificateBodyDAL,
-    certificateSecretDAL
+    certificateSecretDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL
+  });
+
+  const pkiSyncCleanup = pkiSyncCleanupQueueServiceFactory({
+    queueService,
+    pkiSyncDAL,
+    pkiSyncQueue
   });
 
   const internalCaFns = InternalCertificateAuthorityFns({
@@ -2104,6 +2113,7 @@ export const registerRoutes = async (
   await telemetryQueue.startTelemetryCheck();
   await telemetryQueue.startAggregatedEventsJob();
   await dailyResourceCleanUp.init();
+  await pkiSyncCleanup.init();
   await dailyReminderQueueService.startDailyRemindersJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();

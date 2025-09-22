@@ -48,16 +48,19 @@ export type TDeletePkiSyncDTO = {
 export type TTriggerPkiSyncSyncCertificatesDTO = {
   syncId: string;
   destination: PkiSync;
+  projectId: string;
 };
 
 export type TTriggerPkiSyncImportCertificatesDTO = {
   syncId: string;
   destination: PkiSync;
+  projectId: string;
 };
 
 export type TTriggerPkiSyncRemoveCertificatesDTO = {
   syncId: string;
   destination: PkiSync;
+  projectId: string;
 };
 
 export * from "./common";

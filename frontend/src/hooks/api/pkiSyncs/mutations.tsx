@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { PkiSyncStatus } from "@app/hooks/api/pkiSyncs/enums";
 import { pkiSyncKeys } from "@app/hooks/api/pkiSyncs/queries";
 import {
   TCreatePkiSyncDTO,
@@ -69,10 +70,39 @@ export const useTriggerPkiSyncSyncCertificates = () => {
 
       return data;
     },
-    onSuccess: (_, { syncId }) => {
-      // Invalidate all PKI sync queries since we don't have projectId here
-      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.all });
-      queryClient.invalidateQueries({ queryKey: ["pkiSync", syncId] });
+    onMutate: async ({ syncId, projectId }) => {
+      await queryClient.cancelQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+      await queryClient.cancelQueries({ queryKey: pkiSyncKeys.list(projectId) });
+
+      const previousPkiSync = queryClient.getQueryData(pkiSyncKeys.byId(syncId, projectId));
+
+      if (previousPkiSync) {
+        queryClient.setQueryData(pkiSyncKeys.byId(syncId, projectId), {
+          ...previousPkiSync,
+          syncStatus: PkiSyncStatus.Pending
+        });
+      }
+
+      return { previousPkiSync };
+    },
+    onSuccess: (_, { syncId, projectId }) => {
+      const currentData = queryClient.getQueryData(pkiSyncKeys.byId(syncId, projectId));
+      if (currentData) {
+        queryClient.setQueryData(pkiSyncKeys.byId(syncId, projectId), {
+          ...currentData,
+          syncStatus: PkiSyncStatus.Pending
+        });
+      }
+
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+        queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
+      }, 2000); // Wait 2 seconds before refetching
+    },
+    onError: (_, { syncId, projectId }, context) => {
+      if (context?.previousPkiSync) {
+        queryClient.setQueryData(pkiSyncKeys.byId(syncId, projectId), context.previousPkiSync);
+      }
     }
   });
 };
@@ -85,10 +115,39 @@ export const useTriggerPkiSyncImportCertificates = () => {
 
       return data;
     },
-    onSuccess: (_, { syncId }) => {
-      // Invalidate all PKI sync queries since we don't have projectId here
-      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.all });
-      queryClient.invalidateQueries({ queryKey: ["pkiSync", syncId] });
+    onMutate: async ({ syncId, projectId }) => {
+      await queryClient.cancelQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+      await queryClient.cancelQueries({ queryKey: pkiSyncKeys.list(projectId) });
+
+      const previousPkiSync = queryClient.getQueryData(pkiSyncKeys.byId(syncId, projectId));
+
+      if (previousPkiSync) {
+        queryClient.setQueryData(pkiSyncKeys.byId(syncId, projectId), {
+          ...previousPkiSync,
+          importStatus: PkiSyncStatus.Pending
+        });
+      }
+
+      return { previousPkiSync };
+    },
+    onSuccess: (_, { syncId, projectId }) => {
+      const currentData = queryClient.getQueryData(pkiSyncKeys.byId(syncId, projectId));
+      if (currentData) {
+        queryClient.setQueryData(pkiSyncKeys.byId(syncId, projectId), {
+          ...currentData,
+          importStatus: PkiSyncStatus.Pending
+        });
+      }
+
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+        queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
+      }, 2000); // Wait 2 seconds before refetching
+    },
+    onError: (_, { syncId, projectId }, context) => {
+      if (context?.previousPkiSync) {
+        queryClient.setQueryData(pkiSyncKeys.byId(syncId, projectId), context.previousPkiSync);
+      }
     }
   });
 };
@@ -103,10 +162,39 @@ export const useTriggerPkiSyncRemoveCertificates = () => {
 
       return data;
     },
-    onSuccess: (_, { syncId }) => {
-      // Invalidate all PKI sync queries since we don't have projectId here
-      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.all });
-      queryClient.invalidateQueries({ queryKey: ["pkiSync", syncId] });
+    onMutate: async ({ syncId, projectId }) => {
+      await queryClient.cancelQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+      await queryClient.cancelQueries({ queryKey: pkiSyncKeys.list(projectId) });
+
+      const previousPkiSync = queryClient.getQueryData(pkiSyncKeys.byId(syncId, projectId));
+
+      if (previousPkiSync) {
+        queryClient.setQueryData(pkiSyncKeys.byId(syncId, projectId), {
+          ...previousPkiSync,
+          removeStatus: PkiSyncStatus.Pending
+        });
+      }
+
+      return { previousPkiSync };
+    },
+    onSuccess: (_, { syncId, projectId }) => {
+      const currentData = queryClient.getQueryData(pkiSyncKeys.byId(syncId, projectId));
+      if (currentData) {
+        queryClient.setQueryData(pkiSyncKeys.byId(syncId, projectId), {
+          ...currentData,
+          removeStatus: PkiSyncStatus.Pending
+        });
+      }
+
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: pkiSyncKeys.byId(syncId, projectId) });
+        queryClient.invalidateQueries({ queryKey: pkiSyncKeys.list(projectId) });
+      }, 2000); // Wait 2 seconds before refetching
+    },
+    onError: (_, { syncId, projectId }, context) => {
+      if (context?.previousPkiSync) {
+        queryClient.setQueryData(pkiSyncKeys.byId(syncId, projectId), context.previousPkiSync);
+      }
     }
   });
 };

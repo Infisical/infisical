@@ -15,7 +15,7 @@ type ContentProps = {
 };
 
 const Content = ({ pkiSync, onComplete }: ContentProps) => {
-  const { id: syncId, destination } = pkiSync;
+  const { id: syncId, destination, projectId } = pkiSync;
   const destinationName = PKI_SYNC_MAP[destination].name;
 
   const triggerRemoveCertificates = useTriggerPkiSyncRemoveCertificates();
@@ -24,7 +24,8 @@ const Content = ({ pkiSync, onComplete }: ContentProps) => {
     try {
       await triggerRemoveCertificates.mutateAsync({
         syncId,
-        destination
+        destination,
+        projectId
       });
 
       createNotification({

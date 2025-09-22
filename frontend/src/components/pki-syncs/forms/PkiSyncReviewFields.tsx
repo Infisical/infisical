@@ -67,9 +67,6 @@ export const PkiSyncReviewFields = () => {
               {isAutoSyncEnabled ? "Enabled" : "Disabled"}
             </Badge>
           </GenericFieldLabel>
-          <GenericFieldLabel label="Upload Certificates">
-            <Badge variant="success">Always Enabled</Badge>
-          </GenericFieldLabel>
           {/* Hidden for now - Import certificates functionality disabled
           {syncOptions?.canImportCertificates !== undefined && (
             <GenericFieldLabel label="Import Certificates">

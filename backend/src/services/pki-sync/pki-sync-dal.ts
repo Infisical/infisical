@@ -42,6 +42,49 @@ const basePkiSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: PkiSyncF
   return query;
 };
 
+const basePkiSyncWithSubscriberQuery = ({
+  filter,
+  db,
+  tx
+}: {
+  db: TDbClient;
+  filter?: PkiSyncFindFilter;
+  tx?: Knex;
+}) => {
+  const query = (tx || db.replicaNode())(TableName.PkiSync)
+    .leftJoin(TableName.AppConnection, `${TableName.PkiSync}.connectionId`, `${TableName.AppConnection}.id`)
+    .leftJoin(TableName.PkiSubscriber, `${TableName.PkiSync}.subscriberId`, `${TableName.PkiSubscriber}.id`)
+    .select(selectAllTableCols(TableName.PkiSync))
+    .select(
+      // app connection fields
+      db.ref("name").withSchema(TableName.AppConnection).as("appConnectionName"),
+      db.ref("app").withSchema(TableName.AppConnection).as("appConnectionApp"),
+      db.ref("encryptedCredentials").withSchema(TableName.AppConnection).as("appConnectionEncryptedCredentials"),
+      db.ref("orgId").withSchema(TableName.AppConnection).as("appConnectionOrgId"),
+      db.ref("projectId").withSchema(TableName.AppConnection).as("appConnectionProjectId"),
+      db.ref("method").withSchema(TableName.AppConnection).as("appConnectionMethod"),
+      db.ref("description").withSchema(TableName.AppConnection).as("appConnectionDescription"),
+      db.ref("version").withSchema(TableName.AppConnection).as("appConnectionVersion"),
+      db.ref("gatewayId").withSchema(TableName.AppConnection).as("appConnectionGatewayId"),
+      db.ref("createdAt").withSchema(TableName.AppConnection).as("appConnectionCreatedAt"),
+      db.ref("updatedAt").withSchema(TableName.AppConnection).as("appConnectionUpdatedAt"),
+      db
+        .ref("isPlatformManagedCredentials")
+        .withSchema(TableName.AppConnection)
+        .as("appConnectionIsPlatformManagedCredentials"),
+      // pki subscriber fields
+      db.ref("id").withSchema(TableName.PkiSubscriber).as("pkiSubscriberId"),
+      db.ref("name").withSchema(TableName.PkiSubscriber).as("subscriberName")
+    );
+
+  if (filter) {
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+    void query.where(buildFindFilter(prependTableNameToFindFilter(TableName.PkiSync, filter)));
+  }
+
+  return query;
+};
+
 const expandPkiSync = (pkiSync: Awaited<ReturnType<typeof basePkiSyncQuery>>[number]) => {
   const {
     appConnectionName,
@@ -84,6 +127,51 @@ const expandPkiSync = (pkiSync: Awaited<ReturnType<typeof basePkiSyncQuery>>[num
   };
 };
 
+const expandPkiSyncWithSubscriber = (pkiSync: Awaited<ReturnType<typeof basePkiSyncWithSubscriberQuery>>[number]) => {
+  const {
+    appConnectionName,
+    appConnectionApp,
+    appConnectionEncryptedCredentials,
+    appConnectionOrgId,
+    appConnectionProjectId,
+    appConnectionMethod,
+    appConnectionDescription,
+    appConnectionVersion,
+    appConnectionGatewayId,
+    appConnectionCreatedAt,
+    appConnectionUpdatedAt,
+    appConnectionIsPlatformManagedCredentials,
+    pkiSubscriberId,
+    subscriberName,
+    ...el
+  } = pkiSync;
+
+  return {
+    ...el,
+    destination: el.destination as PkiSync,
+    destinationConfig: el.destinationConfig as Record<string, unknown>,
+    syncOptions: el.syncOptions as Record<string, unknown>,
+    appConnectionName,
+    appConnectionApp,
+    connection: {
+      id: el.connectionId,
+      name: appConnectionName,
+      app: appConnectionApp,
+      encryptedCredentials: appConnectionEncryptedCredentials,
+      orgId: appConnectionOrgId,
+      projectId: appConnectionProjectId,
+      method: appConnectionMethod,
+      description: appConnectionDescription,
+      version: appConnectionVersion,
+      gatewayId: appConnectionGatewayId,
+      createdAt: appConnectionCreatedAt,
+      updatedAt: appConnectionUpdatedAt,
+      isPlatformManagedCredentials: appConnectionIsPlatformManagedCredentials
+    },
+    subscriber: pkiSubscriberId && subscriberName ? { id: pkiSubscriberId, name: subscriberName } : null
+  };
+};
+
 export const pkiSyncDALFactory = (db: TDbClient) => {
   const pkiSyncOrm = ormify(db, TableName.PkiSync);
 
@@ -93,6 +181,15 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
       return pkiSyncs.map(expandPkiSync);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find By Project ID - PKI Sync" });
+    }
+  };
+
+  const findByProjectIdWithSubscribers = async (projectId: string, tx?: Knex) => {
+    try {
+      const pkiSyncs = await basePkiSyncWithSubscriberQuery({ filter: { projectId }, db, tx });
+      return pkiSyncs.map(expandPkiSyncWithSubscriber);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find By Project ID With Subscribers - PKI Sync" });
     }
   };
 
@@ -168,9 +265,42 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     return expandPkiSync(pkiSync);
   };
 
+  const findPkiSyncsWithExpiredCertificates = async (): Promise<Array<{ id: string; subscriberId: string }>> => {
+    try {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const pkiSyncs = (await db
+        .replicaNode()(TableName.PkiSync)
+        .select(`${TableName.PkiSync}.id`, `${TableName.PkiSync}.subscriberId`)
+        .innerJoin(
+          TableName.Certificate,
+          `${TableName.PkiSync}.subscriberId`,
+          `${TableName.Certificate}.pkiSubscriberId`
+        )
+        .where(`${TableName.Certificate}.notAfter`, ">=", yesterday)
+        .where(`${TableName.Certificate}.notAfter`, "<", today)
+        .whereNotNull(`${TableName.Certificate}.pkiSubscriberId`)
+        .whereNotNull(`${TableName.PkiSync}.subscriberId`)
+        .groupBy(`${TableName.PkiSync}.id`, `${TableName.PkiSync}.subscriberId`)) as Array<{
+        id: string;
+        subscriberId: string;
+      }>;
+
+      return pkiSyncs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find PKI syncs with expired certificates" });
+    }
+  };
+
   return {
     ...pkiSyncOrm,
     findByProjectId,
+    findByProjectIdWithSubscribers,
     findBySubscriberId,
     findByIdAndProjectId,
     findByNameAndProjectId,
@@ -178,6 +308,7 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     findOne,
     find,
     create,
-    updateById
+    updateById,
+    findPkiSyncsWithExpiredCertificates
   };
 };

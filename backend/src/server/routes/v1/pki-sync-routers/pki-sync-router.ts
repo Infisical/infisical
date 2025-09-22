@@ -53,7 +53,14 @@ const PkiSyncSchema = z.object({
     createdAt: z.date(),
     updatedAt: z.date(),
     isPlatformManagedCredentials: z.boolean().nullable().optional()
-  })
+  }),
+  subscriber: z
+    .object({
+      id: z.string(),
+      name: z.string()
+    })
+    .nullable()
+    .optional()
 });
 
 const PkiSyncOptionsSchema = z.object({

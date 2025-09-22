@@ -38,7 +38,10 @@ const getDestinationAppType = (destination: PkiSync): AppConnection => {
 };
 
 type TPkiSyncServiceFactoryDep = {
-  pkiSyncDAL: TPkiSyncDALFactory;
+  pkiSyncDAL: Pick<
+    TPkiSyncDALFactory,
+    "findById" | "findByProjectIdWithSubscribers" | "findByNameAndProjectId" | "create" | "updateById" | "deleteById"
+  >;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -262,7 +265,10 @@ export const pkiSyncServiceFactory = ({
     return pkiSyncDAL.deleteById(id);
   };
 
-  const listPkiSyncsByProjectId = async ({ projectId }: TListPkiSyncsByProjectId, actor: OrgServiceActor) => {
+  const listPkiSyncsByProjectId = async (
+    { projectId }: TListPkiSyncsByProjectId,
+    actor: OrgServiceActor
+  ): Promise<TPkiSync[]> => {
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -274,8 +280,9 @@ export const pkiSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionPkiSyncActions.Read, ProjectPermissionSub.PkiSyncs);
 
-    const pkiSyncs = await pkiSyncDAL.findByProjectId(projectId);
-    return pkiSyncs as TPkiSync[];
+    const pkiSyncsWithSubscribers = await pkiSyncDAL.findByProjectIdWithSubscribers(projectId);
+
+    return pkiSyncsWithSubscribers as TPkiSync[];
   };
 
   const findPkiSyncById = async ({ id, projectId }: TFindPkiSyncByIdDTO, actor: OrgServiceActor) => {
@@ -307,7 +314,12 @@ export const pkiSyncServiceFactory = ({
         : ProjectPermissionSub.PkiSyncs
     );
 
-    return pkiSync as TPkiSync;
+    const result = {
+      ...pkiSync,
+      subscriber: findSubscriber ? { id: findSubscriber.id, name: findSubscriber.name } : null
+    } as TPkiSync;
+
+    return result;
   };
 
   const triggerPkiSyncSyncCertificatesById = async (

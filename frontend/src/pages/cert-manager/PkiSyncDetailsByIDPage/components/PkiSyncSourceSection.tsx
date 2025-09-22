@@ -22,7 +22,7 @@ type Props = {
 };
 
 export const PkiSyncSourceSection = ({ pkiSync, onEditSource }: Props) => {
-  const { subscriberId } = pkiSync;
+  const { subscriberId, subscriber } = pkiSync;
 
   const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
     subscriberId: subscriberId || ""
@@ -65,7 +65,7 @@ export const PkiSyncSourceSection = ({ pkiSync, onEditSource }: Props) => {
         <div>
           <div className="space-y-3">
             <GenericFieldLabel label="PKI Subscriber">
-              {subscriberId || "Deleted"}
+              {subscriber ? subscriber.name : "Deleted"}
             </GenericFieldLabel>
           </div>
         </div>

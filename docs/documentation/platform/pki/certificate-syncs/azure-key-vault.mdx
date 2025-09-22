@@ -47,6 +47,12 @@ description: "Learn how to configure an Azure Key Vault Certificate Sync for Inf
             - **Enable Certificate Removal**: If enabled, Infisical will remove expired certificates from the destination during sync operations. Disable this option if you intend to manage certificate cleanup manually.
             - **Certificate Name Schema** (Optional): Customize how certificate names are generated in Azure Key Vault. Use `{{certificateId}}` as a placeholder for the certificate ID. If not specified, defaults to `Infisical-{{certificateId}}`.
 
+        <Tip>
+            **Azure Key Vault Soft Delete**: When certificates are removed from Azure Key Vault, they are placed in a soft-deleted state rather than being permanently deleted. This means:
+            - Subsequent syncs will not re-add these soft-deleted certificates automatically
+            - To resync removed certificates, you must either manually **purge** them from Azure Key Vault or **recover** them through the Azure portal/CLI
+        </Tip>
+
         6. Configure the **Details** of your Azure Key Vault Certificate Sync, then click **Next**.
         ![Configure Details](/images/certificate-syncs/azure-key-vault/vault-details.png)
 

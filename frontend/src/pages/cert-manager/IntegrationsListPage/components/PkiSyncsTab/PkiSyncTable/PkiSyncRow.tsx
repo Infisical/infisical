@@ -164,7 +164,7 @@ export const PkiSyncRow = ({
         </div>
       </Td>
       {subscriberId ? (
-        <PkiSyncTableCell primaryText={subscriberId} secondaryText="PKI Subscriber" />
+        <PkiSyncTableCell primaryText={pkiSync.subscriber?.name || subscriberId} secondaryText="PKI Subscriber" />
       ) : (
         <Td>
           <Tooltip content="The PKI subscriber for this sync has been deleted. Configure a new source or remove this sync.">

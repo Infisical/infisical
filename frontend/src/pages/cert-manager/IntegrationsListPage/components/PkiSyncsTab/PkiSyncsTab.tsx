@@ -45,7 +45,10 @@ export const PkiSyncsTab = () => {
   }, [addSync, handlePopUpOpen, navigateToBase]);
 
   const { data: pkiSyncs = [], isPending: isPkiSyncsPending } = useListPkiSyncs(
-    currentProject?.id || ""
+    currentProject?.id || "",
+    {
+      refetchInterval: 30000
+    }
   );
 
   if (isPkiSyncsPending)

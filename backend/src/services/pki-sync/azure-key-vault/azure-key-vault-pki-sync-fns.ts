@@ -329,13 +329,14 @@ export const azureKeyVaultPkiSyncFactory = ({ kmsService, appConnectionDAL }: TA
       key: string;
       cert: string;
       privateKey: string;
+      certificateChain?: string;
     }[] = [];
 
     // Track which certificates should exist in Azure Key Vault
     const activeCertificateNames = Object.keys(certificateMap);
 
     // Iterate through certificates to sync to Azure Key Vault
-    Object.entries(certificateMap).forEach(([certName, { cert, privateKey }]) => {
+    Object.entries(certificateMap).forEach(([certName, { cert, privateKey, certificateChain }]) => {
       if (disabledAzureKeyVaultCertificateKeys.includes(certName)) {
         return;
       }
@@ -347,7 +348,8 @@ export const azureKeyVaultPkiSyncFactory = ({ kmsService, appConnectionDAL }: TA
         setCertificates.push({
           key: certName,
           cert,
-          privateKey
+          privateKey,
+          certificateChain
         });
       }
     });
@@ -364,13 +366,26 @@ export const azureKeyVaultPkiSyncFactory = ({ kmsService, appConnectionDAL }: TA
     // Upload certificates to Azure Key Vault with rate limiting
     const uploadResults = await executeWithConcurrencyLimit(
       setCertificates,
-      async ({ key, cert, privateKey }) => {
+      async ({ key, cert, privateKey, certificateChain }) => {
         try {
-          // Combine certificate and private key in PEM format for Azure Key Vault
-          // Azure Key Vault accepts PEM format with both cert and private key
-          let combinedPem = cert;
+          // Combine private key, certificate, and certificate chain in PEM format for Azure Key Vault
+          let combinedPem = "";
+
           if (privateKey) {
-            combinedPem = `${privateKey}\n${cert}`;
+            combinedPem = privateKey.trim();
+          }
+
+          if (combinedPem) {
+            combinedPem = `${combinedPem}\n${cert.trim()}`;
+          } else {
+            combinedPem = cert.trim();
+          }
+
+          if (certificateChain) {
+            const trimmedChain = certificateChain.trim();
+            if (trimmedChain) {
+              combinedPem = `${combinedPem}\n${trimmedChain}`;
+            }
           }
 
           // Convert to base64 for Azure Key Vault import

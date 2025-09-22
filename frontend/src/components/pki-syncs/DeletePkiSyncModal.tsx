@@ -51,11 +51,6 @@ export const DeletePkiSyncModal = ({ isOpen, onOpenChange, pkiSync, onComplete }
       title={`Are you sure you want to delete ${name}?`}
       deleteKey={name}
       onDeleteApproved={handleDeletePkiSync}
-    >
-      <p className="mt-4 text-sm text-bunker-300">
-        This action will also remove all certificates that were synced by this configuration from
-        the {PKI_SYNC_MAP[destination].name} destination.
-      </p>
-    </DeleteActionModal>
+    />
   );
 };

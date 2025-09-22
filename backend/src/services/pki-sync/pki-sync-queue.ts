@@ -22,6 +22,9 @@ import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal"
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { getCertificateCredentials } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
+import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
+import { getCaCertChain } from "../certificate-authority/certificate-authority-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
@@ -58,6 +61,8 @@ type TPkiSyncQueueFactoryDep = {
   >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
 };
 
 type PkiSyncActionJob = Job<
@@ -86,7 +91,9 @@ export const pkiSyncQueueFactory = ({
   licenseService,
   certificateDAL,
   certificateBodyDAL,
-  certificateSecretDAL
+  certificateSecretDAL,
+  certificateAuthorityDAL,
+  certificateAuthorityCertDAL
 }: TPkiSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -207,6 +214,32 @@ export const pkiSyncQueueFactory = ({
               certPrivateKey = undefined;
             }
 
+            let certificateChain: string | undefined;
+            try {
+              if (certBody.encryptedCertificateChain) {
+                const decryptedCertChain = await kmsDecryptor({
+                  cipherTextBlob: certBody.encryptedCertificateChain
+                });
+                certificateChain = decryptedCertChain.toString();
+              } else if (certificate.caCertId) {
+                const { caCert, caCertChain } = await getCaCertChain({
+                  caCertId: certificate.caCertId,
+                  certificateAuthorityDAL,
+                  certificateAuthorityCertDAL,
+                  projectDAL,
+                  kmsService
+                });
+                certificateChain = `${caCert}\n${caCertChain}`.trim();
+              }
+            } catch (chainError) {
+              logger.warn(
+                { certificateId: certificate.id, subscriberId, error: chainError },
+                "Certificate chain not found or could not be decrypted - certificate may be imported or chain was not stored"
+              );
+              // Continue without certificate chain
+              certificateChain = undefined;
+            }
+
             let certificateName: string;
             const syncOptions = pkiSync.syncOptions as { certificateNameSchema?: string } | undefined;
             const certificateNameSchema = syncOptions?.certificateNameSchema;
@@ -223,7 +256,8 @@ export const pkiSyncQueueFactory = ({
 
             certificateMap[certificateName] = {
               cert: certificatePem,
-              privateKey: certPrivateKey || ""
+              privateKey: certPrivateKey || "",
+              certificateChain
             };
           } else {
             logger.warn({ certificateId: certificate.id, subscriberId }, "Certificate body not found for certificate");
@@ -649,8 +683,7 @@ export const pkiSyncQueueFactory = ({
         break;
       }
       default:
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        throw new Error(`Unhandled PKI Sync Job ${job.name}`);
+        throw new Error(`Unhandled PKI Sync Job ${String(job.name)}`);
     }
   };
 
@@ -701,8 +734,7 @@ export const pkiSyncQueueFactory = ({
           await $handleRemoveCertificatesJob(job as TPkiSyncRemoveCertificatesDTO, pkiSync);
           break;
         default:
-          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-          throw new Error(`Unhandled PKI Sync Job ${job.name}`);
+          throw new Error(`Unhandled PKI Sync Job ${String(job.name)}`);
       }
     } finally {
       if (job.name === QueueJobs.PkiSyncSyncCertificates) {
