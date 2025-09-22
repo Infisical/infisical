@@ -39,7 +39,6 @@ import {
 } from "@app/components/v2";
 import {
   OrgGatewayPermissionActions,
-  OrgPermissionAppConnectionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
@@ -206,8 +205,8 @@ export const GatewayTab = withPermission(
                               </OrgPermissionCan>
                             )}
                             <OrgPermissionCan
-                              I={OrgPermissionAppConnectionActions.Delete}
-                              a={OrgPermissionSubjects.AppConnections}
+                              I={OrgGatewayPermissionActions.DeleteGateways}
+                              a={OrgPermissionSubjects.Gateway}
                             >
                               {(isAllowed: boolean) => (
                                 <DropdownMenuItem
