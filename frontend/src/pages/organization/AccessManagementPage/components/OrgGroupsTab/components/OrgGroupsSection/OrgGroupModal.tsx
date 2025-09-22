@@ -15,6 +15,7 @@ import {
 import { useOrganization } from "@app/context";
 import { findOrgMembershipRole } from "@app/helpers/roles";
 import { useCreateGroup, useGetOrgRoles, useUpdateGroup } from "@app/hooks/api";
+import { TGroupType } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const GroupFormSchema = z.object({
@@ -27,9 +28,9 @@ const GroupFormSchema = z.object({
   type: z
     .object({
       label: z.string(),
-      value: z.enum(["USERS", "IDENTITIES"])
+      value: z.enum([TGroupType.USERS, TGroupType.IDENTITIES])
     })
-    .default({ label: "Users", value: "USERS" })
+    .default({ label: "Users", value: TGroupType.USERS })
 });
 
 export type TGroupFormData = z.infer<typeof GroupFormSchema>;
@@ -56,7 +57,7 @@ export const OrgGroupModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Pr
       name: string;
       slug: string;
       role: string;
-      type: "USERS" | "IDENTITIES";
+      type: TGroupType;
       customRole: {
         name: string;
         slug: string;
@@ -71,7 +72,7 @@ export const OrgGroupModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Pr
         slug: group.slug,
         role: group?.customRole ?? findOrgMembershipRole(roles, group.role),
         type: {
-          label: group.type === "USERS" ? "Users" : "Identities",
+          label: group.type === TGroupType.USERS ? "Users" : "Identities",
           value: group.type
         }
       });
@@ -80,7 +81,7 @@ export const OrgGroupModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Pr
         name: "",
         slug: "",
         role: findOrgMembershipRole(roles, currentOrg!.defaultMembershipRole),
-        type: { label: "Users", value: "USERS" }
+        type: { label: "Users", value: TGroupType.USERS }
       });
     }
   }, [popUp?.group?.data, roles]);
@@ -170,8 +171,8 @@ export const OrgGroupModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Pr
               >
                 <FilterableSelect
                   options={[
-                    { label: "Users", value: "USERS" },
-                    { label: "Identities", value: "IDENTITIES" }
+                    { label: "Users", value: TGroupType.USERS },
+                    { label: "Identities", value: TGroupType.IDENTITIES }
                   ]}
                   placeholder="Select type..."
                   onChange={onChange}

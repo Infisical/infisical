@@ -14,7 +14,7 @@ export type TGroup = {
   createdAt: string;
   updatedAt: string;
   role: string;
-  type: "USERS" | "IDENTITIES";
+  type: TGroupType;
 };
 
 export type TGroupMembership = {
@@ -68,4 +68,9 @@ export enum EFilterReturnedUsers {
 export enum EFilterReturnedIdentities {
   EXISTING_MEMBERS = "existingMembers",
   NON_MEMBERS = "nonMembers"
+}
+
+export enum TGroupType {
+  USERS = "USERS",
+  IDENTITIES = "IDENTITIES"
 }

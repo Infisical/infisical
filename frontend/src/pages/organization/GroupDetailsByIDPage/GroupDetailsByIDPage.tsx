@@ -146,7 +146,11 @@ const Page = () => {
             <div className="mr-4 w-96">
               <GroupDetailsSection groupId={groupId} handlePopUpOpen={handlePopUpOpen} />
             </div>
-            <GroupMembersSection groupId={groupId} groupSlug={data.group.slug} />
+            <GroupMembersSection
+              groupId={groupId}
+              groupSlug={data.group.slug}
+              groupType={data.group.type}
+            />
           </div>
         </div>
       )}

@@ -15,6 +15,7 @@ import {
 import { useOrganization } from "@app/context";
 import { findOrgMembershipRole } from "@app/helpers/roles";
 import { useCreateGroup, useGetOrgRoles, useUpdateGroup } from "@app/hooks/api";
+import { TGroupType } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const GroupFormSchema = z.object({
@@ -23,7 +24,10 @@ const GroupFormSchema = z.object({
     .string()
     .min(5, "Slug must be at least 5 characters long")
     .max(36, "Slug must be 36 characters or fewer"),
-  role: z.object({ name: z.string(), slug: z.string() })
+  role: z.object({ name: z.string(), slug: z.string() }),
+  type: z
+    .object({ label: z.string(), value: z.enum([TGroupType.USERS, TGroupType.IDENTITIES]) })
+    .optional()
 });
 
 export type TGroupFormData = z.infer<typeof GroupFormSchema>;
@@ -53,6 +57,7 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
       name: string;
       slug: string;
       role: string;
+      type?: TGroupType;
       customRole: {
         name: string;
         slug: string;
@@ -65,7 +70,10 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
       reset({
         name: group.name,
         slug: group.slug,
-        role: group?.customRole ?? findOrgMembershipRole(roles, group.role)
+        role: group?.customRole ?? findOrgMembershipRole(roles, group.role),
+        type: group.type
+          ? { label: group.type === TGroupType.USERS ? "Users" : "Identities", value: group.type }
+          : undefined
       });
     } else {
       reset({
@@ -144,6 +152,15 @@ export const GroupCreateUpdateModal = ({ popUp, handlePopUpClose, handlePopUpTog
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Slug" errorText={error?.message} isError={Boolean(error)}>
                 <Input {...field} placeholder="engineering" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="type"
+            render={({ field: { value } }) => (
+              <FormControl label="Type" className="mt-4">
+                <Input value={value ? value.label : ""} isDisabled placeholder="-" readOnly />
               </FormControl>
             )}
           />

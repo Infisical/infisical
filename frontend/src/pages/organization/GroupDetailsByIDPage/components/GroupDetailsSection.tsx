@@ -6,6 +6,7 @@ import { IconButton, Spinner, Tooltip } from "@app/components/v2";
 import { CopyButton } from "@app/components/v2/CopyButton";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
 import { useGetGroupById } from "@app/hooks/api/";
+import { TGroupType } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -36,7 +37,8 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen }: Props) => {
                       groupId,
                       name: data.group.name,
                       slug: data.group.slug,
-                      role: data.group.role
+                      role: data.group.role,
+                      type: data.group.type
                     });
                   }}
                 >
@@ -65,6 +67,12 @@ export const GroupDetailsSection = ({ groupId, handlePopUpOpen }: Props) => {
             <p className="text-sm text-mineshaft-300">{data.group.slug}</p>
             <CopyButton value={data.group.slug} name="Slug" size="xs" variant="plain" />
           </div>
+        </div>
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-mineshaft-300">Type</p>
+          <p className="text-sm text-mineshaft-300">
+            {data.group.type === TGroupType.USERS ? "Users" : "Identities"}
+          </p>
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Organization Role</p>
