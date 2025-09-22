@@ -178,6 +178,17 @@ export const CreateSecretForm = ({
             // @ts-expect-error this is for multiple ref single component
             secretKeyInputRef.current = e;
           }}
+          warningMessage={
+            secretKey?.includes(" ") ? (
+              <div>
+                Secret key contains whitespaces.
+                <br />
+                <br /> If this is the desired format, you need to encode it with{" "}
+                <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">%20</code> when making API
+                requests.
+              </div>
+            ) : undefined
+          }
           placeholder="Type your secret name"
           onPaste={handlePaste}
           autoCapitalization={autoCapitalize}

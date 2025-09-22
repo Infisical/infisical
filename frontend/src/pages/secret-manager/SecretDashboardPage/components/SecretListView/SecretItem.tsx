@@ -487,6 +487,17 @@ export const SecretItem = memo(
                     placeholder={error?.message}
                     isError={Boolean(error)}
                     onKeyUp={() => trigger("key")}
+                    warningMessage={
+                      field.value.includes(" ") ? (
+                        <div>
+                          Secret key contains whitespaces.
+                          <br />
+                          <br /> If this is the desired format, you need to encode it with{" "}
+                          <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">%20</code> when
+                          making API requests.
+                        </div>
+                      ) : undefined
+                    }
                     {...field}
                     className="w-full px-0 placeholder:text-red-500 focus:text-bunker-100 focus:ring-transparent"
                   />

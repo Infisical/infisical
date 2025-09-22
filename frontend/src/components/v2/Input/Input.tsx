@@ -1,6 +1,9 @@
 import { ChangeEvent, forwardRef, InputHTMLAttributes, ReactNode } from "react";
 import { cva, VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faWarning } from "@fortawesome/free-solid-svg-icons";
+import { Tooltip } from "../Tooltip";
 
 type Props = {
   placeholder?: string;
@@ -12,6 +15,7 @@ type Props = {
   isReadOnly?: boolean;
   autoCapitalization?: boolean;
   containerClassName?: string;
+  warningMessage?: string | ReactNode;
 };
 
 const inputVariants = cva(
@@ -84,6 +88,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       size = "md",
       isReadOnly,
       autoCapitalization,
+      warningMessage,
       ...props
     },
     ref
@@ -120,6 +125,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             inputVariants({ className, isError, size, isRounded, variant })
           )}
         />
+        {warningMessage && !rightIcon && (
+          <Tooltip className="w-full max-w-64" content={warningMessage}>
+            <FontAwesomeIcon icon={faWarning} className="absolute right-0 mr-3 text-yellow-500" />
+          </Tooltip>
+        )}
         {rightIcon && <span className="absolute right-0 mr-3">{rightIcon}</span>}
       </div>
     );
