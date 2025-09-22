@@ -13,7 +13,6 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { formatRelative } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -49,6 +48,25 @@ import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways
 import { useDeleteGatewayV2ById } from "@app/hooks/api/gateways-v2";
 
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
+
+const GatewayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
+  const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
+  const now = new Date();
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+  const isHealthy = heartbeatDate && heartbeatDate >= oneHourAgo;
+  const tooltipContent = heartbeatDate
+    ? `Last heartbeat: ${heartbeatDate.toLocaleString()}`
+    : "No heartbeat data available";
+
+  return (
+    <Tooltip content={tooltipContent}>
+      <span className={`cursor-default ${isHealthy ? "text-green-400" : "text-red-400"}`}>
+        {isHealthy ? "Healthy" : "Unreachable"}
+      </span>
+    </Tooltip>
+  );
+};
 
 export const GatewayTab = withPermission(
   () => {
@@ -120,8 +138,7 @@ export const GatewayTab = withPermission(
             <Table>
               <THead>
                 <Tr>
-                  <Th className="w-1/3">Name</Th>
-                  <Th>Identity</Th>
+                  <Th className="w-1/2">Name</Th>
                   <Th>
                     Health Check
                     <Tooltip
@@ -149,9 +166,8 @@ export const GatewayTab = withPermission(
                         </span>
                       </div>
                     </Td>
-                    <Td>{el.identity.name}</Td>
                     <Td>
-                      {el.heartbeat ? formatRelative(new Date(el.heartbeat), new Date()) : "-"}
+                      <GatewayHealthStatus heartbeat={el.heartbeat} />
                     </Td>
                     <Td className="w-5">
                       <Tooltip className="max-w-sm text-center" content="Options">
