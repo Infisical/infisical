@@ -48,10 +48,10 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
     resolver: zodResolver(PkiSyncFormSchema),
     defaultValues: {
       destination,
-      isAutoSyncEnabled: true,
+      isAutoSyncEnabled: false,
       syncOptions: {
-        canImportCertificates: syncOption?.canImportCertificates ?? false,
-        canRemoveCertificates: syncOption?.canRemoveCertificates ?? false,
+        canImportCertificates: false,
+        canRemoveCertificates: false,
         certificateNameSchema: syncOption?.defaultCertificateNameSchema
       }
     } as Partial<TPkiSyncForm>,

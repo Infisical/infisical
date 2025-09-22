@@ -715,7 +715,6 @@
                   {
                     "group": "Certificate Syncs",
                     "pages": [
-                      "documentation/platform/pki/certificate-syncs",
                       "documentation/platform/pki/certificate-syncs/overview",
                       {
                         "group": "Syncs",
@@ -2494,6 +2493,7 @@
                 "pages": [
                   "api-reference/endpoints/pki/syncs/list",
                   "api-reference/endpoints/pki/syncs/get-by-id",
+                  "api-reference/endpoints/pki/syncs/options",
                   {
                     "group": "Azure Key Vault",
                     "pages": [

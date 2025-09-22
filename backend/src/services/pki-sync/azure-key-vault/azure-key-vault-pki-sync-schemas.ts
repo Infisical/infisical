@@ -70,5 +70,5 @@ export const AzureKeyVaultPkiSyncListItemSchema = z.object({
   connection: z.literal(AppConnection.AzureKeyVault),
   destination: z.literal(PkiSync.AzureKeyVault),
   canImportCertificates: z.literal(false),
-  canRemoveCertificates: z.literal(true)
+  canRemoveCertificates: z.literal(false)
 });
