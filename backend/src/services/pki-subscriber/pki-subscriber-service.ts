@@ -38,7 +38,7 @@ import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
-import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-fns";
+import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-utils";
 import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";

@@ -309,7 +309,7 @@ export const registerSyncPkiEndpoints = ({
 
   server.route({
     method: "POST",
-    url: "/:pkiSyncId/remove",
+    url: "/:pkiSyncId/remove-certificates",
     config: {
       rateLimit: writeLimit
     },

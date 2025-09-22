@@ -19,7 +19,9 @@ import {
   TAltNameMapping
 } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-fns";
+import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
+import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-utils";
+import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
@@ -52,12 +54,8 @@ type TInternalCertificateAuthorityFnsDeps = {
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  pkiSyncDAL: {
-    find: (filter: { subscriberId: string; isAutoSyncEnabled: boolean }) => Promise<Array<{ id: string }>>;
-  };
-  pkiSyncQueue: {
-    queuePkiSyncSyncCertificatesById: (params: { syncId: string }) => Promise<void>;
-  };
+  pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
 };
 
 export const InternalCertificateAuthorityFns = ({

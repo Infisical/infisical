@@ -13,6 +13,8 @@ import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
+import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
+import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { TProjectDALFactory } from "../project/project-dal";
 import {
   AcmeCertificateAuthorityFns,
@@ -68,12 +70,8 @@ type TCertificateAuthorityServiceFactoryDep = {
     "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
   >;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
-  pkiSyncDAL: {
-    find: (filter: { subscriberId: string; isAutoSyncEnabled: boolean }) => Promise<Array<{ id: string }>>;
-  };
-  pkiSyncQueue: {
-    queuePkiSyncSyncCertificatesById: (params: { syncId: string }) => Promise<void>;
-  };
+  pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;

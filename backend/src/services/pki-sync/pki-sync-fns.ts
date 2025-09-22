@@ -3,14 +3,11 @@ import { z, ZodSchema } from "zod";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { BadRequestError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import {
-  AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION,
-  azureKeyVaultPkiSyncFactory
-} from "./azure-key-vault/azure-key-vault-pki-sync-fns";
+import { AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION } from "./azure-key-vault/azure-key-vault-pki-sync-constants";
+import { azureKeyVaultPkiSyncFactory } from "./azure-key-vault/azure-key-vault-pki-sync-fns";
 import { PkiSync } from "./pki-sync-enums";
 import { TCertificateMap, TPkiSyncWithCredentials } from "./pki-sync-types";
 
@@ -149,36 +146,6 @@ export const matchesCertificateNameSchema = (name: string, environment: string, 
 
 const isAzureKeyVaultPkiSync = (pkiSync: TPkiSyncWithCredentials): boolean => {
   return pkiSync.destination === PkiSync.AzureKeyVault;
-};
-
-/**
- * Trigger auto sync for PKI syncs connected to a PKI subscriber when certificates are issued/revoked/deleted
- */
-export const triggerAutoSyncForSubscriber = async (
-  subscriberId: string,
-  dependencies: {
-    pkiSyncDAL: {
-      find: (filter: { subscriberId: string; isAutoSyncEnabled: boolean }) => Promise<Array<{ id: string }>>;
-    };
-    pkiSyncQueue: {
-      queuePkiSyncSyncCertificatesById: (params: { syncId: string }) => Promise<void>;
-    };
-  }
-) => {
-  try {
-    const pkiSyncs = await dependencies.pkiSyncDAL.find({
-      subscriberId,
-      isAutoSyncEnabled: true
-    });
-
-    // Queue sync jobs for each auto sync enabled PKI sync
-    const syncPromises = pkiSyncs.map((pkiSync) =>
-      dependencies.pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSync.id })
-    );
-    await Promise.all(syncPromises);
-  } catch (error) {
-    logger.error(error, `Failed to trigger auto sync for subscriber ${subscriberId}:`);
-  }
 };
 
 export const PkiSyncFns = {

@@ -97,7 +97,9 @@ export const useTriggerPkiSyncRemoveCertificates = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ syncId, destination }: TTriggerPkiSyncRemoveCertificatesDTO) => {
-      const { data } = await apiRequest.post(`/api/v1/pki/syncs/${destination}/${syncId}/remove`);
+      const { data } = await apiRequest.post(
+        `/api/v1/pki/syncs/${destination}/${syncId}/remove-certificates`
+      );
 
       return data;
     },

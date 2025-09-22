@@ -104,8 +104,8 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
             tooltipText={
               <div className="flex flex-col gap-3">
                 <span>
-                  When a certificate is synced, values will be injected into the certificate name
-                  schema before it reaches the destination. This is useful for organization.
+                  When a certificate is synced, the certificate name schema will be applied before
+                  it reaches the destination.
                 </span>
 
                 <div className="flex flex-col">
@@ -113,10 +113,6 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                   <ul className="list-disc pl-4 text-sm">
                     <li>
                       <code>{"{{certificateId}}"}</code> - The unique ID of the certificate
-                    </li>
-                    <li>
-                      <code>{"{{environment}}"}</code> - The environment which the certificate is in
-                      (e.g. dev, staging, prod)
                     </li>
                   </ul>
                 </div>
@@ -129,11 +125,6 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                       The following characters are not allowed:{" "}
                       {syncOption.forbiddenCharacters.split("").join(" ")}
                     </div>
-                    {syncOption.allowedCharacterPattern && (
-                      <div className="mt-1 text-xs text-bunker-300">
-                        Only alphanumeric characters and hyphens are allowed (a-z, A-Z, 0-9, -)
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -142,7 +133,7 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
             isOptional
             errorText={error?.message}
             label="Certificate Name Schema"
-            helperText="Infisical strongly advises setting a Certificate Name Schema to ensure that Infisical only manages the specific certificates you intend, keeping everything else untouched."
+            helperText="Infisical strongly advises setting a Certificate Name Schema to ensure that Infisical only manages the specific certificates you intend to manage, keeping everything else untouched."
           >
             <Input
               value={value || ""}

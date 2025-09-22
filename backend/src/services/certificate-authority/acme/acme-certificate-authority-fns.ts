@@ -23,7 +23,9 @@ import {
 } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
-import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-fns";
+import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
+import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-utils";
+import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
@@ -57,12 +59,8 @@ type TAcmeCertificateAuthorityFnsDeps = {
     "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
   >;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
-  pkiSyncDAL: {
-    find: (filter: { subscriberId: string; isAutoSyncEnabled: boolean }) => Promise<Array<{ id: string }>>;
-  };
-  pkiSyncQueue: {
-    queuePkiSyncSyncCertificatesById: (params: { syncId: string }) => Promise<void>;
-  };
+  pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
 };
 

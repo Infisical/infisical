@@ -20,6 +20,8 @@ import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal"
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { SubscriberOperationStatus } from "../pki-subscriber/pki-subscriber-types";
+import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
+import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
 import { AzureAdCsCertificateAuthorityFns } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
@@ -50,12 +52,8 @@ type TCertificateAuthorityQueueFactoryDep = {
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   queueService: TQueueServiceFactory;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById" | "updateById">;
-  pkiSyncDAL: {
-    find: (filter: { subscriberId: string; isAutoSyncEnabled: boolean }) => Promise<Array<{ id: string }>>;
-  };
-  pkiSyncQueue: {
-    queuePkiSyncSyncCertificatesById: (params: { syncId: string }) => Promise<void>;
-  };
+  pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
 };
 
 export type TCertificateAuthorityQueueFactory = ReturnType<typeof certificateAuthorityQueueFactory>;

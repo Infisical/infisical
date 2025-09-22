@@ -2646,9 +2646,9 @@
     "href": "https://infisical.com"
   },
   "api": {
-    "openapi": "https://api.infisical.com/api/docs/json",
+    "openapi": "https://app.infisical.com/api/docs/json",
     "mdx": {
-      "server": ["https://api.infisical.com"]
+      "server": ["https://app.infisical.com"]
     }
   },
   "appearance": {

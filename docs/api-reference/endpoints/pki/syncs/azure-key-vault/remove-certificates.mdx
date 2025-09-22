@@ -1,6 +1,6 @@
 ---
 title: "Remove Certificates from Azure Key Vault"
-openapi: "POST /api/v1/pki/syncs/azure-key-vault/{pkiSyncId}/remove"
+openapi: "POST /api/v1/pki/syncs/azure-key-vault/{pkiSyncId}/remove-certificates"
 ---
 
 <Warning>
@@ -29,7 +29,7 @@ This endpoint removes certificates from the specified Azure Key Vault that are n
 
 <RequestExample>
 ```bash cURL
-curl -X POST "https://app.infisical.com/api/v1/pki/syncs/azure-key-vault/ps_12345/remove" \
+curl -X POST "https://app.infisical.com/api/v1/pki/syncs/azure-key-vault/ps_12345/remove-certificates" \
   -H "Authorization: Bearer <your-api-key>"
 ```
 </RequestExample>

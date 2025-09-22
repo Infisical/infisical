@@ -5,6 +5,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
+import { AZURE_KEY_VAULT_CERTIFICATE_NAMING } from "./azure-key-vault-pki-sync-constants";
+
 export const AzureKeyVaultPkiSyncConfigSchema = z.object({
   vaultBaseUrl: z.string().url()
 });
@@ -22,12 +24,12 @@ const AzureKeyVaultPkiSyncOptionsSchema = z.object({
         const testName = schema
           .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), "")
           .replace(new RE2("\\{\\{environment\\}\\}", "g"), "");
-        const azureNamePattern = new RE2("^[a-zA-Z0-9-]{1,127}$");
 
-        const forbiddenChars = "!@#$%^&*()+=[]{}|\\:;\"'<>,.?/~` _";
-        const hasForbiddenChars = forbiddenChars.split("").some((char) => testName.includes(char));
+        const hasForbiddenChars = AZURE_KEY_VAULT_CERTIFICATE_NAMING.FORBIDDEN_CHARACTERS.split("").some((char) =>
+          testName.includes(char)
+        );
 
-        return azureNamePattern.test(testName) && !hasForbiddenChars;
+        return AZURE_KEY_VAULT_CERTIFICATE_NAMING.NAME_PATTERN.test(testName) && !hasForbiddenChars;
       },
       {
         message:

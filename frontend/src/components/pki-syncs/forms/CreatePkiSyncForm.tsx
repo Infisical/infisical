@@ -130,11 +130,10 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
             Certificate Sync Behavior
           </div>
           <p className="mt-1 text-sm text-bunker-200">
-            Certificate Syncs manage certificates that are prefixed with &quot;Infisical-&quot; in
-            the destination. Only certificates managed by Infisical will be affected during sync
-            operations. Certificates not created or managed by Infisical will remain untouched, and
-            changes made to Infisical-managed certificates directly in the destination service may
-            be overwritten by future syncs.
+            Only certificates managed by Infisical will be affected during sync operations.
+            Certificates not created or managed by Infisical will remain untouched, and changes made
+            to Infisical-managed certificates directly in the destination service may be overwritten
+            by future syncs.
           </p>
         </div>
         <div className="mt-4 flex gap-4">

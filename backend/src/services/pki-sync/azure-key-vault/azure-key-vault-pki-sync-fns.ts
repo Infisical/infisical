@@ -5,14 +5,12 @@ import * as crypto from "crypto";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { matchesCertificateNameSchema } from "@app/services/pki-sync/pki-sync-fns";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 
-import { PkiSync } from "../pki-sync-enums";
 import { PkiSyncError } from "../pki-sync-errors";
 import { TPkiSyncWithCredentials } from "../pki-sync-types";
 import { GetAzureKeyVaultCertificate, TAzureKeyVaultPkiSyncConfig } from "./azure-key-vault-pki-sync-types";
@@ -43,19 +41,6 @@ const isInfisicalManagedCertificate = (certificateName: string, pkiSync: TPkiSyn
   }
 
   return certificateName.startsWith("Infisical-PKI-Sync-");
-};
-
-export const AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION = {
-  name: "Azure Key Vault" as const,
-  connection: AppConnection.AzureKeyVault,
-  destination: PkiSync.AzureKeyVault,
-  canImportCertificates: false,
-  canRemoveCertificates: true,
-  defaultCertificateNameSchema: "Infisical-PKI-Sync-{{certificateId}}",
-  forbiddenCharacters: "!@#$%^&*()+=[]{}|\\:;\"'<>,.?/~` _",
-  allowedCharacterPattern: "^[a-zA-Z0-9-]{1,127}$",
-  maxCertificateNameLength: 127,
-  minCertificateNameLength: 1
 };
 
 type TAzureKeyVaultPkiSyncFactoryDeps = {

@@ -80,8 +80,7 @@ via the UI or API for the third-party service you intend to sync certificates to
       - Certificate naming schema to control how certificate names are generated in the destination
 
 <Note>
-    Certificate Syncs manage certificates that are prefixed with "Infisical-" in the destination. Only
-    certificates managed by Infisical will be affected during sync operations. Certificates not created or
+    Only certificates managed by Infisical will be affected during sync operations. Certificates not created or
     managed by Infisical will remain untouched, and changes made to Infisical-managed certificates directly
     in the destination service may be overwritten by future syncs.
 </Note>
@@ -110,11 +109,9 @@ By default, certificates are named using the pattern `Infisical-{certificateId}`
 You can customize certificate naming by providing a **Certificate Name Schema** when creating or updating a Certificate Sync. The schema supports the following placeholders:
 
 - `{{certificateId}}` - The unique certificate identifier (required)
-- `{{environment}}` - The environment context (always "global" for PKI syncs)
 
 **Examples:**
 - `myapp-{{certificateId}}` → `myapp-abc123def456`
-- `{{environment}}-cert-{{certificateId}}` → `global-cert-abc123def456`
 - `ssl/{{certificateId}}` → `ssl/abc123def456`
 
 **Rules:**
