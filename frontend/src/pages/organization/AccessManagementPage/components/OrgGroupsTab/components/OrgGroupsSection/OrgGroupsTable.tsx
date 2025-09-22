@@ -46,6 +46,7 @@ import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useGetOrganizationGroups, useGetOrgRoles, useUpdateGroup } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { TGroupType } from "@app/hooks/api/groups/types";
 
 type Props = {
   handlePopUpOpen: (
@@ -212,6 +213,9 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                 </div>
               </Th>
               <Th>
+                <div className="flex items-center">Type</div>
+              </Th>
+              <Th>
                 <div className="flex items-center">
                   Role
                   <IconButton
@@ -238,7 +242,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
             {!isPending &&
               filteredGroups
                 .slice(offset, perPage * page)
-                .map(({ id, name, slug, role, customRole }) => {
+                .map(({ id, name, slug, role, customRole, type }) => {
                   return (
                     <Tr
                       onClick={() =>
@@ -254,6 +258,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                     >
                       <Td>{name}</Td>
                       <Td>{slug}</Td>
+                      <Td>{type === TGroupType.USERS ? "User" : "Identity"}</Td>
                       <Td>
                         <OrgPermissionCan
                           I={OrgPermissionGroupActions.Edit}
