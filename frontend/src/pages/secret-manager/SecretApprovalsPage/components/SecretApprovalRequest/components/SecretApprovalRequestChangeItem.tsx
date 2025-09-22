@@ -23,6 +23,7 @@ export type Props = {
   newVersion?: Omit<TSecretApprovalSecChange, "tags"> & {
     tags?: WsTag[];
     secretMetadata?: { key: string; value: string }[];
+    skipMultilineEncoding?: boolean;
   };
   presentSecretVersionNumber: number;
   hasMerged?: boolean;
@@ -217,6 +218,14 @@ export const SecretApprovalRequestChangeItem = ({
                   )}
                 </div>
               </div>
+              <div className="mb-2">
+                <div className="text-sm font-medium text-mineshaft-300">Mutli-line Encoding</div>
+                <div className="text-sm">
+                  {secretVersion?.skipMultilineEncoding?.toString() || (
+                    <span className="text-sm text-mineshaft-300">-</span>
+                  )}{" "}
+                </div>
+              </div>
             </div>
           ) : (
             <div className="text-md flex w-full items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 text-mineshaft-300 xl:w-1/2">
@@ -263,7 +272,7 @@ export const SecretApprovalRequestChangeItem = ({
                         isReadOnly
                         valueAlwaysHidden={newVersion?.secretValueHidden}
                         isVisible={isNewSecretValueVisible}
-                        value={newVersion?.secretValue}
+                        value={newVersion?.secretValue ?? secretVersion?.secretValue}
                         containerClassName={twMerge(
                           "border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50",
                           newVersion?.secretValueHidden ? "pl-8 pr-2" : "px-2"
@@ -287,7 +296,7 @@ export const SecretApprovalRequestChangeItem = ({
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Comment</div>
                 <div className="thin-scrollbar max-h-[5rem] max-w-[34rem] overflow-y-auto break-words text-sm xl:max-w-[28rem]">
-                  {newVersion?.secretComment || (
+                  {(newVersion?.secretComment ?? secretVersion?.secretComment) || (
                     <span className="text-sm text-mineshaft-300">-</span>
                   )}{" "}
                 </div>
@@ -315,9 +324,9 @@ export const SecretApprovalRequestChangeItem = ({
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Metadata</div>
-                {newVersion?.secretMetadata?.length ? (
+                {(newVersion?.secretMetadata ?? secretVersion?.secretMetadata)?.length ? (
                   <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
-                    {newVersion.secretMetadata?.map((el) => (
+                    {(newVersion?.secretMetadata ?? secretVersion?.secretMetadata)?.map((el) => (
                       <div key={el.key} className="flex items-center">
                         <Tag
                           size="xs"
@@ -352,6 +361,15 @@ export const SecretApprovalRequestChangeItem = ({
                 ) : (
                   <p className="text-sm text-mineshaft-300">-</p>
                 )}
+              </div>
+              <div className="mb-2">
+                <div className="text-sm font-medium text-mineshaft-300">Mutli-line Encoding</div>
+                <div className="text-sm">
+                  {newVersion?.skipMultilineEncoding?.toString() ??
+                    secretVersion?.skipMultilineEncoding?.toString() ?? (
+                      <span className="text-sm text-mineshaft-300">-</span>
+                    )}{" "}
+                </div>
               </div>
             </div>
           ) : (
