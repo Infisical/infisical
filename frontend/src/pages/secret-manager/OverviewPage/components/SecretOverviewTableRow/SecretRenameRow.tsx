@@ -113,7 +113,6 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
           projectId,
           secretPath,
           secretKey: secret.key,
-          secretValue: secret.value || "",
           type: SecretType.Shared,
           tagIds: secret.tags?.map((tag) => tag.id),
           secretComment: secret.comment,

@@ -16,8 +16,12 @@ export const stripUndefinedInWhere = <T extends object>(val: T): Exclude<T, unde
 // if its undefined its skipped in knex
 // if its empty string its set as null
 // else pass to the required one
-export const setKnexStringValue = <T>(value: string | null | undefined, cb: (arg: string) => T) => {
+export const setKnexStringValue = <T>(
+  value: string | null | undefined,
+  cb: (arg: string) => T,
+  allowEmptyString?: boolean
+) => {
   if (typeof value === "undefined") return;
-  if (value === "" || value === null) return null;
+  if ((value === "" && !allowEmptyString) || value === null) return null;
   return cb(value);
 };
