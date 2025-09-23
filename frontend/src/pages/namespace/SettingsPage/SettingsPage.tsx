@@ -2,8 +2,8 @@ import { Helmet } from "react-helmet";
 
 import { PageHeader } from "@app/components/v2";
 
-import { OverviewSection } from "./components/OverviewSection";
 import { DeleteNamespaceSection } from "./components/DeleteNamespaceSection";
+import { OverviewSection } from "./components/OverviewSection";
 
 export const SettingsPage = () => {
   return (

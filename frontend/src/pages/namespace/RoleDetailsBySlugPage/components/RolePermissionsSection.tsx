@@ -15,6 +15,8 @@ import { NamespacePermissionAuditLogsRow } from "./NamespacePermissionAuditLogsR
 import { NamespacePermissionGroupRow } from "./NamespacePermissionGroupRow";
 import { NamespacePermissionIdentityRow } from "./NamespacePermissionIdentityRow";
 import { NamespacePermissionMachineIdentityAuthTemplateRow } from "./NamespacePermissionMachineIdentityAuthTemplateRow";
+import { NamespacePermissionMemberRow } from "./NamespacePermissionMemberRow";
+import { NamespaceRoleNamespaceRow } from "./NamespacePermissionNamespaceRow";
 import {
   formRolePermission2API,
   formSchema,
@@ -23,8 +25,6 @@ import {
 } from "./NamespaceRoleModifySection.utils";
 import { NamespaceRoleWorkspaceRow } from "./NamespaceRoleWorkspaceRow";
 import { RolePermissionRow } from "./RolePermissionRow";
-import { NamespacePermissionMemberRow } from "./NamespacePermissionMemberRow";
-import { NamespaceRoleNamespaceRow } from "./NamespacePermissionNamespaceRow";
 
 // TODO(namespace): add missing sort in type field
 const SIMPLE_PERMISSION_OPTIONS = [

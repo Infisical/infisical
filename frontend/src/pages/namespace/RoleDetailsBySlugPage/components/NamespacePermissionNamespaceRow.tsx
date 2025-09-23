@@ -5,10 +5,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { Checkbox, Select, SelectItem, Td, Tr } from "@app/components/v2";
+import { NamespacePermissionNamespaceActions } from "@app/context";
 import { useToggle } from "@app/hooks";
 
 import { TFormSchema } from "./NamespaceRoleModifySection.utils";
-import { NamespacePermissionNamespaceActions } from "@app/context";
 
 type Props = {
   isEditable: boolean;

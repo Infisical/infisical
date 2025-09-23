@@ -2,8 +2,6 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { clearSession } from "@app/hooks/api/users/queries";
-import { usePopUp } from "@app/hooks/usePopUp";
 import {
   NamespacePermissionNamespaceActions,
   NamespacePermissionSubjects,
@@ -11,6 +9,8 @@ import {
   useNamespacePermission
 } from "@app/context";
 import { useDeleteNamespace } from "@app/hooks/api/namespaces";
+import { clearSession } from "@app/hooks/api/users/queries";
+import { usePopUp } from "@app/hooks/usePopUp";
 
 // TODO(namespace): add leave namespace
 export const DeleteNamespaceSection = () => {

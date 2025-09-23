@@ -120,6 +120,18 @@ export const MyNamespaceView = ({
           }
         });
       }}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          navigate({
+            to: "/organization/namespaces/$namespaceName/projects",
+            params: {
+              namespaceName: namespace.name
+            }
+          });
+        }
+      }}
       key={namespace.id}
       className={`group flex min-w-72 cursor-pointer border-l border-r border-t border-mineshaft-600 bg-mineshaft-800 px-6 py-3 hover:bg-mineshaft-700 ${
         index === 0 && "rounded-t-md"
@@ -165,13 +177,10 @@ export const MyNamespaceView = ({
                   </div>
                 </div>
               ))}
-            {!isNamespaceViewLoading && (
-              <>
-                {searchedNamespaces?.namespaces?.map((namespace) =>
-                  renderNamespaceGridItem(namespace)
-                )}
-              </>
-            )}
+            {!isNamespaceViewLoading &&
+              searchedNamespaces?.namespaces?.map((namespace) =>
+                renderNamespaceGridItem(namespace)
+              )}
           </div>
         );
         break;

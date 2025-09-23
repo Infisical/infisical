@@ -9,9 +9,9 @@ import { NamespacePermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, Modal, ModalContent, PageHeader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
+  NamespacePermissionIdentityActions,
   NamespacePermissionSubjects,
-  useNamespace,
-  NamespacePermissionIdentityActions
+  useNamespace
 } from "@app/context";
 import {
   namespaceIdentityQueryKeys,

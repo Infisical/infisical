@@ -4,10 +4,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { VariablePermissionCan } from "@app/components/permissions";
 import { Button, Tooltip } from "@app/components/v2";
 import {
+  NamespacePermissionIdentityActions,
   NamespacePermissionSubjects,
   OrgPermissionIdentityActions,
-  OrgPermissionSubjects,
-  NamespacePermissionIdentityActions
+  OrgPermissionSubjects
 } from "@app/context";
 import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";

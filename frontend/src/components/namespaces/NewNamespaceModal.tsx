@@ -1,6 +1,7 @@
 import { FC } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate } from "@tanstack/react-router";
 import z from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -14,7 +15,6 @@ import {
   TextArea
 } from "@app/components/v2";
 import { useCreateNamespace } from "@app/hooks/api/namespaces";
-import { useNavigate } from "@tanstack/react-router";
 
 const formSchema = z.object({
   name: z

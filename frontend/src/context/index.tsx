@@ -1,7 +1,6 @@
 export { useNamespace } from "./NamespaceContext";
 export { useNamespacePermission } from "./NamespacePermissionContext";
 export {
-  NamespacePermissionSubjects,
   NamespacePermissionActions,
   NamespacePermissionAdminConsoleAction,
   NamespacePermissionAppConnectionActions,
@@ -13,7 +12,8 @@ export {
   NamespacePermissionMachineIdentityAuthTemplateActions,
   NamespacePermissionMemberActions,
   NamespacePermissionNamespaceActions,
-  NamespacePermissionSecretShareAction
+  NamespacePermissionSecretShareAction,
+  NamespacePermissionSubjects
 } from "./NamespacePermissionContext/types";
 export { useOrganization } from "./OrganizationContext";
 export type { TOrgPermission } from "./OrgPermissionContext";
