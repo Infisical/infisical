@@ -714,6 +714,18 @@
                       "documentation/platform/pki/pki-issuer",
                       "documentation/platform/pki/integration-guides/gloo-mesh"
                     ]
+                  },
+                  {
+                    "group": "Certificate Syncs",
+                    "pages": [
+                      "documentation/platform/pki/certificate-syncs/overview",
+                      {
+                        "group": "Syncs",
+                        "pages": [
+                          "documentation/platform/pki/certificate-syncs/azure-key-vault"
+                        ]
+                      }
+                    ]
                   }
                 ]
               }
@@ -2502,6 +2514,26 @@
                   "api-reference/endpoints/pki-alerts/read",
                   "api-reference/endpoints/pki-alerts/update",
                   "api-reference/endpoints/pki-alerts/delete"
+                ]
+              },
+              {
+                "group": "Certificate Syncs",
+                "pages": [
+                  "api-reference/endpoints/pki/syncs/list",
+                  "api-reference/endpoints/pki/syncs/get-by-id",
+                  "api-reference/endpoints/pki/syncs/options",
+                  {
+                    "group": "Azure Key Vault",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/list",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/get-by-id",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/create",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/update",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/delete",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/remove-certificates"
+                    ]
+                  }
                 ]
               }
             ]

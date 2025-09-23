@@ -48,6 +48,7 @@ import { registerPasswordRouter } from "./password-router";
 import { registerPkiAlertRouter } from "./pki-alert-router";
 import { registerPkiCollectionRouter } from "./pki-collection-router";
 import { registerPkiSubscriberRouter } from "./pki-subscriber-router";
+import { PKI_SYNC_REGISTER_ROUTER_MAP, registerPkiSyncRouter } from "./pki-sync-routers";
 import { registerProjectEnvRouter } from "./project-env-router";
 import { registerProjectKeyRouter } from "./project-key-router";
 import { registerProjectMembershipRouter } from "./project-membership-router";
@@ -147,6 +148,15 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
       await pkiRouter.register(registerPkiCollectionRouter, { prefix: "/collections" });
       await pkiRouter.register(registerPkiSubscriberRouter, { prefix: "/subscribers" });
+      await pkiRouter.register(
+        async (pkiSyncRouter) => {
+          await pkiSyncRouter.register(registerPkiSyncRouter);
+          for await (const [destination, router] of Object.entries(PKI_SYNC_REGISTER_ROUTER_MAP)) {
+            await pkiSyncRouter.register(router, { prefix: `/${destination}` });
+          }
+        },
+        { prefix: "/syncs" }
+      );
     },
     { prefix: "/pki" }
   );

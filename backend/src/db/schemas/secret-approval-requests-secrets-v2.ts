@@ -17,7 +17,7 @@ export const SecretApprovalRequestsSecretsV2Schema = z.object({
   encryptedComment: zodBuffer.nullable().optional(),
   reminderNote: z.string().nullable().optional(),
   reminderRepeatDays: z.number().nullable().optional(),
-  skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
+  skipMultilineEncoding: z.boolean().nullable().optional(),
   metadata: z.unknown().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),

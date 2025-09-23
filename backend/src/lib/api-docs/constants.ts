@@ -50,6 +50,7 @@ export enum ApiDocsTags {
   IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
   AppConnections = "App Connections",
   SecretSyncs = "Secret Syncs",
+  PkiSyncs = "PKI Syncs",
   Integrations = "Integrations",
   ServiceTokens = "Service Tokens",
   AuditLogs = "Audit Logs",

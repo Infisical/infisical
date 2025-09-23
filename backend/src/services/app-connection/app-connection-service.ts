@@ -268,9 +268,9 @@ export const appConnectionServiceFactory = ({
       const { permission } = await permissionService.getOrgPermission(
         actor.type,
         actor.id,
-        actor.orgId,
+        appConnection.orgId,
         actor.authMethod,
-        appConnection.orgId
+        actor.orgId
       );
 
       ForbiddenError.from(permission).throwUnlessCan(
@@ -318,9 +318,9 @@ export const appConnectionServiceFactory = ({
       const { permission } = await permissionService.getOrgPermission(
         actor.type,
         actor.id,
-        actor.orgId,
+        appConnection.orgId,
         actor.authMethod,
-        appConnection.orgId
+        actor.orgId
       );
 
       ForbiddenError.from(permission).throwUnlessCan(
@@ -477,9 +477,9 @@ export const appConnectionServiceFactory = ({
     const { permission: orgPermission } = await permissionService.getOrgPermission(
       actor.type,
       actor.id,
-      actor.orgId,
+      appConnection.orgId,
       actor.authMethod,
-      appConnection.orgId
+      actor.orgId
     );
 
     if (appConnection.projectId) {
@@ -635,9 +635,9 @@ export const appConnectionServiceFactory = ({
       const { permission } = await permissionService.getOrgPermission(
         actor.type,
         actor.id,
-        actor.orgId,
+        appConnection.orgId,
         actor.authMethod,
-        appConnection.orgId
+        actor.orgId
       );
 
       ForbiddenError.from(permission).throwUnlessCan(
@@ -805,9 +805,9 @@ export const appConnectionServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor.type,
       actor.id,
-      actor.orgId,
+      appConnection.orgId,
       actor.authMethod,
-      appConnection.orgId
+      actor.orgId
     );
 
     ForbiddenError.from(permission).throwUnlessCan(

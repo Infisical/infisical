@@ -22,13 +22,13 @@ interface HerokuOAuthTokenResponse {
 }
 
 export const getHerokuConnectionListItem = () => {
-  const { CLIENT_ID_HEROKU } = getConfig();
+  const { INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID } = getConfig();
 
   return {
     name: "Heroku" as const,
     app: AppConnection.Heroku as const,
     methods: Object.values(HerokuConnectionMethod) as [HerokuConnectionMethod.AuthToken, HerokuConnectionMethod.OAuth],
-    oauthClientId: CLIENT_ID_HEROKU
+    oauthClientId: INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID
   };
 };
 
@@ -40,12 +40,12 @@ export const refreshHerokuToken = async (
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ): Promise<string> => {
-  const { CLIENT_SECRET_HEROKU } = getConfig();
+  const { INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET } = getConfig();
 
   const payload = {
     grant_type: "refresh_token",
     refresh_token: refreshToken,
-    client_secret: CLIENT_SECRET_HEROKU
+    client_secret: INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET
   };
 
   const { data } = await request.post<{ access_token: string; expires_in: number }>(
@@ -75,7 +75,7 @@ export const refreshHerokuToken = async (
 };
 
 export const exchangeHerokuOAuthCode = async (code: string): Promise<HerokuOAuthTokenResponse> => {
-  const { CLIENT_SECRET_HEROKU } = getConfig();
+  const { INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET } = getConfig();
 
   try {
     const response = await request.post<HerokuOAuthTokenResponse>(
@@ -83,7 +83,7 @@ export const exchangeHerokuOAuthCode = async (code: string): Promise<HerokuOAuth
       {
         grant_type: "authorization_code",
         code,
-        client_secret: CLIENT_SECRET_HEROKU
+        client_secret: INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET
       },
       {
         headers: {

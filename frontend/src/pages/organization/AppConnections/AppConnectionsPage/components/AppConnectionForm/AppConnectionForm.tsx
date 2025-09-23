@@ -143,7 +143,7 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
     case AppConnection.OnePass:
       return <OnePassConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Heroku:
-      return <HerokuConnectionForm onSubmit={onSubmit} />;
+      return <HerokuConnectionForm onSubmit={onSubmit} projectId={projectId} />;
     case AppConnection.Render:
       return <RenderConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Flyio:
@@ -288,7 +288,13 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
     case AppConnection.OnePass:
       return <OnePassConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Heroku:
-      return <HerokuConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      return (
+        <HerokuConnectionForm
+          onSubmit={onSubmit}
+          appConnection={appConnection}
+          projectId={appConnection.projectId}
+        />
+      );
     case AppConnection.Render:
       return <RenderConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Flyio:

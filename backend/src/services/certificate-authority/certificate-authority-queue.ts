@@ -20,6 +20,8 @@ import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal"
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { SubscriberOperationStatus } from "../pki-subscriber/pki-subscriber-types";
+import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
+import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
 import { AzureAdCsCertificateAuthorityFns } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
@@ -50,6 +52,8 @@ type TCertificateAuthorityQueueFactoryDep = {
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   queueService: TQueueServiceFactory;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById" | "updateById">;
+  pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
 };
 
 export type TCertificateAuthorityQueueFactory = ReturnType<typeof certificateAuthorityQueueFactory>;
@@ -68,7 +72,9 @@ export const certificateAuthorityQueueFactory = ({
   externalCertificateAuthorityDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  pkiSubscriberDAL
+  pkiSubscriberDAL,
+  pkiSyncDAL,
+  pkiSyncQueue
 }: TCertificateAuthorityQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -80,7 +86,9 @@ export const certificateAuthorityQueueFactory = ({
     certificateSecretDAL,
     kmsService,
     pkiSubscriberDAL,
-    projectDAL
+    projectDAL,
+    pkiSyncDAL,
+    pkiSyncQueue
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({
@@ -93,7 +101,9 @@ export const certificateAuthorityQueueFactory = ({
     certificateSecretDAL,
     kmsService,
     pkiSubscriberDAL,
-    projectDAL
+    projectDAL,
+    pkiSyncDAL,
+    pkiSyncQueue
   });
 
   // TODO 1: auto-periodic rotation

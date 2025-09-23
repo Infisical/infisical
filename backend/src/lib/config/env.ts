@@ -323,6 +323,10 @@ const envSchema = z
     INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET: zpStr(z.string().optional()),
 
+    // Heroku App Connection
+    INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
+
     // datadog
     SHOULD_USE_DATADOG_TRACER: zodStrBool.default("false"),
     DATADOG_PROFILING_ENABLED: zodStrBool.default("false"),
@@ -433,7 +437,10 @@ const envSchema = z
     INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID:
       data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID || data.INF_APP_CONNECTION_AZURE_CLIENT_ID,
     INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET:
-      data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET
+      data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
+    INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID || data.CLIENT_ID_HEROKU,
+    INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET:
+      data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET || data.CLIENT_SECRET_HEROKU
   }));
 
 export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
@@ -734,6 +741,19 @@ export const overwriteSchema: {
       {
         key: "CLIENT_SECRET_GOOGLE_LOGIN",
         description: "The Client Secret of your GCP OAuth2 application."
+      }
+    ]
+  },
+  heroku: {
+    name: "Heroku",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID",
+        description: "The Client ID of your Heroku application."
+      },
+      {
+        key: "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET",
+        description: "The Client Secret of your Heroku application."
       }
     ]
   }
