@@ -123,7 +123,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
         setTriesLeft(newTriesLeft);
         if (newTriesLeft <= 0) {
           createNotification({
-            text: "User is temporary locked due to multiple failed login attempts. Try again after 5 minutes. You can also reset your password now to proceed.",
+            text: "User is temporary locked due to multiple failed login attempts. Try again later. You can also reset your password now to proceed.",
             type: "error"
           });
           setIsLoading(false);
