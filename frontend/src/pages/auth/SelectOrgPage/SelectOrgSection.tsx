@@ -117,12 +117,28 @@ export const SelectOrganizationSection = () => {
         }
       }
 
-      const { token, isMfaEnabled, mfaMethod } = await selectOrg
-        .mutateAsync({
+      let token;
+      let isMfaEnabled;
+      let mfaMethod;
+
+      try {
+        const result = await selectOrg.mutateAsync({
           organizationId: organization.id,
           userAgent: callbackPort ? UserAgentType.CLI : undefined
-        })
-        .finally(() => setIsInitialOrgCheckLoading(false));
+        });
+        token = result.token;
+        isMfaEnabled = result.isMfaEnabled;
+        mfaMethod = result.mfaMethod;
+      } catch (error: any) {
+        setIsInitialOrgCheckLoading(false);
+        if (error?.response?.status === 403) {
+          await handleLogout();
+          return;
+        }
+        throw error;
+      } finally {
+        setIsInitialOrgCheckLoading(false);
+      }
 
       await router.invalidate();
 

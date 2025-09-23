@@ -5,6 +5,7 @@ import { t } from "i18next";
 
 import Error from "@app/components/basic/Error";
 import TotpRegistration from "@app/components/mfa/TotpRegistration";
+import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Tooltip } from "@app/components/v2";
 import { isInfisicalCloud } from "@app/helpers/platform";
@@ -121,6 +122,10 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
         const newTriesLeft = triesLeft - 1;
         setTriesLeft(newTriesLeft);
         if (newTriesLeft <= 0) {
+          createNotification({
+            text: "User is temporary locked due to multiple failed login attempts. Try again after 5 minutes. You can also reset your password now to proceed.",
+            type: "error"
+          });
           setIsLoading(false);
           SecurityClient.setMfaToken("");
           SecurityClient.setToken("");
@@ -263,7 +268,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
             colorSchema="primary"
             variant="outline_bg"
             isLoading={isLoading}
-            isDisabled={!isCodeComplete}
+            isDisabled={!isCodeComplete || (typeof triesLeft === "number" && triesLeft <= 0)}
           >
             {String(t("mfa.verify"))}
           </Button>
