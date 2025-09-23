@@ -23,6 +23,7 @@ import {
 import { ViewSqlCredentialsRotationGeneratedCredentials } from "./shared";
 import { ViewAwsIamUserSecretRotationGeneratedCredentials } from "./ViewAwsIamUserSecretRotationGeneratedCredentials";
 import { ViewOktaClientSecretRotationGeneratedCredentials } from "./ViewOktaClientSecretRotationGeneratedCredentials";
+import { ViewRedisCredentialsRotationGeneratedCredentials } from "./ViewRedisCredentialsRotationGeneratedCredentials";
 
 type Props = {
   secretRotation?: TSecretRotationV2;
@@ -103,6 +104,13 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.OktaClientSecret:
       Component = (
         <ViewOktaClientSecretRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.RedisCredentials:
+      Component = (
+        <ViewRedisCredentialsRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );

@@ -111,6 +111,7 @@ import { getNetlifyConnectionListItem, validateNetlifyConnectionCredentials } fr
 import { getOktaConnectionListItem, OktaConnectionMethod, validateOktaConnectionCredentials } from "./okta";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
+import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
 import {
@@ -196,7 +197,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getSupabaseConnectionListItem(),
     getDigitalOceanConnectionListItem(),
     getNetlifyConnectionListItem(),
-    getOktaConnectionListItem()
+    getOktaConnectionListItem(),
+    getRedisConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -322,7 +324,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Supabase]: validateSupabaseConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DigitalOcean]: validateDigitalOceanConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Netlify]: validateNetlifyConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Netlify]: validateNetlifyConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -369,6 +372,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case MySqlConnectionMethod.UsernameAndPassword:
     case OracleDBConnectionMethod.UsernameAndPassword:
     case AzureADCSConnectionMethod.UsernamePassword:
+    case RedisConnectionMethod.UsernameAndPassword:
       return "Username & Password";
     case WindmillConnectionMethod.AccessToken:
     case HCVaultConnectionMethod.AccessToken:
@@ -456,7 +460,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Supabase]: platformManagedCredentialsNotSupported,
   [AppConnection.DigitalOcean]: platformManagedCredentialsNotSupported,
   [AppConnection.Netlify]: platformManagedCredentialsNotSupported,
-  [AppConnection.Okta]: platformManagedCredentialsNotSupported
+  [AppConnection.Okta]: platformManagedCredentialsNotSupported,
+  [AppConnection.Redis]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (
