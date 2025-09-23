@@ -77,13 +77,16 @@ export const useUpdateUserProjectFavorites = () => {
 };
 
 export const useVerifyUserTotpRegistration = () => {
-  return useMutation({
+  return useMutation<{ recoveryCodes: string[] }, unknown, { totp: string }>({
     mutationFn: async ({ totp }: { totp: string }) => {
-      await apiRequest.post("/api/v1/user/me/totp/verify", {
-        totp
-      });
+      const { data } = await apiRequest.post<{ recoveryCodes: string[] }>(
+        "/api/v1/user/me/totp/verify",
+        {
+          totp
+        }
+      );
 
-      return {};
+      return data;
     }
   });
 };

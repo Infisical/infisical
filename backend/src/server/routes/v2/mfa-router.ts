@@ -1,5 +1,7 @@
+import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
+import { TUsers } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -7,11 +9,54 @@ import { mfaRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthModeMfaJwtTokenPayload, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
 
+const handleMfaVerification = async (
+  req: FastifyRequest & { mfa: { userId: string; orgId?: string; user: TUsers } },
+  res: FastifyReply,
+  server: FastifyZodProvider,
+  mfaToken: string,
+  mfaMethod: MfaMethod,
+  isRecoveryCode?: boolean
+) => {
+  const userAgent = req.headers["user-agent"];
+  const mfaJwtToken = req.headers.authorization?.replace("Bearer ", "");
+  if (!userAgent) throw new Error("user agent header is required");
+  if (!mfaJwtToken) throw new Error("authorization header is required");
+  const appCfg = getConfig();
+
+  const { user, token } = await server.services.login.verifyMfaToken({
+    userAgent,
+    mfaJwtToken,
+    ip: req.realIp,
+    userId: req.mfa.userId,
+    orgId: req.mfa.orgId,
+    mfaToken,
+    mfaMethod,
+    isRecoveryCode
+  });
+
+  void res.setCookie("jid", token.refresh, {
+    httpOnly: true,
+    path: "/",
+    sameSite: "strict",
+    secure: appCfg.HTTPS_ENABLED
+  });
+
+  addAuthOriginDomainCookie(res);
+
+  return {
+    ...user,
+    token: token.access,
+    protectedKey: user.protectedKey || null,
+    protectedKeyIV: user.protectedKeyIV || null,
+    protectedKeyTag: user.protectedKeyTag || null
+  };
+};
+
 export const registerMfaRouter = async (server: FastifyZodProvider) => {
   const cfg = getConfig();
 
   server.decorateRequest("mfa", null);
-  server.addHook("preParsing", async (req, res) => {
+  server.addHook("preValidation", async (req, res) => {
     const authorizationHeader = req.headers.authorization;
 
     if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
@@ -109,38 +154,36 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      const userAgent = req.headers["user-agent"];
-      const mfaJwtToken = req.headers.authorization?.replace("Bearer ", "");
-      if (!userAgent) throw new Error("user agent header is required");
-      if (!mfaJwtToken) throw new Error("authorization header is required");
-      const appCfg = getConfig();
+      return handleMfaVerification(req, res, server, req.body.mfaToken, req.body.mfaMethod);
+    }
+  });
 
-      const { user, token } = await server.services.login.verifyMfaToken({
-        userAgent,
-        mfaJwtToken,
-        ip: req.realIp,
-        userId: req.mfa.userId,
-        orgId: req.mfa.orgId,
-        mfaToken: req.body.mfaToken,
-        mfaMethod: req.body.mfaMethod
-      });
-
-      void res.setCookie("jid", token.refresh, {
-        httpOnly: true,
-        path: "/",
-        sameSite: "strict",
-        secure: appCfg.HTTPS_ENABLED
-      });
-
-      addAuthOriginDomainCookie(res);
-
-      return {
-        ...user,
-        token: token.access,
-        protectedKey: user.protectedKey || null,
-        protectedKeyIV: user.protectedKeyIV || null,
-        protectedKeyTag: user.protectedKeyTag || null
-      };
+  server.route({
+    url: "/mfa/verify/recovery-code",
+    method: "POST",
+    config: {
+      rateLimit: mfaRateLimit
+    },
+    schema: {
+      body: z.object({
+        recoveryCode: z.string().trim().length(8, "Recovery code must be 8 characters")
+      }),
+      response: {
+        200: z.object({
+          encryptionVersion: z.number().default(1).nullable().optional(),
+          protectedKey: z.string().nullish(),
+          protectedKeyIV: z.string().nullish(),
+          protectedKeyTag: z.string().nullish(),
+          publicKey: z.string().nullish(),
+          encryptedPrivateKey: z.string().nullish(),
+          iv: z.string().nullish(),
+          tag: z.string().nullish(),
+          token: z.string()
+        })
+      }
+    },
+    handler: async (req, res) => {
+      return handleMfaVerification(req, res, server, req.body.recoveryCode, MfaMethod.TOTP, true);
     }
   });
 };

@@ -684,7 +684,8 @@ export const authLoginServiceFactory = ({
     mfaJwtToken,
     ip,
     userAgent,
-    orgId
+    orgId,
+    isRecoveryCode = false
   }: TVerifyMfaTokenDTO) => {
     const appCfg = getConfig();
     const user = await userDAL.findById(userId);
@@ -698,15 +699,20 @@ export const authLoginServiceFactory = ({
           code: mfaToken
         });
       } else if (mfaMethod === MfaMethod.TOTP) {
-        if (mfaToken.length === 6) {
-          await totpService.verifyUserTotp({
-            userId,
-            totp: mfaToken
-          });
-        } else {
+        if (isRecoveryCode) {
           await totpService.verifyWithUserRecoveryCode({
             userId,
             recoveryCode: mfaToken
+          });
+        } else {
+          if (mfaToken.length !== 6) {
+            throw new BadRequestError({
+              message: "Please use a valid TOTP code."
+            });
+          }
+          await totpService.verifyUserTotp({
+            userId,
+            totp: mfaToken
           });
         }
       }
