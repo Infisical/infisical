@@ -1,7 +1,9 @@
 import { Helmet } from "react-helmet";
 
 import { PageHeader } from "@app/components/v2";
+
 import { OverviewSection } from "./components/OverviewSection";
+import { DeleteNamespaceSection } from "./components/DeleteNamespaceSection";
 
 export const SettingsPage = () => {
   return (
@@ -12,6 +14,7 @@ export const SettingsPage = () => {
       <div className="w-full max-w-7xl">
         <PageHeader title="Settings" />
         <OverviewSection />
+        <DeleteNamespaceSection />
       </div>
     </div>
   );

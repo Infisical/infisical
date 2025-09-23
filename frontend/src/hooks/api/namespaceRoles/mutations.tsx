@@ -5,9 +5,9 @@ import { apiRequest } from "@app/config/request";
 import { namespaceRolesQueryKeys } from "./queries";
 import {
   TCreateNamespaceRoleDTO,
-  TUpdateNamespaceRoleDTO,
   TDeleteNamespaceRoleDTO,
-  TNamespaceRole
+  TNamespaceRole,
+  TUpdateNamespaceRoleDTO
 } from "./types";
 
 export const useCreateNamespaceRole = () => {

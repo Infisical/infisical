@@ -115,7 +115,7 @@ export const IdentityTab = withProjectPermission(
     const { mutateAsync: deleteMutateAsync } = useDeleteIdentityFromWorkspace();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-      "linkOrgIdentity",
+      "identity",
       "deleteIdentity",
       "upgradePlan"
     ] as const);

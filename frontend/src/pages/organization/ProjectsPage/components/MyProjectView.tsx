@@ -44,34 +44,37 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import {
-  ProjectListToggle,
-  ProjectListView
-} from "@app/pages/organization/ProjectsPage/components/ProjectListToggle";
+
+import { ResourceListToggle, ResourceListView, ResourceViewMode } from "./ResourcetListToggle";
 
 type Props = {
   onAddNewProject: () => void;
   onUpgradePlan: () => void;
   isAddingProjectsAllowed: boolean;
-  projectListView: ProjectListView;
-  onProjectListViewChange: (value: ProjectListView) => void;
+  resourceListView: ResourceListView;
+  onResourceListViewChange: (value: ResourceListView) => void;
+  resourceViewMode: ResourceViewMode;
+  onResourceViewModeChange: (value: ResourceViewMode) => void;
+  searchFilter: string;
+  onSearchChange: (val: string) => void;
+  hasNamespace?: boolean;
 };
 
 enum ProjectOrderBy {
   Name = "name"
 }
 
-enum ProjectsViewMode {
-  GRID = "grid",
-  LIST = "list"
-}
-
 export const MyProjectView = ({
   onAddNewProject,
   onUpgradePlan,
   isAddingProjectsAllowed,
-  projectListView,
-  onProjectListViewChange
+  resourceListView,
+  onResourceListViewChange,
+  searchFilter = "",
+  onSearchChange: setSearchFilter,
+  hasNamespace,
+  onResourceViewModeChange,
+  resourceViewMode
 }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -101,11 +104,6 @@ export const MyProjectView = ({
 
   const { data: projectFavorites, isPending: isProjectFavoritesLoading } =
     useGetUserProjectFavorites(currentOrg?.id);
-
-  const [projectsViewMode, setProjectsViewMode] = useState<ProjectsViewMode>(
-    (localStorage.getItem("projectsViewMode") as ProjectsViewMode) || ProjectsViewMode.GRID
-  );
-  const [searchFilter, setSearchFilter] = useState("");
 
   const isProjectViewLoading = isWorkspaceLoading || isProjectFavoritesLoading;
   const isWorkspaceEmpty = !isProjectViewLoading && workspaces?.length === 0;
@@ -299,8 +297,8 @@ export const MyProjectView = ({
   let projectsComponents: ReactNode;
 
   if (filteredWorkspaces.length || isProjectViewLoading) {
-    switch (projectsViewMode) {
-      case ProjectsViewMode.GRID:
+    switch (resourceViewMode) {
+      case ResourceViewMode.GRID:
         projectsComponents = (
           <div className="mt-4 grid w-full grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
             {isProjectViewLoading &&
@@ -331,7 +329,7 @@ export const MyProjectView = ({
         );
 
         break;
-      case ProjectsViewMode.LIST:
+      case ResourceViewMode.LIST:
       default:
         projectsComponents = (
           <div className="mt-4 w-full rounded-md">
@@ -377,18 +375,29 @@ export const MyProjectView = ({
   }
 
   return (
-    <div>
-      <div className="flex w-full flex-row">
-        <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
-        <Input
-          className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-          containerClassName="w-full ml-2"
-          placeholder="Search by project name..."
-          value={searchFilter}
-          onChange={(e) => setSearchFilter(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        />
-        <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+    <div className={twMerge(hasNamespace && "mt-12")}>
+      <div className="flex w-full flex-row items-center">
+        {hasNamespace ? (
+          <div className="mb-2 flex-grow">
+            <div className="text-lg font-medium text-white">Organization Projects</div>
+            <div className="text-sm text-mineshaft-300">
+              Projects available across the entire organization
+            </div>
+          </div>
+        ) : (
+          <>
+            <ResourceListToggle value={resourceListView} onChange={onResourceListViewChange} />
+            <Input
+              className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
+              containerClassName="w-full ml-2"
+              placeholder="Search by project name..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+            />
+          </>
+        )}
+        <div className="ml-2 flex h-10 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
           <Tooltip content="Toggle Sort Direction">
             <IconButton
               className="min-w-[2.4rem] border-none hover:bg-mineshaft-600"
@@ -410,7 +419,7 @@ export const MyProjectView = ({
           <DropdownMenuTrigger asChild>
             <div
               className={twMerge(
-                "ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1",
+                "ml-2 flex h-10 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1",
                 isTableFilteredByType && "border-primary-400 text-primary-400"
               )}
             >
@@ -449,36 +458,38 @@ export const MyProjectView = ({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <div className="ml-2 flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-          <IconButton
-            variant="outline_bg"
-            onClick={() => {
-              localStorage.setItem("projectsViewMode", ProjectsViewMode.GRID);
-              setProjectsViewMode(ProjectsViewMode.GRID);
-            }}
-            ariaLabel="grid"
-            size="xs"
-            className={`${
-              projectsViewMode === ProjectsViewMode.GRID ? "bg-mineshaft-500" : "bg-transparent"
-            } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
-          >
-            <FontAwesomeIcon icon={faBorderAll} />
-          </IconButton>
-          <IconButton
-            variant="outline_bg"
-            onClick={() => {
-              localStorage.setItem("projectsViewMode", ProjectsViewMode.LIST);
-              setProjectsViewMode(ProjectsViewMode.LIST);
-            }}
-            ariaLabel="list"
-            size="xs"
-            className={`${
-              projectsViewMode === ProjectsViewMode.LIST ? "bg-mineshaft-500" : "bg-transparent"
-            } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
-          >
-            <FontAwesomeIcon icon={faList} />
-          </IconButton>
-        </div>
+        {!hasNamespace && (
+          <div className="ml-2 flex h-10 gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+            <IconButton
+              variant="outline_bg"
+              onClick={() => {
+                localStorage.setItem("projectsViewMode", ResourceViewMode.GRID);
+                onResourceViewModeChange(ResourceViewMode.GRID);
+              }}
+              ariaLabel="grid"
+              size="xs"
+              className={`${
+                resourceViewMode === ResourceViewMode.GRID ? "bg-mineshaft-500" : "bg-transparent"
+              } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
+            >
+              <FontAwesomeIcon icon={faBorderAll} />
+            </IconButton>
+            <IconButton
+              variant="outline_bg"
+              onClick={() => {
+                localStorage.setItem("projectsViewMode", ResourceViewMode.LIST);
+                onResourceViewModeChange(ResourceViewMode.LIST);
+              }}
+              ariaLabel="list"
+              size="xs"
+              className={`${
+                resourceViewMode === ResourceViewMode.LIST ? "bg-mineshaft-500" : "bg-transparent"
+              } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
+            >
+              <FontAwesomeIcon icon={faList} />
+            </IconButton>
+          </div>
+        )}
         <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
           {(isOldProjectV1Allowed) => (
             <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
@@ -507,7 +518,7 @@ export const MyProjectView = ({
       {!isProjectViewLoading && Boolean(filteredWorkspaces.length) && (
         <Pagination
           className={
-            projectsViewMode === ProjectsViewMode.GRID
+            resourceViewMode === ResourceViewMode.GRID
               ? "col-span-full !justify-start border-transparent bg-transparent pl-2"
               : "rounded-b-md border border-mineshaft-600"
           }

@@ -3,12 +3,12 @@ import { AbilityTuple, MongoAbility } from "@casl/ability";
 import { Can } from "@casl/react";
 
 import { AccessRestrictedBanner } from "@app/components/v2";
-
-import { Tooltip } from "../v2/Tooltip";
 import {
   NamespacePermissionSet,
   useNamespacePermission
 } from "@app/context/NamespacePermissionContext";
+
+import { Tooltip } from "../v2/Tooltip";
 
 export const NamespacePermissionGuardBanner = () => {
   return (

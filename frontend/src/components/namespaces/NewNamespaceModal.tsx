@@ -14,6 +14,7 @@ import {
   TextArea
 } from "@app/components/v2";
 import { useCreateNamespace } from "@app/hooks/api/namespaces";
+import { useNavigate } from "@tanstack/react-router";
 
 const formSchema = z.object({
   name: z
@@ -21,7 +22,10 @@ const formSchema = z.object({
     .trim()
     .min(1, "Required")
     .max(64, "Too long, maximum length is 64 characters")
-    .regex(/^[a-z0-9-_]+$/, "Name must contain only lowercase letters, numbers, hyphens, and underscores"),
+    .regex(
+      /^[a-z0-9-_]+$/,
+      "Name must contain only lowercase letters, numbers, hyphens, and underscores"
+    ),
   description: z
     .string()
     .trim()
@@ -41,12 +45,13 @@ type NewNamespaceFormProps = Pick<NewNamespaceModalProps, "onOpenChange" | "onSu
 
 const NewNamespaceForm = ({ onOpenChange, onSuccess }: NewNamespaceFormProps) => {
   const createNamespace = useCreateNamespace();
+  const navigate = useNavigate();
 
   const {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting, errors }
+    formState: { isSubmitting }
   } = useForm<TAddNamespaceFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -66,6 +71,12 @@ const NewNamespaceForm = ({ onOpenChange, onSuccess }: NewNamespaceFormProps) =>
       reset();
       onOpenChange(false);
       onSuccess?.();
+      navigate({
+        to: "/organization/namespaces/$namespaceName/projects",
+        params: {
+          namespaceName: name
+        }
+      });
     } catch (err) {
       console.error(err);
       createNotification({ text: "Failed to create namespace", type: "error" });
@@ -89,11 +100,7 @@ const NewNamespaceForm = ({ onOpenChange, onSuccess }: NewNamespaceFormProps) =>
               errorText={error?.message}
               isRequired
             >
-              <Input
-                {...field}
-                placeholder="my-namespace"
-                autoComplete="off"
-              />
+              <Input {...field} placeholder="my-namespace" autoComplete="off" />
             </FormControl>
           )}
         />
@@ -123,11 +130,7 @@ const NewNamespaceForm = ({ onOpenChange, onSuccess }: NewNamespaceFormProps) =>
             Cancel
           </Button>
         </ModalClose>
-        <Button
-          isDisabled={isSubmitting}
-          isLoading={isSubmitting}
-          type="submit"
-        >
+        <Button isDisabled={isSubmitting} isLoading={isSubmitting} type="submit">
           Create Namespace
         </Button>
       </div>

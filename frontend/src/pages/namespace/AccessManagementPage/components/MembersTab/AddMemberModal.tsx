@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
@@ -24,19 +25,13 @@ import {
   useOrganization,
   useOrgPermission
 } from "@app/context";
-import {
-  useAddUsersToOrg,
-  useGetOrgUsers,
-  useGetProjectRoles,
-  useGetWorkspaceUsers
-} from "@app/hooks/api";
-import { UsePopUpState } from "@app/hooks/usePopUp";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useGetOrgUsers } from "@app/hooks/api";
+import { namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles";
 import {
   namespaceUserMembershipQueryKeys,
   useAddUsersToNamespace
 } from "@app/hooks/api/namespaceUserMembership";
-import { namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const addMemberFormSchema = z.object({
   orgMemberships: z
@@ -73,7 +68,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const { data: { members = [] } = {} } = useQuery(
     namespaceUserMembershipQueryKeys.list({
-      namespaceName: namespaceName,
+      namespaceName,
       limit: 1000
     })
   );

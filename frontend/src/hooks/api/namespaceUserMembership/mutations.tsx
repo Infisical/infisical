@@ -4,11 +4,11 @@ import { apiRequest } from "@app/config/request";
 
 import { namespaceUserMembershipQueryKeys } from "./queries";
 import {
+  TAddUsersToNamespaceDTO,
+  TDeleteNamespaceMembershipDTO,
   TNamespaceMembership,
   TNamespaceMembershipRole,
-  TUpdateNamespaceMembershipDTO,
-  TDeleteNamespaceMembershipDTO,
-  TAddUsersToNamespaceDTO
+  TUpdateNamespaceMembershipDTO
 } from "./types";
 
 export const useUpdateNamespaceUserMembership = () => {
@@ -70,7 +70,7 @@ export const useAddUsersToNamespace = () => {
       });
       // Also invalidate specific namespace membership lists
       queryClient.invalidateQueries({
-        queryKey: namespaceUserMembershipQueryKeys.listKey({ namespaceName: namespaceName })
+        queryKey: namespaceUserMembershipQueryKeys.listKey({ namespaceName })
       });
     }
   });

@@ -1,6 +1,9 @@
 import { motion } from "framer-motion";
 
-import { NamespacePermissionActions, NamespacePermissionSubjects } from "@app/context/NamespacePermissionContext/types";
+import {
+  NamespacePermissionActions,
+  NamespacePermissionSubjects
+} from "@app/context/NamespacePermissionContext/types";
 import { withNamespacePermission } from "@app/hoc";
 
 import { NamespaceRoleList } from "./components/NamespaceRoleList";

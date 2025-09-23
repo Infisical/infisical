@@ -8,6 +8,8 @@ import {
   NamespacePermissionIdentityActions,
   NamespacePermissionKmipActions,
   NamespacePermissionMachineIdentityAuthTemplateActions,
+  NamespacePermissionMemberActions,
+  NamespacePermissionNamespaceActions,
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
 import { TPermission } from "@app/hooks/api/roles/types";
@@ -27,6 +29,26 @@ const auditLogsPermissionSchema = z
   })
   .optional();
 
+const memberPermissionSchema = z
+  .object({
+    [NamespacePermissionMemberActions.Read]: z.boolean().optional(),
+    [NamespacePermissionMemberActions.Edit]: z.boolean().optional(),
+    [NamespacePermissionMemberActions.Create]: z.boolean().optional(),
+    [NamespacePermissionMemberActions.Delete]: z.boolean().optional(),
+    [NamespacePermissionMemberActions.GrantPrivileges]: z.boolean().optional()
+  })
+  .optional();
+
+const groupPolicyActionSchema = z.object({
+  [NamespacePermissionGroupActions.Read]: z.boolean().optional(),
+  [NamespacePermissionGroupActions.Create]: z.boolean().optional(),
+  [NamespacePermissionGroupActions.Edit]: z.boolean().optional(),
+  [NamespacePermissionGroupActions.Delete]: z.boolean().optional(),
+  [NamespacePermissionGroupActions.GrantPrivileges]: z.boolean().optional(),
+  [NamespacePermissionGroupActions.AddMembers]: z.boolean().optional(),
+  [NamespacePermissionGroupActions.RemoveMembers]: z.boolean().optional()
+});
+
 const appConnectionsPermissionSchema = z
   .object({
     [NamespacePermissionAppConnectionActions.Read]: z.boolean().optional(),
@@ -44,6 +66,13 @@ const kmipPermissionSchema = z
   })
   .optional();
 
+const namespacePermissionSchema = z
+  .object({
+    [NamespacePermissionNamespaceActions.Edit]: z.boolean().optional(),
+    [NamespacePermissionNamespaceActions.Delete]: z.boolean().optional()
+  })
+  .optional();
+
 const identityPermissionSchema = z
   .object({
     [NamespacePermissionIdentityActions.Read]: z.boolean().optional(),
@@ -55,18 +84,6 @@ const identityPermissionSchema = z
     [NamespacePermissionIdentityActions.CreateToken]: z.boolean().optional(),
     [NamespacePermissionIdentityActions.GetToken]: z.boolean().optional(),
     [NamespacePermissionIdentityActions.DeleteToken]: z.boolean().optional()
-  })
-  .optional();
-
-const groupPermissionSchema = z
-  .object({
-    [NamespacePermissionGroupActions.Read]: z.boolean().optional(),
-    [NamespacePermissionGroupActions.Create]: z.boolean().optional(),
-    [NamespacePermissionGroupActions.Edit]: z.boolean().optional(),
-    [NamespacePermissionGroupActions.Delete]: z.boolean().optional(),
-    [NamespacePermissionGroupActions.GrantPrivileges]: z.boolean().optional(),
-    [NamespacePermissionGroupActions.AddMembers]: z.boolean().optional(),
-    [NamespacePermissionGroupActions.RemoveMembers]: z.boolean().optional()
   })
   .optional();
 
@@ -96,8 +113,8 @@ export const formSchema = z.object({
         })
         .optional(),
       "audit-logs": auditLogsPermissionSchema,
-      member: generalPermissionSchema,
-      groups: groupPermissionSchema,
+      member: memberPermissionSchema,
+      groups: groupPolicyActionSchema,
       role: generalPermissionSchema,
       settings: generalPermissionSchema,
       "secret-scanning": generalPermissionSchema,
@@ -105,7 +122,8 @@ export const formSchema = z.object({
       "app-connections": appConnectionsPermissionSchema,
       [NamespacePermissionSubjects.ProjectTemplates]: generalPermissionSchema,
       kmip: kmipPermissionSchema,
-      "machine-identity-auth-template": machineIdentityAuthTemplatePermissionSchema
+      "machine-identity-auth-template": machineIdentityAuthTemplatePermissionSchema,
+      namespace: namespacePermissionSchema
     })
     .optional()
 });

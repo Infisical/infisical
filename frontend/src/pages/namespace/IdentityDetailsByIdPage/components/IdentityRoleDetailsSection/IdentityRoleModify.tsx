@@ -3,6 +3,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faCaretDown, faClock, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { format, formatDistance } from "date-fns";
 import ms from "ms";
 import { twMerge } from "tailwind-merge";
@@ -10,6 +11,7 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
+import { NamespacePermissionCan } from "@app/components/permissions";
 import {
   Button,
   FormControl,
@@ -24,20 +26,18 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
-import { TNamespaceIdentityMembership } from "@app/hooks/api/namespaceIdentity";
 import { useNamespace, useNamespacePermission } from "@app/context";
-import { useQuery } from "@tanstack/react-query";
-import { namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles";
 import {
   NamespacePermissionIdentityActions,
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
+import { NamespaceMembershipRole } from "@app/helpers/roles";
+import { TNamespaceIdentityMembership } from "@app/hooks/api/namespaceIdentity";
 import {
   NamespaceIdentityMembershipTemporaryMode,
   useUpdateNamespaceIdentityMembership
 } from "@app/hooks/api/namespaceIdentityMembership";
-import { NamespacePermissionCan } from "@app/components/permissions";
-import { NamespaceMembershipRole } from "@app/helpers/roles";
+import { namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles";
 
 const roleFormSchema = z.object({
   roles: z
@@ -123,7 +123,7 @@ export const IdentityRoleModify = ({ identityNamespaceMembership }: Props) => {
 
     try {
       await updateIdentityNamespaceRole.mutateAsync({
-        namespaceName: namespaceName,
+        namespaceName,
         identityId: identityNamespaceMembership.identity.id,
         roles: sanitizedRoles
       });

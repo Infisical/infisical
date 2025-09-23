@@ -1,59 +1,51 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { faBorderAll, faList, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { NewNamespaceModal } from "@app/components/namespaces";
 import { NewProjectModal } from "@app/components/projects";
-import { PageHeader } from "@app/components/v2";
+import { IconButton, Input, PageHeader } from "@app/components/v2";
 import { useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { AllProjectView } from "./components/AllProjectView";
-import { MyProjectView } from "./components/MyProjectView";
-import { ProjectListView } from "./components/ProjectListToggle";
-import { NewNamespaceModal } from "@app/components/namespaces";
-import { NamespaceListView } from "./components/NamespacetListToggle";
-import { MyNamespaceView } from "./components/MyNamespaceView";
 import { AllNamespaceView } from "./components/AllNamespaceView";
+import { AllProjectView } from "./components/AllProjectView";
+import { MyNamespaceView } from "./components/MyNamespaceView";
+import { MyProjectView } from "./components/MyProjectView";
+import {
+  ResourceListToggle,
+  ResourceListView,
+  ResourceViewMode
+} from "./components/ResourcetListToggle";
 
+// TODO(namespace): work on breadcrumbs
 export const ProjectsPage = () => {
   const { t } = useTranslation();
+  const [searchFilter, setSearchFilter] = useState("");
 
-  const [projectListView, setProjectListView] = useState<ProjectListView>(() => {
-    const storedView = localStorage.getItem("projectListView");
+  const [resourceListView, setResourceListView] = useState<ResourceListView>(() => {
+    const storedView = localStorage.getItem("resourceListView");
 
     if (
       storedView &&
-      (storedView === ProjectListView.AllProjects || storedView === ProjectListView.MyProjects)
+      (storedView === ResourceListView.AllResources || storedView === ResourceListView.MyResource)
     ) {
       return storedView;
     }
 
-    return ProjectListView.MyProjects;
+    return ResourceListView.MyResource;
   });
 
-  const [namespaceListView, setNamespaceListView] = useState<NamespaceListView>(() => {
-    const storedView = localStorage.getItem("namespaceListView");
+  const [resourceViewMode, onResourceViewModeChange] = useState<ResourceViewMode>(
+    (localStorage.getItem("resourceViewMode") as ResourceViewMode) || ResourceViewMode.GRID
+  );
 
-    if (
-      storedView &&
-      (storedView === NamespaceListView.AllNamespaces ||
-        storedView === NamespaceListView.MyNamespaces)
-    ) {
-      return storedView;
-    }
-
-    return NamespaceListView.MyNamespaces;
-  });
-
-  const handleSetProjectListView = (value: ProjectListView) => {
-    localStorage.setItem("projectListView", value);
-    setProjectListView(value);
-  };
-
-  const handleSetNamespaceListView = (value: NamespaceListView) => {
-    localStorage.setItem("namespaceListView", value);
-    setNamespaceListView(value);
+  const handleSetResourceListView = (value: ResourceListView) => {
+    localStorage.setItem("resourceListView", value);
+    setResourceListView(value);
   };
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -76,67 +68,105 @@ export const ProjectsPage = () => {
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <div className="mb-4 flex flex-col items-start justify-start">
-        {shouldRenderNamespaces && (
-          <PageHeader
-            title={shouldRenderNamespaces ? "Overview" : "Projects"}
-            description={
-              shouldRenderNamespaces
-                ? "Your team's complete security toolkit - workspaces and organization level projects"
-                : "Your team's complete security toolkit - organized and ready when you need them."
-            }
-          />
-        )}
+        <PageHeader
+          title={shouldRenderNamespaces ? "Overview" : "Projects"}
+          description={
+            shouldRenderNamespaces
+              ? "Your team's complete security toolkit - workspaces and organization level projects"
+              : "Your team's complete security toolkit - organized and ready when you need them."
+          }
+        />
       </div>
       {shouldRenderNamespaces && (
-        <div>
-          <div className="mb-2">
-            <div className="text-lg font-medium text-white">Namespaces</div>
-            <div className="text-sm text-mineshaft-300">
-              Organize projects with scoped access control
+        <>
+          <div className="mb-8 flex gap-2">
+            <ResourceListToggle
+              value={resourceListView}
+              onChange={setResourceListView}
+              resourceName="resources"
+            />
+            <Input
+              className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
+              containerClassName="w-full "
+              placeholder="Search by name..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+            />
+            <div className="flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+              <IconButton
+                variant="outline_bg"
+                onClick={() => {
+                  localStorage.setItem("projectsViewMode", ResourceViewMode.GRID);
+                  onResourceViewModeChange(ResourceViewMode.GRID);
+                }}
+                ariaLabel="grid"
+                size="xs"
+                className={`${
+                  resourceViewMode === ResourceViewMode.GRID ? "bg-mineshaft-500" : "bg-transparent"
+                } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
+              >
+                <FontAwesomeIcon icon={faBorderAll} />
+              </IconButton>
+              <IconButton
+                variant="outline_bg"
+                onClick={() => {
+                  localStorage.setItem("projectsViewMode", ResourceViewMode.LIST);
+                  onResourceViewModeChange(ResourceViewMode.LIST);
+                }}
+                ariaLabel="list"
+                size="xs"
+                className={`${
+                  resourceViewMode === ResourceViewMode.LIST ? "bg-mineshaft-500" : "bg-transparent"
+                } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
+              >
+                <FontAwesomeIcon icon={faList} />
+              </IconButton>
             </div>
           </div>
-          {namespaceListView === NamespaceListView.MyNamespaces ? (
-            <MyNamespaceView
-              onAddNewNamespace={() => handlePopUpOpen("addNewNamespace")}
-              onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
-              isAddingNamespacesAllowed={subscription.namespace}
-              namespaceListView={namespaceListView}
-              onNamespaceListViewChange={handleSetNamespaceListView}
-            />
-          ) : (
-            <AllNamespaceView
-              onAddNewNamespace={() => handlePopUpOpen("addNewNamespace")}
-              onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
-              isAddingNamespacesAllowed={subscription.namespace}
-              namespaceListView={namespaceListView}
-              onNamespaceListViewChange={handleSetNamespaceListView}
-            />
-          )}
-        </div>
-      )}
-      {shouldRenderNamespaces && (
-        <div className="mb-2 mt-8">
-          <div className="text-lg font-medium text-white">Organization Projects</div>
-          <div className="text-sm text-mineshaft-300">
-            Projects available across the entire organization
+          <div>
+            {resourceListView === ResourceListView.MyResource ? (
+              <MyNamespaceView
+                onAddNewNamespace={() => handlePopUpOpen("addNewNamespace")}
+                onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
+                isAddingNamespacesAllowed={subscription.namespace}
+                searchFilter={searchFilter}
+                resourceViewMode={resourceViewMode}
+              />
+            ) : (
+              <AllNamespaceView
+                onAddNewNamespace={() => handlePopUpOpen("addNewNamespace")}
+                onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
+                isAddingNamespacesAllowed={subscription.namespace}
+                searchFilter={searchFilter}
+              />
+            )}
           </div>
-        </div>
+        </>
       )}
-      {projectListView === ProjectListView.MyProjects ? (
+      {resourceListView === ResourceListView.MyResource ? (
         <MyProjectView
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
           onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
-          projectListView={projectListView}
-          onProjectListViewChange={handleSetProjectListView}
+          resourceListView={resourceListView}
+          onResourceListViewChange={handleSetResourceListView}
+          searchFilter={searchFilter}
+          onSearchChange={setSearchFilter}
+          hasNamespace={shouldRenderNamespaces}
+          resourceViewMode={resourceViewMode}
+          onResourceViewModeChange={onResourceViewModeChange}
         />
       ) : (
         <AllProjectView
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
           onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
-          projectListView={projectListView}
-          onProjectListViewChange={handleSetProjectListView}
+          resourceListView={resourceListView}
+          onResourceListViewChange={handleSetResourceListView}
+          searchFilter={searchFilter}
+          onSearchChange={setSearchFilter}
+          hasNamespace={shouldRenderNamespaces}
         />
       )}
       <NewProjectModal

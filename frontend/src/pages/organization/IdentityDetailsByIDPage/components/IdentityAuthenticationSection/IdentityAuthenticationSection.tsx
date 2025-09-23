@@ -1,16 +1,16 @@
 import { faCog, faLock, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { OrgPermissionCan, VariablePermissionCan } from "@app/components/permissions";
+import { VariablePermissionCan } from "@app/components/permissions";
 import { Button, Tooltip } from "@app/components/v2";
 import {
   NamespacePermissionSubjects,
   OrgPermissionIdentityActions,
-  OrgPermissionSubjects
+  OrgPermissionSubjects,
+  NamespacePermissionIdentityActions
 } from "@app/context";
 import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { NamespacePermissionIdentityActions } from "@app/context/NamespacePermissionContext/types";
 
 type Props = {
   identity?: {

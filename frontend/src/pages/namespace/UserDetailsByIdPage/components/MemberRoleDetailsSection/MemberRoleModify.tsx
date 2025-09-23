@@ -3,6 +3,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faCaretDown, faClock, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { format, formatDistance } from "date-fns";
 import ms from "ms";
 import { twMerge } from "tailwind-merge";
@@ -10,6 +11,7 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
+import { NamespacePermissionCan } from "@app/components/permissions";
 import {
   Button,
   FormControl,
@@ -25,21 +27,19 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { useNamespace, useNamespacePermission, useSubscription } from "@app/context";
-import {} from "@app/hooks/api";
-import {
-  TNamespaceMembership,
-  TNamespaceUser,
-  useUpdateNamespaceUserMembership
-} from "@app/hooks/api/namespaceUserMembership";
-import { useQuery } from "@tanstack/react-query";
-import { namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles";
 import {
   NamespacePermissionActions,
+  NamespacePermissionMemberActions,
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
-import { NamespaceUserMembershipTemporaryMode } from "@app/hooks/api/namespaceUserMembership/types";
 import { isCustomNamespaceRole, NamespaceMembershipRole } from "@app/helpers/roles";
-import { NamespacePermissionCan } from "@app/components/permissions";
+import {} from "@app/hooks/api";
+import { namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles";
+import {
+  TNamespaceMembership,
+  useUpdateNamespaceUserMembership
+} from "@app/hooks/api/namespaceUserMembership";
+import { NamespaceUserMembershipTemporaryMode } from "@app/hooks/api/namespaceUserMembership/types";
 
 const roleFormSchema = z.object({
   roles: z
@@ -77,7 +77,7 @@ export const MemberRoleModify = ({ namespaceMember, onOpenUpgradeModal }: Props)
   );
   const { permission } = useNamespacePermission();
   const isMemberEditDisabled = permission.cannot(
-    NamespacePermissionActions.Edit,
+    NamespacePermissionMemberActions.Edit,
     NamespacePermissionSubjects.Member
   );
 
@@ -136,7 +136,7 @@ export const MemberRoleModify = ({ namespaceMember, onOpenUpgradeModal }: Props)
 
     try {
       await updateMembershipRole.mutateAsync({
-        namespaceName: namespaceName,
+        namespaceName,
         membershipId: namespaceMember.id,
         roles: sanitizedRoles
       });

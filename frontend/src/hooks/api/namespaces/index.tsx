@@ -1,12 +1,12 @@
-export { useCreateNamespace, useUpdateNamespace, useDeleteNamespace } from "./mutation";
+export { useCreateNamespace, useDeleteNamespace, useUpdateNamespace } from "./mutation";
 export { namespacesQueryKeys } from "./queries";
-export { SearchNamespaceSortBy } from "./types";
 export type {
-  TNamespace,
   TCreateNamespaceDTO,
-  TUpdateNamespaceDTO,
   TDeleteNamespaceDTO,
   TGetNamespaceDTO,
   TListNamespacesDTO,
-  TSearchNamespacesDTO
+  TNamespace,
+  TSearchNamespacesDTO,
+  TUpdateNamespaceDTO
 } from "./types";
+export { SearchNamespaceSortBy } from "./types";

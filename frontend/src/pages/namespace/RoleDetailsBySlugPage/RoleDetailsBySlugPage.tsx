@@ -2,8 +2,8 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { faCopy, faEllipsisV } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { NamespacePermissionCan } from "@app/components/permissions";
@@ -16,12 +16,12 @@ import {
   DropdownMenuTrigger,
   PageHeader
 } from "@app/components/v2";
+import { useNamespace } from "@app/context";
 import {
   NamespacePermissionActions,
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
-import { useNamespace } from "@app/context";
-import { useDeleteNamespaceRole, namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles";
+import { namespaceRolesQueryKeys, useDeleteNamespaceRole } from "@app/hooks/api/namespaceRoles";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import {

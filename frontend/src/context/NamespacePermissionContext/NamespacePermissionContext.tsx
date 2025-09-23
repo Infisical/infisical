@@ -1,12 +1,12 @@
 import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { unpackRules } from "@casl/ability/extra";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
 
-import { conditionsMatcher } from "@app/hooks/api/roles/queries";
 import { namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles/queries";
+import { conditionsMatcher } from "@app/hooks/api/roles/queries";
 
 import { NamespacePermissionSet } from "./types";
-import { useParams } from "@tanstack/react-router";
 
 export const useNamespacePermission = () => {
   const namespaceName = useParams({

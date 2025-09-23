@@ -1,17 +1,17 @@
 export {
-  useUpdateNamespaceUserMembership,
+  useAddUsersToNamespace,
   useDeleteNamespaceUserMembership,
-  useAddUsersToNamespace
+  useUpdateNamespaceUserMembership
 } from "./mutations";
 export { namespaceUserMembershipQueryKeys } from "./queries";
 export type {
-  TNamespaceUser,
-  TNamespaceMembershipRole,
-  TNamespaceMembership,
-  TListNamespaceMembershipsDTO,
-  TGetNamespaceMembershipByIdDTO,
-  TSearchNamespaceMembershipsDTO,
-  TUpdateNamespaceMembershipDTO,
+  TAddUsersToNamespaceDTO,
   TDeleteNamespaceMembershipDTO,
-  TAddUsersToNamespaceDTO
+  TGetNamespaceMembershipByIdDTO,
+  TListNamespaceMembershipsDTO,
+  TNamespaceMembership,
+  TNamespaceMembershipRole,
+  TNamespaceUser,
+  TSearchNamespaceMembershipsDTO,
+  TUpdateNamespaceMembershipDTO
 } from "./types";

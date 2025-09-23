@@ -5,21 +5,9 @@ import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  FormControl,
-  Input,
-  Modal,
-  ModalContent,
-  TextArea
-} from "@app/components/v2";
+import { Button, FormControl, Input, Modal, ModalContent, TextArea } from "@app/components/v2";
 import { useNamespace } from "@app/context";
-import {
-  useCreateNamespaceRole,
-  namespaceRolesQueryKeys
-} from "@app/hooks/api/namespaceRoles";
-
-import { formRolePermission2API } from "./NamespaceRoleModifySection.utils";
+import { namespaceRolesQueryKeys, useCreateNamespaceRole } from "@app/hooks/api/namespaceRoles";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -139,27 +127,16 @@ export const DuplicateNamespaceRoleModal = ({ isOpen, onOpenChange, roleSlug }: 
             control={control}
             name="description"
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Description"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
+              <FormControl label="Description" isError={Boolean(error)} errorText={error?.message}>
                 <TextArea {...field} placeholder="Enter role description" />
               </FormControl>
             )}
           />
           <div className="flex items-center justify-end space-x-2">
-            <Button
-              variant="plain"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button variant="plain" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              isDisabled={isSubmitting}
-              isLoading={isCreatingRole}
-            >
+            <Button type="submit" isDisabled={isSubmitting} isLoading={isCreatingRole}>
               Duplicate Role
             </Button>
           </div>

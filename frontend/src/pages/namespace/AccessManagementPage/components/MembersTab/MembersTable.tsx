@@ -1,30 +1,25 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   faArrowDown,
   faArrowUp,
-  faCheckCircle,
-  faChevronRight,
   faClock,
   faEllipsisV,
-  faFilter,
   faMagnifyingGlass,
   faSearch,
   faUsers,
   faUserXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
+import { NamespacePermissionCan } from "@app/components/permissions";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
-  DropdownSubMenu,
-  DropdownSubMenuContent,
-  DropdownSubMenuTrigger,
   EmptyState,
   HoverCard,
   HoverCardContent,
@@ -45,20 +40,18 @@ import {
 } from "@app/components/v2";
 import { useNamespace, useUser } from "@app/context";
 import {
+  NamespacePermissionActions,
+  NamespacePermissionSubjects
+} from "@app/context/NamespacePermissionContext/types";
+import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { UsePopUpState } from "@app/hooks/usePopUp";
-import { useQuery } from "@tanstack/react-query";
 import { namespaceUserMembershipQueryKeys } from "@app/hooks/api/namespaceUserMembership";
-import { NamespacePermissionCan } from "@app/components/permissions";
-import {
-  NamespacePermissionActions,
-  NamespacePermissionSubjects
-} from "@app/context/NamespacePermissionContext/types";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
@@ -74,17 +67,10 @@ enum MembersOrderBy {
   Email = "email"
 }
 
-type Filter = {
-  roles: string[];
-};
-
 export const MembersTable = ({ handlePopUpOpen }: Props) => {
   const { namespaceName } = useNamespace();
   const { user } = useUser();
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<Filter>({
-    roles: []
-  });
   // const filterRoles = useMemo(() => filter.roles, [filter.roles]);
 
   const userId = user?.id || "";
@@ -113,7 +99,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
 
   const { data, isPending: isMembersLoading } = useQuery(
     namespaceUserMembershipQueryKeys.list({
-      namespaceName: namespaceName,
+      namespaceName,
       limit: 10000,
       offset
     })
@@ -171,25 +157,10 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
     setOrderDirection(OrderByDirection.ASC);
   };
 
-  const isTableFiltered = Boolean(filter.roles.length);
-
-  const handleRoleToggle = useCallback(
-    (roleSlug: string) =>
-      setFilter((state) => {
-        const roles = state.roles || [];
-
-        if (roles.includes(roleSlug)) {
-          return { ...state, roles: roles.filter((role) => role !== roleSlug) };
-        }
-        return { ...state, roles: [...roles, roleSlug] };
-      }),
-    []
-  );
-
   return (
     <div>
       <div className="flex gap-2">
-        {/*<DropdownMenu>
+        {/* <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
               ariaLabel="Filter Users"
@@ -238,7 +209,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
               </DropdownSubMenuContent>
             </DropdownSubMenu>
           </DropdownMenuContent>
-        </DropdownMenu>*/}
+        </DropdownMenu> */}
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}

@@ -7,9 +7,9 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useNamespace } from "@app/context";
 import {
+  namespaceRolesQueryKeys,
   useCreateNamespaceRole,
-  useUpdateNamespaceRole,
-  namespaceRolesQueryKeys
+  useUpdateNamespaceRole
 } from "@app/hooks/api/namespaceRoles";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -35,8 +35,8 @@ export const NamespaceRoleModal = ({ popUp, handlePopUpToggle }: Props) => {
     enabled: Boolean(roleSlug)
   });
 
-  const { mutateAsync: createRole, isPending: isCreatingRole } = useCreateNamespaceRole();
-  const { mutateAsync: updateRole, isPending: isUpdatingRole } = useUpdateNamespaceRole();
+  const { mutateAsync: createRole } = useCreateNamespaceRole();
+  const { mutateAsync: updateRole } = useUpdateNamespaceRole();
 
   const {
     control,

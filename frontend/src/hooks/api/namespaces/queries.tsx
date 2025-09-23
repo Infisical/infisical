@@ -2,7 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { TNamespace, TListNamespacesDTO, TGetNamespaceDTO, TSearchNamespacesDTO } from "./types";
+import { TGetNamespaceDTO, TListNamespacesDTO, TNamespace, TSearchNamespacesDTO } from "./types";
 
 export const namespacesQueryKeys = {
   allKey: () => ["namespaces"],

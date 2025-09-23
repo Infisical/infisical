@@ -15,6 +15,11 @@ export enum NamespacePermissionActions {
   Delete = "delete"
 }
 
+export enum NamespacePermissionNamespaceActions {
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum NamespacePermissionAppConnectionActions {
   Read = "read",
   Create = "create",
@@ -96,7 +101,8 @@ export enum NamespacePermissionSubjects {
   AuditLogs = "audit-logs",
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
-  Gateway = "gateway"
+  Gateway = "gateway",
+  Namespace = "namespace"
 }
 
 export enum NamespacePermissionMemberActions {
@@ -128,6 +134,7 @@ export type NamespacePermissionSet =
   | [NamespacePermissionAuditLogsActions, NamespacePermissionSubjects.AuditLogs]
   | [NamespacePermissionActions, NamespacePermissionSubjects.ProjectTemplates]
   | [NamespacePermissionGatewayActions, NamespacePermissionSubjects.Gateway]
+  | [NamespacePermissionNamespaceActions, NamespacePermissionSubjects.Namespace]
   | [
       NamespacePermissionAppConnectionActions,
       (
@@ -167,7 +174,7 @@ export const NamespacePermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(NamespacePermissionSubjects.Member).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(NamespacePermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(NamespacePermissionMemberActions).describe(
       "Describe what action an entity can take."
     )
   }),
@@ -180,13 +187,13 @@ export const NamespacePermissionSchema = z.discriminatedUnion("subject", [
 
   z.object({
     subject: z.literal(NamespacePermissionSubjects.Groups).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(NamespacePermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(NamespacePermissionGroupActions).describe(
       "Describe what action an entity can take."
     )
   }),
   z.object({
     subject: z.literal(NamespacePermissionSubjects.Identity).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(NamespacePermissionActions).describe(
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(NamespacePermissionIdentityActions).describe(
       "Describe what action an entity can take."
     )
   }),
@@ -231,6 +238,12 @@ export const NamespacePermissionSchema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(NamespacePermissionSubjects.Gateway).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(NamespacePermissionGatewayActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(NamespacePermissionSubjects.Namespace).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(NamespacePermissionNamespaceActions).describe(
       "Describe what action an entity can take."
     )
   })

@@ -1,34 +1,33 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
+import { NamespacePermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, Modal, ModalContent, PageHeader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
-  OrgPermissionIdentityActions,
-  OrgPermissionSubjects,
+  NamespacePermissionSubjects,
   useNamespace,
-  useOrganization
+  NamespacePermissionIdentityActions
 } from "@app/context";
-import { usePopUp } from "@app/hooks/usePopUp";
-import { ViewIdentityAuthModal } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityAuthModal";
-import { OrgAccessControlTabSections } from "@app/types/org";
-
-import { IdentityDetailsSection } from "./components/IdentityDetailsSection";
-import { useQuery } from "@tanstack/react-query";
 import {
   namespaceIdentityQueryKeys,
   useDeleteNamespaceIdentity
 } from "@app/hooks/api/namespaceIdentity";
-import { NamespaceIdentityModal } from "../AccessManagementPage/components/IdentityTab/components/NamespaceIdentityModal";
+import { usePopUp } from "@app/hooks/usePopUp";
+import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
 import {
   IdentityAuthenticationSection,
   IdentityProjectsSection
 } from "@app/pages/organization/IdentityDetailsByIDPage/components";
-import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
+import { ViewIdentityAuthModal } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityAuthModal";
+import { OrgAccessControlTabSections } from "@app/types/org";
+
+import { NamespaceIdentityModal } from "../AccessManagementPage/components/IdentityTab/components/NamespaceIdentityModal";
+import { IdentityDetailsSection } from "./components/IdentityDetailsSection";
 import { IdentityRoleDetailsSection } from "./components/IdentityRoleDetailsSection";
 
 const Page = () => {
@@ -41,7 +40,7 @@ const Page = () => {
   const { data, isPending: isMembershipDetailsLoading } = useQuery(
     namespaceIdentityQueryKeys.detail({
       identityId,
-      namespaceName: namespaceName
+      namespaceName
     })
   );
   const { mutateAsync: deleteIdentity } = useDeleteNamespaceIdentity();
@@ -58,7 +57,7 @@ const Page = () => {
     try {
       await deleteIdentity({
         identityId: id,
-        namespaceName: namespaceName
+        namespaceName
       });
 
       createNotification({
@@ -170,13 +169,13 @@ export const IdentityDetailsByIdPage = () => {
         <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <OrgPermissionCan
+      <NamespacePermissionCan
         passThrough={false}
-        I={OrgPermissionIdentityActions.Read}
-        a={OrgPermissionSubjects.Identity}
+        I={NamespacePermissionIdentityActions.Read}
+        a={NamespacePermissionSubjects.Identity}
       >
         <Page />
-      </OrgPermissionCan>
+      </NamespacePermissionCan>
     </>
   );
 };

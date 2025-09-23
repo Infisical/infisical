@@ -1,2 +1,2 @@
-export { NamespaceLayout } from "./NamespaceLayout";
 export { NamespaceSidebar } from "./components/NamespaceSidebar";
+export { NamespaceLayout } from "./NamespaceLayout";

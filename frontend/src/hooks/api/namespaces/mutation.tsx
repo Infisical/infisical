@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { namespacesQueryKeys } from "./queries";
-import { TCreateNamespaceDTO, TUpdateNamespaceDTO, TDeleteNamespaceDTO, TNamespace } from "./types";
+import { TCreateNamespaceDTO, TDeleteNamespaceDTO, TNamespace, TUpdateNamespaceDTO } from "./types";
 
 export const useCreateNamespace = () => {
   const queryClient = useQueryClient();

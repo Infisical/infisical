@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { z } from "zod";
 
@@ -16,13 +17,12 @@ import {
 } from "@app/components/v2";
 import { useNamespace, useOrganization } from "@app/context";
 import { useGetIdentityMembershipOrgs } from "@app/hooks/api";
-import { UsePopUpState } from "@app/hooks/usePopUp";
-import { useQuery } from "@tanstack/react-query";
 import {
   namespaceIdentityMembershipQueryKeys,
   useCreateNamespaceIdentityMembership
 } from "@app/hooks/api/namespaceIdentityMembership";
 import { namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
   identity: z.object({ name: z.string(), id: z.string() }),
@@ -52,7 +52,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: identityMembershipsData } = useQuery(
     namespaceIdentityMembershipQueryKeys.list({
       limit: 10000,
-      namespaceName: namespaceName
+      namespaceName
     })
   );
   const identityMemberships = identityMembershipsData?.identityMemberships;
@@ -90,7 +90,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   const onFormSubmit = async ({ identity, role }: FormData) => {
     try {
       await addIdentityToNamespaceMutateAsync({
-        namespaceName: namespaceName,
+        namespaceName,
         identityId: identity.id,
         roles: [{ role: role.slug, isTemporary: false }]
       });

@@ -42,28 +42,31 @@ import {
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useOrgAdminAccessProject, useSearchProjects } from "@app/hooks/api";
 import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
-import {
-  ProjectListToggle,
-  ProjectListView
-} from "@app/pages/organization/ProjectsPage/components/ProjectListToggle";
+
+import { ResourceListToggle, ResourceListView } from "./ResourcetListToggle";
 
 type Props = {
   onAddNewProject: () => void;
   onUpgradePlan: () => void;
   isAddingProjectsAllowed: boolean;
-  projectListView: ProjectListView;
-  onProjectListViewChange: (value: ProjectListView) => void;
+  resourceListView: ResourceListView;
+  onResourceListViewChange: (value: ResourceListView) => void;
+  searchFilter: string;
+  onSearchChange: (val: string) => void;
+  hasNamespace?: boolean;
 };
 
 export const AllProjectView = ({
   onAddNewProject,
   onUpgradePlan,
   isAddingProjectsAllowed,
-  projectListView,
-  onProjectListViewChange
+  resourceListView,
+  onResourceListViewChange,
+  searchFilter = "",
+  onSearchChange: setSearchFilter,
+  hasNamespace
 }: Props) => {
   const navigate = useNavigate();
-  const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter);
   const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType>();
   const {
@@ -132,18 +135,29 @@ export const AllProjectView = ({
     setProjectTypeFilter((state) => (state === el ? undefined : el));
 
   return (
-    <div>
-      <div className="flex w-full flex-row">
-        <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
-        <Input
-          className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-          containerClassName="w-full ml-2"
-          placeholder="Search by project name..."
-          value={searchFilter}
-          onChange={(e) => setSearchFilter(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        />
-        <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+    <div className={twMerge(hasNamespace && "mt-12")}>
+      <div className="flex w-full flex-row items-center">
+        {hasNamespace ? (
+          <div className="mb-2 flex-grow">
+            <div className="text-lg font-medium text-white">Organization Projects</div>
+            <div className="text-sm text-mineshaft-300">
+              Projects available across the entire organization
+            </div>
+          </div>
+        ) : (
+          <>
+            <ResourceListToggle value={resourceListView} onChange={onResourceListViewChange} />
+            <Input
+              className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
+              containerClassName="w-full ml-2"
+              placeholder="Search by project name..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+            />
+          </>
+        )}
+        <div className="ml-2 flex h-10 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
           <Tooltip content="Toggle Sort Direction">
             <IconButton
               className="min-w-[2.4rem] border-none hover:bg-mineshaft-600"
@@ -161,7 +175,7 @@ export const AllProjectView = ({
           <DropdownMenuTrigger asChild>
             <div
               className={twMerge(
-                "ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1",
+                "ml-2 flex h-10 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1",
                 projectTypeFilter && "border-primary-400 text-primary-400"
               )}
             >
@@ -200,29 +214,31 @@ export const AllProjectView = ({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <div className="ml-2 flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-          <Tooltip content="Disabled across All Project view.">
-            <div className="flex cursor-not-allowed items-center justify-center">
-              <IconButton
-                variant="outline_bg"
-                ariaLabel="grid"
-                size="xs"
-                isDisabled
-                className="pointer-events-none min-w-[2.4rem] border-none bg-transparent hover:bg-mineshaft-600"
-              >
-                <FontAwesomeIcon icon={faBorderAll} />
-              </IconButton>
-            </div>
-          </Tooltip>
-          <IconButton
-            variant="outline_bg"
-            ariaLabel="list"
-            size="xs"
-            className="min-w-[2.4rem] border-none bg-mineshaft-500 hover:bg-mineshaft-600"
-          >
-            <FontAwesomeIcon icon={faList} />
-          </IconButton>
-        </div>
+        {!hasNamespace && (
+          <div className="ml-2 flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+            <Tooltip content="Disabled across All Project view.">
+              <div className="flex cursor-not-allowed items-center justify-center">
+                <IconButton
+                  variant="outline_bg"
+                  ariaLabel="grid"
+                  size="xs"
+                  isDisabled
+                  className="pointer-events-none min-w-[2.4rem] border-none bg-transparent hover:bg-mineshaft-600"
+                >
+                  <FontAwesomeIcon icon={faBorderAll} />
+                </IconButton>
+              </div>
+            </Tooltip>
+            <IconButton
+              variant="outline_bg"
+              ariaLabel="list"
+              size="xs"
+              className="min-w-[2.4rem] border-none bg-mineshaft-500 hover:bg-mineshaft-600"
+            >
+              <FontAwesomeIcon icon={faList} />
+            </IconButton>
+          </div>
+        )}
         <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
           {(isOldProjectPermissionAllowed) => (
             <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>

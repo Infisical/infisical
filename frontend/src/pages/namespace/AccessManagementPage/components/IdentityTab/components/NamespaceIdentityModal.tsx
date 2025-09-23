@@ -2,6 +2,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
@@ -18,14 +19,13 @@ import {
 import { useNamespace, useOrganization } from "@app/context";
 import { NamespaceMembershipRole } from "@app/helpers/roles";
 import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
-import { useQuery } from "@tanstack/react-query";
-import { namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles";
 import {
   namespaceIdentityQueryKeys,
   useCreateNamespaceIdentity,
   useUpdateNamespaceIdentity
 } from "@app/hooks/api/namespaceIdentity";
 import { useUpdateNamespaceIdentityMembership } from "@app/hooks/api/namespaceIdentityMembership";
+import { namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles";
 
 const schema = z
   .object({
@@ -59,7 +59,7 @@ export const NamespaceIdentityModal = ({ handlePopUpToggle, identityId }: Props)
   const { data: identityDetails } = useQuery({
     ...namespaceIdentityQueryKeys.detail({
       identityId: identityId as string,
-      namespaceName: namespaceName
+      namespaceName
     }),
     enabled: Boolean(identityId)
   });
@@ -105,7 +105,7 @@ export const NamespaceIdentityModal = ({ handlePopUpToggle, identityId }: Props)
           name,
           hasDeleteProtection,
           metadata,
-          namespaceName: namespaceName
+          namespaceName
         });
 
         handlePopUpToggle();
@@ -117,11 +117,11 @@ export const NamespaceIdentityModal = ({ handlePopUpToggle, identityId }: Props)
           name,
           hasDeleteProtection,
           metadata,
-          namespaceName: namespaceName
+          namespaceName
         });
         await updateNamespaceIdentityMembership({
           identityId: identity.id,
-          namespaceName: namespaceName,
+          namespaceName,
           roles: [{ role: role.slug, isTemporary: false }]
         });
 

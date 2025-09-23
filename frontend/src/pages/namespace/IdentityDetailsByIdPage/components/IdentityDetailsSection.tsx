@@ -7,9 +7,11 @@ import {
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
+import { NamespacePermissionCan } from "@app/components/permissions";
 import {
   Button,
   DropdownMenu,
@@ -20,17 +22,15 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
-import { useTimedReset } from "@app/hooks";
-import { identityAuthToNameMap } from "@app/hooks/api";
-import { UsePopUpState } from "@app/hooks/usePopUp";
-import { NamespacePermissionCan } from "@app/components/permissions";
+import { useNamespace } from "@app/context";
 import {
   NamespacePermissionIdentityActions,
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
-import { useQuery } from "@tanstack/react-query";
+import { useTimedReset } from "@app/hooks";
+import { identityAuthToNameMap } from "@app/hooks/api";
 import { namespaceIdentityQueryKeys } from "@app/hooks/api/namespaceIdentity";
-import { useNamespace } from "@app/context";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   identityId: string;
@@ -48,7 +48,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
   const { data } = useQuery(
     namespaceIdentityQueryKeys.detail({
       identityId,
-      namespaceName: namespaceName
+      namespaceName
     })
   );
   return data ? (

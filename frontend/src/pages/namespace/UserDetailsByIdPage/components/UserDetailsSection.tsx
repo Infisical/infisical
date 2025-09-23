@@ -7,19 +7,19 @@ import {
   faPencil
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 
+import { NamespacePermissionCan } from "@app/components/permissions";
 import { IconButton, Tag, Tooltip } from "@app/components/v2";
 import { useNamespace, useUser } from "@app/context";
-import { useTimedReset } from "@app/hooks";
-import { UsePopUpState } from "@app/hooks/usePopUp";
-import { useQuery } from "@tanstack/react-query";
-import { namespaceUserMembershipQueryKeys } from "@app/hooks/api/namespaceUserMembership";
-import { NamespacePermissionCan } from "@app/components/permissions";
 import {
   NamespacePermissionActions,
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
+import { useTimedReset } from "@app/hooks";
+import { namespaceUserMembershipQueryKeys } from "@app/hooks/api/namespaceUserMembership";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   membershipId: string;
@@ -39,7 +39,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
   const { data: membership } = useQuery(
     namespaceUserMembershipQueryKeys.detail({
       membershipId,
-      namespaceName: namespaceName
+      namespaceName
     })
   );
 

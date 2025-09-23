@@ -4,7 +4,9 @@ import { NamespaceMembershipRole, TNamespaces } from "@app/db/schemas";
 import { OrgPermissionNamespaceActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
 
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TNamespaceMembershipRoleDALFactory } from "../namespace-role/namespace-membership-role-dal";
 import { TNamespaceUserMembershipDALFactory } from "../namespace-user-membership/namespace-user-membership-dal";
 import { NamespacePermissionActions, NamespacePermissionSubjects } from "../permission/namespace-permission";
@@ -23,6 +25,7 @@ type TNamespaceServiceFactoryDep = {
   namespaceMembershipRoleDAL: Pick<TNamespaceMembershipRoleDALFactory, "create">;
   namespaceUserMembershipDAL: Pick<TNamespaceUserMembershipDALFactory, "create">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getNamespacePermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TNamespaceServiceFactory = {
@@ -40,7 +43,8 @@ export const namespaceServiceFactory = ({
   namespaceDAL,
   permissionService,
   namespaceUserMembershipDAL,
-  namespaceMembershipRoleDAL
+  namespaceMembershipRoleDAL,
+  licenseService
 }: TNamespaceServiceFactoryDep): TNamespaceServiceFactory => {
   const createNamespace: TNamespaceServiceFactory["createNamespace"] = async ({ permission, name, description }) => {
     const { permission: orgPermission, membership } = await permissionService.getOrgPermission(
@@ -54,6 +58,13 @@ export const namespaceServiceFactory = ({
       OrgPermissionNamespaceActions.Create,
       OrgPermissionSubjects.Namespace
     );
+
+    const plan = await licenseService.getPlan(permission.orgId);
+    if (!plan.namespace) {
+      throw new BadRequestError({
+        message: "Failed to create namespace due to plan restriction. Upgrade plan to create namespace."
+      });
+    }
 
     const existingNamespace = await namespaceDAL.findOne({ name, orgId: permission.orgId });
     if (existingNamespace) {
@@ -72,7 +83,8 @@ export const namespaceServiceFactory = ({
       const namespaceMembership = await namespaceUserMembershipDAL.create(
         {
           namespaceId: newNamespace.id,
-          orgUserMembershipId: membership.id
+          orgUserMembershipId: permission.type === ActorType.USER ? membership.id : null,
+          orgIdentityMembershipId: permission.type === ActorType.IDENTITY ? membership.id : null
         },
         tx
       );
@@ -111,6 +123,13 @@ export const namespaceServiceFactory = ({
       NamespacePermissionActions.Edit,
       NamespacePermissionSubjects.Settings
     );
+
+    const plan = await licenseService.getPlan(permission.orgId);
+    if (!plan.namespace) {
+      throw new BadRequestError({
+        message: "Failed to update namespace due to plan restriction. Upgrade plan to update namespace."
+      });
+    }
 
     if (newName && newName !== name) {
       const namespaceWithNewName = await namespaceDAL.findOne({ name: newName, orgId: permission.orgId });

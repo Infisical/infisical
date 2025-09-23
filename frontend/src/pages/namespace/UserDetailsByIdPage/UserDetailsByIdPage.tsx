@@ -1,10 +1,12 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
+import { NamespacePermissionCan } from "@app/components/permissions";
 import {
   Button,
   DeleteActionModal,
@@ -17,23 +19,22 @@ import {
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useNamespace, useUser } from "@app/context";
+import {
+  NamespacePermissionActions,
+  NamespacePermissionMemberActions,
+  NamespacePermissionSubjects
+} from "@app/context/NamespacePermissionContext/types";
 import { withNamespacePermission } from "@app/hoc";
 import {} from "@app/hooks/api";
-import { usePopUp } from "@app/hooks/usePopUp";
-import { OrgAccessControlTabSections } from "@app/types/org";
-
-import { UserDetailsSection } from "./components";
-import { MemberRoleDetailsSection } from "./components/MemberRoleDetailsSection";
-import { useQuery } from "@tanstack/react-query";
 import {
   namespaceUserMembershipQueryKeys,
   useDeleteNamespaceUserMembership
 } from "@app/hooks/api/namespaceUserMembership";
-import { NamespacePermissionCan } from "@app/components/permissions";
-import {
-  NamespacePermissionActions,
-  NamespacePermissionSubjects
-} from "@app/context/NamespacePermissionContext/types";
+import { usePopUp } from "@app/hooks/usePopUp";
+import { OrgAccessControlTabSections } from "@app/types/org";
+
+import { MemberRoleDetailsSection } from "./components/MemberRoleDetailsSection";
+import { UserDetailsSection } from "./components";
 
 const Page = withNamespacePermission(
   () => {
@@ -50,7 +51,7 @@ const Page = withNamespacePermission(
     const { data: membership } = useQuery(
       namespaceUserMembershipQueryKeys.detail({
         membershipId,
-        namespaceName: namespaceName
+        namespaceName
       })
     );
 
@@ -67,7 +68,7 @@ const Page = withNamespacePermission(
       try {
         await deleteNamespaceMembership({
           membershipId,
-          namespaceName: namespaceName
+          namespaceName
         });
 
         createNotification({
@@ -199,7 +200,7 @@ const Page = withNamespacePermission(
     );
   },
   {
-    action: NamespacePermissionActions.Read,
+    action: NamespacePermissionMemberActions.Read,
     subject: NamespacePermissionSubjects.Member
   }
 );

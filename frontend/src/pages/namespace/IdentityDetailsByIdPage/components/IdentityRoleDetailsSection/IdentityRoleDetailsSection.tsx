@@ -5,6 +5,7 @@ import { format, formatDistance } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { NamespacePermissionCan } from "@app/components/permissions";
 import {
   DeleteActionModal,
   EmptyState,
@@ -22,18 +23,17 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { usePopUp } from "@app/hooks";
-
-import { IdentityRoleModify } from "./IdentityRoleModify";
 import { useNamespace } from "@app/context";
-import { TNamespaceIdentityMembership } from "@app/hooks/api/namespaceIdentity";
-import { useUpdateNamespaceIdentityMembership } from "@app/hooks/api/namespaceIdentityMembership";
-import { TNamespaceRole } from "@app/hooks/api/namespaceRoles";
-import { NamespacePermissionCan } from "@app/components/permissions";
 import {
   NamespacePermissionIdentityActions,
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
+import { usePopUp } from "@app/hooks";
+import { TNamespaceIdentityMembership } from "@app/hooks/api/namespaceIdentity";
+import { useUpdateNamespaceIdentityMembership } from "@app/hooks/api/namespaceIdentityMembership";
+import { TNamespaceRole } from "@app/hooks/api/namespaceRoles";
+
+import { IdentityRoleModify } from "./IdentityRoleModify";
 
 type Props = {
   identityMembershipDetails: TNamespaceIdentityMembership;
@@ -56,7 +56,7 @@ export const IdentityRoleDetailsSection = ({
     try {
       const updatedRoles = identityMembershipDetails?.roles?.filter((el) => el.id !== id);
       await updateIdentityWorkspaceRole({
-        namespaceName: namespaceName,
+        namespaceName,
         identityId: identityMembershipDetails.identity.id,
         roles: updatedRoles.map(
           ({

@@ -14,12 +14,15 @@ import {
   faServer
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { NamespacePermissionCan } from "@app/components/permissions";
+import { ManagedByBadge } from "@app/components/permissions/ManagedByBadge";
 import {
   Button,
   DeleteActionModal,
@@ -48,6 +51,11 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { useNamespace } from "@app/context";
+import {
+  NamespacePermissionIdentityActions,
+  NamespacePermissionSubjects
+} from "@app/context/NamespacePermissionContext/types";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -56,24 +64,16 @@ import {
 import { withNamespacePermission } from "@app/hoc";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { usePopUp } from "@app/hooks/usePopUp";
-
-import { LinkOrgIdentityModal } from "./components/LinkOrgIdentityModal";
-import { useNamespace } from "@app/context";
-import { useQuery } from "@tanstack/react-query";
+import { useDeleteNamespaceIdentity } from "@app/hooks/api/namespaceIdentity";
 import {
   NamespaceIdentityMembershipOrderBy,
   namespaceIdentityMembershipQueryKeys,
   useDeleteNamespaceIdentityMembership
 } from "@app/hooks/api/namespaceIdentityMembership";
-import { useDeleteNamespaceIdentity } from "@app/hooks/api/namespaceIdentity";
-import { NamespacePermissionCan } from "@app/components/permissions";
-import {
-  NamespacePermissionIdentityActions,
-  NamespacePermissionSubjects
-} from "@app/context/NamespacePermissionContext/types";
+import { usePopUp } from "@app/hooks/usePopUp";
+
+import { LinkOrgIdentityModal } from "./components/LinkOrgIdentityModal";
 import { NamespaceIdentityModal } from "./components/NamespaceIdentityModal";
-import { ManagedByBadge } from "@app/components/permissions/ManagedByBadge";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
@@ -110,7 +110,7 @@ export const IdentityTab = withNamespacePermission(
         limit,
         offset,
         search,
-        namespaceName: namespaceName,
+        namespaceName,
         orderBy,
         orderDirection
       }),
@@ -141,7 +141,7 @@ export const IdentityTab = withNamespacePermission(
       try {
         await deleteNamespaceIdentity({
           identityId,
-          namespaceName: namespaceName
+          namespaceName
         });
 
         createNotification({
@@ -166,7 +166,7 @@ export const IdentityTab = withNamespacePermission(
       try {
         await deleteNamespaceIdentityMembership({
           identityId,
-          namespaceName: namespaceName
+          namespaceName
         });
 
         createNotification({

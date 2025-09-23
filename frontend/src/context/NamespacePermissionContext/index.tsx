@@ -1,2 +1,2 @@
 export { useNamespacePermission } from "./NamespacePermissionContext";
-export type { TNamespacePermission, NamespacePermissionSet } from "./types";
+export type { NamespacePermissionSet, TNamespacePermission } from "./types";

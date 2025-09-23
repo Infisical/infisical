@@ -1,17 +1,17 @@
 export {
   useCreateNamespaceRole,
-  useUpdateNamespaceRole,
-  useDeleteNamespaceRole
+  useDeleteNamespaceRole,
+  useUpdateNamespaceRole
 } from "./mutations";
 export { namespaceRolesQueryKeys } from "./queries";
 export type {
-  TNamespaceRole,
-  TNamespacePermission,
   TCreateNamespaceRoleDTO,
-  TUpdateNamespaceRoleDTO,
   TDeleteNamespaceRoleDTO,
-  TListNamespaceRolesDTO,
   TGetNamespaceRoleBySlugDTO,
   TGetNamespaceUserPermissionsDTO,
-  TNamespaceUserPermissions
+  TListNamespaceRolesDTO,
+  TNamespacePermission,
+  TNamespaceRole,
+  TNamespaceUserPermissions,
+  TUpdateNamespaceRoleDTO
 } from "./types";

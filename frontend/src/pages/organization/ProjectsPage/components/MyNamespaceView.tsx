@@ -1,20 +1,12 @@
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 import { faFolderOpen } from "@fortawesome/free-regular-svg-icons";
-import {
-  faArrowDownAZ,
-  faArrowUpZA,
-  faBorderAll,
-  faList,
-  faMagnifyingGlass,
-  faPlus,
-  faSearch
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowDownAZ, faArrowUpZA, faPlus, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, IconButton, Input, Pagination, Skeleton, Tooltip } from "@app/components/v2";
+import { Button, IconButton, Pagination, Skeleton, Tooltip } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import {
   getUserTablePreference,
@@ -23,30 +15,25 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, usePagination, useResetPageHelper } from "@app/hooks";
 import { namespacesQueryKeys, SearchNamespaceSortBy, TNamespace } from "@app/hooks/api/namespaces";
-import { NamespaceListToggle, NamespaceListView } from "./NamespacetListToggle";
+
+import { ResourceViewMode } from "./ResourcetListToggle";
 
 type Props = {
   onAddNewNamespace: () => void;
   onUpgradePlan: () => void;
   isAddingNamespacesAllowed: boolean;
-  namespaceListView: NamespaceListView;
-  onNamespaceListViewChange: (value: NamespaceListView) => void;
+  searchFilter: string;
+  resourceViewMode: ResourceViewMode;
 };
-
-enum NamespacesViewMode {
-  GRID = "grid",
-  LIST = "list"
-}
 
 export const MyNamespaceView = ({
   onAddNewNamespace,
   onUpgradePlan,
   isAddingNamespacesAllowed,
-  namespaceListView,
-  onNamespaceListViewChange
+  searchFilter = "",
+  resourceViewMode
 }: Props) => {
   const navigate = useNavigate();
-  const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter);
 
   const {
@@ -61,10 +48,6 @@ export const MyNamespaceView = ({
   } = usePagination(SearchNamespaceSortBy.NAME, {
     initPerPage: getUserTablePreference("myNamespacesTable", PreferenceKey.PerPage, 24)
   });
-
-  const [namespacesViewMode, setNamespacesViewMode] = useState<NamespacesViewMode>(
-    (localStorage.getItem("namespacesViewMode") as NamespacesViewMode) || NamespacesViewMode.GRID
-  );
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -90,6 +73,18 @@ export const MyNamespaceView = ({
 
   const renderNamespaceGridItem = (namespace: TNamespace) => (
     <div
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          navigate({
+            to: "/organization/namespaces/$namespaceName/projects",
+            params: {
+              namespaceName: namespace.name
+            }
+          });
+        }
+      }}
       onClick={() => {
         navigate({
           to: "/organization/namespaces/$namespaceName/projects",
@@ -101,18 +96,15 @@ export const MyNamespaceView = ({
       key={namespace.id}
       className="cursor-pointer overflow-clip rounded border border-l-[4px] border-mineshaft-600 border-l-mineshaft-400 bg-mineshaft-800 p-4 transition-transform duration-100 hover:scale-[103%] hover:border-l-primary hover:bg-mineshaft-700"
     >
-      <div className="flex items-center gap-4">
-        <div className="rounded border border-mineshaft-500 bg-mineshaft-600 p-1.5 shadow-inner">
-          <div className="flex h-[1.75rem] w-[1.75rem] items-center justify-center">
-            <FontAwesomeIcon icon={faFolderOpen} className="text-mineshaft-300" />
-          </div>
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-semibold text-mineshaft-100">{namespace.name}</p>
-          <p className="truncate text-sm leading-4 text-mineshaft-300">Namespace</p>
+      <div className="mb-2 w-min rounded border border-mineshaft-500 bg-mineshaft-600 p-1.5 shadow-inner">
+        <div className="flex h-3 w-3 items-center justify-center">
+          <FontAwesomeIcon icon={faFolderOpen} className="text-mineshaft-300" />
         </div>
       </div>
-      <p className="mt-4 truncate text-sm text-mineshaft-400">
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold text-mineshaft-100">{namespace.name}</p>
+      </div>
+      <p className="mt-2 truncate text-sm text-mineshaft-400">
         {namespace.description || "No description"}
       </p>
     </div>
@@ -152,8 +144,8 @@ export const MyNamespaceView = ({
   let namespacesComponents: ReactNode;
 
   if (searchedNamespaces?.namespaces?.length || isNamespaceViewLoading) {
-    switch (namespacesViewMode) {
-      case NamespacesViewMode.GRID:
+    switch (resourceViewMode) {
+      case ResourceViewMode.GRID:
         namespacesComponents = (
           <div className="mt-4 grid w-full grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
             {isNamespaceViewLoading &&
@@ -183,7 +175,7 @@ export const MyNamespaceView = ({
           </div>
         );
         break;
-      case NamespacesViewMode.LIST:
+      case ResourceViewMode.LIST:
       default:
         namespacesComponents = (
           <div className="mt-4 w-full rounded-md">
@@ -220,17 +212,15 @@ export const MyNamespaceView = ({
 
   return (
     <div>
-      <div className="flex w-full flex-row">
-        <NamespaceListToggle value={namespaceListView} onChange={onNamespaceListViewChange} />
-        <Input
-          className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-          containerClassName="w-full ml-2"
-          placeholder="Search by namespace name..."
-          value={searchFilter}
-          onChange={(e) => setSearchFilter(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        />
-        <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+      <div className="flex w-full flex-row items-center">
+        <div className="mb-2">
+          <div className="text-lg font-medium text-white">Namespaces</div>
+          <div className="text-sm text-mineshaft-300">
+            Organize projects with scoped access control
+          </div>
+        </div>
+        <div className="flex-grow" />
+        <div className="ml-2 flex h-10 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
           <Tooltip content="Toggle Sort Direction">
             <IconButton
               className="min-w-[2.4rem] border-none hover:bg-mineshaft-600"
@@ -243,36 +233,6 @@ export const MyNamespaceView = ({
               <FontAwesomeIcon icon={orderDirection === "asc" ? faArrowDownAZ : faArrowUpZA} />
             </IconButton>
           </Tooltip>
-        </div>
-        <div className="ml-2 flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-          <IconButton
-            variant="outline_bg"
-            onClick={() => {
-              localStorage.setItem("namespacesViewMode", NamespacesViewMode.GRID);
-              setNamespacesViewMode(NamespacesViewMode.GRID);
-            }}
-            ariaLabel="grid"
-            size="xs"
-            className={`${
-              namespacesViewMode === NamespacesViewMode.GRID ? "bg-mineshaft-500" : "bg-transparent"
-            } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
-          >
-            <FontAwesomeIcon icon={faBorderAll} />
-          </IconButton>
-          <IconButton
-            variant="outline_bg"
-            onClick={() => {
-              localStorage.setItem("namespacesViewMode", NamespacesViewMode.LIST);
-              setNamespacesViewMode(NamespacesViewMode.LIST);
-            }}
-            ariaLabel="list"
-            size="xs"
-            className={`${
-              namespacesViewMode === NamespacesViewMode.LIST ? "bg-mineshaft-500" : "bg-transparent"
-            } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
-          >
-            <FontAwesomeIcon icon={faList} />
-          </IconButton>
         </div>
         <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Namespace}>
           {(isAllowed) => (
@@ -287,7 +247,7 @@ export const MyNamespaceView = ({
                   onUpgradePlan();
                 }
               }}
-              className="ml-2"
+              className="ml-2 h-10"
             >
               Add New Namespace
             </Button>
@@ -298,7 +258,7 @@ export const MyNamespaceView = ({
       {!isNamespaceViewLoading && Boolean(searchedNamespaces?.namespaces?.length) && (
         <Pagination
           className={
-            namespacesViewMode === NamespacesViewMode.GRID
+            resourceViewMode === ResourceViewMode.GRID
               ? "col-span-full !justify-start border-transparent bg-transparent pl-2"
               : "rounded-b-md border border-mineshaft-600"
           }

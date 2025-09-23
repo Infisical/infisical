@@ -7,6 +7,11 @@ export enum NamespacePermissionActions {
   Delete = "delete"
 }
 
+export enum NamespacePermissionNamespaceActions {
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum NamespacePermissionAppConnectionActions {
   Read = "read",
   Create = "create",
@@ -78,7 +83,6 @@ export enum NamespacePermissionGroupActions {
 
 export enum NamespacePermissionSubjects {
   Project = "project",
-  Namespace = "namespace",
   Role = "role",
   Member = "member",
   Settings = "settings",
@@ -89,7 +93,16 @@ export enum NamespacePermissionSubjects {
   AuditLogs = "audit-logs",
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
-  Gateway = "gateway"
+  Gateway = "gateway",
+  Namespace = "namespace"
+}
+
+export enum NamespacePermissionMemberActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  GrantPrivileges = "grant-privileges"
 }
 
 export type NamespacePermissionAppConnectionSubjectFields = {
@@ -99,7 +112,7 @@ export type NamespacePermissionAppConnectionSubjectFields = {
 export type NamespacePermissionSet =
   | [NamespacePermissionActions.Create, NamespacePermissionSubjects.Project]
   | [NamespacePermissionActions, NamespacePermissionSubjects.Role]
-  | [NamespacePermissionActions, NamespacePermissionSubjects.Member]
+  | [NamespacePermissionMemberActions, NamespacePermissionSubjects.Member]
   | [NamespacePermissionActions, NamespacePermissionSubjects.Settings]
   | [NamespacePermissionGroupActions, NamespacePermissionSubjects.Groups]
   | [
@@ -114,6 +127,7 @@ export type NamespacePermissionSet =
   | [NamespacePermissionAuditLogsActions, NamespacePermissionSubjects.AuditLogs]
   | [NamespacePermissionActions, NamespacePermissionSubjects.ProjectTemplates]
   | [NamespacePermissionGatewayActions, NamespacePermissionSubjects.Gateway]
+  | [NamespacePermissionNamespaceActions, NamespacePermissionSubjects.Namespace]
   | [
       NamespacePermissionAppConnectionActions,
       (

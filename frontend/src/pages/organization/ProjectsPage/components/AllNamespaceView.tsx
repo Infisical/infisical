@@ -1,28 +1,11 @@
-import { useState } from "react";
-import {
-  faArrowDownAZ,
-  faBorderAll,
-  faCheck,
-  faFolderOpen,
-  faList,
-  faMagnifyingGlass,
-  faPlus
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowDownAZ, faCheck, faFolderOpen, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import {
-  Badge,
-  Button,
-  IconButton,
-  Input,
-  Pagination,
-  Skeleton,
-  Tooltip
-} from "@app/components/v2";
+import { Badge, Button, IconButton, Pagination, Skeleton, Tooltip } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import {
   getUserTablePreference,
@@ -31,25 +14,21 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, usePagination, useResetPageHelper } from "@app/hooks";
 import { namespacesQueryKeys, SearchNamespaceSortBy, TNamespace } from "@app/hooks/api/namespaces";
-import { NamespaceListToggle, NamespaceListView } from "./NamespacetListToggle";
 
 type Props = {
   onAddNewNamespace: () => void;
   onUpgradePlan: () => void;
   isAddingNamespacesAllowed: boolean;
-  namespaceListView: NamespaceListView;
-  onNamespaceListViewChange: (value: NamespaceListView) => void;
+  searchFilter: string;
 };
 
 export const AllNamespaceView = ({
   onAddNewNamespace,
   onUpgradePlan,
   isAddingNamespacesAllowed,
-  namespaceListView,
-  onNamespaceListViewChange
+  searchFilter
 }: Props) => {
   const navigate = useNavigate();
-  const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter);
   const {
     setPage,
@@ -87,17 +66,14 @@ export const AllNamespaceView = ({
 
   return (
     <div>
-      <div className="flex w-full flex-row">
-        <NamespaceListToggle value={namespaceListView} onChange={onNamespaceListViewChange} />
-        <Input
-          className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-          containerClassName="w-full ml-2"
-          placeholder="Search by namespace name..."
-          value={searchFilter}
-          onChange={(e) => setSearchFilter(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        />
-        <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+      <div className="flex w-full flex-row items-center">
+        <div className="flex-grow">
+          <div className="text-lg font-medium text-white">Namespaces</div>
+          <div className="text-sm text-mineshaft-300">
+            Organize projects with scoped access control
+          </div>
+        </div>
+        <div className="ml-2 flex h-10 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
           <Tooltip content="Toggle Sort Direction">
             <IconButton
               className="min-w-[2.4rem] border-none hover:bg-mineshaft-600"
@@ -110,29 +86,6 @@ export const AllNamespaceView = ({
               <FontAwesomeIcon icon={faArrowDownAZ} />
             </IconButton>
           </Tooltip>
-        </div>
-        <div className="ml-2 flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-          <Tooltip content="Disabled across All Namespace view.">
-            <div className="flex cursor-not-allowed items-center justify-center">
-              <IconButton
-                variant="outline_bg"
-                ariaLabel="grid"
-                size="xs"
-                isDisabled
-                className="pointer-events-none min-w-[2.4rem] border-none bg-transparent hover:bg-mineshaft-600"
-              >
-                <FontAwesomeIcon icon={faBorderAll} />
-              </IconButton>
-            </div>
-          </Tooltip>
-          <IconButton
-            variant="outline_bg"
-            ariaLabel="list"
-            size="xs"
-            className="min-w-[2.4rem] border-none bg-mineshaft-500 hover:bg-mineshaft-600"
-          >
-            <FontAwesomeIcon icon={faList} />
-          </IconButton>
         </div>
         <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Namespace}>
           {(isAllowed) => (
@@ -147,7 +100,7 @@ export const AllNamespaceView = ({
                   onUpgradePlan();
                 }
               }}
-              className="ml-2"
+              className="ml-2 h-10"
             >
               Add New Namespace
             </Button>

@@ -10,6 +10,7 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -28,7 +29,6 @@ import {
   TSearchNamespaceIdentitiesDTO,
   TUpdateNamespaceIdentityMembershipDTO
 } from "./namespace-identity-membership-types";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
 
 type TNamespaceIdentityMembershipServiceFactoryDep = {
   namespaceIdentityMembershipDAL: TNamespaceIdentityMembershipDALFactory;

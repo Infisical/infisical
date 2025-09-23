@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { faEye } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowDown,
   faArrowUp,
@@ -12,6 +13,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -38,24 +40,22 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { useNamespace } from "@app/context";
 import {
   NamespacePermissionActions,
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
+import { isCustomNamespaceRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
-import { useDeleteNamespaceRole, namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { namespaceRolesQueryKeys, useDeleteNamespaceRole } from "@app/hooks/api/namespaceRoles";
 import { TNamespaceRole } from "@app/hooks/api/namespaceRoles/types";
-import { useNamespace } from "@app/context";
-import { isCustomNamespaceRole } from "@app/helpers/roles";
 import { NamespaceRoleModal } from "@app/pages/namespace/RoleDetailsBySlugPage/components/NamespaceRoleModal";
-import { useNavigate } from "@tanstack/react-router";
-import { faEye } from "@fortawesome/free-regular-svg-icons";
 
 enum RolesOrderBy {
   Name = "name",

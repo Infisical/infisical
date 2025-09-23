@@ -1,12 +1,14 @@
 import { createFileRoute, linkOptions } from "@tanstack/react-router";
-import { IdentityDetailsByIdPage } from "./IdentityDetailsByIdPage";
+
 import { OrgAccessControlTabSections } from "@app/types/org";
+
+import { IdentityDetailsByIdPage } from "./IdentityDetailsByIdPage";
 
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/identities/$identityId"
 )({
   component: IdentityDetailsByIdPage,
-  beforeLoad: ({ context, params }) => {
+  beforeLoad: ({ params }) => {
     return {
       breadcrumbs: [
         // ...context.breadcrumbs,

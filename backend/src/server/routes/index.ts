@@ -615,8 +615,10 @@ export const registerRoutes = async (
     permissionService,
     namespaceDAL,
     namespaceUserMembershipDAL,
-    namespaceMembershipRoleDAL
+    namespaceMembershipRoleDAL,
+    licenseService
   });
+
   const namespaceRoleService = namespaceRoleServiceFactory({
     namespaceDAL,
     namespaceRoleDAL,

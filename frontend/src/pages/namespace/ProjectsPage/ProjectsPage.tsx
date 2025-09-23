@@ -7,29 +7,38 @@ import { NewProjectModal } from "@app/components/projects";
 import { PageHeader } from "@app/components/v2";
 import { useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { ProjectListView } from "@app/pages/organization/ProjectsPage/components/ProjectListToggle";
-import { MyProjectView } from "@app/pages/organization/ProjectsPage/components/MyProjectView";
 import { AllProjectView } from "@app/pages/organization/ProjectsPage/components/AllProjectView";
+import { MyProjectView } from "@app/pages/organization/ProjectsPage/components/MyProjectView";
+import {
+  ResourceListView,
+  ResourceViewMode
+} from "@app/pages/organization/ProjectsPage/components/ResourcetListToggle";
 
 export const ProjectsPage = () => {
   const { t } = useTranslation();
 
-  const [projectListView, setProjectListView] = useState<ProjectListView>(() => {
-    const storedView = localStorage.getItem("projectListView");
+  const [searchFilter, setSearchFilter] = useState("");
+
+  const [resourceListView, setResourceListView] = useState<ResourceListView>(() => {
+    const storedView = localStorage.getItem("resourceListView");
 
     if (
       storedView &&
-      (storedView === ProjectListView.AllProjects || storedView === ProjectListView.MyProjects)
+      (storedView === ResourceListView.AllResources || storedView === ResourceListView.MyResource)
     ) {
       return storedView;
     }
 
-    return ProjectListView.MyProjects;
+    return ResourceListView.MyResource;
   });
 
-  const handleSetProjectListView = (value: ProjectListView) => {
-    localStorage.setItem("projectListView", value);
-    setProjectListView(value);
+  const [resourceViewMode, onResourceViewModeChange] = useState<ResourceViewMode>(
+    (localStorage.getItem("resourceViewMode") as ResourceViewMode) || ResourceViewMode.GRID
+  );
+
+  const handleSetResourceListView = (value: ResourceListView) => {
+    localStorage.setItem("resourceListView", value);
+    setResourceListView(value);
   };
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -55,21 +64,27 @@ export const ProjectsPage = () => {
           description="Your team's complete security toolkit - organized and ready when you need them."
         />
       </div>
-      {projectListView === ProjectListView.MyProjects ? (
+      {resourceListView === ResourceListView.MyResource ? (
         <MyProjectView
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
           onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
-          projectListView={projectListView}
-          onProjectListViewChange={handleSetProjectListView}
+          searchFilter={searchFilter}
+          onSearchChange={setSearchFilter}
+          resourceViewMode={resourceViewMode}
+          onResourceViewModeChange={onResourceViewModeChange}
+          resourceListView={resourceListView}
+          onResourceListViewChange={handleSetResourceListView}
         />
       ) : (
         <AllProjectView
           onAddNewProject={() => handlePopUpOpen("addNewWs")}
           onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
           isAddingProjectsAllowed={isAddingProjectsAllowed}
-          projectListView={projectListView}
-          onProjectListViewChange={handleSetProjectListView}
+          resourceListView={resourceListView}
+          onResourceListViewChange={handleSetResourceListView}
+          searchFilter={searchFilter}
+          onSearchChange={setSearchFilter}
         />
       )}
       <NewProjectModal

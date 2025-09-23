@@ -870,8 +870,8 @@ export const orgServiceFactory = ({
 
       // some users doesn't exist
       if (existingUsers.length !== inviteeEmails.length) {
-        const newUserEmails = inviteeEmails.filter((inviteeEmail) =>
-          Boolean(existingUsers.find((el) => el.username === inviteeEmail))
+        const newUserEmails = inviteeEmails.filter(
+          (inviteeEmail) => !existingUsers.find((el) => el.username === inviteeEmail)
         );
 
         for await (const inviteeEmail of newUserEmails) {
@@ -988,6 +988,8 @@ export const orgServiceFactory = ({
           lastName: nonOrgUser.lastName || ""
         });
       }
+
+      return { users: existingUsers };
     });
 
     await licenseService.updateSubscriptionOrgMemberCount(orgId);

@@ -3,10 +3,10 @@ import { queryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import {
-  TNamespaceRole,
-  TListNamespaceRolesDTO,
   TGetNamespaceRoleBySlugDTO,
   TGetNamespaceUserPermissionsDTO,
+  TListNamespaceRolesDTO,
+  TNamespaceRole,
   TNamespaceUserPermissions
 } from "./types";
 

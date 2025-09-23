@@ -1,6 +1,7 @@
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Badge, Tooltip } from "../v2";
 import { faBuilding } from "@fortawesome/free-regular-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import { Badge, Tooltip } from "../v2";
 
 type Props = {
   namespaceId?: string | null;

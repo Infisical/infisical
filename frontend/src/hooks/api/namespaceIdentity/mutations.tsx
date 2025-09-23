@@ -2,14 +2,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { namespaceIdentityMembershipQueryKeys } from "../namespaceIdentityMembership/queries";
 import { namespaceIdentityQueryKeys } from "./queries";
 import {
   TCreateNamespaceIdentityDTO,
-  TUpdateNamespaceIdentityDTO,
   TDeleteNamespaceIdentityDTO,
-  TNamespaceIdentity
+  TNamespaceIdentity,
+  TUpdateNamespaceIdentityDTO
 } from "./types";
-import { namespaceIdentityMembershipQueryKeys } from "../namespaceIdentityMembership/queries";
 
 export const useCreateNamespaceIdentity = () => {
   const queryClient = useQueryClient();

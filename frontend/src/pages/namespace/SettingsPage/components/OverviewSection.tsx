@@ -1,17 +1,17 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { NamespacePermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input, TextArea } from "@app/components/v2";
 import { useNamespace } from "@app/context";
-import { namespacesQueryKeys, useUpdateNamespace } from "@app/hooks/api/namespaces";
-import { useQuery } from "@tanstack/react-query";
-import { NamespacePermissionCan } from "@app/components/permissions";
 import {
   NamespacePermissionActions,
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
+import { namespacesQueryKeys, useUpdateNamespace } from "@app/hooks/api/namespaces";
 
 const baseFormSchema = z.object({
   name: z

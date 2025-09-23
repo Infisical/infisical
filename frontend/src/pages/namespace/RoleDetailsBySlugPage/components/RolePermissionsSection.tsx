@@ -2,44 +2,40 @@ import { useForm } from "react-hook-form";
 import { faSave } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Table, TableContainer, TBody } from "@app/components/v2";
-import { NamespacePermissionSubjects, useNamespace } from "@app/context";
+import { useNamespace } from "@app/context";
+import { namespaceRolesQueryKeys, useUpdateNamespaceRole } from "@app/hooks/api/namespaceRoles";
 
+import { NamespacePermissionAppConnectionRow } from "./NamespacePermissionAppConnectionRow";
+import { NamespacePermissionAuditLogsRow } from "./NamespacePermissionAuditLogsRow";
+// import { NamespaceGatewayPermissionRow } from "./NamespacePermissionGatewayRow";
+import { NamespacePermissionGroupRow } from "./NamespacePermissionGroupRow";
+import { NamespacePermissionIdentityRow } from "./NamespacePermissionIdentityRow";
+import { NamespacePermissionMachineIdentityAuthTemplateRow } from "./NamespacePermissionMachineIdentityAuthTemplateRow";
 import {
   formRolePermission2API,
   formSchema,
   rolePermission2Form,
   TFormSchema
 } from "./NamespaceRoleModifySection.utils";
-import { NamespacePermissionAuditLogsRow } from "./NamespacePermissionAuditLogsRow";
-// import { NamespaceGatewayPermissionRow } from "./NamespacePermissionGatewayRow";
-import { NamespacePermissionGroupRow } from "./NamespacePermissionGroupRow";
-import { NamespacePermissionIdentityRow } from "./NamespacePermissionIdentityRow";
-import { NamespacePermissionMachineIdentityAuthTemplateRow } from "./NamespacePermissionMachineIdentityAuthTemplateRow";
 import { NamespaceRoleWorkspaceRow } from "./NamespaceRoleWorkspaceRow";
 import { RolePermissionRow } from "./RolePermissionRow";
-import { useQuery } from "@tanstack/react-query";
-import { namespaceRolesQueryKeys, useUpdateNamespaceRole } from "@app/hooks/api/namespaceRoles";
-import { NamespacePermissionAppConnectionRow } from "./NamespacePermissionAppConnectionRow";
+import { NamespacePermissionMemberRow } from "./NamespacePermissionMemberRow";
+import { NamespaceRoleNamespaceRow } from "./NamespacePermissionNamespaceRow";
 
 // TODO(namespace): add missing sort in type field
 const SIMPLE_PERMISSION_OPTIONS = [
-  {
-    title: "User Management",
-    formName: "member"
-  },
   {
     title: "Role Management",
     formName: "role"
   },
   {
-    title: "Organization Profile",
+    title: "Namespace Profile",
     formName: "settings"
-  },
-
-  { title: "Project Templates", formName: NamespacePermissionSubjects.ProjectTemplates }
+  }
 ] as const;
 
 type Props = {
@@ -138,6 +134,11 @@ export const RolePermissionsSection = ({ roleSlug }: Props) => {
                   />
                 );
               })}
+              <NamespacePermissionMemberRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
               <NamespacePermissionAuditLogsRow
                 control={control}
                 setValue={setValue}
@@ -164,6 +165,11 @@ export const RolePermissionsSection = ({ roleSlug }: Props) => {
                 isEditable={isCustomRole}
               />
               <NamespacePermissionMachineIdentityAuthTemplateRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
+              <NamespaceRoleNamespaceRow
                 control={control}
                 setValue={setValue}
                 isEditable={isCustomRole}

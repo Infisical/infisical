@@ -1,18 +1,18 @@
 export {
   useCreateNamespaceIdentity,
-  useUpdateNamespaceIdentity,
-  useDeleteNamespaceIdentity
+  useDeleteNamespaceIdentity,
+  useUpdateNamespaceIdentity
 } from "./mutations";
 export { namespaceIdentityQueryKeys } from "./queries";
 export type {
-  TNamespaceIdentity,
-  TNamespaceIdentityMembershipRole,
-  TNamespaceIdentityMembership,
   TCreateNamespaceIdentityDTO,
-  TSearchNamespaceIdentitiesDTO,
-  TListNamespaceIdentityMembershipsDTO,
+  TDeleteNamespaceIdentityDTO,
   TGetNamespaceIdentityMembershipByIdDTO,
-  TUpdateNamespaceIdentityDTO,
-  TDeleteNamespaceIdentityDTO
+  TListNamespaceIdentityMembershipsDTO,
+  TNamespaceIdentity,
+  TNamespaceIdentityMembership,
+  TNamespaceIdentityMembershipRole,
+  TSearchNamespaceIdentitiesDTO,
+  TUpdateNamespaceIdentityDTO
 } from "./types";
-export { NamespaceIdentityOrderBy, NamespaceIdentityMembershipOrderBy } from "./types";
+export { NamespaceIdentityMembershipOrderBy, NamespaceIdentityOrderBy } from "./types";

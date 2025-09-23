@@ -1,24 +1,23 @@
-import { motion } from "framer-motion";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { motion } from "framer-motion";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { NamespacePermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { useNamespace } from "@app/context";
-
+import {
+  NamespacePermissionActions,
+  NamespacePermissionMemberActions,
+  NamespacePermissionSubjects
+} from "@app/context/NamespacePermissionContext/types";
 import { withNamespacePermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
+import { useDeleteNamespaceUserMembership } from "@app/hooks/api/namespaceUserMembership";
 
 import { AddMemberModal } from "./AddMemberModal";
 import { MembersTable } from "./MembersTable";
-
-import {
-  NamespacePermissionActions,
-  NamespacePermissionSubjects
-} from "@app/context/NamespacePermissionContext/types";
-import { useDeleteNamespaceUserMembership } from "@app/hooks/api/namespaceUserMembership";
 
 export const MembersTab = withNamespacePermission(
   () => {
@@ -38,7 +37,7 @@ export const MembersTab = withNamespacePermission(
       try {
         await removeUserFromNamespace({
           membershipId,
-          namespaceName: namespaceName
+          namespaceName
         });
         createNotification({
           text: "Successfully removed user from namespace",
@@ -101,7 +100,7 @@ export const MembersTab = withNamespacePermission(
     );
   },
   {
-    action: NamespacePermissionActions.Read,
+    action: NamespacePermissionMemberActions.Read,
     subject: NamespacePermissionSubjects.Member
   }
 );

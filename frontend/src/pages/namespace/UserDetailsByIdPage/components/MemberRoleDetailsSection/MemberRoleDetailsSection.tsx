@@ -4,6 +4,7 @@ import { format, formatDistance } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { NamespacePermissionCan } from "@app/components/permissions";
 import {
   DeleteActionModal,
   EmptyState,
@@ -22,19 +23,18 @@ import {
   Tr
 } from "@app/components/v2";
 import { useNamespace, useUser } from "@app/context";
-import { usePopUp } from "@app/hooks";
-
-import { MemberRoleModify } from "./MemberRoleModify";
-import {
-  TNamespaceMembership,
-  useUpdateNamespaceUserMembership
-} from "@app/hooks/api/namespaceUserMembership";
-import { TNamespaceRole } from "@app/hooks/api/namespaceRoles";
-import { NamespacePermissionCan } from "@app/components/permissions";
 import {
   NamespacePermissionActions,
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
+import { usePopUp } from "@app/hooks";
+import { TNamespaceRole } from "@app/hooks/api/namespaceRoles";
+import {
+  TNamespaceMembership,
+  useUpdateNamespaceUserMembership
+} from "@app/hooks/api/namespaceUserMembership";
+
+import { MemberRoleModify } from "./MemberRoleModify";
 
 type Props = {
   membershipDetails: TNamespaceMembership;
@@ -63,7 +63,7 @@ export const MemberRoleDetailsSection = ({
     try {
       const updatedRoles = membershipDetails?.roles?.filter((el) => el.id !== id);
       await updateUserNamespaceRole({
-        namespaceName: namespaceName,
+        namespaceName,
         roles: updatedRoles.map(
           ({
             role,

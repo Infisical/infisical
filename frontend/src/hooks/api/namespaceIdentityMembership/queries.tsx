@@ -3,9 +3,9 @@ import { queryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import {
-  TNamespaceIdentityMembership,
+  TGetNamespaceIdentityMembershipByIdDTO,
   TListNamespaceIdentityMembershipsDTO,
-  TGetNamespaceIdentityMembershipByIdDTO
+  TNamespaceIdentityMembership
 } from "./types";
 
 export const namespaceIdentityMembershipQueryKeys = {
