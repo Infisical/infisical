@@ -68,7 +68,11 @@ jobs:
               try:
                   print("Reading upgrade-path.yaml...")
                   with open('backend/upgrade-path.yaml', 'r') as file:
-                      content = file.read()
+                      raw_lines = file.readlines()
+
+                  # Remove comments and empty lines
+                  content_lines = [line for line in raw_lines if not line.strip().startswith("#")]
+                  content = "".join(content_lines)
 
                   if not content.strip():
                       raise ValueError("File is empty")
