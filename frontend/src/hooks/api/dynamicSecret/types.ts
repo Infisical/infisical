@@ -29,6 +29,7 @@ export enum DynamicSecretProviders {
   MongoDB = "mongo-db",
   RabbitMq = "rabbit-mq",
   AzureEntraId = "azure-entra-id",
+  AzureSqlDatabase = "azure-sql-database",
   Ldap = "ldap",
   SapHana = "sap-hana",
   Snowflake = "snowflake",
@@ -240,6 +241,34 @@ export type TDynamicSecretProvider =
         email: string;
         applicationId: string;
         clientSecret: string;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.AzureSqlDatabase;
+      inputs: {
+        host: string;
+        port: number;
+        database: string;
+        masterDatabase?: string;
+        username: string;
+        password: string;
+        passwordRequirements?: {
+          length: number;
+          required: {
+            lowercase: number;
+            uppercase: number;
+            digits: number;
+            symbols: number;
+          };
+          allowedSymbols?: string;
+        };
+        masterCreationStatement: string;
+        creationStatement: string;
+        revocationStatement: string;
+        renewStatement?: string;
+        ca?: string;
+        sslEnabled?: boolean;
+        gatewayId?: string;
       };
     }
   | {

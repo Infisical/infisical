@@ -5,6 +5,7 @@ import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { AwsElastiCacheDatabaseProvider } from "./aws-elasticache";
 import { AwsIamProvider } from "./aws-iam";
 import { AzureEntraIDProvider } from "./azure-entra-id";
+import { AzureSqlDatabaseProvider } from "./azure-sql-database";
 import { CassandraProvider } from "./cassandra";
 import { CouchbaseProvider } from "./couchbase";
 import { ElasticSearchProvider } from "./elastic-search";
@@ -42,6 +43,7 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.ElasticSearch]: ElasticSearchProvider(),
   [DynamicSecretProviders.RabbitMq]: RabbitMqProvider(),
   [DynamicSecretProviders.AzureEntraID]: AzureEntraIDProvider(),
+  [DynamicSecretProviders.AzureSqlDatabase]: AzureSqlDatabaseProvider({ gatewayService, gatewayV2Service }),
   [DynamicSecretProviders.Ldap]: LdapProvider(),
   [DynamicSecretProviders.SapHana]: SapHanaProvider(),
   [DynamicSecretProviders.Snowflake]: SnowflakeProvider(),
