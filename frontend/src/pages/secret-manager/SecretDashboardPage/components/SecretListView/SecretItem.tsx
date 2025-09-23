@@ -43,7 +43,7 @@ import { twMerge } from "tailwind-merge";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEyeSlash, faKey, faRotate } from "@fortawesome/free-solid-svg-icons";
+import { faEyeSlash, faKey, faRotate, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { format } from "date-fns";
 import { CreateReminderForm } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CreateReminderForm";
@@ -487,17 +487,27 @@ export const SecretItem = memo(
                     placeholder={error?.message}
                     isError={Boolean(error)}
                     onKeyUp={() => trigger("key")}
-                    warningMessage={
+                    warning={
                       field.value?.includes(" ") ? (
-                        <div>
-                          Secret key contains whitespaces.
-                          <br />
-                          <br /> If this is the desired format, you need to provide it as{" "}
-                          <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
-                            {field.value.trim().replaceAll(" ", "%20")}
-                          </code>{" "}
-                          when making API requests.
-                        </div>
+                        <Tooltip
+                          className={"w-full max-w-72"}
+                          content={
+                            <div>
+                              Secret key contains whitespaces.
+                              <br />
+                              <br /> If this is the desired format, you need to provide it as{" "}
+                              <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
+                                {encodeURIComponent(field.value.trim())}
+                              </code>{" "}
+                              when making API requests.
+                            </div>
+                          }
+                        >
+                          <FontAwesomeIcon
+                            icon={faWarning}
+                            className="absolute right-0 mr-3 text-yellow-600 opacity-60"
+                          />
+                        </Tooltip>
                       ) : undefined
                     }
                     {...field}

@@ -1,12 +1,12 @@
 import { ClipboardEvent, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
+import { faTriangleExclamation, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, PasswordGenerator } from "@app/components/v2";
+import { Button, FormControl, Input, PasswordGenerator, Tooltip } from "@app/components/v2";
 import { CreatableSelect } from "@app/components/v2/CreatableSelect";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
@@ -178,17 +178,27 @@ export const CreateSecretForm = ({
             // @ts-expect-error this is for multiple ref single component
             secretKeyInputRef.current = e;
           }}
-          warningMessage={
+          warning={
             secretKey?.includes(" ") ? (
-              <div>
-                Secret key contains whitespaces.
-                <br />
-                <br /> If this is the desired format, you need to provide it as{" "}
-                <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
-                  {secretKey.trim().replaceAll(" ", "%20")}
-                </code>{" "}
-                when making API requests.
-              </div>
+              <Tooltip
+                className={"w-full max-w-72"}
+                content={
+                  <div>
+                    Secret key contains whitespaces.
+                    <br />
+                    <br /> If this is the desired format, you need to provide it as{" "}
+                    <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
+                      {encodeURIComponent(secretKey.trim())}
+                    </code>{" "}
+                    when making API requests.
+                  </div>
+                }
+              >
+                <FontAwesomeIcon
+                  icon={faWarning}
+                  className="absolute right-0 mr-3 text-yellow-600"
+                />
+              </Tooltip>
             ) : undefined
           }
           placeholder="Type your secret name"
