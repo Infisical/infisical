@@ -464,8 +464,8 @@ export const identityLdapAuthServiceFactory = ({
 
       if (templateId) {
         ForbiddenError.from(permission).throwUnlessCan(
-          OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
-          OrgPermissionSubjects.MachineIdentityAuthTemplate
+          NamespacePermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+          NamespacePermissionSubjects.MachineIdentityAuthTemplate
         );
       }
     } else {

@@ -27,7 +27,8 @@ const searchResourceZodValidate = zodValidateCharacters([
 const SanitizedNamespaceIdentityMembershipSchema = NamespaceMembershipsSchema.extend({
   identity: IdentitiesSchema.pick({
     id: true,
-    name: true
+    name: true,
+    namespaceId: true
   }).extend({
     authMethods: z.array(z.string()),
     hasDeleteProtection: z.boolean()

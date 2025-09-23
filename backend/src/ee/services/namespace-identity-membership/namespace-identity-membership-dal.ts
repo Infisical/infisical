@@ -124,6 +124,7 @@ export const namespaceIdentityMembershipDALFactory = (db: TDbClient) => {
           db.ref("lastLoginTime").withSchema(TableName.IdentityOrgMembership),
           db.ref("id").withSchema(TableName.Identity).as("identityOriginalId"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity),
+          db.ref("namespaceId").withSchema(TableName.Identity).as("identityScopeNamespaceId"),
           db.ref("name").withSchema(TableName.NamespaceRole).as("customRoleName"),
           db.ref("slug").withSchema(TableName.NamespaceRole).as("customRoleSlug"),
           db.ref("id").withSchema(TableName.NamespaceMembershipRole).as("membershipRoleId"),
@@ -172,6 +173,7 @@ export const namespaceIdentityMembershipDALFactory = (db: TDbClient) => {
         parentMapper: ({
           identityName,
           identityOriginalId,
+          identityScopeNamespaceId,
           hasDeleteProtection,
           uaId,
           alicloudId,
@@ -202,6 +204,7 @@ export const namespaceIdentityMembershipDALFactory = (db: TDbClient) => {
             id: identityOriginalId,
             name: identityName,
             hasDeleteProtection,
+            namespaceId: identityScopeNamespaceId,
             authMethods: buildAuthMethods({
               uaId,
               awsId,
@@ -423,6 +426,7 @@ export const namespaceIdentityMembershipDALFactory = (db: TDbClient) => {
         )
         .select(
           selectAllTableCols(TableName.NamespaceMembership),
+          db.ref("namespaceId").withSchema(TableName.Identity).as("identityScopeNamespaceId"),
           db.ref("total_count").withSchema("searchedIdentities"),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("id").withSchema(TableName.Identity).as("identityOriginalId"),
@@ -498,7 +502,8 @@ export const namespaceIdentityMembershipDALFactory = (db: TDbClient) => {
           ldapId,
           tlsCertId,
           createdAt,
-          updatedAt
+          updatedAt,
+          identityScopeNamespaceId
         }) => ({
           id,
           identityId: identityOriginalId,
@@ -508,6 +513,7 @@ export const namespaceIdentityMembershipDALFactory = (db: TDbClient) => {
           updatedAt,
           identity: {
             id: identityOriginalId,
+            namespaceId: identityScopeNamespaceId,
             name: identityName,
             hasDeleteProtection,
             authMethods: buildAuthMethods({

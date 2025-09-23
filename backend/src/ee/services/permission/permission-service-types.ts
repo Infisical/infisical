@@ -329,26 +329,19 @@ export type TPermissionServiceFactory = {
   getNamespacePermissionByRole: (
     role: string,
     namespaceId: string
-  ) => Promise<
-    | {
-        permission: MongoAbility<NamespacePermissionSet, MongoQuery>;
-        role: {
-          name: string;
-          version: number;
-          id: string;
-          createdAt: Date;
-          updatedAt: Date;
-          namespaceId: string;
-          slug: string;
-          permissions?: unknown;
-          description?: string | null | undefined;
-        };
-      }
-    | {
-        permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
-        role?: undefined;
-      }
-  >;
+  ) => Promise<{
+    permission: MongoAbility<NamespacePermissionSet, MongoQuery>;
+    role?: {
+      name: string;
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      namespaceId: string;
+      slug: string;
+      permissions?: unknown;
+      description?: string | null | undefined;
+    };
+  }>;
   buildOrgPermission: (orgUserRoles: TBuildOrgPermissionDTO) => MongoAbility<OrgPermissionSet, MongoQuery>;
   buildNamespacePermission: (
     orgUserRoles: TBuildNamespacePermissionDTO

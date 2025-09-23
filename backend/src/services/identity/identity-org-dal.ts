@@ -129,6 +129,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
             name,
             hasDeleteProtection,
             authMethods: buildAuthMethods(data),
+            namespaceId,
             namespace: namespaceId ? { id: namespaceId } : undefined
           }
         };
@@ -165,7 +166,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.IdentityOrgMembership),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
-          db.ref("hasDeleteProtection").withSchema(TableName.Identity)
+          db.ref("hasDeleteProtection").withSchema(TableName.Identity),
+          db.ref("namespaceId").withSchema(TableName.Identity)
         )
         .where(filter)
         .as("paginatedIdentity");
@@ -255,6 +257,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         )
         .select(
           db.ref("id").withSchema("paginatedIdentity"),
+          db.ref("namespaceId").withSchema("paginatedIdentity"),
           db.ref("role").withSchema("paginatedIdentity"),
           db.ref("roleId").withSchema("paginatedIdentity"),
           db.ref("orgId").withSchema("paginatedIdentity"),
@@ -265,7 +268,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("identityId").withSchema("paginatedIdentity").as("identityId"),
           db.ref("identityName").withSchema("paginatedIdentity"),
           db.ref("hasDeleteProtection").withSchema("paginatedIdentity"),
-
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
           db.ref("id").as("alicloudId").withSchema(TableName.IdentityAliCloudAuth),
@@ -301,6 +303,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         key: "id",
         parentMapper: ({
           crId,
+          namespaceId,
           crDescription,
           crSlug,
           crPermission,
@@ -351,6 +354,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
             id: identityId,
             name: identityName,
             hasDeleteProtection,
+            namespaceId,
             authMethods: buildAuthMethods({
               uaId,
               alicloudId,
