@@ -70,8 +70,38 @@ jobs:
                   with open('backend/upgrade-path.yaml', 'r') as file:
                       raw_lines = file.readlines()
 
-                  # Remove comments and empty lines
-                  content_lines = [line for line in raw_lines if not line.strip().startswith("#")]
+                  # Remove comments and empty lines more thoroughly
+                  content_lines = []
+                  for line in raw_lines:
+                      # Remove inline comments but preserve quoted strings
+                      stripped = line.strip()
+                      if not stripped or stripped.startswith("#"):
+                          # Skip empty lines and full comment lines
+                          continue
+
+                      # Handle inline comments - scan character by character to respect quotes
+                      if "#" in line:
+                          result = ""
+                          in_single_quote = False
+                          in_double_quote = False
+                          i = 0
+                          while i < len(line):
+                              char = line[i]
+                              if char == "'" and not in_double_quote:
+                                  in_single_quote = not in_single_quote
+                              elif char == '"' and not in_single_quote:
+                                  in_double_quote = not in_double_quote
+                              elif char == "#" and not in_single_quote and not in_double_quote:
+                                  # Found unquoted #, rest is comment
+                                  break
+                              result += char
+                              i += 1
+                          line = result
+
+                      # Only add non-empty lines after comment removal
+                      if line.strip():
+                          content_lines.append(line.rstrip() + "\n")
+
                   content = "".join(content_lines)
 
                   if not content.strip():
@@ -99,6 +129,10 @@ jobs:
                       return True
 
                   versions = config['versions']
+                  if versions is None:
+                      # Empty versions section is valid
+                      print("Empty versions section found - this is valid")
+                      return True
                   if not isinstance(versions, dict):
                       raise ValueError("'versions' must be an object")
 
