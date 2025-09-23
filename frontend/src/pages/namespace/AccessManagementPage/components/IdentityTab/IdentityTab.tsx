@@ -69,11 +69,11 @@ import {
 import { useDeleteNamespaceIdentity } from "@app/hooks/api/namespaceIdentity";
 import { NamespacePermissionCan } from "@app/components/permissions";
 import {
-  NamespacePermissionActions,
   NamespacePermissionIdentityActions,
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
 import { NamespaceIdentityModal } from "./components/NamespaceIdentityModal";
+import { ManagedByBadge } from "@app/components/permissions/ManagedByBadge";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
@@ -174,7 +174,7 @@ export const IdentityTab = withNamespacePermission(
           type: "success"
         });
 
-        handlePopUpClose("deleteIdentity");
+        handlePopUpClose("unlinkFromNamespace");
       } catch (err) {
         console.error(err);
         const error = err as any;
@@ -228,7 +228,7 @@ export const IdentityTab = withNamespacePermission(
             </div>
             <div>
               <NamespacePermissionCan
-                I={NamespacePermissionActions.Create}
+                I={NamespacePermissionIdentityActions.Create}
                 a={NamespacePermissionSubjects.Identity}
               >
                 {(isAllowed) => (
@@ -255,27 +255,22 @@ export const IdentityTab = withNamespacePermission(
                   </IconButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={5}>
-                  <div className="flex flex-col space-y-1 p-1.5">
-                    <NamespacePermissionCan
-                      I={NamespacePermissionActions.Create}
-                      a={NamespacePermissionSubjects.Identity}
-                    >
-                      {(isAllowed) => (
-                        <Button
-                          leftIcon={<FontAwesomeIcon icon={faLink} className="pr-2" />}
-                          onClick={() => {
-                            handlePopUpOpen("linkOrgIdentity");
-                          }}
-                          isDisabled={!isAllowed}
-                          variant="outline_bg"
-                          className="h-10 text-left"
-                          isFullWidth
-                        >
-                          Link Org Identity
-                        </Button>
-                      )}
-                    </NamespacePermissionCan>
-                  </div>
+                  <NamespacePermissionCan
+                    I={NamespacePermissionIdentityActions.Create}
+                    a={NamespacePermissionSubjects.Identity}
+                  >
+                    {(isAllowed) => (
+                      <DropdownMenuItem
+                        icon={<FontAwesomeIcon icon={faLink} className="pr-2" />}
+                        onClick={() => {
+                          handlePopUpOpen("linkOrgIdentity");
+                        }}
+                        isDisabled={!isAllowed}
+                      >
+                        Link Org Identity
+                      </DropdownMenuItem>
+                    )}
+                  </NamespacePermissionCan>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -315,6 +310,7 @@ export const IdentityTab = withNamespacePermission(
                   </Th>
                   <Th className="w-1/3">Role</Th>
                   <Th>Added on</Th>
+                  <Th>Managed By</Th>
                   <Th className="w-5">{isFetching ? <Spinner size="xs" /> : null}</Th>
                 </Tr>
               </THead>
@@ -325,10 +321,11 @@ export const IdentityTab = withNamespacePermission(
                   data.identityMemberships.length > 0 &&
                   data.identityMemberships.map((identityMember) => {
                     const {
-                      identity: { id, name },
+                      identity: { id, name, namespaceId },
                       roles,
                       createdAt
                     } = identityMember;
+
                     return (
                       <Tr
                         className="group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
@@ -451,6 +448,9 @@ export const IdentityTab = withNamespacePermission(
                           </div>
                         </Td>
                         <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>
+                        <Td>
+                          <ManagedByBadge namespaceId={namespaceId} />
+                        </Td>
                         <Td className="flex justify-end space-x-2">
                           <Tooltip className="max-w-sm text-center" content="Options">
                             <DropdownMenu>
@@ -464,31 +464,59 @@ export const IdentityTab = withNamespacePermission(
                                   <FontAwesomeIcon icon={faEllipsisV} />
                                 </IconButton>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent sideOffset={2} align="end">
-                                <NamespacePermissionCan
-                                  I={NamespacePermissionActions.Delete}
-                                  a={subject(NamespacePermissionSubjects.Identity, {
-                                    identityId: id
-                                  })}
-                                >
-                                  {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      icon={<FontAwesomeIcon icon={faCircleXmark} />}
-                                      isDisabled={!isAllowed}
-                                      onClick={(evt) => {
-                                        evt.stopPropagation();
-                                        evt.preventDefault();
-                                        handlePopUpOpen("deleteIdentity", {
-                                          identityId: id,
-                                          name
-                                        });
-                                      }}
-                                    >
-                                      Remove Identity From Namespace
-                                    </DropdownMenuItem>
-                                  )}
-                                </NamespacePermissionCan>
-                              </DropdownMenuContent>
+                              {namespaceId ? (
+                                <DropdownMenuContent sideOffset={2} align="end">
+                                  <NamespacePermissionCan
+                                    I={NamespacePermissionIdentityActions.Delete}
+                                    a={subject(NamespacePermissionSubjects.Identity, {
+                                      identityId: id
+                                    })}
+                                  >
+                                    {(isAllowed) => (
+                                      <DropdownMenuItem
+                                        icon={<FontAwesomeIcon icon={faCircleXmark} />}
+                                        isDisabled={!isAllowed}
+                                        onClick={(evt) => {
+                                          evt.stopPropagation();
+                                          evt.preventDefault();
+                                          handlePopUpOpen("deleteIdentity", {
+                                            identityId: id,
+                                            name
+                                          });
+                                        }}
+                                      >
+                                        Delete identity
+                                      </DropdownMenuItem>
+                                    )}
+                                  </NamespacePermissionCan>
+                                </DropdownMenuContent>
+                              ) : (
+                                <DropdownMenuContent sideOffset={2} align="end">
+                                  <NamespacePermissionCan
+                                    I={NamespacePermissionIdentityActions.Delete}
+                                    a={subject(NamespacePermissionSubjects.Identity, {
+                                      identityId: id
+                                    })}
+                                  >
+                                    {(isAllowed) => (
+                                      <DropdownMenuItem
+                                        icon={<FontAwesomeIcon icon={faCircleXmark} />}
+                                        isDisabled={!isAllowed}
+                                        onClick={(evt) => {
+                                          evt.stopPropagation();
+                                          evt.preventDefault();
+                                          handlePopUpOpen("unlinkFromNamespace", {
+                                            identityId: id,
+                                            name
+                                          });
+                                        }}
+                                      >
+                                        Unlink org identity
+                                      </DropdownMenuItem>
+                                    )}
+                                  </NamespacePermissionCan>
+                                </DropdownMenuContent>
+                              )}
                             </DropdownMenu>
                           </Tooltip>
                         </Td>
@@ -532,22 +560,22 @@ export const IdentityTab = withNamespacePermission(
           </Modal>
           <DeleteActionModal
             isOpen={popUp.unlinkFromNamespace.isOpen}
-            title={`Are you sure you want to remove ${
+            title={`Are you sure you want to unlink ${
               (popUp?.deleteIdentity?.data as { name: string })?.name || ""
             } from the namespace?`}
-            onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
+            onChange={(isOpen) => handlePopUpToggle("unlinkFromNamespace", isOpen)}
             deleteKey="confirm"
             onDeleteApproved={() =>
-              onRemoveIdentitySubmit(
-                (popUp?.deleteIdentity?.data as { identityId: string })?.identityId
+              onUnlinkOrgIdentitySubmit(
+                (popUp?.unlinkFromNamespace?.data as { identityId: string })?.identityId
               )
             }
           />
           <DeleteActionModal
             isOpen={popUp.deleteIdentity.isOpen}
-            title={`Are you sure you want to remove ${
+            title={`Are you sure you want to delete ${
               (popUp?.deleteIdentity?.data as { name: string })?.name || ""
-            } from the namespace?`}
+            }?`}
             onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
             deleteKey="confirm"
             onDeleteApproved={() =>

@@ -164,8 +164,8 @@ export const IdentityRoleModify = ({ identityNamespaceMembership }: Props) => {
                     className="w-full bg-mineshaft-600 duration-200 hover:bg-mineshaft-500"
                     containerClassName="w-1/2"
                   >
-                    {roles?.map(({ name, slug, id: projectRoleId }) => (
-                      <SelectItem value={slug} key={projectRoleId}>
+                    {roles?.map(({ name, slug, id: namespaceRoleId }) => (
+                      <SelectItem value={slug} key={namespaceRoleId}>
                         {name}
                       </SelectItem>
                     ))}

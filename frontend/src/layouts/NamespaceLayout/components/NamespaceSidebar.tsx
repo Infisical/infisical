@@ -53,7 +53,10 @@ export const NamespaceSidebar = () => {
                   </MenuItem>
                 )}
               </Link>
-              <Link to="/organization/settings">
+              <Link
+                to="/organization/namespaces/$namespaceName/settings"
+                params={{ namespaceName }}
+              >
                 {({ isActive }) => (
                   <MenuItem isSelected={isActive}>
                     <div className="mx-1 flex gap-2">

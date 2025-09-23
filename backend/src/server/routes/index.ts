@@ -637,7 +637,8 @@ export const registerRoutes = async (
     identityOrgMembershipDAL,
     namespaceMembershipRoleDAL,
     namespaceDAL,
-    namespaceRoleDAL
+    namespaceRoleDAL,
+    keyStore
   });
 
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });

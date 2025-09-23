@@ -4,12 +4,12 @@ import { apiRequest } from "@app/config/request";
 
 import { namespaceIdentityQueryKeys } from "./queries";
 import {
-  TNamespaceIdentityMembership,
   TCreateNamespaceIdentityDTO,
   TUpdateNamespaceIdentityDTO,
   TDeleteNamespaceIdentityDTO,
   TNamespaceIdentity
 } from "./types";
+import { namespaceIdentityMembershipQueryKeys } from "../namespaceIdentityMembership/queries";
 
 export const useCreateNamespaceIdentity = () => {
   const queryClient = useQueryClient();
@@ -28,6 +28,10 @@ export const useCreateNamespaceIdentity = () => {
       // Also invalidate specific namespace identity lists
       queryClient.invalidateQueries({
         queryKey: namespaceIdentityQueryKeys.listKey({ namespaceName })
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: namespaceIdentityMembershipQueryKeys.listKey({ namespaceName })
       });
     }
   });
@@ -51,6 +55,10 @@ export const useUpdateNamespaceIdentity = () => {
       queryClient.invalidateQueries({
         queryKey: namespaceIdentityQueryKeys.listKey({ namespaceName })
       });
+
+      queryClient.invalidateQueries({
+        queryKey: namespaceIdentityMembershipQueryKeys.listKey({ namespaceName })
+      });
     }
   });
 };
@@ -64,12 +72,13 @@ export const useDeleteNamespaceIdentity = () => {
       );
     },
     onSuccess: (_, { namespaceName }) => {
-      queryClient.invalidateQueries({
-        queryKey: namespaceIdentityQueryKeys.allKey()
-      });
       // Also invalidate specific namespace identity lists
       queryClient.invalidateQueries({
         queryKey: namespaceIdentityQueryKeys.listKey({ namespaceName })
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: namespaceIdentityMembershipQueryKeys.listKey({ namespaceName })
       });
     }
   });

@@ -78,6 +78,7 @@ export enum NamespacePermissionGroupActions {
 
 export enum NamespacePermissionSubjects {
   Project = "project",
+  Namespace = "namespace",
   Role = "role",
   Member = "member",
   Settings = "settings",

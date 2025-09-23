@@ -114,10 +114,7 @@ export const permissionServiceFactory = ({
         }
       })
       .reduce((prev, curr) => prev.concat(curr), []);
-
-    return createMongoAbility<NamespacePermissionSet>(rules, {
-      conditionsMatcher
-    });
+    return rules;
   };
 
   const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDTO) => {
@@ -247,18 +244,18 @@ export const permissionServiceFactory = ({
     return { permission: buildOrgPermission([{ role, permissions: [] }]) };
   };
 
-  // user permission for a project in an organization
   const getUserNamespacePermission: TPermissionServiceFactory["getUserNamespacePermission"] = async ({
     userId,
     namespaceId,
     authMethod,
     userOrgId
   }) => {
-    const userProjectPermission = await permissionDAL.getUserNamespacePermission(userId, namespaceId);
-    if (!userProjectPermission) throw new ForbiddenRequestError({ name: "User not a part of the specified namespace" });
+    const userNamespacePermission = await permissionDAL.getUserNamespacePermission(userId, namespaceId);
+    if (!userNamespacePermission)
+      throw new ForbiddenRequestError({ name: "User not a part of the specified namespace" });
 
     if (
-      userProjectPermission.roles.some(
+      userNamespacePermission.roles.some(
         ({ role, permissions }) => role === NamespaceMembershipRole.Custom && !permissions
       )
     ) {
@@ -269,31 +266,32 @@ export const permissionServiceFactory = ({
     // Since we can't scope API keys to an organization, we'll need to do an arbitrary check to see if the user is a member of the organization.
 
     // Extra: This means that when users are using API keys to make requests, they can't use slug-based routes.
-    // Slug-based routes depend on the organization ID being present on the request, since project slugs aren't globally unique, and we need a way to filter by organization.
-    if (userOrgId !== "API_KEY" && userProjectPermission.orgId !== userOrgId) {
+    // Slug-based routes depend on the organization ID being present on the request, since namespace slugs aren't globally unique, and we need a way to filter by organization.
+    if (userOrgId !== "API_KEY" && userNamespacePermission.orgId !== userOrgId) {
       throw new ForbiddenRequestError({ name: "You are not logged into this organization" });
     }
 
     validateOrgSSO(
       authMethod,
-      userProjectPermission.orgAuthEnforced,
-      userProjectPermission.orgGoogleSsoAuthEnforced,
-      userProjectPermission.bypassOrgAuthEnabled,
-      userProjectPermission.orgRole
+      userNamespacePermission.orgAuthEnforced,
+      userNamespacePermission.orgGoogleSsoAuthEnforced,
+      userNamespacePermission.bypassOrgAuthEnabled,
+      userNamespacePermission.orgRole
     );
 
     // join two permissions and pass to build the final permission set
-    const rolePermissions = userProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+    const rolePermissions =
+      userNamespacePermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
     const additionalPrivileges =
-      userProjectPermission.additionalPrivileges?.map(({ permissions }) => ({
-        role: ProjectMembershipRole.Custom,
+      userNamespacePermission.additionalPrivileges?.map(({ permissions }) => ({
+        role: NamespaceMembershipRole.Custom,
         permissions
       })) || [];
 
-    const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
+    const rules = buildNamespacePermission(rolePermissions.concat(additionalPrivileges));
     const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
     const unescapedMetadata = objectify(
-      userProjectPermission.metadata,
+      userNamespacePermission.metadata,
       (i) => i.key,
       (i) => i.value
     );
@@ -302,8 +300,8 @@ export const permissionServiceFactory = ({
     const interpolateRules = templatedRules(
       {
         identity: {
-          id: userProjectPermission.userId,
-          // username: userProjectPermission.username,
+          id: userNamespacePermission.userId,
+          // username: userNamespacePermission.username,
           metadata: metadataKeyValuePair
         }
       },
@@ -318,9 +316,9 @@ export const permissionServiceFactory = ({
 
     return {
       permission,
-      membership: userProjectPermission,
+      membership: userNamespacePermission,
       hasRole: (role: string) =>
-        userProjectPermission.roles.findIndex(
+        userNamespacePermission.roles.findIndex(
           ({ role: slug, customRoleSlug }) => role === slug || slug === customRoleSlug
         ) !== -1
     };
@@ -357,7 +355,7 @@ export const permissionServiceFactory = ({
         permissions
       })) || [];
 
-    const rules = buildProjectPermissionRules(rolePermissions.concat(additionalPrivileges));
+    const rules = buildNamespacePermission(rolePermissions.concat(additionalPrivileges));
     const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
     const unescapedIdentityAuthInfo = requestContext.get("identityAuthInfo");
     const unescapedMetadata = objectify(
@@ -866,7 +864,7 @@ export const permissionServiceFactory = ({
         { role: NamespaceMembershipRole.Custom, permissions: namespaceRole.permissions }
       ]);
       return {
-        permission: createMongoAbility<NamespacePermissionSet>(rules.rules, {
+        permission: createMongoAbility<NamespacePermissionSet>(rules, {
           conditionsMatcher
         }),
         role: namespaceRole
@@ -874,7 +872,7 @@ export const permissionServiceFactory = ({
     }
 
     const rules = buildNamespacePermission([{ role, permissions: [] }]);
-    const permission = createMongoAbility<NamespacePermissionSet>(rules.rules, {
+    const permission = createMongoAbility<NamespacePermissionSet>(rules, {
       conditionsMatcher
     });
     return { permission };

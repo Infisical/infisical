@@ -345,7 +345,7 @@ export type TPermissionServiceFactory = {
   buildOrgPermission: (orgUserRoles: TBuildOrgPermissionDTO) => MongoAbility<OrgPermissionSet, MongoQuery>;
   buildNamespacePermission: (
     orgUserRoles: TBuildNamespacePermissionDTO
-  ) => MongoAbility<NamespacePermissionSet, MongoQuery>;
+  ) => RawRuleOf<MongoAbility<NamespacePermissionSet, MongoQuery>>[];
   buildProjectPermissionRules: (
     projectUserRoles: TBuildProjectPermissionDTO
   ) => RawRuleOf<MongoAbility<ProjectPermissionSet>>[];

@@ -1,5 +1,5 @@
 import { OrderByDirection } from "../generic/types";
-import { IdentityAuthMethod } from "../identities";
+import { IdentityAuthMethod } from "../identities/enums";
 
 export enum NamespaceIdentityOrderBy {
   Name = "name"
@@ -12,7 +12,8 @@ export enum NamespaceIdentityMembershipOrderBy {
 export type TNamespaceIdentity = {
   id: string;
   name: string;
-  authMethods: string[];
+  authMethods: IdentityAuthMethod[];
+  activeLockoutAuthMethods: IdentityAuthMethod[];
   hasDeleteProtection: boolean;
 };
 

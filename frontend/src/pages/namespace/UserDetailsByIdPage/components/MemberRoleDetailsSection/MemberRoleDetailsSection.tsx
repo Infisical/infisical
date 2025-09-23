@@ -101,7 +101,7 @@ export const MemberRoleDetailsSection = ({
   return (
     <div className="mb-4 w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-semibold text-mineshaft-100">Project Roles</h3>
+        <h3 className="text-lg font-semibold text-mineshaft-100">Namespace Roles</h3>
         {!isOwnMembershipDetails && (
           <NamespacePermissionCan
             I={NamespacePermissionActions.Edit}
@@ -137,7 +137,7 @@ export const MemberRoleDetailsSection = ({
             </THead>
             <TBody>
               {isMembershipDetailsLoading && (
-                <TableSkeleton columns={3} innerKey="user-project-memberships" />
+                <TableSkeleton columns={3} innerKey="user-namespace-memberships" />
               )}
               {!isMembershipDetailsLoading &&
                 membershipDetails?.roles?.map((roleDetails) => {
@@ -165,7 +165,7 @@ export const MemberRoleDetailsSection = ({
                   }
 
                   return (
-                    <Tr className="group h-10" key={`user-project-membership-${roleDetails?.id}`}>
+                    <Tr className="group h-10" key={`user-namespace-membership-${roleDetails?.id}`}>
                       <Td className="capitalize">
                         {roleDetails.role === "custom"
                           ? roleDetails.customRoleName
@@ -236,7 +236,7 @@ export const MemberRoleDetailsSection = ({
       >
         <ModalContent
           title="Roles"
-          subTitle="Select one or more of the pre-defined or custom roles to configure project permissions."
+          subTitle="Select one or more of the pre-defined or custom roles to configure namespace permissions."
         >
           <MemberRoleModify
             namespaceMember={membershipDetails}

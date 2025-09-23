@@ -12,10 +12,8 @@ import { format } from "date-fns";
 import { IconButton, Tag, Tooltip } from "@app/components/v2";
 import { useNamespace, useUser } from "@app/context";
 import { useTimedReset } from "@app/hooks";
-import { useFetchServerStatus } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { useQuery } from "@tanstack/react-query";
-import { namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles";
 import { namespaceUserMembershipQueryKeys } from "@app/hooks/api/namespaceUserMembership";
 import { NamespacePermissionCan } from "@app/components/permissions";
 import {
@@ -37,13 +35,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
   const userId = user?.id || "";
 
   const { namespaceName } = useNamespace();
-  const { data: { roles = [] } = {} } = useQuery(
-    namespaceRolesQueryKeys.list({
-      namespaceName,
-      limit: 1000
-    })
-  );
-  const { data: serverDetails } = useFetchServerStatus();
+
   const { data: membership } = useQuery(
     namespaceUserMembershipQueryKeys.detail({
       membershipId,

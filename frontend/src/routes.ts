@@ -22,7 +22,8 @@ const namespaceRoutes = route("/namespaces/$namespaceName", [
     route("/access-management", "namespace/AccessManagementPage/route.tsx"),
     route("/roles/$roleSlug", "namespace/RoleDetailsBySlugPage/route.tsx"),
     route("/identities/$identityId", "namespace/IdentityDetailsByIdPage/route.tsx"),
-    route("/members/$membershipId", "namespace/UserDetailsByIdPage/route.tsx")
+    route("/members/$membershipId", "namespace/UserDetailsByIdPage/route.tsx"),
+    route("/settings", "namespace/SettingsPage/route.tsx")
   ])
 ]);
 
@@ -51,7 +52,6 @@ const organizationRoutes = route("/organization", [
     )
   ]),
   route("/networking", [index("organization/NetworkingPage/route.tsx")]),
-  route("/gateways", [index("organization/Gateways/GatewayListPage/route.tsx")]),
   namespaceRoutes
 ]);
 

@@ -28,6 +28,7 @@ import {
   TSearchNamespaceIdentitiesDTO,
   TUpdateNamespaceIdentityMembershipDTO
 } from "./namespace-identity-membership-types";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 
 type TNamespaceIdentityMembershipServiceFactoryDep = {
   namespaceIdentityMembershipDAL: TNamespaceIdentityMembershipDALFactory;
@@ -38,6 +39,7 @@ type TNamespaceIdentityMembershipServiceFactoryDep = {
   namespaceDAL: Pick<TNamespaceDALFactory, "findOne">;
   namespaceRoleDAL: Pick<TNamespaceRoleDALFactory, "find">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
+  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
   permissionService: Pick<TPermissionServiceFactory, "getNamespacePermission" | "getNamespacePermissionByRole">;
 };
 
@@ -49,7 +51,8 @@ export const namespaceIdentityMembershipServiceFactory = ({
   identityOrgMembershipDAL,
   namespaceMembershipRoleDAL,
   namespaceDAL,
-  namespaceRoleDAL
+  namespaceRoleDAL,
+  keyStore
 }: TNamespaceIdentityMembershipServiceFactoryDep) => {
   const createNamespaceIdentityMembership = async ({
     identityId,
@@ -327,7 +330,7 @@ export const namespaceIdentityMembershipServiceFactory = ({
         message: `Failed to find identity with ID ${identityId}`
       });
 
-    if (!identityOrgMembership.identity.namespace)
+    if (identityOrgMembership.identity.namespace)
       throw new BadRequestError({
         message: `Namespace identity with  id ${identityId} membership cannot be deleted`
       });
@@ -341,7 +344,7 @@ export const namespaceIdentityMembershipServiceFactory = ({
     }
 
     const [deletedIdentity] = await namespaceIdentityMembershipDAL.delete({
-      orgIdentityMembershipId: identityId,
+      orgIdentityMembershipId: identityOrgMembership.id,
       namespaceId: namespace.id
     });
     return deletedIdentity;
@@ -413,7 +416,26 @@ export const namespaceIdentityMembershipServiceFactory = ({
         message: `Namespace membership for identity with ID '${identityId}' in namespace not found`
       });
 
-    return identityMembership;
+    const activeLockouts = await keyStore.getKeysByPattern(`lockout:identity:${identityId}:*`);
+
+    const activeLockoutAuthMethods = new Set<string>();
+    for await (const key of activeLockouts) {
+      const parts = key.split(":");
+      if (parts.length > 3) {
+        const lockoutRaw = await keyStore.getItem(key);
+        if (lockoutRaw) {
+          const lockout = JSON.parse(lockoutRaw) as { lockedOut: boolean };
+          if (lockout.lockedOut) {
+            activeLockoutAuthMethods.add(parts[3]);
+          }
+        }
+      }
+    }
+
+    return {
+      ...identityMembership,
+      identity: { ...identityMembership.identity, activeLockoutAuthMethods: Array.from(activeLockoutAuthMethods) }
+    };
   };
 
   const searchNamespaceIdentities = async ({

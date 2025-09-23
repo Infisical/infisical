@@ -142,8 +142,9 @@ export const NamespaceIdentityModal = ({ handlePopUpToggle, identityId }: Props)
 
         handlePopUpToggle();
         navigate({
-          to: "/organization/identities/$identityId",
+          to: "/organization/namespaces/$namespaceName/identities/$identityId",
           params: {
+            namespaceName,
             identityId: identity.id
           }
         });

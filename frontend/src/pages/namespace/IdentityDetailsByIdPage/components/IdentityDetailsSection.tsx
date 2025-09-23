@@ -21,7 +21,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { useTimedReset } from "@app/hooks";
-import { identityAuthToNameMap, useGetIdentityById } from "@app/hooks/api";
+import { identityAuthToNameMap } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { NamespacePermissionCan } from "@app/components/permissions";
 import {

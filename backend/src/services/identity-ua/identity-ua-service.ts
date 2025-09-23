@@ -815,7 +815,7 @@ export const identityUaServiceFactory = ({
           message: constructPermissionErrorMessage(
             "Failed to revoke universal auth of identity with more privileged role",
             membership.shouldUseNewPrivilegeSystem,
-            NamespacePermissionIdentityActions.RevokeAuth,
+            NamespacePermissionIdentityActions.GetToken,
             NamespacePermissionSubjects.Identity
           ),
           details: { missingPermissions: permissionBoundary.missingPermissions }

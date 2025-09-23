@@ -31,7 +31,8 @@ const SanitizedNamespaceIdentityMembershipSchema = NamespaceMembershipsSchema.ex
     namespaceId: true
   }).extend({
     authMethods: z.array(z.string()),
-    hasDeleteProtection: z.boolean()
+    hasDeleteProtection: z.boolean(),
+    activeLockoutAuthMethods: z.array(z.string()).optional()
   }),
   roles: z.array(
     z.object({
