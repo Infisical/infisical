@@ -134,14 +134,14 @@
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/postgres",
                       "integrations/app-connections/railway",
+                      "integrations/app-connections/redis",
                       "integrations/app-connections/render",
                       "integrations/app-connections/supabase",
                       "integrations/app-connections/teamcity",
                       "integrations/app-connections/terraform-cloud",
                       "integrations/app-connections/vercel",
                       "integrations/app-connections/windmill",
-                      "integrations/app-connections/zabbix",
-                      "integrations/app-connections/redis"
+                      "integrations/app-connections/zabbix"
                     ]
                   }
                 ]
@@ -1882,6 +1882,18 @@
                     ]
                   },
                   {
+                    "group": "Redis",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/redis/list",
+                      "api-reference/endpoints/app-connections/redis/available",
+                      "api-reference/endpoints/app-connections/redis/get-by-id",
+                      "api-reference/endpoints/app-connections/redis/get-by-name",
+                      "api-reference/endpoints/app-connections/redis/create",
+                      "api-reference/endpoints/app-connections/redis/update",
+                      "api-reference/endpoints/app-connections/redis/delete"
+                    ]
+                  },
+                  {
                     "group": "Render",
                     "pages": [
                       "api-reference/endpoints/app-connections/render/list",
@@ -1963,18 +1975,6 @@
                       "api-reference/endpoints/app-connections/zabbix/create",
                       "api-reference/endpoints/app-connections/zabbix/update",
                       "api-reference/endpoints/app-connections/zabbix/delete"
-                    ]
-                  },
-                  {
-                    "group": "Redis",
-                    "pages": [
-                      "api-reference/endpoints/app-connections/redis/list",
-                      "api-reference/endpoints/app-connections/redis/available",
-                      "api-reference/endpoints/app-connections/redis/get-by-id",
-                      "api-reference/endpoints/app-connections/redis/get-by-name",
-                      "api-reference/endpoints/app-connections/redis/create",
-                      "api-reference/endpoints/app-connections/redis/update",
-                      "api-reference/endpoints/app-connections/redis/delete"
                     ]
                   }
                 ]

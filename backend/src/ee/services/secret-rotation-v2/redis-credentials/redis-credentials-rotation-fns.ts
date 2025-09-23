@@ -61,21 +61,23 @@ export const redisCredentialsRotationFactory: TRotationFactory<
    * Creates a new user and password for the redis user using ACL
    */
   const $rotateAclUser = async () => {
-    const client = await $getClient();
-
-    const username = generatePassword({
-      length: 32,
-      required: {
-        symbols: 0,
-        digits: 5,
-        uppercase: 5,
-        lowercase: 5
-      }
-    });
-
-    const password = generatePassword(parameters.passwordRequirements || DEFAULT_PASSWORD_REQUIREMENTS);
+    let client: Redis | null = null;
 
     try {
+      client = await $getClient();
+
+      const username = generatePassword({
+        length: 32,
+        required: {
+          symbols: 0,
+          digits: 5,
+          uppercase: 5,
+          lowercase: 5
+        }
+      });
+
+      const password = generatePassword(parameters.passwordRequirements || DEFAULT_PASSWORD_REQUIREMENTS);
+
       // important: permissionScope is user input so we need to sanitize it, which we do by splitting the permission scope into parts and then passing them to the ACL command as separate arguments
       const permissionParts = (parameters.permissionScope || "~* +@all").split(" ");
       await client.call("ACL", "SETUSER", username, `>${password}`, "on", ...permissionParts);
@@ -88,6 +90,8 @@ export const redisCredentialsRotationFactory: TRotationFactory<
       throw new BadRequestError({
         message: "Unable to validate connection: verify credentials"
       });
+    } finally {
+      if (client) await client.quit();
     }
   };
 
@@ -95,14 +99,17 @@ export const redisCredentialsRotationFactory: TRotationFactory<
    * Revokes a ACL password from the Redis server using its username and password.
    */
   const revokeCredential = async (username: string) => {
-    const client = await $getClient();
+    let client: Redis | null = null;
 
     try {
+      client = await $getClient();
       await client.call("ACL", "DELUSER", username);
     } catch (error: unknown) {
       throw new BadRequestError({
         message: "Unable to revoke credential: verify credentials"
       });
+    } finally {
+      if (client) await client.quit();
     }
   };
 

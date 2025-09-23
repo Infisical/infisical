@@ -61,8 +61,8 @@ export const ValidateRedisConnectionCredentialsSchema = z.discriminatedUnion("me
 
 export const CreateRedisConnectionSchema = ValidateRedisConnectionCredentialsSchema.and(
   GenericCreateAppConnectionFieldsSchema(AppConnection.Redis, {
-    supportsPlatformManagedCredentials: true,
-    supportsGateways: true
+    supportsPlatformManagedCredentials: false,
+    supportsGateways: false
   })
 );
 
@@ -74,8 +74,8 @@ export const UpdateRedisConnectionSchema = z
   })
   .and(
     GenericUpdateAppConnectionFieldsSchema(AppConnection.Redis, {
-      supportsPlatformManagedCredentials: true,
-      supportsGateways: true
+      supportsPlatformManagedCredentials: false,
+      supportsGateways: false
     })
   );
 
