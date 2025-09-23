@@ -53,7 +53,7 @@ export const RedisCredentialsRotationParametersFields = () => {
               isError={Boolean(error)}
               errorText={error?.message}
             >
-              <Input {...field} placeholder="~* +@all" />
+              <Input {...field} placeholder="~* +@read @write" />
             </FormControl>
           )}
         />

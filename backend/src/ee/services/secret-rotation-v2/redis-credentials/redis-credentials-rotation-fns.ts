@@ -15,6 +15,21 @@ import {
   TRedisCredentialsRotationGeneratedCredentials,
   TRedisCredentialsRotationWithConnection
 } from "./redis-credentials-rotation-types";
+import { verifyHostInputValidity } from "../../dynamic-secret/dynamic-secret-fns";
+
+const redactPasswords = (e: unknown, credentials: TRedisCredentialsRotationGeneratedCredentials) => {
+  const error = e as Error;
+
+  if (!error?.message) return "Unknown error";
+
+  let redactedMessage = error.message;
+
+  credentials.forEach(({ password }) => {
+    redactedMessage = redactedMessage.replaceAll(password, "*******************");
+  });
+
+  return redactedMessage;
+};
 
 export const redisCredentialsRotationFactory: TRotationFactory<
   TRedisCredentialsRotationWithConnection,
@@ -23,11 +38,13 @@ export const redisCredentialsRotationFactory: TRotationFactory<
   const { connection, secretsMapping, parameters } = secretRotation;
 
   const $getClient = async () => {
+    const [hostIp] = await verifyHostInputValidity(connection.credentials.host);
+
     let conn: Redis | null = null;
     try {
       conn = new Redis({
         username: connection.credentials.username,
-        host: connection.credentials.host,
+        host: hostIp,
         port: connection.credentials.port,
         password: connection.credentials.password,
         ...(connection.credentials.sslEnabled && {
@@ -63,23 +80,23 @@ export const redisCredentialsRotationFactory: TRotationFactory<
   const $rotateAclUser = async () => {
     let client: Redis | null = null;
 
+    const username = generatePassword({
+      length: 32,
+      required: {
+        symbols: 0,
+        digits: 5,
+        uppercase: 5,
+        lowercase: 5
+      }
+    });
+
+    const password = generatePassword(parameters.passwordRequirements || DEFAULT_PASSWORD_REQUIREMENTS);
+
     try {
       client = await $getClient();
 
-      const username = generatePassword({
-        length: 32,
-        required: {
-          symbols: 0,
-          digits: 5,
-          uppercase: 5,
-          lowercase: 5
-        }
-      });
-
-      const password = generatePassword(parameters.passwordRequirements || DEFAULT_PASSWORD_REQUIREMENTS);
-
       // important: permissionScope is user input so we need to sanitize it, which we do by splitting the permission scope into parts and then passing them to the ACL command as separate arguments
-      const permissionParts = (parameters.permissionScope || "~* +@all").split(" ");
+      const permissionParts = parameters.permissionScope.split(" ");
       await client.call("ACL", "SETUSER", username, `>${password}`, "on", ...permissionParts);
 
       return {
@@ -88,7 +105,7 @@ export const redisCredentialsRotationFactory: TRotationFactory<
       };
     } catch (error: unknown) {
       throw new BadRequestError({
-        message: "Unable to validate connection: verify credentials"
+        message: `Unable to rotate credentials: ${redactPasswords(error, [{ username, password }])}`
       });
     } finally {
       if (client) await client.quit();
@@ -106,7 +123,7 @@ export const redisCredentialsRotationFactory: TRotationFactory<
       await client.call("ACL", "DELUSER", username);
     } catch (error: unknown) {
       throw new BadRequestError({
-        message: "Unable to revoke credential: verify credentials"
+        message: `Unable to revoke credential: ${redactPasswords(error, [{ username, password: username }])}`
       });
     } finally {
       if (client) await client.quit();

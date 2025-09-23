@@ -111,6 +111,14 @@ Infisical supports the use of Username & Password authentication to connect with
               "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
               "app": "redis",
               "method": "username-and-password",
+              credentials: {
+                "host": "<redis-host>",
+                "port": 6379,
+                "username": "<redis-username>",
+                "sslEnabled": true,
+                "sslRejectUnauthorized": false,
+                "sslCertificate": "<redis-ssl-certificate>"
+              }
           }
         }
         ```

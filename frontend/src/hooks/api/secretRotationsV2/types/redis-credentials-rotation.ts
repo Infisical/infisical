@@ -10,7 +10,7 @@ export type TRedisCredentialsRotation = TSecretRotationV2Base & {
   type: SecretRotation.RedisCredentials;
   parameters: {
     passwordRequirements?: TPasswordRequirements;
-    permissionScope?: string;
+    permissionScope: string;
   };
   secretsMapping: {
     username: string;

@@ -28,7 +28,11 @@ const RedisCredentialsRotationSecretsMappingSchema = z.object({
 
 export const RedisCredentialsRotationParametersSchema = z.object({
   passwordRequirements: PasswordRequirementsSchema.optional(),
-  permissionScope: z.string().optional().describe(SecretRotations.PARAMETERS.REDIS_CREDENTIALS.permissionScope)
+  permissionScope: z
+    .string()
+    .trim()
+    .min(1, "Permission scope is required")
+    .describe(SecretRotations.PARAMETERS.REDIS_CREDENTIALS.permissionScope)
 });
 
 export const RedisCredentialsRotationTemplateSchema = z.object({
@@ -40,30 +44,21 @@ export const RedisCredentialsRotationTemplateSchema = z.object({
 
 export const RedisCredentialsRotationSchema = BaseSecretRotationSchema(SecretRotation.RedisCredentials).extend({
   type: z.literal(SecretRotation.RedisCredentials),
-  parameters: z.object({
-    passwordRequirements: PasswordRequirementsSchema.optional(),
-    permissionScope: z.string().optional()
-  }),
+  parameters: RedisCredentialsRotationParametersSchema,
   secretsMapping: RedisCredentialsRotationSecretsMappingSchema
 });
 
 export const CreateRedisCredentialsRotationSchema = BaseCreateSecretRotationSchema(
   SecretRotation.RedisCredentials
 ).extend({
-  parameters: z.object({
-    passwordRequirements: PasswordRequirementsSchema.optional(),
-    permissionScope: z.string().optional()
-  }),
+  parameters: RedisCredentialsRotationParametersSchema,
   secretsMapping: RedisCredentialsRotationSecretsMappingSchema
 });
 
 export const UpdateRedisCredentialsRotationSchema = BaseUpdateSecretRotationSchema(
   SecretRotation.RedisCredentials
 ).extend({
-  parameters: z.object({
-    passwordRequirements: PasswordRequirementsSchema.optional(),
-    permissionScope: z.string().optional()
-  }),
+  parameters: RedisCredentialsRotationParametersSchema.optional(),
   secretsMapping: RedisCredentialsRotationSecretsMappingSchema.optional()
 });
 

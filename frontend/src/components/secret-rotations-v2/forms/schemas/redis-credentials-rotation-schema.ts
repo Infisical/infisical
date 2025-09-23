@@ -10,7 +10,7 @@ export const RedisCredentialsRotationSchema = z
     type: z.literal(SecretRotation.RedisCredentials),
     parameters: z.object({
       passwordRequirements: PasswordRequirementsSchema.optional(),
-      permissionScope: z.string().optional()
+      permissionScope: z.string().trim().min(1, "Permission scope is required")
     }),
     secretsMapping: z.object({
       username: z.string().trim().min(1, "Username required"),

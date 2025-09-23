@@ -323,6 +323,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <DigitalOceanConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Okta:
       return <OktaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Redis:
+      return <RedisConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }
