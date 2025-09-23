@@ -466,7 +466,12 @@ export const SecretListView = ({
   );
 
   const handleSecretDelete = useCallback(async () => {
-    const { key, id: secretId, value } = popUp.deleteSecret?.data as SecretV3RawSanitized;
+    const {
+      key,
+      id: secretId,
+      value,
+      secretValueHidden
+    } = popUp.deleteSecret?.data as SecretV3RawSanitized;
     try {
       if (isBatchMode) {
         const deleteChange: PendingSecretDelete = {
@@ -475,7 +480,8 @@ export const SecretListView = ({
           secretKey: key,
           secretValue: value || "",
           timestamp: Date.now(),
-          resourceType: "secret"
+          resourceType: "secret",
+          secretValueHidden
         };
 
         addPendingChange(deleteChange, {
@@ -616,19 +622,21 @@ export const SecretListView = ({
           </>
         }
       />
-      <SecretDetailSidebar
-        environment={environment}
-        secretPath={secretPath}
-        isOpen={popUp.secretDetail.isOpen}
-        onToggle={(isOpen) => handlePopUpToggle("secretDetail", isOpen)}
-        secret={popUp.secretDetail.data as SecretV3RawSanitized}
-        onDeleteSecret={() => handlePopUpOpen("deleteSecret", popUp.secretDetail.data)}
-        onClose={() => handlePopUpClose("secretDetail")}
-        onSaveSecret={handleSaveSecret}
-        tags={wsTags}
-        onCreateTag={() => handlePopUpOpen("createTag")}
-        handleSecretShare={(value: string) => handlePopUpOpen("createSharedSecret", { value })}
-      />
+      {popUp.secretDetail.data && (
+        <SecretDetailSidebar
+          environment={environment}
+          secretPath={secretPath}
+          isOpen={popUp.secretDetail.isOpen}
+          onToggle={(isOpen) => handlePopUpToggle("secretDetail", isOpen)}
+          secret={popUp.secretDetail.data as SecretV3RawSanitized}
+          onDeleteSecret={() => handlePopUpOpen("deleteSecret", popUp.secretDetail.data)}
+          onClose={() => handlePopUpClose("secretDetail")}
+          onSaveSecret={handleSaveSecret}
+          tags={wsTags}
+          onCreateTag={() => handlePopUpOpen("createTag")}
+          handleSecretShare={(value: string) => handlePopUpOpen("createSharedSecret", { value })}
+        />
+      )}
       <CreateTagModal
         isOpen={popUp.createTag.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("createTag", isOpen)}

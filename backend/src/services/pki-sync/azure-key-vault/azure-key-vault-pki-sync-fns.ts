@@ -1,0 +1,680 @@
+/* eslint-disable no-await-in-loop */
+import { AxiosError } from "axios";
+import * as crypto from "crypto";
+
+import { request } from "@app/lib/config/request";
+import { logger } from "@app/lib/logger";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault";
+import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { matchesCertificateNameSchema } from "@app/services/pki-sync/pki-sync-fns";
+import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
+
+import { PkiSyncError } from "../pki-sync-errors";
+import { TPkiSyncWithCredentials } from "../pki-sync-types";
+import { GetAzureKeyVaultCertificate, TAzureKeyVaultPkiSyncConfig } from "./azure-key-vault-pki-sync-types";
+
+const AZURE_RATE_LIMIT_CONFIG: RateLimitConfig = {
+  MAX_CONCURRENT_REQUESTS: 10,
+  BASE_DELAY: 1000,
+  MAX_DELAY: 30000,
+  MAX_RETRIES: 3,
+  RATE_LIMIT_STATUS_CODES: [429, 503]
+};
+
+const azureConnectionQueue = createConnectionQueue(AZURE_RATE_LIMIT_CONFIG);
+
+const { withRateLimitRetry, executeWithConcurrencyLimit } = azureConnectionQueue;
+
+const extractCertificateNameFromId = (certificateId: string): string => {
+  return certificateId.substring(certificateId.lastIndexOf("/") + 1);
+};
+
+const isInfisicalManagedCertificate = (certificateName: string, pkiSync: TPkiSyncWithCredentials): boolean => {
+  const syncOptions = pkiSync.syncOptions as { certificateNameSchema?: string } | undefined;
+  const certificateNameSchema = syncOptions?.certificateNameSchema;
+
+  if (certificateNameSchema) {
+    const environment = "global";
+    return matchesCertificateNameSchema(certificateName, environment, certificateNameSchema);
+  }
+
+  return certificateName.startsWith("Infisical-PKI-Sync-");
+};
+
+type TAzureKeyVaultPkiSyncFactoryDeps = {
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+};
+
+const parseCertificateX509Props = (certPem: string) => {
+  try {
+    const cert = new crypto.X509Certificate(certPem);
+
+    const { subject } = cert;
+
+    const sans = {
+      dns_names: [] as string[],
+      emails: [] as string[],
+      upns: [] as string[]
+    };
+
+    if (cert.subjectAltName) {
+      const sanEntries = cert.subjectAltName.split(", ");
+      for (const entry of sanEntries) {
+        if (entry.startsWith("DNS:")) {
+          sans.dns_names.push(entry.substring(4));
+        } else if (entry.startsWith("email:")) {
+          sans.emails.push(entry.substring(6));
+        } else if (entry.startsWith("othername:UPN:")) {
+          sans.upns.push(entry.substring(14));
+        }
+      }
+    }
+
+    return {
+      subject,
+      sans
+    };
+  } catch (error) {
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      "Failed to parse certificate X.509 properties, using empty values"
+    );
+    return {
+      subject: "",
+      sans: {
+        dns_names: [],
+        emails: [],
+        upns: []
+      }
+    };
+  }
+};
+
+const parseCertificateKeyProps = (certPem: string) => {
+  try {
+    const publicKeyObject = crypto.createPublicKey(certPem);
+    const keyDetails = publicKeyObject.asymmetricKeyDetails;
+
+    if (!keyDetails) {
+      if (publicKeyObject.asymmetricKeyType === "rsa") {
+        const pubKeyStr = publicKeyObject.export({ type: "spki", format: "der" }).toString("hex");
+        const estimatedBits = pubKeyStr.length * 4;
+
+        let keySize = 2048;
+        if (estimatedBits >= 4000) {
+          keySize = 4096;
+        } else if (estimatedBits >= 3000) {
+          keySize = 3072;
+        } else if (estimatedBits >= 2000) {
+          keySize = 2048;
+        } else if (estimatedBits >= 1000) {
+          keySize = 1024;
+        }
+
+        return {
+          kty: "RSA",
+          key_size: keySize
+        };
+      }
+
+      if (publicKeyObject.asymmetricKeyType === "ec") {
+        return {
+          kty: "EC",
+          curve: "P-256"
+        };
+      }
+
+      return {
+        kty: "RSA",
+        key_size: 2048
+      };
+    }
+
+    if (publicKeyObject.asymmetricKeyType === "rsa") {
+      const modulusLength = keyDetails.modulusLength || 2048;
+      return {
+        kty: "RSA",
+        key_size: modulusLength
+      };
+    }
+
+    if (publicKeyObject.asymmetricKeyType === "ec") {
+      const { namedCurve } = keyDetails;
+      let curveName = "P-256";
+
+      switch (namedCurve) {
+        case "prime256v1":
+        case "secp256r1":
+          curveName = "P-256";
+          break;
+        case "secp384r1":
+          curveName = "P-384";
+          break;
+        case "secp521r1":
+          curveName = "P-521";
+          break;
+        default:
+          curveName = "P-256";
+      }
+
+      return {
+        kty: "EC",
+        curve: curveName
+      };
+    }
+
+    const keyType = publicKeyObject.asymmetricKeyType;
+    if (keyType && !["rsa", "ec"].includes(keyType)) {
+      throw new Error(`Unsupported certificate key type: ${keyType}. Azure Key Vault only supports RSA and EC keys.`);
+    }
+
+    logger.warn({ keyType }, "Unable to determine certificate key type, defaulting to RSA 2048");
+    return {
+      kty: "RSA",
+      key_size: 2048
+    };
+  } catch (error) {
+    logger.warn(
+      { error: error instanceof Error ? error.message : String(error) },
+      "Failed to parse certificate key properties, defaulting to RSA 2048"
+    );
+    return {
+      kty: "RSA",
+      key_size: 2048
+    };
+  }
+};
+
+export const azureKeyVaultPkiSyncFactory = ({ kmsService, appConnectionDAL }: TAzureKeyVaultPkiSyncFactoryDeps) => {
+  const $getAzureKeyVaultCertificates = async (accessToken: string, vaultBaseUrl: string, syncId = "unknown") => {
+    const paginateAzureKeyVaultCertificates = async () => {
+      let result: GetAzureKeyVaultCertificate[] = [];
+
+      let currentUrl = `${vaultBaseUrl}/certificates?api-version=7.4`;
+
+      while (currentUrl) {
+        const urlToFetch = currentUrl; // Capture current URL to avoid loop function issue
+        const res = await withRateLimitRetry(
+          () =>
+            request.get<{ value: GetAzureKeyVaultCertificate[]; nextLink: string }>(urlToFetch, {
+              headers: {
+                Authorization: `Bearer ${accessToken}`
+              }
+            }),
+          { operation: "list-certificates", syncId }
+        );
+
+        result = result.concat(res.data.value);
+        currentUrl = res.data.nextLink;
+      }
+
+      return result;
+    };
+
+    const getAzureKeyVaultCertificates = await paginateAzureKeyVaultCertificates();
+
+    const enabledAzureKeyVaultCertificates = getAzureKeyVaultCertificates.filter((cert) => cert.attributes.enabled);
+
+    // disabled certificates to skip sending updates to
+    const disabledAzureKeyVaultCertificateKeys = getAzureKeyVaultCertificates
+      .filter(({ attributes }) => !attributes.enabled)
+      .map((certificate) => extractCertificateNameFromId(certificate.id));
+
+    // Use rate-limited concurrent execution for fetching certificate details
+    const certificateResults = await executeWithConcurrencyLimit(
+      enabledAzureKeyVaultCertificates,
+      async (getAzureKeyVaultCertificate) => {
+        const azureKeyVaultCertificate = await request.get<GetAzureKeyVaultCertificate>(
+          `${getAzureKeyVaultCertificate.id}?api-version=7.4`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          }
+        );
+
+        let certPem = "";
+        if (azureKeyVaultCertificate.data.cer) {
+          try {
+            // Azure Key Vault stores certificate in base64 DER format
+            // We need to convert it to PEM format with proper headers
+            const base64Cert = azureKeyVaultCertificate.data.cer;
+            const base64Lines = base64Cert.match(/.{1,64}/g);
+            if (!base64Lines) {
+              throw new Error("Failed to format base64 certificate data");
+            }
+            certPem = `-----BEGIN CERTIFICATE-----\n${base64Lines.join("\n")}\n-----END CERTIFICATE-----`;
+          } catch (error) {
+            logger.warn(
+              {
+                error: error instanceof Error ? error.message : String(error),
+                certificateId: getAzureKeyVaultCertificate.id
+              },
+              "Failed to convert Azure Key Vault certificate to PEM format, skipping certificate"
+            );
+            certPem = ""; // Skip this certificate if we can't convert it properly
+          }
+        }
+
+        return {
+          ...azureKeyVaultCertificate.data,
+          key: extractCertificateNameFromId(getAzureKeyVaultCertificate.id),
+          cert: certPem,
+          privateKey: "" // Private keys cannot be extracted from Azure Key Vault for security reasons
+        };
+      },
+      { operation: "fetch-certificate-details", syncId }
+    );
+
+    const successfulCertificates = certificateResults
+      .filter(
+        (
+          result
+        ): result is PromiseFulfilledResult<
+          GetAzureKeyVaultCertificate & {
+            key: string;
+            cert: string;
+            privateKey: string;
+          }
+        > => result.status === "fulfilled"
+      )
+      .map((result) => result.value);
+
+    // Log any failures
+    const failedFetches = certificateResults.filter((result) => result.status === "rejected");
+    if (failedFetches.length > 0) {
+      logger.warn(
+        {
+          syncId,
+          failedCount: failedFetches.length,
+          totalCount: enabledAzureKeyVaultCertificates.length
+        },
+        "Some certificate details could not be fetched from Azure Key Vault"
+      );
+    }
+
+    const res: Record<string, { cert: string; privateKey: string }> = successfulCertificates.reduce(
+      (obj, certificate) => ({
+        ...obj,
+        [certificate.key]: {
+          cert: certificate.cert,
+          privateKey: certificate.privateKey
+        }
+      }),
+      {} as Record<string, { cert: string; privateKey: string }>
+    );
+
+    return {
+      vaultCertificates: res,
+      disabledAzureKeyVaultCertificateKeys
+    };
+  };
+
+  const syncCertificates = async (pkiSync: TPkiSyncWithCredentials, certificateMap: TCertificateMap) => {
+    const { accessToken } = await getAzureConnectionAccessToken(pkiSync.connection.id, appConnectionDAL, kmsService);
+
+    // Cast destination config to Azure Key Vault config
+    const destinationConfig = pkiSync.destinationConfig as TAzureKeyVaultPkiSyncConfig;
+
+    const { vaultCertificates, disabledAzureKeyVaultCertificateKeys } = await $getAzureKeyVaultCertificates(
+      accessToken,
+      destinationConfig.vaultBaseUrl,
+      pkiSync.id
+    );
+
+    const setCertificates: {
+      key: string;
+      cert: string;
+      privateKey: string;
+      certificateChain?: string;
+    }[] = [];
+
+    // Track which certificates should exist in Azure Key Vault
+    const activeCertificateNames = Object.keys(certificateMap);
+
+    // Iterate through certificates to sync to Azure Key Vault
+    Object.entries(certificateMap).forEach(([certName, { cert, privateKey, certificateChain }]) => {
+      if (disabledAzureKeyVaultCertificateKeys.includes(certName)) {
+        return;
+      }
+
+      const existingCert = vaultCertificates[certName];
+      const shouldUpdateCert = !existingCert || existingCert.cert !== cert;
+
+      if (shouldUpdateCert) {
+        setCertificates.push({
+          key: certName,
+          cert,
+          privateKey,
+          certificateChain
+        });
+      }
+    });
+
+    // Identify expired/removed certificates that need to be cleaned up from Azure Key Vault
+    // Only remove certificates that were managed by Infisical (match naming schema)
+    const certificatesToRemove = Object.keys(vaultCertificates).filter(
+      (vaultCertName) =>
+        isInfisicalManagedCertificate(vaultCertName, pkiSync) &&
+        !activeCertificateNames.includes(vaultCertName) &&
+        !disabledAzureKeyVaultCertificateKeys.includes(vaultCertName)
+    );
+
+    // Upload certificates to Azure Key Vault with rate limiting
+    const uploadResults = await executeWithConcurrencyLimit(
+      setCertificates,
+      async ({ key, cert, privateKey, certificateChain }) => {
+        try {
+          // Combine private key, certificate, and certificate chain in PEM format for Azure Key Vault
+          let combinedPem = "";
+
+          if (privateKey) {
+            combinedPem = privateKey.trim();
+          }
+
+          if (combinedPem) {
+            combinedPem = `${combinedPem}\n${cert.trim()}`;
+          } else {
+            combinedPem = cert.trim();
+          }
+
+          if (certificateChain) {
+            const trimmedChain = certificateChain.trim();
+            if (trimmedChain) {
+              combinedPem = `${combinedPem}\n${trimmedChain}`;
+            }
+          }
+
+          // Convert to base64 for Azure Key Vault import
+          const base64Cert = Buffer.from(combinedPem).toString("base64");
+
+          // Parse certificate to extract X.509 properties and key properties
+          const x509Props = parseCertificateX509Props(cert);
+          const keyProps = parseCertificateKeyProps(cert);
+
+          // Build key_props based on key type
+          const keyPropsConfig = {
+            exportable: true,
+            reuse_key: false,
+            ...keyProps
+          };
+
+          const importData = {
+            value: base64Cert,
+            policy: {
+              key_props: keyPropsConfig,
+              secret_props: {
+                contentType: "application/x-pem-file"
+              },
+              x509_props: x509Props
+            },
+            attributes: {
+              enabled: true,
+              exportable: true
+            }
+          };
+
+          const response = await request.post(
+            `${destinationConfig.vaultBaseUrl}/certificates/${encodeURIComponent(key)}/import?api-version=7.4`,
+            importData,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json"
+              }
+            }
+          );
+
+          return { key, success: true, response: response.data as unknown };
+        } catch (error) {
+          if (error instanceof AxiosError) {
+            const errorMessage =
+              error.response?.data && typeof error.response.data === "object" && "error" in error.response.data
+                ? (error.response.data as { error?: { message?: string } }).error?.message || error.message
+                : error.message;
+
+            // Check if the error is due to certificate in deleted but recoverable state
+            const isDeletedButRecoverable =
+              errorMessage.includes("deleted but recoverable state") || errorMessage.includes("name cannot be reused");
+
+            if (isDeletedButRecoverable) {
+              logger.warn(
+                { certificateKey: key, syncId: pkiSync.id },
+                "Certificate exists in deleted but recoverable state in Azure Key Vault - skipping upload"
+              );
+              return { key, success: false, skipped: true, reason: "Certificate in deleted but recoverable state" };
+            }
+
+            throw new PkiSyncError({
+              message: `Failed to upload certificate ${key} to Azure Key Vault: ${errorMessage}`,
+              cause: error,
+              context: {
+                certificateKey: key,
+                statusCode: error.response?.status,
+                responseData: error.response?.data
+              }
+            });
+          }
+          throw error;
+        }
+      },
+      { operation: "upload-certificates", syncId: pkiSync.id }
+    );
+
+    const results = uploadResults;
+    const failedUploads = results.filter((result) => result.status === "rejected");
+    const fulfilledResults = results.filter((result) => result.status === "fulfilled");
+
+    // Separate successful uploads from skipped certificates
+    const successfulUploads = fulfilledResults.filter(
+      (result) => result.status === "fulfilled" && result.value.success
+    );
+    const skippedUploads = fulfilledResults.filter((result) => result.status === "fulfilled" && result.value.skipped);
+
+    // Remove expired/removed certificates from Azure Key Vault
+    let removedCertificates = 0;
+    let failedRemovals = 0;
+
+    if (certificatesToRemove.length > 0) {
+      const removeResults = await executeWithConcurrencyLimit(
+        certificatesToRemove,
+        async (certName) => {
+          try {
+            await request.delete(
+              `${destinationConfig.vaultBaseUrl}/certificates/${encodeURIComponent(certName)}?api-version=7.4`,
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`
+                }
+              }
+            );
+
+            return { key: certName, success: true };
+          } catch (error) {
+            // If certificate doesn't exist (404), consider it as successfully removed
+            if (error instanceof AxiosError && error.response?.status === 404) {
+              return { key: certName, success: true, alreadyRemoved: true };
+            }
+
+            logger.error(
+              { error, syncId: pkiSync.id, certificateName: certName },
+              "Failed to remove expired/removed certificate from Azure Key Vault"
+            );
+
+            // Don't throw here - we want to continue with other operations
+            return { key: certName, success: false, error: error as Error };
+          }
+        },
+        { operation: "remove-certificates", syncId: pkiSync.id }
+      );
+      const successfulRemovals = removeResults.filter(
+        (result) => result.status === "fulfilled" && result.value.success
+      );
+      removedCertificates = successfulRemovals.length;
+      failedRemovals = removeResults.length - removedCertificates;
+
+      if (failedRemovals > 0) {
+        logger.warn(
+          {
+            syncId: pkiSync.id,
+            failedRemovals,
+            successfulRemovals: removedCertificates
+          },
+          "Some expired/removed certificates could not be removed from Azure Key Vault"
+        );
+      }
+    }
+
+    // Collect detailed information for UI feedback
+    const details: {
+      failedUploads?: Array<{ name: string; error: string }>;
+      failedRemovals?: Array<{ name: string; error: string }>;
+      skippedCertificates?: Array<{ name: string; reason: string }>;
+    } = {};
+
+    // Collect skipped certificate details
+    if (skippedUploads.length > 0) {
+      details.skippedCertificates = skippedUploads.map((result) => {
+        const certificateName = result.status === "fulfilled" ? result.value.key : "unknown";
+        return {
+          name: certificateName,
+          reason: "Azure Key Vault constraints or certificate already up to date"
+        };
+      });
+    }
+
+    // Collect failed upload details
+    if (failedUploads.length > 0) {
+      details.failedUploads = failedUploads.map((failure, index) => {
+        const certificateName = setCertificates[index]?.key || "unknown";
+        let errorMessage = "Unknown error";
+
+        if (failure.status === "rejected") {
+          errorMessage = (failure.reason as Error)?.message || "Unknown error";
+        }
+
+        return {
+          name: certificateName,
+          error: errorMessage
+        };
+      });
+
+      logger.error(
+        {
+          syncId: pkiSync.id,
+          failedUploads: details.failedUploads,
+          failedCount: failedUploads.length
+        },
+        "Some certificates failed to upload to Azure Key Vault"
+      );
+    }
+
+    // Collect failed removal details
+    if (failedRemovals > 0) {
+      const failedRemovalNames = certificatesToRemove.slice(-failedRemovals);
+      details.failedRemovals = failedRemovalNames.map((certName) => ({
+        name: certName,
+        error: "Failed to remove from Azure Key Vault"
+      }));
+
+      logger.warn(
+        {
+          syncId: pkiSync.id,
+          failedRemovals: details.failedRemovals,
+          successfulRemovals: removedCertificates
+        },
+        "Some expired/removed certificates could not be removed from Azure Key Vault"
+      );
+    }
+
+    return {
+      uploaded: successfulUploads.length,
+      removed: removedCertificates,
+      failedRemovals,
+      skipped: Object.keys(certificateMap).length - setCertificates.length,
+      details: Object.keys(details).length > 0 ? details : undefined
+    };
+  };
+
+  const removeCertificates = async (pkiSync: TPkiSyncWithCredentials, certificateNames: string[]) => {
+    const { accessToken } = await getAzureConnectionAccessToken(pkiSync.connection.id, appConnectionDAL, kmsService);
+
+    // Cast destination config to Azure Key Vault config
+    const destinationConfig = pkiSync.destinationConfig as TAzureKeyVaultPkiSyncConfig;
+
+    // Only remove certificates that are managed by Infisical (match naming schema)
+    const infisicalManagedCertNames = certificateNames.filter((certName) =>
+      isInfisicalManagedCertificate(certName, pkiSync)
+    );
+
+    const results = await executeWithConcurrencyLimit(
+      infisicalManagedCertNames,
+      async (certName) => {
+        try {
+          const response = await request.delete(
+            `${destinationConfig.vaultBaseUrl}/certificates/${encodeURIComponent(certName)}?api-version=7.4`,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`
+              }
+            }
+          );
+
+          return { key: certName, success: true, response: response.data as unknown };
+        } catch (error) {
+          if (error instanceof AxiosError) {
+            // If certificate doesn't exist (404), consider it as successfully removed
+            if (error.response?.status === 404) {
+              return { key: certName, success: true, alreadyRemoved: true };
+            }
+
+            throw new PkiSyncError({
+              message: `Failed to remove certificate ${certName} from Azure Key Vault`,
+              cause: error,
+              context: {
+                certificateKey: certName,
+                statusCode: error.response?.status,
+                responseData: error.response?.data
+              }
+            });
+          }
+          throw error;
+        }
+      },
+      { operation: "remove-specific-certificates", syncId: pkiSync.id }
+    );
+    const failedRemovals = results.filter((result) => result.status === "rejected");
+
+    if (failedRemovals.length > 0) {
+      const failedReasons = failedRemovals.map((failure) => {
+        if (failure.status === "rejected") {
+          return (failure.reason as Error)?.message || "Unknown error";
+        }
+        return "Unknown error";
+      });
+
+      throw new PkiSyncError({
+        message: `Failed to remove ${failedRemovals.length} certificate(s) from Azure Key Vault`,
+        context: {
+          failedReasons,
+          totalCertificates: infisicalManagedCertNames.length,
+          failedCount: failedRemovals.length
+        }
+      });
+    }
+
+    return {
+      removed: infisicalManagedCertNames.length - failedRemovals.length,
+      failed: failedRemovals.length,
+      skipped: certificateNames.length - infisicalManagedCertNames.length
+    };
+  };
+
+  return {
+    syncCertificates,
+    removeCertificates
+  };
+};

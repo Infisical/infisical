@@ -337,12 +337,17 @@ export const secretApprovalRequestServiceFactory = ({
           ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
           : el.secret && el.secret.isRotatedSecret
             ? undefined
-            : el.encryptedValue
+            : el.encryptedValue !== undefined && el.encryptedValue !== null
               ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-              : "",
-        secretComment: el.encryptedComment
-          ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
-          : "",
+              : undefined,
+        secretComment:
+          el.encryptedComment !== undefined && el.encryptedComment !== null
+            ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
+            : undefined,
+        skipMultilineEncoding:
+          el.skipMultilineEncoding !== undefined && el.skipMultilineEncoding !== null
+            ? el.skipMultilineEncoding
+            : undefined,
         secret: el.secret
           ? {
               secretKey: el.secret.key,
@@ -394,7 +399,8 @@ export const secretApprovalRequestServiceFactory = ({
                 ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedComment }).toString()
                 : "",
               tags: el.secretVersion.tags,
-              secretMetadata: el.oldSecretMetadata as ResourceMetadataDTO
+              secretMetadata: el.oldSecretMetadata as ResourceMetadataDTO,
+              skipMultilineEncoding: el.secretVersion.skipMultilineEncoding
             }
           : undefined
       }));
@@ -733,9 +739,9 @@ export const secretApprovalRequestServiceFactory = ({
               tx,
               inputSecrets: secretUpdationCommits.map((el) => {
                 const encryptedValue =
-                  !el.secret?.isRotatedSecret && typeof el.encryptedValue !== "undefined"
+                  !el.secret?.isRotatedSecret && el.encryptedValue !== null && el.encryptedValue !== undefined
                     ? {
-                        encryptedValue: el.encryptedValue as Buffer,
+                        encryptedValue: el.encryptedValue,
                         references: el.encryptedValue
                           ? getAllSecretReferencesV2Bridge(
                               secretManagerDecryptor({
@@ -749,9 +755,9 @@ export const secretApprovalRequestServiceFactory = ({
                   filter: { id: el.secretId as string, type: SecretType.Shared },
                   data: {
                     reminderRepeatDays: el.reminderRepeatDays,
-                    encryptedComment: el.encryptedComment,
+                    encryptedComment: el.encryptedComment !== null ? el.encryptedComment : undefined,
                     reminderNote: el.reminderNote,
-                    skipMultilineEncoding: el.skipMultilineEncoding,
+                    skipMultilineEncoding: el.skipMultilineEncoding !== null ? el.skipMultilineEncoding : undefined,
                     key: el.key,
                     tags: el?.tags.map(({ id }) => id),
                     secretMetadata: el.secretMetadata as ResourceMetadataDTO,
@@ -1084,7 +1090,9 @@ export const secretApprovalRequestServiceFactory = ({
               // @ts-expect-error not present on v1 secrets
               secretKey: secret.key as string,
               // @ts-expect-error not present on v1 secrets
-              secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+              secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+              // @ts-expect-error not present on v1 secrets
+              secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
             }))
           }
         });
@@ -1100,7 +1108,9 @@ export const secretApprovalRequestServiceFactory = ({
             // @ts-expect-error not present on v1 secrets
             secretKey: secret.key as string,
             // @ts-expect-error not present on v1 secrets
-            secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+            secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+            // @ts-expect-error not present on v1 secrets
+            secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
           }
         });
       }
@@ -1119,7 +1129,9 @@ export const secretApprovalRequestServiceFactory = ({
               // @ts-expect-error not present on v1 secrets
               secretKey: secret.key as string,
               // @ts-expect-error not present on v1 secrets
-              secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+              secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+              // @ts-expect-error not present on v1 secrets
+              secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
             }))
           }
         });
@@ -1135,7 +1147,9 @@ export const secretApprovalRequestServiceFactory = ({
             // @ts-expect-error not present on v1 secrets
             secretKey: secret.key as string,
             // @ts-expect-error not present on v1 secrets
-            secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+            secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+            // @ts-expect-error not present on v1 secrets
+            secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
           }
         });
       }
@@ -1625,11 +1639,13 @@ export const secretApprovalRequestServiceFactory = ({
               key: newSecretName || secretKey,
               encryptedComment: setKnexStringValue(
                 secretComment,
-                (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+                (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob,
+                true // scott: we need to encrypt empty string on update to differentiate not updating comment vs clearing comment
               ),
               encryptedValue: setKnexStringValue(
                 secretValue,
-                (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+                (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob,
+                true // scott: we need to encrypt empty string on update to differentiate not updating value vs clearing value
               ),
               reminderRepeatDays,
               reminderNote,

@@ -21,6 +21,13 @@ export enum OrgGatewayPermissionActions {
   AttachGateways = "attach-gateways"
 }
 
+export enum OrgRelayPermissionActions {
+  CreateRelays = "create-relays",
+  ListRelays = "list-relays",
+  EditRelays = "edit-relays",
+  DeleteRelays = "delete-relays"
+}
+
 export enum OrgPermissionMachineIdentityAuthTemplateActions {
   ListTemplates = "list-templates",
   CreateTemplates = "create-templates",
@@ -51,6 +58,7 @@ export enum OrgPermissionSubjects {
   AppConnections = "app-connections",
   Kmip = "kmip",
   Gateway = "gateway",
+  Relay = "relay",
   SecretShare = "secret-share",
   GithubOrgSync = "github-org-sync",
   GithubOrgSyncManual = "github-org-sync-manual",
@@ -135,6 +143,7 @@ export type OrgPermissionSet =
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     ]
   | [OrgGatewayPermissionActions, OrgPermissionSubjects.Gateway]
+  | [OrgRelayPermissionActions, OrgPermissionSubjects.Relay]
   | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare]
   | [
       OrgPermissionAppConnectionActions,

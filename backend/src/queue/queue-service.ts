@@ -25,6 +25,11 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 import { ExternalPlatforms } from "@app/services/external-migration/external-migration-types";
 import { TCreateUserNotificationDTO } from "@app/services/notification/notification-types";
 import {
+  TQueuePkiSyncImportCertificatesByIdDTO,
+  TQueuePkiSyncRemoveCertificatesByIdDTO,
+  TQueuePkiSyncSyncCertificatesByIdDTO
+} from "@app/services/pki-sync/pki-sync-types";
+import {
   TFailedIntegrationSyncEmailsPayload,
   TIntegrationSyncPayload,
   TSyncSecretsDTO
@@ -46,6 +51,7 @@ export enum QueueName {
   AuditLogPrune = "audit-log-prune",
   DailyResourceCleanUp = "daily-resource-cleanup",
   DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
+  PkiSyncCleanup = "pki-sync-cleanup",
   PkiSubscriber = "pki-subscriber",
   TelemetryInstanceStats = "telemtry-self-hosted-stats",
   IntegrationSync = "sync-integrations",
@@ -58,6 +64,7 @@ export enum QueueName {
   CaLifecycle = "ca-lifecycle", // parent queue to ca-order-certificate-for-subscriber
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
+  PkiSync = "pki-sync",
   ProjectV3Migration = "project-v3-migration",
   AccessTokenStatusUpdate = "access-token-status-update",
   ImportSecretsFromExternalSource = "import-secrets-from-external-source",
@@ -80,6 +87,7 @@ export enum QueueJobs {
   AuditLogPrune = "audit-log-prune-job",
   DailyResourceCleanUp = "daily-resource-cleanup-job",
   DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
+  PkiSyncCleanup = "pki-sync-cleanup-job",
   SecWebhook = "secret-webhook-trigger",
   TelemetryInstanceStats = "telemetry-self-hosted-stats",
   IntegrationSync = "secret-integration-pull",
@@ -91,6 +99,7 @@ export enum QueueJobs {
   CaCrlRotation = "ca-crl-rotation-job",
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
+  PkiSync = "pki-sync",
   ProjectV3Migration = "project-v3-migration",
   IdentityAccessTokenStatusUpdate = "identity-access-token-status-update",
   ServiceTokenStatusUpdate = "service-token-status-update",
@@ -99,6 +108,9 @@ export enum QueueJobs {
   SecretSyncImportSecrets = "secret-sync-import-secrets",
   SecretSyncRemoveSecrets = "secret-sync-remove-secrets",
   SecretSyncSendActionFailedNotifications = "secret-sync-send-action-failed-notifications",
+  PkiSyncSyncCertificates = "pki-sync-sync-certificates",
+  PkiSyncImportCertificates = "pki-sync-import-certificates",
+  PkiSyncRemoveCertificates = "pki-sync-remove-certificates",
   SecretRotationV2QueueRotations = "secret-rotation-v2-queue-rotations",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
@@ -139,6 +151,10 @@ export type TQueueJobTypes = {
   };
   [QueueName.DailyExpiringPkiItemAlert]: {
     name: QueueJobs.DailyExpiringPkiItemAlert;
+    payload: undefined;
+  };
+  [QueueName.PkiSyncCleanup]: {
+    name: QueueJobs.PkiSyncCleanup;
     payload: undefined;
   };
   [QueueName.AuditLogPrune]: {
@@ -218,6 +234,19 @@ export type TQueueJobTypes = {
     name: QueueJobs.SecretSync;
     payload: TSyncSecretsDTO;
   };
+  [QueueName.PkiSync]:
+    | {
+        name: QueueJobs.PkiSyncSyncCertificates;
+        payload: TQueuePkiSyncSyncCertificatesByIdDTO;
+      }
+    | {
+        name: QueueJobs.PkiSyncImportCertificates;
+        payload: TQueuePkiSyncImportCertificatesByIdDTO;
+      }
+    | {
+        name: QueueJobs.PkiSyncRemoveCertificates;
+        payload: TQueuePkiSyncRemoveCertificatesByIdDTO;
+      };
   [QueueName.ProjectV3Migration]: {
     name: QueueJobs.ProjectV3Migration;
     payload: { projectId: string };

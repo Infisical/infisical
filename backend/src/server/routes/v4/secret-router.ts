@@ -478,7 +478,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretId: secret.id,
             secretKey: req.params.secretName,
             secretVersion: secret.version,
-            secretMetadata: req.body.secretMetadata
+            secretMetadata: req.body.secretMetadata,
+            secretTags: secret.tags?.map((tag) => tag.name)
           }
         }
       });
@@ -621,7 +622,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
             secretId: secret.id,
             secretKey: req.params.secretName,
             secretVersion: secret.version,
-            secretMetadata: req.body.secretMetadata
+            secretMetadata: req.body.secretMetadata,
+            secretTags: secret.tags?.map((tag) => tag.name)
           }
         }
       });
@@ -911,7 +913,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               secretId: secret.id,
               secretKey: secret.secretKey,
               secretVersion: secret.version,
-              secretMetadata: secretMetadataMap.get(secret.secretKey)
+              secretMetadata: secretMetadataMap.get(secret.secretKey),
+              secretTags: secret.tags?.map((tag) => tag.name)
             }))
           }
         }
@@ -1063,7 +1066,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 secretPath: secret.secretPath,
                 secretKey: secret.secretKey,
                 secretVersion: secret.version,
-                secretMetadata: secretMetadataMap.get(secret.secretKey)
+                secretMetadata: secretMetadataMap.get(secret.secretKey),
+                secretTags: secret.tags?.map((tag) => tag.name)
               }))
           }
         }
@@ -1262,7 +1266,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { secretName } = req.params;
       const { secretPath, environment, projectId } = req.query;
-      const { tree, value } = await server.services.secret.getSecretReferenceTree({
+      const { tree, value, secret } = await server.services.secret.getSecretReferenceTree({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
@@ -1271,6 +1275,21 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretName,
         secretPath,
         environment
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.GET_SECRET,
+          metadata: {
+            environment,
+            secretPath,
+            secretId: secret.id,
+            secretKey: secretName,
+            secretVersion: secret.version
+          }
+        }
       });
 
       return { tree, value };

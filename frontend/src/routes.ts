@@ -40,7 +40,7 @@ const organizationRoutes = route("/organization", [
       "organization/AppConnections/OauthCallbackPage/route.tsx"
     )
   ]),
-  route("/gateways", [index("organization/Gateways/GatewayListPage/route.tsx")])
+  route("/networking", [index("organization/NetworkingPage/route.tsx")])
 ]);
 
 const secretManagerRoutes = route("/projects/secret-management/$projectId", [
@@ -311,6 +311,10 @@ const certManagerRoutes = route("/projects/cert-management/$projectId", [
     route("/alerting", "cert-manager/AlertingPage/route.tsx"),
     route("/ca/$caName", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
     route("/pki-collections/$collectionId", "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"),
+    route("/integrations", [
+      index("cert-manager/IntegrationsListPage/route.tsx"),
+      route("/$syncId", "cert-manager/PkiSyncDetailsByIDPage/route.tsx")
+    ]),
     route("/settings", "cert-manager/SettingsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-cert-manager.tsx"),
     route("/access-management", "project/AccessControlPage/route-cert-manager.tsx"),

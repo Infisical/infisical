@@ -1,9 +1,10 @@
 import { z } from "zod";
 
+import { RelaysSchema } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
-import { writeLimit } from "@app/server/config/rateLimiter";
+import { UnauthorizedError } from "@app/lib/errors";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -89,14 +90,59 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      throw new BadRequestError({
-        message: "Org relay registration is not yet supported"
-      });
-
       return server.services.relay.registerRelay({
         ...req.body,
         identityId: req.permission.id,
-        orgId: req.permission.orgId
+        orgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/",
+    schema: {
+      response: {
+        200: RelaysSchema.array()
+      }
+    },
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.relay.getRelays({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:id",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        id: z.string()
+      }),
+      response: {
+        200: RelaysSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.relay.deleteRelay({
+        id: req.params.id,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
       });
     }
   });

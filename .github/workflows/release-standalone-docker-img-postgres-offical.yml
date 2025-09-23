@@ -63,6 +63,8 @@ jobs:
                   build-args: |
                       POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
                       INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
+                      DD_GIT_REPOSITORY_URL=${{ github.server_url }}/${{ github.repository }}
+                      DD_GIT_COMMIT_SHA=${{ github.sha }}
 
     infisical-fips-standalone:
         name: Build infisical standalone image postgres

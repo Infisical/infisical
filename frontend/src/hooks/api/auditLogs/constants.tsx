@@ -142,6 +142,14 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.SECRET_SYNC_SYNC_SECRETS]: "Secret Sync synced secrets",
   [EventType.SECRET_SYNC_IMPORT_SECRETS]: "Secret Sync imported secrets",
   [EventType.SECRET_SYNC_REMOVE_SECRETS]: "Secret Sync removed secrets",
+  [EventType.GET_PKI_SYNCS]: "List PKI syncs",
+  [EventType.GET_PKI_SYNC]: "Get PKI sync",
+  [EventType.CREATE_PKI_SYNC]: "Create PKI sync",
+  [EventType.UPDATE_PKI_SYNC]: "Update PKI sync",
+  [EventType.DELETE_PKI_SYNC]: "Delete PKI sync",
+  [EventType.PKI_SYNC_SYNC_CERTIFICATES]: "PKI Sync synced certificates",
+  [EventType.PKI_SYNC_IMPORT_CERTIFICATES]: "PKI Sync imported certificates",
+  [EventType.PKI_SYNC_REMOVE_CERTIFICATES]: "PKI Sync removed certificates",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER]:
     "OIDC group membership mapping assigned user to groups",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER]:
@@ -222,7 +230,23 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_ORG]: "Update Organization",
   [EventType.CREATE_PROJECT]: "Create Project",
   [EventType.UPDATE_PROJECT]: "Update Project",
-  [EventType.DELETE_PROJECT]: "Delete Project"
+  [EventType.DELETE_PROJECT]: "Delete Project",
+
+  [EventType.CREATE_SECRET_REMINDER]: "Create Secret Reminder",
+  [EventType.GET_SECRET_REMINDER]: "Get Secret Reminder",
+  [EventType.DELETE_SECRET_REMINDER]: "Delete Secret Reminder",
+
+  [EventType.DASHBOARD_LIST_SECRETS]: "Dashboard List Secrets",
+  [EventType.DASHBOARD_GET_SECRET_VALUE]: "Dashboard Get Secret Value",
+  [EventType.DASHBOARD_GET_SECRET_VERSION_VALUE]: "Dashboard Get Secret Version Value",
+
+  [EventType.CREATE_PROJECT_ROLE]: "Create Project Role",
+  [EventType.UPDATE_PROJECT_ROLE]: "Update Project Role",
+  [EventType.DELETE_PROJECT_ROLE]: "Delete Project Role",
+
+  [EventType.CREATE_ORG_ROLE]: "Create Org Role",
+  [EventType.UPDATE_ORG_ROLE]: "Update Org Role",
+  [EventType.DELETE_ORG_ROLE]: "Delete Org Role"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

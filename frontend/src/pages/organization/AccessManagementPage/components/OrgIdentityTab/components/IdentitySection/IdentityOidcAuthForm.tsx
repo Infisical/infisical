@@ -42,7 +42,14 @@ const schema = z.object({
     message: "Access Token Max TTL cannot be greater than 315360000"
   }),
   accessTokenNumUsesLimit: z.string(),
-  oidcDiscoveryUrl: z.string().url().min(1),
+  oidcDiscoveryUrl: z
+    .string()
+    .url()
+    .min(1)
+    .refine(
+      (el) => !el.endsWith("/.well-known/openid-configuration"),
+      "Please remove /.well-known/openid-configuration."
+    ),
   caCert: z.string().trim().default(""),
   boundIssuer: z.string().min(1),
   boundAudiences: z.string().optional().default(""),

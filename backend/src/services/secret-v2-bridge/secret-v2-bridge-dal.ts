@@ -446,9 +446,10 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           }
         })
         .where((bd) => {
-          void bd
-            .whereNull(`${TableName.SecretV2}.userId`)
-            .orWhere({ [`${TableName.SecretV2}.userId` as "userId"]: userId || null });
+          void bd.whereNull(`${TableName.SecretV2}.userId`);
+          // scott: removing this as we don't need to count overrides
+          // and there is currently a bug when you move secrets that doesn't move the override so this can skew count
+          // .orWhere({ [`${TableName.SecretV2}.userId` as "userId"]: userId || null });
         })
         .countDistinct(`${TableName.SecretV2}.key`);
 

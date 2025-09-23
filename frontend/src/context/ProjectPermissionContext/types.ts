@@ -62,6 +62,16 @@ export enum ProjectPermissionSecretSyncActions {
   RemoveSecrets = "remove-secrets"
 }
 
+export enum ProjectPermissionPkiSyncActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  SyncCertificates = "sync-certificates",
+  ImportCertificates = "import-certificates",
+  RemoveCertificates = "remove-certificates"
+}
+
 export enum ProjectPermissionIdentityActions {
   Read = "read",
   Create = "create",
@@ -187,6 +197,7 @@ export type AppConnectionSubjectFields = {
 
 export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SecretSyncs
+  | ProjectPermissionSub.PkiSyncs
   | ProjectPermissionSub.Secrets
   | ProjectPermissionSub.DynamicSecrets
   | ProjectPermissionSub.Identity
@@ -271,6 +282,7 @@ export enum ProjectPermissionSub {
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
+  PkiSyncs = "pki-syncs",
   Kmip = "kmip",
   Commits = "commits",
   SecretScanningDataSources = "secret-scanning-data-sources",
@@ -314,6 +326,10 @@ export type SecretImportSubjectFields = {
 export type SecretSyncSubjectFields = {
   environment: string;
   secretPath: string;
+};
+
+export type PkiSyncSubjectFields = {
+  subscriberId: string;
 };
 
 export type SecretRotationSubjectFields = {
@@ -361,6 +377,13 @@ export type ProjectPermissionSet =
       (
         | ProjectPermissionSub.SecretSyncs
         | (ForcedSubject<ProjectPermissionSub.SecretSyncs> & SecretSyncSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionPkiSyncActions,
+      (
+        | ProjectPermissionSub.PkiSyncs
+        | (ForcedSubject<ProjectPermissionSub.PkiSyncs> & PkiSyncSubjectFields)
       )
     ]
   | [
