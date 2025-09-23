@@ -219,7 +219,7 @@ export const SecretApprovalRequestChangeItem = ({
                 </div>
               </div>
               <div className="mb-2">
-                <div className="text-sm font-medium text-mineshaft-300">Mutli-line Encoding</div>
+                <div className="text-sm font-medium text-mineshaft-300">Multi-line Encoding</div>
                 <div className="text-sm">
                   {secretVersion?.skipMultilineEncoding?.toString() || (
                     <span className="text-sm text-mineshaft-300">-</span>
@@ -363,7 +363,7 @@ export const SecretApprovalRequestChangeItem = ({
                 )}
               </div>
               <div className="mb-2">
-                <div className="text-sm font-medium text-mineshaft-300">Mutli-line Encoding</div>
+                <div className="text-sm font-medium text-mineshaft-300">Multi-line Encoding</div>
                 <div className="text-sm">
                   {newVersion?.skipMultilineEncoding?.toString() ??
                     secretVersion?.skipMultilineEncoding?.toString() ?? (
