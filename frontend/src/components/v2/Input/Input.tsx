@@ -126,7 +126,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
         />
         {warningMessage && !rightIcon && (
-          <Tooltip className="w-full max-w-64" content={warningMessage}>
+          <Tooltip className="w-full max-w-72" content={warningMessage}>
             <FontAwesomeIcon icon={faWarning} className="absolute right-0 mr-3 text-yellow-500" />
           </Tooltip>
         )}
