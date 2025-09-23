@@ -21,16 +21,7 @@ export const RecoveryCodesDownload = ({
   const [copied, setCopied] = useState(false);
 
   const downloadRecoveryCodes = () => {
-    const content = [
-      "Infisical Two-Factor Authentication Recovery Codes",
-      `Generated on: ${new Date().toLocaleString()}`,
-      "",
-      "Important: Store these codes in a safe place. Each code can only be used once.",
-      "If you lose access to your mobile authenticator, you can use these codes to regain access to your account.",
-      "",
-      "Recovery Codes:",
-      ...recoveryCodes.map((code, index) => `${index + 1}. ${code}`)
-    ].join("\n");
+    const content = [...recoveryCodes].join("\n");
 
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -75,8 +66,8 @@ export const RecoveryCodesDownload = ({
             <div className="grid grid-cols-2 gap-x-6 gap-y-2 font-mono text-sm">
               {recoveryCodes.map((code, index) => (
                 <div key={code} className="flex items-center text-mineshaft-200">
-                  <span className="w-6 text-mineshaft-400">{index + 1}.</span>
-                  <span>{code}</span>
+                  <span className="w-8 text-right text-mineshaft-400">{index + 1}.</span>
+                  <span className="pl-2">{code}</span>
                 </div>
               ))}
             </div>

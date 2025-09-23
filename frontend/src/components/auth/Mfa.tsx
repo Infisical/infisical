@@ -7,7 +7,7 @@ import Error from "@app/components/basic/Error";
 import TotpRegistration from "@app/components/mfa/TotpRegistration";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button } from "@app/components/v2";
-import { useSendMfaToken } from "@app/hooks/api";
+import { useLogoutUser, useSendMfaToken } from "@app/hooks/api";
 import { checkUserTotpMfa, verifyMfaToken, verifyRecoveryCode } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 
@@ -66,6 +66,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
   const [isLoadingResend, setIsLoadingResend] = useState(false);
   const [triesLeft, setTriesLeft] = useState<number | undefined>(undefined);
   const [shouldShowTotpRegistration, setShouldShowTotpRegistration] = useState(false);
+  const logout = useLogoutUser(true);
 
   const sendMfaToken = useSendMfaToken();
 
@@ -80,10 +81,18 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
     }
   }, []);
 
+  const getExpectedCodeLength = () => {
+    if (method === MfaMethod.EMAIL) return 6;
+    if (method === MfaMethod.TOTP) return showRecoveryCodeInput ? 8 : 6;
+    return 6;
+  };
+
+  const isCodeComplete = mfaCode.length === getExpectedCodeLength();
+
   const verifyMfa = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!mfaCode.trim()) return;
+    if (!mfaCode.trim() || !isCodeComplete) return;
 
     setIsLoading(true);
     try {
@@ -107,16 +116,18 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
         closeMfa();
       }
     } catch {
-      if (triesLeft) {
-        setTriesLeft((left) => {
-          if (triesLeft === 1) {
-            navigate({ to: "/" });
-
-            SecurityClient.setMfaToken("");
-            SecurityClient.setToken("");
-          }
-          return (left as number) - 1;
-        });
+      if (typeof triesLeft === "number") {
+        const newTriesLeft = triesLeft - 1;
+        setTriesLeft(newTriesLeft);
+        if (newTriesLeft <= 0) {
+          setIsLoading(false);
+          SecurityClient.setMfaToken("");
+          SecurityClient.setToken("");
+          SecurityClient.setSignupToken("");
+          await logout.mutateAsync();
+          navigate({ to: "/login" });
+          return;
+        }
       } else {
         setTriesLeft(2);
       }
@@ -251,6 +262,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
             colorSchema="primary"
             variant="outline_bg"
             isLoading={isLoading}
+            isDisabled={!isCodeComplete}
           >
             {String(t("mfa.verify"))}
           </Button>
@@ -263,7 +275,6 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
             onClick={() => {
               setShowRecoveryCodeInput(!showRecoveryCodeInput);
               setMfaCode("");
-              setTriesLeft(undefined);
             }}
             className="text-bunker-400 transition-colors duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4"
           >

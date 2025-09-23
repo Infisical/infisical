@@ -56,7 +56,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
   const cfg = getConfig();
 
   server.decorateRequest("mfa", null);
-  server.addHook("preParsing", async (req, res) => {
+  server.addHook("preValidation", async (req, res) => {
     const authorizationHeader = req.headers.authorization;
 
     if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
