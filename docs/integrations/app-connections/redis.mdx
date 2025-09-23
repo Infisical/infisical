@@ -5,6 +5,37 @@ description: "Learn how to configure a Redis Connection for Infisical."
 
 Infisical supports the use of Username & Password authentication to connect with Redis databases
 
+## Configure a Redis user for Infisical 
+
+<Steps>
+    <Step title="Create a Redis user">
+        Infisical recommends creating a designated user in your Redis database for your connection.
+
+        ```bash
+        ACL SETUSER user_manager on >[ENTER-YOUR-USER-PASSWORD]
+        ```
+    </Step>
+
+    <Step title="Grant Relevant Permissions">
+        Depending on how you intend to use your Redis connection, you'll need to grant one or more of the following permissions.
+
+        <Tip>
+            To learn more about Redis's permission system, please visit their [documentation](https://redis.io/docs/latest/operate/oss_and_stack/management/security/acl/).
+        </Tip>
+        
+        <Tabs>
+            <Tab title="Secret Rotation">
+                For Secret Rotations, your Infisical user will require the ability to set and delete users:
+
+                ```bash
+                ACL SETUSER user_manager +acl|setuser +acl|deluser ~*
+                ```
+            </Tab>
+        </Tabs>
+    </Step>
+</Steps>
+
+
 ## Create Redis Connection in Infisical
 
 <Tabs>
