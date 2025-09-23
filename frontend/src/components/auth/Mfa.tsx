@@ -6,7 +6,8 @@ import { t } from "i18next";
 import Error from "@app/components/basic/Error";
 import TotpRegistration from "@app/components/mfa/TotpRegistration";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button } from "@app/components/v2";
+import { Button, Tooltip } from "@app/components/v2";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { useLogoutUser, useSendMfaToken } from "@app/hooks/api";
 import { checkUserTotpMfa, verifyMfaToken, verifyRecoveryCode } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
@@ -280,11 +281,36 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
           >
             {showRecoveryCodeInput ? "Use authenticator code" : "Use a recovery code"}
           </button>
-          <Link to="/verify-email">
-            <span className="text-sm text-bunker-400 transition-colors duration-200 hover:text-bunker-200">
-              Lost your recovery codes? Reset your account
-            </span>
-          </Link>
+          <div className="text-center text-sm">
+            <Tooltip
+              position="bottom"
+              content={
+                <div className="max-w-xs text-center text-xs">
+                  {isInfisicalCloud() ? (
+                    <>
+                      <div className="mb-2">Account Recovery Required</div>
+                      <div className="mb-2 text-gray-300">
+                        Contact support with valid proof of account ownership to initiate recovery
+                      </div>
+                      <div className="mt-1">support@infisical.com</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="mb-2">Account Recovery Required</div>
+                      <div className="text-gray-300">
+                        Contact your instance administrator with valid proof of account ownership to
+                        initiate recovery
+                      </div>
+                    </>
+                  )}
+                </div>
+              }
+            >
+              <span className="cursor-help text-bunker-400 transition-colors duration-200 hover:text-bunker-200">
+                Lost your recovery codes?
+              </span>
+            </Tooltip>
+          </div>
         </div>
       )}
       {method === MfaMethod.EMAIL && (
