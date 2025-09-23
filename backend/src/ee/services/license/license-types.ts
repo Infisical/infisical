@@ -34,7 +34,7 @@ export type TFeatureSet = {
   identityLimit: null;
   identitiesUsed: number;
   environmentLimit: null;
-  namespace: true;
+  namespace: false;
   environmentsUsed: 0;
   secretVersioning: true;
   pitRecovery: false;
