@@ -283,4 +283,7 @@ export type TPermissionServiceFactory = {
     projectId: string;
     checkPermissions: ProjectPermissionSet;
   }) => Promise<boolean>;
+  invalidateProjectPermissionCache: (projectId: string) => Promise<void>;
+  invalidateUserProjectPermissionCache: (userId: string) => Promise<void>;
+  invalidateIdentityProjectPermissionCache: (identityId: string) => Promise<void>;
 };

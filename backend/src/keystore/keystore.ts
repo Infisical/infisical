@@ -63,13 +63,22 @@ export const KeyStorePrefixes = {
   ActiveSSEConnectionsSet: (projectId: string, identityId: string) =>
     `sse-connections:${projectId}:${identityId}` as const,
   ActiveSSEConnections: (projectId: string, identityId: string, connectionId: string) =>
-    `sse-connections:${projectId}:${identityId}:${connectionId}` as const
+    `sse-connections:${projectId}:${identityId}:${connectionId}` as const,
+
+  ProjectPermission: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
+    `project-permission:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
+  ProjectPermissionPattern: (projectId: string) => `project-permission:${projectId}:*` as const,
+  UserProjectPermissionPattern: (userId: string) => `project-permission:*:USER:${userId}:*` as const,
+  IdentityProjectPermissionPattern: (identityId: string) => `project-permission:*:IDENTITY:${identityId}:*` as const,
+  GroupMemberProjectPermissionPattern: (projectId: string, groupId: string) =>
+    `group-member-project-permission:${projectId}:${groupId}:*` as const
 };
 
 export const KeyStoreTtls = {
   SetSyncSecretIntegrationLastRunTimestampInSeconds: 60,
   SetSecretSyncLastRunTimestampInSeconds: 60,
-  AccessTokenStatusUpdateInSeconds: 120
+  AccessTokenStatusUpdateInSeconds: 120,
+  ProjectPermissionCacheInSeconds: 300 // 5 minutes
 };
 
 type TDeleteItems = {

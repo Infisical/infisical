@@ -20,6 +20,7 @@ import {
   projectViewerPermission,
   sshHostBootstrapPermissions
 } from "@app/ee/services/permission/default-roles";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { objectify } from "@app/lib/fn";
@@ -49,6 +50,7 @@ type TPermissionServiceFactoryDep = {
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionDAL: TPermissionDALFactory;
+  keyStore: TKeyStoreFactory;
 };
 
 export const permissionServiceFactory = ({
@@ -56,7 +58,8 @@ export const permissionServiceFactory = ({
   orgRoleDAL,
   projectRoleDAL,
   serviceTokenDAL,
-  projectDAL
+  projectDAL,
+  keyStore
 }: TPermissionServiceFactoryDep): TPermissionServiceFactory => {
   const buildOrgPermission = (orgUserRoles: TBuildOrgPermissionDTO) => {
     const rules = orgUserRoles
@@ -81,6 +84,21 @@ export const permissionServiceFactory = ({
     return createMongoAbility<OrgPermissionSet>(rules, {
       conditionsMatcher
     });
+  };
+
+  const invalidateProjectPermissionCache = async (projectId: string) => {
+    const pattern = KeyStorePrefixes.ProjectPermissionPattern(projectId);
+    await keyStore.deleteItems({ pattern });
+  };
+
+  const invalidateUserProjectPermissionCache = async (userId: string) => {
+    const pattern = KeyStorePrefixes.UserProjectPermissionPattern(userId);
+    await keyStore.deleteItems({ pattern });
+  };
+
+  const invalidateIdentityProjectPermissionCache = async (identityId: string) => {
+    const pattern = KeyStorePrefixes.IdentityProjectPermissionPattern(identityId);
+    await keyStore.deleteItems({ pattern });
   };
 
   const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDTO) => {
@@ -577,35 +595,90 @@ export const permissionServiceFactory = ({
       actorId = assumedPrivilegeDetailsCtx.actorId;
     }
 
+    const cacheKey = KeyStorePrefixes.ProjectPermission(
+      projectId,
+      actor,
+      actorId,
+      actionProjectType || ActionProjectType.Any
+    );
+
+    if (actor === ActorType.SERVICE) {
+      return getServiceTokenProjectPermission({
+        serviceTokenId: actorId,
+        projectId,
+        actorOrgId,
+        actionProjectType
+      }) as Promise<TProjectPermissionRT<T>>;
+    }
+
+    try {
+      const cachedData = await keyStore.getItem(cacheKey);
+      if (cachedData) {
+        const parsed = JSON.parse(cachedData) as {
+          rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[];
+          membership: {
+            roles?: Array<{ role: string; customRoleSlug?: string }>;
+            [key: string]: unknown;
+          };
+        };
+        // Reconstruct the permission object from cached rules
+        const permission = createMongoAbility<ProjectPermissionSet>(parsed.rules, {
+          conditionsMatcher
+        });
+
+        return {
+          permission,
+          membership: parsed.membership,
+          hasRole: (role: string) =>
+            parsed.membership.roles?.findIndex(
+              ({ role: slug, customRoleSlug }) => role === slug || slug === customRoleSlug
+            ) !== -1
+        } as TProjectPermissionRT<T>;
+      }
+    } catch (error) {}
+
+    let result: TProjectPermissionRT<T>;
+
     switch (actor) {
       case ActorType.USER:
-        return getUserProjectPermission({
+        result = (await getUserProjectPermission({
           userId: actorId,
           projectId,
           authMethod: actorAuthMethod,
           userOrgId: actorOrgId,
           actionProjectType
-        }) as Promise<TProjectPermissionRT<T>>;
-      case ActorType.SERVICE:
-        return getServiceTokenProjectPermission({
-          serviceTokenId: actorId,
-          projectId,
-          actorOrgId,
-          actionProjectType
-        }) as Promise<TProjectPermissionRT<T>>;
+        })) as TProjectPermissionRT<T>;
+        break;
       case ActorType.IDENTITY:
-        return getIdentityProjectPermission({
+        result = (await getIdentityProjectPermission({
           identityId: actorId,
           projectId,
           identityOrgId: actorOrgId,
           actionProjectType
-        }) as Promise<TProjectPermissionRT<T>>;
+        })) as TProjectPermissionRT<T>;
+        break;
       default:
         throw new BadRequestError({
           message: "Invalid actor provided",
           name: "Get project permission"
         });
     }
+
+    try {
+      const cacheData = {
+        rules: result.permission.rules,
+        membership: result.membership
+      };
+
+      await keyStore.setItemWithExpiry(
+        cacheKey,
+        KeyStoreTtls.ProjectPermissionCacheInSeconds,
+        JSON.stringify(cacheData)
+      );
+    } catch (error) {
+    }
+
+    return result;
   };
 
   const getProjectPermissionByRole: TPermissionServiceFactory["getProjectPermissionByRole"] = async (
@@ -668,6 +741,9 @@ export const permissionServiceFactory = ({
     getProjectPermissionByRole,
     buildOrgPermission,
     buildProjectPermissionRules,
-    checkGroupProjectPermission
+    checkGroupProjectPermission,
+    invalidateProjectPermissionCache,
+    invalidateUserProjectPermissionCache,
+    invalidateIdentityProjectPermissionCache
   };
 };

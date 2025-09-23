@@ -31,7 +31,10 @@ type TIdentityProjectAdditionalPrivilegeServiceFactoryDep = {
   identityProjectAdditionalPrivilegeDAL: TIdentityProjectAdditionalPrivilegeDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findOne" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "invalidateProjectPermissionCache" | "invalidateIdentityProjectPermissionCache"
+  >;
 };
 
 export type TIdentityProjectAdditionalPrivilegeServiceFactory = ReturnType<
@@ -129,6 +132,12 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
         slug,
         permissions: packedPermission
       });
+
+      await Promise.allSettled([
+        permissionService.invalidateProjectPermissionCache(identityProjectMembership.projectId),
+        permissionService.invalidateIdentityProjectPermissionCache(identityId)
+      ]);
+
       return {
         ...additionalPrivilege,
         permissions: unpackPermissions(additionalPrivilege.permissions)
@@ -146,6 +155,12 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       temporaryAccessStartTime: new Date(dto.temporaryAccessStartTime),
       temporaryAccessEndTime: new Date(new Date(dto.temporaryAccessStartTime).getTime() + relativeTempAllocatedTimeInMs)
     });
+
+    await Promise.allSettled([
+      permissionService.invalidateProjectPermissionCache(identityProjectMembership.projectId),
+      permissionService.invalidateIdentityProjectPermissionCache(identityId)
+    ]);
+
     return {
       ...additionalPrivilege,
       permissions: unpackPermissions(additionalPrivilege.permissions)
@@ -250,6 +265,12 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
         temporaryAccessStartTime: new Date(temporaryAccessStartTime || ""),
         temporaryAccessEndTime: new Date(new Date(temporaryAccessStartTime || "").getTime() + ms(temporaryRange || ""))
       });
+
+      await Promise.allSettled([
+        permissionService.invalidateProjectPermissionCache(identityProjectMembership.projectId),
+        permissionService.invalidateIdentityProjectPermissionCache(identityId)
+      ]);
+
       return {
         ...additionalPrivilege,
         permissions: unpackPermissions(additionalPrivilege.permissions)
@@ -265,6 +286,12 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
       temporaryRange: null,
       temporaryMode: null
     });
+
+    await Promise.allSettled([
+      permissionService.invalidateProjectPermissionCache(identityProjectMembership.projectId),
+      permissionService.invalidateIdentityProjectPermissionCache(identityId)
+    ]);
+
     return {
       ...additionalPrivilege,
       permissions: unpackPermissions(additionalPrivilege.permissions)
@@ -338,9 +365,14 @@ export const identityProjectAdditionalPrivilegeServiceFactory = ({
     }
 
     const deletedPrivilege = await identityProjectAdditionalPrivilegeDAL.deleteById(identityPrivilege.id);
+
+    await Promise.allSettled([
+      permissionService.invalidateProjectPermissionCache(identityProjectMembership.projectId),
+      permissionService.invalidateIdentityProjectPermissionCache(identityId)
+    ]);
+
     return {
       ...deletedPrivilege,
-
       permissions: unpackPermissions(deletedPrivilege.permissions)
     };
   };
