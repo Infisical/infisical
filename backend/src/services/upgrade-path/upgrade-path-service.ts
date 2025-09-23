@@ -5,6 +5,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { logger } from "@app/lib/logger";
 
 import { fetchReleases } from "./github-client";
 import { BreakingChange, FormattedRelease, UpgradePathConfig, UpgradePathResult, VersionConfig } from "./types";
@@ -20,25 +21,44 @@ const versionSchema = z
   .max(50)
   .regex(new RE2(/^[a-zA-Z0-9._/-]+$/), "Invalid version format");
 
+const breakingChangeSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().min(1).max(1000),
+  action: z.string().min(1).max(500)
+});
+
+const versionConfigSchema = z.object({
+  breaking_changes: z.array(breakingChangeSchema).optional(),
+  db_schema_changes: z.string().max(1000).optional(),
+  notes: z.string().max(2000).optional()
+});
+
 interface CalculateUpgradePathParams {
   fromVersion: string;
   toVersion: string;
 }
 
 export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFactory) => {
+  const sanitizeCacheKey = (key: string): string => {
+    return key.replace(new RE2(/[^a-zA-Z0-9\-:._]/g), "_");
+  };
   const getGitHubReleases = async (): Promise<FormattedRelease[]> => {
     const cacheKey = "upgrade-path:releases";
 
     try {
       const cached = await keyStore.getItem(cacheKey);
-      if (cached) return JSON.parse(cached) as FormattedRelease[];
+      if (cached) {
+        const cachedReleases = JSON.parse(cached) as FormattedRelease[];
+        if (cachedReleases.length > 0) {
+          return cachedReleases;
+        }
+      }
     } catch (error) {
-      // Cache miss, continue to fetch from source
+      logger.error(error, "Failed to retrieve releases from cache");
     }
 
     try {
       const releases = await fetchReleases(false);
-
       const filteredReleases = releases.filter((v) => !v.tagName.includes("nightly"));
 
       await keyStore.setItemWithExpiry(cacheKey, 24 * 60 * 60, JSON.stringify(filteredReleases));
@@ -48,14 +68,14 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
     }
   };
 
-  const getUpgradePathConfig = async (): Promise<Record<string, VersionConfig>> => {
+  const getUpgradePathConfig = async (): Promise<Record<string, z.infer<typeof versionConfigSchema>>> => {
     const cacheKey = "upgrade-path:config";
 
     try {
       const cached = await keyStore.getItem(cacheKey);
       if (cached) return JSON.parse(cached) as Record<string, VersionConfig>;
     } catch (error) {
-      // Cache miss, continue to fetch from source
+      logger.error(error, "Failed to retrieve config from cache");
     }
 
     try {
@@ -88,14 +108,12 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
   };
 
   const normalizeVersion = (version: string): string => {
-    // Extract just the X.X.X.X part from any version format
     const versionRegex = new RE2(/(\d+\.\d+\.\d+(?:\.\d+)?)/);
     const versionMatch = version.match(versionRegex);
     if (versionMatch) {
       return versionMatch[1];
     }
 
-    // Handle legacy version formats
     if (version.startsWith("infisical/")) {
       return version.replace(new RE2(/^infisical\/v?/), "").replace(new RE2(/-[a-zA-Z]+$/), "");
     }
@@ -104,23 +122,28 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
 
   const findBreakingChangesForVersion = (
     version: FormattedRelease,
-    config: Record<string, VersionConfig>
+    config: Record<string, z.infer<typeof versionConfigSchema>>
   ): BreakingChange[] => {
     // Check multiple key variations for breaking changes configuration
     const versionNumber = normalizeVersion(version.tagName);
+    const cleanVersionNumber = versionNumber.replace(new RE2(/^v/), "");
+
     const possibleKeys = [
       version.tagName,
       version.normalizedTagName,
       versionNumber,
-      `v${versionNumber}`,
+      `v${cleanVersionNumber}`,
+      cleanVersionNumber,
       version.tagName.replace(new RE2(/^infisical\//), ""),
-      version.tagName.replace(new RE2(/^infisical\/v?/), "").replace(new RE2(/-[a-zA-Z]+$/), "")
+      version.tagName.replace(new RE2(/^infisical\/v?/), "").replace(new RE2(/-[a-zA-Z]+$/), ""),
+      `v${cleanVersionNumber}`,
+      cleanVersionNumber
     ];
 
     for (const key of possibleKeys) {
       const versionConfig = config[key];
       if (versionConfig?.breaking_changes?.length) {
-        return versionConfig.breaking_changes;
+        return versionConfig.breaking_changes as BreakingChange[];
       }
     }
     return [];
@@ -145,13 +168,13 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
 
   const calculateUpgradePath = async (params: CalculateUpgradePathParams): Promise<UpgradePathResult> => {
     const { fromVersion, toVersion } = validateParams(params);
-    const cacheKey = `upgrade-path:${fromVersion}:${toVersion}`;
+    const cacheKey = sanitizeCacheKey(`upgrade-path:${fromVersion}:${toVersion}`);
 
     try {
       const cached = await keyStore.getItem(cacheKey);
       if (cached) return JSON.parse(cached) as UpgradePathResult;
     } catch (error) {
-      // Cache miss, continue to fetch from source
+      logger.error(error, "Failed to retrieve upgrade path from cache");
     }
 
     const [releases, config] = await Promise.all([getGitHubReleases(), getUpgradePathConfig()]);
@@ -197,23 +220,21 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
     const features: Array<{ version: string; name: string; body: string; publishedAt: string }> = [];
     let hasDbMigration = false;
 
-    // Process versions in upgrade path, excluding starting version
-    for (let i = 1; i < upgradePath.length; i += 1) {
+    // Process versions in upgrade path
+    for (let i = 0; i < upgradePath.length; i += 1) {
       const version = upgradePath[i];
       const isFromVersion = normalizeVersion(version.normalizedTagName) === cleanFrom;
 
-      // Process breaking changes for intermediate versions only
-      if (!isFromVersion) {
-        const versionBreakingChanges = findBreakingChangesForVersion(version, config);
-        if (versionBreakingChanges.length > 0) {
-          breakingChanges.push({
-            version: version.tagName,
-            changes: versionBreakingChanges
-          });
-        }
+      // Process breaking changes for all versions in the upgrade path
+      const versionBreakingChanges = findBreakingChangesForVersion(version, config);
+      if (versionBreakingChanges.length > 0) {
+        breakingChanges.push({
+          version: version.tagName,
+          changes: versionBreakingChanges
+        });
       }
 
-      // Process database migrations for intermediate versions only
+      // Process database migrations for intermediate versions only (excluding starting version)
       if (!isFromVersion) {
         const versionNumber = normalizeVersion(version.tagName);
         const possibleKeys = [

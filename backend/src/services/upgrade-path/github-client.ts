@@ -121,6 +121,10 @@ const makeRequest = async <T>(
     clearTimeout(timeout);
 
     if (error instanceof Error && error.name === "AbortError") {
+      if (retryCount < config.maxRetries) {
+        await delay(config.retryDelay * 2 ** retryCount);
+        return await makeRequest<T>(url, config, retryCount + 1);
+      }
       throw new Error(`Request timeout after ${config.timeout}ms`);
     }
 

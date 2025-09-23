@@ -1,0 +1,212 @@
+name: "Validate Upgrade Path Configuration"
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - "backend/upgrade-path.yaml"
+
+  workflow_call:
+
+jobs:
+  validate-upgrade-path:
+    name: Validate upgrade-path.yaml format
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for changes in upgrade-path.yaml
+        id: check-changes
+        run: |
+          # For local testing with act, always run validation
+          if [ "${ACT:-false}" = "true" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Running validation (local act mode)"
+          else
+            # Check if upgrade-path.yaml was modified in this PR
+            if git diff --name-only HEAD^ HEAD | grep -q "backend/upgrade-path.yaml"; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "Changes detected in backend/upgrade-path.yaml"
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "No changes detected in backend/upgrade-path.yaml"
+            fi
+          fi
+
+      - name: Setup Python for YAML validation
+        if: steps.check-changes.outputs.changed == 'true'
+        run: |
+          # Use system python3 and install PyYAML
+          python3 --version || echo "Python3 not found"
+          python3 -m pip install --user PyYAML || pip3 install PyYAML || echo "PyYAML installation failed"
+
+      - name: Validate upgrade-path.yaml format
+        if: steps.check-changes.outputs.changed == 'true'
+        run: |
+          echo "Running upgrade-path.yaml validation..."
+
+          # Debug: Check if file exists
+          ls -la backend/upgrade-path.yaml || echo "File not found"
+
+          # Debug: Show last few lines
+          echo "Last 5 lines of file:"
+          tail -5 backend/upgrade-path.yaml || echo "Cannot read file"
+
+          echo "Starting Python validation..."
+
+          python3 << 'EOF'
+          import yaml
+          import re
+          import sys
+
+          def validate_upgrade_path():
+              try:
+                  print("Reading upgrade-path.yaml...")
+                  with open('backend/upgrade-path.yaml', 'r') as file:
+                      content = file.read()
+
+                  if not content.strip():
+                      raise ValueError("File is empty")
+
+                  if len(content) > 1024 * 1024:
+                      raise ValueError("File is too large (>1MB)")
+
+                  print("Parsing YAML content...")
+                  try:
+                      config = yaml.safe_load(content)
+                      print("YAML parsed successfully")
+                  except yaml.YAMLError as e:
+                      print(f"YAML parsing failed: {e}")
+                      raise ValueError(f"Invalid YAML syntax: {e}")
+
+                  if not isinstance(config, dict):
+                      raise ValueError("Root level must be an object")
+
+                  print("YAML syntax is valid")
+                  print("Validating schema structure...")
+
+                  if 'versions' not in config:
+                      print("Warning: No versions found in the configuration")
+                      return True
+
+                  versions = config['versions']
+                  if not isinstance(versions, dict):
+                      raise ValueError("'versions' must be an object")
+
+                  print(f"Found {len(versions)} version(s) to validate")
+
+                  # Version key pattern validation
+                  version_pattern = re.compile(r'^[a-zA-Z0-9._/-]+$')
+                  common_patterns = [
+                      re.compile(r'^v?\d+\.\d+\.\d+$'),                    # v1.2.3 or 1.2.3
+                      re.compile(r'^v?\d+\.\d+\.\d+\.\d+$'),               # v1.2.3.4 or 1.2.3.4
+                      re.compile(r'^infisical/v?\d+\.\d+\.\d+$'),          # infisical/v1.2.3
+                      re.compile(r'^infisical/v?\d+\.\d+\.\d+-\w+$')       # infisical/v1.2.3-postgres
+                  ]
+
+                  errors = []
+
+                  for version_key, version_config in versions.items():
+                      print(f"Validating version key: {version_key}")
+
+                      # Validate version key format
+                      if not version_pattern.match(version_key):
+                          errors.append(f"Invalid version key '{version_key}': contains invalid characters")
+                          continue
+
+                      if len(version_key) > 50:
+                          errors.append(f"Version key '{version_key}' is too long (max 50 characters)")
+                          continue
+
+                      if not isinstance(version_config, dict):
+                          errors.append(f"Version '{version_key}' configuration must be an object")
+                          continue
+
+                      # Validate breaking_changes
+                      if 'breaking_changes' in version_config:
+                          breaking_changes = version_config['breaking_changes']
+                          if not isinstance(breaking_changes, list):
+                              errors.append(f"Version '{version_key}': breaking_changes must be a list")
+                          elif len(breaking_changes) == 0:
+                              errors.append(f"Version '{version_key}': breaking_changes is empty (remove field or add items)")
+                          else:
+                              for i, change in enumerate(breaking_changes):
+                                  if not isinstance(change, dict):
+                                      errors.append(f"Version '{version_key}': breaking_changes[{i}] must be an object")
+                                      continue
+
+                                  # Validate required fields
+                                  for field in ['title', 'description', 'action']:
+                                      if field not in change:
+                                          errors.append(f"Version '{version_key}': breaking_changes[{i}] missing '{field}'")
+                                      elif not isinstance(change[field], str):
+                                          errors.append(f"Version '{version_key}': breaking_changes[{i}].{field} must be string")
+                                      elif not change[field].strip():
+                                          errors.append(f"Version '{version_key}': breaking_changes[{i}].{field} cannot be empty")
+                                      elif field == 'title' and len(change[field]) > 200:
+                                          errors.append(f"Version '{version_key}': breaking_changes[{i}].title too long (max 200)")
+                                      elif field == 'description' and len(change[field]) > 1000:
+                                          errors.append(f"Version '{version_key}': breaking_changes[{i}].description too long (max 1000)")
+                                      elif field == 'action' and len(change[field]) > 500:
+                                          errors.append(f"Version '{version_key}': breaking_changes[{i}].action too long (max 500)")
+
+                      # Validate db_schema_changes
+                      if 'db_schema_changes' in version_config:
+                          db_changes = version_config['db_schema_changes']
+                          if not isinstance(db_changes, str):
+                              errors.append(f"Version '{version_key}': db_schema_changes must be string")
+                          elif db_changes == "":
+                              errors.append(f"Version '{version_key}': db_schema_changes is empty (remove field or add content)")
+                          elif len(db_changes) > 1000:
+                              errors.append(f"Version '{version_key}': db_schema_changes too long (max 1000)")
+
+                      # Validate notes
+                      if 'notes' in version_config:
+                          notes = version_config['notes']
+                          if not isinstance(notes, str):
+                              errors.append(f"Version '{version_key}': notes must be string")
+                          elif notes == "":
+                              errors.append(f"Version '{version_key}': notes is empty (remove field or add content)")
+                          elif len(notes) > 2000:
+                              errors.append(f"Version '{version_key}': notes too long (max 2000)")
+
+                      # Check if version follows common patterns
+                      is_common_pattern = any(pattern.match(version_key) for pattern in common_patterns)
+                      if not is_common_pattern:
+                          print(f"Warning: Version key '{version_key}' doesn't match common patterns. This may be intentional.")
+
+                      print(f"Version '{version_key}' is valid")
+
+                  if errors:
+                      print("Validation failed with the following errors:")
+                      for error in errors:
+                          print(f"  - {error}")
+                      return False
+
+                  print("All validations passed!")
+                  print("upgrade-path.yaml format is valid")
+                  return True
+
+              except Exception as e:
+                  print(f"Validation failed: {e}")
+                  return False
+
+          if not validate_upgrade_path():
+              sys.exit(1)
+          EOF
+
+      - name: Validation completed
+        if: steps.check-changes.outputs.changed == 'true'
+        run: |
+          echo "upgrade-path.yaml validation passed!"
+          echo "The configuration file follows the expected format and all version entries are valid."
+
+      - name: Skipping validation
+        if: steps.check-changes.outputs.changed == 'false'
+        run: |
+          echo "Skipping validation - no changes detected in backend/upgrade-path.yaml"

@@ -2,6 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { publicEndpointLimit } from "@app/server/config/rateLimiter";
 
 const versionSchema = z
@@ -40,7 +41,7 @@ export const registerUpgradePathRouter = async (server: FastifyZodProvider) => {
           versions
         };
       } catch (error) {
-        req.log.error(error, "Failed to fetch versions");
+        logger.error(error, "Failed to fetch versions");
         if (error instanceof z.ZodError) {
           throw new BadRequestError({ message: "Invalid query parameters" });
         }
@@ -101,14 +102,14 @@ export const registerUpgradePathRouter = async (server: FastifyZodProvider) => {
 
         const result = await req.server.services.upgradePath.calculateUpgradePath(fromVersion, toVersion);
 
-        req.log.info(
+        logger.info(
           { pathLength: result.path.length, hasBreaking: result.breakingChanges.length > 0 },
           "Upgrade path calculated"
         );
 
         return result;
       } catch (error) {
-        req.log.error(error, "Failed to calculate upgrade path");
+        logger.error(error, "Failed to calculate upgrade path");
         if (error instanceof z.ZodError) {
           throw new BadRequestError({ message: `Invalid input: ${error.errors.map((e) => e.message).join(", ")}` });
         }
