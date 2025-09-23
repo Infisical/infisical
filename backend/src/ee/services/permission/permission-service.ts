@@ -24,6 +24,7 @@ import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { objectify } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -635,7 +636,9 @@ export const permissionServiceFactory = ({
             ) !== -1
         } as TProjectPermissionRT<T>;
       }
-    } catch (error) {}
+    } catch (error) {
+      logger.error(error, "Failed to get project permission");
+    }
 
     let result: TProjectPermissionRT<T>;
 
@@ -676,6 +679,7 @@ export const permissionServiceFactory = ({
         JSON.stringify(cacheData)
       );
     } catch (error) {
+      logger.error(error, "Failed to cache project permission");
     }
 
     return result;
