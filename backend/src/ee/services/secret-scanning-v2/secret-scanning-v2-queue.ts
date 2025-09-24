@@ -21,6 +21,8 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
@@ -52,6 +54,7 @@ type TSecretRotationV2QueueServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 export type TSecretScanningV2QueueServiceFactory = Awaited<ReturnType<typeof secretScanningV2QueueServiceFactory>>;
@@ -65,7 +68,8 @@ export const secretScanningV2QueueServiceFactory = async ({
   kmsService,
   auditLogService,
   keyStore,
-  appConnectionDAL
+  appConnectionDAL,
+  notificationService
 }: TSecretRotationV2QueueServiceFactoryDep) => {
   const queueDataSourceFullScan = async (
     dataSource: TSecretScanningDataSourceWithConnection,
@@ -592,16 +596,38 @@ export const secretScanningV2QueueServiceFactory = async ({
 
         const timestamp = new Date().toISOString();
 
+        const subjectLine =
+          payload.status === SecretScanningScanStatus.Completed
+            ? "Incident Alert: Secret(s) Leaked"
+            : `Secret Scanning Failed`;
+
+        await notificationService.createUserNotifications(
+          recipients.map((member) => ({
+            userId: member.userId,
+            orgId: project.orgId,
+            type:
+              payload.status === SecretScanningScanStatus.Completed
+                ? NotificationType.SECRET_SCANNING_SECRETS_DETECTED
+                : NotificationType.SECRET_SCANNING_SCAN_FAILED,
+            title: subjectLine,
+            body:
+              payload.status === SecretScanningScanStatus.Completed
+                ? `Uncovered **${payload.numberOfSecrets}** secret(s) ${payload.isDiffScan ? " from a recent commit to" : " in"} **${resourceName}**.`
+                : `Encountered an error while attempting to scan the resource **${resourceName}**: ${payload.errorMessage}`,
+            link:
+              payload.status === SecretScanningScanStatus.Completed
+                ? `/projects/secret-scanning/${projectId}/findings?search=scanId:${payload.scanId}`
+                : `/projects/secret-scanning/${projectId}/data-sources/${dataSource.type}/${dataSource.id}`
+          }))
+        );
+
         await smtpService.sendMail({
           recipients: recipients.map((member) => member.user.email!).filter(Boolean),
           template:
             payload.status === SecretScanningScanStatus.Completed
               ? SmtpTemplates.SecretScanningV2SecretsDetected
               : SmtpTemplates.SecretScanningV2ScanFailed,
-          subjectLine:
-            payload.status === SecretScanningScanStatus.Completed
-              ? "Incident Alert: Secret(s) Leaked"
-              : `Secret Scanning Failed`,
+          subjectLine,
           substitutions:
             payload.status === SecretScanningScanStatus.Completed
               ? {

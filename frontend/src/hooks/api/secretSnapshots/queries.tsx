@@ -14,25 +14,25 @@ import {
 } from "./types";
 
 export const secretSnapshotKeys = {
-  list: ({ workspaceId, environment, directory }: Omit<TGetSecretSnapshotsDTO, "limit">) =>
-    [{ workspaceId, environment, directory }, "secret-snapshot"] as const,
+  list: ({ projectId, environment, directory }: Omit<TGetSecretSnapshotsDTO, "limit">) =>
+    [{ projectId, environment, directory }, "secret-snapshot"] as const,
   snapshotData: (snapshotId: string) => [{ snapshotId }, "secret-snapshot"] as const,
-  count: ({ environment, workspaceId, directory }: Omit<TGetSecretSnapshotsDTO, "limit">) => [
-    { workspaceId, environment, directory },
+  count: ({ environment, projectId, directory }: Omit<TGetSecretSnapshotsDTO, "limit">) => [
+    { projectId, environment, directory },
     "count",
     "secret-snapshot"
   ]
 };
 
 const fetchWorkspaceSnaphots = async ({
-  workspaceId,
+  projectId,
   environment,
   directory = "/",
   limit = 10,
   offset = 0
 }: TGetSecretSnapshotsDTO & { offset: number }) => {
   const res = await apiRequest.get<{ secretSnapshots: TSecretSnapshot[] }>(
-    `/api/v1/workspace/${workspaceId}/secret-snapshots`,
+    `/api/v1/projects/${projectId}/secret-snapshots`,
     {
       params: {
         limit,
@@ -49,7 +49,7 @@ const fetchWorkspaceSnaphots = async ({
 export const useGetWorkspaceSnapshotList = (dto: TGetSecretSnapshotsDTO & { isPaused?: boolean }) =>
   useInfiniteQuery({
     initialPageParam: 0,
-    enabled: Boolean(dto.workspaceId && dto.environment) && !dto.isPaused,
+    enabled: Boolean(dto.projectId && dto.environment) && !dto.isPaused,
     queryKey: secretSnapshotKeys.list({ ...dto }),
     queryFn: ({ pageParam }) => fetchWorkspaceSnaphots({ ...dto, offset: pageParam }),
     getNextPageParam: (lastPage, pages) =>
@@ -115,12 +115,12 @@ export const useGetSnapshotSecrets = ({ snapshotId }: TSnapshotDataProps) =>
   });
 
 const fetchWorkspaceSecretSnaphotCount = async (
-  workspaceId: string,
+  projectId: string,
   environment: string,
   directory = "/"
 ) => {
   const res = await apiRequest.get<{ count: number }>(
-    `/api/v1/workspace/${workspaceId}/secret-snapshots/count`,
+    `/api/v1/projects/${projectId}/secret-snapshots/count`,
     {
       params: {
         environment,
@@ -132,15 +132,15 @@ const fetchWorkspaceSecretSnaphotCount = async (
 };
 
 export const useGetWsSnapshotCount = ({
-  workspaceId,
+  projectId,
   environment,
   directory,
   isPaused
 }: Omit<TGetSecretSnapshotsDTO, "limit"> & { isPaused?: boolean }) =>
   useQuery({
-    enabled: Boolean(workspaceId && environment) && !isPaused,
-    queryKey: secretSnapshotKeys.count({ workspaceId, environment, directory }),
-    queryFn: () => fetchWorkspaceSecretSnaphotCount(workspaceId, environment, directory)
+    enabled: Boolean(projectId && environment) && !isPaused,
+    queryKey: secretSnapshotKeys.count({ projectId, environment, directory }),
+    queryFn: () => fetchWorkspaceSecretSnaphotCount(projectId, environment, directory)
   });
 
 export const usePerformSecretRollback = () => {
@@ -151,22 +151,22 @@ export const usePerformSecretRollback = () => {
       const { data } = await apiRequest.post(`/api/v1/secret-snapshot/${snapshotId}/rollback`);
       return data;
     },
-    onSuccess: (_, { workspaceId, environment, directory }) => {
+    onSuccess: (_, { projectId, environment, directory }) => {
       queryClient.invalidateQueries({
-        queryKey: [{ workspaceId, environment, secretPath: directory }, "secrets"]
+        queryKey: [{ projectId, environment, secretPath: directory }, "secrets"]
       });
       queryClient.invalidateQueries({
-        queryKey: ["secret-folders", { projectId: workspaceId, environment, path: directory }]
+        queryKey: ["secret-folders", { projectId, environment, path: directory }]
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ workspaceId, environment, directory })
+        queryKey: secretSnapshotKeys.list({ projectId, environment, directory })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ workspaceId, environment, directory })
+        queryKey: secretSnapshotKeys.count({ projectId, environment, directory })
       });
       queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({
-          projectId: workspaceId,
+          projectId,
           secretPath: directory ?? "/"
         })
       });

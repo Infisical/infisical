@@ -12,6 +12,7 @@ type Props = {
   isReadOnly?: boolean;
   autoCapitalization?: boolean;
   containerClassName?: string;
+  warning?: ReactNode;
 };
 
 const inputVariants = cva(
@@ -84,6 +85,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       size = "md",
       isReadOnly,
       autoCapitalization,
+      warning,
       ...props
     },
     ref
@@ -116,10 +118,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           onInput={handleInput}
           className={twMerge(
             leftIcon ? "pl-10" : "pl-2.5",
-            rightIcon ? "pr-10" : "pr-2.5",
+            rightIcon || warning ? "pr-10" : "pr-2.5",
             inputVariants({ className, isError, size, isRounded, variant })
           )}
         />
+        {Boolean(warning) && !rightIcon && warning}
         {rightIcon && <span className="absolute right-0 mr-3">{rightIcon}</span>}
       </div>
     );

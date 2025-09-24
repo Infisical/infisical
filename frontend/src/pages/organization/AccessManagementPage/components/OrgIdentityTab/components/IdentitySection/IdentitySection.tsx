@@ -181,7 +181,7 @@ export const IdentitySection = withPermission(
                   type="submit"
                   leftIcon={<FontAwesomeIcon icon={faPlus} />}
                   onClick={() => {
-                    if (subscription && !subscription.kmip) {
+                    if (subscription && !subscription.machineIdentityAuthTemplates) {
                       handlePopUpOpen("upgradePlan");
                       return;
                     }

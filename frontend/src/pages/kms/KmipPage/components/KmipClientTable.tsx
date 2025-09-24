@@ -39,9 +39,9 @@ import {
 import {
   ProjectPermissionKmipActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
-  useSubscription,
-  useWorkspace
+  useSubscription
 } from "@app/context";
 import {
   getUserTablePreference,
@@ -59,9 +59,9 @@ import { KmipClientCertificateModal } from "./KmipClientCertificateModal";
 import { KmipClientModal } from "./KmipClientModal";
 
 export const KmipClientTable = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
-  const projectId = currentWorkspace?.id ?? "";
+  const projectId = currentProject?.id ?? "";
 
   const {
     offset,

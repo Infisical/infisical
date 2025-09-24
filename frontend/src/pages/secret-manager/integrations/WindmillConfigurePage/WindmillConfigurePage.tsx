@@ -11,7 +11,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import {
   useGetIntegrationAuthApps,
@@ -23,7 +23,7 @@ export const WindmillConfigurePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useCreateIntegration();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.WindmillConfigurePage.id,
@@ -36,7 +36,7 @@ export const WindmillConfigurePage = () => {
   });
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState(
-    currentWorkspace.environments[0].slug
+    currentProject.environments[0].slug
   );
   const [secretPath, setSecretPath] = useState("/");
   const [targetApp, setTargetApp] = useState("");
@@ -76,7 +76,7 @@ export const WindmillConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -97,7 +97,7 @@ export const WindmillConfigurePage = () => {
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
             className="w-full border border-mineshaft-500"
           >
-            {currentWorkspace?.environments.map((sourceEnvironment) => (
+            {currentProject?.environments.map((sourceEnvironment) => (
               <SelectItem
                 value={sourceEnvironment.slug}
                 key={`source-environment-${sourceEnvironment.slug}`}

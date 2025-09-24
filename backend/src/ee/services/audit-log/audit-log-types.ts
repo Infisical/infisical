@@ -146,7 +146,7 @@ export enum EventType {
   MOVE_SECRETS = "move-secrets",
   DELETE_SECRET = "delete-secret",
   DELETE_SECRETS = "delete-secrets",
-  GET_WORKSPACE_KEY = "get-workspace-key",
+  GET_PROJECT_KEY = "get-project-key",
   AUTHORIZE_INTEGRATION = "authorize-integration",
   UPDATE_INTEGRATION_AUTH = "update-integration-auth",
   UNAUTHORIZE_INTEGRATION = "unauthorize-integration",
@@ -199,6 +199,7 @@ export enum EventType {
   CREATE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "create-identity-universal-auth-client-secret",
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   CLEAR_IDENTITY_UNIVERSAL_AUTH_LOCKOUTS = "clear-identity-universal-auth-lockouts",
+  CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS = "clear-identity-ldap-auth-lockouts",
 
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID = "get-identity-universal-auth-client-secret-by-id",
@@ -249,9 +250,9 @@ export enum EventType {
   UPDATE_ENVIRONMENT = "update-environment",
   DELETE_ENVIRONMENT = "delete-environment",
   GET_ENVIRONMENT = "get-environment",
-  ADD_WORKSPACE_MEMBER = "add-workspace-member",
-  ADD_BATCH_WORKSPACE_MEMBER = "add-workspace-members",
-  REMOVE_WORKSPACE_MEMBER = "remove-workspace-member",
+  ADD_PROJECT_MEMBER = "add-project-member",
+  ADD_BATCH_PROJECT_MEMBER = "add-project-members",
+  REMOVE_PROJECT_MEMBER = "remove-project-member",
   CREATE_FOLDER = "create-folder",
   UPDATE_FOLDER = "update-folder",
   DELETE_FOLDER = "delete-folder",
@@ -264,8 +265,8 @@ export enum EventType {
   CREATE_SECRET_IMPORT = "create-secret-import",
   UPDATE_SECRET_IMPORT = "update-secret-import",
   DELETE_SECRET_IMPORT = "delete-secret-import",
-  UPDATE_USER_WORKSPACE_ROLE = "update-user-workspace-role",
-  UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS = "update-user-workspace-denied-permissions",
+  UPDATE_USER_PROJECT_ROLE = "update-user-project-role",
+  UPDATE_USER_PROJECT_DENIED_PERMISSIONS = "update-user-project-denied-permissions",
   SECRET_APPROVAL_MERGED = "secret-approval-merged",
   SECRET_APPROVAL_REQUEST = "secret-approval-request",
   SECRET_APPROVAL_CLOSED = "secret-approval-closed",
@@ -392,6 +393,8 @@ export enum EventType {
   CREATE_APP_CONNECTION = "create-app-connection",
   UPDATE_APP_CONNECTION = "update-app-connection",
   DELETE_APP_CONNECTION = "delete-app-connection",
+  GET_APP_CONNECTION_USAGE = "get-app-connection-usage",
+  MIGRATE_APP_CONNECTION = "migrate-app-connection",
   CREATE_SHARED_SECRET = "create-shared-secret",
   CREATE_SECRET_REQUEST = "create-secret-request",
   DELETE_SHARED_SECRET = "delete-shared-secret",
@@ -404,6 +407,14 @@ export enum EventType {
   SECRET_SYNC_SYNC_SECRETS = "secret-sync-sync-secrets",
   SECRET_SYNC_IMPORT_SECRETS = "secret-sync-import-secrets",
   SECRET_SYNC_REMOVE_SECRETS = "secret-sync-remove-secrets",
+  GET_PKI_SYNCS = "get-pki-syncs",
+  GET_PKI_SYNC = "get-pki-sync",
+  CREATE_PKI_SYNC = "create-pki-sync",
+  UPDATE_PKI_SYNC = "update-pki-sync",
+  DELETE_PKI_SYNC = "delete-pki-sync",
+  PKI_SYNC_SYNC_CERTIFICATES = "pki-sync-sync-certificates",
+  PKI_SYNC_IMPORT_CERTIFICATES = "pki-sync-import-certificates",
+  PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
   OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
   CREATE_KMIP_CLIENT = "create-kmip-client",
@@ -475,9 +486,21 @@ export enum EventType {
   UPDATE_PROJECT = "update-project",
   DELETE_PROJECT = "delete-project",
 
+  CREATE_PROJECT_ROLE = "create-project-role",
+  UPDATE_PROJECT_ROLE = "update-project-role",
+  DELETE_PROJECT_ROLE = "delete-project-role",
+
+  CREATE_ORG_ROLE = "create-org-role",
+  UPDATE_ORG_ROLE = "update-org-role",
+  DELETE_ORG_ROLE = "delete-org-role",
+
   CREATE_SECRET_REMINDER = "create-secret-reminder",
   GET_SECRET_REMINDER = "get-secret-reminder",
-  DELETE_SECRET_REMINDER = "delete-secret-reminder"
+  DELETE_SECRET_REMINDER = "delete-secret-reminder",
+
+  DASHBOARD_LIST_SECRETS = "dashboard-list-secrets",
+  DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
+  DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -588,6 +611,7 @@ interface CreateSecretEvent {
     secretKey: string;
     secretVersion: number;
     secretMetadata?: TSecretMetadata;
+    secretTags?: string[];
   };
 }
 
@@ -602,6 +626,7 @@ interface CreateSecretBatchEvent {
       secretPath?: string;
       secretVersion: number;
       secretMetadata?: TSecretMetadata;
+      secretTags?: string[];
     }>;
   };
 }
@@ -615,6 +640,7 @@ interface UpdateSecretEvent {
     secretKey: string;
     secretVersion: number;
     secretMetadata?: TSecretMetadata;
+    secretTags?: string[];
   };
 }
 
@@ -629,6 +655,7 @@ interface UpdateSecretBatchEvent {
       secretVersion: number;
       secretMetadata?: TSecretMetadata;
       secretPath?: string;
+      secretTags?: string[];
     }>;
   };
 }
@@ -664,8 +691,8 @@ interface DeleteSecretBatchEvent {
   };
 }
 
-interface GetWorkspaceKeyEvent {
-  type: EventType.GET_WORKSPACE_KEY;
+interface GetProjectKeyEvent {
+  type: EventType.GET_PROJECT_KEY;
   metadata: {
     keyId: string;
   };
@@ -1370,6 +1397,10 @@ interface AddIdentityLdapAuthEvent {
     allowedFields?: TAllowedFields[];
     url: string;
     templateId?: string | null;
+    lockoutEnabled: boolean;
+    lockoutThreshold: number;
+    lockoutDurationSeconds: number;
+    lockoutCounterResetSeconds: number;
   };
 }
 
@@ -1384,6 +1415,10 @@ interface UpdateIdentityLdapAuthEvent {
     allowedFields?: TAllowedFields[];
     url?: string;
     templateId?: string | null;
+    lockoutEnabled?: boolean;
+    lockoutThreshold?: number;
+    lockoutDurationSeconds?: number;
+    lockoutCounterResetSeconds?: number;
   };
 }
 
@@ -1396,6 +1431,13 @@ interface GetIdentityLdapAuthEvent {
 
 interface RevokeIdentityLdapAuthEvent {
   type: EventType.REVOKE_IDENTITY_LDAP_AUTH;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface ClearIdentityLdapAuthLockoutsEvent {
+  type: EventType.CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS;
   metadata: {
     identityId: string;
   };
@@ -1557,24 +1599,24 @@ interface DeleteEnvironmentEvent {
   };
 }
 
-interface AddWorkspaceMemberEvent {
-  type: EventType.ADD_WORKSPACE_MEMBER;
+interface AddProjectMemberEvent {
+  type: EventType.ADD_PROJECT_MEMBER;
   metadata: {
     userId: string;
     email: string;
   };
 }
 
-interface AddBatchWorkspaceMemberEvent {
-  type: EventType.ADD_BATCH_WORKSPACE_MEMBER;
+interface AddBatchProjectMemberEvent {
+  type: EventType.ADD_BATCH_PROJECT_MEMBER;
   metadata: Array<{
     userId: string;
     email: string;
   }>;
 }
 
-interface RemoveWorkspaceMemberEvent {
-  type: EventType.REMOVE_WORKSPACE_MEMBER;
+interface RemoveProjectMemberEvent {
+  type: EventType.REMOVE_PROJECT_MEMBER;
   metadata: {
     userId: string;
     email: string;
@@ -1713,7 +1755,7 @@ interface DeleteSecretImportEvent {
 }
 
 interface UpdateUserRole {
-  type: EventType.UPDATE_USER_WORKSPACE_ROLE;
+  type: EventType.UPDATE_USER_PROJECT_ROLE;
   metadata: {
     userId: string;
     email: string;
@@ -1723,7 +1765,7 @@ interface UpdateUserRole {
 }
 
 interface UpdateUserDeniedPermissions {
-  type: EventType.UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS;
+  type: EventType.UPDATE_USER_PROJECT_DENIED_PERMISSIONS;
   metadata: {
     userId: string;
     email: string;
@@ -2781,14 +2823,31 @@ interface GetAppConnectionEvent {
   };
 }
 
+interface GetAppConnectionUsageEvent {
+  type: EventType.GET_APP_CONNECTION_USAGE;
+  metadata: {
+    connectionId: string;
+  };
+}
+
+interface MigrateAppConnectionEvent {
+  type: EventType.MIGRATE_APP_CONNECTION;
+  metadata: {
+    connectionId: string;
+  };
+}
+
 interface CreateAppConnectionEvent {
   type: EventType.CREATE_APP_CONNECTION;
-  metadata: Omit<TCreateAppConnectionDTO, "credentials"> & { connectionId: string };
+  metadata: Omit<TCreateAppConnectionDTO, "credentials" | "projectId"> & { connectionId: string };
 }
 
 interface UpdateAppConnectionEvent {
   type: EventType.UPDATE_APP_CONNECTION;
-  metadata: Omit<TUpdateAppConnectionDTO, "credentials"> & { connectionId: string; credentialsUpdated: boolean };
+  metadata: Omit<TUpdateAppConnectionDTO, "credentials" | "projectId"> & {
+    connectionId: string;
+    credentialsUpdated: boolean;
+  };
 }
 
 interface DeleteAppConnectionEvent {
@@ -2901,6 +2960,77 @@ interface SecretSyncRemoveSecretsEvent {
     TSecretSyncRaw,
     "syncOptions" | "destinationConfig" | "destination" | "removeStatus" | "connectionId" | "folderId"
   > & {
+    syncId: string;
+    removeMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
+  };
+}
+
+interface GetPkiSyncsEvent {
+  type: EventType.GET_PKI_SYNCS;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface GetPkiSyncEvent {
+  type: EventType.GET_PKI_SYNC;
+  metadata: {
+    destination: string;
+    syncId: string;
+  };
+}
+
+interface CreatePkiSyncEvent {
+  type: EventType.CREATE_PKI_SYNC;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+    destination: string;
+  };
+}
+
+interface UpdatePkiSyncEvent {
+  type: EventType.UPDATE_PKI_SYNC;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+  };
+}
+
+interface DeletePkiSyncEvent {
+  type: EventType.DELETE_PKI_SYNC;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+    destination: string;
+  };
+}
+
+interface PkiSyncSyncCertificatesEvent {
+  type: EventType.PKI_SYNC_SYNC_CERTIFICATES;
+  metadata: {
+    syncId: string;
+    syncMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
+  };
+}
+
+interface PkiSyncImportCertificatesEvent {
+  type: EventType.PKI_SYNC_IMPORT_CERTIFICATES;
+  metadata: {
+    syncId: string;
+    importMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
+  };
+}
+
+interface PkiSyncRemoveCertificatesEvent {
+  type: EventType.PKI_SYNC_REMOVE_CERTIFICATES;
+  metadata: {
     syncId: string;
     removeMessage: string | null;
     jobId: string;
@@ -3467,6 +3597,96 @@ interface ProjectDeleteEvent {
   };
 }
 
+interface DashboardListSecretsEvent {
+  type: EventType.DASHBOARD_LIST_SECRETS;
+  metadata: {
+    environment: string;
+    secretPath: string;
+    numberOfSecrets: number;
+    secretIds: string[];
+  };
+}
+
+interface DashboardGetSecretValueEvent {
+  type: EventType.DASHBOARD_GET_SECRET_VALUE;
+  metadata: {
+    secretId: string;
+    secretKey: string;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface DashboardGetSecretVersionValueEvent {
+  type: EventType.DASHBOARD_GET_SECRET_VERSION_VALUE;
+  metadata: {
+    secretId: string;
+    version: string;
+  };
+}
+
+interface ProjectRoleCreateEvent {
+  type: EventType.CREATE_PROJECT_ROLE;
+  metadata: {
+    roleId: string;
+    slug: string;
+    name: string;
+    description?: string | null;
+    permissions: string;
+  };
+}
+
+interface ProjectRoleUpdateEvent {
+  type: EventType.UPDATE_PROJECT_ROLE;
+  metadata: {
+    roleId: string;
+    slug?: string;
+    name?: string;
+    description?: string | null;
+    permissions?: string;
+  };
+}
+
+interface ProjectRoleDeleteEvent {
+  type: EventType.DELETE_PROJECT_ROLE;
+  metadata: {
+    roleId: string;
+    slug: string;
+    name: string;
+  };
+}
+
+interface OrgRoleCreateEvent {
+  type: EventType.CREATE_ORG_ROLE;
+  metadata: {
+    roleId: string;
+    slug: string;
+    name: string;
+    description?: string | null;
+    permissions: string;
+  };
+}
+
+interface OrgRoleUpdateEvent {
+  type: EventType.UPDATE_ORG_ROLE;
+  metadata: {
+    roleId: string;
+    slug?: string;
+    name?: string;
+    description?: string | null;
+    permissions?: string;
+  };
+}
+
+interface OrgRoleDeleteEvent {
+  type: EventType.DELETE_ORG_ROLE;
+  metadata: {
+    roleId: string;
+    slug: string;
+    name: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -3477,7 +3697,7 @@ export type Event =
   | MoveSecretsEvent
   | DeleteSecretEvent
   | DeleteSecretBatchEvent
-  | GetWorkspaceKeyEvent
+  | GetProjectKeyEvent
   | AuthorizeIntegrationEvent
   | UpdateIntegrationAuthEvent
   | UnauthorizeIntegrationEvent
@@ -3562,13 +3782,14 @@ export type Event =
   | UpdateIdentityLdapAuthEvent
   | GetIdentityLdapAuthEvent
   | RevokeIdentityLdapAuthEvent
+  | ClearIdentityLdapAuthLockoutsEvent
   | CreateEnvironmentEvent
   | GetEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent
-  | AddWorkspaceMemberEvent
-  | AddBatchWorkspaceMemberEvent
-  | RemoveWorkspaceMemberEvent
+  | AddProjectMemberEvent
+  | AddBatchProjectMemberEvent
+  | RemoveProjectMemberEvent
   | CreateFolderEvent
   | UpdateFolderEvent
   | DeleteFolderEvent
@@ -3697,6 +3918,8 @@ export type Event =
   | CreateAppConnectionEvent
   | UpdateAppConnectionEvent
   | DeleteAppConnectionEvent
+  | GetAppConnectionUsageEvent
+  | MigrateAppConnectionEvent
   | GetSshHostGroupEvent
   | CreateSshHostGroupEvent
   | UpdateSshHostGroupEvent
@@ -3715,6 +3938,14 @@ export type Event =
   | SecretSyncSyncSecretsEvent
   | SecretSyncImportSecretsEvent
   | SecretSyncRemoveSecretsEvent
+  | GetPkiSyncsEvent
+  | GetPkiSyncEvent
+  | CreatePkiSyncEvent
+  | UpdatePkiSyncEvent
+  | DeletePkiSyncEvent
+  | PkiSyncSyncCertificatesEvent
+  | PkiSyncImportCertificatesEvent
+  | PkiSyncRemoveCertificatesEvent
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
   | CreateKmipClientEvent
@@ -3780,4 +4011,13 @@ export type Event =
   | ProjectDeleteEvent
   | SecretReminderCreateEvent
   | SecretReminderGetEvent
-  | SecretReminderDeleteEvent;
+  | SecretReminderDeleteEvent
+  | DashboardListSecretsEvent
+  | DashboardGetSecretValueEvent
+  | DashboardGetSecretVersionValueEvent
+  | ProjectRoleCreateEvent
+  | ProjectRoleUpdateEvent
+  | ProjectRoleDeleteEvent
+  | OrgRoleCreateEvent
+  | OrgRoleUpdateEvent
+  | OrgRoleDeleteEvent;

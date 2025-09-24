@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent, Spinner } from "@app/components/v2";
-import { ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { useCreateProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
@@ -45,7 +45,7 @@ const Content = ({ role, onClose }: ContentProps) => {
     resolver: zodResolver(schema)
   });
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const createRole = useCreateProjectRole();
   const navigate = useNavigate();
@@ -70,7 +70,7 @@ const Content = ({ role, onClose }: ContentProps) => {
     });
 
     const newRole = await createRole.mutateAsync({
-      projectId: currentWorkspace.id,
+      projectId: currentProject.id,
       permissions: sanitizedPermission,
       ...form
     });
@@ -81,10 +81,10 @@ const Content = ({ role, onClose }: ContentProps) => {
     });
 
     navigate({
-      to: `${getProjectBaseURL(currentWorkspace.type)}/roles/$roleSlug` as const,
+      to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug` as const,
       params: {
         roleSlug: newRole.slug,
-        projectId: currentWorkspace.id
+        projectId: currentProject.id
       }
     });
 
@@ -142,9 +142,9 @@ const Content = ({ role, onClose }: ContentProps) => {
 };
 
 export const DuplicateProjectRoleModal = ({ isOpen, onOpenChange, roleSlug }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
-  const { data: role, isPending } = useGetProjectRoleBySlug(currentWorkspace.id, roleSlug ?? "");
+  const { data: role, isPending } = useGetProjectRoleBySlug(currentProject.id, roleSlug ?? "");
 
   if (!roleSlug) return null;
 

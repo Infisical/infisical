@@ -50,6 +50,7 @@ export enum ApiDocsTags {
   IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
   AppConnections = "App Connections",
   SecretSyncs = "Secret Syncs",
+  PkiSyncs = "PKI Syncs",
   Integrations = "Integrations",
   ServiceTokens = "Service Tokens",
   AuditLogs = "Audit Logs",
@@ -242,7 +243,12 @@ export const LDAP_AUTH = {
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
-    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
+    accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
+    lockoutEnabled: "Whether the lockout feature is enabled.",
+    lockoutThreshold: "The amount of times login must fail before locking the identity auth method.",
+    lockoutDurationSeconds: "How long an identity auth method lockout lasts.",
+    lockoutCounterResetSeconds:
+      "How long to wait from the most recent failed login until resetting the lockout counter."
   },
   UPDATE: {
     identityId: "The ID of the identity to update the configuration for.",
@@ -257,13 +263,21 @@ export const LDAP_AUTH = {
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
-    templateId: "The ID of the identity auth template to update the configuration to."
+    templateId: "The ID of the identity auth template to update the configuration to.",
+    lockoutEnabled: "Whether the lockout feature is enabled.",
+    lockoutThreshold: "The amount of times login must fail before locking the identity auth method.",
+    lockoutDurationSeconds: "How long an identity auth method lockout lasts.",
+    lockoutCounterResetSeconds:
+      "How long to wait from the most recent failed login until resetting the lockout counter."
   },
   RETRIEVE: {
     identityId: "The ID of the identity to retrieve the configuration for."
   },
   REVOKE: {
     identityId: "The ID of the identity to revoke the configuration for."
+  },
+  CLEAR_CLIENT_LOCKOUTS: {
+    identityId: "The ID of the identity to clear the client lockouts from."
   }
 } as const;
 
@@ -711,13 +725,13 @@ export const PROJECTS = {
     template: "The name of the project template, if specified, to apply to this project."
   },
   DELETE: {
-    workspaceId: "The ID of the project to delete."
+    projectId: "The ID of the project to delete."
   },
   GET: {
-    workspaceId: "The ID of the project."
+    projectId: "The ID of the project."
   },
   UPDATE: {
-    workspaceId: "The ID of the project to update.",
+    projectId: "The ID of the project to update.",
     name: "The new name of the project.",
     projectDescription: "An optional description label for the project.",
     autoCapitalization: "Disable or enable auto-capitalization for the project.",
@@ -729,10 +743,10 @@ export const PROJECTS = {
     secretDetectionIgnoreValues: "The list of secret values to ignore for secret detection."
   },
   GET_KEY: {
-    workspaceId: "The ID of the project to get the key from."
+    projectId: "The ID of the project to get the key from."
   },
   GET_SNAPSHOTS: {
-    workspaceId: "The ID of the project to get snapshots from.",
+    projectId: "The ID of the project to get snapshots from.",
     environment: "The environment to get snapshots from.",
     path: "The secret path to get snapshots from.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th snapshot.",
@@ -759,10 +773,10 @@ export const PROJECTS = {
     projectId: "The ID of the project to list groups for."
   },
   LIST_INTEGRATION: {
-    workspaceId: "The ID of the project to list integrations for."
+    projectId: "The ID of the project to list integrations for."
   },
   LIST_INTEGRATION_AUTHORIZATION: {
-    workspaceId: "The ID of the project to list integration auths for."
+    projectId: "The ID of the project to list integration auths for."
   },
   LIST_SSH_CAS: {
     projectId: "The ID of the project to list SSH CAs for."
@@ -815,15 +829,15 @@ export const PROJECT_USERS = {
     usernames: "A list of usernames to remove from the project."
   },
   GET_USER_MEMBERSHIPS: {
-    workspaceId: "The ID of the project to get memberships from."
+    projectId: "The ID of the project to get memberships from."
   },
   GET_USER_MEMBERSHIP: {
-    workspaceId: "The ID of the project to get memberships from.",
+    projectId: "The ID of the project to get memberships from.",
     membershipId: "The ID of the user's project membership.",
     username: "The username to get project membership of. Email is the default username."
   },
   UPDATE_USER_MEMBERSHIP: {
-    workspaceId: "The ID of the project to update the membership for.",
+    projectId: "The ID of the project to update the membership for.",
     membershipId: "The ID of the membership to update.",
     roles: "A list of roles to update the membership to."
   }
@@ -877,31 +891,31 @@ export const PROJECT_IDENTITIES = {
 
 export const ENVIRONMENTS = {
   CREATE: {
-    workspaceId: "The ID of the project to create the environment in.",
+    projectId: "The ID of the project to create the environment in.",
     name: "The name of the environment to create.",
     slug: "The slug of the environment to create.",
     position: "The position of the environment. The lowest number will be displayed as the first environment."
   },
   UPDATE: {
-    workspaceId: "The ID of the project to update the environment in.",
+    projectId: "The ID of the project to update the environment in.",
     id: "The ID of the environment to update.",
     name: "The new name of the environment.",
     slug: "The new slug of the environment.",
     position: "The new position of the environment. The lowest number will be displayed as the first environment."
   },
   DELETE: {
-    workspaceId: "The ID of the project to delete the environment from.",
+    projectId: "The ID of the project to delete the environment from.",
     id: "The ID of the environment to delete."
   },
   GET: {
-    workspaceId: "The ID of the project the environment belongs to.",
+    projectId: "The ID of the project the environment belongs to.",
     id: "The ID of the environment to fetch."
   }
 } as const;
 
 export const FOLDERS = {
   LIST: {
-    workspaceId: "The ID of the project to list folders from.",
+    projectId: "The ID of the project to list folders from.",
     environment: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
     directory: "The directory to list folders from. (Deprecated in favor of path)",
@@ -913,7 +927,7 @@ export const FOLDERS = {
     folderId: "The ID of the folder to get details."
   },
   CREATE: {
-    workspaceId: "The ID of the project to create the folder in.",
+    projectId: "The ID of the project to create the folder in.",
     environment: "The slug of the environment to create the folder in.",
     name: "The name of the folder to create.",
     path: "The path of the folder to create.",
@@ -927,12 +941,12 @@ export const FOLDERS = {
     path: "The path of the folder to update.",
     directory: "The new directory of the folder to update. (Deprecated in favor of path)",
     projectSlug: "The slug of the project where the folder is located.",
-    workspaceId: "The ID of the project where the folder is located.",
+    projectId: "The ID of the project where the folder is located.",
     description: "An optional description label for the folder."
   },
   DELETE: {
     folderIdOrName: "The ID or name of the folder to delete.",
-    workspaceId: "The ID of the project to delete the folder from.",
+    projectId: "The ID of the project to delete the folder from.",
     environment: "The slug of the environment where the folder is located.",
     directory: "The directory of the folder to delete. (Deprecated in favor of path)",
     path: "The path of the folder to delete."
@@ -964,7 +978,7 @@ export const RAW_SECRETS = {
     expand: "Whether or not to expand secret references.",
     recursive:
       "Whether or not to fetch all secrets from the specified base path, and all of its subdirectories. Note, the max depth is 20 deep.",
-    workspaceId: "The ID of the project to list secrets from.",
+    projectId: "The ID of the project to list secrets from.",
     workspaceSlug:
       "The slug of the project to list secrets from. This parameter is only applicable by machine identities.",
     environment: "The slug of the environment to list secrets from.",
@@ -984,7 +998,7 @@ export const RAW_SECRETS = {
     secretValue: "The value of the secret to create.",
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to create.",
-    workspaceId: "The ID of the project to create the secret in.",
+    projectId: "The ID of the project to create the secret in.",
     tagIds: "The ID of the tags to be attached to the created secret.",
     secretReminderRepeatDays: "Interval for secret rotation notifications, measured in days.",
     secretReminderNote: "Note to be attached in notification email."
@@ -992,7 +1006,7 @@ export const RAW_SECRETS = {
   GET: {
     expand: "Whether or not to expand secret references.",
     secretName: "The name of the secret to get.",
-    workspaceId: "The ID of the project to get the secret from.",
+    projectId: "The ID of the project to get the secret from.",
     workspaceSlug: "The slug of the project to get the secret from.",
     environment: "The slug of the environment to get the secret from.",
     secretPath: "The path of the secret to get.",
@@ -1011,7 +1025,7 @@ export const RAW_SECRETS = {
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to update.",
     projectSlug: "The slug of the project to update the secret in.",
-    workspaceId: "The ID of the project to update the secret in.",
+    projectId: "The ID of the project to update the secret in.",
     tagIds: "The ID of the tags to be attached to the updated secret.",
     secretReminderRepeatDays: "Interval for secret rotation notifications, measured in days.",
     secretReminderNote: "Note to be attached in notification email.",
@@ -1025,11 +1039,11 @@ export const RAW_SECRETS = {
     secretPath: "The path of the secret.",
     type: "The type of the secret to delete.",
     projectSlug: "The slug of the project to delete the secret in.",
-    workspaceId: "The ID of the project where the secret is located."
+    projectId: "The ID of the project where the secret is located."
   },
   GET_REFERENCE_TREE: {
     secretName: "The name of the secret to get the reference tree for.",
-    workspaceId: "The ID of the project where the secret is located.",
+    projectId: "The ID of the project where the secret is located.",
     environment: "The slug of the environment where the the secret is located.",
     secretPath: "The folder path where the secret is located."
   },
@@ -1043,7 +1057,7 @@ export const RAW_SECRETS = {
 
 export const SECRET_IMPORTS = {
   LIST: {
-    workspaceId: "The ID of the project to list secret imports from.",
+    projectId: "The ID of the project to list secret imports from.",
     environment: "The slug of the environment to list secret imports from.",
     path: "The path to list secret imports from."
   },
@@ -1053,7 +1067,7 @@ export const SECRET_IMPORTS = {
   CREATE: {
     environment: "The slug of the environment to import into.",
     path: "The path to import into.",
-    workspaceId: "The ID of the project you are working in.",
+    projectId: "The ID of the project you are working in.",
     isReplication:
       "When true, secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately.",
     import: {
@@ -1070,10 +1084,10 @@ export const SECRET_IMPORTS = {
       position: "The new position of the secret import. The lowest number will be displayed as the first import."
     },
     path: "The path of the secret import to update.",
-    workspaceId: "The ID of the project where the secret import is located."
+    projectId: "The ID of the project where the secret import is located."
   },
   DELETE: {
-    workspaceId: "The ID of the project to delete the secret import from.",
+    projectId: "The ID of the project to delete the secret import from.",
     secretImportId: "The ID of the secret import to delete.",
     environment: "The slug of the environment where the secret import is located.",
     path: "The path of the secret import to delete."
@@ -2185,11 +2199,15 @@ export const CertificateAuthorities = {
 };
 
 export const AppConnections = {
+  LIST: (app?: AppConnection) => ({
+    projectId: `The ID of the project to list ${app ? APP_CONNECTION_NAME_MAP[app] : "App"} Connections from.`
+  }),
   GET_BY_ID: (app: AppConnection) => ({
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to retrieve.`
   }),
   GET_BY_NAME: (app: AppConnection) => ({
-    connectionName: `The name of the ${APP_CONNECTION_NAME_MAP[app]} Connection to retrieve.`
+    connectionName: `The name of the ${APP_CONNECTION_NAME_MAP[app]} Connection to retrieve.`,
+    projectId: `The project ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection is associated with. Leave unspecified to get organization-level connections.`
   }),
   CREATE: (app: AppConnection) => {
     const appName = APP_CONNECTION_NAME_MAP[app];
@@ -2198,7 +2216,8 @@ export const AppConnections = {
       description: `An optional description for the ${appName} Connection.`,
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
-      isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`
+      isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
+      projectId: `The ID of the project to create the ${appName} Connection in.`
     };
   },
   UPDATE: (app: AppConnection) => {

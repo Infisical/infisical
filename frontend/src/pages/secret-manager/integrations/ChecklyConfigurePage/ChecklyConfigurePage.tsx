@@ -19,14 +19,14 @@ import {
   Tabs
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById,
   useGetIntegrationAuthChecklyGroups
 } from "@app/hooks/api/integrationAuth";
-import { useGetWorkspaceById } from "@app/hooks/api/workspace";
+import { useGetWorkspaceById } from "@app/hooks/api/projects";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 enum TabSections {
@@ -42,7 +42,7 @@ export const ChecklyConfigurePage = () => {
     from: ROUTE_PATHS.SecretManager.Integratons.ChecklyConfigurePage.id,
     select: (el) => el.integrationAuthId
   });
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
@@ -53,7 +53,7 @@ export const ChecklyConfigurePage = () => {
 
   const [isLoading, setIsLoading] = useState(false);
 
-  const { data: workspace } = useGetWorkspaceById(currentWorkspace.id);
+  const { data: workspace } = useGetWorkspaceById(currentProject.id);
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
   const { data: integrationAuthApps, isPending: isIntegrationAuthAppsLoading } =
     useGetIntegrationAuthApps({
@@ -115,7 +115,7 @@ export const ChecklyConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations

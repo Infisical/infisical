@@ -14,13 +14,13 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
 } from "@app/hooks/api/integrationAuth";
-import { useGetWorkspaceById } from "@app/hooks/api/workspace";
+import { useGetWorkspaceById } from "@app/hooks/api/projects";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const AzureDevopsConfigurePage = () => {
@@ -31,9 +31,9 @@ export const AzureDevopsConfigurePage = () => {
     from: ROUTE_PATHS.SecretManager.Integratons.AzureDevopsConfigurePage.id,
     select: (el) => el.integrationAuthId
   });
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
-  const { data: workspace } = useGetWorkspaceById(currentWorkspace.id);
+  const { data: workspace } = useGetWorkspaceById(currentProject.id);
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
   const { data: integrationAuthApps } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? "",
@@ -82,7 +82,7 @@ export const AzureDevopsConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations

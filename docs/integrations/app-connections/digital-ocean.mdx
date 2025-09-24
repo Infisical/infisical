@@ -45,7 +45,7 @@ Infisical supports the use of [API Tokens](https://cloud.digitalocean.com/accoun
   <Tab title="Infisical UI">
     <Steps>
       <Step title="Navigate to App Connections">
-        In your Infisical dashboard, go to **Organization Settings** and open the [**App Connections**](https://app.infisical.com/organization/app-connections) tab.
+        In your Infisical dashboard, navigate to the **App Connections** page in the desired project.
 
         ![App Connections Tab](/images/app-connections/general/add-connection.png)
       </Step>
@@ -63,7 +63,7 @@ Infisical supports the use of [API Tokens](https://cloud.digitalocean.com/accoun
         ![DigitalOcean Connection Modal](/images/app-connections/digital-ocean/app-connection-form.png)
       </Step>
       <Step title="Connection created">
-        After submitting the form, your **DigitalOcean Connection** will be successfully created and ready to use with your Infisical projects.
+        After submitting the form, your **DigitalOcean Connection** will be successfully created and ready to use with your Infisical project.
 
         ![DigitalOcean Connection Created](/images/app-connections/digital-ocean/app-connection-generated.png)
       </Step>
@@ -82,6 +82,7 @@ Infisical supports the use of [API Tokens](https://cloud.digitalocean.com/accoun
             --data '{
                 "name": "my-digitalocean-connection",
                 "method": "api-token",
+                "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
                 "credentials": {
                     "apiToken": "[API TOKEN]"
                 }
@@ -95,6 +96,7 @@ Infisical supports the use of [API Tokens](https://cloud.digitalocean.com/accoun
       "appConnection": {
           "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
           "name": "my-digitalocean-connection",
+          "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
           "description": null,
           "version": 1,
           "orgId": "abcdef12-3456-7890-abcd-ef1234567890",

@@ -294,11 +294,18 @@ export const userServiceFactory = ({
       // Delete all user aliases since the email is changing
       await userAliasDAL.delete({ userId }, tx);
 
+      // Ensure EMAIL auth method is included if not already present
+      const currentAuthMethods = user.authMethods || [];
+      const updatedAuthMethods = currentAuthMethods.includes(AuthMethod.EMAIL)
+        ? currentAuthMethods
+        : [...currentAuthMethods, AuthMethod.EMAIL];
+
       const updatedUser = await userDAL.updateById(
         userId,
         {
           email: newEmail.toLowerCase(),
-          username: newEmail.toLowerCase()
+          username: newEmail.toLowerCase(),
+          authMethods: updatedAuthMethods
         },
         tx
       );

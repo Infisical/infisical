@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { pkiSubscriberKeys } from "../pkiSubscriber/queries";
-import { workspaceKeys } from "../workspace";
+import { projectKeys } from "../projects";
 import {
   TCertificate,
   TDeleteCertDTO,
@@ -25,7 +25,7 @@ export const useDeleteCert = () => {
     },
     onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.forWorkspaceCertificates(projectSlug)
+        queryKey: projectKeys.forProjectCertificates(projectSlug)
       });
     }
   });
@@ -47,7 +47,7 @@ export const useRevokeCert = () => {
     },
     onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.forWorkspaceCertificates(projectSlug)
+        queryKey: projectKeys.forProjectCertificates(projectSlug)
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
@@ -68,7 +68,7 @@ export const useImportCertificate = () => {
     },
     onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.forWorkspaceCertificates(projectSlug)
+        queryKey: projectKeys.forProjectCertificates(projectSlug)
       });
     }
   });

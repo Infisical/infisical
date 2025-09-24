@@ -93,6 +93,7 @@ import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-servi
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 import { TPkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
 import { TPkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
+import { TPkiSyncServiceFactory } from "@app/services/pki-sync/pki-sync-service";
 import { TPkiTemplatesServiceFactory } from "@app/services/pki-templates/pki-templates-service";
 import { TProjectServiceFactory } from "@app/services/project/project-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -268,6 +269,7 @@ declare module "fastify" {
       certificateEst: TCertificateEstServiceFactory;
       pkiCollection: TPkiCollectionServiceFactory;
       pkiSubscriber: TPkiSubscriberServiceFactory;
+      pkiSync: TPkiSyncServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;
       trustedIp: TTrustedIpServiceFactory;

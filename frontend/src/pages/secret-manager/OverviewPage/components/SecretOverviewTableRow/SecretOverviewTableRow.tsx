@@ -22,7 +22,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
-import { WorkspaceEnv } from "@app/hooks/api/types";
+import { ProjectEnv } from "@app/hooks/api/types";
 import { getExpandedRowStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
@@ -50,7 +50,14 @@ type Props = {
   getImportedSecretByKey: (
     env: string,
     secretName: string
-  ) => { secret?: SecretV3RawSanitized; environmentInfo?: WorkspaceEnv } | undefined;
+  ) =>
+    | {
+        secret?: SecretV3RawSanitized;
+        secretPath: string;
+        environment: string;
+        environmentInfo?: ProjectEnv;
+      }
+    | undefined;
   scrollOffset: number;
   importedBy?: {
     environment: { name: string; slug: string };
@@ -140,7 +147,7 @@ export const SecretOverviewTableRow = ({
           const isSecretImported = isImportedSecretPresentInEnv(slug, secretKey);
 
           const isSecretPresent = Boolean(secret);
-          const isSecretEmpty = secret?.value === "";
+          const isSecretEmpty = secret?.isEmpty;
           return (
             <Td
               key={`sec-overview-${slug}-${i + 1}-value`}
@@ -254,7 +261,7 @@ export const SecretOverviewTableRow = ({
                                   <FontAwesomeIcon icon={faRotate} />
                                 </Tooltip>
                               )}
-                              {secret?.valueOverride && (
+                              {secret?.idOverride && (
                                 <Tooltip content="Personal Override">
                                   <FontAwesomeIcon icon={faCodeBranch} />
                                 </Tooltip>
@@ -266,11 +273,13 @@ export const SecretOverviewTableRow = ({
                               secretPath={secretPath}
                               isVisible={isSecretVisible}
                               secretName={secretKey}
+                              isEmpty={secret?.isEmpty}
                               secretValueHidden={secret?.secretValueHidden || false}
                               defaultValue={getDefaultValue(secret, importedSecret)}
                               secretId={secret?.id}
-                              isOverride={Boolean(secret?.valueOverride)}
+                              isOverride={Boolean(secret?.idOverride)}
                               isImportedSecret={isImportedSecret}
+                              importedSecret={importedSecret}
                               isCreatable={isCreatable}
                               onSecretDelete={onSecretDelete}
                               onSecretCreate={onSecretCreate}

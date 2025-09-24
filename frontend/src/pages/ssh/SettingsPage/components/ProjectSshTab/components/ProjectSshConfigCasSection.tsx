@@ -6,7 +6,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Select, SelectItem } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import {
   useGetProjectSshConfig,
   useListWorkspaceSshCas,
@@ -23,9 +23,9 @@ const schema = z
 export type FormData = z.infer<typeof schema>;
 
 export const ProjectSshConfigCasSection = () => {
-  const { currentWorkspace } = useWorkspace();
-  const { data: sshConfig } = useGetProjectSshConfig(currentWorkspace.id);
-  const { data: sshCas } = useListWorkspaceSshCas(currentWorkspace.id);
+  const { currentProject } = useProject();
+  const { data: sshConfig } = useGetProjectSshConfig(currentProject.id);
+  const { data: sshCas } = useListWorkspaceSshCas(currentProject.id);
   const { mutate: updateProjectSshConfig } = useUpdateProjectSshConfig();
 
   const {
@@ -49,7 +49,7 @@ export const ProjectSshConfigCasSection = () => {
   const onFormSubmit = async ({ defaultUserSshCaId, defaultHostSshCaId }: FormData) => {
     try {
       await updateProjectSshConfig({
-        projectId: currentWorkspace.id,
+        projectId: currentProject.id,
         defaultUserSshCaId: defaultUserSshCaId || undefined,
         defaultHostSshCaId: defaultHostSshCaId || undefined
       });

@@ -60,7 +60,7 @@ import { TSecretScanningV2QueueServiceFactory } from "./secret-scanning-v2-queue
 
 export type TSecretScanningV2ServiceFactoryDep = {
   secretScanningV2DAL: TSecretScanningV2DALFactory;
-  appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -252,9 +252,9 @@ export const secretScanningV2ServiceFactory = ({
     let connection: TAppConnection | null = null;
     if (payload.connectionId) {
       // validates permission to connect and app is valid for data source
-      connection = await appConnectionService.connectAppConnectionById(
+      connection = await appConnectionService.validateAppConnectionUsageById(
         SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[payload.type],
-        payload.connectionId,
+        { connectionId: payload.connectionId, projectId: payload.projectId },
         actor
       );
     }
@@ -373,9 +373,9 @@ export const secretScanningV2ServiceFactory = ({
     let connection: TAppConnection | null = null;
     if (dataSource.connectionId) {
       // validates permission to connect and app is valid for data source
-      connection = await appConnectionService.connectAppConnectionById(
+      connection = await appConnectionService.validateAppConnectionUsageById(
         SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type],
-        dataSource.connectionId,
+        { connectionId: dataSource.connectionId, projectId: dataSource.projectId },
         actor
       );
     }

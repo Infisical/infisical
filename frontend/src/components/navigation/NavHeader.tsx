@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
-import { useOrganization, useWorkspace } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useToggle } from "@app/hooks";
 
 import { createNotification } from "../notifications";
@@ -51,7 +51,7 @@ export default function NavHeader({
   isProtectedBranch = false,
   protectionPolicyName
 }: Props): JSX.Element {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
 
   const [isCopied, { timedToggle: toggleIsCopied }] = useToggle(false);
@@ -79,7 +79,7 @@ export default function NavHeader({
         <>
           <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-xs text-gray-400" />
           <div className="truncate text-sm font-semibold text-bunker-300">
-            {currentWorkspace?.name}
+            {currentProject?.name}
           </div>
         </>
       )}
@@ -93,7 +93,7 @@ export default function NavHeader({
       {pageName === "Secrets" ? (
         <Link
           to="/projects/secret-management/$projectId/overview"
-          params={{ projectId: currentWorkspace.id }}
+          params={{ projectId: currentProject.id }}
           className="text-sm font-semibold text-primary/80 hover:text-primary"
         >
           {pageName}
@@ -129,7 +129,7 @@ export default function NavHeader({
           <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
           <Link
             to="/projects/secret-management/$projectId/secrets/$envSlug"
-            params={{ projectId: currentWorkspace.id, envSlug: routerEnvSlug }}
+            params={{ projectId: currentProject.id, envSlug: routerEnvSlug }}
             className="text-sm font-semibold text-primary/80 hover:text-primary"
           >
             {userAvailableEnvs?.find(({ slug }) => slug === currentEnv)?.name}
@@ -192,7 +192,7 @@ export default function NavHeader({
                 <Link
                   to="/projects/secret-management/$projectId/secrets/$envSlug"
                   params={{
-                    projectId: currentWorkspace.id,
+                    projectId: currentProject.id,
                     envSlug: routerEnvSlug || ""
                   }}
                   search={(query) => ({ ...query, secretPath: newSecretPath })}

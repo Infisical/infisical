@@ -8,7 +8,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { removeTrailingSlash } from "@app/helpers/string";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -22,7 +22,7 @@ type TForm = z.infer<typeof formSchema>;
 export const OctopusDeployAuthorizePage = () => {
   const navigate = useNavigate();
   const { mutateAsync, isPending } = useSaveIntegrationAccessToken();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { control, handleSubmit } = useForm<TForm>({
     resolver: zodResolver(formSchema)
@@ -31,7 +31,7 @@ export const OctopusDeployAuthorizePage = () => {
   const onSubmit = async ({ instanceUrl, apiKey }: TForm) => {
     try {
       const integrationAuth = await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         integration: "octopus-deploy",
         url: removeTrailingSlash(instanceUrl),
         accessToken: apiKey
@@ -40,7 +40,7 @@ export const OctopusDeployAuthorizePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations/octopus-deploy/create",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           integrationAuthId: integrationAuth.id

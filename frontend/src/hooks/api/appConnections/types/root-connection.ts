@@ -1,3 +1,5 @@
+import { ProjectType } from "@app/hooks/api/projects/types";
+
 export type TRootAppConnection = {
   id: string;
   name: string;
@@ -8,4 +10,11 @@ export type TRootAppConnection = {
   updatedAt: string;
   isPlatformManagedCredentials?: boolean;
   gatewayId?: string | null;
+  projectId?: string | null;
+  project?: {
+    name: string;
+    type: ProjectType;
+    slug: string;
+    id: string;
+  } | null;
 };

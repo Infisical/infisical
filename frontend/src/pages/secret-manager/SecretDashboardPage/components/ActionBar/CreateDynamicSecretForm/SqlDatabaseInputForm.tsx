@@ -29,7 +29,7 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
-import { WorkspaceEnv } from "@app/hooks/api/types";
+import { ProjectEnv } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 
 import { MetadataForm } from "../../DynamicSecretListView/MetadataForm";
@@ -110,7 +110,7 @@ type Props = {
   onCancel: () => void;
   secretPath: string;
   projectSlug: string;
-  environments: WorkspaceEnv[];
+  environments: ProjectEnv[];
   isSingleEnvironmentMode?: boolean;
 };
 

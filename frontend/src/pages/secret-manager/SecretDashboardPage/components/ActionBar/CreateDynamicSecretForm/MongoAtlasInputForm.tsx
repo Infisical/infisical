@@ -23,7 +23,7 @@ import {
 } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
-import { WorkspaceEnv } from "@app/hooks/api/types";
+import { ProjectEnv } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 
 const formSchema = z.object({
@@ -77,7 +77,7 @@ type Props = {
   onCancel: () => void;
   secretPath: string;
   projectSlug: string;
-  environments: WorkspaceEnv[];
+  environments: ProjectEnv[];
   isSingleEnvironmentMode?: boolean;
 };
 

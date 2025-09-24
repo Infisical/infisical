@@ -2,7 +2,10 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import {
+  CertificatesSchema,
   IntegrationsSchema,
+  PkiAlertsSchema,
+  PkiCollectionsSchema,
   ProjectEnvironmentsSchema,
   ProjectMembershipsSchema,
   ProjectRolesSchema,
@@ -16,18 +19,35 @@ import {
 } from "@app/db/schemas";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
+import { sanitizedSshCa } from "@app/ee/services/ssh/ssh-certificate-authority-schema";
+import { sanitizedSshCertificate } from "@app/ee/services/ssh-certificate/ssh-certificate-schema";
+import { sanitizedSshCertificateTemplate } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-schema";
+import { loginMappingSchema, sanitizedSshHost } from "@app/ee/services/ssh-host/ssh-host-schema";
+import { LoginMappingSource } from "@app/ee/services/ssh-host/ssh-host-types";
+import { sanitizedSshHostGroup } from "@app/ee/services/ssh-host-group/ssh-host-group-schema";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { re2Validator } from "@app/lib/zod";
 import { readLimit, requestAccessLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { sanitizedCertificateTemplate } from "@app/services/certificate-template/certificate-template-schema";
 import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
+import { sanitizedPkiSubscriber } from "@app/services/pki-subscriber/pki-subscriber-schema";
 import { ProjectFilterType, SearchProjectSortBy } from "@app/services/project/project-types";
 import { validateSlackChannelsField } from "@app/services/slack/slack-auth-validators";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
-import { integrationAuthPubSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
+import {
+  integrationAuthPubSchema,
+  InternalCertificateAuthorityResponseSchema,
+  SanitizedProjectSchema
+} from "../sanitizedSchemas";
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
 
 const projectWithEnv = SanitizedProjectSchema.merge(
@@ -40,41 +60,7 @@ const projectWithEnv = SanitizedProjectSchema.merge(
 export const registerProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
-    url: "/:workspaceId/keys",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      params: z.object({
-        workspaceId: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          publicKeys: z
-            .object({
-              publicKey: z.string().nullable().optional(),
-              userId: z.string()
-            })
-            .array()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const publicKeys = await server.services.projectKey.getProjectPublicKeys({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId
-      });
-      return { publicKeys };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/:workspaceId/users",
+    url: "/:projectId/users",
     config: {
       rateLimit: readLimit
     },
@@ -96,7 +82,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .optional()
       }),
       params: z.object({
-        workspaceId: z.string().trim()
+        projectId: z.string().trim()
       }),
       response: {
         200: z.object({
@@ -142,12 +128,89 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         includeGroupMembers: req.query.includeGroupMembers,
-        projectId: req.params.workspaceId,
+        projectId: req.params.projectId,
         actorOrgId: req.permission.orgId,
         roles
       });
 
       return { users };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.Projects],
+      description: "Create a new project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      body: z.object({
+        projectName: z.string().trim().describe(PROJECTS.CREATE.projectName),
+        projectDescription: z.string().trim().optional().describe(PROJECTS.CREATE.projectDescription),
+        slug: slugSchema({ min: 5, max: 36 }).optional().describe(PROJECTS.CREATE.slug),
+        kmsKeyId: z.string().optional(),
+        template: slugSchema({ field: "Template Name", max: 64 })
+          .optional()
+          .default(InfisicalProjectTemplate.Default)
+          .describe(PROJECTS.CREATE.template),
+        type: z.nativeEnum(ProjectType).default(ProjectType.SecretManager),
+        shouldCreateDefaultEnvs: z.boolean().optional().default(true)
+      }),
+      response: {
+        200: z.object({
+          project: projectWithEnv
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const project = await server.services.project.createProject({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        projectName: req.body.projectName,
+        projectDescription: req.body.projectDescription,
+        slug: req.body.slug,
+        kmsKeyId: req.body.kmsKeyId,
+        template: req.body.template,
+        type: req.body.type,
+        createDefaultEnvs: req.body.shouldCreateDefaultEnvs
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.ProjectCreated,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: {
+          orgId: project.orgId,
+          name: project.name,
+          ...req.auditLogInfo
+        }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: project.id,
+        event: {
+          type: EventType.CREATE_PROJECT,
+          metadata: {
+            ...req.body,
+            name: req.body.projectName
+          }
+        }
+      });
+
+      return { project };
     }
   });
 
@@ -158,6 +221,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      hide: false,
+      tags: [ApiDocsTags.Projects],
+      description: "List projects",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       querystring: z.object({
         includeRoles: z
           .enum(["true", "false"])
@@ -167,7 +238,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          workspaces: projectWithEnv
+          projects: projectWithEnv
             .extend({
               roles: ProjectRolesSchema.array().optional()
             })
@@ -177,7 +248,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const workspaces = await server.services.project.getProjects({
+      const projects = await server.services.project.getProjects({
         includeRoles: req.query.includeRoles,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -185,13 +256,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         type: req.query.type
       });
-      return { workspaces };
+      return { projects };
     }
   });
 
   server.route({
     method: "GET",
-    url: "/:workspaceId",
+    url: "/:projectId",
     config: {
       rateLimit: readLimit
     },
@@ -205,33 +276,73 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(PROJECTS.GET.workspaceId)
+        projectId: z.string().trim().describe(PROJECTS.GET.projectId)
       }),
       response: {
         200: z.object({
-          workspace: projectWithEnv.optional()
+          project: projectWithEnv.optional()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const workspace = await server.services.project.getAProject({
+      const project = await server.services.project.getAProject({
         filter: {
           type: ProjectFilterType.ID,
-          projectId: req.params.workspaceId
+          projectId: req.params.projectId
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId
       });
-      return { workspace };
+      return { project };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/slug/:slug",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.Projects],
+      description: "Get project details by slug",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        slug: slugSchema({ max: 64 }).describe("The slug of the project to get.")
+      }),
+      response: {
+        200: projectWithEnv
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const project = await server.services.project.getAProject({
+        filter: {
+          slug: req.params.slug,
+          orgId: req.permission.orgId,
+          type: ProjectFilterType.SLUG
+        },
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      return project;
     }
   });
 
   server.route({
     method: "DELETE",
-    url: "/:workspaceId",
+    url: "/:projectId",
     config: {
       rateLimit: writeLimit
     },
@@ -245,20 +356,20 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(PROJECTS.DELETE.workspaceId)
+        projectId: z.string().trim().describe(PROJECTS.DELETE.projectId)
       }),
       response: {
         200: z.object({
-          workspace: SanitizedProjectSchema.optional()
+          project: SanitizedProjectSchema.optional()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const workspace = await server.services.project.deleteProject({
+      const project = await server.services.project.deleteProject({
         filter: {
           type: ProjectFilterType.ID,
-          projectId: req.params.workspaceId
+          projectId: req.params.projectId
         },
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -269,68 +380,20 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
+        projectId: req.params.projectId,
         event: {
           type: EventType.DELETE_PROJECT,
-          metadata: workspace
+          metadata: project
         }
       });
 
-      return { workspace };
-    }
-  });
-
-  server.route({
-    url: "/:workspaceId/name",
-    method: "POST",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({
-        workspaceId: z.string().trim()
-      }),
-      body: z.object({
-        name: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          message: z.string(),
-          workspace: SanitizedProjectSchema
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const workspace = await server.services.project.updateName({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
-        name: req.body.name
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
-        event: {
-          type: EventType.UPDATE_PROJECT,
-          metadata: req.body
-        }
-      });
-
-      return {
-        message: "Successfully changed workspace name",
-        workspace
-      };
+      return { project };
     }
   });
 
   server.route({
     method: "PATCH",
-    url: "/:workspaceId",
+    url: "/:projectId",
     config: {
       rateLimit: writeLimit
     },
@@ -344,7 +407,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(PROJECTS.UPDATE.workspaceId)
+        projectId: z.string().trim().describe(PROJECTS.UPDATE.projectId)
       }),
       body: z.object({
         name: z
@@ -373,35 +436,35 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .describe(PROJECTS.UPDATE.slug),
         secretSharing: z.boolean().optional().describe(PROJECTS.UPDATE.secretSharing),
         showSnapshotsLegacy: z.boolean().optional().describe(PROJECTS.UPDATE.showSnapshotsLegacy),
-        defaultProduct: z.nativeEnum(ProjectType).optional().describe(PROJECTS.UPDATE.defaultProduct),
         secretDetectionIgnoreValues: z
           .array(z.string())
           .optional()
-          .describe(PROJECTS.UPDATE.secretDetectionIgnoreValues)
+          .describe(PROJECTS.UPDATE.secretDetectionIgnoreValues),
+        pitVersionLimit: z.number().min(1).max(100).optional()
       }),
       response: {
         200: z.object({
-          workspace: SanitizedProjectSchema
+          project: SanitizedProjectSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const workspace = await server.services.project.updateProject({
+      const project = await server.services.project.updateProject({
         filter: {
           type: ProjectFilterType.ID,
-          projectId: req.params.workspaceId
+          projectId: req.params.projectId
         },
         update: {
           name: req.body.name,
           description: req.body.description,
           autoCapitalization: req.body.autoCapitalization,
-          defaultProduct: req.body.defaultProduct,
           hasDeleteProtection: req.body.hasDeleteProtection,
           slug: req.body.slug,
           secretSharing: req.body.secretSharing,
           showSnapshotsLegacy: req.body.showSnapshotsLegacy,
-          secretDetectionIgnoreValues: req.body.secretDetectionIgnoreValues
+          secretDetectionIgnoreValues: req.body.secretDetectionIgnoreValues,
+          pitVersionLimit: req.body.pitVersionLimit
         },
         actorAuthMethod: req.permission.authMethod,
         actorId: req.permission.id,
@@ -412,7 +475,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
+        projectId: req.params.projectId,
         event: {
           type: EventType.UPDATE_PROJECT,
           metadata: req.body
@@ -420,164 +483,20 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       });
 
       return {
-        workspace
-      };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/:workspaceId/auto-capitalization",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({
-        workspaceId: z.string().trim()
-      }),
-      body: z.object({
-        autoCapitalization: z.boolean()
-      }),
-      response: {
-        200: z.object({
-          message: z.string(),
-          workspace: SanitizedProjectSchema
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const workspace = await server.services.project.toggleAutoCapitalization({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
-        autoCapitalization: req.body.autoCapitalization
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
-        event: {
-          type: EventType.UPDATE_PROJECT,
-          metadata: req.body
-        }
-      });
-
-      return {
-        message: "Successfully changed workspace settings",
-        workspace
-      };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/:workspaceId/delete-protection",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({
-        workspaceId: z.string().trim()
-      }),
-      body: z.object({
-        hasDeleteProtection: z.boolean()
-      }),
-      response: {
-        200: z.object({
-          message: z.string(),
-          workspace: SanitizedProjectSchema
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const workspace = await server.services.project.toggleDeleteProtection({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
-        hasDeleteProtection: req.body.hasDeleteProtection
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
-        event: {
-          type: EventType.UPDATE_PROJECT,
-          metadata: req.body
-        }
-      });
-
-      return {
-        message: "Successfully changed workspace settings",
-        workspace
+        project
       };
     }
   });
 
   server.route({
     method: "PUT",
-    url: "/:workspaceSlug/version-limit",
+    url: "/:projectId/audit-logs-retention",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       params: z.object({
-        workspaceSlug: z.string().trim()
-      }),
-      body: z.object({
-        pitVersionLimit: z.number().min(1).max(100)
-      }),
-      response: {
-        200: z.object({
-          message: z.string(),
-          workspace: SanitizedProjectSchema
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const workspace = await server.services.project.updateVersionLimit({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        pitVersionLimit: req.body.pitVersionLimit,
-        workspaceSlug: req.params.workspaceSlug
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: workspace.id,
-        event: {
-          type: EventType.UPDATE_PROJECT,
-          metadata: req.body
-        }
-      });
-
-      return {
-        message: "Successfully changed workspace version limit",
-        workspace
-      };
-    }
-  });
-
-  server.route({
-    method: "PUT",
-    url: "/:workspaceSlug/audit-logs-retention",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({
-        workspaceSlug: z.string().trim()
+        projectId: z.string().trim()
       }),
       body: z.object({
         auditLogsRetentionDays: z.number().min(0)
@@ -585,25 +504,28 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          workspace: SanitizedProjectSchema
+          project: SanitizedProjectSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const workspace = await server.services.project.updateAuditLogsRetention({
+      const project = await server.services.project.updateAuditLogsRetention({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        workspaceSlug: req.params.workspaceSlug,
-        auditLogsRetentionDays: req.body.auditLogsRetentionDays
+        auditLogsRetentionDays: req.body.auditLogsRetentionDays,
+        filter: {
+          projectId: req.params.projectId,
+          type: ProjectFilterType.ID
+        }
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: workspace.id,
+        projectId: project.id,
         event: {
           type: EventType.UPDATE_PROJECT,
           metadata: req.body
@@ -612,14 +534,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
       return {
         message: "Successfully updated project's audit logs retention period",
-        workspace
+        project
       };
     }
   });
 
   server.route({
     method: "GET",
-    url: "/:workspaceId/integrations",
+    url: "/:projectId/integrations",
     config: {
       rateLimit: readLimit
     },
@@ -633,7 +555,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(PROJECTS.LIST_INTEGRATION.workspaceId)
+        projectId: z.string().trim().describe(PROJECTS.LIST_INTEGRATION.projectId)
       }),
       response: {
         200: z.object({
@@ -656,7 +578,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId
+        projectId: req.params.projectId
       });
       return { integrations };
     }
@@ -664,21 +586,21 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:workspaceId/authorizations",
+    url: "/:projectId/authorizations",
     config: {
       rateLimit: readLimit
     },
     schema: {
       hide: false,
       tags: [ApiDocsTags.Integrations],
-      description: "List integration auth objects for a workspace.",
+      description: "List integration auth objects for a project.",
       security: [
         {
           bearerAuth: []
         }
       ],
       params: z.object({
-        workspaceId: z.string().trim().describe(PROJECTS.LIST_INTEGRATION_AUTHORIZATION.workspaceId)
+        projectId: z.string().trim().describe(PROJECTS.LIST_INTEGRATION_AUTHORIZATION.projectId)
       }),
       response: {
         200: z.object({
@@ -693,7 +615,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId
+        projectId: req.params.projectId
       });
       return { authorizations };
     }
@@ -701,13 +623,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:workspaceId/service-token-data",
+    url: "/:projectId/service-token-data",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        workspaceId: z.string().trim()
+        projectId: z.string().trim()
       }),
       response: {
         200: z.object({
@@ -722,7 +644,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId
+        projectId: req.params.projectId
       });
       return { serviceTokenData };
     }
@@ -730,13 +652,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:workspaceId/ssh-config",
+    url: "/:projectId/ssh-config",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        workspaceId: z.string().trim()
+        projectId: z.string().trim()
       }),
       response: {
         200: ProjectSshConfigsSchema.pick({
@@ -756,7 +678,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId
+        projectId: req.params.projectId
       });
 
       await server.services.auditLog.createAuditLog({
@@ -777,13 +699,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "PATCH",
-    url: "/:workspaceId/ssh-config",
+    url: "/:projectId/ssh-config",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       params: z.object({
-        workspaceId: z.string().trim()
+        projectId: z.string().trim()
       }),
       body: z.object({
         defaultUserSshCaId: z.string().optional(),
@@ -807,7 +729,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
+        projectId: req.params.projectId,
         ...req.body
       });
 
@@ -831,13 +753,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:workspaceId/workflow-integration-config/:integration",
+    url: "/:projectId/workflow-integration-config/:integration",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        workspaceId: z.string().trim(),
+        projectId: z.string().trim(),
         integration: z.nativeEnum(WorkflowIntegration)
       }),
       response: {
@@ -876,13 +798,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
+        projectId: req.params.projectId,
         integration: req.params.integration
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.params.workspaceId,
+        projectId: req.params.projectId,
         event: {
           type: EventType.GET_PROJECT_WORKFLOW_INTEGRATION_CONFIG,
           metadata: {
@@ -936,15 +858,14 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "PUT",
-    url: "/:workspaceId/workflow-integration",
+    url: "/:projectId/workflow-integration",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        workspaceId: z.string().trim()
+        projectId: z.string().trim()
       }),
-
       body: z.discriminatedUnion("integration", [
         z.object({
           integration: z.literal(WorkflowIntegration.SLACK),
@@ -999,13 +920,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
+        projectId: req.params.projectId,
         ...req.body
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: req.params.workspaceId,
+        projectId: req.params.projectId,
         event: {
           type: EventType.UPDATE_PROJECT_WORKFLOW_INTEGRATION_CONFIG,
           metadata: {
@@ -1026,13 +947,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:workspaceId/environment-folder-tree",
+    url: "/:projectId/environment-folder-tree",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        workspaceId: z.string().trim()
+        projectId: z.string().trim()
       }),
       response: {
         200: z.record(
@@ -1043,7 +964,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const environmentsFolders = await server.services.folder.getProjectEnvironmentsFolders(
-        req.params.workspaceId,
+        req.params.projectId,
         req.permission
       );
 
@@ -1064,6 +985,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         type: z.nativeEnum(ProjectType).optional(),
         orderBy: z.nativeEnum(SearchProjectSortBy).optional().default(SearchProjectSortBy.NAME),
         orderDirection: z.nativeEnum(SortDirection).optional().default(SortDirection.ASC),
+        projectIds: z.string().trim().array().optional(),
         name: z
           .string()
           .trim()
@@ -1092,13 +1014,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/:workspaceId/project-access",
+    url: "/:projectId/project-access",
     config: {
       rateLimit: requestAccessLimit
     },
     schema: {
       params: z.object({
-        workspaceId: z.string().trim()
+        projectId: z.string().trim()
       }),
       body: z.object({
         comment: z
@@ -1132,17 +1054,17 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       await server.services.project.requestProjectAccess({
         permission: req.permission,
         comment: req.body.comment,
-        projectId: req.params.workspaceId
+        projectId: req.params.projectId
       });
 
       if (req.auth.actor === ActorType.USER) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          projectId: req.params.workspaceId,
+          projectId: req.params.projectId,
           event: {
             type: EventType.PROJECT_ACCESS_REQUEST,
             metadata: {
-              projectId: req.params.workspaceId,
+              projectId: req.params.projectId,
               requesterEmail: req.auth.user.email || req.auth.user.username,
               requesterId: req.auth.userId
             }
@@ -1151,6 +1073,458 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }
 
       return { message: "Project access request has been send to project admins" };
+    }
+  });
+
+  /* Start upgrade of a project */
+  server.route({
+    method: "POST",
+    url: "/:projectId/upgrade",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      body: z.object({
+        userPrivateKey: z.string().trim()
+      }),
+      response: {
+        200: z.void()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      await server.services.project.upgradeProject({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        projectId: req.params.projectId,
+        userPrivateKey: req.body.userPrivateKey
+      });
+    }
+  });
+
+  /* Get upgrade status of project */
+  server.route({
+    url: "/:projectId/upgrade/status",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          status: z.string().nullable()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const status = await server.services.project.getProjectUpgradeStatus({
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        actor: req.permission.type,
+        actorId: req.permission.id
+      });
+
+      return { status };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/cas",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      querystring: z.object({
+        status: z.enum([CaStatus.ACTIVE, CaStatus.PENDING_CERTIFICATE]).optional().describe(PROJECTS.LIST_CAS.status),
+        friendlyName: z.string().optional().describe(PROJECTS.LIST_CAS.friendlyName),
+        commonName: z.string().optional().describe(PROJECTS.LIST_CAS.commonName),
+        offset: z.coerce.number().min(0).max(100).default(0).describe(PROJECTS.LIST_CAS.offset),
+        limit: z.coerce.number().min(1).max(100).default(25).describe(PROJECTS.LIST_CAS.limit)
+      }),
+      response: {
+        200: z.object({
+          cas: z.array(InternalCertificateAuthorityResponseSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const cas = await server.services.project.listProjectCas({
+        filter: {
+          projectId: req.params.projectId,
+          type: ProjectFilterType.ID
+        },
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        ...req.query
+      });
+      return { cas };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/certificates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      querystring: z.object({
+        friendlyName: z.string().optional().describe(PROJECTS.LIST_CERTIFICATES.friendlyName),
+        commonName: z.string().optional().describe(PROJECTS.LIST_CERTIFICATES.commonName),
+        offset: z.coerce.number().min(0).max(100).default(0).describe(PROJECTS.LIST_CERTIFICATES.offset),
+        limit: z.coerce.number().min(1).max(100).default(25).describe(PROJECTS.LIST_CERTIFICATES.limit)
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(CertificatesSchema),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificates, totalCount } = await server.services.project.listProjectCertificates({
+        filter: {
+          projectId: req.params.projectId,
+          type: ProjectFilterType.ID
+        },
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        ...req.query
+      });
+      return { certificates, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/pki-alerts",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiAlerting],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          alerts: z.array(PkiAlertsSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { alerts } = await server.services.project.listProjectAlerts({
+        projectId: req.params.projectId,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      return { alerts };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/pki-collections",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateCollections],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          collections: z.array(PkiCollectionsSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { pkiCollections } = await server.services.project.listProjectPkiCollections({
+        projectId: req.params.projectId,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      return { collections: pkiCollections };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/pki-subscribers",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiSubscribers],
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_PKI_SUBSCRIBERS.projectId)
+      }),
+      response: {
+        200: z.object({
+          subscribers: z.array(sanitizedPkiSubscriber)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const subscribers = await server.services.project.listProjectPkiSubscribers({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId
+      });
+
+      return { subscribers };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/certificate-templates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateTemplates],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          certificateTemplates: sanitizedCertificateTemplate.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificateTemplates } = await server.services.project.listProjectCertificateTemplates({
+        projectId: req.params.projectId,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type
+      });
+
+      return { certificateTemplates };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/ssh-certificates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CAS.projectId)
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().default(0).describe(PROJECTS.LIST_SSH_CERTIFICATES.offset),
+        limit: z.coerce.number().default(25).describe(PROJECTS.LIST_SSH_CERTIFICATES.limit)
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(sanitizedSshCertificate),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificates, totalCount } = await server.services.project.listProjectSshCertificates({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId,
+        offset: req.query.offset,
+        limit: req.query.limit
+      });
+
+      return { certificates, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/ssh-certificate-templates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshCertificateTemplates],
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CERTIFICATE_TEMPLATES.projectId)
+      }),
+      response: {
+        200: z.object({
+          certificateTemplates: z.array(sanitizedSshCertificateTemplate)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { certificateTemplates } = await server.services.project.listProjectSshCertificateTemplates({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId
+      });
+
+      return { certificateTemplates };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/ssh-cas",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshCertificateAuthorities],
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_SSH_CAS.projectId)
+      }),
+      response: {
+        200: z.object({
+          cas: z.array(sanitizedSshCa)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const cas = await server.services.project.listProjectSshCas({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId
+      });
+
+      return { cas };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/ssh-hosts",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHosts],
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_SSH_HOSTS.projectId)
+      }),
+      response: {
+        200: z.object({
+          hosts: z.array(
+            sanitizedSshHost.extend({
+              loginMappings: loginMappingSchema
+                .extend({
+                  source: z.nativeEnum(LoginMappingSource)
+                })
+                .array()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const hosts = await server.services.project.listProjectSshHosts({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId
+      });
+
+      return { hosts };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/ssh-host-groups",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SshHostGroups],
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.LIST_SSH_HOST_GROUPS.projectId)
+      }),
+      response: {
+        200: z.object({
+          groups: z.array(
+            sanitizedSshHostGroup.extend({
+              loginMappings: loginMappingSchema.array(),
+              hostCount: z.number()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const groups = await server.services.project.listProjectSshHostGroups({
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission.type,
+        projectId: req.params.projectId
+      });
+
+      return { groups };
     }
   });
 };

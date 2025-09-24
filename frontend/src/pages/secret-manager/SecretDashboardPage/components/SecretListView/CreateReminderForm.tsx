@@ -21,7 +21,7 @@ import {
   SelectItem,
   TextArea
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useGetWorkspaceUsers } from "@app/hooks/api";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import { useCreateReminder, useDeleteReminder } from "@app/hooks/api/reminders";
@@ -52,7 +52,7 @@ interface ReminderFormProps {
   isOpen: boolean;
   reminderId?: string;
   onOpenChange: () => void;
-  workspaceId: string;
+  projectId: string;
   environment: string;
   secretPath: string;
   secretId: string;
@@ -118,8 +118,8 @@ const useReminderForm = (reminderData?: Reminder) => {
 
 // Custom hook for workspace members
 const useWorkspaceMembers = () => {
-  const { currentWorkspace } = useWorkspace();
-  const { data: members = [] } = useGetWorkspaceUsers(currentWorkspace?.id);
+  const { currentProject } = useProject();
+  const { data: members = [] } = useGetWorkspaceUsers(currentProject?.id);
 
   const memberOptions = useMemo(
     (): RecipientOption[] =>
@@ -137,7 +137,7 @@ const useWorkspaceMembers = () => {
 export const CreateReminderForm = ({
   isOpen,
   onOpenChange,
-  workspaceId,
+  projectId,
   environment,
   secretPath,
   secretId,
@@ -185,12 +185,12 @@ export const CreateReminderForm = ({
   const invalidateQueries = () => {
     queryClient.invalidateQueries({
       queryKey: dashboardKeys.getDashboardSecrets({
-        projectId: workspaceId,
+        projectId,
         secretPath
       })
     });
     queryClient.invalidateQueries({
-      queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+      queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
     });
     queryClient.invalidateQueries({
       queryKey: reminderKeys.getReminder(secretId)

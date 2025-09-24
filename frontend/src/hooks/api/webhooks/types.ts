@@ -23,7 +23,7 @@ export type TWebhook = {
 };
 
 export type TCreateWebhookDto = {
-  workspaceId: string;
+  projectId: string;
   environment: string;
   webhookUrl: string;
   webhookSecretKey?: string;
@@ -33,16 +33,16 @@ export type TCreateWebhookDto = {
 
 export type TUpdateWebhookDto = {
   webhookId: string;
-  workspaceId: string;
+  projectId: string;
   isDisabled?: boolean;
 };
 
 export type TDeleteWebhookDto = {
   webhookId: string;
-  workspaceId: string;
+  projectId: string;
 };
 
 export type TTestWebhookDTO = {
   webhookId: string;
-  workspaceId: string;
+  projectId: string;
 };

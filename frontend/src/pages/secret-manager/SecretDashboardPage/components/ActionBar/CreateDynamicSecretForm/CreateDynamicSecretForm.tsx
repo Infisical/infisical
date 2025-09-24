@@ -24,7 +24,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { Modal, ModalContent } from "@app/components/v2";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
-import { WorkspaceEnv } from "@app/hooks/api/types";
+import { ProjectEnv } from "@app/hooks/api/types";
 
 import { AwsElastiCacheInputForm } from "./AwsElastiCacheInputForm";
 import { AwsIamInputForm } from "./AwsIamInputForm";
@@ -51,7 +51,7 @@ type Props = {
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
   projectSlug: string;
-  environments: WorkspaceEnv[];
+  environments: ProjectEnv[];
   secretPath: string;
   isSingleEnvironmentMode?: boolean;
 };

@@ -70,7 +70,7 @@ const createServiceToken = async (
 const deleteServiceToken = async () => {
   const serviceTokenListRes = await testServer.inject({
     method: "GET",
-    url: `/api/v1/workspace/${seedData1.project.id}/service-token-data`,
+    url: `/api/v1/projects/${seedData1.project.id}/service-token-data`,
     headers: {
       authorization: `Bearer ${jwtAuthToken}`
     }

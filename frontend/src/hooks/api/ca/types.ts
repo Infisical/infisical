@@ -182,4 +182,5 @@ export type TRenewCaResponse = {
   certificate: string;
   certificateChain: string;
   serialNumber: string;
+  projectId: string;
 };

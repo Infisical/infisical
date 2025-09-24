@@ -27,8 +27,8 @@ import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useWorkspace
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
@@ -43,10 +43,17 @@ import { twMerge } from "tailwind-merge";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEyeSlash, faKey, faRotate } from "@fortawesome/free-solid-svg-icons";
+import { faEyeSlash, faKey, faRotate, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { format } from "date-fns";
 import { CreateReminderForm } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CreateReminderForm";
+import {
+  dashboardKeys,
+  fetchSecretValue,
+  useGetSecretValue
+} from "@app/hooks/api/dashboard/queries";
+import { createNotification } from "@app/components/notifications";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   FontAwesomeSpriteName,
   formSchema,
@@ -56,11 +63,11 @@ import {
 import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 import { useBatchModeActions } from "../../SecretMainPage.store";
 
-export const HIDDEN_SECRET_VALUE = "*****************************";
+export const HIDDEN_SECRET_VALUE = "*************************";
 export const HIDDEN_SECRET_VALUE_API_MASK = "<hidden-by-infisical>";
 
 type Props = {
-  secret: SecretV3RawSanitized;
+  secret: SecretV3RawSanitized & { originalKey?: string };
   onSaveSecret: (
     orgSec: SecretV3RawSanitized,
     modSec: Omit<SecretV3RawSanitized, "tags"> & { tags?: { id: string }[] },
@@ -91,7 +98,7 @@ type Props = {
 
 export const SecretItem = memo(
   ({
-    secret,
+    secret: originalSecret,
     onSaveSecret,
     onDeleteSecret,
     onDetailViewSecret,
@@ -112,17 +119,51 @@ export const SecretItem = memo(
       "editSecret",
       "reminder"
     ] as const);
-    const { currentWorkspace } = useWorkspace();
+    const { currentProject } = useProject();
     const { permission } = useProjectPermission();
-    const { isRotatedSecret } = secret;
     const { removePendingChange } = useBatchModeActions();
+
+    const [isFieldFocused, setIsFieldFocused] = useToggle();
+    const queryClient = useQueryClient();
+
+    const canFetchSecretValue =
+      !originalSecret.secretValueHidden &&
+      !originalSecret.isEmpty &&
+      pendingAction !== PendingAction.Create;
+
+    const fetchSecretValueParams = {
+      environment,
+      secretPath,
+      secretKey: originalSecret.originalKey || originalSecret.key,
+      projectId: currentProject.id,
+      isOverride: Boolean(originalSecret.idOverride)
+    };
+
+    const {
+      data: secretValueData,
+      isPending: isPendingSecretValueData,
+      isError: isErrorFetchingSecretValue
+    } = useGetSecretValue(fetchSecretValueParams, {
+      enabled: canFetchSecretValue && (isVisible || isFieldFocused)
+    });
+
+    const isLoadingSecretValue = canFetchSecretValue && isPendingSecretValueData;
+    const hasFetchedSecretValue = !canFetchSecretValue || Boolean(secretValueData);
+
+    const secret = {
+      ...originalSecret,
+      value: originalSecret.value ?? secretValueData?.value,
+      valueOverride: originalSecret.valueOverride ?? secretValueData?.valueOverride
+    };
+
+    const { isRotatedSecret } = secret;
 
     const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
     const isAutoSavingRef = useRef(false);
 
     const handleDeletePending = (pendingSecret: SecretV3RawSanitized) => {
       removePendingChange(pendingSecret.id, "secret", {
-        workspaceId: currentWorkspace.id,
+        projectId: currentProject.id,
         environment,
         secretPath
       });
@@ -139,10 +180,27 @@ export const SecretItem = memo(
     );
 
     const getDefaultValue = () => {
+      if (isLoadingSecretValue) return undefined;
+
       if (secret.secretValueHidden && !isPending) {
         return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
       }
-      return secret.valueOverride || secret.value || "";
+
+      if (isErrorFetchingSecretValue) return undefined;
+
+      return secret.value || "";
+    };
+
+    const getOverrideDefaultValue = () => {
+      if (isLoadingSecretValue) return undefined;
+
+      if (secret.secretValueHidden && !isPending) {
+        return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
+      }
+
+      if (isErrorFetchingSecretValue) return undefined;
+
+      return secret.valueOverride || "";
     };
 
     const {
@@ -154,14 +212,17 @@ export const SecretItem = memo(
       reset,
       getValues,
       trigger,
-      formState: { isDirty, isSubmitting, errors }
+      formState: { isDirty, isSubmitting, errors },
+      getFieldState
     } = useForm<TFormSchema>({
       defaultValues: {
         ...secret,
+        valueOverride: getOverrideDefaultValue(),
         value: getDefaultValue()
       },
       values: {
         ...secret,
+        valueOverride: getOverrideDefaultValue(),
         value: getDefaultValue()
       },
       resolver: zodResolver(formSchema)
@@ -255,7 +316,10 @@ export const SecretItem = memo(
       );
 
     const isReadOnlySecret =
-      isReadOnly || isRotatedSecret || (isPending && pendingAction === PendingAction.Delete);
+      isReadOnly ||
+      isRotatedSecret ||
+      (isPending && pendingAction === PendingAction.Delete) ||
+      isLoadingSecretValue;
 
     const { secretValueHidden } = secret;
 
@@ -322,12 +386,36 @@ export const SecretItem = memo(
       }
     };
 
-    const copyTokenToClipboard = () => {
-      const [overrideValue, value] = getValues(["value", "valueOverride"]);
-      if (isOverridden) {
-        navigator.clipboard.writeText(value as string);
+    const fetchValue = async () => {
+      if (secretValueData) return secretValueData;
+
+      try {
+        const data = await fetchSecretValue(fetchSecretValueParams);
+
+        queryClient.setQueryData(dashboardKeys.getSecretValue(fetchSecretValueParams), data);
+
+        return data;
+      } catch (e) {
+        console.error(e);
+        createNotification({
+          type: "error",
+          text: "Failed to fetch secret value"
+        });
+        throw e;
+      }
+    };
+
+    const copyTokenToClipboard = async () => {
+      if (hasFetchedSecretValue) {
+        const [overrideValue, value] = getValues(["value", "valueOverride"]);
+        if (isOverridden) {
+          navigator.clipboard.writeText(value as string);
+        } else {
+          navigator.clipboard.writeText(overrideValue as string);
+        }
       } else {
-        navigator.clipboard.writeText(overrideValue as string);
+        const data = await fetchValue();
+        navigator.clipboard.writeText((data.valueOverride ?? data.value) as string);
       }
       setIsSecValueCopied.on();
     };
@@ -393,12 +481,36 @@ export const SecretItem = memo(
                   <Input
                     autoComplete="off"
                     isReadOnly={isReadOnly || isRotatedSecret}
-                    autoCapitalization={currentWorkspace?.autoCapitalization}
+                    autoCapitalization={currentProject?.autoCapitalization}
                     variant="plain"
                     isDisabled={isOverridden}
                     placeholder={error?.message}
                     isError={Boolean(error)}
                     onKeyUp={() => trigger("key")}
+                    warning={
+                      field?.value !== (originalSecret.originalKey || originalSecret.key) &&
+                      field.value?.includes(" ") ? (
+                        <Tooltip
+                          className={"w-full max-w-72"}
+                          content={
+                            <div>
+                              Secret key contains whitespaces.
+                              <br />
+                              <br /> If this is the desired format, you need to provide it as{" "}
+                              <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
+                                {encodeURIComponent(field.value.trim())}
+                              </code>{" "}
+                              when making API requests.
+                            </div>
+                          }
+                        >
+                          <FontAwesomeIcon
+                            icon={faWarning}
+                            className="text-yellow-600 opacity-60"
+                          />
+                        </Tooltip>
+                      ) : undefined
+                    }
                     {...field}
                     className="w-full px-0 placeholder:text-red-500 focus:text-bunker-100 focus:ring-transparent"
                   />
@@ -410,7 +522,7 @@ export const SecretItem = memo(
               tabIndex={0}
               role="button"
             >
-              {secretValueHidden && !isOverridden && !isPending && (
+              {secretValueHidden && !getFieldState("value").isDirty && (
                 <Tooltip
                   content={`You do not have access to view the current value${canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}`}
                 >
@@ -424,10 +536,18 @@ export const SecretItem = memo(
                   control={control}
                   render={({ field }) => (
                     <SecretInput
+                      isLoadingValue={isLoadingSecretValue && Boolean(secret.idOverride)}
+                      isErrorLoadingValue={isErrorFetchingSecretValue}
                       key="value-overriden"
                       isVisible={isVisible}
-                      isReadOnly={isReadOnly}
                       {...field}
+                      onFocus={() => {
+                        if (secret.idOverride) setIsFieldFocused.on();
+                      }}
+                      onBlur={() => {
+                        setIsFieldFocused.off();
+                        field.onBlur();
+                      }}
                       containerClassName="py-1.5 rounded-md transition-all"
                     />
                   )}
@@ -439,6 +559,8 @@ export const SecretItem = memo(
                   control={control}
                   render={({ field }) => (
                     <InfisicalSecretInput
+                      isLoadingValue={isLoadingSecretValue}
+                      isErrorLoadingValue={isErrorFetchingSecretValue}
                       isReadOnly={isReadOnlySecret}
                       key="secret-value"
                       isVisible={isVisible && (!secretValueHidden || isPending)}
@@ -446,6 +568,13 @@ export const SecretItem = memo(
                       environment={environment}
                       secretPath={secretPath}
                       {...field}
+                      onFocus={() => {
+                        setIsFieldFocused.on();
+                      }}
+                      onBlur={() => {
+                        setIsFieldFocused.off();
+                        field.onBlur();
+                      }}
                       defaultValue={
                         secretValueHidden && !isPending ? HIDDEN_SECRET_VALUE : undefined
                       }
@@ -613,7 +742,7 @@ export const SecretItem = memo(
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <ProjectPermissionCan
-                    I={ProjectPermissionActions.Edit}
+                    I={ProjectPermissionActions.Create}
                     a={subject(ProjectPermissionSub.Secrets, {
                       environment,
                       secretPath,
@@ -677,12 +806,24 @@ export const SecretItem = memo(
                       )}
                     </ProjectPermissionCan>
                     <IconButton
-                      isDisabled={secret.secretValueHidden || !currentWorkspace.secretSharing}
+                      isDisabled={secret.secretValueHidden || !currentProject.secretSharing}
                       className="w-0 overflow-hidden p-0 group-hover:w-5"
                       variant="plain"
                       size="md"
                       ariaLabel="share-secret"
-                      onClick={() => onShareSecret(secret)}
+                      onClick={async () => {
+                        if (hasFetchedSecretValue) {
+                          onShareSecret(secret);
+                          return;
+                        }
+
+                        const data = await fetchValue();
+
+                        onShareSecret({
+                          ...secret,
+                          ...data
+                        });
+                      }}
                     >
                       <Tooltip content="Share Secret">
                         <FontAwesomeSymbol
@@ -974,7 +1115,7 @@ export const SecretItem = memo(
         <CreateReminderForm
           isOpen={popUp.reminder.isOpen}
           onOpenChange={() => handlePopUpToggle("reminder")}
-          workspaceId={currentWorkspace.id}
+          projectId={currentProject.id}
           environment={environment}
           secretPath={secretPath}
           secretId={secret?.id}

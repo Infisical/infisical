@@ -431,7 +431,7 @@ export const secretRotationQueueFactory = ({
           numberOfSecrets: numberOfSecretsRotated,
           environment: secretRotation.environment.slug,
           secretPath: secretRotation.secretPath,
-          workspaceId: secretRotation.projectId
+          projectId: secretRotation.projectId
         }
       });
 

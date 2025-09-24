@@ -9,7 +9,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useOrganization,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace } from "@app/hooks/api";
@@ -19,7 +19,7 @@ import { MembersTable } from "./MembersTable";
 
 export const MembersSection = () => {
   const { currentOrg } = useOrganization();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
 
@@ -32,11 +32,11 @@ export const MembersSection = () => {
   const handleRemoveUser = async () => {
     const username = (popUp?.removeMember?.data as { username: string })?.username;
     if (!currentOrg?.id) return;
-    if (!currentWorkspace?.id) return;
+    if (!currentProject?.id) return;
 
     try {
       await removeUserFromWorkspace({
-        workspaceId: currentWorkspace.id,
+        projectId: currentProject.id,
         usernames: [username],
         orgId: currentOrg.id
       });

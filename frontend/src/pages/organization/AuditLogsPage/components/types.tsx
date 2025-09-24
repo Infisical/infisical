@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 export enum AuditLogDateFilterType {
   Relative = "relative",

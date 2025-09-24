@@ -1,7 +1,7 @@
 import { ClipboardEvent, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
+import { faTriangleExclamation, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -12,15 +12,16 @@ import {
   FilterableSelect,
   FormControl,
   Input,
-  PasswordGenerator
+  PasswordGenerator,
+  Tooltip
 } from "@app/components/v2";
 import { CreatableSelect } from "@app/components/v2/CreatableSelect";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useWorkspace
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
@@ -57,16 +58,15 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
     formState: { isSubmitting, errors }
   } = useForm<TFormSchema>({ resolver: zodResolver(typeSchema) });
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject, projectId } = useProject();
   const { permission } = useProjectPermission();
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
-  const workspaceId = currentWorkspace?.id || "";
-  const environments = currentWorkspace?.environments || [];
+  const environments = currentProject?.environments || [];
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
   const { data: projectTags, isPending: isTagsLoading } = useGetWsTags(
-    canReadTags ? workspaceId : ""
+    canReadTags ? projectId : ""
   );
 
   const secretKeyInputRef = useRef<HTMLInputElement>(null);
@@ -93,7 +93,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
 
         if (folderName && parentPath && canCreateFolder) {
           await createFolder({
-            projectId: workspaceId,
+            projectId,
             path: parentPath,
             environment,
             name: folderName
@@ -106,7 +106,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
       return {
         ...(await createSecretV3({
           environment,
-          workspaceId,
+          projectId,
           secretPath,
           secretKey: key,
           secretValue: value || "",
@@ -176,7 +176,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
 
     if (!secretKey || isWholeKeyHighlighted) {
       e.preventDefault();
-      const keyStr = currentWorkspace.autoCapitalization ? key.toUpperCase() : key;
+      const keyStr = currentProject.autoCapitalization ? key.toUpperCase() : key;
       setValue("key", keyStr);
       if (value) {
         setValue("value", value);
@@ -191,7 +191,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
     try {
       const parsedSlug = slugSchema.parse(slug);
       await createWsTag.mutateAsync({
-        workspaceID: workspaceId,
+        projectId,
         tagSlug: parsedSlug,
         tagColor: ""
       });
@@ -218,9 +218,32 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
             // @ts-expect-error this is for multiple ref single component
             secretKeyInputRef.current = e;
           }}
+          warning={
+            secretKey?.includes(" ") ? (
+              <Tooltip
+                className={"w-full max-w-72"}
+                content={
+                  <div>
+                    Secret key contains whitespaces.
+                    <br />
+                    <br /> If this is the desired format, you need to provide it as{" "}
+                    <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
+                      {encodeURIComponent(secretKey.trim())}
+                    </code>{" "}
+                    when making API requests.
+                  </div>
+                }
+              >
+                <FontAwesomeIcon
+                  icon={faWarning}
+                  className="absolute right-0 mr-3 text-yellow-600"
+                />
+              </Tooltip>
+            ) : undefined
+          }
           placeholder="Type your secret name"
           onPaste={handlePaste}
-          autoCapitalization={currentWorkspace?.autoCapitalization}
+          autoCapitalization={currentProject?.autoCapitalization}
         />
       </FormControl>
       <Controller

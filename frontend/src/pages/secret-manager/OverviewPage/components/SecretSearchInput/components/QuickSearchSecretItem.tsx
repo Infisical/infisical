@@ -25,13 +25,15 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { useProject } from "@app/context";
 import { reverseTruncate } from "@app/helpers/reverseTruncate";
 import { useTimedReset } from "@app/hooks";
+import { fetchSecretValue } from "@app/hooks/api/dashboard/queries";
 import { TDashboardProjectSecretsQuickSearch } from "@app/hooks/api/dashboard/types";
-import { WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import { ProjectEnv } from "@app/hooks/api/projects/types";
 
 type Props = {
-  environments: WorkspaceEnv[];
+  environments: ProjectEnv[];
   secretGroup: TDashboardProjectSecretsQuickSearch["secrets"][string];
   onClose: () => void;
   isSingleEnv?: boolean;
@@ -53,6 +55,8 @@ export const QuickSearchSecretItem = ({
     initialState: false
   });
 
+  const { currentProject } = useProject();
+
   const [groupSecret] = secretGroup;
 
   const handleNavigate = () => {
@@ -67,14 +71,29 @@ export const QuickSearchSecretItem = ({
     onClose();
   };
 
-  const handleCopy = (value: string, env: string) => {
-    navigator.clipboard.writeText(value);
-    createNotification({
-      type: "info",
-      title: isSingleEnv ? "Secret value copied." : `Secret value copied from ${env}.`,
-      text: ""
-    });
-    setIsUrlCopied(true);
+  const handleCopy = async (env: string) => {
+    try {
+      const data = await fetchSecretValue({
+        environment: groupSecret.env,
+        secretPath: groupSecret.path!,
+        secretKey: groupSecret.key,
+        projectId: currentProject.id
+      });
+
+      navigator.clipboard.writeText(data.valueOverride ?? data.value!);
+      createNotification({
+        type: "info",
+        title: isSingleEnv ? "Secret value copied." : `Secret value copied from ${env}.`,
+        text: ""
+      });
+      setIsUrlCopied(true);
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        type: "error",
+        text: "Error fetching secret value"
+      });
+    }
   };
 
   const secretGroupTags = secretGroup.flatMap((secret) => secret.tags);
@@ -146,7 +165,7 @@ export const QuickSearchSecretItem = ({
                   e.stopPropagation();
                   const el = envSlugMap.get(groupSecret.env)?.name;
                   if (el) {
-                    handleCopy(groupSecret.value!, el);
+                    handleCopy(el);
                   }
                 }}
               >
@@ -173,7 +192,7 @@ export const QuickSearchSecretItem = ({
                       e.stopPropagation();
                       const el = envSlugMap.get(secret.env)?.name;
                       if (el) {
-                        handleCopy(secret.value!, el);
+                        handleCopy(el);
                       }
                     }}
                     key={secret.id}
@@ -214,7 +233,7 @@ export const QuickSearchSecretItem = ({
                     e.stopPropagation();
                     const el = envSlugMap.get(secret.env)?.name;
                     if (el) {
-                      handleCopy(secret.value!, el);
+                      handleCopy(el);
                     }
                   }}
                   key={secret.id}

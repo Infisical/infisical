@@ -1,5 +1,7 @@
 import { TSecretApprovalRequests } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
@@ -11,6 +13,7 @@ type TSendApprovalEmails = {
   smtpService: Pick<TSmtpService, "sendMail">;
   projectId: string;
   secretApprovalRequest: TSecretApprovalRequests;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 export const sendApprovalEmailsFn = async ({
@@ -18,13 +21,25 @@ export const sendApprovalEmailsFn = async ({
   projectDAL,
   smtpService,
   projectId,
-  secretApprovalRequest
+  secretApprovalRequest,
+  notificationService
 }: TSendApprovalEmails) => {
   const cfg = getConfig();
 
   const policy = await secretApprovalPolicyDAL.findById(secretApprovalRequest.policyId);
 
   const project = await projectDAL.findProjectWithOrg(projectId);
+
+  await notificationService.createUserNotifications(
+    policy.userApprovers.map((approver) => ({
+      userId: approver.userId,
+      orgId: project.orgId,
+      type: NotificationType.SECRET_CHANGE_REQUEST,
+      title: "Secret Change Request",
+      body: `You have a new secret change request pending your review for the project **${project.name}** in the organization **${project.organization.name}**.`,
+      link: `/projects/secret-management/${project.id}/approval?requestId=${secretApprovalRequest.id}`
+    }))
+  );
 
   // now we need to go through each of the reviewers and print out all the commits that they need to approve
   for await (const reviewerUser of policy.userApprovers) {

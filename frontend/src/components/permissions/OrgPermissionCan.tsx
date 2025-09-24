@@ -1,8 +1,10 @@
 import { FunctionComponent, ReactNode } from "react";
-import { BoundCanProps, Can } from "@casl/react";
+import { AbilityTuple, MongoAbility } from "@casl/ability";
+import { Can } from "@casl/react";
 
 import { TooltipProps } from "@app/components/v2/Tooltip/Tooltip";
-import { TOrgPermission, useOrgPermission } from "@app/context/OrgPermissionContext";
+import { useOrgPermission } from "@app/context/OrgPermissionContext";
+import { OrgPermissionSet } from "@app/context/OrgPermissionContext/types";
 
 import { AccessRestrictedBanner, Tooltip } from "../v2";
 
@@ -14,7 +16,7 @@ export const OrgPermissionGuardBanner = () => {
   );
 };
 
-type Props = {
+type Props<T extends AbilityTuple> = {
   label?: ReactNode;
   // this prop is used when there exist already a tooltip as helper text for users
   // so when permission is allowed same tooltip will be reused  to show helpertext
@@ -22,9 +24,18 @@ type Props = {
   allowedLabel?: string;
   renderGuardBanner?: boolean;
   tooltipProps?: Omit<TooltipProps, "children">;
-} & BoundCanProps<TOrgPermission>;
+  I: T[0];
+  ability?: MongoAbility<T>;
+  children: ReactNode | ((isAllowed: boolean, ability: T) => ReactNode);
+  passThrough?: boolean;
+} & (
+  | { an: T[1] }
+  | {
+      a: T[1];
+    }
+);
 
-export const OrgPermissionCan: FunctionComponent<Props> = ({
+export const OrgPermissionCan: FunctionComponent<Props<OrgPermissionSet>> = ({
   label = "Access restricted",
   children,
   passThrough = true,
@@ -41,9 +52,7 @@ export const OrgPermissionCan: FunctionComponent<Props> = ({
       {(isAllowed, ability) => {
         // akhilmhdh: This is set as type due to error in casl react type.
         const finalChild =
-          typeof children === "function"
-            ? children(isAllowed, ability as TOrgPermission)
-            : children;
+          typeof children === "function" ? children(isAllowed, ability as any) : children;
 
         if (!isAllowed && passThrough) {
           return (

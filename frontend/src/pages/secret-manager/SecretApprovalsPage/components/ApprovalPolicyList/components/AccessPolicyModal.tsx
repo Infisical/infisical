@@ -22,7 +22,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
 import {
@@ -207,10 +207,10 @@ const Form = ({
     name: "sequenceApprovers"
   });
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { data: groups } = useListWorkspaceGroups(projectId);
 
-  const availableEnvironments = currentWorkspace?.environments || [];
+  const availableEnvironments = currentProject?.environments || [];
   const isAccessPolicyType = watch("policyType") === PolicyType.AccessPolicy;
 
   const { mutateAsync: createAccessApprovalPolicy } = useCreateAccessApprovalPolicy();
@@ -246,7 +246,7 @@ const Form = ({
           approvers: [...userApprovers, ...groupApprovers],
           bypassers: bypassers.length > 0 ? bypassers : undefined,
           environments: environments.map((env) => env.slug),
-          workspaceId: currentWorkspace?.id || ""
+          projectId: currentProject?.id || ""
         });
       } else {
         await createAccessApprovalPolicy({
@@ -302,7 +302,7 @@ const Form = ({
           ...data,
           approvers: [...userApprovers, ...groupApprovers],
           bypassers: bypassers.length > 0 ? bypassers : undefined,
-          workspaceId: currentWorkspace?.id || "",
+          projectId: currentProject?.id || "",
           environments: environments.map((env) => env.slug)
         });
       } else {

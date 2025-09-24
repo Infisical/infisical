@@ -33,7 +33,7 @@ import {
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { useListWorkspaceCertificates } from "@app/hooks/api";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
@@ -62,15 +62,15 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { data, isPending } = useListWorkspaceCertificates({
-    projectSlug: currentWorkspace?.slug ?? "",
+    projectId: currentProject?.id ?? "",
     offset: (page - 1) * perPage,
     limit: perPage
   });
 
   // Fetch CA data to determine capabilities
-  const { data: caData } = useListCasByProjectId(currentWorkspace?.id ?? "");
+  const { data: caData } = useListCasByProjectId(currentProject?.id ?? "");
 
   // Create mapping from caId to CA type for capability checking
   const caCapabilityMap = useMemo(() => {

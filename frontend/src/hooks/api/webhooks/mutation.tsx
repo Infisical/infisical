@@ -13,8 +13,8 @@ export const useCreateWebhook = () => {
       const { data } = await apiRequest.post("/api/v1/webhooks", dto);
       return data;
     },
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.getWebhooks(workspaceId) });
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.getWebhooks(projectId) });
     }
   });
 };
@@ -27,11 +27,11 @@ export const useTestWebhook = () => {
       const { data } = await apiRequest.post(`/api/v1/webhooks/${webhookId}/test`);
       return data;
     },
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.getWebhooks(workspaceId) });
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.getWebhooks(projectId) });
     },
-    onError: (_, { workspaceId }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.getWebhooks(workspaceId) });
+    onError: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.getWebhooks(projectId) });
     }
   });
 };
@@ -46,8 +46,8 @@ export const useUpdateWebhook = () => {
       });
       return data;
     },
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.getWebhooks(workspaceId) });
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.getWebhooks(projectId) });
     }
   });
 };
@@ -60,8 +60,8 @@ export const useDeleteWebhook = () => {
       const { data } = await apiRequest.delete(`/api/v1/webhooks/${dto.webhookId}`);
       return data;
     },
-    onSuccess: (_, { workspaceId }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.getWebhooks(workspaceId) });
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.getWebhooks(projectId) });
     }
   });
 };

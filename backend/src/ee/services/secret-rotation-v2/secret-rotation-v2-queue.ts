@@ -17,6 +17,8 @@ import {
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
@@ -28,6 +30,7 @@ type TSecretRotationV2QueueServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 export const secretRotationV2QueueServiceFactory = async ({
@@ -36,7 +39,8 @@ export const secretRotationV2QueueServiceFactory = async ({
   secretRotationV2Service,
   projectMembershipDAL,
   projectDAL,
-  smtpService
+  smtpService,
+  notificationService
 }: TSecretRotationV2QueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -152,6 +156,19 @@ export const secretRotationV2QueueServiceFactory = async ({
 
         const rotationType = SECRET_ROTATION_NAME_MAP[type as SecretRotation];
 
+        const rotationPath = `/projects/secret-management/${projectId}/secrets/${environment.slug}`;
+
+        await notificationService.createUserNotifications(
+          projectAdmins.map((admin) => ({
+            userId: admin.userId,
+            orgId: project.orgId,
+            type: NotificationType.SECRET_ROTATION_FAILED,
+            title: "Secret Rotation Failed",
+            body: `Your **${rotationType}** rotation **${rotationName}** failed to rotate.`,
+            link: rotationPath
+          }))
+        );
+
         await smtpService.sendMail({
           recipients: projectAdmins.map((member) => member.user.email!).filter(Boolean),
           template: SmtpTemplates.SecretRotationFailed,
@@ -165,9 +182,7 @@ export const secretRotationV2QueueServiceFactory = async ({
             secretPath: folder.path,
             environment: environment.name,
             projectName: project.name,
-            rotationUrl: encodeURI(
-              `${appCfg.SITE_URL}/projects/secret-management/${projectId}/secrets/${environment.slug}`
-            )
+            rotationUrl: encodeURI(`${appCfg.SITE_URL}${rotationPath}`)
           }
         });
       } catch (error) {

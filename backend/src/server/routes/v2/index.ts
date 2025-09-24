@@ -1,13 +1,15 @@
 import { registerCaRouter } from "./certificate-authority-router";
-import { registerGroupProjectRouter } from "./group-project-router";
+import { registerDeprecatedGroupProjectRouter } from "./deprecated-group-project-router";
+import { registerDeprecatedIdentityProjectRouter } from "./deprecated-identity-project-router";
+import { registerDeprecatedProjectMembershipRouter } from "./deprecated-project-membership-router";
+import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
 import { registerIdentityOrgRouter } from "./identity-org-router";
-import { registerIdentityProjectRouter } from "./identity-project-router";
 import { registerMfaRouter } from "./mfa-router";
 import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
 import { registerPkiTemplatesRouter } from "./pki-templates-router";
-import { registerProjectMembershipRouter } from "./project-membership-router";
-import { registerProjectRouter } from "./project-router";
+import { registerSecretFolderRouter } from "./secret-folder-router";
+import { registerSecretImportRouter } from "./secret-import-router";
 import { registerServiceTokenRouter } from "./service-token-router";
 import { registerUserRouter } from "./user-router";
 
@@ -32,12 +34,17 @@ export const registerV2Routes = async (server: FastifyZodProvider) => {
     },
     { prefix: "/organizations" }
   );
+
+  await server.register(registerSecretFolderRouter, { prefix: "/folders" });
+  await server.register(registerSecretImportRouter, { prefix: "/secret-imports" });
+
+  // moved to v1/projects
   await server.register(
     async (projectServer) => {
-      await projectServer.register(registerProjectRouter);
-      await projectServer.register(registerIdentityProjectRouter);
-      await projectServer.register(registerGroupProjectRouter);
-      await projectServer.register(registerProjectMembershipRouter);
+      await projectServer.register(registerDeprecatedProjectRouter);
+      await projectServer.register(registerDeprecatedIdentityProjectRouter);
+      await projectServer.register(registerDeprecatedGroupProjectRouter);
+      await projectServer.register(registerDeprecatedProjectMembershipRouter);
     },
     { prefix: "/workspace" }
   );

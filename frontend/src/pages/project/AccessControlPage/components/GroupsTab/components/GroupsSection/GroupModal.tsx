@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FilterableSelect, FormControl, Modal, ModalContent } from "@app/components/v2";
-import { useOrganization, useWorkspace } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import {
   useAddGroupToWorkspace,
   useGetOrganizationGroups,
@@ -31,14 +31,14 @@ type Props = {
 
 const Content = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const orgId = currentOrg?.id || "";
 
   const { data: groups } = useGetOrganizationGroups(orgId);
-  const { data: groupMemberships } = useListWorkspaceGroups(currentWorkspace?.id || "");
+  const { data: groupMemberships } = useListWorkspaceGroups(currentProject?.id || "");
 
-  const { data: roles } = useGetProjectRoles(currentWorkspace?.id || "");
+  const { data: roles } = useGetProjectRoles(currentProject?.id || "");
 
   const { mutateAsync: addGroupToWorkspaceMutateAsync } = useAddGroupToWorkspace();
 
@@ -64,7 +64,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   const onFormSubmit = async ({ group, role }: FormData) => {
     try {
       await addGroupToWorkspaceMutateAsync({
-        projectId: currentWorkspace?.id || "",
+        projectId: currentProject?.id || "",
         groupId: group.id,
         role: role.slug || undefined
       });

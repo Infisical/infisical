@@ -89,7 +89,7 @@ import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 
 export type TSecretRotationV2ServiceFactoryDep = {
   secretRotationV2DAL: TSecretRotationV2DALFactory;
-  appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -459,7 +459,11 @@ export const secretRotationV2ServiceFactory = ({
     const typeApp = SECRET_ROTATION_CONNECTION_MAP[payload.type];
 
     // validates permission to connect and app is valid for rotation type
-    const connection = await appConnectionService.connectAppConnectionById(typeApp, payload.connectionId, actor);
+    const connection = await appConnectionService.validateAppConnectionUsageById(
+      typeApp,
+      { connectionId: payload.connectionId, projectId },
+      actor
+    );
 
     const rotationFactory = SECRET_ROTATION_FACTORY_MAP[payload.type](
       {

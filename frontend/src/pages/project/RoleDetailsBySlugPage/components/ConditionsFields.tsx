@@ -41,12 +41,12 @@ export const ConditionsFields = ({
   } = useFormContext<TFormSchema>();
   const items = useFieldArray({
     control,
-    name: `permissions.${subject}.${position}.conditions`
+    name: `permissions.${subject}.${position}.conditions` as const
   });
 
   const conditionErrorMessage =
-    errors?.permissions?.[subject]?.[position]?.conditions?.message ||
-    errors?.permissions?.[subject]?.[position]?.conditions?.root?.message;
+    (errors?.permissions as any)?.[subject]?.[position]?.conditions?.message ||
+    (errors?.permissions as any)?.[subject]?.[position]?.conditions?.root?.message;
 
   return (
     <div className="mt-6 border-t border-t-mineshaft-600 bg-mineshaft-800 pt-2">
@@ -91,7 +91,7 @@ export const ConditionsFields = ({
         {Boolean(items.fields.length) &&
           items.fields.map((el, index) => {
             const condition =
-              (watch(`permissions.${subject}.${position}.conditions.${index}`) as {
+              (watch(`permissions.${subject}.${position}.conditions.${index}` as const) as {
                 lhs: string;
                 rhs: string;
                 operator: string;
@@ -104,7 +104,7 @@ export const ConditionsFields = ({
                 <div className="w-1/4">
                   <Controller
                     control={control}
-                    name={`permissions.${subject}.${position}.conditions.${index}.lhs`}
+                    name={`permissions.${subject}.${position}.conditions.${index}.lhs` as const}
                     render={({ field, fieldState: { error } }) => (
                       <FormControl
                         isError={Boolean(error?.message)}
@@ -116,7 +116,7 @@ export const ConditionsFields = ({
                           {...field}
                           onValueChange={(e) => {
                             setValue(
-                              `permissions.${subject}.${position}.conditions.${index}.operator`,
+                              `permissions.${subject}.${position}.conditions.${index}.operator` as const,
                               PermissionConditionOperators.$IN as never
                             );
                             field.onChange(e);
@@ -137,7 +137,9 @@ export const ConditionsFields = ({
                 <div className="flex w-44 items-center space-x-2">
                   <Controller
                     control={control}
-                    name={`permissions.${subject}.${position}.conditions.${index}.operator`}
+                    name={
+                      `permissions.${subject}.${position}.conditions.${index}.operator` as const
+                    }
                     render={({ field, fieldState: { error } }) => (
                       <FormControl
                         isError={Boolean(error?.message)}
@@ -171,7 +173,7 @@ export const ConditionsFields = ({
                 <div className="flex-grow">
                   <Controller
                     control={control}
-                    name={`permissions.${subject}.${position}.conditions.${index}.rhs`}
+                    name={`permissions.${subject}.${position}.conditions.${index}.rhs` as const}
                     render={({ field, fieldState: { error } }) => (
                       <FormControl
                         isError={Boolean(error?.message)}

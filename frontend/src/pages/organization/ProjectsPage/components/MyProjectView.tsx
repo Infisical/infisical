@@ -39,11 +39,11 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { useGetUserWorkspaces } from "@app/hooks/api";
+import { useGetUserProjects } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { ProjectType, Workspace } from "@app/hooks/api/workspace/types";
 import {
   ProjectListToggle,
   ProjectListView
@@ -79,7 +79,7 @@ export const MyProjectView = ({
     {}
   );
 
-  const { data: workspaces = [], isPending: isWorkspaceLoading } = useGetUserWorkspaces();
+  const { data: workspaces = [], isPending: isWorkspaceLoading } = useGetUserProjects();
   const {
     setPage,
     perPage,
@@ -136,7 +136,7 @@ export const MyProjectView = ({
 
   const { workspacesWithFaveProp } = useMemo(() => {
     const workspacesWithFav = filteredWorkspaces
-      .map((w): Workspace & { isFavorite: boolean } => ({
+      .map((w): Project & { isFavorite: boolean } => ({
         ...w,
         isFavorite: Boolean(projectFavorites?.includes(w.id))
       }))
@@ -188,7 +188,7 @@ export const MyProjectView = ({
     }
   };
 
-  const renderProjectGridItem = (workspace: Workspace, isFavorite: boolean) => (
+  const renderProjectGridItem = (workspace: Project, isFavorite: boolean) => (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       onClick={() => {
@@ -242,7 +242,7 @@ export const MyProjectView = ({
       </p>
     </div>
   );
-  const renderProjectListItem = (workspace: Workspace, isFavorite: boolean, index: number) => (
+  const renderProjectListItem = (workspace: Project, isFavorite: boolean, index: number) => (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       onClick={() => {
@@ -480,22 +480,26 @@ export const MyProjectView = ({
           </IconButton>
         </div>
         <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-          {(isAllowed) => (
-            <Button
-              isDisabled={!isAllowed}
-              colorSchema="secondary"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => {
-                if (isAddingProjectsAllowed) {
-                  onAddNewProject();
-                } else {
-                  onUpgradePlan();
-                }
-              }}
-              className="ml-2"
-            >
-              Add New Project
-            </Button>
+          {(isOldProjectV1Allowed) => (
+            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
+              {(isAllowed) => (
+                <Button
+                  isDisabled={!isAllowed && !isOldProjectV1Allowed}
+                  colorSchema="secondary"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={() => {
+                    if (isAddingProjectsAllowed) {
+                      onAddNewProject();
+                    } else {
+                      onUpgradePlan();
+                    }
+                  }}
+                  className="ml-2"
+                >
+                  Add New Project
+                </Button>
+              )}
+            </OrgPermissionCan>
           )}
         </OrgPermissionCan>
       </div>
