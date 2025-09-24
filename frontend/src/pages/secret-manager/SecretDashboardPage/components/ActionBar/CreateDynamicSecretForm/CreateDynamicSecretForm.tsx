@@ -29,6 +29,7 @@ import { ProjectEnv } from "@app/hooks/api/types";
 import { AwsElastiCacheInputForm } from "./AwsElastiCacheInputForm";
 import { AwsIamInputForm } from "./AwsIamInputForm";
 import { AzureEntraIdInputForm } from "./AzureEntraIdInputForm";
+import { AzureSqlDatabaseInputForm } from "./AzureSqlDatabaseInputForm";
 import { CassandraInputForm } from "./CassandraInputForm";
 import { CouchbaseInputForm } from "./CouchbaseInputForm";
 import { ElasticSearchInputForm } from "./ElasticSearchInputForm";
@@ -111,6 +112,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: <VscAzure size="1.5rem" />,
     provider: DynamicSecretProviders.AzureEntraId,
     title: "Azure Entra ID"
+  },
+  {
+    icon: <VscAzure size="1.5rem" />,
+    provider: DynamicSecretProviders.AzureSqlDatabase,
+    title: "Azure SQL Database"
   },
   {
     icon: <SiFiles size="1.5rem" />,
@@ -434,6 +440,25 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <AzureEntraIdInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.AzureSqlDatabase && (
+              <motion.div
+                key="dynamic-azure-sql-database-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <AzureSqlDatabaseInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}

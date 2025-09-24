@@ -327,6 +327,44 @@ export const AzureEntraIDSchema = z.object({
   clientSecret: z.string().trim().min(1)
 });
 
+export const DynamicSecretAzureSqlDBSchema = z.object({
+  host: z.string().trim().toLowerCase(),
+  port: z.number(),
+  database: z.string().trim(),
+  masterDatabase: z.string().trim().optional().default("master"),
+  username: z.string().trim(),
+  password: z.string().trim(),
+  passwordRequirements: z
+    .object({
+      length: z.number().min(1).max(250),
+      required: z
+        .object({
+          lowercase: z.number().min(0),
+          uppercase: z.number().min(0),
+          digits: z.number().min(0),
+          symbols: z.number().min(0)
+        })
+        .refine((data) => {
+          const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+          return total <= 250;
+        }, "Sum of required characters cannot exceed 250"),
+      allowedSymbols: z.string().optional()
+    })
+    .refine((data) => {
+      const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
+      return total <= data.length;
+    }, "Sum of required characters cannot exceed the total length")
+    .optional()
+    .describe("Password generation requirements"),
+  masterCreationStatement: z.string().trim(),
+  creationStatement: z.string().trim(),
+  revocationStatement: z.string().trim(),
+  renewStatement: z.string().trim().optional(),
+  ca: z.string().optional(),
+  sslEnabled: z.boolean().optional(),
+  gatewayId: z.string().nullable().optional()
+});
+
 export const LdapSchema = z.union([
   z.object({
     url: z.string().trim().min(1),
@@ -610,6 +648,7 @@ export enum DynamicSecretProviders {
   MongoDB = "mongo-db",
   RabbitMq = "rabbit-mq",
   AzureEntraID = "azure-entra-id",
+  AzureSqlDatabase = "azure-sql-database",
   Ldap = "ldap",
   SapHana = "sap-hana",
   Snowflake = "snowflake",
@@ -635,6 +674,7 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.MongoDB), inputs: DynamicSecretMongoDBSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.RabbitMq), inputs: DynamicSecretRabbitMqSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.AzureEntraID), inputs: AzureEntraIDSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.AzureSqlDatabase), inputs: DynamicSecretAzureSqlDBSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Ldap), inputs: LdapSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Snowflake), inputs: DynamicSecretSnowflakeSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Totp), inputs: DynamicSecretTotpSchema }),
