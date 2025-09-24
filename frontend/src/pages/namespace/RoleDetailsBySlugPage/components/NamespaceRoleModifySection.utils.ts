@@ -39,15 +39,17 @@ const memberPermissionSchema = z
   })
   .optional();
 
-const groupPolicyActionSchema = z.object({
-  [NamespacePermissionGroupActions.Read]: z.boolean().optional(),
-  [NamespacePermissionGroupActions.Create]: z.boolean().optional(),
-  [NamespacePermissionGroupActions.Edit]: z.boolean().optional(),
-  [NamespacePermissionGroupActions.Delete]: z.boolean().optional(),
-  [NamespacePermissionGroupActions.GrantPrivileges]: z.boolean().optional(),
-  [NamespacePermissionGroupActions.AddMembers]: z.boolean().optional(),
-  [NamespacePermissionGroupActions.RemoveMembers]: z.boolean().optional()
-});
+const groupPolicyActionSchema = z
+  .object({
+    [NamespacePermissionGroupActions.Read]: z.boolean().optional(),
+    [NamespacePermissionGroupActions.Create]: z.boolean().optional(),
+    [NamespacePermissionGroupActions.Edit]: z.boolean().optional(),
+    [NamespacePermissionGroupActions.Delete]: z.boolean().optional(),
+    [NamespacePermissionGroupActions.GrantPrivileges]: z.boolean().optional(),
+    [NamespacePermissionGroupActions.AddMembers]: z.boolean().optional(),
+    [NamespacePermissionGroupActions.RemoveMembers]: z.boolean().optional()
+  })
+  .optional();
 
 const appConnectionsPermissionSchema = z
   .object({

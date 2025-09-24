@@ -49,7 +49,7 @@ export const namespaceIdentityMembershipDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
           void queryBuilder
             .on(`${TableName.IdentityOrgMembership}.identityId`, `${TableName.IdentityMetadata}.identityId`)
-            .andOn(`${TableName.IdentityOrgMembership}.id`, `${TableName.IdentityMetadata}.orgId`);
+            .andOn(`${TableName.IdentityOrgMembership}.orgId`, `${TableName.IdentityMetadata}.orgId`);
         })
         .leftJoin(
           TableName.NamespaceRole,
@@ -354,6 +354,11 @@ export const namespaceIdentityMembershipDALFactory = (db: TDbClient) => {
           `${TableName.IdentityOrgMembership}.id`
         )
         .join(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`)
+        .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
+          void queryBuilder
+            .on(`${TableName.IdentityOrgMembership}.identityId`, `${TableName.IdentityMetadata}.identityId`)
+            .andOn(`${TableName.IdentityOrgMembership}.orgId`, `${TableName.IdentityMetadata}.orgId`);
+        })
         .leftJoin(
           TableName.NamespaceMembershipRole,
           `${TableName.NamespaceMembership}.id`,
@@ -455,7 +460,10 @@ export const namespaceIdentityMembershipDALFactory = (db: TDbClient) => {
           db.ref("id").as("tokenId").withSchema(TableName.IdentityTokenAuth),
           db.ref("id").as("jwtId").withSchema(TableName.IdentityJwtAuth),
           db.ref("id").as("ldapId").withSchema(TableName.IdentityLdapAuth),
-          db.ref("id").as("tlsCertId").withSchema(TableName.IdentityTlsCertAuth)
+          db.ref("id").as("tlsCertId").withSchema(TableName.IdentityTlsCertAuth),
+          db.ref("id").withSchema(TableName.IdentityMetadata).as("metadataId"),
+          db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
+          db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue")
         );
 
       if (orderBy === NamespaceIdentityOrderBy.Name) {
@@ -558,6 +566,15 @@ export const namespaceIdentityMembershipDALFactory = (db: TDbClient) => {
               temporaryAccessEndTime,
               temporaryAccessStartTime,
               isTemporary
+            })
+          },
+          {
+            key: "metadataId",
+            label: "metadata" as const,
+            mapper: ({ metadataKey, metadataValue, metadataId }) => ({
+              id: metadataId,
+              key: metadataKey,
+              value: metadataValue
             })
           }
         ]

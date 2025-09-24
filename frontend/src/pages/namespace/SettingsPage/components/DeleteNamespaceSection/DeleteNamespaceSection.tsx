@@ -56,7 +56,7 @@ export const DeleteNamespaceSection = () => {
           variant="outline_bg"
           type="submit"
           onClick={() => handlePopUpOpen("deleteNamespace")}
-          isDisabled={permission.can(
+          isDisabled={permission.cannot(
             NamespacePermissionNamespaceActions.Delete,
             NamespacePermissionSubjects.Namespace
           )}

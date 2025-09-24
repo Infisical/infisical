@@ -6,6 +6,7 @@ export * from "./ExternalImportFailedTemplate";
 export * from "./ExternalImportStartedTemplate";
 export * from "./ExternalImportSucceededTemplate";
 export * from "./IntegrationSyncFailedTemplate";
+export * from "./NamespaceInvitationTemplate";
 export * from "./NewDeviceLoginTemplate";
 export * from "./OrgAdminBreakglassAccessTemplate";
 export * from "./OrgAdminProjectGrantAccessTemplate";

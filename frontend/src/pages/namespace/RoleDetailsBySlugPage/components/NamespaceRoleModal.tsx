@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
@@ -27,6 +28,7 @@ type Props = {
 
 export const NamespaceRoleModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { namespaceName } = useNamespace();
+  const navigate = useNavigate();
   const isOpen = popUp?.role?.isOpen;
   const roleSlug = (popUp?.role?.data as { roleSlug?: string })?.roleSlug;
 
@@ -103,6 +105,14 @@ export const NamespaceRoleModal = ({ popUp, handlePopUpToggle }: Props) => {
         createNotification({
           text: "Successfully created namespace role",
           type: "success"
+        });
+
+        navigate({
+          to: "/organization/namespaces/$namespaceName/roles/$roleSlug",
+          params: {
+            namespaceName,
+            roleSlug: data.slug
+          }
         });
       }
 

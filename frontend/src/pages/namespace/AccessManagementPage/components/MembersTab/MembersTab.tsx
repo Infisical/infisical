@@ -86,7 +86,7 @@ export const MembersTab = withNamespacePermission(
           <DeleteActionModal
             isOpen={popUp.removeMember.isOpen}
             deleteKey="remove"
-            title="Do you want to remove this user from the project?"
+            title="Do you want to remove this user from the namespace?"
             onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
             onDeleteApproved={handleRemoveUser}
           />

@@ -160,56 +160,6 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
   return (
     <div>
       <div className="flex gap-2">
-        {/* <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton
-              ariaLabel="Filter Users"
-              variant="plain"
-              size="sm"
-              className={twMerge(
-                "flex h-[2.375rem] w-[2.6rem] items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                isTableFiltered && "border-primary/50 text-primary"
-              )}
-            >
-              <FontAwesomeIcon icon={faFilter} />
-            </IconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="p-0">
-            <DropdownMenuLabel>Filter By</DropdownMenuLabel>
-            <DropdownSubMenu>
-              <DropdownSubMenuTrigger
-                iconPos="right"
-                icon={<FontAwesomeIcon icon={faChevronRight} size="sm" />}
-              >
-                Roles
-              </DropdownSubMenuTrigger>
-              <DropdownSubMenuContent className="thin-scrollbar max-h-[20rem] overflow-y-auto rounded-l-none">
-                <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                  Apply Roles to Filter Users
-                </DropdownMenuLabel>
-                {projectRoles?.map(({ id, slug, name }) => (
-                  <DropdownMenuItem
-                    onClick={(evt) => {
-                      evt.preventDefault();
-                      handleRoleToggle(slug);
-                    }}
-                    key={id}
-                    icon={filter.roles.includes(slug) && <FontAwesomeIcon icon={faCheckCircle} />}
-                    iconPos="right"
-                  >
-                    <div className="flex items-center">
-                      <div
-                        className="mr-2 h-2 w-2 rounded-full"
-                        style={{ background: "#bec2c8" }}
-                      />
-                      {name}
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownSubMenuContent>
-            </DropdownSubMenu>
-          </DropdownMenuContent>
-        </DropdownMenu> */}
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -412,7 +362,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                                       handlePopUpOpen("removeMember", { membershipId });
                                     }}
                                   >
-                                    Remove User From Project
+                                    Remove User From Namespace
                                   </DropdownMenuItem>
                                 )}
                               </NamespacePermissionCan>

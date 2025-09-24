@@ -8,10 +8,10 @@ export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/identities/$identityId"
 )({
   component: IdentityDetailsByIdPage,
-  beforeLoad: ({ params }) => {
+  beforeLoad: ({ params, context }) => {
     return {
       breadcrumbs: [
-        // ...context.breadcrumbs,
+        ...context.breadcrumbs,
         {
           label: "Access Control",
           link: linkOptions({

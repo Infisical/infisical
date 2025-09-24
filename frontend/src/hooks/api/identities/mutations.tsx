@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
 
 import { apiRequest } from "@app/config/request";
 
+import { namespaceIdentityQueryKeys } from "../namespaceIdentity";
 import { organizationKeys } from "../organization/queries";
 import { subscriptionQueryKeys } from "../subscriptions/queries";
 import { identitiesKeys } from "./queries";
@@ -143,6 +145,11 @@ export const useDeleteIdentity = () => {
 
 export const useAddIdentityUniversalAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
+
   return useMutation<IdentityUniversalAuth, object, AddIdentityUniversalAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -179,12 +186,21 @@ export const useAddIdentityUniversalAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useUpdateIdentityUniversalAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityUniversalAuth, object, UpdateIdentityUniversalAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -223,12 +239,21 @@ export const useUpdateIdentityUniversalAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useDeleteIdentityUniversalAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityUniversalAuth, object, DeleteIdentityUniversalAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
@@ -244,6 +269,11 @@ export const useDeleteIdentityUniversalAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityUniversalAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
@@ -295,6 +325,7 @@ export const useRevokeIdentityUniversalAuthClientSecret = () => {
 
 export const useClearIdentityUniversalAuthLockouts = () => {
   const queryClient = useQueryClient();
+
   return useMutation<number, object, ClearIdentityUniversalAuthLockoutsDTO>({
     mutationFn: async ({ identityId }) => {
       const {
@@ -314,6 +345,11 @@ export const useClearIdentityUniversalAuthLockouts = () => {
 
 export const useAddIdentityGcpAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
+
   return useMutation<IdentityGcpAuth, object, AddIdentityGcpAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -350,12 +386,21 @@ export const useAddIdentityGcpAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityGcpAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useUpdateIdentityGcpAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityGcpAuth, object, UpdateIdentityGcpAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -392,12 +437,21 @@ export const useUpdateIdentityGcpAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityGcpAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useDeleteIdentityGcpAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityGcpAuth, object, DeleteIdentityGcpAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
@@ -411,12 +465,21 @@ export const useDeleteIdentityGcpAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityGcpAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useAddIdentityAwsAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityAwsAuth, object, AddIdentityAwsAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -451,12 +514,21 @@ export const useAddIdentityAwsAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAwsAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useUpdateIdentityAwsAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityAwsAuth, object, UpdateIdentityAwsAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -491,12 +563,21 @@ export const useUpdateIdentityAwsAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAwsAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useDeleteIdentityAwsAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityAwsAuth, object, DeleteIdentityAwsAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
@@ -510,12 +591,21 @@ export const useDeleteIdentityAwsAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAwsAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useAddIdentityOciAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityOciAuth, object, AddIdentityOciAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -548,12 +638,21 @@ export const useAddIdentityOciAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOciAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useUpdateIdentityOciAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityOciAuth, object, UpdateIdentityOciAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -586,12 +685,21 @@ export const useUpdateIdentityOciAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOciAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useDeleteIdentityOciAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityOciAuth, object, DeleteIdentityOciAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
@@ -605,12 +713,21 @@ export const useDeleteIdentityOciAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOciAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useAddIdentityAliCloudAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityAliCloudAuth, object, AddIdentityAliCloudAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -643,12 +760,21 @@ export const useAddIdentityAliCloudAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityAliCloudAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useUpdateIdentityAliCloudAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityAliCloudAuth, object, UpdateIdentityAliCloudAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -681,12 +807,21 @@ export const useUpdateIdentityAliCloudAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityAliCloudAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useDeleteIdentityAliCloudAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityAliCloudAuth, object, DeleteIdentityAliCloudAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
@@ -702,12 +837,21 @@ export const useDeleteIdentityAliCloudAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityAliCloudAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useAddIdentityTlsCertAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityTlsCertAuth, object, AddIdentityTlsCertAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -742,12 +886,21 @@ export const useAddIdentityTlsCertAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityTlsCertAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useUpdateIdentityTlsCertAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityTlsCertAuth, object, UpdateIdentityTlsCertAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -782,12 +935,21 @@ export const useUpdateIdentityTlsCertAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityTlsCertAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useDeleteIdentityTlsCertAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityTlsCertAuth, object, DeleteIdentityTlsCertAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
@@ -803,12 +965,21 @@ export const useDeleteIdentityTlsCertAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityTlsCertAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useUpdateIdentityOidcAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityOidcAuth, object, UpdateIdentityOidcAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -851,12 +1022,21 @@ export const useUpdateIdentityOidcAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOidcAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useAddIdentityOidcAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityOidcAuth, object, AddIdentityOidcAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -899,12 +1079,21 @@ export const useAddIdentityOidcAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOidcAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useDeleteIdentityOidcAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityTokenAuth, object, DeleteIdentityOidcAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
@@ -918,11 +1107,20 @@ export const useDeleteIdentityOidcAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityOidcAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 export const useUpdateIdentityJwtAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityJwtAuth, object, UpdateIdentityJwtAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -967,12 +1165,21 @@ export const useUpdateIdentityJwtAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityJwtAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useAddIdentityJwtAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityJwtAuth, object, AddIdentityJwtAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -1017,12 +1224,21 @@ export const useAddIdentityJwtAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityJwtAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useDeleteIdentityJwtAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityTokenAuth, object, DeleteIdentityJwtAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
@@ -1036,12 +1252,21 @@ export const useDeleteIdentityJwtAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityJwtAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useAddIdentityAzureAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityAzureAuth, object, AddIdentityAzureAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -1075,15 +1300,22 @@ export const useAddIdentityAzureAuth = () => {
         queryKey: organizationKeys.getOrgIdentityMemberships(organizationId)
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
-      queryClient.invalidateQueries({
-        queryKey: identitiesKeys.getIdentityKubernetesAuth(identityId)
-      });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAzureAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useAddIdentityKubernetesAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityKubernetesAuth, object, AddIdentityKubernetesAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -1128,12 +1360,21 @@ export const useAddIdentityKubernetesAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAzureAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useUpdateIdentityAzureAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityAzureAuth, object, UpdateIdentityAzureAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -1168,12 +1409,21 @@ export const useUpdateIdentityAzureAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAzureAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useDeleteIdentityAzureAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityAzureAuth, object, DeleteIdentityAzureAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
@@ -1187,12 +1437,21 @@ export const useDeleteIdentityAzureAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityAzureAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useUpdateIdentityKubernetesAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityKubernetesAuth, object, UpdateIdentityKubernetesAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -1239,12 +1498,21 @@ export const useUpdateIdentityKubernetesAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityKubernetesAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useDeleteIdentityKubernetesAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityTokenAuth, object, DeleteIdentityKubernetesAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
@@ -1260,12 +1528,21 @@ export const useDeleteIdentityKubernetesAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityKubernetesAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useAddIdentityTokenAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityTokenAuth, object, AddIdentityTokenAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -1296,12 +1573,21 @@ export const useAddIdentityTokenAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityTokenAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useUpdateIdentityTokenAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityTokenAuth, object, UpdateIdentityTokenAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -1332,12 +1618,21 @@ export const useUpdateIdentityTokenAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityTokenAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useDeleteIdentityTokenAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityTokenAuth, object, DeleteIdentityTokenAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const {
@@ -1351,12 +1646,21 @@ export const useDeleteIdentityTokenAuth = () => {
       });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityById(identityId) });
       queryClient.invalidateQueries({ queryKey: identitiesKeys.getIdentityTokenAuth(identityId) });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useCreateTokenIdentityTokenAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<CreateTokenIdentityTokenAuthRes, object, CreateTokenIdentityTokenAuthDTO>({
     mutationFn: async ({ identityId, name }) => {
       const { data } = await apiRequest.post<CreateTokenIdentityTokenAuthRes>(
@@ -1372,12 +1676,18 @@ export const useCreateTokenIdentityTokenAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityTokensTokenAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useUpdateIdentityTokenAuthToken = () => {
   const queryClient = useQueryClient();
+
   return useMutation<IdentityAccessToken, object, UpdateTokenIdentityTokenAuthDTO>({
     mutationFn: async ({ tokenId, name }) => {
       const {
@@ -1419,6 +1729,10 @@ export const useRevokeIdentityTokenAuthToken = () => {
 
 export const useAddIdentityLdapAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityLdapAuth, object, AddIdentityLdapAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -1470,12 +1784,21 @@ export const useAddIdentityLdapAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityLdapAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useUpdateIdentityLdapAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityLdapAuth, object, UpdateIdentityLdapAuthDTO>({
     mutationFn: async ({
       identityId,
@@ -1527,12 +1850,21 @@ export const useUpdateIdentityLdapAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityLdapAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useDeleteIdentityLdapAuth = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<IdentityLdapAuth, object, DeleteIdentityLdapAuthDTO>({
     mutationFn: async ({ identityId }) => {
       const { data } = await apiRequest.delete(`/api/v1/auth/ldap-auth/identities/${identityId}`);
@@ -1546,12 +1878,21 @@ export const useDeleteIdentityLdapAuth = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityLdapAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };
 
 export const useClearIdentityLdapAuthLockouts = () => {
   const queryClient = useQueryClient();
+  const namespaceName = useParams({
+    strict: false,
+    select: (el) => el?.namespaceName
+  });
   return useMutation<number, object, ClearIdentityLdapAuthLockoutsDTO>({
     mutationFn: async ({ identityId }) => {
       const {
@@ -1565,6 +1906,11 @@ export const useClearIdentityLdapAuthLockouts = () => {
       queryClient.invalidateQueries({
         queryKey: identitiesKeys.getIdentityLdapAuth(identityId)
       });
+      if (namespaceName) {
+        queryClient.invalidateQueries({
+          queryKey: namespaceIdentityQueryKeys.detailKey(namespaceName, identityId)
+        });
+      }
     }
   });
 };

@@ -6,8 +6,9 @@ export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/projects"
 )({
   component: ProjectsPage,
-  context: () => ({
+  beforeLoad: ({ context }) => ({
     breadcrumbs: [
+      ...context.breadcrumbs,
       {
         label: "Projects"
       }

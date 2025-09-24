@@ -5,5 +5,13 @@ import { SettingsPage } from "./SettingsPage";
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/settings"
 )({
-  component: SettingsPage
+  component: SettingsPage,
+  beforeLoad: ({ context }) => ({
+    breadcrumbs: [
+      ...context.breadcrumbs,
+      {
+        label: "Settings"
+      }
+    ]
+  })
 });

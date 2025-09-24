@@ -47,7 +47,8 @@ const SanitizedNamespaceIdentityMembershipSchema = NamespaceMembershipsSchema.ex
       temporaryAccessStartTime: z.date().nullable().optional(),
       temporaryAccessEndTime: z.date().nullable().optional()
     })
-  )
+  ),
+  metadata: z.object({ id: z.string(), key: z.string(), value: z.string() }).array()
 });
 
 export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider) => {
@@ -68,7 +69,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        namespaceName: slugSchema().describe("The slug of the namespace to create the identity in.")
+        namespaceName: slugSchema().describe("The name of the namespace to create the identity in.")
       }),
       body: z.object({
         name: z.string().trim().describe(IDENTITIES.CREATE.name),
@@ -361,7 +362,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        namespaceName: slugSchema().describe("The slug of the namespace."),
+        namespaceName: slugSchema().describe("The name of the namespace."),
         identityId: z.string().describe(IDENTITIES.UPDATE.identityId)
       }),
       body: z.object({
@@ -426,7 +427,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        namespaceName: slugSchema().describe("The slug of the namespace."),
+        namespaceName: slugSchema().describe("The name of the namespace."),
         identityId: z.string().describe(IDENTITIES.DELETE.identityId)
       }),
       response: {

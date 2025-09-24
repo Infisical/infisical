@@ -253,6 +253,10 @@ const buildAdminPermission = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<NamespacePermissionSet>>(createMongoAbility);
   // ws permissions
   can(NamespacePermissionActions.Create, NamespacePermissionSubjects.Project);
+
+  can(NamespacePermissionNamespaceActions.Edit, NamespacePermissionSubjects.Namespace);
+  can(NamespacePermissionNamespaceActions.Delete, NamespacePermissionSubjects.Namespace);
+
   // role permission
   can(NamespacePermissionActions.Read, NamespacePermissionSubjects.Role);
   can(NamespacePermissionActions.Create, NamespacePermissionSubjects.Role);

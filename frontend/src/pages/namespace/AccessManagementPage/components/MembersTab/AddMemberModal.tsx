@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { useTranslation } from "react-i18next";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -54,7 +53,6 @@ type Props = {
 };
 
 export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { t } = useTranslation();
   const { currentOrg } = useOrganization();
   const { namespaceName } = useNamespace();
   const navigate = useNavigate({ from: "" });
@@ -134,7 +132,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
       if (inviteeEmails.length !== selectedMembers.length) {
         createNotification({
-          text: "Failed to add users to project. One or more users were invalid.",
+          text: "Failed to add users to namespace. One or more users were invalid.",
           type: "error"
         });
         return;
@@ -148,13 +146,13 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
       }
       createNotification({
-        text: "Successfully added user to the project",
+        text: "Successfully added user to the namespace",
         type: "success"
       });
     } catch (error) {
       console.error(error);
       createNotification({
-        text: "Failed to add user to project",
+        text: "Failed to add user to namespace",
         type: "error"
       });
       return;
@@ -178,8 +176,8 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             ? `${firstName} ${lastName}`
             : firstName || lastName || email || inviteEmail
       }));
-    const requesterStatus = { isProjectUser: wsUserUsernames.has(requesterEmail), userLabel: "" };
-    if (!requesterStatus.isProjectUser) {
+    const requesterStatus = { isNamespaceUser: wsUserUsernames.has(requesterEmail), userLabel: "" };
+    if (!requesterStatus.isNamespaceUser) {
       const userDetails = orgUsers?.find((el) => el.user.username === requesterEmail);
       if (userDetails) {
         const { user } = userDetails;
@@ -221,8 +219,8 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     >
       <ModalContent
         bodyClassName="overflow-visible"
-        title={t("section.members.add-dialog.add-member-to-project") as string}
-        subTitle={t("section.members.add-dialog.user-will-email")}
+        title="Add users to namespace"
+        subTitle="Users will receive an email with instructions to gain access."
       >
         <form onSubmit={handleSubmit(onAddMembers)}>
           <div className="flex w-full flex-col items-start gap-2">
@@ -325,12 +323,12 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                 </FormControl>
               )}
             />
-            {requesterEmail && namespaceInviteList.requesterStatus.isProjectUser && (
+            {requesterEmail && namespaceInviteList.requesterStatus.isNamespaceUser && (
               <Alert hideTitle variant="danger">
                 <AlertDescription>Requested user is part of the project.</AlertDescription>
               </Alert>
             )}
-            {requesterEmail && !namespaceInviteList.requesterStatus.isProjectUser && (
+            {requesterEmail && !namespaceInviteList.requesterStatus.isNamespaceUser && (
               <Alert hideTitle>
                 <AlertDescription>
                   Assign a role to provide access to requesting user{" "}

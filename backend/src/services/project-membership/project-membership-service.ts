@@ -264,7 +264,7 @@ export const projectMembershipServiceFactory = ({
 
       const appCfg = getConfig();
       await smtpService.sendMail({
-        template: SmtpTemplates.WorkspaceInvite,
+        template: SmtpTemplates.ProjectInvite,
         subjectLine: "Infisical project invitation",
         recipients: orgMembers.filter((i) => i.email).map((i) => i.email as string),
         substitutions: {
@@ -433,7 +433,7 @@ export const projectMembershipServiceFactory = ({
         .filter((el) => Boolean(el.email.length))
         .map(async (el) => {
           return smtpService.sendMail({
-            template: SmtpTemplates.WorkspaceInvite,
+            template: SmtpTemplates.ProjectInvite,
             subjectLine: "Infisical project invitation",
             recipients: el.email,
             substitutions: {

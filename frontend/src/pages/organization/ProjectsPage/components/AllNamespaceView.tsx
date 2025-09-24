@@ -40,7 +40,7 @@ export const AllNamespaceView = ({
     toggleOrderDirection,
     orderDirection
   } = usePagination("name", {
-    initPerPage: getUserTablePreference("allNamespacesTable", PreferenceKey.PerPage, 50)
+    initPerPage: getUserTablePreference("allNamespacesTable", PreferenceKey.PerPage, 1)
   });
 
   const handlePerPageChange = (newPerPage: number) => {
@@ -48,15 +48,16 @@ export const AllNamespaceView = ({
     setUserTablePreference("allNamespacesTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const { data: searchedNamespaces, isPending: isNamespaceLoading } = useQuery(
-    namespacesQueryKeys.search({
+  const { data: searchedNamespaces, isPending: isNamespaceLoading } = useQuery({
+    ...namespacesQueryKeys.search({
       limit,
       offset,
       name: debouncedSearch || undefined,
       orderDirection,
       orderBy: SearchNamespaceSortBy.NAME
-    })
-  );
+    }),
+    placeholderData: (prev) => prev
+  });
 
   useResetPageHelper({
     setPage,

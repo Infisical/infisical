@@ -46,7 +46,7 @@ export const MyNamespaceView = ({
     toggleOrderDirection,
     orderDirection
   } = usePagination(SearchNamespaceSortBy.NAME, {
-    initPerPage: getUserTablePreference("myNamespacesTable", PreferenceKey.PerPage, 24)
+    initPerPage: getUserTablePreference("myNamespacesTable", PreferenceKey.PerPage, 1)
   });
 
   const handlePerPageChange = (newPerPage: number) => {
@@ -54,13 +54,14 @@ export const MyNamespaceView = ({
     setUserTablePreference("myNamespacesTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const { data: searchedNamespaces, isPending: isNamespaceLoading } = useQuery(
-    namespacesQueryKeys.list({
+  const { data: searchedNamespaces, isPending: isNamespaceLoading } = useQuery({
+    ...namespacesQueryKeys.list({
       search: debouncedSearch || undefined,
       limit,
       offset
-    })
-  );
+    }),
+    placeholderData: (prev) => prev
+  });
 
   const isNamespaceViewLoading = isNamespaceLoading;
   const isNamespaceEmpty = !isNamespaceViewLoading && searchedNamespaces?.namespaces?.length === 0;

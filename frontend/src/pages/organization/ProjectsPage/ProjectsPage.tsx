@@ -72,7 +72,7 @@ export const ProjectsPage = () => {
           title={shouldRenderNamespaces ? "Overview" : "Projects"}
           description={
             shouldRenderNamespaces
-              ? "Your team's complete security toolkit - workspaces and organization level projects"
+              ? "Your team's complete security toolkit - namespaces and organization level projects"
               : "Your team's complete security toolkit - organized and ready when you need them."
           }
         />

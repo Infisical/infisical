@@ -20,11 +20,14 @@ export const Route = createFileRoute(
     // strip default values
     middlewares: [stripSearchParams({ action: "" })]
   },
-  context: () => ({
-    breadcrumbs: [
-      {
-        label: "Access Control"
-      }
-    ]
-  })
+  beforeLoad: ({ context }) => {
+    return {
+      breadcrumbs: [
+        ...context.breadcrumbs,
+        {
+          label: "Access Control"
+        }
+      ]
+    };
+  }
 });

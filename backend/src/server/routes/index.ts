@@ -631,7 +631,8 @@ export const registerRoutes = async (
     namespaceUserMembershipDAL,
     namespaceRoleDAL,
     namespaceMembershipRoleDAL,
-    orgDAL
+    orgDAL,
+    smtpService
   });
   const namespaceIdentityMembershipService = namespaceIdentityMembershipServiceFactory({
     namespaceIdentityMembershipDAL,

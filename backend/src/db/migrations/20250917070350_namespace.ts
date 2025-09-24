@@ -66,7 +66,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("namespaceId").notNullable();
       t.foreign("namespaceId").references("id").inTable(TableName.Namespace).onDelete("CASCADE");
       t.timestamps(true, true, true);
-      t.unique(["name", "namespaceId"]);
+      t.unique(["slug", "namespaceId"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.NamespaceRole);

@@ -6,8 +6,9 @@ export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/members/$membershipId"
 )({
   component: UserDetailsByIdPage,
-  context: ({ params }) => ({
+  beforeLoad: ({ params, context }) => ({
     breadcrumbs: [
+      ...context.breadcrumbs,
       {
         label: "Access Control",
         link: linkOptions({

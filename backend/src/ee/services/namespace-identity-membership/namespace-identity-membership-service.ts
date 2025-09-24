@@ -332,7 +332,7 @@ export const namespaceIdentityMembershipServiceFactory = ({
 
     if (identityOrgMembership.identity.namespace)
       throw new BadRequestError({
-        message: `Namespace identity with  id ${identityId} membership cannot be deleted`
+        message: `Namespace identity with id ${identityId} membership cannot be deleted`
       });
 
     const identityNamespaceMembership = await namespaceIdentityMembershipDAL.findOne({
@@ -415,7 +415,6 @@ export const namespaceIdentityMembershipServiceFactory = ({
       throw new NotFoundError({
         message: `Namespace membership for identity with ID '${identityId}' in namespace not found`
       });
-
     const activeLockouts = await keyStore.getKeysByPattern(`lockout:identity:${identityId}:*`);
 
     const activeLockoutAuthMethods = new Set<string>();

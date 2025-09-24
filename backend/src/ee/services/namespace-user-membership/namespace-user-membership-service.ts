@@ -7,10 +7,13 @@ import {
   NamespacePermissionSubjects
 } from "@app/ee/services/permission/namespace-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { ActorType } from "../../../services/auth/auth-type";
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -36,6 +39,7 @@ type TNamespaceUserMembershipServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getNamespacePermission" | "getNamespacePermissionByRole">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   namespaceMembershipRoleDAL: Pick<TNamespaceMembershipRoleDALFactory, "delete" | "insertMany">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export type TNamespaceUserMembershipServiceFactory = ReturnType<typeof namespaceUserMembershipServiceFactory>;
@@ -47,7 +51,8 @@ export const namespaceUserMembershipServiceFactory = ({
   permissionService,
   licenseService,
   namespaceMembershipRoleDAL,
-  orgDAL
+  orgDAL,
+  smtpService
 }: TNamespaceUserMembershipServiceFactoryDep) => {
   const addUserToNamespace = async ({
     namespaceName,
@@ -166,6 +171,21 @@ export const namespaceUserMembershipServiceFactory = ({
       await namespaceMembershipRoleDAL.insertMany(membershipRoleData, tx);
       return newUser;
     });
+    const appCfg = getConfig();
+    await smtpService
+      .sendMail({
+        template: SmtpTemplates.NamespaceInvite,
+        subjectLine: "Infisical namespace invitation",
+        recipients: nonExistingUsers.map((el) => el.username),
+        substitutions: {
+          namespaceName,
+          callback_url: `${appCfg.SITE_URL}/login`
+        }
+      })
+      .catch((err) => {
+        logger.error(err, "Failed to send SMTP email for namespace name");
+      });
+
     return { newNamespaceUsers };
   };
 
