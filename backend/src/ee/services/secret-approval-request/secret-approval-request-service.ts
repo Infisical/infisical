@@ -46,8 +46,7 @@ import {
   getAllNestedSecretReferences,
   INFISICAL_SECRET_VALUE_HIDDEN_MASK
 } from "@app/services/secret/secret-fns";
-import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
-import { SecretOperations } from "@app/services/secret/secret-types";
+import { SecretOperations, TSecretQueueFactory } from "@app/services/secret/secret-types";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
