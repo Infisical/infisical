@@ -45,6 +45,10 @@ apiRequest.interceptors.request.use((config) => {
 
 let isRedirecting = false;
 
+const resetRedirectingFlag = () => {
+  isRedirecting = false;
+};
+
 apiRequest.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -58,17 +62,20 @@ apiRequest.interceptors.response.use(
         // Check if the error indicates token expiration
         const errorMessage = response.data?.message || "";
         const isTokenExpired =
-          response.status === 401 ||
-          (errorMessage.toLowerCase().includes("token") &&
-            (errorMessage.toLowerCase().includes("expired") ||
-              errorMessage.toLowerCase().includes("invalid") ||
-              errorMessage.toLowerCase().includes("unauthorized")));
+          errorMessage.toLowerCase().includes("token") &&
+          (errorMessage.toLowerCase().includes("expired") ||
+            errorMessage.toLowerCase().includes("invalid") ||
+            errorMessage.toLowerCase().includes("unauthorized"));
 
         if (isTokenExpired) {
           isRedirecting = true;
 
-          setAuthToken("");
-          SecurityClient.setToken("");
+          try {
+            setAuthToken("");
+            SecurityClient.setToken("");
+          } catch (err) {
+            console.warn("Error clearing tokens:", err);
+          }
 
           createNotification({
             type: "error",
@@ -76,17 +83,23 @@ apiRequest.interceptors.response.use(
             text: "Your session has expired. Redirecting to login page..."
           });
 
-          sessionStorage.setItem(
-            SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL,
-            JSON.stringify({
-              expiry: formatISO(addSeconds(new Date(), 300)), // 5 minutes
-              data: window.location.href
-            })
-          );
+          try {
+            sessionStorage.setItem(
+              SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL,
+              JSON.stringify({
+                expiry: formatISO(addSeconds(new Date(), 300)), // 5 minutes
+                data: window.location.href
+              })
+            );
+          } catch (err) {
+            console.warn("Could not save redirect URL to sessionStorage:", err);
+          }
 
           setTimeout(() => {
             window.location.href = "/login";
-          }, 5000); // 5 seconds to read the notification
+          }, 2000); // 2 seconds to read the notification
+
+          setTimeout(resetRedirectingFlag, 3000);
 
           return Promise.reject(new Error("Session expired - redirecting to login"));
         }
