@@ -48,7 +48,9 @@ const SanitizedNamespaceIdentityMembershipSchema = NamespaceMembershipsSchema.ex
       temporaryAccessEndTime: z.date().nullable().optional()
     })
   ),
-  metadata: z.object({ id: z.string(), key: z.string(), value: z.string() }).array()
+  metadata: z.object({ id: z.string(), key: z.string(), value: z.string() }).array(),
+  lastLoginAuthMethod: z.string().nullable().optional(),
+  lastLoginTime: z.date().nullable().optional()
 });
 
 export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider) => {

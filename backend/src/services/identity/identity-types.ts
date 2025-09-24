@@ -75,6 +75,7 @@ export type TSearchIdentitiesDAL = {
     name: Omit<TSearchResourceOperator, "number">;
     role: Omit<TSearchResourceOperator, "number">;
   }>;
+  includeScopedIdentities?: boolean;
 };
 
 export type TSearchOrgIdentitiesByOrgIdDTO = TSearchIdentitiesDAL & TOrgPermission;

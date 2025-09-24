@@ -397,7 +397,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       orderBy = OrgIdentityOrderBy.Name,
       orderDirection = OrderByDirection.ASC,
       searchFilter,
-      orgId
+      orgId,
+      includeScopedIdentities
     }: TSearchIdentitiesDAL,
     tx?: Knex
   ) => {
@@ -435,6 +436,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
 
       if (limit) {
         void searchQuery.offset(offset).limit(limit);
+      }
+
+      if (!includeScopedIdentities) {
+        void searchQuery.whereNull(`${TableName.Identity}.namespaceId`);
+        void searchQuery.whereNull(`${TableName.Identity}.projectId`);
       }
 
       type TSubquery = Awaited<typeof searchQuery>;
@@ -562,7 +568,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           ]
         );
       }
-
       const docs = await query;
       const formattedDocs = sqlNestRelationships({
         data: docs,
