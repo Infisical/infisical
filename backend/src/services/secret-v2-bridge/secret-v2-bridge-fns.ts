@@ -810,7 +810,7 @@ export const reshapeBridgeSecret = (
   secretKey: secret.key,
   secretPath,
   workspace: projectId,
-  projectId: projectId,
+  projectId,
   environment,
   secretComment: secret.comment || "",
   version: secret.version,

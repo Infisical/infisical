@@ -10,12 +10,12 @@ import {
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { BadRequestError } from "@app/lib/errors";
 
+import { verifyHostInputValidity } from "../../dynamic-secret/dynamic-secret-fns";
 import { DEFAULT_PASSWORD_REQUIREMENTS, generatePassword } from "../shared/utils";
 import {
   TRedisCredentialsRotationGeneratedCredentials,
   TRedisCredentialsRotationWithConnection
 } from "./redis-credentials-rotation-types";
-import { verifyHostInputValidity } from "../../dynamic-secret/dynamic-secret-fns";
 
 const redactPasswords = (e: unknown, credentials: TRedisCredentialsRotationGeneratedCredentials) => {
   const error = e as Error;
