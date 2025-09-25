@@ -47,7 +47,8 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useProject,
-  useProjectPermission
+  useProjectPermission,
+  useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
@@ -252,11 +253,12 @@ export const SecretDetailSidebar = ({
     secretId: secret?.id
   });
 
+  const { subscription } = useSubscription();
   const { data: secretAccessList, isPending } = useGetSecretAccessList({
     projectId: currentProject.id,
     environment,
     secretPath,
-    secretKey
+    secretKey: subscription?.secretAccessInsights ? secretKey : ""
   });
 
   const handleTagSelect = (tag: WsTag) => {
