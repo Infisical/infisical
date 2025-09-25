@@ -61,11 +61,9 @@ apiRequest.interceptors.response.use(
       if (isAuthenticatedRequest && !isRedirecting) {
         // Check if the error indicates token expiration
         const errorMessage = response.data?.message || "";
-        const isTokenExpired =
-          errorMessage.toLowerCase().includes("token") &&
-          (errorMessage.toLowerCase().includes("expired") ||
-            errorMessage.toLowerCase().includes("invalid") ||
-            errorMessage.toLowerCase().includes("unauthorized"));
+        const isTokenExpired = errorMessage
+          .toLowerCase()
+          .includes("your token has expired. please re-authenticate.");
 
         if (isTokenExpired) {
           isRedirecting = true;
