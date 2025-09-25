@@ -559,7 +559,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                       sideOffset={10}
                     >
                       <div className="flex items-center">
-                        <div>{requiredApprover?.email}</div>
+                        <div className="max-w-[200px] truncate">{requiredApprover?.email}</div>
                         <span className="text-red">*</span>
                         {!isOrgMembershipActive && (
                           <FontAwesomeIcon
@@ -630,7 +630,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                       }
                     >
                       <div className="flex items-center">
-                        <span>{reviewer?.email} </span>
+                        <span className="max-w-[200px] truncate">{reviewer?.email}</span>
                         {!isOrgMembershipActive && (
                           <FontAwesomeIcon
                             icon={faUserSlash}
