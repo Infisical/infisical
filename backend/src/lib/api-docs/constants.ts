@@ -1049,7 +1049,7 @@ export const RAW_SECRETS = {
   },
   GET_ACCESS_LIST: {
     secretName: "The name of the secret to get the access list for.",
-    workspaceId: "The ID of the project where the secret is located.",
+    projectId: "The ID of the project where the secret is located.",
     environment: "The slug of the environment where the the secret is located.",
     secretPath: "The folder path where the secret is located."
   }

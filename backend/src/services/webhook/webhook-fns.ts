@@ -94,6 +94,7 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
           event: event.type,
           project: {
             workspaceId: projectId,
+            projectId,
             projectName,
             environment,
             secretPath
@@ -147,6 +148,7 @@ export const getWebhookPayload = (event: TWebhookPayloads) => {
         event: event.type,
         project: {
           workspaceId: projectId,
+          projectId: projectId,
           projectName,
           environment,
           secretPath,

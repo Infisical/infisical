@@ -782,7 +782,7 @@ export const expandSecretReferencesFactory = ({
 };
 
 export const reshapeBridgeSecret = (
-  workspaceId: string,
+  projectId: string,
   environment: string,
   secretPath: string,
   secret: Omit<TSecretsV2, "encryptedValue" | "encryptedComment"> & {
@@ -809,7 +809,8 @@ export const reshapeBridgeSecret = (
 ) => ({
   secretKey: secret.key,
   secretPath,
-  workspace: workspaceId,
+  workspace: projectId,
+  projectId: projectId,
   environment,
   secretComment: secret.comment || "",
   version: secret.version,
