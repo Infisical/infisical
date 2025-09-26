@@ -129,7 +129,7 @@ export const MFASection = () => {
     }
   };
 
-  const handleFormDataChange = (field: string, value: any) => {
+  const handleFormDataChange = async (field: string, value: any) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value
