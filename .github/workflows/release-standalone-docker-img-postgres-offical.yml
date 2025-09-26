@@ -1,12 +1,11 @@
 name: Release standalone docker image
 on:
     push:
-        # tags:
-        #     - "v*.*.*"
-        #     - "v*.*.*-nightly-*"
-        #     - "v*.*.*-nightly-*.*"
-        branches:
-          - "daniel/daniel/auto-trigger-binary-release"
+        tags:
+            - "v*.*.*"
+            - "v*.*.*-nightly-*"
+            - "v*.*.*-nightly-*.*"
+
 
 jobs:
     infisical-tests:
@@ -17,108 +16,108 @@ jobs:
     infisical-standalone:
         name: Build infisical standalone image postgres
         runs-on: ubuntu-latest
-        # needs: [infisical-tests]
+        needs: [infisical-tests]
         steps:
             - name: Extract version from tag
               id: extract_version
               run: echo "::set-output name=version::${GITHUB_REF_NAME}"
-            # - name: ☁️ Checkout source
-            #   uses: actions/checkout@v3
-            #   with:
-            #       fetch-depth: 0
-            # - name: 📦 Install dependencies to test all dependencies
-            #   run: npm ci --only-production
-            #   working-directory: backend
-            # - name: version output
-            #   run: |
-            #       echo "Output Value: ${{ steps.version.outputs.major }}"
-            #       echo "Output Value: ${{ steps.version.outputs.minor }}"
-            #       echo "Output Value: ${{ steps.version.outputs.patch }}"
-            #       echo "Output Value: ${{ steps.version.outputs.version }}"
-            #       echo "Output Value: ${{ steps.version.outputs.version_type }}"
-            #       echo "Output Value: ${{ steps.version.outputs.increment }}"
-            # - name: Save commit hashes for tag
-            #   id: commit
-            #   uses: pr-mpt/actions-commit-hash@v2
-            # - name: 🔧 Set up Docker Buildx
-            #   uses: docker/setup-buildx-action@v2
-            # - name: 🐋 Login to Docker Hub
-            #   uses: docker/login-action@v2
-            #   with:
-            #       username: ${{ secrets.DOCKERHUB_USERNAME }}
-            #       password: ${{ secrets.DOCKERHUB_TOKEN }}
-            # - name: Set up Depot CLI
-            #   uses: depot/setup-action@v1
-            # - name: 📦 Build backend and export to Docker
-            #   uses: depot/build-push-action@v1
-            #   with:
-            #       project: 64mmf0n610
-            #       token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
-            #       push: true
-            #       context: .
-            #       tags: |
-            #           infisical/infisical:latest
-            #           infisical/infisical:${{ steps.commit.outputs.short }}
-            #           infisical/infisical:${{ steps.extract_version.outputs.version }}
-            #       platforms: linux/amd64,linux/arm64
-            #       file: Dockerfile.standalone-infisical
-            #       build-args: |
-            #           POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
-            #           INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
-            #           DD_GIT_REPOSITORY_URL=${{ github.server_url }}/${{ github.repository }}
-            #           DD_GIT_COMMIT_SHA=${{ github.sha }}
+            - name: ☁️ Checkout source
+              uses: actions/checkout@v3
+              with:
+                  fetch-depth: 0
+            - name: 📦 Install dependencies to test all dependencies
+              run: npm ci --only-production
+              working-directory: backend
+            - name: version output
+              run: |
+                  echo "Output Value: ${{ steps.version.outputs.major }}"
+                  echo "Output Value: ${{ steps.version.outputs.minor }}"
+                  echo "Output Value: ${{ steps.version.outputs.patch }}"
+                  echo "Output Value: ${{ steps.version.outputs.version }}"
+                  echo "Output Value: ${{ steps.version.outputs.version_type }}"
+                  echo "Output Value: ${{ steps.version.outputs.increment }}"
+            - name: Save commit hashes for tag
+              id: commit
+              uses: pr-mpt/actions-commit-hash@v2
+            - name: 🔧 Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+            - name: 🐋 Login to Docker Hub
+              uses: docker/login-action@v2
+              with:
+                  username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  password: ${{ secrets.DOCKERHUB_TOKEN }}
+            - name: Set up Depot CLI
+              uses: depot/setup-action@v1
+            - name: 📦 Build backend and export to Docker
+              uses: depot/build-push-action@v1
+              with:
+                  project: 64mmf0n610
+                  token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+                  push: true
+                  context: .
+                  tags: |
+                      infisical/infisical:latest
+                      infisical/infisical:${{ steps.commit.outputs.short }}
+                      infisical/infisical:${{ steps.extract_version.outputs.version }}
+                  platforms: linux/amd64,linux/arm64
+                  file: Dockerfile.standalone-infisical
+                  build-args: |
+                      POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+                      INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
+                      DD_GIT_REPOSITORY_URL=${{ github.server_url }}/${{ github.repository }}
+                      DD_GIT_COMMIT_SHA=${{ github.sha }}
 
     infisical-fips-standalone:
         name: Build infisical standalone image postgres
         runs-on: ubuntu-latest
-        # needs: [infisical-tests]
+        needs: [infisical-tests]
         steps:
             - name: Extract version from tag
               id: extract_version
               run: echo "::set-output name=version::${GITHUB_REF_NAME}"
-            # - name: ☁️ Checkout source
-            #   uses: actions/checkout@v3
-            #   with:
-            #       fetch-depth: 0
-            # - name: 📦 Install dependencies to test all dependencies
-            #   run: npm ci --only-production
-            #   working-directory: backend
-            # - name: version output
-            #   run: |
-            #       echo "Output Value: ${{ steps.version.outputs.major }}"
-            #       echo "Output Value: ${{ steps.version.outputs.minor }}"
-            #       echo "Output Value: ${{ steps.version.outputs.patch }}"
-            #       echo "Output Value: ${{ steps.version.outputs.version }}"
-            #       echo "Output Value: ${{ steps.version.outputs.version_type }}"
-            #       echo "Output Value: ${{ steps.version.outputs.increment }}"
-            # - name: Save commit hashes for tag
-            #   id: commit
-            #   uses: pr-mpt/actions-commit-hash@v2
-            # - name: 🔧 Set up Docker Buildx
-            #   uses: docker/setup-buildx-action@v2
-            # - name: 🐋 Login to Docker Hub
-            #   uses: docker/login-action@v2
-            #   with:
-            #       username: ${{ secrets.DOCKERHUB_USERNAME }}
-            #       password: ${{ secrets.DOCKERHUB_TOKEN }}
-            # - name: Set up Depot CLI
-            #   uses: depot/setup-action@v1
-            # - name: 📦 Build backend and export to Docker
-            #   uses: depot/build-push-action@v1
-            #   with:
-            #       project: 64mmf0n610
-            #       token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
-            #       push: true
-            #       context: .
-            #       tags: |
-            #           infisical/infisical-fips:latest
-            #           infisical/infisical-fips:${{ steps.commit.outputs.short }}
-            #           infisical/infisical-fips:${{ steps.extract_version.outputs.version }}
-            #       platforms: linux/amd64,linux/arm64
-            #       file: Dockerfile.fips.standalone-infisical
-            #       build-args: |
-            #           POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
-            #           INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
+            - name: ☁️ Checkout source
+              uses: actions/checkout@v3
+              with:
+                  fetch-depth: 0
+            - name: 📦 Install dependencies to test all dependencies
+              run: npm ci --only-production
+              working-directory: backend
+            - name: version output
+              run: |
+                  echo "Output Value: ${{ steps.version.outputs.major }}"
+                  echo "Output Value: ${{ steps.version.outputs.minor }}"
+                  echo "Output Value: ${{ steps.version.outputs.patch }}"
+                  echo "Output Value: ${{ steps.version.outputs.version }}"
+                  echo "Output Value: ${{ steps.version.outputs.version_type }}"
+                  echo "Output Value: ${{ steps.version.outputs.increment }}"
+            - name: Save commit hashes for tag
+              id: commit
+              uses: pr-mpt/actions-commit-hash@v2
+            - name: 🔧 Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+            - name: 🐋 Login to Docker Hub
+              uses: docker/login-action@v2
+              with:
+                  username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  password: ${{ secrets.DOCKERHUB_TOKEN }}
+            - name: Set up Depot CLI
+              uses: depot/setup-action@v1
+            - name: 📦 Build backend and export to Docker
+              uses: depot/build-push-action@v1
+              with:
+                  project: 64mmf0n610
+                  token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+                  push: true
+                  context: .
+                  tags: |
+                      infisical/infisical-fips:latest
+                      infisical/infisical-fips:${{ steps.commit.outputs.short }}
+                      infisical/infisical-fips:${{ steps.extract_version.outputs.version }}
+                  platforms: linux/amd64,linux/arm64
+                  file: Dockerfile.fips.standalone-infisical
+                  build-args: |
+                      POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+                      INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
     trigger-binary-release:
       runs-on: ubuntu-latest
       needs: [infisical-standalone, infisical-fips-standalone]
