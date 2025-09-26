@@ -5,6 +5,8 @@ on:
     types: [opened, synchronize]
     paths:
       - "backend/upgrade-path.yaml"
+      - "backend/scripts/validate-upgrade-path-file.ts"
+      - "backend/src/services/upgrade-path/upgrade-path-schemas.ts"
 
   workflow_call:
 
@@ -12,170 +14,26 @@ jobs:
   validate-upgrade-path:
     name: Validate upgrade-path.yaml
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
 
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
-      - name: Check for changes in upgrade-path.yaml
-        id: check-changes
-        run: |
-          # For local testing with act, always run validation
-          if [ "${ACT:-false}" = "true" ]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-            echo "Running validation (local act mode)"
-          else
-            # Check if upgrade-path.yaml was modified in this PR
-            if git diff --name-only HEAD^ HEAD | grep -q "backend/upgrade-path.yaml"; then
-              echo "changed=true" >> $GITHUB_OUTPUT
-              echo "Changes detected in backend/upgrade-path.yaml"
-            else
-              echo "changed=false" >> $GITHUB_OUTPUT
-              echo "No changes detected in backend/upgrade-path.yaml"
-            fi
-          fi
-
-      - name: Setup Node.js for YAML validation
-        if: steps.check-changes.outputs.changed == 'true'
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'backend/package-lock.json'
 
-      - name: Create lightweight validation script
-        if: steps.check-changes.outputs.changed == 'true'
+      - name: Install minimal dependencies
+        working-directory: backend
         run: |
-          # Create a temporary package.json with only the required dependencies
-          cat > package.json << 'EOF'
-          {
-            "name": "upgrade-path-validator",
-            "version": "1.0.0",
-            "dependencies": {
-              "js-yaml": "^4.1.0",
-              "zod": "^3.22.0"
-            }
-          }
-          EOF
-
-      - name: Install minimal validation dependencies
-        if: steps.check-changes.outputs.changed == 'true'
-        run: |
-          npm install --no-package-lock --production
+          npm install --no-package-lock js-yaml@^4.1.0 zod@^3.22.0 tsx@^4.0.0 @types/js-yaml@^4.0.0 re2@^1.20.0
 
       - name: Validate upgrade-path.yaml format
-        if: steps.check-changes.outputs.changed == 'true'
-        run: |
-          echo "Running upgrade-path.yaml validation..."
-          node << 'EOF'
-          const fs = require('fs');
-          const yaml = require('js-yaml');
-          const { z } = require('zod');
-
-          // Validation schemas matching backend service
-          const versionSchema = z
-            .string()
-            .min(1)
-            .max(50)
-            .regex(/^[a-zA-Z0-9._/-]+$/, "Invalid version format");
-
-          const breakingChangeSchema = z.object({
-            title: z.string().min(1).max(200),
-            description: z.string().min(1).max(1000),
-            action: z.string().min(1).max(500)
-          });
-
-          const versionConfigSchema = z.object({
-            breaking_changes: z.array(breakingChangeSchema).optional(),
-            db_schema_changes: z.string().max(1000).optional(),
-            notes: z.string().max(2000).optional()
-          });
-
-          const upgradePathConfigSchema = z.object({
-            versions: z.record(versionSchema, versionConfigSchema).optional().nullable()
-          });
-
-          function validateUpgradePathConfig() {
-            try {
-              const yamlPath = './backend/upgrade-path.yaml';
-
-              if (!fs.existsSync(yamlPath)) {
-                console.log('Warning: No upgrade-path.yaml file found');
-                return true;
-              }
-
-              const yamlContent = fs.readFileSync(yamlPath, 'utf8');
-
-              if (yamlContent.length > 1024 * 1024) {
-                throw new Error('Config file too large (>1MB)');
-              }
-
-              // Parse YAML safely
-              const config = yaml.load(yamlContent, { schema: yaml.FAILSAFE_SCHEMA });
-
-              if (!config) {
-                console.log('Warning: Empty configuration file');
-                return true;
-              }
-
-              // Validate schema
-              const result = upgradePathConfigSchema.safeParse(config);
-
-              if (!result.success) {
-                console.log('Validation failed with the following errors:');
-                result.error.issues.forEach(issue => {
-                  const path = issue.path.length > 0 ? `[${issue.path.join('.')}]` : '';
-                  console.log(`  - ${path}: ${issue.message}`);
-                });
-                return false;
-              }
-
-              const versions = config.versions || {};
-              const versionCount = Object.keys(versions).length;
-
-              if (versionCount === 0) {
-                console.log('Warning: No versions found in the configuration');
-              } else {
-                console.log(`Validated ${versionCount} version configuration(s)`);
-
-                // Check for common version patterns
-                const commonPatterns = [
-                  /^v?\d+\.\d+\.\d+$/,                    // v1.2.3 or 1.2.3
-                  /^v?\d+\.\d+\.\d+\.\d+$/,               // v1.2.3.4 or 1.2.3.4
-                  /^infisical\/v?\d+\.\d+\.\d+$/,          // infisical/v1.2.3
-                  /^infisical\/v?\d+\.\d+\.\d+-\w+$/       // infisical/v1.2.3-postgres
-                ];
-
-                for (const versionKey of Object.keys(versions)) {
-                  const isCommonPattern = commonPatterns.some(pattern => pattern.test(versionKey));
-                  if (!isCommonPattern) {
-                    console.log(`Warning: Version key '${versionKey}' doesn't match common patterns. This may be intentional.`);
-                  }
-                }
-              }
-
-              console.log('upgrade-path.yaml format is valid');
-              return true;
-
-            } catch (error) {
-              console.log(`Validation failed: ${error.message}`);
-              return false;
-            }
-          }
-
-          if (!validateUpgradePathConfig()) {
-            process.exit(1);
-          }
-          EOF
-
-      - name: Validation completed
-        if: steps.check-changes.outputs.changed == 'true'
-        run: |
-          echo "upgrade-path.yaml validation passed!"
-          echo "The configuration file follows the expected format and all version entries are valid."
-
-      - name: Skipping validation
-        if: steps.check-changes.outputs.changed == 'false'
-        run: |
-          echo "Skipping validation - no changes detected in backend/upgrade-path.yaml"
+        working-directory: backend
+        run: npx tsx ./scripts/validate-upgrade-path-file.ts

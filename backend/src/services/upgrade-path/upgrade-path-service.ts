@@ -9,29 +9,12 @@ import { logger } from "@app/lib/logger";
 
 import { fetchReleases } from "./github-client";
 import { BreakingChange, FormattedRelease, UpgradePathConfig, UpgradePathResult, VersionConfig } from "./types";
+import { versionConfigSchema, versionSchema } from "./upgrade-path-schemas";
 
 export type TUpgradePathServiceFactory = {
   keyStore: TKeyStoreFactory;
 };
 export type TUpgradePathService = ReturnType<typeof upgradePathServiceFactory>;
-
-const versionSchema = z
-  .string()
-  .min(1)
-  .max(50)
-  .regex(new RE2(/^[a-zA-Z0-9._/-]+$/), "Invalid version format");
-
-const breakingChangeSchema = z.object({
-  title: z.string().min(1).max(200),
-  description: z.string().min(1).max(1000),
-  action: z.string().min(1).max(500)
-});
-
-const versionConfigSchema = z.object({
-  breaking_changes: z.array(breakingChangeSchema).optional(),
-  db_schema_changes: z.string().max(1000).optional(),
-  notes: z.string().max(2000).optional()
-});
 
 interface CalculateUpgradePathParams {
   fromVersion: string;

@@ -1,15 +1,9 @@
-import RE2 from "re2";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { publicEndpointLimit } from "@app/server/config/rateLimiter";
-
-const versionSchema = z
-  .string()
-  .min(1)
-  .max(50)
-  .regex(new RE2(/^[a-zA-Z0-9._/-]+$/), "Invalid version format");
+import { versionSchema } from "@app/services/upgrade-path/upgrade-path-schemas";
 
 export const registerUpgradePathRouter = async (server: FastifyZodProvider) => {
   server.route({
