@@ -476,15 +476,15 @@ export const MFASection = () => {
                   </div>
 
                   {shouldShowRecoveryCodes && (
-                    <div className="mt-6 grid w-full max-w-lg grid-cols-5 gap-3">
-                      {totpConfiguration.recoveryCodes.map((code) => (
-                        <code
-                          key={code}
-                          className="block rounded bg-mineshaft-700/70 px-3 py-2 text-center font-mono text-sm text-mineshaft-100"
-                        >
-                          {code}
-                        </code>
-                      ))}
+                    <div className="w-fit rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4 pr-8">
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-2 font-mono text-sm">
+                        {totpConfiguration.recoveryCodes.map((code, index) => (
+                          <div key={code} className="flex items-center text-mineshaft-200">
+                            <span className="w-8 text-right text-mineshaft-400">{index + 1}.</span>
+                            <span className="pl-2">{code}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
