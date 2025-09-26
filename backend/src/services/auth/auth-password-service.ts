@@ -6,6 +6,7 @@ import { OrgServiceActor } from "@app/lib/types";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
+import { TOrgMembershipDALFactory } from "../org-membership/org-membership-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TTotpConfigDALFactory } from "../totp/totp-config-dal";
 import { TUserDALFactory } from "../user/user-dal";
@@ -22,6 +23,7 @@ import { ActorType, AuthMethod, AuthTokenType } from "./auth-type";
 type TAuthPasswordServiceFactoryDep = {
   authDAL: TAuthDALFactory;
   userDAL: TUserDALFactory;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find">;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
   totpConfigDAL: Pick<TTotpConfigDALFactory, "delete">;
@@ -31,6 +33,7 @@ export type TAuthPasswordFactory = ReturnType<typeof authPaswordServiceFactory>;
 export const authPaswordServiceFactory = ({
   authDAL,
   userDAL,
+  orgMembershipDAL,
   tokenService,
   smtpService,
   totpConfigDAL
@@ -47,21 +50,46 @@ export const authPaswordServiceFactory = ({
 
       if (user && user.isAccepted) {
         const cfg = getConfig();
-        const token = await tokenService.createTokenForUser({
-          type: TokenType.TOKEN_EMAIL_PASSWORD_RESET,
-          userId: user.id
-        });
 
-        await smtpService.sendMail({
-          template: SmtpTemplates.ResetPassword,
-          recipients: [email],
-          subjectLine: "Infisical password reset",
-          substitutions: {
+        const hasEmailAuth = user.authMethods?.includes(AuthMethod.EMAIL);
+
+        if (!hasEmailAuth) {
+          const orgMemberships = await orgMembershipDAL.find({ userId: user.id });
+          const lastLoginMethod =
+            orgMemberships.length > 0
+              ? orgMemberships.find((membership) => membership.lastLoginAuthMethod)?.lastLoginAuthMethod || null
+              : null;
+
+          const substitutions = {
             email,
-            token,
-            callback_url: cfg.SITE_URL ? `${cfg.SITE_URL}/password-reset` : ""
-          }
-        });
+            lastLoginMethod,
+            isCloud: cfg.isCloud,
+            siteUrl: cfg.SITE_URL || ""
+          };
+
+          await smtpService.sendMail({
+            template: SmtpTemplates.OAuthPasswordReset,
+            recipients: [email],
+            subjectLine: "Password reset not available",
+            substitutions
+          });
+        } else {
+          const token = await tokenService.createTokenForUser({
+            type: TokenType.TOKEN_EMAIL_PASSWORD_RESET,
+            userId: user.id
+          });
+
+          await smtpService.sendMail({
+            template: SmtpTemplates.ResetPassword,
+            recipients: [email],
+            subjectLine: "Infisical password reset",
+            substitutions: {
+              email,
+              token,
+              callback_url: cfg.SITE_URL ? `${cfg.SITE_URL}/password-reset` : ""
+            }
+          });
+        }
       }
     };
 
