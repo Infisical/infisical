@@ -10,7 +10,7 @@ on:
 
 jobs:
   validate-upgrade-path:
-    name: Validate upgrade-path.yaml format
+    name: Validate upgrade-path.yaml
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -38,204 +38,135 @@ jobs:
             fi
           fi
 
-      - name: Setup Python for YAML validation
+      - name: Setup Node.js for YAML validation
+        if: steps.check-changes.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Create lightweight validation script
         if: steps.check-changes.outputs.changed == 'true'
         run: |
-          # Use system python3 and install PyYAML
-          python3 --version || echo "Python3 not found"
-          python3 -m pip install --user PyYAML || pip3 install PyYAML || echo "PyYAML installation failed"
+          # Create a temporary package.json with only the required dependencies
+          cat > package.json << 'EOF'
+          {
+            "name": "upgrade-path-validator",
+            "version": "1.0.0",
+            "dependencies": {
+              "js-yaml": "^4.1.0",
+              "zod": "^3.22.0"
+            }
+          }
+          EOF
+
+      - name: Install minimal validation dependencies
+        if: steps.check-changes.outputs.changed == 'true'
+        run: |
+          npm install --no-package-lock --production
 
       - name: Validate upgrade-path.yaml format
         if: steps.check-changes.outputs.changed == 'true'
         run: |
           echo "Running upgrade-path.yaml validation..."
+          node << 'EOF'
+          const fs = require('fs');
+          const yaml = require('js-yaml');
+          const { z } = require('zod');
 
-          # Debug: Check if file exists
-          ls -la backend/upgrade-path.yaml || echo "File not found"
+          // Validation schemas matching backend service
+          const versionSchema = z
+            .string()
+            .min(1)
+            .max(50)
+            .regex(/^[a-zA-Z0-9._/-]+$/, "Invalid version format");
 
-          # Debug: Show last few lines
-          echo "Last 5 lines of file:"
-          tail -5 backend/upgrade-path.yaml || echo "Cannot read file"
+          const breakingChangeSchema = z.object({
+            title: z.string().min(1).max(200),
+            description: z.string().min(1).max(1000),
+            action: z.string().min(1).max(500)
+          });
 
-          echo "Starting Python validation..."
+          const versionConfigSchema = z.object({
+            breaking_changes: z.array(breakingChangeSchema).optional(),
+            db_schema_changes: z.string().max(1000).optional(),
+            notes: z.string().max(2000).optional()
+          });
 
-          python3 << 'EOF'
-          import yaml
-          import re
-          import sys
+          const upgradePathConfigSchema = z.object({
+            versions: z.record(versionSchema, versionConfigSchema).optional().nullable()
+          });
 
-          def validate_upgrade_path():
-              try:
-                  print("Reading upgrade-path.yaml...")
-                  with open('backend/upgrade-path.yaml', 'r') as file:
-                      raw_lines = file.readlines()
+          function validateUpgradePathConfig() {
+            try {
+              const yamlPath = './backend/upgrade-path.yaml';
 
-                  # Remove comments and empty lines more thoroughly
-                  content_lines = []
-                  for line in raw_lines:
-                      # Remove inline comments but preserve quoted strings
-                      stripped = line.strip()
-                      if not stripped or stripped.startswith("#"):
-                          # Skip empty lines and full comment lines
-                          continue
+              if (!fs.existsSync(yamlPath)) {
+                console.log('Warning: No upgrade-path.yaml file found');
+                return true;
+              }
 
-                      # Handle inline comments - scan character by character to respect quotes
-                      if "#" in line:
-                          result = ""
-                          in_single_quote = False
-                          in_double_quote = False
-                          i = 0
-                          while i < len(line):
-                              char = line[i]
-                              if char == "'" and not in_double_quote:
-                                  in_single_quote = not in_single_quote
-                              elif char == '"' and not in_single_quote:
-                                  in_double_quote = not in_double_quote
-                              elif char == "#" and not in_single_quote and not in_double_quote:
-                                  # Found unquoted #, rest is comment
-                                  break
-                              result += char
-                              i += 1
-                          line = result
+              const yamlContent = fs.readFileSync(yamlPath, 'utf8');
 
-                      # Only add non-empty lines after comment removal
-                      if line.strip():
-                          content_lines.append(line.rstrip() + "\n")
+              if (yamlContent.length > 1024 * 1024) {
+                throw new Error('Config file too large (>1MB)');
+              }
 
-                  content = "".join(content_lines)
+              // Parse YAML safely
+              const config = yaml.load(yamlContent, { schema: yaml.FAILSAFE_SCHEMA });
 
-                  if not content.strip():
-                      raise ValueError("File is empty")
+              if (!config) {
+                console.log('Warning: Empty configuration file');
+                return true;
+              }
 
-                  if len(content) > 1024 * 1024:
-                      raise ValueError("File is too large (>1MB)")
+              // Validate schema
+              const result = upgradePathConfigSchema.safeParse(config);
 
-                  print("Parsing YAML content...")
-                  try:
-                      config = yaml.safe_load(content)
-                      print("YAML parsed successfully")
-                  except yaml.YAMLError as e:
-                      print(f"YAML parsing failed: {e}")
-                      raise ValueError(f"Invalid YAML syntax: {e}")
+              if (!result.success) {
+                console.log('Validation failed with the following errors:');
+                result.error.issues.forEach(issue => {
+                  const path = issue.path.length > 0 ? `[${issue.path.join('.')}]` : '';
+                  console.log(`  - ${path}: ${issue.message}`);
+                });
+                return false;
+              }
 
-                  if not isinstance(config, dict):
-                      raise ValueError("Root level must be an object")
+              const versions = config.versions || {};
+              const versionCount = Object.keys(versions).length;
 
-                  print("YAML syntax is valid")
-                  print("Validating schema structure...")
+              if (versionCount === 0) {
+                console.log('Warning: No versions found in the configuration');
+              } else {
+                console.log(`Validated ${versionCount} version configuration(s)`);
 
-                  if 'versions' not in config:
-                      print("Warning: No versions found in the configuration")
-                      return True
+                // Check for common version patterns
+                const commonPatterns = [
+                  /^v?\d+\.\d+\.\d+$/,                    // v1.2.3 or 1.2.3
+                  /^v?\d+\.\d+\.\d+\.\d+$/,               // v1.2.3.4 or 1.2.3.4
+                  /^infisical\/v?\d+\.\d+\.\d+$/,          // infisical/v1.2.3
+                  /^infisical\/v?\d+\.\d+\.\d+-\w+$/       // infisical/v1.2.3-postgres
+                ];
 
-                  versions = config['versions']
-                  if versions is None:
-                      # Empty versions section is valid
-                      print("Empty versions section found - this is valid")
-                      return True
-                  if not isinstance(versions, dict):
-                      raise ValueError("'versions' must be an object")
+                for (const versionKey of Object.keys(versions)) {
+                  const isCommonPattern = commonPatterns.some(pattern => pattern.test(versionKey));
+                  if (!isCommonPattern) {
+                    console.log(`Warning: Version key '${versionKey}' doesn't match common patterns. This may be intentional.`);
+                  }
+                }
+              }
 
-                  print(f"Found {len(versions)} version(s) to validate")
+              console.log('upgrade-path.yaml format is valid');
+              return true;
 
-                  # Version key pattern validation
-                  version_pattern = re.compile(r'^[a-zA-Z0-9._/-]+$')
-                  common_patterns = [
-                      re.compile(r'^v?\d+\.\d+\.\d+$'),                    # v1.2.3 or 1.2.3
-                      re.compile(r'^v?\d+\.\d+\.\d+\.\d+$'),               # v1.2.3.4 or 1.2.3.4
-                      re.compile(r'^infisical/v?\d+\.\d+\.\d+$'),          # infisical/v1.2.3
-                      re.compile(r'^infisical/v?\d+\.\d+\.\d+-\w+$')       # infisical/v1.2.3-postgres
-                  ]
+            } catch (error) {
+              console.log(`Validation failed: ${error.message}`);
+              return false;
+            }
+          }
 
-                  errors = []
-
-                  for version_key, version_config in versions.items():
-                      print(f"Validating version key: {version_key}")
-
-                      # Validate version key format
-                      if not version_pattern.match(version_key):
-                          errors.append(f"Invalid version key '{version_key}': contains invalid characters")
-                          continue
-
-                      if len(version_key) > 50:
-                          errors.append(f"Version key '{version_key}' is too long (max 50 characters)")
-                          continue
-
-                      if not isinstance(version_config, dict):
-                          errors.append(f"Version '{version_key}' configuration must be an object")
-                          continue
-
-                      # Validate breaking_changes
-                      if 'breaking_changes' in version_config:
-                          breaking_changes = version_config['breaking_changes']
-                          if not isinstance(breaking_changes, list):
-                              errors.append(f"Version '{version_key}': breaking_changes must be a list")
-                          elif len(breaking_changes) == 0:
-                              errors.append(f"Version '{version_key}': breaking_changes is empty (remove field or add items)")
-                          else:
-                              for i, change in enumerate(breaking_changes):
-                                  if not isinstance(change, dict):
-                                      errors.append(f"Version '{version_key}': breaking_changes[{i}] must be an object")
-                                      continue
-
-                                  # Validate required fields
-                                  for field in ['title', 'description', 'action']:
-                                      if field not in change:
-                                          errors.append(f"Version '{version_key}': breaking_changes[{i}] missing '{field}'")
-                                      elif not isinstance(change[field], str):
-                                          errors.append(f"Version '{version_key}': breaking_changes[{i}].{field} must be string")
-                                      elif not change[field].strip():
-                                          errors.append(f"Version '{version_key}': breaking_changes[{i}].{field} cannot be empty")
-                                      elif field == 'title' and len(change[field]) > 200:
-                                          errors.append(f"Version '{version_key}': breaking_changes[{i}].title too long (max 200)")
-                                      elif field == 'description' and len(change[field]) > 1000:
-                                          errors.append(f"Version '{version_key}': breaking_changes[{i}].description too long (max 1000)")
-                                      elif field == 'action' and len(change[field]) > 500:
-                                          errors.append(f"Version '{version_key}': breaking_changes[{i}].action too long (max 500)")
-
-                      # Validate db_schema_changes
-                      if 'db_schema_changes' in version_config:
-                          db_changes = version_config['db_schema_changes']
-                          if not isinstance(db_changes, str):
-                              errors.append(f"Version '{version_key}': db_schema_changes must be string")
-                          elif db_changes == "":
-                              errors.append(f"Version '{version_key}': db_schema_changes is empty (remove field or add content)")
-                          elif len(db_changes) > 1000:
-                              errors.append(f"Version '{version_key}': db_schema_changes too long (max 1000)")
-
-                      # Validate notes
-                      if 'notes' in version_config:
-                          notes = version_config['notes']
-                          if not isinstance(notes, str):
-                              errors.append(f"Version '{version_key}': notes must be string")
-                          elif notes == "":
-                              errors.append(f"Version '{version_key}': notes is empty (remove field or add content)")
-                          elif len(notes) > 2000:
-                              errors.append(f"Version '{version_key}': notes too long (max 2000)")
-
-                      # Check if version follows common patterns
-                      is_common_pattern = any(pattern.match(version_key) for pattern in common_patterns)
-                      if not is_common_pattern:
-                          print(f"Warning: Version key '{version_key}' doesn't match common patterns. This may be intentional.")
-
-                      print(f"Version '{version_key}' is valid")
-
-                  if errors:
-                      print("Validation failed with the following errors:")
-                      for error in errors:
-                          print(f"  - {error}")
-                      return False
-
-                  print("All validations passed!")
-                  print("upgrade-path.yaml format is valid")
-                  return True
-
-              except Exception as e:
-                  print(f"Validation failed: {e}")
-                  return False
-
-          if not validate_upgrade_path():
-              sys.exit(1)
+          if (!validateUpgradePathConfig()) {
+            process.exit(1);
+          }
           EOF
 
       - name: Validation completed

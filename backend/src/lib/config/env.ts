@@ -129,6 +129,8 @@ const envSchema = z
     POSTHOG_HOST: zpStr(z.string().optional().default("https://app.posthog.com")),
     POSTHOG_PROJECT_API_KEY: zpStr(z.string().optional().default("phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE")),
     LOOPS_API_KEY: zpStr(z.string().optional()),
+    // GitHub API token for upgrade path tool
+    GITHUB_API_TOKEN: zpStr(z.string().optional()),
     // jwt options
     AUTH_SECRET: zpStr(z.string()).default(process.env.JWT_AUTH_SECRET), // for those still using old JWT_AUTH_SECRET
     JWT_AUTH_LIFETIME: zpStr(z.string().default("10d")),

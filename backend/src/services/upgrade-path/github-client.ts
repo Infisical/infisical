@@ -1,6 +1,8 @@
 /* eslint-disable no-await-in-loop */
 import RE2 from "re2";
 
+import { getConfig } from "@app/lib/config/env";
+
 import { FormattedRelease, GitHubApiError, GitHubRelease } from "./types";
 
 interface GitHubClientConfig {
@@ -20,7 +22,7 @@ interface RateLimitInfo {
 }
 
 const getDefaultConfig = (): GitHubClientConfig => ({
-  token: process.env.GITHUB_TOKEN,
+  token: getConfig().GITHUB_API_TOKEN,
   timeout: 30000,
   maxRetries: 3,
   retryDelay: 1000,
@@ -56,7 +58,15 @@ const isMainInfisicalRelease = (tagName: string): boolean => {
   ) {
     return false;
   }
-  return tagName.startsWith("v") || tagName.startsWith("infisical/v") || new RE2(/^\d+\.\d+\.\d+/).test(tagName);
+
+  const patterns = [
+    new RE2(/^v\d+\.\d+\.\d+/),
+    new RE2(/^\d+\.\d+\.\d+/),
+    new RE2(/^infisical\/v?\d+\.\d+\.\d+/),
+    new RE2(/^infisical\/v?\d+\.\d+\.\d+[-\w]*/)
+  ];
+
+  return patterns.some((pattern) => pattern.test(tagName));
 };
 
 const normalizeVersion = (tagName: string): string => {
@@ -70,6 +80,39 @@ const normalizeVersion = (tagName: string): string => {
     return withoutPrefix.replace(new RE2(/-[a-zA-Z]+$/), "");
   }
   return tagName.replace(new RE2(/-[a-zA-Z]+$/), "");
+};
+
+const compareVersions = (v1: string, v2: string): number => {
+  const normalize = (v: string) => {
+    const versionMatch = v.match(new RE2(/(\d+\.\d+\.\d+(?:\.\d+)?)/));
+    if (versionMatch) {
+      return versionMatch[1];
+    }
+    if (v.startsWith("infisical/")) {
+      return v.replace(new RE2(/^infisical\/v?/), "").replace(new RE2(/-[a-zA-Z]+$/), "");
+    }
+    return v.replace(new RE2(/^v/), "").replace(new RE2(/-[a-zA-Z]+$/), "");
+  };
+
+  const clean1 = normalize(v1);
+  const clean2 = normalize(v2);
+
+  const parts1 = clean1.split(".").map(Number);
+  const parts2 = clean2.split(".").map(Number);
+
+  const maxLength = Math.max(parts1.length, parts2.length);
+  while (parts1.length < maxLength) parts1.push(0);
+  while (parts2.length < maxLength) parts2.push(0);
+
+  for (let i = 0; i < maxLength; i += 1) {
+    if (parts1[i] > parts2[i]) return 1;
+    if (parts1[i] < parts2[i]) return -1;
+  }
+  return 0;
+};
+
+const isVersionAtLeastMinimum = (tagName: string, minimumVersion = "0.147.0"): boolean => {
+  return compareVersions(tagName, minimumVersion) >= 0;
 };
 
 const makeRequest = async <T>(
@@ -142,10 +185,11 @@ export const fetchReleases = async (includePrerelease = false): Promise<Formatte
   const allReleases: GitHubRelease[] = [];
   let page = 1;
   let hasMorePages = true;
+  let reachedMinimumVersion = false;
 
   const maxConcurrentRequests = Math.min(3, config.maxPagesPerRequest);
 
-  while (hasMorePages && page <= config.maxPagesPerRequest) {
+  while (hasMorePages && page <= config.maxPagesPerRequest && !reachedMinimumVersion) {
     const requests: Promise<{ data: GitHubRelease[]; rateLimit: RateLimitInfo }>[] = [];
 
     for (let i = 0; i < maxConcurrentRequests && page <= config.maxPagesPerRequest; i += 1, page += 1) {
@@ -160,7 +204,16 @@ export const fetchReleases = async (includePrerelease = false): Promise<Formatte
       if (result.status === "fulfilled") {
         const { data } = result.value;
         if (data.length > 0) {
-          allReleases.push(...data);
+          for (const release of data) {
+            if (!release.draft && isMainInfisicalRelease(release.tag_name)) {
+              if (isVersionAtLeastMinimum(release.tag_name)) {
+                allReleases.push(release);
+              } else {
+                reachedMinimumVersion = true;
+                break;
+              }
+            }
+          }
           hasData = true;
         }
       }
@@ -172,8 +225,6 @@ export const fetchReleases = async (includePrerelease = false): Promise<Formatte
   }
 
   const formattedReleases = allReleases
-    .filter((release) => !release.draft)
-    .filter((release) => isMainInfisicalRelease(release.tag_name))
     .map(
       (release): FormattedRelease => ({
         tagName: release.tag_name,

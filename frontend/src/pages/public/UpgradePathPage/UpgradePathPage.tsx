@@ -328,9 +328,48 @@ export const UpgradePathPage = () => {
                   </div>
 
                   <div className="space-y-6">
-                    {upgradeResult.path.map((step, index) => {
+                    {(() => {
+                      const pathSteps = upgradeResult.path.map((step) => ({
+                        ...step,
+                        hasGithubRelease: true
+                      }));
+
+                      const breakingChangeSteps = upgradeResult.breakingChanges
+                        .filter(
+                          (bc) =>
+                            !upgradeResult.path.some((step) => {
+                              const normalizeVersion = (v: string) =>
+                                v.replace(/^(infisical\/)?v?/, "").replace(/-[a-zA-Z]+$/, "");
+                              return (
+                                normalizeVersion(step.version) === normalizeVersion(bc.version)
+                              );
+                            })
+                        )
+                        .map((bc) => ({
+                          version: bc.version,
+                          name: bc.version,
+                          publishedAt: new Date().toISOString(),
+                          prerelease: false,
+                          hasGithubRelease: false
+                        }));
+
+                      const allSteps = [...pathSteps, ...breakingChangeSteps];
+
+                      allSteps.sort((a, b) => {
+                        const normalizeForSort = (v: string) => {
+                          const cleaned = v
+                            .replace(/^(infisical\/)?v?/, "")
+                            .replace(/-[a-zA-Z]+$/, "");
+                          const parts = cleaned.split(".").map(Number);
+                          return parts[0] * 1000000 + (parts[1] || 0) * 1000 + (parts[2] || 0);
+                        };
+                        return normalizeForSort(a.version) - normalizeForSort(b.version);
+                      });
+
+                      return allSteps;
+                    })().map((step, index, allSteps) => {
                       const isFirst = index === 0;
-                      const isLast = index === upgradeResult.path.length - 1;
+                      const isLast = index === allSteps.length - 1;
 
                       const versionChanges = upgradeResult.breakingChanges.find((bc) => {
                         if (bc.version === step.version) return true;
@@ -412,15 +451,21 @@ export const UpgradePathPage = () => {
                                   Target Version
                                 </span>
                               )}
-                              <a
-                                href={`https://github.com/Infisical/infisical/releases/tag/${step.version}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center space-x-1 text-xs text-primary transition-colors hover:text-primary/80"
-                              >
-                                <FontAwesomeIcon icon={faExternalLink} className="h-3 w-3" />
-                                <span>View Changelog</span>
-                              </a>
+                              {step.hasGithubRelease ? (
+                                <a
+                                  href={`https://github.com/Infisical/infisical/releases/tag/${step.version}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center space-x-1 text-xs text-primary transition-colors hover:text-primary/80"
+                                >
+                                  <FontAwesomeIcon icon={faExternalLink} className="h-3 w-3" />
+                                  <span>View Changelog</span>
+                                </a>
+                              ) : (
+                                <span className="inline-flex items-center space-x-1 text-xs text-bunker-400">
+                                  <span>No GitHub Release</span>
+                                </span>
+                              )}
                             </div>
 
                             {/* Version Notes */}

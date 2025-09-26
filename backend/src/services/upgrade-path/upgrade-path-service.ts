@@ -120,35 +120,6 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
     return version.replace(new RE2(/^v/), "").replace(new RE2(/-[a-zA-Z]+$/), "");
   };
 
-  const findBreakingChangesForVersion = (
-    version: FormattedRelease,
-    config: Record<string, z.infer<typeof versionConfigSchema>>
-  ): BreakingChange[] => {
-    // Check multiple key variations for breaking changes configuration
-    const versionNumber = normalizeVersion(version.tagName);
-    const cleanVersionNumber = versionNumber.replace(new RE2(/^v/), "");
-
-    const possibleKeys = [
-      version.tagName,
-      version.normalizedTagName,
-      versionNumber,
-      `v${cleanVersionNumber}`,
-      cleanVersionNumber,
-      version.tagName.replace(new RE2(/^infisical\//), ""),
-      version.tagName.replace(new RE2(/^infisical\/v?/), "").replace(new RE2(/-[a-zA-Z]+$/), ""),
-      `v${cleanVersionNumber}`,
-      cleanVersionNumber
-    ];
-
-    for (const key of possibleKeys) {
-      const versionConfig = config[key];
-      if (versionConfig?.breaking_changes?.length) {
-        return versionConfig.breaking_changes as BreakingChange[];
-      }
-    }
-    return [];
-  };
-
   const validateParams = (params: CalculateUpgradePathParams) => {
     const { fromVersion, toVersion } = params;
 
@@ -182,59 +153,69 @@ export const upgradePathServiceFactory = ({ keyStore }: TUpgradePathServiceFacto
     const cleanFrom = normalizeVersion(fromVersion);
     const cleanTo = normalizeVersion(toVersion);
 
+    const compareVersions = (v1: string, v2: string): number => {
+      const normalize = (v: string) => normalizeVersion(v);
+      const clean1 = normalize(v1);
+      const clean2 = normalize(v2);
+
+      const parts1 = clean1.split(".").map(Number);
+      const parts2 = clean2.split(".").map(Number);
+
+      const maxLength = Math.max(parts1.length, parts2.length);
+      while (parts1.length < maxLength) parts1.push(0);
+      while (parts2.length < maxLength) parts2.push(0);
+
+      for (let i = 0; i < maxLength; i += 1) {
+        if (parts1[i] > parts2[i]) return 1;
+        if (parts1[i] < parts2[i]) return -1;
+      }
+      return 0;
+    };
+
+    if (compareVersions(cleanFrom, cleanTo) >= 0) {
+      throw new Error("fromVersion must be older than toVersion");
+    }
+
     const fromIdx = releases.findIndex((r) => normalizeVersion(r.normalizedTagName) === cleanFrom);
     const toIdx = releases.findIndex((r) => normalizeVersion(r.normalizedTagName) === cleanTo);
 
-    if (fromIdx === -1) throw new Error(`Version ${fromVersion} not found`);
-    if (toIdx === -1) throw new Error(`Version ${toVersion} not found`);
-    if (fromIdx <= toIdx) throw new Error("Invalid version order");
+    let upgradePath: FormattedRelease[] = [];
+    const filteredPath: FormattedRelease[] = [];
 
-    const upgradePath = releases.slice(toIdx, fromIdx + 1).reverse();
-    const [first, last] = [upgradePath[0], upgradePath[upgradePath.length - 1]];
+    if (fromIdx !== -1 && toIdx !== -1) {
+      if (fromIdx <= toIdx) throw new Error("Invalid version order");
+      upgradePath = releases.slice(toIdx, fromIdx + 1).reverse();
+      const [first, last] = [upgradePath[0], upgradePath[upgradePath.length - 1]];
 
-    // Find all versions with breaking changes in the upgrade path
-    const withBreakingChanges = upgradePath.filter((version) => {
-      const breakingChanges = findBreakingChangesForVersion(version, config);
-      return breakingChanges.length > 0;
-    });
-
-    // Build the filtered path with breaking change versions
-    const filteredPath = [first];
-
-    // Get intermediate versions with breaking changes (excluding first and last)
-    const allIntermediateWithBreaking = withBreakingChanges
-      .filter((v) => v !== first && v !== last)
-      .sort((a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime());
-
-    // Limit intermediate steps to avoid overly complex upgrade paths
-    const maxIntermediateSteps = 8;
-    const intermediate =
-      allIntermediateWithBreaking.length > maxIntermediateSteps
-        ? allIntermediateWithBreaking.slice(-maxIntermediateSteps)
-        : allIntermediateWithBreaking;
-
-    filteredPath.push(...intermediate);
-    if (last !== first) filteredPath.push(last);
+      filteredPath.push(first);
+      if (last !== first) filteredPath.push(last);
+    }
 
     const breakingChanges: Array<{ version: string; changes: BreakingChange[] }> = [];
     const features: Array<{ version: string; name: string; body: string; publishedAt: string }> = [];
     let hasDbMigration = false;
 
-    // Process versions in upgrade path
+    const isVersionInRange = (version: string, fromVer: string, toVer: string): boolean => {
+      const versionComp = compareVersions(version, fromVer);
+      const toVersionComp = compareVersions(version, toVer);
+      return versionComp > 0 && toVersionComp < 0;
+    };
+
+    Object.keys(config).forEach((configVersion) => {
+      const versionConfig = config[configVersion];
+      if (versionConfig?.breaking_changes?.length) {
+        if (isVersionInRange(configVersion, cleanFrom, cleanTo)) {
+          breakingChanges.push({
+            version: configVersion,
+            changes: versionConfig.breaking_changes
+          });
+        }
+      }
+    });
     for (let i = 0; i < upgradePath.length; i += 1) {
       const version = upgradePath[i];
       const isFromVersion = normalizeVersion(version.normalizedTagName) === cleanFrom;
 
-      // Process breaking changes for all versions in the upgrade path
-      const versionBreakingChanges = findBreakingChangesForVersion(version, config);
-      if (versionBreakingChanges.length > 0) {
-        breakingChanges.push({
-          version: version.tagName,
-          changes: versionBreakingChanges
-        });
-      }
-
-      // Process database migrations for intermediate versions only (excluding starting version)
       if (!isFromVersion) {
         const versionNumber = normalizeVersion(version.tagName);
         const possibleKeys = [
