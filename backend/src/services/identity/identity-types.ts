@@ -7,6 +7,7 @@ export type TCreateIdentityDTO = {
   name: string;
   hasDeleteProtection: boolean;
   metadata?: { key: string; value: string }[];
+  namespaceName?: string;
 } & TOrgPermission;
 
 export type TUpdateIdentityDTO = {
@@ -16,15 +17,18 @@ export type TUpdateIdentityDTO = {
   name?: string;
   metadata?: { key: string; value: string }[];
   isActorSuperAdmin?: boolean;
+  namespaceName?: string;
 } & Omit<TOrgPermission, "orgId">;
 
 export type TDeleteIdentityDTO = {
   id: string;
   isActorSuperAdmin?: boolean;
+  namespaceName?: string;
 } & Omit<TOrgPermission, "orgId">;
 
 export type TGetIdentityByIdDTO = {
   id: string;
+  namespaceName?: string;
 } & Omit<TOrgPermission, "orgId">;
 
 export interface TIdentityTrustedIp {
@@ -35,14 +39,25 @@ export interface TIdentityTrustedIp {
 
 export type TListProjectIdentitiesByIdentityIdDTO = {
   identityId: string;
+  namespaceName?: string;
 } & Omit<TOrgPermission, "orgId">;
 
-export type TListOrgIdentitiesByOrgIdDTO = {
+export type TListIdentitiesDTO = {
   limit?: number;
   offset?: number;
   orderBy?: OrgIdentityOrderBy;
   orderDirection?: OrderByDirection;
   search?: string;
+  includeScopedIdentities?: boolean;
+} & TOrgPermission;
+
+export type TListNamespaceIdentitiesDTO = {
+  limit?: number;
+  offset?: number;
+  orderBy?: OrgIdentityOrderBy;
+  orderDirection?: OrderByDirection;
+  search?: string;
+  anem: string;
 } & TOrgPermission;
 
 export enum OrgIdentityOrderBy {
@@ -50,7 +65,7 @@ export enum OrgIdentityOrderBy {
   Role = "role"
 }
 
-export type TSearchOrgIdentitiesByOrgIdDAL = {
+export type TSearchIdentitiesDAL = {
   limit?: number;
   offset?: number;
   orderBy?: OrgIdentityOrderBy;
@@ -60,6 +75,7 @@ export type TSearchOrgIdentitiesByOrgIdDAL = {
     name: Omit<TSearchResourceOperator, "number">;
     role: Omit<TSearchResourceOperator, "number">;
   }>;
+  includeScopedIdentities?: boolean;
 };
 
-export type TSearchOrgIdentitiesByOrgIdDTO = TSearchOrgIdentitiesByOrgIdDAL & TOrgPermission;
+export type TSearchOrgIdentitiesByOrgIdDTO = TSearchIdentitiesDAL & TOrgPermission;

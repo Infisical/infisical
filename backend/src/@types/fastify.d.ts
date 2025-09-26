@@ -27,6 +27,10 @@ import { TKmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operati
 import { TKmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TNamespaceServiceFactory } from "@app/ee/services/namespace/namespace-service";
+import { TNamespaceIdentityMembershipServiceFactory } from "@app/ee/services/namespace-identity-membership/namespace-identity-membership-service";
+import { TNamespaceRoleServiceFactory } from "@app/ee/services/namespace-role/namespace-role-service";
+import { TNamespaceUserMembershipServiceFactory } from "@app/ee/services/namespace-user-membership/namespace-user-membership-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
@@ -314,6 +318,10 @@ declare module "fastify" {
       identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
       notification: TNotificationServiceFactory;
       offlineUsageReport: TOfflineUsageReportServiceFactory;
+      namespace: TNamespaceServiceFactory;
+      namespaceRole: TNamespaceRoleServiceFactory;
+      namespaceUserMembership: TNamespaceUserMembershipServiceFactory;
+      namespaceIdentityMembership: TNamespaceIdentityMembershipServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

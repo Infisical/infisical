@@ -64,6 +64,15 @@ import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-conf
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
+import { namespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
+import { namespaceServiceFactory } from "@app/ee/services/namespace/namespace-service";
+import { namespaceIdentityMembershipDALFactory } from "@app/ee/services/namespace-identity-membership/namespace-identity-membership-dal";
+import { namespaceIdentityMembershipServiceFactory } from "@app/ee/services/namespace-identity-membership/namespace-identity-membership-service";
+import { namespaceMembershipRoleDALFactory } from "@app/ee/services/namespace-role/namespace-membership-role-dal";
+import { namespaceRoleDALFactory } from "@app/ee/services/namespace-role/namespace-role-dal";
+import { namespaceRoleServiceFactory } from "@app/ee/services/namespace-role/namespace-role-service";
+import { namespaceUserMembershipDALFactory } from "@app/ee/services/namespace-user-membership/namespace-user-membership-dal";
+import { namespaceUserMembershipServiceFactory } from "@app/ee/services/namespace-user-membership/namespace-user-membership-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
@@ -522,6 +531,12 @@ export const registerRoutes = async (
   const secretScanningV2DAL = secretScanningV2DALFactory(db);
   const keyValueStoreDAL = keyValueStoreDALFactory(db);
 
+  const namespaceDAL = namespaceDALFactory(db);
+  const namespaceUserMembershipDAL = namespaceUserMembershipDALFactory(db);
+  const namespaceIdentityMembershipDAL = namespaceIdentityMembershipDALFactory(db);
+  const namespaceMembershipRoleDAL = namespaceMembershipRoleDALFactory(db);
+  const namespaceRoleDAL = namespaceRoleDALFactory(db);
+
   const eventBusService = eventBusFactory(server.redis);
   const sseService = sseServiceFactory(eventBusService, server.redis);
 
@@ -530,7 +545,8 @@ export const registerRoutes = async (
     orgRoleDAL,
     projectRoleDAL,
     serviceTokenDAL,
-    projectDAL
+    projectDAL,
+    namespaceRoleDAL
   });
   const assumePrivilegeService = assumePrivilegeServiceFactory({
     projectDAL,
@@ -598,6 +614,39 @@ export const registerRoutes = async (
   });
 
   const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
+
+  const namespaceService = namespaceServiceFactory({
+    permissionService,
+    namespaceDAL,
+    namespaceUserMembershipDAL,
+    namespaceMembershipRoleDAL,
+    licenseService
+  });
+
+  const namespaceRoleService = namespaceRoleServiceFactory({
+    namespaceDAL,
+    namespaceRoleDAL,
+    permissionService
+  });
+  const namespaceUserMembershipService = namespaceUserMembershipServiceFactory({
+    permissionService,
+    licenseService,
+    namespaceDAL,
+    namespaceUserMembershipDAL,
+    namespaceRoleDAL,
+    namespaceMembershipRoleDAL,
+    orgDAL,
+    smtpService
+  });
+  const namespaceIdentityMembershipService = namespaceIdentityMembershipServiceFactory({
+    namespaceIdentityMembershipDAL,
+    permissionService,
+    identityOrgMembershipDAL,
+    namespaceMembershipRoleDAL,
+    namespaceDAL,
+    namespaceRoleDAL,
+    keyStore
+  });
 
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
@@ -813,8 +862,6 @@ export const registerRoutes = async (
     incidentContactDAL,
     tokenService,
     projectUserAdditionalPrivilegeDAL,
-    projectUserMembershipRoleDAL,
-    projectRoleDAL,
     projectDAL,
     projectMembershipDAL,
     orgMembershipDAL,
@@ -1519,7 +1566,10 @@ export const registerRoutes = async (
     identityProjectDAL,
     licenseService,
     identityMetadataDAL,
-    keyStore
+    keyStore,
+    namespaceDAL,
+    namespaceIdentityMembershipDAL,
+    namespaceMembershipRoleDAL
   });
 
   const identityAuthTemplateService = identityAuthTemplateServiceFactory({
@@ -2236,7 +2286,11 @@ export const registerRoutes = async (
     reminder: reminderService,
     bus: eventBusService,
     sse: sseService,
-    notification: notificationService
+    notification: notificationService,
+    namespace: namespaceService,
+    namespaceRole: namespaceRoleService,
+    namespaceUserMembership: namespaceUserMembershipService,
+    namespaceIdentityMembership: namespaceIdentityMembershipService
   });
 
   const cronJobs: CronJob[] = [];

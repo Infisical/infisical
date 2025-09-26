@@ -65,6 +65,15 @@ export enum OrgPermissionRelayActions {
   DeleteRelays = "delete-relays"
 }
 
+export enum OrgPermissionNamespaceActions {
+  Create = "create",
+  AccessAllNamespace = "access-all-namespace"
+}
+
+export type NamespaceSubjectFields = {
+  name: string;
+};
+
 export enum OrgPermissionIdentityActions {
   Read = "read",
   Create = "create",
@@ -117,6 +126,7 @@ export enum OrgPermissionSubjects {
   Kmip = "kmip",
   Gateway = "gateway",
   Relay = "relay",
+  Namespace = "namespace",
   SecretShare = "secret-share"
 }
 
@@ -127,6 +137,10 @@ export type AppConnectionSubjectFields = {
 export type OrgPermissionSet =
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Workspace]
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Project]
+  | [
+      OrgPermissionNamespaceActions,
+      OrgPermissionSubjects.Namespace | (ForcedSubject<OrgPermissionSubjects.Namespace> & NamespaceSubjectFields)
+    ]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
   | [OrgPermissionActions, OrgPermissionSubjects.Member]
   | [OrgPermissionActions, OrgPermissionSubjects.Settings]
@@ -166,6 +180,22 @@ const AppConnectionConditionSchema = z
           [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
           [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
           [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+        })
+        .partial()
+    ])
+  })
+  .partial();
+
+const NamespaceConditionSchema = z
+  .object({
+    connectionId: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
         })
         .partial()
     ])
@@ -258,6 +288,16 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     ).optional()
   }),
   z.object({
+    subject: z.literal(OrgPermissionSubjects.Namespace).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionNamespaceActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: NamespaceConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
     subject: z.literal(OrgPermissionSubjects.AdminConsole).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionAdminConsoleAction).describe(
       "Describe what action an entity can take."
@@ -302,6 +342,9 @@ const buildAdminPermission = () => {
   // ws permissions
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Project);
+
+  can(OrgPermissionNamespaceActions.Create, OrgPermissionSubjects.Namespace);
+  can(OrgPermissionNamespaceActions.AccessAllNamespace, OrgPermissionSubjects.Namespace);
   // role permission
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Role);
@@ -441,6 +484,9 @@ const buildMemberPermission = () => {
 
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Project);
+
+  can(OrgPermissionNamespaceActions.Create, OrgPermissionSubjects.Namespace);
+
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
   can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);

@@ -80,7 +80,7 @@ const Page = () => {
             <div className="mr-4 w-96">
               <IdentityDetailsSection identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
               <IdentityAuthenticationSection
-                identityId={identityId}
+                identity={data?.identity}
                 handlePopUpOpen={handlePopUpOpen}
               />
             </div>

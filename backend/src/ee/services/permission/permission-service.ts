@@ -6,6 +6,7 @@ import handlebars from "handlebars";
 
 import {
   ActionProjectType,
+  NamespaceMembershipRole,
   OrgMembershipRole,
   ProjectMembershipRole,
   ServiceTokenScopes,
@@ -29,12 +30,21 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectRoleDALFactory } from "@app/services/project-role/project-role-dal";
 import { TServiceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 
+import { TNamespaceRoleDALFactory } from "../namespace-role/namespace-role-dal";
+import {
+  namespaceAdminPermissions,
+  namespaceMemberPermissions,
+  namespaceNoAccessPermissions,
+  NamespacePermissionSet
+} from "./namespace-permission";
 import { orgAdminPermissions, orgMemberPermissions, orgNoAccessPermissions, OrgPermissionSet } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
 import { escapeHandlebarsMissingDict, validateOrgSSO } from "./permission-fns";
 import {
+  TBuildNamespacePermissionDTO,
   TBuildOrgPermissionDTO,
   TBuildProjectPermissionDTO,
+  TGetIdentityNamespacePermissionArg,
   TGetIdentityProjectPermissionArg,
   TGetProjectPermissionArg,
   TGetServiceTokenProjectPermissionArg,
@@ -46,6 +56,7 @@ import { buildServiceTokenProjectPermission, ProjectPermissionSet } from "./proj
 type TPermissionServiceFactoryDep = {
   orgRoleDAL: Pick<TOrgRoleDALFactory, "findOne">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "findOne">;
+  namespaceRoleDAL: Pick<TNamespaceRoleDALFactory, "findOne">;
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionDAL: TPermissionDALFactory;
@@ -56,7 +67,8 @@ export const permissionServiceFactory = ({
   orgRoleDAL,
   projectRoleDAL,
   serviceTokenDAL,
-  projectDAL
+  projectDAL,
+  namespaceRoleDAL
 }: TPermissionServiceFactoryDep): TPermissionServiceFactory => {
   const buildOrgPermission = (orgUserRoles: TBuildOrgPermissionDTO) => {
     const rules = orgUserRoles
@@ -81,6 +93,28 @@ export const permissionServiceFactory = ({
     return createMongoAbility<OrgPermissionSet>(rules, {
       conditionsMatcher
     });
+  };
+
+  const buildNamespacePermission = (namespaceRoles: TBuildNamespacePermissionDTO) => {
+    const rules = namespaceRoles
+      .map(({ role, permissions }) => {
+        switch (role) {
+          case NamespaceMembershipRole.Admin:
+            return namespaceAdminPermissions;
+          case NamespaceMembershipRole.Member:
+            return namespaceMemberPermissions;
+          case NamespaceMembershipRole.NoAccess:
+            return namespaceNoAccessPermissions;
+          case NamespaceMembershipRole.Custom:
+            return unpackRules<RawRuleOf<MongoAbility<NamespacePermissionSet>>>(
+              permissions as PackRule<RawRuleOf<MongoAbility<NamespacePermissionSet>>>[]
+            );
+          default:
+            throw new NotFoundError({ name: "NamespaceRoleInvalid", message: `Namespace role '${role}' not found` });
+        }
+      })
+      .reduce((prev, curr) => prev.concat(curr), []);
+    return rules;
   };
 
   const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDTO) => {
@@ -208,6 +242,189 @@ export const permissionServiceFactory = ({
       };
     }
     return { permission: buildOrgPermission([{ role, permissions: [] }]) };
+  };
+
+  const getUserNamespacePermission: TPermissionServiceFactory["getUserNamespacePermission"] = async ({
+    userId,
+    namespaceId,
+    authMethod,
+    userOrgId
+  }) => {
+    const userNamespacePermission = await permissionDAL.getUserNamespacePermission(userId, namespaceId);
+    if (!userNamespacePermission)
+      throw new ForbiddenRequestError({ name: "User not a part of the specified namespace" });
+
+    if (
+      userNamespacePermission.roles.some(
+        ({ role, permissions }) => role === NamespaceMembershipRole.Custom && !permissions
+      )
+    ) {
+      throw new NotFoundError({ name: "The permission was not found" });
+    }
+
+    // If the org ID is API_KEY, the request is being made with an API Key.
+    // Since we can't scope API keys to an organization, we'll need to do an arbitrary check to see if the user is a member of the organization.
+
+    // Extra: This means that when users are using API keys to make requests, they can't use slug-based routes.
+    // Slug-based routes depend on the organization ID being present on the request, since namespace slugs aren't globally unique, and we need a way to filter by organization.
+    if (userOrgId !== "API_KEY" && userNamespacePermission.orgId !== userOrgId) {
+      throw new ForbiddenRequestError({ name: "You are not logged into this organization" });
+    }
+
+    validateOrgSSO(
+      authMethod,
+      userNamespacePermission.orgAuthEnforced,
+      userNamespacePermission.orgGoogleSsoAuthEnforced,
+      userNamespacePermission.bypassOrgAuthEnabled,
+      userNamespacePermission.orgRole
+    );
+
+    // join two permissions and pass to build the final permission set
+    const rolePermissions =
+      userNamespacePermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+    const additionalPrivileges =
+      userNamespacePermission.additionalPrivileges?.map(({ permissions }) => ({
+        role: NamespaceMembershipRole.Custom,
+        permissions
+      })) || [];
+
+    const rules = buildNamespacePermission(rolePermissions.concat(additionalPrivileges));
+    const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+    const unescapedMetadata = objectify(
+      userNamespacePermission.metadata,
+      (i) => i.key,
+      (i) => i.value
+    );
+    const metadataKeyValuePair = escapeHandlebarsMissingDict(unescapedMetadata, "identity.metadata");
+    requestContext.set("identityPermissionMetadata", { metadata: unescapedMetadata });
+    const interpolateRules = templatedRules(
+      {
+        identity: {
+          id: userNamespacePermission.userId,
+          // username: userNamespacePermission.username,
+          metadata: metadataKeyValuePair
+        }
+      },
+      { data: false }
+    );
+    const permission = createMongoAbility<NamespacePermissionSet>(
+      JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<NamespacePermissionSet>>[],
+      {
+        conditionsMatcher
+      }
+    );
+
+    return {
+      permission,
+      membership: userNamespacePermission,
+      hasRole: (role: string) =>
+        userNamespacePermission.roles.findIndex(
+          ({ role: slug, customRoleSlug }) => role === slug || slug === customRoleSlug
+        ) !== -1
+    };
+  };
+
+  const getIdentityNamespacePermission = async ({
+    identityId,
+    namespaceId,
+    identityOrgId
+  }: TGetIdentityNamespacePermissionArg) => {
+    const identityNamespacePermission = await permissionDAL.getIdentityNamespacePermission(identityId, namespaceId);
+    if (!identityNamespacePermission)
+      throw new ForbiddenRequestError({
+        name: `Identity is not a member of the specified namespace with ID '${namespaceId}'`
+      });
+
+    if (
+      identityNamespacePermission.roles.some(
+        ({ role, permissions }) => role === NamespaceMembershipRole.Custom && !permissions
+      )
+    ) {
+      throw new NotFoundError({ name: "Custom permission not found" });
+    }
+
+    if (identityNamespacePermission.orgId !== identityOrgId) {
+      throw new ForbiddenRequestError({ name: "Identity is not a member of the specified organization" });
+    }
+
+    const rolePermissions =
+      identityNamespacePermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
+    const additionalPrivileges =
+      identityNamespacePermission.additionalPrivileges?.map(({ permissions }) => ({
+        role: NamespaceMembershipRole.Custom,
+        permissions
+      })) || [];
+
+    const rules = buildNamespacePermission(rolePermissions.concat(additionalPrivileges));
+    const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
+    const unescapedIdentityAuthInfo = requestContext.get("identityAuthInfo");
+    const unescapedMetadata = objectify(
+      identityNamespacePermission.metadata,
+      (i) => i.key,
+      (i) => i.value
+    );
+    const identityAuthInfo =
+      unescapedIdentityAuthInfo?.identityId === identityId && unescapedIdentityAuthInfo
+        ? escapeHandlebarsMissingDict(unescapedIdentityAuthInfo as never, "identity.auth")
+        : {};
+    const metadataKeyValuePair = escapeHandlebarsMissingDict(unescapedMetadata, "identity.metadata");
+
+    requestContext.set("identityPermissionMetadata", { metadata: unescapedMetadata, auth: unescapedIdentityAuthInfo });
+    const interpolateRules = templatedRules(
+      {
+        identity: {
+          id: identityNamespacePermission.identityId,
+          username: identityNamespacePermission.username,
+          metadata: metadataKeyValuePair,
+          auth: identityAuthInfo
+        }
+      },
+      { data: false }
+    );
+    const permission = createMongoAbility<NamespacePermissionSet>(
+      JSON.parse(interpolateRules) as RawRuleOf<MongoAbility<NamespacePermissionSet>>[],
+      {
+        conditionsMatcher
+      }
+    );
+
+    return {
+      permission,
+      membership: identityNamespacePermission,
+      hasRole: (role: string) =>
+        identityNamespacePermission.roles.findIndex(
+          ({ role: slug, customRoleSlug }) => role === slug || slug === customRoleSlug
+        ) !== -1
+    };
+  };
+
+  const getNamespacePermission: TPermissionServiceFactory["getNamespacePermission"] = async ({
+    actor,
+    actorAuthMethod,
+    actorId,
+    actorOrgId,
+    namespaceId
+  }) => {
+    switch (actor) {
+      case ActorType.USER:
+        return getUserNamespacePermission({
+          userId: actorId,
+          namespaceId,
+          authMethod: actorAuthMethod,
+          userOrgId: actorOrgId
+        });
+      case ActorType.IDENTITY:
+        return getIdentityNamespacePermission({
+          identityId: actorId,
+          namespaceId,
+          identityOrgId: actorOrgId
+        });
+      default:
+        throw new BadRequestError({
+          message: "Invalid actor provided",
+          name: "Get org permission"
+        });
+    }
   };
 
   // user permission for a project in an organization
@@ -634,6 +851,33 @@ export const permissionServiceFactory = ({
     return { permission };
   };
 
+  const getNamespacePermissionByRole: TPermissionServiceFactory["getNamespacePermissionByRole"] = async (
+    role,
+    namespaceId
+  ) => {
+    const isCustomRole = !Object.values(NamespaceMembershipRole).includes(role as NamespaceMembershipRole);
+    if (isCustomRole) {
+      const namespaceRole = await namespaceRoleDAL.findOne({ slug: role, namespaceId });
+      if (!namespaceRole) throw new NotFoundError({ message: `Specified role was not found: ${role}` });
+
+      const rules = buildNamespacePermission([
+        { role: NamespaceMembershipRole.Custom, permissions: namespaceRole.permissions }
+      ]);
+      return {
+        permission: createMongoAbility<NamespacePermissionSet>(rules, {
+          conditionsMatcher
+        }),
+        role: namespaceRole
+      };
+    }
+
+    const rules = buildNamespacePermission([{ role, permissions: [] }]);
+    const permission = createMongoAbility<NamespacePermissionSet>(rules, {
+      conditionsMatcher
+    });
+    return { permission };
+  };
+
   const checkGroupProjectPermission: TPermissionServiceFactory["checkGroupProjectPermission"] = async ({
     groupId,
     projectId,
@@ -668,6 +912,10 @@ export const permissionServiceFactory = ({
     getProjectPermissionByRole,
     buildOrgPermission,
     buildProjectPermissionRules,
-    checkGroupProjectPermission
+    checkGroupProjectPermission,
+    buildNamespacePermission,
+    getUserNamespacePermission,
+    getNamespacePermission,
+    getNamespacePermissionByRole
   };
 };

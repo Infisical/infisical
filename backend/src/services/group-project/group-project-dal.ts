@@ -104,12 +104,10 @@ export const groupProjectDALFactory = (db: TDbClient) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.UserGroupMembership)
         .where(`${TableName.UserGroupMembership}.userId`, userId)
-        .join(TableName.Groups, function () {
-          this.on(`${TableName.UserGroupMembership}.groupId`, "=", `${TableName.Groups}.id`).andOn(
-            `${TableName.Groups}.orgId`,
-            "=",
-            db.raw("?", [orgId])
-          );
+        .join(TableName.Groups, (qb) => {
+          void qb
+            .on(`${TableName.UserGroupMembership}.groupId`, "=", `${TableName.Groups}.id`)
+            .andOn(`${TableName.Groups}.orgId`, "=", db.raw("?", [orgId]));
         })
         .select(
           db.ref("id").withSchema(TableName.Groups),

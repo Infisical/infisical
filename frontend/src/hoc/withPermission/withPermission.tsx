@@ -24,7 +24,8 @@ export const withPermission = <T extends object, J extends TOrgPermission>(
 
     // akhilmhdh: Set as any due to casl/react ts type bug
     // REASON: casl due to its type checking can't seem to union even if union intersection is applied
-    if (permission.cannot(action as any, subject)) {
+    // @ts-expect-error no clue how to fix this
+    if (permission.cannot(action, subject)) {
       return (
         <div
           className={twMerge(

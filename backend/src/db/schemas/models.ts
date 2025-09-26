@@ -189,7 +189,13 @@ export enum TableName {
   Relay = "relays",
   GatewayV2 = "gateways_v2",
 
-  KeyValueStore = "key_value_store"
+  KeyValueStore = "key_value_store",
+
+  Namespace = "namespaces",
+  NamespaceMembership = "namespace_memberships",
+  NamespaceMembershipRole = "namespace_membership_roles",
+  NamespaceRole = "namespace_roles",
+  NamespaceAdditionalPrivilege = "namespace_additional_privileges"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
@@ -210,6 +216,13 @@ export const ServiceTokenScopes = z
   .array();
 
 export enum OrgMembershipRole {
+  Admin = "admin",
+  Member = "member",
+  NoAccess = "no-access",
+  Custom = "custom"
+}
+
+export enum NamespaceMembershipRole {
   Admin = "admin",
   Member = "member",
   NoAccess = "no-access",

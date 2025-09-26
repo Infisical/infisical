@@ -4,6 +4,7 @@ import { MongoQuery } from "@ucast/mongo2js";
 import { ActionProjectType } from "@app/db/schemas";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
+import { NamespacePermissionSet } from "./namespace-permission";
 import { OrgPermissionSet } from "./org-permission";
 import { ProjectPermissionSet } from "./project-permission";
 
@@ -16,6 +17,24 @@ export type TBuildOrgPermissionDTO = {
   permissions?: unknown;
   role: string;
 }[];
+
+export type TBuildNamespacePermissionDTO = {
+  permissions?: unknown;
+  role: string;
+}[];
+
+export type TGetUserNamespacePermissionArg = {
+  userId: string;
+  namespaceId: string;
+  authMethod: ActorAuthMethod;
+  userOrgId?: string;
+};
+
+export type TGetIdentityNamespacePermissionArg = {
+  identityId: string;
+  namespaceId: string;
+  identityOrgId?: string;
+};
 
 export type TGetUserProjectPermissionArg = {
   userId: string;
@@ -37,6 +56,14 @@ export type TGetServiceTokenProjectPermissionArg = {
   projectId: string;
   actorOrgId?: string;
   actionProjectType: ActionProjectType;
+};
+
+export type TGetNamespacePermissionArg = {
+  actor: ActorType;
+  actorId: string;
+  namespaceId: string;
+  actorAuthMethod: ActorAuthMethod;
+  actorOrgId: string;
 };
 
 export type TGetProjectPermissionArg = {
@@ -143,6 +170,22 @@ export type TPermissionServiceFactory = {
         };
       }
   >;
+  getUserNamespacePermission: (dto: TGetUserNamespacePermissionArg) => Promise<{
+    permission: MongoAbility<NamespacePermissionSet, MongoQuery>;
+    membership: {
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      userId: string;
+      shouldUseNewPrivilegeSystem: boolean;
+      orgAuthEnforced: boolean | null | undefined;
+      orgId: string;
+      roles: Array<{
+        role: string;
+      }>;
+    };
+    hasRole: (role: string) => boolean;
+  }>;
   getUserProjectPermission: ({
     userId,
     projectId,
@@ -164,6 +207,19 @@ export type TPermissionServiceFactory = {
         role: string;
       }>;
       shouldUseNewPrivilegeSystem: boolean;
+    };
+    hasRole: (role: string) => boolean;
+  }>;
+  getNamespacePermission: (arg: TGetNamespacePermissionArg) => Promise<{
+    permission: MongoAbility<NamespacePermissionSet, MongoQuery>;
+    membership: {
+      id: string;
+      shouldUseNewPrivilegeSystem: boolean;
+      orgAuthEnforced?: boolean | null | undefined;
+      orgId: string;
+      roles: Array<{
+        role: string;
+      }>;
     };
     hasRole: (role: string) => boolean;
   }>;
@@ -270,7 +326,26 @@ export type TPermissionServiceFactory = {
         role?: undefined;
       }
   >;
+  getNamespacePermissionByRole: (
+    role: string,
+    namespaceId: string
+  ) => Promise<{
+    permission: MongoAbility<NamespacePermissionSet, MongoQuery>;
+    role?: {
+      name: string;
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      namespaceId: string;
+      slug: string;
+      permissions?: unknown;
+      description?: string | null | undefined;
+    };
+  }>;
   buildOrgPermission: (orgUserRoles: TBuildOrgPermissionDTO) => MongoAbility<OrgPermissionSet, MongoQuery>;
+  buildNamespacePermission: (
+    orgUserRoles: TBuildNamespacePermissionDTO
+  ) => RawRuleOf<MongoAbility<NamespacePermissionSet, MongoQuery>>[];
   buildProjectPermissionRules: (
     projectUserRoles: TBuildProjectPermissionDTO
   ) => RawRuleOf<MongoAbility<ProjectPermissionSet>>[];

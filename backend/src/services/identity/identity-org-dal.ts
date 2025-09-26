@@ -22,11 +22,7 @@ import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
 import { OrderByDirection } from "@app/lib/types";
-import {
-  OrgIdentityOrderBy,
-  TListOrgIdentitiesByOrgIdDTO,
-  TSearchOrgIdentitiesByOrgIdDAL
-} from "@app/services/identity/identity-types";
+import { OrgIdentityOrderBy, TListIdentitiesDTO, TSearchIdentitiesDAL } from "@app/services/identity/identity-types";
 
 import { buildAuthMethods } from "./identity-fns";
 
@@ -44,7 +40,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           });
         })
         .join(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`)
-
         .leftJoin<TIdentityUniversalAuths>(
           TableName.IdentityUniversalAuth,
           `${TableName.IdentityOrgMembership}.identityId`,
@@ -107,7 +102,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         )
         .select(
           selectAllTableCols(TableName.IdentityOrgMembership),
-
+          db.ref("namespaceId").withSchema(TableName.Identity),
+          db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
           db.ref("id").as("alicloudId").withSchema(TableName.IdentityAliCloudAuth),
@@ -125,14 +121,16 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         );
 
       if (data) {
-        const { name, hasDeleteProtection } = data;
+        const { name, hasDeleteProtection, namespaceId } = data;
         return {
           ...data,
           identity: {
             id: data.identityId,
             name,
             hasDeleteProtection,
-            authMethods: buildAuthMethods(data)
+            authMethods: buildAuthMethods(data),
+            namespaceId,
+            namespace: namespaceId ? { id: namespaceId } : undefined
           }
         };
       }
@@ -148,9 +146,13 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       orderBy = OrgIdentityOrderBy.Name,
       orderDirection = OrderByDirection.ASC,
       search,
+      includeScopedIdentities,
       ...filter
     }: Partial<TIdentityOrgMemberships> &
-      Pick<TListOrgIdentitiesByOrgIdDTO, "offset" | "limit" | "orderBy" | "orderDirection" | "search">,
+      Pick<
+        TListIdentitiesDTO,
+        "offset" | "limit" | "orderBy" | "orderDirection" | "search" | "includeScopedIdentities"
+      >,
     tx?: Knex
   ) => {
     try {
@@ -164,10 +166,16 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.IdentityOrgMembership),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
-          db.ref("hasDeleteProtection").withSchema(TableName.Identity)
+          db.ref("hasDeleteProtection").withSchema(TableName.Identity),
+          db.ref("namespaceId").withSchema(TableName.Identity)
         )
         .where(filter)
         .as("paginatedIdentity");
+
+      if (!includeScopedIdentities) {
+        void paginatedIdentity.whereNull(`${TableName.Identity}.namespaceId`);
+        void paginatedIdentity.whereNull(`${TableName.Identity}.projectId`);
+      }
 
       if (search?.length) {
         void paginatedIdentity.whereILike(`${TableName.Identity}.name`, `%${search}%`);
@@ -182,13 +190,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       const query = (tx || db.replicaNode())
         .from<TSubquery[number], TSubquery>(paginatedIdentity)
         .leftJoin<TOrgRoles>(TableName.OrgRoles, `paginatedIdentity.roleId`, `${TableName.OrgRoles}.id`)
-
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
           void queryBuilder
             .on(`paginatedIdentity.identityId`, `${TableName.IdentityMetadata}.identityId`)
             .andOn(`paginatedIdentity.orgId`, `${TableName.IdentityMetadata}.orgId`);
         })
-
         .leftJoin<TIdentityUniversalAuths>(
           TableName.IdentityUniversalAuth,
           "paginatedIdentity.identityId",
@@ -251,6 +257,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         )
         .select(
           db.ref("id").withSchema("paginatedIdentity"),
+          db.ref("namespaceId").withSchema("paginatedIdentity"),
           db.ref("role").withSchema("paginatedIdentity"),
           db.ref("roleId").withSchema("paginatedIdentity"),
           db.ref("orgId").withSchema("paginatedIdentity"),
@@ -261,7 +268,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("identityId").withSchema("paginatedIdentity").as("identityId"),
           db.ref("identityName").withSchema("paginatedIdentity"),
           db.ref("hasDeleteProtection").withSchema("paginatedIdentity"),
-
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
           db.ref("id").as("alicloudId").withSchema(TableName.IdentityAliCloudAuth),
@@ -297,6 +303,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         key: "id",
         parentMapper: ({
           crId,
+          namespaceId,
           crDescription,
           crSlug,
           crPermission,
@@ -347,6 +354,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
             id: identityId,
             name: identityName,
             hasDeleteProtection,
+            namespaceId,
             authMethods: buildAuthMethods({
               uaId,
               alicloudId,
@@ -389,8 +397,9 @@ export const identityOrgDALFactory = (db: TDbClient) => {
       orderBy = OrgIdentityOrderBy.Name,
       orderDirection = OrderByDirection.ASC,
       searchFilter,
-      orgId
-    }: TSearchOrgIdentitiesByOrgIdDAL,
+      orgId,
+      includeScopedIdentities
+    }: TSearchIdentitiesDAL,
     tx?: Knex
   ) => {
     try {
@@ -427,6 +436,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
 
       if (limit) {
         void searchQuery.offset(offset).limit(limit);
+      }
+
+      if (!includeScopedIdentities) {
+        void searchQuery.whereNull(`${TableName.Identity}.namespaceId`);
+        void searchQuery.whereNull(`${TableName.Identity}.projectId`);
       }
 
       type TSubquery = Awaited<typeof searchQuery>;
@@ -554,7 +568,6 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           ]
         );
       }
-
       const docs = await query;
       const formattedDocs = sqlNestRelationships({
         data: docs,
@@ -646,7 +659,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
   };
 
   const countAllOrgIdentities = async (
-    { search, ...filter }: Partial<TIdentityOrgMemberships> & Pick<TListOrgIdentitiesByOrgIdDTO, "search">,
+    {
+      search,
+      includeScopedIdentities,
+      ...filter
+    }: Partial<TIdentityOrgMemberships> & Pick<TListIdentitiesDTO, "search" | "includeScopedIdentities">,
     tx?: Knex
   ) => {
     try {
@@ -654,6 +671,11 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .where(filter)
         .join(TableName.Identity, `${TableName.IdentityOrgMembership}.identityId`, `${TableName.Identity}.id`)
         .count();
+
+      if (!includeScopedIdentities) {
+        void query.whereNull(`${TableName.Identity}.namespaceId`);
+        void query.whereNull(`${TableName.Identity}.projectId`);
+      }
 
       if (search?.length) {
         void query.whereILike(`${TableName.Identity}.name`, `%${search}%`);

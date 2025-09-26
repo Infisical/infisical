@@ -227,6 +227,21 @@ import {
   TLdapGroupMaps,
   TLdapGroupMapsInsert,
   TLdapGroupMapsUpdate,
+  TNamespaceAdditionalPrivileges,
+  TNamespaceAdditionalPrivilegesInsert,
+  TNamespaceAdditionalPrivilegesUpdate,
+  TNamespaceMembershipRoles,
+  TNamespaceMembershipRolesInsert,
+  TNamespaceMembershipRolesUpdate,
+  TNamespaceMemberships,
+  TNamespaceMembershipsInsert,
+  TNamespaceMembershipsUpdate,
+  TNamespaceRoles,
+  TNamespaceRolesInsert,
+  TNamespaceRolesUpdate,
+  TNamespaces,
+  TNamespacesInsert,
+  TNamespacesUpdate,
   TOidcConfigs,
   TOidcConfigsInsert,
   TOidcConfigsUpdate,
@@ -1307,6 +1322,27 @@ declare module "knex/types/tables" {
       TKeyValueStore,
       TKeyValueStoreInsert,
       TKeyValueStoreUpdate
+    >;
+    [TableName.Namespace]: KnexOriginal.CompositeTableType<TNamespaces, TNamespacesInsert, TNamespacesUpdate>;
+    [TableName.NamespaceMembership]: KnexOriginal.CompositeTableType<
+      TNamespaceMemberships,
+      TNamespaceMembershipsInsert,
+      TNamespaceMembershipsUpdate
+    >;
+    [TableName.NamespaceMembershipRole]: KnexOriginal.CompositeTableType<
+      TNamespaceMembershipRoles,
+      TNamespaceMembershipRolesInsert,
+      TNamespaceMembershipRolesUpdate
+    >;
+    [TableName.NamespaceAdditionalPrivilege]: KnexOriginal.CompositeTableType<
+      TNamespaceAdditionalPrivileges,
+      TNamespaceAdditionalPrivilegesInsert,
+      TNamespaceAdditionalPrivilegesUpdate
+    >;
+    [TableName.NamespaceRole]: KnexOriginal.CompositeTableType<
+      TNamespaceRoles,
+      TNamespaceRolesInsert,
+      TNamespaceRolesUpdate
     >;
   }
 }

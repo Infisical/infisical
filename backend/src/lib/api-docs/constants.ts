@@ -38,6 +38,9 @@ export enum ApiDocsTags {
   ProjectGroups = "Project Groups",
   ProjectIdentities = "Project Identities",
   ProjectRoles = "Project Roles",
+  NamespaceRoles = "Namespace Roles",
+  NamespaceUserMemberships = "Namespace User Memberships",
+  NamespaceIdentityMemberships = "Namespace Identity Memberships",
   ProjectTemplates = "Project Templates",
   Environments = "Environments",
   Folders = "Folders",
@@ -72,7 +75,8 @@ export enum ApiDocsTags {
   OidcSso = "OIDC SSO",
   SamlSso = "SAML SSO",
   LdapSso = "LDAP SSO",
-  Events = "Event Subscriptions"
+  Events = "Event Subscriptions",
+  Namespaces = "Namespaces"
 }
 
 export const GROUPS = {
@@ -880,6 +884,63 @@ export const PROJECT_IDENTITIES = {
     roles: {
       description: "A list of role slugs to assign to the newly created identity project membership.",
       role: "The role slug to assign to the newly created identity project membership.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
+      temporaryMode: "Type of temporary expiry.",
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s, 2m, 3h, etc.",
+      temporaryAccessStartTime: "Time to which the temporary access starts."
+    }
+  }
+};
+
+export const NAMESPACE_IDENTITY_MEMBERSHIPS = {
+  LIST_IDENTITY_MEMBERSHIPS: {
+    namespaceName: "The slug of the namespace to get identity memberships from.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity membership.",
+    limit: "The number of identity memberships to return.",
+    orderBy: "The column to order identity memberships by.",
+    orderDirection: "The direction identity memberships will be sorted in.",
+    search: "The text string that identity membership names will be filtered by."
+  },
+  GET_IDENTITY_MEMBERSHIP_BY_ID: {
+    identityId: "The ID of the identity to get the membership for.",
+    namespaceName: "The slug of the namespace to get the identity membership for."
+  },
+  SEARCH: {
+    namespaceName: "The slug of the namespace to search identity memberships in.",
+    orderBy: "The column to order identity memberships by.",
+    orderDirection: "The direction identity memberships will be sorted in.",
+    limit: "The number of identity memberships to return.",
+    offset: "The offset to start from.",
+    search: {
+      desc: "Advanced search filter for identity memberships.",
+      name: "Filter by identity name.",
+      role: "Filter by role."
+    }
+  },
+  UPDATE_IDENTITY_MEMBERSHIP: {
+    namespaceName: "The slug of the namespace to update the identity membership for.",
+    identityId: "The ID of the identity to update the membership for.",
+    roles: {
+      description: "A list of role slugs to assign to the identity namespace membership.",
+      role: "The role slug to assign to the identity namespace membership.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
+      temporaryMode: "Type of temporary expiry.",
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s, 2m, 3h, etc.",
+      temporaryAccessStartTime: "Time to which the temporary access starts."
+    }
+  },
+  DELETE_IDENTITY_MEMBERSHIP: {
+    namespaceName: "The slug of the namespace to delete the identity membership from.",
+    identityId: "The ID of the identity to delete the membership from."
+  },
+  CREATE_IDENTITY_MEMBERSHIP: {
+    namespaceName: "The slug of the namespace to create the identity membership for.",
+    identityId: "The ID of the identity to create the membership for.",
+    roles: {
+      description: "A list of role slugs to assign to the newly created identity namespace membership.",
+      role: "The role slug to assign to the newly created identity namespace membership.",
       isTemporary:
         "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
       temporaryMode: "Type of temporary expiry.",
@@ -2068,6 +2129,41 @@ export const PROJECT_ROLE = {
   }
 };
 
+export const NAMESPACE_ROLE = {
+  CREATE: {
+    namespaceName: "Name of the namespace to create the role for.",
+    slug: "The slug of the role.",
+    name: "The name of the role.",
+    description: "The description for the role.",
+    permissions: "The permissions assigned to the role."
+  },
+  UPDATE: {
+    namespaceName: "The name of the namespace to update the role for.",
+    roleId: "The ID of the role to update",
+    slug: "The slug of the role.",
+    name: "The name of the role.",
+    description: "The description for the role.",
+    permissions: "The permissions assigned to the role."
+  },
+  DELETE: {
+    namespaceName: "The name of the namespace to delete this role for.",
+    roleId: "The ID of the role to delete"
+  },
+  GET_ROLE_BY_SLUG: {
+    namespaceName: "The name of the namespace.",
+    roleSlug: "The slug of the role to get details."
+  },
+  LIST: {
+    offset: "The offset to start from. If you enter 10, it will start from the 10th key.",
+    search: "The text string to filter key names by.",
+    limit: "The number of keys to return.",
+    namespaceName: "The name of the namespace to list the roles of."
+  },
+  GET_USER_PERMISSIONS: {
+    namespaceName: "The name of the namespace to get user permissions for."
+  }
+};
+
 export const KMS = {
   CREATE_KEY: {
     projectId: "The ID of the project to create the key in.",
@@ -2929,5 +3025,68 @@ export const EventSubscriptions = {
   SUBSCRIBE_PROJECT_EVENTS: {
     projectId: "The ID of the project to subscribe to events for.",
     register: "List of events you want to subscribe to"
+  }
+};
+
+export const NAMESPACES = {
+  CREATE: {
+    name: "The name of the namespace to create. Must be a valid slug (lowercase, alphanumeric, hyphens, underscores).",
+    description: "An optional description for the namespace."
+  },
+  LIST: {
+    offset: "The offset to start from. If you enter 10, it will start from the 10th namespace.",
+    limit: "The number of namespaces to return. Maximum is 100.",
+    search: "Search term to filter namespaces by name."
+  },
+  GET: {
+    name: "The name of the namespace to retrieve."
+  },
+  UPDATE: {
+    name: "The current name of the namespace to update.",
+    newName: "The new name for the namespace. Must be a valid slug (lowercase, alphanumeric, hyphens, underscores).",
+    description: "The new description for the namespace."
+  },
+  DELETE: {
+    name: "The name of the namespace to delete."
+  },
+  SEARCH: {
+    name: "Search term to filter namespaces by name.",
+    limit: "The number of namespaces to return. Maximum is 100.",
+    offset: "The offset to start from.",
+    orderBy: "The field to order by.",
+    orderDirection: "The direction to order by (ASC or DESC).",
+    namespaceIds: "Array of namespace IDs to filter by."
+  }
+};
+
+export const NAMESPACE_USER_MEMBERSHIPS = {
+  LIST: {
+    namespaceName: "The slug of the namespace to list memberships for.",
+    limit: "The number of memberships to return. Maximum is 1000.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th membership."
+  },
+  GET: {
+    namespaceName: "The slug of the namespace.",
+    membershipId: "The ID of the membership to retrieve."
+  },
+  SEARCH: {
+    namespaceName: "The slug of the namespace to search memberships in.",
+    username: "Search term to filter memberships by username.",
+    limit: "The number of memberships to return. Maximum is 100.",
+    offset: "The offset to start from."
+  },
+  UPDATE: {
+    namespaceName: "The slug of the namespace.",
+    membershipId: "The ID of the membership to update.",
+    roles: "The roles to assign to the user. Can include temporary role assignments."
+  },
+  DELETE: {
+    namespaceName: "The slug of the namespace.",
+    membershipId: "The ID of the membership to delete."
+  },
+  ADD_USER: {
+    namespaceName: "The slug of the namespace to add users to.",
+    usernames: "Array of usernames to add to the namespace.",
+    roleSlugs: "Array of role slugs to assign to the users."
   }
 };

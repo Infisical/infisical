@@ -134,7 +134,7 @@ const BreadcrumbContainer = ({ breadcrumbs }: { breadcrumbs: TBreadcrumbFormat[]
                 <DropdownMenu>
                   <DropdownMenuTrigger>
                     <BreadcrumbItem>
-                      <BreadcrumbSegment className="rounded-md py-1 py-2">
+                      <BreadcrumbSegment className="rounded-md py-2">
                         {el.label}{" "}
                         <FontAwesomeIcon
                           icon={faCaretDown}

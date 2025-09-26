@@ -26,6 +26,7 @@ import { useTimedReset } from "@app/hooks";
 import { identityAuthToNameMap, useGetIdentityById } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+// TODO(namespace): add permissiong for invite an identity from organization
 type Props = {
   identityId: string;
   handlePopUpOpen: (
