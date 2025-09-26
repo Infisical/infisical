@@ -56,10 +56,10 @@ export const authPaswordServiceFactory = ({
         if (!hasEmailAuth) {
           const orgMemberships = await orgMembershipDAL.find({ userId: user.id });
           const lastLoginMethod =
-            orgMemberships.length > 0
-              ? orgMemberships.find((membership) => membership.lastLoginAuthMethod)?.lastLoginAuthMethod || null
-              : null;
-
+            orgMemberships
+              .filter((membership) => membership.lastLoginAuthMethod)
+              .sort((a, b) => (b.updatedAt || new Date(0)).getTime() - (a.updatedAt || new Date(0)).getTime())[0]
+              ?.lastLoginAuthMethod || null;
           const substitutions = {
             email,
             lastLoginMethod,
