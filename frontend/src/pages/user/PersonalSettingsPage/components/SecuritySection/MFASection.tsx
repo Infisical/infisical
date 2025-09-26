@@ -288,10 +288,10 @@ export const MFASection = () => {
 
         {user && (
           <div className="space-y-4">
-            <div className="max-w-md">
+            <div className="max-w-sm">
               <FormControl
-                label="Enable 2-factor authentication"
-                helperText="Adds an extra layer of security to your account"
+                label="Enable two-factor authentication"
+                helperText="Protect your account with an additional verification step"
               >
                 <Select
                   value={formData.isMfaEnabled ? "enabled" : "disabled"}
@@ -299,6 +299,8 @@ export const MFASection = () => {
                     handleFormDataChange("isMfaEnabled", value === "enabled")
                   }
                   className="w-full"
+                  position="popper"
+                  dropdownContainerClassName="max-w-none"
                 >
                   <SelectItem value="disabled">Disabled</SelectItem>
                   <SelectItem value="enabled">Enabled</SelectItem>
@@ -307,7 +309,7 @@ export const MFASection = () => {
             </div>
 
             {formData.isMfaEnabled && (
-              <div className="max-w-md">
+              <div className="max-w-sm">
                 <FormControl
                   label="Authentication method"
                   helperText="Choose your preferred method for two-factor authentication"
@@ -318,6 +320,8 @@ export const MFASection = () => {
                       handleFormDataChange("selectedMfaMethod", value as MfaMethod)
                     }
                     className="w-full"
+                    position="popper"
+                    dropdownContainerClassName="max-w-none"
                   >
                     <SelectItem value={MfaMethod.EMAIL}>Email</SelectItem>
                     <SelectItem value={MfaMethod.TOTP}>Mobile Authenticator</SelectItem>
@@ -399,7 +403,6 @@ export const MFASection = () => {
                           setTotpCode(pastedData);
                         }}
                         placeholder="Enter 2FA code"
-                        className="font-mono tracking-wider"
                         maxLength={6}
                       />
                     </FormControl>
@@ -473,11 +476,11 @@ export const MFASection = () => {
                   </div>
 
                   {shouldShowRecoveryCodes && (
-                    <div className="mt-6 grid w-full grid-cols-4 gap-3">
+                    <div className="mt-6 grid w-full max-w-lg grid-cols-5 gap-3">
                       {totpConfiguration.recoveryCodes.map((code) => (
                         <code
                           key={code}
-                          className="block rounded bg-mineshaft-800 px-3 py-2 text-center font-mono text-sm text-mineshaft-100"
+                          className="block rounded bg-mineshaft-700/70 px-3 py-2 text-center font-mono text-sm text-mineshaft-100"
                         >
                           {code}
                         </code>
