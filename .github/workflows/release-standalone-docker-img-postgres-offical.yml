@@ -6,7 +6,7 @@ on:
         #     - "v*.*.*-nightly-*"
         #     - "v*.*.*-nightly-*.*"
         branches:
-          - "daniel/auto-trigger-binary-release"
+          - "daniel/daniel/auto-trigger-binary-release"
 
 jobs:
     infisical-tests:
