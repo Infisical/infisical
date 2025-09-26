@@ -6,7 +6,6 @@ on:
             - "v*.*.*-nightly-*"
             - "v*.*.*-nightly-*.*"
 
-
 jobs:
     infisical-tests:
         name: Run tests before deployment
