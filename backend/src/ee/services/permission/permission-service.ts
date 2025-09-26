@@ -3,6 +3,7 @@ import { PackRule, unpackRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 import { MongoQuery } from "@ucast/mongo2js";
 import handlebars from "handlebars";
+import { Knex } from "knex";
 
 import {
   ActionProjectType,
@@ -87,9 +88,13 @@ export const permissionServiceFactory = ({
     });
   };
 
-  const invalidateProjectPermissionCache = async (projectId: string) => {
-    const pattern = KeyStorePrefixes.ProjectPermissionPattern(projectId);
-    await keyStore.deleteItems({ pattern });
+  const invalidateProjectPermissionCache = async (projectId: string, tx?: Knex) => {
+    const projectPermissionDalVersionKey = KeyStorePrefixes.ProjectPermissionDalVersion(projectId);
+    await keyStore.pgIncrementBy(projectPermissionDalVersionKey, {
+      incr: 1,
+      tx,
+      expiry: KeyStoreTtls.ProjectPermissionDalVersionTtl
+    });
   };
 
   const invalidateUserProjectPermissionCache = async (userId: string) => {
@@ -100,6 +105,59 @@ export const permissionServiceFactory = ({
   const invalidateIdentityProjectPermissionCache = async (identityId: string) => {
     const pattern = KeyStorePrefixes.IdentityProjectPermissionPattern(identityId);
     await keyStore.deleteItems({ pattern });
+  };
+
+  const calculateProjectPermissionTtl = (membership: unknown): number => {
+    const now = new Date();
+    let minTtl = KeyStoreTtls.ProjectPermissionCacheInSeconds;
+
+    const getMinEndTime = (items: Array<{ temporaryAccessEndTime?: Date | null; isTemporary?: boolean }>) => {
+      return items
+        .filter((item) => item.isTemporary && item.temporaryAccessEndTime)
+        .map((item) => item.temporaryAccessEndTime!)
+        .filter((endTime) => endTime > now)
+        .reduce((min, endTime) => (!min || endTime < min ? endTime : min), null as Date | null);
+    };
+
+    const roleTimes: Date[] = [];
+    const additionalPrivilegeTimes: Date[] = [];
+
+    if (
+      membership &&
+      typeof membership === "object" &&
+      "roles" in membership &&
+      Array.isArray((membership as Record<string, unknown>).roles)
+    ) {
+      const roles = (membership as Record<string, unknown>).roles as Array<{
+        temporaryAccessEndTime?: Date | null;
+        isTemporary?: boolean;
+      }>;
+      const minRoleEndTime = getMinEndTime(roles);
+      if (minRoleEndTime) roleTimes.push(minRoleEndTime);
+    }
+
+    if (
+      membership &&
+      typeof membership === "object" &&
+      "additionalPrivileges" in membership &&
+      Array.isArray((membership as Record<string, unknown>).additionalPrivileges)
+    ) {
+      const additionalPrivileges = (membership as Record<string, unknown>).additionalPrivileges as Array<{
+        temporaryAccessEndTime?: Date | null;
+        isTemporary?: boolean;
+      }>;
+      const minAdditionalEndTime = getMinEndTime(additionalPrivileges);
+      if (minAdditionalEndTime) additionalPrivilegeTimes.push(minAdditionalEndTime);
+    }
+
+    const allEndTimes = [...roleTimes, ...additionalPrivilegeTimes];
+    if (allEndTimes.length > 0) {
+      const nearestEndTime = allEndTimes.reduce((min, endTime) => (!min || endTime < min ? endTime : min));
+      const timeUntilExpiry = Math.floor((nearestEndTime.getTime() - now.getTime()) / 1000);
+      minTtl = Math.min(minTtl, Math.max(1, timeUntilExpiry));
+    }
+
+    return minTtl;
   };
 
   const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDTO) => {
@@ -596,13 +654,6 @@ export const permissionServiceFactory = ({
       actorId = assumedPrivilegeDetailsCtx.actorId;
     }
 
-    const cacheKey = KeyStorePrefixes.ProjectPermission(
-      projectId,
-      actor,
-      actorId,
-      actionProjectType || ActionProjectType.Any
-    );
-
     if (actor === ActorType.SERVICE) {
       return getServiceTokenProjectPermission({
         serviceTokenId: actorId,
@@ -611,6 +662,18 @@ export const permissionServiceFactory = ({
         actionProjectType
       }) as Promise<TProjectPermissionRT<T>>;
     }
+
+    const cachedProjectPermissionVersion = await keyStore.pgGetIntItem(
+      KeyStorePrefixes.ProjectPermissionDalVersion(projectId)
+    );
+    const projectPermissionVersion = Number(cachedProjectPermissionVersion || 0);
+    const cacheKey = KeyStorePrefixes.ProjectPermission(
+      projectId,
+      projectPermissionVersion,
+      actor,
+      actorId,
+      actionProjectType || ActionProjectType.Any
+    );
 
     try {
       const cachedData = await keyStore.getItem(cacheKey);
@@ -622,7 +685,6 @@ export const permissionServiceFactory = ({
             [key: string]: unknown;
           };
         };
-        // Reconstruct the permission object from cached rules
         const permission = createMongoAbility<ProjectPermissionSet>(parsed.rules, {
           conditionsMatcher
         });
@@ -673,11 +735,8 @@ export const permissionServiceFactory = ({
         membership: result.membership
       };
 
-      await keyStore.setItemWithExpiry(
-        cacheKey,
-        KeyStoreTtls.ProjectPermissionCacheInSeconds,
-        JSON.stringify(cacheData)
-      );
+      const ttl = calculateProjectPermissionTtl(result.membership);
+      await keyStore.setItemWithExpiry(cacheKey, ttl, JSON.stringify(cacheData));
     } catch (error) {
       logger.error(error, "Failed to cache project permission");
     }

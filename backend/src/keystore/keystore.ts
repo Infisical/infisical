@@ -65,11 +65,16 @@ export const KeyStorePrefixes = {
   ActiveSSEConnections: (projectId: string, identityId: string, connectionId: string) =>
     `sse-connections:${projectId}:${identityId}:${connectionId}` as const,
 
-  ProjectPermission: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
-    `project-permission:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
-  ProjectPermissionPattern: (projectId: string) => `project-permission:${projectId}:*` as const,
-  UserProjectPermissionPattern: (userId: string) => `project-permission:*:USER:${userId}:*` as const,
-  IdentityProjectPermissionPattern: (identityId: string) => `project-permission:*:IDENTITY:${identityId}:*` as const,
+  ProjectPermission: (
+    projectId: string,
+    version: number,
+    actorType: string,
+    actorId: string,
+    actionProjectType: string
+  ) => `project-permission:${projectId}:${version}:${actorType}:${actorId}:${actionProjectType}` as const,
+  ProjectPermissionDalVersion: (projectId: string) => `project-permission:${projectId}:dal-version` as const,
+  UserProjectPermissionPattern: (userId: string) => `project-permission:*:*:USER:${userId}:*` as const,
+  IdentityProjectPermissionPattern: (identityId: string) => `project-permission:*:*:IDENTITY:${identityId}:*` as const,
   GroupMemberProjectPermissionPattern: (projectId: string, groupId: string) =>
     `group-member-project-permission:${projectId}:${groupId}:*` as const
 };
@@ -78,7 +83,8 @@ export const KeyStoreTtls = {
   SetSyncSecretIntegrationLastRunTimestampInSeconds: 60,
   SetSecretSyncLastRunTimestampInSeconds: 60,
   AccessTokenStatusUpdateInSeconds: 120,
-  ProjectPermissionCacheInSeconds: 300 // 5 minutes
+  ProjectPermissionCacheInSeconds: 300, // 5 minutes
+  ProjectPermissionDalVersionTtl: "15m" // Project permission DAL version TTL
 };
 
 type TDeleteItems = {

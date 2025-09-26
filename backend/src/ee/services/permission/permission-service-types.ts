@@ -1,5 +1,6 @@
 import { MongoAbility, RawRuleOf } from "@casl/ability";
 import { MongoQuery } from "@ucast/mongo2js";
+import { Knex } from "knex";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -283,7 +284,7 @@ export type TPermissionServiceFactory = {
     projectId: string;
     checkPermissions: ProjectPermissionSet;
   }) => Promise<boolean>;
-  invalidateProjectPermissionCache: (projectId: string) => Promise<void>;
+  invalidateProjectPermissionCache: (projectId: string, tx?: Knex) => Promise<void>;
   invalidateUserProjectPermissionCache: (userId: string) => Promise<void>;
   invalidateIdentityProjectPermissionCache: (identityId: string) => Promise<void>;
 };
