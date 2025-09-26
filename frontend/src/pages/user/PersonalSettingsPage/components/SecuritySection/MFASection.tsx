@@ -143,7 +143,7 @@ export const MFASection = () => {
       setTotpCode("");
       setShouldShowRecoveryCodes.off();
       if (totpConfiguration?.isVerified) {
-        deleteTotpConfiguration().catch(console.error);
+        await deleteTotpConfiguration().catch(console.error);
       }
     } else if (field === "isMfaEnabled" && value && formData.selectedMfaMethod === MfaMethod.TOTP) {
       setShowMobileAuthSetup(true);
