@@ -101,11 +101,7 @@ async function validateUpgradePathConfig(): Promise<void> {
   }
 }
 
-if (require.main === module) {
-  validateUpgradePathConfig().catch((error) => {
-    console.error("Unexpected error:", error);
-    process.exit(1);
-  });
-}
-
-export { validateUpgradePathConfig };
+validateUpgradePathConfig().catch((error) => {
+  console.error("Unexpected error:", error);
+  process.exit(1);
+});
