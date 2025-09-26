@@ -508,7 +508,7 @@ export const useListUserGroupMemberships = (username: string) => {
   });
 };
 
-export const useGetUserTotpRegistration = () => {
+export const useGetUserTotpRegistration = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: userKeys.totpRegistration,
     queryFn: async () => {
@@ -517,7 +517,8 @@ export const useGetUserTotpRegistration = () => {
       );
 
       return data;
-    }
+    },
+    enabled: options?.enabled ?? true
   });
 };
 
