@@ -127,13 +127,23 @@ jobs:
       steps:
         - name: Create tag if it doesn't exist
           run: |
-            if ! gh api repos/Infisical/infisical-omnibus/git/refs/tags/${{ github.ref_name }} 2>/dev/null; then
+            TAG_NAME="v0.150.0-nightly-20250926"
+            echo "Checking for tag: $TAG_NAME"
+
+            if gh api repos/Infisical/infisical-omnibus/git/refs/tags/$TAG_NAME --silent 2>/dev/null; then
+            echo "Tag $TAG_NAME already exists, skipping..."
+            else
+              echo "Creating tag in Infisical/infisical-omnibus: $TAG_NAME"
               LATEST_SHA=$(gh api repos/Infisical/infisical-omnibus/git/refs/heads/main --jq '.object.sha')
+              echo "Latest SHA: $LATEST_SHA"
+              
               gh api repos/Infisical/infisical-omnibus/git/refs \
                 --method POST \
-                --field ref="refs/tags/v0.150.0-nightly-20250926" \
+                --field ref="refs/tags/$TAG_NAME" \
                 --field sha="$LATEST_SHA"
-                fi
+              
+              echo "Successfully created tag $TAG_NAME"
+            fi
           env:
-              GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-# --field ref="refs/tags/${{ github.ref_name }}" \
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # --field ref="refs/tags/${{ github.ref_name }}" \
