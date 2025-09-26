@@ -31,7 +31,7 @@ export const OAuthPasswordResetTemplate = ({
   const getAuthMethodMessage = () => {
     if (lastLoginMethod) {
       const displayName = getAuthMethodDisplayName(lastLoginMethod);
-      return `Please continue signing in with ${displayName}, which aligns with your account's configured authentication method.`;
+      return `Please continue by signing in with ${displayName}.`;
     }
     return "Please continue using the same authentication method you previously used to sign in (e.g., SSO, SAML, OAuth, or another configured provider).";
   };
@@ -46,26 +46,21 @@ export const OAuthPasswordResetTemplate = ({
       </Heading>
       <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-[14px]">
-          A password reset was requested for your Infisical account ({email}), but your account doesn't have password
-          login enabled.
-        </Text>
-        <Text className="text-[14px]">
           <strong>Password reset is not available for this account.</strong>
         </Text>
-        <Text className="text-[14px]">{getAuthMethodMessage()}</Text>
-      </Section>
-      <Section className="px-[24px] mb-[28px] pt-[12px] pb-[8px] border border-solid border-orange-200 rounded-md bg-orange-50">
         <Text className="text-[14px]">
-          <strong>Need help?</strong>
+          A password reset was requested for your Infisical account ({email}), but password login has not been enabled
+          for your account.
         </Text>
+        <Text className="text-[14px]">{getAuthMethodMessage()}</Text>
         <Text className="text-[14px]">
-          If you're having trouble accessing your account or need to change your authentication method, please contact{" "}
+          If you did not initiate this request, please contact{" "}
           {isCloud ? (
             <>
-              our support team at <BaseLink href="mailto:support@infisical.com">support@infisical.com</BaseLink>
+              us immediately at <BaseLink href="mailto:support@infisical.com">support@infisical.com</BaseLink>
             </>
           ) : (
-            "your instance administrator"
+            "your administrator immediately"
           )}
           .
         </Text>
