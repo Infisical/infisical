@@ -145,5 +145,5 @@ jobs:
               echo "Successfully created tag $TAG_NAME"
             fi
           env:
-            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            GH_TOKEN: ${{ secrets.OMNIBUS_RELEASE_TOKEN }}
   # --field ref="refs/tags/${{ github.ref_name }}" \
