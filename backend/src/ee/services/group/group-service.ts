@@ -46,10 +46,7 @@ type TGroupServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
   permissionService: Pick<
     TPermissionServiceFactory,
-    | "getOrgPermission"
-    | "getOrgPermissionByRole"
-    | "invalidateUserProjectPermissionCache"
-    | "invalidateProjectPermissionCache"
+    "getOrgPermission" | "getOrgPermissionByRole" | "invalidateProjectPermissionCache"
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
@@ -232,10 +229,8 @@ export const groupServiceFactory = ({
     });
 
     if (role) {
-      const groupMembers = await userGroupMembershipDAL.find({ groupId: group.id });
       const groupProjects = await groupProjectDAL.find({ groupId: group.id });
       await Promise.allSettled([
-        ...groupMembers.map((member) => permissionService.invalidateUserProjectPermissionCache(member.userId)),
         ...groupProjects.map((groupProject) =>
           permissionService.invalidateProjectPermissionCache(groupProject.projectId)
         )
@@ -264,7 +259,6 @@ export const groupServiceFactory = ({
         message: "Failed to delete group due to plan restriction. Upgrade plan to delete group."
       });
 
-    const groupMembers = await userGroupMembershipDAL.find({ groupId: id });
     const groupProjects = await groupProjectDAL.find({ groupId: id });
 
     const [group] = await groupDAL.delete({
@@ -273,7 +267,6 @@ export const groupServiceFactory = ({
     });
 
     await Promise.allSettled([
-      ...groupMembers.map((member) => permissionService.invalidateUserProjectPermissionCache(member.userId)),
       ...groupProjects.map((groupProject) => permissionService.invalidateProjectPermissionCache(groupProject.projectId))
     ]);
 
@@ -425,7 +418,6 @@ export const groupServiceFactory = ({
 
     const groupProjects = await groupProjectDAL.find({ groupId: group.id });
     await Promise.allSettled([
-      permissionService.invalidateUserProjectPermissionCache(user.id),
       ...groupProjects.map((groupProject) => permissionService.invalidateProjectPermissionCache(groupProject.projectId))
     ]);
 
@@ -512,7 +504,6 @@ export const groupServiceFactory = ({
 
     const groupProjects = await groupProjectDAL.find({ groupId: group.id });
     await Promise.allSettled([
-      permissionService.invalidateUserProjectPermissionCache(user.id),
       ...groupProjects.map((groupProject) => permissionService.invalidateProjectPermissionCache(groupProject.projectId))
     ]);
 

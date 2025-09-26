@@ -97,16 +97,6 @@ export const permissionServiceFactory = ({
     });
   };
 
-  const invalidateUserProjectPermissionCache = async (userId: string) => {
-    const pattern = KeyStorePrefixes.UserProjectPermissionPattern(userId);
-    await keyStore.deleteItems({ pattern });
-  };
-
-  const invalidateIdentityProjectPermissionCache = async (identityId: string) => {
-    const pattern = KeyStorePrefixes.IdentityProjectPermissionPattern(identityId);
-    await keyStore.deleteItems({ pattern });
-  };
-
   const calculateProjectPermissionTtl = (membership: unknown): number => {
     const now = new Date();
     let minTtl = KeyStoreTtls.ProjectPermissionCacheInSeconds;
@@ -805,8 +795,6 @@ export const permissionServiceFactory = ({
     buildOrgPermission,
     buildProjectPermissionRules,
     checkGroupProjectPermission,
-    invalidateProjectPermissionCache,
-    invalidateUserProjectPermissionCache,
-    invalidateIdentityProjectPermissionCache
+    invalidateProjectPermissionCache
   };
 };

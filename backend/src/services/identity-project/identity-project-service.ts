@@ -37,10 +37,7 @@ type TIdentityProjectServiceFactoryDep = {
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
   permissionService: Pick<
     TPermissionServiceFactory,
-    | "getProjectPermission"
-    | "getProjectPermissionByRole"
-    | "invalidateIdentityProjectPermissionCache"
-    | "invalidateProjectPermissionCache"
+    "getProjectPermission" | "getProjectPermissionByRole" | "invalidateProjectPermissionCache"
   >;
 };
 
@@ -172,10 +169,7 @@ export const identityProjectServiceFactory = ({
       return { ...identityProjectMembership, roles: identityRoles };
     });
 
-    await Promise.allSettled([
-      permissionService.invalidateProjectPermissionCache(projectId),
-      permissionService.invalidateIdentityProjectPermissionCache(identityId)
-    ]);
+    await permissionService.invalidateProjectPermissionCache(projectId);
 
     return projectIdentity;
   };
@@ -284,10 +278,7 @@ export const identityProjectServiceFactory = ({
       return identityProjectMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
     });
 
-    await Promise.allSettled([
-      permissionService.invalidateProjectPermissionCache(projectId),
-      permissionService.invalidateIdentityProjectPermissionCache(identityId)
-    ]);
+    await permissionService.invalidateProjectPermissionCache(projectId);
 
     return updatedRoles;
   };
@@ -320,10 +311,7 @@ export const identityProjectServiceFactory = ({
 
     const [deletedIdentity] = await identityProjectDAL.delete({ identityId, projectId });
 
-    await Promise.allSettled([
-      permissionService.invalidateProjectPermissionCache(projectId),
-      permissionService.invalidateIdentityProjectPermissionCache(identityId)
-    ]);
+    await permissionService.invalidateProjectPermissionCache(projectId);
 
     return deletedIdentity;
   };

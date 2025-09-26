@@ -45,10 +45,7 @@ type TGroupProjectServiceFactoryDep = {
   groupDAL: Pick<TGroupDALFactory, "findOne" | "findAllGroupPossibleMembers">;
   permissionService: Pick<
     TPermissionServiceFactory,
-    | "getProjectPermission"
-    | "getProjectPermissionByRole"
-    | "invalidateProjectPermissionCache"
-    | "invalidateUserProjectPermissionCache"
+    "getProjectPermission" | "getProjectPermissionByRole" | "invalidateProjectPermissionCache"
   >;
 };
 
@@ -269,11 +266,7 @@ export const groupProjectServiceFactory = ({
       return groupProjectMembership;
     });
 
-    const groupMembers = await userGroupMembershipDAL.find({ groupId: group.id });
-    await Promise.allSettled([
-      permissionService.invalidateProjectPermissionCache(projectId),
-      ...groupMembers.map((member) => permissionService.invalidateUserProjectPermissionCache(member.userId))
-    ]);
+    await permissionService.invalidateProjectPermissionCache(projectId);
 
     return projectGroup;
   };
@@ -384,11 +377,7 @@ export const groupProjectServiceFactory = ({
       return groupProjectMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
     });
 
-    const groupMembers = await userGroupMembershipDAL.find({ groupId });
-    await Promise.allSettled([
-      permissionService.invalidateProjectPermissionCache(projectId),
-      ...groupMembers.map((member) => permissionService.invalidateUserProjectPermissionCache(member.userId))
-    ]);
+    await permissionService.invalidateProjectPermissionCache(projectId);
 
     return updatedRoles;
   };
@@ -421,8 +410,6 @@ export const groupProjectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Delete, ProjectPermissionSub.Groups);
 
-    const groupMembers = await userGroupMembershipDAL.find({ groupId: group.id });
-
     const deletedProjectGroup = await groupProjectDAL.transaction(async (tx) => {
       const groupMembersNotInProject = await userGroupMembershipDAL.findGroupMembersNotInProject(
         group.id,
@@ -446,10 +433,7 @@ export const groupProjectServiceFactory = ({
       return projectGroup;
     });
 
-    await Promise.allSettled([
-      permissionService.invalidateProjectPermissionCache(projectId),
-      ...groupMembers.map((member) => permissionService.invalidateUserProjectPermissionCache(member.userId))
-    ]);
+    await permissionService.invalidateProjectPermissionCache(projectId);
 
     return deletedProjectGroup;
   };

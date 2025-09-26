@@ -45,10 +45,7 @@ import { TProjectUserMembershipRoleDALFactory } from "./project-user-membership-
 type TProjectMembershipServiceFactoryDep = {
   permissionService: Pick<
     TPermissionServiceFactory,
-    | "getProjectPermission"
-    | "getProjectPermissionByRole"
-    | "invalidateUserProjectPermissionCache"
-    | "invalidateProjectPermissionCache"
+    "getProjectPermission" | "getProjectPermissionByRole" | "invalidateProjectPermissionCache"
   >;
   smtpService: TSmtpService;
   projectBotDAL: TProjectBotDALFactory;
@@ -245,12 +242,7 @@ export const projectMembershipServiceFactory = ({
       );
     });
 
-    await Promise.allSettled([
-      permissionService.invalidateProjectPermissionCache(projectId),
-      ...orgMembers.map(({ userId }) =>
-        userId ? permissionService.invalidateUserProjectPermissionCache(userId) : Promise.resolve()
-      )
-    ]);
+    await permissionService.invalidateProjectPermissionCache(projectId);
 
     if (sendEmails) {
       await notificationService.createUserNotifications(
@@ -384,12 +376,7 @@ export const projectMembershipServiceFactory = ({
       return projectUserMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
     });
 
-    await Promise.allSettled([
-      permissionService.invalidateProjectPermissionCache(projectId),
-      membershipUser?.userId
-        ? permissionService.invalidateUserProjectPermissionCache(membershipUser.userId)
-        : Promise.resolve()
-    ]);
+    await permissionService.invalidateProjectPermissionCache(projectId);
 
     return updatedRoles;
   };
@@ -435,10 +422,7 @@ export const projectMembershipServiceFactory = ({
       return deletedMembership;
     });
 
-    await Promise.allSettled([
-      permissionService.invalidateProjectPermissionCache(projectId),
-      membership.userId ? permissionService.invalidateUserProjectPermissionCache(membership.userId) : Promise.resolve()
-    ]);
+    await permissionService.invalidateProjectPermissionCache(projectId);
 
     return membership;
   };
@@ -542,12 +526,7 @@ export const projectMembershipServiceFactory = ({
       return deletedMemberships;
     });
 
-    await Promise.allSettled([
-      permissionService.invalidateProjectPermissionCache(projectId),
-      ...memberships.map(({ userId }) =>
-        userId ? permissionService.invalidateUserProjectPermissionCache(userId) : Promise.resolve()
-      )
-    ]);
+    await permissionService.invalidateProjectPermissionCache(projectId);
 
     return memberships;
   };

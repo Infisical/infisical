@@ -285,6 +285,4 @@ export type TPermissionServiceFactory = {
     checkPermissions: ProjectPermissionSet;
   }) => Promise<boolean>;
   invalidateProjectPermissionCache: (projectId: string, tx?: Knex) => Promise<void>;
-  invalidateUserProjectPermissionCache: (userId: string) => Promise<void>;
-  invalidateIdentityProjectPermissionCache: (identityId: string) => Promise<void>;
 };

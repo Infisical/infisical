@@ -27,10 +27,7 @@ import {
 type TProjectUserAdditionalPrivilegeServiceFactoryDep = {
   projectUserAdditionalPrivilegeDAL: TProjectUserAdditionalPrivilegeDALFactory;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findById" | "findOne">;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getProjectPermission" | "invalidateUserProjectPermissionCache" | "invalidateProjectPermissionCache"
-  >;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectPermissionCache">;
   accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "update">;
 };
 
@@ -119,10 +116,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
         permissions: packedPermission
       });
 
-      await Promise.allSettled([
-        permissionService.invalidateProjectPermissionCache(projectMembership.projectId),
-        permissionService.invalidateUserProjectPermissionCache(projectMembership.userId)
-      ]);
+      await permissionService.invalidateProjectPermissionCache(projectMembership.projectId);
 
       return {
         ...additionalPrivilege,
@@ -143,10 +137,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       temporaryAccessEndTime: new Date(new Date(dto.temporaryAccessStartTime).getTime() + relativeTempAllocatedTimeInMs)
     });
 
-    await Promise.allSettled([
-      permissionService.invalidateProjectPermissionCache(projectMembership.projectId),
-      permissionService.invalidateUserProjectPermissionCache(projectMembership.userId)
-    ]);
+    await permissionService.invalidateProjectPermissionCache(projectMembership.projectId);
 
     return {
       ...additionalPrivilege,
@@ -245,10 +236,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
         temporaryAccessEndTime: new Date(new Date(temporaryAccessStartTime || "").getTime() + ms(temporaryRange || ""))
       });
 
-      await Promise.allSettled([
-        permissionService.invalidateProjectPermissionCache(projectMembership.projectId),
-        permissionService.invalidateUserProjectPermissionCache(projectMembership.userId)
-      ]);
+      await permissionService.invalidateProjectPermissionCache(projectMembership.projectId);
 
       return {
         ...additionalPrivilege,
@@ -266,10 +254,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       temporaryMode: null
     });
 
-    await Promise.allSettled([
-      permissionService.invalidateProjectPermissionCache(projectMembership.projectId),
-      permissionService.invalidateUserProjectPermissionCache(projectMembership.userId)
-    ]);
+    await permissionService.invalidateProjectPermissionCache(projectMembership.projectId);
 
     return {
       ...additionalPrivilege,
@@ -318,10 +303,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     );
     const deletedPrivilege = await projectUserAdditionalPrivilegeDAL.deleteById(userPrivilege.id);
 
-    await Promise.allSettled([
-      permissionService.invalidateProjectPermissionCache(projectMembership.projectId),
-      permissionService.invalidateUserProjectPermissionCache(projectMembership.userId)
-    ]);
+    await permissionService.invalidateProjectPermissionCache(projectMembership.projectId);
 
     return {
       ...deletedPrivilege,
