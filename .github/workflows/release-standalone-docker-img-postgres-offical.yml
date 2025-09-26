@@ -1,10 +1,10 @@
 name: Release standalone docker image
 on:
     push:
-        tags:
-            - "v*.*.*"
-            - "v*.*.*-nightly-*"
-            - "v*.*.*-nightly-*.*"
+        # tags:
+        #     - "v*.*.*"
+        #     - "v*.*.*-nightly-*"
+        #     - "v*.*.*-nightly-*.*"
         branches:
           - "daniel/auto-trigger-binary-release"
 
