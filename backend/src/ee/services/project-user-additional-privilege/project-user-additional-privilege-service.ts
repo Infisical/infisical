@@ -27,7 +27,7 @@ import {
 type TProjectUserAdditionalPrivilegeServiceFactoryDep = {
   projectUserAdditionalPrivilegeDAL: TProjectUserAdditionalPrivilegeDALFactory;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findById" | "findOne">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectPermissionCache">;
   accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "update">;
 };
 
@@ -115,6 +115,9 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
         slug,
         permissions: packedPermission
       });
+
+      await permissionService.invalidateProjectPermissionCache(projectMembership.projectId);
+
       return {
         ...additionalPrivilege,
         permissions: unpackPermissions(additionalPrivilege.permissions)
@@ -133,6 +136,9 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       temporaryAccessStartTime: new Date(dto.temporaryAccessStartTime),
       temporaryAccessEndTime: new Date(new Date(dto.temporaryAccessStartTime).getTime() + relativeTempAllocatedTimeInMs)
     });
+
+    await permissionService.invalidateProjectPermissionCache(projectMembership.projectId);
+
     return {
       ...additionalPrivilege,
       permissions: unpackPermissions(additionalPrivilege.permissions)
@@ -230,6 +236,8 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
         temporaryAccessEndTime: new Date(new Date(temporaryAccessStartTime || "").getTime() + ms(temporaryRange || ""))
       });
 
+      await permissionService.invalidateProjectPermissionCache(projectMembership.projectId);
+
       return {
         ...additionalPrivilege,
         permissions: unpackPermissions(additionalPrivilege.permissions)
@@ -245,6 +253,9 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       temporaryRange: null,
       temporaryMode: null
     });
+
+    await permissionService.invalidateProjectPermissionCache(projectMembership.projectId);
+
     return {
       ...additionalPrivilege,
       permissions: unpackPermissions(additionalPrivilege.permissions)
@@ -291,6 +302,9 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
       }
     );
     const deletedPrivilege = await projectUserAdditionalPrivilegeDAL.deleteById(userPrivilege.id);
+
+    await permissionService.invalidateProjectPermissionCache(projectMembership.projectId);
+
     return {
       ...deletedPrivilege,
       permissions: unpackPermissions(deletedPrivilege.permissions)

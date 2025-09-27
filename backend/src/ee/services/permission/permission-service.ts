@@ -3,6 +3,7 @@ import { PackRule, unpackRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 import { MongoQuery } from "@ucast/mongo2js";
 import handlebars from "handlebars";
+import { Knex } from "knex";
 
 import {
   ActionProjectType,
@@ -20,9 +21,11 @@ import {
   projectViewerPermission,
   sshHostBootstrapPermissions
 } from "@app/ee/services/permission/default-roles";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { objectify } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -49,6 +52,7 @@ type TPermissionServiceFactoryDep = {
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionDAL: TPermissionDALFactory;
+  keyStore: TKeyStoreFactory;
 };
 
 export const permissionServiceFactory = ({
@@ -56,7 +60,8 @@ export const permissionServiceFactory = ({
   orgRoleDAL,
   projectRoleDAL,
   serviceTokenDAL,
-  projectDAL
+  projectDAL,
+  keyStore
 }: TPermissionServiceFactoryDep): TPermissionServiceFactory => {
   const buildOrgPermission = (orgUserRoles: TBuildOrgPermissionDTO) => {
     const rules = orgUserRoles
@@ -81,6 +86,68 @@ export const permissionServiceFactory = ({
     return createMongoAbility<OrgPermissionSet>(rules, {
       conditionsMatcher
     });
+  };
+
+  const invalidateProjectPermissionCache = async (projectId: string, tx?: Knex) => {
+    const projectPermissionDalVersionKey = KeyStorePrefixes.ProjectPermissionDalVersion(projectId);
+    await keyStore.pgIncrementBy(projectPermissionDalVersionKey, {
+      incr: 1,
+      tx,
+      expiry: KeyStoreTtls.ProjectPermissionDalVersionTtl
+    });
+  };
+
+  const calculateProjectPermissionTtl = (membership: unknown): number => {
+    const now = new Date();
+    let minTtl = KeyStoreTtls.ProjectPermissionCacheInSeconds;
+
+    const getMinEndTime = (items: Array<{ temporaryAccessEndTime?: Date | null; isTemporary?: boolean }>) => {
+      return items
+        .filter((item) => item.isTemporary && item.temporaryAccessEndTime)
+        .map((item) => item.temporaryAccessEndTime!)
+        .filter((endTime) => endTime > now)
+        .reduce((min, endTime) => (!min || endTime < min ? endTime : min), null as Date | null);
+    };
+
+    const roleTimes: Date[] = [];
+    const additionalPrivilegeTimes: Date[] = [];
+
+    if (
+      membership &&
+      typeof membership === "object" &&
+      "roles" in membership &&
+      Array.isArray((membership as Record<string, unknown>).roles)
+    ) {
+      const roles = (membership as Record<string, unknown>).roles as Array<{
+        temporaryAccessEndTime?: Date | null;
+        isTemporary?: boolean;
+      }>;
+      const minRoleEndTime = getMinEndTime(roles);
+      if (minRoleEndTime) roleTimes.push(minRoleEndTime);
+    }
+
+    if (
+      membership &&
+      typeof membership === "object" &&
+      "additionalPrivileges" in membership &&
+      Array.isArray((membership as Record<string, unknown>).additionalPrivileges)
+    ) {
+      const additionalPrivileges = (membership as Record<string, unknown>).additionalPrivileges as Array<{
+        temporaryAccessEndTime?: Date | null;
+        isTemporary?: boolean;
+      }>;
+      const minAdditionalEndTime = getMinEndTime(additionalPrivileges);
+      if (minAdditionalEndTime) additionalPrivilegeTimes.push(minAdditionalEndTime);
+    }
+
+    const allEndTimes = [...roleTimes, ...additionalPrivilegeTimes];
+    if (allEndTimes.length > 0) {
+      const nearestEndTime = allEndTimes.reduce((min, endTime) => (!min || endTime < min ? endTime : min));
+      const timeUntilExpiry = Math.floor((nearestEndTime.getTime() - now.getTime()) / 1000);
+      minTtl = Math.min(minTtl, Math.max(1, timeUntilExpiry));
+    }
+
+    return minTtl;
   };
 
   const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDTO) => {
@@ -577,35 +644,94 @@ export const permissionServiceFactory = ({
       actorId = assumedPrivilegeDetailsCtx.actorId;
     }
 
+    if (actor === ActorType.SERVICE) {
+      return getServiceTokenProjectPermission({
+        serviceTokenId: actorId,
+        projectId,
+        actorOrgId,
+        actionProjectType
+      }) as Promise<TProjectPermissionRT<T>>;
+    }
+
+    const cachedProjectPermissionVersion = await keyStore.pgGetIntItem(
+      KeyStorePrefixes.ProjectPermissionDalVersion(projectId)
+    );
+    const projectPermissionVersion = Number(cachedProjectPermissionVersion || 0);
+    const cacheKey = KeyStorePrefixes.ProjectPermission(
+      projectId,
+      projectPermissionVersion,
+      actor,
+      actorId,
+      actionProjectType || ActionProjectType.Any
+    );
+
+    try {
+      const cachedData = await keyStore.getItem(cacheKey);
+      if (cachedData) {
+        const parsed = JSON.parse(cachedData) as {
+          rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[];
+          membership: {
+            roles?: Array<{ role: string; customRoleSlug?: string }>;
+            [key: string]: unknown;
+          };
+        };
+        const permission = createMongoAbility<ProjectPermissionSet>(parsed.rules, {
+          conditionsMatcher
+        });
+
+        return {
+          permission,
+          membership: parsed.membership,
+          hasRole: (role: string) =>
+            parsed.membership.roles?.findIndex(
+              ({ role: slug, customRoleSlug }) => role === slug || slug === customRoleSlug
+            ) !== -1
+        } as TProjectPermissionRT<T>;
+      }
+    } catch (error) {
+      logger.error(error, "Failed to get project permission");
+    }
+
+    let result: TProjectPermissionRT<T>;
+
     switch (actor) {
       case ActorType.USER:
-        return getUserProjectPermission({
+        result = (await getUserProjectPermission({
           userId: actorId,
           projectId,
           authMethod: actorAuthMethod,
           userOrgId: actorOrgId,
           actionProjectType
-        }) as Promise<TProjectPermissionRT<T>>;
-      case ActorType.SERVICE:
-        return getServiceTokenProjectPermission({
-          serviceTokenId: actorId,
-          projectId,
-          actorOrgId,
-          actionProjectType
-        }) as Promise<TProjectPermissionRT<T>>;
+        })) as TProjectPermissionRT<T>;
+        break;
       case ActorType.IDENTITY:
-        return getIdentityProjectPermission({
+        result = (await getIdentityProjectPermission({
           identityId: actorId,
           projectId,
           identityOrgId: actorOrgId,
           actionProjectType
-        }) as Promise<TProjectPermissionRT<T>>;
+        })) as TProjectPermissionRT<T>;
+        break;
       default:
         throw new BadRequestError({
           message: "Invalid actor provided",
           name: "Get project permission"
         });
     }
+
+    try {
+      const cacheData = {
+        rules: result.permission.rules,
+        membership: result.membership
+      };
+
+      const ttl = calculateProjectPermissionTtl(result.membership);
+      await keyStore.setItemWithExpiry(cacheKey, ttl, JSON.stringify(cacheData));
+    } catch (error) {
+      logger.error(error, "Failed to cache project permission");
+    }
+
+    return result;
   };
 
   const getProjectPermissionByRole: TPermissionServiceFactory["getProjectPermissionByRole"] = async (
@@ -668,6 +794,7 @@ export const permissionServiceFactory = ({
     getProjectPermissionByRole,
     buildOrgPermission,
     buildProjectPermissionRules,
-    checkGroupProjectPermission
+    checkGroupProjectPermission,
+    invalidateProjectPermissionCache
   };
 };

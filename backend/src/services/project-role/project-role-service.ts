@@ -35,7 +35,10 @@ type TProjectRoleServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findProjectById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getUserProjectPermission">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "getUserProjectPermission" | "invalidateProjectPermissionCache"
+  >;
   identityProjectMembershipRoleDAL: TIdentityProjectMembershipRoleDALFactory;
   projectUserMembershipRoleDAL: TProjectUserMembershipRoleDALFactory;
 };
@@ -162,6 +165,8 @@ export const projectRoleServiceFactory = ({
     });
     if (!updatedRole) throw new NotFoundError({ message: "Project role not found", name: "Update role" });
 
+    await permissionService.invalidateProjectPermissionCache(projectRole.projectId);
+
     return { ...updatedRole, permissions: unpackPermissions(updatedRole.permissions) };
   };
 
@@ -196,6 +201,8 @@ export const projectRoleServiceFactory = ({
 
     const deletedRole = await projectRoleDAL.deleteById(roleId);
     if (!deletedRole) throw new NotFoundError({ message: "Project role not found", name: "Delete role" });
+
+    await permissionService.invalidateProjectPermissionCache(projectRole.projectId);
 
     return { ...deletedRole, permissions: unpackPermissions(deletedRole.permissions) };
   };

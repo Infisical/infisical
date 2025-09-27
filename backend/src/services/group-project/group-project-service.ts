@@ -37,13 +37,16 @@ type TGroupProjectServiceFactoryDep = {
     TGroupProjectMembershipRoleDALFactory,
     "create" | "transaction" | "insertMany" | "delete"
   >;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembersNotInProject">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembersNotInProject" | "find">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "findProjectGhostUser" | "findById">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany" | "transaction">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
   projectBotDAL: TProjectBotDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findOne" | "findAllGroupPossibleMembers">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRole">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "getProjectPermissionByRole" | "invalidateProjectPermissionCache"
+  >;
 };
 
 export type TGroupProjectServiceFactory = ReturnType<typeof groupProjectServiceFactory>;
@@ -263,6 +266,8 @@ export const groupProjectServiceFactory = ({
       return groupProjectMembership;
     });
 
+    await permissionService.invalidateProjectPermissionCache(projectId);
+
     return projectGroup;
   };
 
@@ -372,6 +377,8 @@ export const groupProjectServiceFactory = ({
       return groupProjectMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
     });
 
+    await permissionService.invalidateProjectPermissionCache(projectId);
+
     return updatedRoles;
   };
 
@@ -404,14 +411,18 @@ export const groupProjectServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Delete, ProjectPermissionSub.Groups);
 
     const deletedProjectGroup = await groupProjectDAL.transaction(async (tx) => {
-      const groupMembers = await userGroupMembershipDAL.findGroupMembersNotInProject(group.id, project.id, tx);
+      const groupMembersNotInProject = await userGroupMembershipDAL.findGroupMembersNotInProject(
+        group.id,
+        project.id,
+        tx
+      );
 
-      if (groupMembers.length) {
+      if (groupMembersNotInProject.length) {
         await projectKeyDAL.delete(
           {
             projectId: project.id,
             $in: {
-              receiverId: groupMembers.map(({ user: { id } }) => id)
+              receiverId: groupMembersNotInProject.map(({ user: { id } }) => id)
             }
           },
           tx
@@ -421,6 +432,8 @@ export const groupProjectServiceFactory = ({
       const [projectGroup] = await groupProjectDAL.delete({ groupId: group.id, projectId: project.id }, tx);
       return projectGroup;
     });
+
+    await permissionService.invalidateProjectPermissionCache(projectId);
 
     return deletedProjectGroup;
   };
