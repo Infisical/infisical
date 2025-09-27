@@ -2,7 +2,7 @@ import { MongoAbility } from "@casl/ability";
 import { MongoQuery } from "@ucast/mongo2js";
 import { Knex } from "knex";
 
-import { ActionProjectType, TMemberships } from "@app/db/schemas";
+import { AccessScope, AccessScopeData, ActionProjectType, TMemberships } from "@app/db/schemas";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionSet } from "./org-permission";
@@ -47,6 +47,14 @@ export type TGetProjectPermissionArg = {
   actorAuthMethod: ActorAuthMethod;
   actorOrgId?: string;
   actionProjectType: ActionProjectType;
+};
+
+export type TGetOrgPermissionArg = {
+  actor: ActorType;
+  actorId: string;
+  orgId: string;
+  actorAuthMethod: ActorAuthMethod;
+  actorOrgId?: string;
 };
 
 export type TPermissionServiceFactory = {
