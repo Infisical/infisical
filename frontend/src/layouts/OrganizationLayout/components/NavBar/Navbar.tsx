@@ -13,6 +13,7 @@ import {
   faInfoCircle,
   faServer,
   faSignOut,
+  faToolbox,
   faUser,
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
@@ -104,6 +105,11 @@ export const INFISICAL_SUPPORT_OPTIONS = [
     <FontAwesomeIcon key={5} className="pr-4 text-sm" icon={faUsers} />,
     "Instance Admins",
     () => "server-admins"
+  ],
+  [
+    <FontAwesomeIcon key={6} className="pr-4 text-sm" icon={faToolbox} />,
+    "Version Upgrade Tool",
+    () => "/upgrade-path"
   ]
 ] as const;
 
@@ -343,6 +349,9 @@ export const Navbar = () => {
                 : getUrl();
 
             if (url === "server-admins" && isInfisicalCloud()) {
+              return null;
+            }
+            if (url === "upgrade-path" && isInfisicalCloud()) {
               return null;
             }
             return (

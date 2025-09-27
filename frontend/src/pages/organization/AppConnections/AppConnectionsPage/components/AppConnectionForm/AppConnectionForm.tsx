@@ -47,6 +47,7 @@ import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
 import { WindmillConnectionForm } from "./WindmillConnectionForm";
 import { ZabbixConnectionForm } from "./ZabbixConnectionForm";
+import { RedisConnectionForm } from "./RedisConnectionForm";
 
 type FormProps = {
   onComplete: (appConnection: TAppConnection) => void;
@@ -142,7 +143,7 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
     case AppConnection.OnePass:
       return <OnePassConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Heroku:
-      return <HerokuConnectionForm onSubmit={onSubmit} />;
+      return <HerokuConnectionForm onSubmit={onSubmit} projectId={projectId} />;
     case AppConnection.Render:
       return <RenderConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Flyio:
@@ -167,6 +168,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <NetlifyConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Okta:
       return <OktaConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Redis:
+      return <RedisConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -285,7 +288,13 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
     case AppConnection.OnePass:
       return <OnePassConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Heroku:
-      return <HerokuConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      return (
+        <HerokuConnectionForm
+          onSubmit={onSubmit}
+          appConnection={appConnection}
+          projectId={appConnection.projectId}
+        />
+      );
     case AppConnection.Render:
       return <RenderConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Flyio:
@@ -314,6 +323,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <DigitalOceanConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Okta:
       return <OktaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Redis:
+      return <RedisConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

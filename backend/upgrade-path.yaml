@@ -1,0 +1,26 @@
+# Upgrade Path Configuration File
+#
+# This file defines breaking changes and database migration information for Infisical versions.
+# Used by the upgrade path tool to help users understand what changes are required between versions.
+#
+# Expected format:
+# versions:
+#   "version_key":  # Can be "v1.2.3", "1.2.3", or "infisical/v1.2.3-postgres"
+#     breaking_changes:  # Optional: list of breaking changes for this version
+#       - title: "Short descriptive title"
+#         description: "Detailed description of what changed"
+#         action: "Specific steps users need to take"
+#     db_schema_changes: "Optional: Description of database changes and migration details"
+#     notes: "Optional: Additional notes or important information about this version"
+#
+# Example:
+# versions:
+#   "v1.2.3":
+#     breaking_changes:
+#       - title: "API Endpoint Changes"
+#         description: "Authentication endpoints have been restructured"
+#         action: "Update all API calls to use new /auth/v2/ endpoints"
+#     db_schema_changes: "Major schema restructuring with table reorganization. Extended migration time: 3 minutes."
+#     notes: "Critical update requiring maintenance window. Test thoroughly before production deployment."
+
+versions:

@@ -7,6 +7,7 @@ import { useVerifyUserTotpRegistration } from "@app/hooks/api/users/mutation";
 
 import { createNotification } from "../notifications";
 import { Button, ContentLoader, Input } from "../v2";
+import { RecoveryCodesDownload } from "./RecoveryCodesDownload";
 
 type Props = {
   onComplete?: () => Promise<void>;
@@ -19,20 +20,39 @@ const TotpRegistration = ({ onComplete, shouldCenterQr }: Props) => {
     useVerifyUserTotpRegistration();
   const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [totp, setTotp] = useState("");
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
 
   const handleTotpVerify = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await verifyUserTotp({
-      totp
-    });
+    try {
+      const result = await verifyUserTotp({
+        totp
+      });
 
-    createNotification({
-      text: "Successfully configured mobile authenticator",
-      type: "success"
-    });
+      createNotification({
+        text: "Successfully configured mobile authenticator",
+        type: "success"
+      });
 
+      if (result.recoveryCodes && result.recoveryCodes.length > 0) {
+        setRecoveryCodes(result.recoveryCodes);
+        setShowRecoveryModal(true);
+      } else if (onComplete) {
+        onComplete();
+      }
+    } catch {
+      createNotification({
+        text: "Failed to verify TOTP code",
+        type: "error"
+      });
+    }
+  };
+
+  const handleRecoveryDownloadComplete = async () => {
+    setShowRecoveryModal(false);
     if (onComplete) {
-      onComplete();
+      await onComplete();
     }
   };
 
@@ -52,28 +72,37 @@ const TotpRegistration = ({ onComplete, shouldCenterQr }: Props) => {
   }
 
   return (
-    <div className="flex max-w-lg flex-col text-bunker-200">
-      <div className="mb-8">
-        1. Download a two-step verification app (Duo, Google Authenticator, etc.) and scan the QR
-        code.
-      </div>
-      <div className={twMerge("mb-8 flex items-center", shouldCenterQr && "justify-center")}>
-        <img src={qrCodeUrl} alt="registration-qr" />
-      </div>
-      <form onSubmit={handleTotpVerify}>
-        <div className="mb-4">2. Enter the resulting verification code</div>
-        <div className="mb-4 flex flex-row gap-2">
-          <Input
-            onChange={(e) => setTotp(e.target.value)}
-            value={totp}
-            placeholder="Verification code"
-          />
-          <Button isLoading={isVerifyLoading} type="submit">
-            Enable MFA
-          </Button>
+    <>
+      <div className="flex max-w-lg flex-col text-bunker-200">
+        <div className="mb-8">
+          1. Download a two-step verification app (Duo, Google Authenticator, etc.) and scan the QR
+          code.
         </div>
-      </form>
-    </div>
+        <div className={twMerge("mb-8 flex items-center", shouldCenterQr && "justify-center")}>
+          <img src={qrCodeUrl} alt="registration-qr" />
+        </div>
+        <form onSubmit={handleTotpVerify}>
+          <div className="mb-4">2. Enter the resulting verification code</div>
+          <div className="mb-4 flex flex-row gap-2">
+            <Input
+              onChange={(e) => setTotp(e.target.value)}
+              value={totp}
+              placeholder="Verification code"
+            />
+            <Button isLoading={isVerifyLoading} type="submit">
+              Enable MFA
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      <RecoveryCodesDownload
+        isOpen={showRecoveryModal}
+        onClose={() => setShowRecoveryModal(false)}
+        recoveryCodes={recoveryCodes}
+        onDownloadComplete={handleRecoveryDownloadComplete}
+      />
+    </>
   );
 };
 

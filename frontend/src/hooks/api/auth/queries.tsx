@@ -183,6 +183,13 @@ export const useVerifyMfaToken = () => {
   });
 };
 
+export const verifyRecoveryCode = async (recoveryCode: string) => {
+  const { data } = await apiRequest.post("/api/v2/auth/mfa/verify/recovery-code", {
+    recoveryCode
+  });
+  return data;
+};
+
 export const verifySignupInvite = async (details: VerifySignupInviteDTO) => {
   const { data } = await apiRequest.post("/api/v1/invite-org/verify", details);
   return data;

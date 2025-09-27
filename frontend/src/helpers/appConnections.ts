@@ -36,6 +36,7 @@ import {
   OnePassConnectionMethod,
   OracleDBConnectionMethod,
   PostgresConnectionMethod,
+  RedisConnectionMethod,
   TAppConnection,
   TeamCityConnectionMethod,
   TerraformCloudConnectionMethod,
@@ -113,7 +114,8 @@ export const APP_CONNECTION_MAP: Record<
     name: "Netlify",
     image: "Netlify.png"
   },
-  [AppConnection.Okta]: { name: "Okta", image: "Okta.png" }
+  [AppConnection.Okta]: { name: "Okta", image: "Okta.png" },
+  [AppConnection.Redis]: { name: "Redis", image: "Redis.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -155,6 +157,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case MySqlConnectionMethod.UsernameAndPassword:
     case OracleDBConnectionMethod.UsernameAndPassword:
     case AzureADCSConnectionMethod.UsernamePassword:
+    case RedisConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:

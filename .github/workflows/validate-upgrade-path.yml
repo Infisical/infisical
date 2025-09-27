@@ -1,0 +1,39 @@
+name: "Validate Upgrade Path Configuration"
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - "backend/upgrade-path.yaml"
+      - "backend/scripts/validate-upgrade-path-file.ts"
+      - "backend/src/services/upgrade-path/upgrade-path-schemas.ts"
+
+  workflow_call:
+
+jobs:
+  validate-upgrade-path:
+    name: Validate upgrade-path.yaml
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'backend/package-lock.json'
+
+      - name: Install minimal dependencies
+        working-directory: backend
+        run: |
+          npm install --no-package-lock js-yaml@^4.1.0 zod@^3.22.0 tsx@^4.0.0 @types/js-yaml@^4.0.0 re2@^1.20.0
+
+      - name: Validate upgrade-path.yaml format
+        working-directory: backend
+        run: npx tsx ./scripts/validate-upgrade-path-file.ts

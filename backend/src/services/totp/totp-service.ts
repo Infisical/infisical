@@ -131,15 +131,20 @@ export const totpServiceFactory = ({ totpConfigDAL, kmsService, userDAL }: TTotp
       secret
     });
 
-    if (isValid) {
-      await totpConfigDAL.updateById(totpConfig.id, {
-        isVerified: true
-      });
-    } else {
+    if (!isValid) {
       throw new BadRequestError({
         message: "Invalid TOTP token"
       });
     }
+
+    await totpConfigDAL.updateById(totpConfig.id, {
+      isVerified: true
+    });
+
+    const recoveryCodes = decryptWithRoot(totpConfig.encryptedRecoveryCodes).toString().split(",");
+    return {
+      recoveryCodes
+    };
   };
 
   const verifyUserTotp = async ({ userId, totp }: TVerifyUserTotpDTO) => {

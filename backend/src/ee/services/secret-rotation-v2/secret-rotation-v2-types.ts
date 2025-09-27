@@ -66,6 +66,13 @@ import {
   TPostgresCredentialsRotationListItem,
   TPostgresCredentialsRotationWithConnection
 } from "./postgres-credentials";
+import {
+  TRedisCredentialsRotation,
+  TRedisCredentialsRotationGeneratedCredentials,
+  TRedisCredentialsRotationInput,
+  TRedisCredentialsRotationListItem,
+  TRedisCredentialsRotationWithConnection
+} from "./redis-credentials/redis-credentials-rotation-types";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 import { SecretRotation } from "./secret-rotation-v2-enums";
 
@@ -78,7 +85,8 @@ export type TSecretRotationV2 =
   | TAzureClientSecretRotation
   | TLdapPasswordRotation
   | TAwsIamUserSecretRotation
-  | TOktaClientSecretRotation;
+  | TOktaClientSecretRotation
+  | TRedisCredentialsRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -89,7 +97,8 @@ export type TSecretRotationV2WithConnection =
   | TAzureClientSecretRotationWithConnection
   | TLdapPasswordRotationWithConnection
   | TAwsIamUserSecretRotationWithConnection
-  | TOktaClientSecretRotationWithConnection;
+  | TOktaClientSecretRotationWithConnection
+  | TRedisCredentialsRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -97,7 +106,8 @@ export type TSecretRotationV2GeneratedCredentials =
   | TAzureClientSecretRotationGeneratedCredentials
   | TLdapPasswordRotationGeneratedCredentials
   | TAwsIamUserSecretRotationGeneratedCredentials
-  | TOktaClientSecretRotationGeneratedCredentials;
+  | TOktaClientSecretRotationGeneratedCredentials
+  | TRedisCredentialsRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -108,7 +118,8 @@ export type TSecretRotationV2Input =
   | TAzureClientSecretRotationInput
   | TLdapPasswordRotationInput
   | TAwsIamUserSecretRotationInput
-  | TOktaClientSecretRotationInput;
+  | TOktaClientSecretRotationInput
+  | TRedisCredentialsRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -119,7 +130,8 @@ export type TSecretRotationV2ListItem =
   | TAzureClientSecretRotationListItem
   | TLdapPasswordRotationListItem
   | TAwsIamUserSecretRotationListItem
-  | TOktaClientSecretRotationListItem;
+  | TOktaClientSecretRotationListItem
+  | TRedisCredentialsRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters = TLdapPasswordRotationInput["temporaryParameters"] | undefined;
 

@@ -320,6 +320,7 @@ import { telemetryQueueServiceFactory } from "@app/services/telemetry/telemetry-
 import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { totpConfigDALFactory } from "@app/services/totp/totp-config-dal";
 import { totpServiceFactory } from "@app/services/totp/totp-service";
+import { upgradePathServiceFactory } from "@app/services/upgrade-path/upgrade-path-service";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -771,6 +772,8 @@ export const registerRoutes = async (
     userAliasDAL
   });
 
+  const upgradePathService = upgradePathServiceFactory({ keyStore });
+
   const totpService = totpServiceFactory({
     totpConfigDAL,
     userDAL,
@@ -792,6 +795,7 @@ export const registerRoutes = async (
     smtpService,
     authDAL,
     userDAL,
+    orgMembershipDAL,
     totpConfigDAL
   });
 
@@ -2277,7 +2281,8 @@ export const registerRoutes = async (
     notification: notificationService,
     pamFolder: pamFolderService,
     pamResource: pamResourceService,
-    pamSession: pamSessionService
+    pamSession: pamSessionService,
+    upgradePath: upgradePathService
   });
 
   const cronJobs: CronJob[] = [];

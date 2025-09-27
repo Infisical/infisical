@@ -180,6 +180,12 @@ import {
   TValidateRailwayConnectionCredentialsSchema
 } from "./railway";
 import {
+  TRedisConnection,
+  TRedisConnectionConfig,
+  TRedisConnectionInput,
+  TValidateRedisConnectionCredentialsSchema
+} from "./redis";
+import {
   TRenderConnection,
   TRenderConnectionConfig,
   TRenderConnectionInput,
@@ -261,6 +267,7 @@ export type TAppConnection = { id: string } & (
   | TDigitalOceanConnection
   | TNetlifyConnection
   | TOktaConnection
+  | TRedisConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -306,6 +313,7 @@ export type TAppConnectionInput = { id: string } & (
   | TDigitalOceanConnectionInput
   | TNetlifyConnectionInput
   | TOktaConnectionInput
+  | TRedisConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -368,7 +376,8 @@ export type TAppConnectionConfig =
   | TSupabaseConnectionConfig
   | TDigitalOceanConnectionConfig
   | TNetlifyConnectionConfig
-  | TOktaConnectionConfig;
+  | TOktaConnectionConfig
+  | TRedisConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -408,7 +417,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSupabaseConnectionCredentialsSchema
   | TValidateDigitalOceanCredentialsSchema
   | TValidateNetlifyConnectionCredentialsSchema
-  | TValidateOktaConnectionCredentialsSchema;
+  | TValidateOktaConnectionCredentialsSchema
+  | TValidateRedisConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
