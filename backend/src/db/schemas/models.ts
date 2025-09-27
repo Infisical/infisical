@@ -310,6 +310,16 @@ export enum ActionProjectType {
   Any = "any"
 }
 
+export enum TemporaryPermissionMode {
+  Relative = "relative"
+}
+
+export enum MembershipActors {
+  Group = "group",
+  User = "user",
+  Identity = "identity"
+}
+
 export enum SortDirection {
   ASC = "asc",
   DESC = "desc"
