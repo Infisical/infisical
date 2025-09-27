@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   faBook,
   faBoxOpen,
@@ -11,13 +12,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
 import { useProject, useProjectPermission, useSubscription } from "@app/context";
+import { usePopUp } from "@app/hooks";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
-import { useEffect } from "react";
-import { usePopUp } from "@app/hooks";
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 
 export const PamLayout = () => {
   const { currentProject } = useProject();

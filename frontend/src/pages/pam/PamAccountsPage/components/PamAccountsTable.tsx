@@ -35,6 +35,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { useSubscription } from "@app/context";
 import {
   ProjectPermissionActions,
   ProjectPermissionPamAccountActions,
@@ -54,7 +55,6 @@ import { PamDeleteFolderModal } from "./PamDeleteFolderModal";
 import { PamFolderRow } from "./PamFolderRow";
 import { PamUpdateAccountModal } from "./PamUpdateAccountModal";
 import { PamUpdateFolderModal } from "./PamUpdateFolderModal";
-import { useSubscription } from "@app/context";
 
 enum OrderBy {
   Name = "name"

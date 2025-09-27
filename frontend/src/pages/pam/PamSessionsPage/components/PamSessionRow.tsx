@@ -13,7 +13,6 @@ import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,

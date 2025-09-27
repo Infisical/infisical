@@ -58,7 +58,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   enforceMfa: false,
   projectTemplates: false,
   kmip: false,
-  gateway: true,
+  gateway: false,
   sshHostGroups: false,
   secretScanning: false,
   enterpriseSecretSyncs: false,
@@ -67,7 +67,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   fips: false,
   eventSubscriptions: false,
   machineIdentityAuthTemplates: false,
-  pam: true
+  pam: false
 });
 
 export const setupLicenseRequestWithStore = (
