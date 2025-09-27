@@ -1,4 +1,5 @@
 import { Heading, Section, Text } from "@react-email/components";
+import React from "react";
 
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 import { BaseLink } from "./BaseLink";
