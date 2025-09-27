@@ -292,6 +292,7 @@ export const projectUserAdditionalPrivilegeServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
 
+    // TODO(simp): look into this in the new ap service
     await accessApprovalRequestDAL.update(
       {
         privilegeId: userPrivilege.id

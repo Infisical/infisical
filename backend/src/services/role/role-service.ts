@@ -44,11 +44,17 @@ export const roleServiceFactory = ({ roleDAL, permissionService }: TRoleServiceF
     const factory = scopeFactory[scopeData.scope];
     await factory.onCreateRoleGuard(dto);
 
+    const scope = factory.getScopeField(scopeData);
+    const existingRole = await roleDAL.findOne({
+      slug: data.slug,
+      [scope.key]: scope.value
+    });
+    if (existingRole) throw new NotFoundError({ message: `Role with ${data.slug} exist` });
+
     validateHandlebarTemplate("Role Creation", JSON.stringify(data.permissions || []), {
       allowedExpressions: (val) => val.includes("identity.")
     });
 
-    const scope = factory.getScopeField(scopeData);
     const role = await roleDAL.create({
       name: data.name,
       description: data.description,
