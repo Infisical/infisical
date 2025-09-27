@@ -189,7 +189,13 @@ export enum TableName {
   Relay = "relays",
   GatewayV2 = "gateways_v2",
 
-  KeyValueStore = "key_value_store"
+  KeyValueStore = "key_value_store",
+
+  // PAM
+  PamFolder = "pam_folders",
+  PamResource = "pam_resources",
+  PamAccount = "pam_accounts",
+  PamSession = "pam_sessions"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
@@ -281,7 +287,8 @@ export enum ProjectType {
   CertificateManager = "cert-manager",
   KMS = "kms",
   SSH = "ssh",
-  SecretScanning = "secret-scanning"
+  SecretScanning = "secret-scanning",
+  PAM = "pam"
 }
 
 export enum ActionProjectType {
@@ -290,6 +297,7 @@ export enum ActionProjectType {
   KMS = ProjectType.KMS,
   SSH = ProjectType.SSH,
   SecretScanning = ProjectType.SecretScanning,
+  PAM = ProjectType.PAM,
   // project operations that happen on all types
   Any = "any"
 }

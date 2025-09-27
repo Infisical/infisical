@@ -66,6 +66,7 @@ const Content = ({
   secrets,
   environments,
   projectId,
+  projectSlug,
   sourceSecretPath
 }: ContentProps) => {
   const [search, setSearch] = useState(sourceSecretPath);
@@ -194,6 +195,7 @@ const Content = ({
           destinationEnvironment: environment.slug,
           destinationSecretPath: value.secretPath,
           projectId,
+          projectSlug,
           secretIds: secretsToMove.map((sec) => sec.id)
         });
 

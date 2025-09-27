@@ -3,6 +3,7 @@ import { Controller, useFormContext } from "react-hook-form";
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FormControl, Input } from "@app/components/v2";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+
 import { DEFAULT_PASSWORD_REQUIREMENTS } from "../schemas/shared";
 
 export const RedisCredentialsRotationParametersFields = () => {
@@ -18,7 +19,7 @@ export const RedisCredentialsRotationParametersFields = () => {
         <Controller
           control={control}
           name="parameters.permissionScope"
-          defaultValue={""}
+          defaultValue=""
           render={({ field, fieldState: { error } }) => (
             <FormControl
               tooltipClassName="max-w-[40rem] w-full"

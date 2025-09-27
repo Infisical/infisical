@@ -268,11 +268,13 @@ export const gatewayV2ServiceFactory = ({
   const getPlatformConnectionDetailsByGatewayId = async ({
     gatewayId,
     targetHost,
-    targetPort
+    targetPort,
+    actorMetadata
   }: {
     gatewayId: string;
     targetHost: string;
     targetPort: number;
+    actorMetadata?: { sessionId?: string; resourceType?: string };
   }) => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
     if (!gateway) {
@@ -359,7 +361,9 @@ export const gatewayV2ServiceFactory = ({
     const actorExtension = new x509.Extension(
       GATEWAY_ACTOR_OID,
       false,
-      Buffer.from(JSON.stringify({ type: ActorType.PLATFORM }))
+      Buffer.from(
+        JSON.stringify(actorMetadata ? { type: ActorType.PLATFORM, ...actorMetadata } : { type: ActorType.PLATFORM })
+      )
     );
 
     const clientCert = await x509.X509CertificateGenerator.create({

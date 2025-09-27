@@ -349,6 +349,7 @@ export const ActionBar = ({
         destinationEnvironment,
         destinationSecretPath,
         projectId,
+        projectSlug: currentProject.slug,
         secretIds: secretsToMove.map((sec) => sec.id)
       });
 

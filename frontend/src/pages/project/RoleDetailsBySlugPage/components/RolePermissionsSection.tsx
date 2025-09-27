@@ -21,6 +21,7 @@ import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionCond
 import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
 import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
+import { PamAccountPermissionConditions } from "./PamAccountPermissionConditions";
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import { PkiSubscriberPermissionConditions } from "./PkiSubscriberPermissionConditions";
 import { PkiSyncPermissionConditions } from "./PkiSyncPermissionConditions";
@@ -85,6 +86,10 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.AppConnections) {
       return <AppConnectionPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.PamAccounts) {
+      return <PamAccountPermissionConditions isDisabled={isDisabled} />;
     }
 
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;

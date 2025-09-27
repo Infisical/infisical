@@ -500,7 +500,26 @@ export enum EventType {
 
   DASHBOARD_LIST_SECRETS = "dashboard-list-secrets",
   DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
-  DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value"
+  DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value",
+
+  PAM_SESSION_START = "pam-session-start",
+  PAM_SESSION_LOGS_UPDATE = "pam-session-logs-update",
+  PAM_SESSION_END = "pam-session-end",
+  PAM_SESSION_GET = "pam-session-get",
+  PAM_SESSION_LIST = "pam-session-list",
+  PAM_FOLDER_CREATE = "pam-folder-create",
+  PAM_FOLDER_UPDATE = "pam-folder-update",
+  PAM_FOLDER_DELETE = "pam-folder-delete",
+  PAM_ACCOUNT_LIST = "pam-account-list",
+  PAM_ACCOUNT_ACCESS = "pam-account-access",
+  PAM_ACCOUNT_CREATE = "pam-account-create",
+  PAM_ACCOUNT_UPDATE = "pam-account-update",
+  PAM_ACCOUNT_DELETE = "pam-account-delete",
+  PAM_RESOURCE_LIST = "pam-resource-list",
+  PAM_RESOURCE_GET = "pam-resource-get",
+  PAM_RESOURCE_CREATE = "pam-resource-create",
+  PAM_RESOURCE_UPDATE = "pam-resource-update",
+  PAM_RESOURCE_DELETE = "pam-resource-delete"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -3687,6 +3706,156 @@ interface OrgRoleDeleteEvent {
   };
 }
 
+interface PamSessionStartEvent {
+  type: EventType.PAM_SESSION_START;
+  metadata: {
+    sessionId: string;
+  };
+}
+
+interface PamSessionLogsUpdateEvent {
+  type: EventType.PAM_SESSION_LOGS_UPDATE;
+  metadata: {
+    sessionId: string;
+  };
+}
+
+interface PamSessionEndEvent {
+  type: EventType.PAM_SESSION_END;
+  metadata: {
+    sessionId: string;
+  };
+}
+
+interface PamSessionGetEvent {
+  type: EventType.PAM_SESSION_GET;
+  metadata: {
+    sessionId: string;
+  };
+}
+
+interface PamSessionListEvent {
+  type: EventType.PAM_SESSION_LIST;
+  metadata: {
+    count: number;
+  };
+}
+
+interface PamFolderCreateEvent {
+  type: EventType.PAM_FOLDER_CREATE;
+  metadata: {
+    parentId?: string | null;
+    name: string;
+    description?: string | null;
+  };
+}
+
+interface PamFolderUpdateEvent {
+  type: EventType.PAM_FOLDER_UPDATE;
+  metadata: {
+    folderId: string;
+    name?: string;
+    description?: string | null;
+  };
+}
+
+interface PamFolderDeleteEvent {
+  type: EventType.PAM_FOLDER_DELETE;
+  metadata: {
+    folderId: string;
+  };
+}
+
+interface PamAccountListEvent {
+  type: EventType.PAM_ACCOUNT_LIST;
+  metadata: {
+    accountCount: number;
+    folderCount: number;
+  };
+}
+
+interface PamAccountAccessEvent {
+  type: EventType.PAM_ACCOUNT_ACCESS;
+  metadata: {
+    accountId: string;
+    duration?: string;
+  };
+}
+
+interface PamAccountCreateEvent {
+  type: EventType.PAM_ACCOUNT_CREATE;
+  metadata: {
+    resourceId: string;
+    resourceType: string;
+    folderId?: string | null;
+    name: string;
+    description?: string | null;
+  };
+}
+
+interface PamAccountUpdateEvent {
+  type: EventType.PAM_ACCOUNT_UPDATE;
+  metadata: {
+    accountId: string;
+    resourceId: string;
+    resourceType: string;
+    name?: string;
+    description?: string | null;
+  };
+}
+
+interface PamAccountDeleteEvent {
+  type: EventType.PAM_ACCOUNT_DELETE;
+  metadata: {
+    accountId: string;
+    resourceId: string;
+    resourceType: string;
+  };
+}
+
+interface PamResourceListEvent {
+  type: EventType.PAM_RESOURCE_LIST;
+  metadata: {
+    count: number;
+  };
+}
+
+interface PamResourceGetEvent {
+  type: EventType.PAM_RESOURCE_GET;
+  metadata: {
+    resourceId: string;
+    resourceType: string;
+    name: string;
+  };
+}
+
+interface PamResourceCreateEvent {
+  type: EventType.PAM_RESOURCE_CREATE;
+  metadata: {
+    resourceType: string;
+    gatewayId: string;
+    name: string;
+  };
+}
+
+interface PamResourceUpdateEvent {
+  type: EventType.PAM_RESOURCE_UPDATE;
+  metadata: {
+    resourceId: string;
+    resourceType: string;
+    gatewayId?: string;
+    name?: string;
+  };
+}
+
+interface PamResourceDeleteEvent {
+  type: EventType.PAM_RESOURCE_DELETE;
+  metadata: {
+    resourceId: string;
+    resourceType: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -4020,4 +4189,22 @@ export type Event =
   | ProjectRoleDeleteEvent
   | OrgRoleCreateEvent
   | OrgRoleUpdateEvent
-  | OrgRoleDeleteEvent;
+  | OrgRoleDeleteEvent
+  | PamSessionStartEvent
+  | PamSessionLogsUpdateEvent
+  | PamSessionEndEvent
+  | PamSessionGetEvent
+  | PamSessionListEvent
+  | PamFolderCreateEvent
+  | PamFolderUpdateEvent
+  | PamFolderDeleteEvent
+  | PamAccountListEvent
+  | PamAccountAccessEvent
+  | PamAccountCreateEvent
+  | PamAccountUpdateEvent
+  | PamAccountDeleteEvent
+  | PamResourceListEvent
+  | PamResourceGetEvent
+  | PamResourceCreateEvent
+  | PamResourceUpdateEvent
+  | PamResourceDeleteEvent;

@@ -1,7 +1,7 @@
 import { CredentialDisplay } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/shared/CredentialDisplay";
+import { TRedisCredentialsRotationGeneratedCredentialsResponse } from "@app/hooks/api/secretRotationsV2/types/redis-credentials-rotation";
 
 import { ViewRotationGeneratedCredentialsDisplay } from "./shared";
-import { TRedisCredentialsRotationGeneratedCredentialsResponse } from "@app/hooks/api/secretRotationsV2/types/redis-credentials-rotation";
 
 type Props = {
   generatedCredentialsResponse: TRedisCredentialsRotationGeneratedCredentialsResponse;

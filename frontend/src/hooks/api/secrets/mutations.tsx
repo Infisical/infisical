@@ -337,7 +337,7 @@ export const useMoveSecrets = ({
       destinationSecretPath,
       secretIds,
       shouldOverwrite,
-      projectId
+      projectSlug
     }) => {
       const { data } = await apiRequest.post<{
         isSourceUpdated: boolean;
@@ -349,7 +349,7 @@ export const useMoveSecrets = ({
         destinationSecretPath,
         secretIds,
         shouldOverwrite,
-        projectId
+        projectSlug
       });
 
       return data;
