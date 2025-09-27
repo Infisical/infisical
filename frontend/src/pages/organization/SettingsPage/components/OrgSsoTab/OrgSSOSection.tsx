@@ -1,7 +1,10 @@
+import { faInfoCircle, faWarning } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, Switch } from "@app/components/v2";
+import { Button, Switch, Tooltip } from "@app/components/v2";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -12,6 +15,9 @@ import { useCreateSSOConfig, useGetSSOConfig, useUpdateSSOConfig } from "@app/ho
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { SSOModal } from "./SSOModal";
+
+// Auth providers that support group sync
+const GROUP_SYNC_SUPPORTED_PROVIDERS = ["google-saml"] as const;
 
 export const OrgSSOSection = (): JSX.Element => {
   const { currentOrg } = useOrganization();
@@ -48,6 +54,33 @@ export const OrgSSOSection = (): JSX.Element => {
       console.error(err);
       createNotification({
         text: `Failed to ${value ? "enable" : "disable"} SAML SSO`,
+        type: "error"
+      });
+    }
+  };
+
+  const handleSamlGroupManagement = async (value: boolean) => {
+    try {
+      if (!currentOrg?.id) return;
+
+      if (!subscription?.samlSSO) {
+        handlePopUpOpen("upgradePlan");
+        return;
+      }
+
+      await mutateAsync({
+        organizationId: currentOrg?.id,
+        enableGroupSync: value
+      });
+
+      createNotification({
+        text: `Successfully ${value ? "enabled" : "disabled"} SAML group membership mapping`,
+        type: "success"
+      });
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: `Failed to ${value ? "enable" : "disable"} SAML group membership mapping`,
         type: "error"
       });
     }
@@ -132,6 +165,66 @@ export const OrgSSOSection = (): JSX.Element => {
           Allow members to authenticate into Infisical with SAML
         </p>
       </div>
+      {data && GROUP_SYNC_SUPPORTED_PROVIDERS.includes(data.authProvider) && (
+        <div className="py-4">
+          <div className="mb-2 flex justify-between">
+            <div className="text-md flex items-center text-mineshaft-100">
+              <span>SAML Group Membership Mapping</span>
+              <Tooltip
+                className="max-w-lg"
+                content={
+                  <>
+                    <p>
+                      When this feature is enabled, Infisical will automatically sync group
+                      memberships between the SAML provider and Infisical. Users will be added to
+                      Infisical groups that match their SAML group names.
+                    </p>
+                    <p className="mt-4">
+                      To use this feature you must include group claims in the SAML response as a
+                      &quot;groups&quot; attribute.
+                    </p>
+                    <a
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2 hover:text-mineshaft-300"
+                      href="https://infisical.com/docs/documentation/platform/sso/overview"
+                    >
+                      See your SAML provider docs for details.
+                    </a>
+                    <p className="mt-4 text-yellow">
+                      <FontAwesomeIcon className="mr-1" icon={faWarning} />
+                      Group membership changes in the SAML provider only sync with Infisical when a
+                      user logs in via SAML. For example, if you remove a user from a group in the
+                      SAML provider, this change will not be reflected in Infisical until their next
+                      SAML login. To ensure this behavior, Infisical recommends enabling Enforce
+                      SAML SSO.
+                    </p>
+                  </>
+                }
+              >
+                <FontAwesomeIcon
+                  icon={faInfoCircle}
+                  size="sm"
+                  className="ml-1 mt-0.5 inline-block text-mineshaft-400"
+                />
+              </Tooltip>
+            </div>
+            <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Sso}>
+              {(isAllowed) => (
+                <Switch
+                  id="enable-saml-group-sync"
+                  isChecked={data?.enableGroupSync ?? false}
+                  onCheckedChange={(value) => handleSamlGroupManagement(value)}
+                  isDisabled={!isAllowed}
+                />
+              )}
+            </OrgPermissionCan>
+          </div>
+          <p className="text-sm text-mineshaft-300">
+            Infisical will manage user group memberships based on the SAML provider
+          </p>
+        </div>
+      )}
       <SSOModal
         popUp={popUp}
         handlePopUpClose={handlePopUpClose}

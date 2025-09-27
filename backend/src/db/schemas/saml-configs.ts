@@ -28,7 +28,8 @@ export const SamlConfigsSchema = z.object({
   lastUsed: z.date().nullable().optional(),
   encryptedSamlEntryPoint: zodBuffer,
   encryptedSamlIssuer: zodBuffer,
-  encryptedSamlCertificate: zodBuffer
+  encryptedSamlCertificate: zodBuffer,
+  enableGroupSync: z.boolean().default(false)
 });
 
 export type TSamlConfigs = z.infer<typeof SamlConfigsSchema>;
