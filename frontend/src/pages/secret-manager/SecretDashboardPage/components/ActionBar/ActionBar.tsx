@@ -72,7 +72,10 @@ import {
   useMoveSecrets,
   useUpdateSecretBatch
 } from "@app/hooks/api";
-import { dashboardKeys, fetchDashboardProjectSecretsByKeys } from "@app/hooks/api/dashboard/queries";
+import {
+  dashboardKeys,
+  fetchDashboardProjectSecretsByKeys
+} from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";

@@ -66,6 +66,13 @@ import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
+import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
+import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
+import { pamAccountDALFactory } from "@app/ee/services/pam-resource/pam-account-dal";
+import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
+import { pamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
+import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
+import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { pitServiceFactory } from "@app/ee/services/pit/pit-service";
@@ -2099,6 +2106,37 @@ export const registerRoutes = async (
     appConnectionDAL
   });
 
+  const pamFolderDAL = pamFolderDALFactory(db);
+  const pamResourceDAL = pamResourceDALFactory(db);
+  const pamAccountDAL = pamAccountDALFactory(db);
+  const pamSessionDAL = pamSessionDALFactory(db);
+
+  const pamFolderService = pamFolderServiceFactory({
+    pamFolderDAL,
+    permissionService,
+    licenseService
+  });
+
+  const pamResourceService = pamResourceServiceFactory({
+    pamResourceDAL,
+    pamSessionDAL,
+    pamAccountDAL,
+    pamFolderDAL,
+    projectDAL,
+    permissionService,
+    licenseService,
+    kmsService,
+    gatewayV2Service
+  });
+
+  const pamSessionService = pamSessionServiceFactory({
+    pamSessionDAL,
+    projectDAL,
+    permissionService,
+    licenseService,
+    kmsService
+  });
+
   // setup the communication with license key server
   await licenseService.init();
 
@@ -2236,7 +2274,10 @@ export const registerRoutes = async (
     reminder: reminderService,
     bus: eventBusService,
     sse: sseService,
-    notification: notificationService
+    notification: notificationService,
+    pamFolder: pamFolderService,
+    pamResource: pamResourceService,
+    pamSession: pamSessionService
   });
 
   const cronJobs: CronJob[] = [];

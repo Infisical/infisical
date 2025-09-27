@@ -287,7 +287,8 @@ export enum ProjectType {
   CertificateManager = "cert-manager",
   KMS = "kms",
   SSH = "ssh",
-  SecretScanning = "secret-scanning"
+  SecretScanning = "secret-scanning",
+  PAM = "pam"
 }
 
 export enum ActionProjectType {
@@ -296,6 +297,7 @@ export enum ActionProjectType {
   KMS = ProjectType.KMS,
   SSH = ProjectType.SSH,
   SecretScanning = ProjectType.SecretScanning,
+  PAM = ProjectType.PAM,
   // project operations that happen on all types
   Any = "any"
 }

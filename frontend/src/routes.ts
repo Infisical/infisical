@@ -375,6 +375,26 @@ const secretScanningRoutes = route("/projects/secret-scanning/$projectId", [
   ])
 ]);
 
+const pamRoutes = route("/projects/pam/$projectId", [
+  layout("pam-layout", "pam/layout.tsx", [
+    route("/accounts", "pam/PamAccountsPage/route.tsx"),
+    route("/sessions", [
+      index("pam/PamSessionsPage/route.tsx"),
+      route("/$sessionId", "pam/PamSessionsByIDPage/route.tsx")
+    ]),
+    route("/resources", "pam/PamResourcesPage/route.tsx"),
+    route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
+    route("/settings", "pam/SettingsPage/route.tsx"),
+
+    // Access Management
+    route("/access-management", "project/AccessControlPage/route-pam.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-pam.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-pam.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-pam.tsx"),
+    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-pam.tsx")
+  ])
+]);
+
 export const routes = rootRoute("root.tsx", [
   index("index.tsx"),
   route("/shared/secret/$secretId", "public/ViewSharedSecretByIDPage/route.tsx"),
@@ -420,7 +440,8 @@ export const routes = rootRoute("root.tsx", [
         certManagerRoutes,
         kmsRoutes,
         sshRoutes,
-        secretScanningRoutes
+        secretScanningRoutes,
+        pamRoutes
       ])
     ])
   ])

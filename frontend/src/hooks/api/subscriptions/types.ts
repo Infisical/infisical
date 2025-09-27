@@ -58,4 +58,5 @@ export type SubscriptionPlan = {
   cardDeclined?: boolean;
   cardDeclinedReason?: string;
   machineIdentityAuthTemplates: boolean;
+  pam: boolean;
 };

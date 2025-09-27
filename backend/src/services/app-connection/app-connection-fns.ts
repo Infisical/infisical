@@ -213,6 +213,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
           return false;
         case ProjectType.SSH:
           return false;
+        case ProjectType.PAM:
+          return false;
         default:
           return true;
       }

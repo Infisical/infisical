@@ -23,6 +23,11 @@ import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
 import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
+import { registerPamAccountRouter } from "./pam-account-router";
+import { registerPamFolderRouter } from "./pam-folder-router";
+import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
+import { registerPamResourceRouter } from "./pam-resource-routers/pam-resource-router";
+import { registerPamSessionRouter } from "./pam-session-router";
 import { registerPITRouter } from "./pit-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
@@ -165,5 +170,23 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await kmipRouter.register(registerKmipSpecRouter, { prefix: "/spec" });
     },
     { prefix: "/kmip" }
+  );
+
+  await server.register(registerPamFolderRouter, { prefix: "/pam/folders" });
+  await server.register(registerPamAccountRouter, { prefix: "/pam/accounts" });
+  await server.register(registerPamSessionRouter, { prefix: "/pam/sessions" });
+
+  await server.register(
+    async (pamResourceRouter) => {
+      await pamResourceRouter.register(registerPamResourceRouter);
+
+      // Provider-specific endpoints
+      await Promise.all(
+        Object.entries(PAM_RESOURCE_REGISTER_ROUTER_MAP).map(([provider, router]) =>
+          pamResourceRouter.register(router, { prefix: `/${provider}` })
+        )
+      );
+    },
+    { prefix: "/pam/resources" }
   );
 };
