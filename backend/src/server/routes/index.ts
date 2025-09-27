@@ -788,6 +788,7 @@ export const registerRoutes = async (
     smtpService,
     authDAL,
     userDAL,
+    orgMembershipDAL,
     totpConfigDAL
   });
 
