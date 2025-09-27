@@ -17,6 +17,7 @@ export type TCreateSamlCfgDTO = {
   entryPoint: string;
   issuer: string;
   idpCert: string;
+  enableGroupSync?: boolean;
 } & TOrgPermission;
 
 export type TUpdateSamlCfgDTO = Partial<{
@@ -25,6 +26,7 @@ export type TUpdateSamlCfgDTO = Partial<{
   entryPoint: string;
   issuer: string;
   idpCert: string;
+  enableGroupSync?: boolean;
 }> &
   TOrgPermission;
 
@@ -71,6 +73,7 @@ export type TSamlConfigServiceFactory = {
     issuer: string;
     cert: string;
     lastUsed: Date | null | undefined;
+    enableGroupSync?: boolean;
   }>;
   samlLogin: (arg: TSamlLoginDTO) => Promise<{
     isUserCompleted: boolean;
