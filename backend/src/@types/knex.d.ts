@@ -1334,12 +1334,12 @@ declare module "knex/types/tables" {
 
     [TableName.Namespace]: KnexOriginal.CompositeTableType<TNamespaces, TNamespacesInsert, TNamespacesUpdate>;
     [TableName.Membership]: KnexOriginal.CompositeTableType<TMemberships, TMembershipsInsert, TMembershipsUpdate>;
-    [TableName.MembershipRoles]: KnexOriginal.CompositeTableType<
+    [TableName.MembershipRole]: KnexOriginal.CompositeTableType<
       TMembershipRoles,
       TMembershipRolesInsert,
       TMembershipRolesUpdate
     >;
-    [TableName.Roles]: KnexOriginal.CompositeTableType<TRoles, TRolesInsert, TRolesUpdate>;
+    [TableName.Role]: KnexOriginal.CompositeTableType<TRoles, TRolesInsert, TRolesUpdate>;
     [TableName.AdditionalPrivilege]: KnexOriginal.CompositeTableType<
       TAdditionalPrivileges,
       TAdditionalPrivilegesInsert,

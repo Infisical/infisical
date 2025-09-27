@@ -1,8 +1,8 @@
-import { MongoAbility, RawRuleOf } from "@casl/ability";
+import { MongoAbility } from "@casl/ability";
 import { MongoQuery } from "@ucast/mongo2js";
 import { Knex } from "knex";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, TMemberships } from "@app/db/schemas";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionSet } from "./org-permission";
@@ -50,162 +50,22 @@ export type TGetProjectPermissionArg = {
 };
 
 export type TPermissionServiceFactory = {
-  getUserOrgPermission: (
-    userId: string,
-    orgId: string,
-    authMethod: ActorAuthMethod,
-    userOrgId?: string
-  ) => Promise<{
-    permission: MongoAbility<OrgPermissionSet, MongoQuery>;
-    membership: {
-      status: string;
-      orgId: string;
-      id: string;
-      createdAt: Date;
-      updatedAt: Date;
-      role: string;
-      isActive: boolean;
-      shouldUseNewPrivilegeSystem: boolean;
-      bypassOrgAuthEnabled: boolean;
-      permissions?: unknown;
-      userId?: string | null | undefined;
-      roleId?: string | null | undefined;
-      inviteEmail?: string | null | undefined;
-      projectFavorites?: string[] | null | undefined;
-      customRoleSlug?: string | null | undefined;
-      orgAuthEnforced?: boolean | null | undefined;
-    } & {
-      groups: {
-        id: string;
-        updatedAt: Date;
-        createdAt: Date;
-        role: string;
-        roleId: string | null | undefined;
-        customRolePermission: unknown;
-        name: string;
-        slug: string;
-        orgId: string;
-      }[];
-    };
-  }>;
   getOrgPermission: (
     type: ActorType,
     id: string,
     orgId: string,
     authMethod: ActorAuthMethod,
     actorOrgId: string | undefined
-  ) => Promise<
-    | {
-        permission: MongoAbility<OrgPermissionSet, MongoQuery>;
-        membership: {
-          status: string;
-          orgId: string;
-          id: string;
-          createdAt: Date;
-          updatedAt: Date;
-          role: string;
-          isActive: boolean;
-          shouldUseNewPrivilegeSystem: boolean;
-          bypassOrgAuthEnabled: boolean;
-          permissions?: unknown;
-          userId?: string | null | undefined;
-          roleId?: string | null | undefined;
-          inviteEmail?: string | null | undefined;
-          projectFavorites?: string[] | null | undefined;
-          customRoleSlug?: string | null | undefined;
-          orgAuthEnforced?: boolean | null | undefined;
-        } & {
-          groups: {
-            id: string;
-            updatedAt: Date;
-            createdAt: Date;
-            role: string;
-            roleId: string | null | undefined;
-            customRolePermission: unknown;
-            name: string;
-            slug: string;
-            orgId: string;
-          }[];
-        };
-      }
-    | {
-        permission: MongoAbility<OrgPermissionSet, MongoQuery>;
-        membership: {
-          id: string;
-          role: string;
-          createdAt: Date;
-          updatedAt: Date;
-          orgId: string;
-          roleId?: string | null | undefined;
-          permissions?: unknown;
-          identityId: string;
-          orgAuthEnforced: boolean | null | undefined;
-          shouldUseNewPrivilegeSystem: boolean;
-        };
-      }
-  >;
-  getUserProjectPermission: ({
-    userId,
-    projectId,
-    authMethod,
-    userOrgId,
-    actionProjectType
-  }: TGetUserProjectPermissionArg) => Promise<{
+  ) => Promise<{
+    permission: MongoAbility<OrgPermissionSet, MongoQuery>;
+    memberships: TMemberships[];
+  }>;
+  getProjectPermission: (arg: TGetProjectPermissionArg) => Promise<{
     permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
-    membership: {
-      id: string;
-      createdAt: Date;
-      updatedAt: Date;
-      userId: string;
-      projectId: string;
-    } & {
-      orgAuthEnforced: boolean | null | undefined;
-      orgId: string;
-      roles: Array<{
-        role: string;
-      }>;
-      shouldUseNewPrivilegeSystem: boolean;
-    };
+    memberships: TMemberships[];
     hasRole: (role: string) => boolean;
   }>;
-  getProjectPermission: <T extends ActorType>(
-    arg: TGetProjectPermissionArg
-  ) => Promise<
-    T extends ActorType.SERVICE
-      ? {
-          permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
-          membership: {
-            shouldUseNewPrivilegeSystem: boolean;
-          };
-          hasRole: (arg: string) => boolean;
-        }
-      : {
-          permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
-          membership: (T extends ActorType.USER
-            ? {
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                userId: string;
-                projectId: string;
-              }
-            : {
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                projectId: string;
-                identityId: string;
-              }) & {
-            orgAuthEnforced: boolean | null | undefined;
-            orgId: string;
-            roles: Array<{
-              role: string;
-            }>;
-            shouldUseNewPrivilegeSystem: boolean;
-          };
-          hasRole: (role: string) => boolean;
-        }
-  >;
+  // TODO(simp): check what is this doing
   getProjectPermissions: (projectId: string) => Promise<{
     userPermissions: {
       permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
@@ -226,55 +86,40 @@ export type TPermissionServiceFactory = {
       membershipId: string;
     }[];
   }>;
+  // TODO(simp): switch to role dal later
   getOrgPermissionByRole: (
     role: string,
     orgId: string
-  ) => Promise<
-    | {
-        permission: MongoAbility<OrgPermissionSet, MongoQuery>;
-        role: {
-          name: string;
-          orgId: string;
-          id: string;
-          createdAt: Date;
-          updatedAt: Date;
-          slug: string;
-          permissions?: unknown;
-          description?: string | null | undefined;
-        };
-      }
-    | {
-        permission: MongoAbility<OrgPermissionSet, MongoQuery>;
-        role?: undefined;
-      }
-  >;
+  ) => Promise<{
+    permission: MongoAbility<OrgPermissionSet, MongoQuery>;
+    role?: {
+      name: string;
+      orgId: string;
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      slug: string;
+      permissions?: unknown;
+      description?: string | null | undefined;
+    };
+  }>;
   getProjectPermissionByRole: (
     role: string,
     projectId: string
-  ) => Promise<
-    | {
-        permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
-        role: {
-          name: string;
-          version: number;
-          id: string;
-          createdAt: Date;
-          updatedAt: Date;
-          projectId: string;
-          slug: string;
-          permissions?: unknown;
-          description?: string | null | undefined;
-        };
-      }
-    | {
-        permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
-        role?: undefined;
-      }
-  >;
-  buildOrgPermission: (orgUserRoles: TBuildOrgPermissionDTO) => MongoAbility<OrgPermissionSet, MongoQuery>;
-  buildProjectPermissionRules: (
-    projectUserRoles: TBuildProjectPermissionDTO
-  ) => RawRuleOf<MongoAbility<ProjectPermissionSet>>[];
+  ) => Promise<{
+    permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
+    role?: {
+      name: string;
+      version: number;
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      projectId: string;
+      slug: string;
+      permissions?: unknown;
+      description?: string | null | undefined;
+    };
+  }>;
   checkGroupProjectPermission: ({
     groupId,
     projectId,
