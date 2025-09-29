@@ -12,6 +12,7 @@ import {
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { deepEqual } from "@app/lib/fn/object";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -20,6 +21,7 @@ import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { enterpriseSyncCheck, listSecretSyncOptions } from "@app/services/secret-sync/secret-sync-fns";
 import {
   SecretSyncStatus,
+  TCheckDuplicateDestinationDTO,
   TCreateSecretSyncDTO,
   TDeleteSecretSyncDTO,
   TFindSecretSyncByIdDTO,
@@ -696,6 +698,51 @@ export const secretSyncServiceFactory = ({
     return updatedSecretSync as TSecretSync;
   };
 
+  const checkDuplicateDestination = async (
+    { destination, destinationConfig, excludeSyncId, projectId }: TCheckDuplicateDestinationDTO,
+    actor: OrgServiceActor
+  ) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.Read,
+      ProjectPermissionSub.SecretSyncs
+    );
+
+    if (!destinationConfig || typeof destinationConfig !== "object") {
+      return { hasDuplicate: false };
+    }
+
+    try {
+      const existingSyncs = await secretSyncDAL.find({
+        destination
+      });
+
+      const duplicates = existingSyncs.filter((sync) => {
+        if (sync.id === excludeSyncId) {
+          return false;
+        }
+
+        try {
+          return deepEqual(sync.destinationConfig, destinationConfig);
+        } catch {
+          return false;
+        }
+      });
+
+      return { hasDuplicate: duplicates.length > 0 };
+    } catch (error) {
+      return { hasDuplicate: false };
+    }
+  };
+
   return {
     listSecretSyncOptions,
     listSecretSyncsByProjectId,
@@ -707,6 +754,7 @@ export const secretSyncServiceFactory = ({
     deleteSecretSync,
     triggerSecretSyncSyncSecretsById,
     triggerSecretSyncImportSecretsById,
-    triggerSecretSyncRemoveSecretsById
+    triggerSecretSyncRemoveSecretsById,
+    checkDuplicateDestination
   };
 };
