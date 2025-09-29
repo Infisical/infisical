@@ -25,9 +25,8 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { objectify } from "@app/lib/fn";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { TProjectRoleDALFactory } from "@app/services/project-role/project-role-dal";
+import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { TServiceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -99,25 +98,23 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
 };
 
 type TPermissionServiceFactoryDep = {
-  orgRoleDAL: Pick<TOrgRoleDALFactory, "findOne">;
-  projectRoleDAL: Pick<TProjectRoleDALFactory, "findOne">;
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionDAL: TPermissionDALFactory;
   keyStore: TKeyStoreFactory;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
+  roleDAL: Pick<TRoleDALFactory, "find">;
 };
 
 export const permissionServiceFactory = ({
   permissionDAL,
-  orgRoleDAL,
-  projectRoleDAL,
   serviceTokenDAL,
   projectDAL,
   userDAL,
   identityDAL,
-  keyStore
+  keyStore,
+  roleDAL
 }: TPermissionServiceFactoryDep): TPermissionServiceFactory => {
   const invalidateProjectPermissionCache = async (projectId: string, tx?: Knex) => {
     const projectPermissionDalVersionKey = KeyStorePrefixes.ProjectPermissionDalVersion(projectId);
@@ -242,33 +239,6 @@ export const permissionServiceFactory = ({
     return {
       permission,
       memberships: permissionData
-    };
-  };
-
-  // instead of actor type this will fetch by role slug. meaning it can be the pre defined slugs like
-  // admin member or user defined ones like biller etc
-  const getOrgPermissionByRole: TPermissionServiceFactory["getOrgPermissionByRole"] = async (role, orgId) => {
-    const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
-    if (isCustomRole) {
-      const orgRole = await orgRoleDAL.findOne({ slug: role, orgId });
-      if (!orgRole)
-        throw new NotFoundError({
-          message: `Specified role '${role}' was not found in the organization with ID '${orgId}'`
-        });
-      return {
-        permission: createMongoAbility<OrgPermissionSet>(
-          buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: orgRole.permissions }]),
-          {
-            conditionsMatcher
-          }
-        ),
-        role: orgRole
-      };
-    }
-    return {
-      permission: createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules([{ role, permissions: [] }]), {
-        conditionsMatcher
-      })
     };
   };
 
@@ -572,30 +542,105 @@ export const permissionServiceFactory = ({
     };
   };
 
-  const getProjectPermissionByRole: TPermissionServiceFactory["getProjectPermissionByRole"] = async (
-    role,
-    projectId
-  ) => {
-    const isCustomRole = !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole);
-    if (isCustomRole) {
-      const projectRole = await projectRoleDAL.findOne({ slug: role, projectId });
-      if (!projectRole) throw new NotFoundError({ message: `Specified role was not found: ${role}` });
-      const rules = buildProjectPermissionRules([
-        { role: ProjectMembershipRole.Custom, permissions: projectRole.permissions }
-      ]);
-      return {
-        permission: createMongoAbility<ProjectPermissionSet>(rules, {
-          conditionsMatcher
-        }),
-        role: projectRole
-      };
+  // instead of actor type this will fetch by role slug. meaning it can be the pre defined slugs like
+  // admin member or user defined ones like biller etc
+  const getOrgPermissionByRoles: TPermissionServiceFactory["getOrgPermissionByRoles"] = async (roles, orgId) => {
+    const formattedRoles = roles.map((role) => ({
+      name: role,
+      isCustom: !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole)
+    }));
+
+    const customRoles = formattedRoles.filter((el) => el.isCustom).map((el) => el.name);
+    const customRoleDetails = customRoles.length
+      ? await roleDAL.find({
+          orgId,
+          $in: {
+            slug: customRoles
+          }
+        })
+      : [];
+    if (customRoles.length !== customRoleDetails.length) {
+      const missingRoles = customRoles.filter((role) => !customRoleDetails.find((el) => el.slug === role));
+      throw new NotFoundError({
+        message: `Specified roles '${missingRoles.join(",")}' was not found in the organization with ID '${orgId}'`
+      });
     }
 
-    const rules = buildProjectPermissionRules([{ role, permissions: [] }]);
-    const permission = createMongoAbility<ProjectPermissionSet>(rules, {
-      conditionsMatcher
+    return formattedRoles.map((el) => {
+      if (el.isCustom) {
+        const roleDetails = customRoleDetails.find((role) => role.slug === el.name);
+        return {
+          permission: createMongoAbility<OrgPermissionSet>(
+            buildOrgPermissionRules([{ role: OrgMembershipRole.Custom, permissions: roleDetails?.permissions || [] }]),
+            {
+              conditionsMatcher
+            }
+          ),
+          role: roleDetails!
+        };
+      }
+
+      return {
+        permission: createMongoAbility<OrgPermissionSet>(
+          buildOrgPermissionRules([{ role: el.name, permissions: [] }]),
+          {
+            conditionsMatcher
+          }
+        )
+      };
     });
-    return { permission };
+  };
+
+  const getProjectPermissionByRoles: TPermissionServiceFactory["getProjectPermissionByRoles"] = async (
+    roles,
+    projectId
+  ) => {
+    const formattedRoles = roles.map((role) => ({
+      name: role,
+      isCustom: !Object.values(ProjectMembershipRole).includes(role as ProjectMembershipRole)
+    }));
+
+    const customRoles = formattedRoles.filter((el) => el.isCustom).map((el) => el.name);
+    const customRoleDetails = customRoles.length
+      ? await roleDAL.find({
+          projectId,
+          $in: {
+            slug: customRoles
+          }
+        })
+      : [];
+    if (customRoles.length !== customRoleDetails.length) {
+      const missingRoles = customRoles.filter((role) => !customRoleDetails.find((el) => el.slug === role));
+      throw new NotFoundError({
+        message: `Specified roles '${missingRoles.join(",")}' was not found in the project with ID '${projectId}'`
+      });
+    }
+
+    return formattedRoles.map((el) => {
+      if (el.isCustom) {
+        const roleDetails = customRoleDetails.find((role) => role.slug === el.name);
+        return {
+          permission: createMongoAbility<ProjectPermissionSet>(
+            buildProjectPermissionRules([
+              { role: ProjectMembershipRole.Custom, permissions: roleDetails?.permissions || [] }
+            ]),
+            {
+              conditionsMatcher
+            }
+          ),
+          role: roleDetails!
+        };
+      }
+
+      return {
+        permission: createMongoAbility<ProjectPermissionSet>(
+          buildProjectPermissionRules([{ role: el.name, permissions: [] }]),
+          {
+            conditionsMatcher
+          }
+        )
+      };
+    });
   };
 
   const checkGroupProjectPermission: TPermissionServiceFactory["checkGroupProjectPermission"] = async ({
@@ -626,8 +671,8 @@ export const permissionServiceFactory = ({
     getOrgPermission,
     getProjectPermission,
     getProjectPermissions,
-    getOrgPermissionByRole,
-    getProjectPermissionByRole,
+    getOrgPermissionByRoles,
+    getProjectPermissionByRoles,
     checkGroupProjectPermission,
     invalidateProjectPermissionCache
   };
