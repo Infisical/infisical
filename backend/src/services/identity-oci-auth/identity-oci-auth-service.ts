@@ -32,6 +32,7 @@ import {
   TRevokeOciAuthDTO,
   TUpdateOciAuthDTO
 } from "./identity-oci-auth-types";
+import { TOrgDALFactory } from "../org/org-dal";
 
 type TIdentityOciAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
@@ -39,6 +40,7 @@ type TIdentityOciAuthServiceFactoryDep = {
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 export type TIdentityOciAuthServiceFactory = ReturnType<typeof identityOciAuthServiceFactory>;
@@ -48,7 +50,8 @@ export const identityOciAuthServiceFactory = ({
   identityOciAuthDAL,
   identityOrgMembershipDAL,
   licenseService,
-  permissionService
+  permissionService,
+  orgDAL
 }: TIdentityOciAuthServiceFactoryDep) => {
   const login = async ({ identityId, headers, userOcid }: TLoginOciAuthDTO) => {
     const identityOciAuth = await identityOciAuthDAL.findOne({ identityId });
@@ -322,7 +325,7 @@ export const identityOciAuthServiceFactory = ({
         message: "The identity does not have OCI auth"
       });
     }
-    const { permission, membership } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityMembershipOrg.orgId,
@@ -339,8 +342,9 @@ export const identityOciAuthServiceFactory = ({
       actorOrgId
     );
 
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
-      membership.shouldUseNewPrivilegeSystem,
+      shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,
       OrgPermissionSubjects.Identity,
       permission,
@@ -351,7 +355,7 @@ export const identityOciAuthServiceFactory = ({
       throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to revoke OCI auth of identity with more privileged role",
-          membership.shouldUseNewPrivilegeSystem,
+          shouldUseNewPrivilegeSystem,
           OrgPermissionIdentityActions.RevokeAuth,
           OrgPermissionSubjects.Identity
         ),

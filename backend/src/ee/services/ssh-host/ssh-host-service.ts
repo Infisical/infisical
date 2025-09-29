@@ -64,10 +64,7 @@ type TSshHostServiceFactoryDep = {
   >;
   sshHostLoginUserDAL: TSshHostLoginUserDALFactory;
   sshHostLoginUserMappingDAL: TSshHostLoginUserMappingDALFactory;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getProjectPermission" | "getUserProjectPermission" | "checkGroupProjectPermission"
-  >;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "checkGroupProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 

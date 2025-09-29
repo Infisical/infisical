@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { OrgMembershipRole, TableName, TOrgRoles } from "@app/db/schemas";
+import { OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -12,6 +12,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 
+import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityDALFactory } from "./identity-dal";
 import { TIdentityMetadataDALFactory } from "./identity-metadata-dal";
@@ -31,9 +32,10 @@ type TIdentityServiceFactoryDep = {
   identityMetadataDAL: TIdentityMetadataDALFactory;
   identityOrgMembershipDAL: TIdentityOrgDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRole">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
@@ -45,7 +47,8 @@ export const identityServiceFactory = ({
   identityProjectDAL,
   permissionService,
   licenseService,
-  keyStore
+  keyStore,
+  orgDAL
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({
     name,
@@ -58,33 +61,26 @@ export const identityServiceFactory = ({
     actorOrgId,
     metadata
   }: TCreateIdentityDTO) => {
-    const { permission, membership } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    );
+    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission, role: customRole } = await permissionService.getOrgPermissionByRole(
-      role,
-      orgId
-    );
-    const isCustomRole = Boolean(customRole);
+    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], orgId);
+
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
+    const isCustomRole = Boolean(rolePermissionDetails?.role);
     if (role !== OrgMembershipRole.NoAccess) {
       const permissionBoundary = validatePrivilegeChangeOperation(
-        membership.shouldUseNewPrivilegeSystem,
+        shouldUseNewPrivilegeSystem,
         OrgPermissionIdentityActions.GrantPrivileges,
         OrgPermissionSubjects.Identity,
         permission,
-        rolePermission
+        rolePermissionDetails.permission
       );
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
             "Failed to create identity",
-            membership.shouldUseNewPrivilegeSystem,
+            shouldUseNewPrivilegeSystem,
             OrgPermissionIdentityActions.GrantPrivileges,
             OrgPermissionSubjects.Identity
           ),
@@ -108,7 +104,7 @@ export const identityServiceFactory = ({
           identityId: newIdentity.id,
           orgId,
           role: isCustomRole ? OrgMembershipRole.Custom : role,
-          roleId: customRole?.id
+          roleId: rolePermissionDetails?.role?.id
         },
         tx
       );
@@ -158,7 +154,7 @@ export const identityServiceFactory = ({
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: id });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
 
-    const { permission, membership } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
       identityOrgMembership.orgId,
@@ -167,33 +163,31 @@ export const identityServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    let customRole: TOrgRoles | undefined;
+    let customRole: TRoles | undefined;
     if (role) {
-      const { permission: rolePermission, role: customOrgRole } = await permissionService.getOrgPermissionByRole(
-        role,
-        identityOrgMembership.orgId
-      );
+      const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], actorOrgId);
+      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
 
-      const isCustomRole = Boolean(customOrgRole);
+      const isCustomRole = Boolean(rolePermissionDetails?.role);
       const appliedRolePermissionBoundary = validatePrivilegeChangeOperation(
-        membership.shouldUseNewPrivilegeSystem,
+        shouldUseNewPrivilegeSystem,
         OrgPermissionIdentityActions.GrantPrivileges,
         OrgPermissionSubjects.Identity,
         permission,
-        rolePermission
+        rolePermissionDetails?.permission
       );
       if (!appliedRolePermissionBoundary.isValid)
         throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
             "Failed to update identity",
-            membership.shouldUseNewPrivilegeSystem,
+            shouldUseNewPrivilegeSystem,
             OrgPermissionIdentityActions.GrantPrivileges,
             OrgPermissionSubjects.Identity
           ),
           details: { missingPermissions: appliedRolePermissionBoundary.missingPermissions }
         });
 
-      if (isCustomRole) customRole = customOrgRole;
+      if (isCustomRole) customRole = rolePermissionDetails?.role;
     }
 
     const identity = await identityDAL.transaction(async (tx) => {

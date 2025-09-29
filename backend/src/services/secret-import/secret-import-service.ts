@@ -385,7 +385,7 @@ export const secretImportServiceFactory = ({
     path: secretPath,
     id: secretImportDocId
   }: TResyncSecretImportReplicationDTO) => {
-    const { permission, membership } = await permissionService.getProjectPermission({
+    const { permission, memberships } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -437,7 +437,7 @@ export const secretImportServiceFactory = ({
       secretImportDoc.importPath
     );
 
-    if (membership && sourceFolder) {
+    if (memberships?.length && sourceFolder) {
       await secretQueueService.replicateSecrets({
         orgId: actorOrgId,
         secretPath: secretImportDoc.importPath,

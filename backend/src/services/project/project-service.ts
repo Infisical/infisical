@@ -511,7 +511,8 @@ export const projectServiceFactory = ({
         : await projectDAL.findUserProjects(actorId, actorOrgId, type);
 
     if (includeRoles) {
-      const { permission } = await permissionService.getUserOrgPermission(
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
         actorId,
         actorOrgId,
         actorAuthMethod,
@@ -1346,7 +1347,7 @@ export const projectServiceFactory = ({
   };
 
   const getProjectKmsKeys = async ({ projectId, actor, actorId, actorAuthMethod, actorOrgId }: TGetProjectKmsKey) => {
-    const { membership } = await permissionService.getProjectPermission({
+    await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -1354,10 +1355,6 @@ export const projectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-
-    if (!membership) {
-      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
-    }
 
     const kmsKeyId = await kmsService.getProjectSecretManagerKmsKeyId(projectId);
     const kmsKey = await kmsService.getKmsById(kmsKeyId);

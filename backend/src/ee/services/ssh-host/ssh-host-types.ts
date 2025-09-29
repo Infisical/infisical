@@ -66,7 +66,7 @@ type BaseCreateSshLoginMappingsDTO = {
   sshHostLoginUserDAL: Pick<TSshHostLoginUserDALFactory, "create" | "transaction">;
   sshHostLoginUserMappingDAL: Pick<TSshHostLoginUserMappingDALFactory, "insertMany">;
   userDAL: Pick<TUserDALFactory, "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getUserProjectPermission" | "checkGroupProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "checkGroupProjectPermission">;
   groupDAL: Pick<TGroupDALFactory, "findGroupsByProjectId">;
   projectId: string;
   actorAuthMethod: ActorAuthMethod;
