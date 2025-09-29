@@ -20,7 +20,6 @@ export type TCoolifySecret = {
   key: string;
   real_value: string;
   value: string;
-  is_build_time: boolean;
   is_literal: boolean;
   is_multiline: boolean;
   is_preview: boolean;
