@@ -66,7 +66,7 @@ type TOidcConfigServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getUserOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create">;
   groupDAL: Pick<TGroupDALFactory, "findByOrgId">;
   userGroupMembershipDAL: Pick<
@@ -749,7 +749,7 @@ export const oidcConfigServiceFactory = ({
   };
 
   const isOidcManageGroupMembershipsEnabled = async (orgId: string, actor: OrgServiceActor) => {
-    await permissionService.getUserOrgPermission(actor.id, orgId, actor.authMethod, actor.orgId);
+    await permissionService.getOrgPermission(ActorType.USER, actor.id, orgId, actor.authMethod, actor.orgId);
 
     const oidcConfig = await oidcConfigDAL.findOne({
       orgId,

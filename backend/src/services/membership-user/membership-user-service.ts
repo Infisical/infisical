@@ -1,5 +1,6 @@
-import { ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -7,6 +8,7 @@ import { SearchResourceOperators } from "@app/lib/search-resource/search";
 
 import { AuthMethod } from "../auth/auth-type";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TMembershipUserDALFactory } from "./membership-user-dal";
@@ -15,14 +17,17 @@ import {
   TDeleteMembershipUserDTO,
   TGetMembershipUserByUserIdDTO,
   TListMembershipUserDTO,
-  TMembershipUserScopeFactory,
   TUpdateMembershipUserDTO
 } from "./membership-user-types";
+import { newNamespaceMembershipUserFactory } from "./namespace/namespace-membership-user-factory";
+import { newOrgMembershipUserFactory } from "./org/org-membership-user-factory";
+import { newProjectMembershipUserFactory } from "./project/project-membership-user-factory";
 
 type TMembershipUserServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   userDAL: Pick<
     TUserDALFactory,
@@ -34,6 +39,10 @@ type TMembershipUserServiceFactoryDep = {
     | "findUserByEmail"
     | "findUserEncKeyByUserId"
   >;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermission"
+  >;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -43,9 +52,20 @@ export const membershipUserServiceFactory = ({
   roleDAL,
   licenseService,
   membershipRoleDAL,
-  userDAL
+  userDAL,
+  permissionService,
+  orgDAL
 }: TMembershipUserServiceFactoryDep) => {
-  const scopeFactory: Record<string, TMembershipUserScopeFactory> = {};
+  const scopeFactory = {
+    [AccessScope.Organization]: newOrgMembershipUserFactory({
+      permissionService
+    }),
+    [AccessScope.Namespace]: newNamespaceMembershipUserFactory({}),
+    [AccessScope.Project]: newProjectMembershipUserFactory({
+      orgDAL,
+      permissionService
+    })
+  };
 
   const $getUsers = async (usernames: string[]) => {
     const existingUsers = await userDAL.find({ $in: { username: usernames } });

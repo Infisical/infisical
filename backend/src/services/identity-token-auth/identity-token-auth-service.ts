@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { IdentityAuthMethod, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TOrgDALFactory } from "../org/org-dal";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
@@ -42,6 +43,7 @@ type TIdentityTokenAuthServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 export type TIdentityTokenAuthServiceFactory = ReturnType<typeof identityTokenAuthServiceFactory>;
@@ -52,7 +54,8 @@ export const identityTokenAuthServiceFactory = ({
   identityOrgMembershipDAL,
   identityAccessTokenDAL,
   permissionService,
-  licenseService
+  licenseService,
+  orgDAL
 }: TIdentityTokenAuthServiceFactoryDep) => {
   const attachTokenAuth = async ({
     identityId,
@@ -250,7 +253,7 @@ export const identityTokenAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission, membership } = await permissionService.getOrgPermission(
+    const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
       identityMembershipOrg.identityId,
       identityMembershipOrg.orgId,
@@ -258,8 +261,9 @@ export const identityTokenAuthServiceFactory = ({
       actorOrgId
     );
 
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.orgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
-      membership.shouldUseNewPrivilegeSystem,
+      shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,
       OrgPermissionSubjects.Identity,
       permission,
@@ -269,7 +273,7 @@ export const identityTokenAuthServiceFactory = ({
       throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to revoke token auth of identity with more privileged role",
-          membership.shouldUseNewPrivilegeSystem,
+          shouldUseNewPrivilegeSystem,
           OrgPermissionIdentityActions.RevokeAuth,
           OrgPermissionSubjects.Identity
         ),
@@ -316,7 +320,7 @@ export const identityTokenAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission, membership } = await permissionService.getOrgPermission(
+    const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
       identityMembershipOrg.identityId,
       identityMembershipOrg.orgId,
@@ -324,8 +328,9 @@ export const identityTokenAuthServiceFactory = ({
       actorOrgId
     );
 
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.orgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
-      membership.shouldUseNewPrivilegeSystem,
+      shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.CreateToken,
       OrgPermissionSubjects.Identity,
       permission,
@@ -335,7 +340,7 @@ export const identityTokenAuthServiceFactory = ({
       throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to create token for identity with more privileged role",
-          membership.shouldUseNewPrivilegeSystem,
+          shouldUseNewPrivilegeSystem,
           OrgPermissionIdentityActions.CreateToken,
           OrgPermissionSubjects.Identity
         ),
@@ -463,15 +468,16 @@ export const identityTokenAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission, membership } = await permissionService.getOrgPermission(
+    const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
       identityMembershipOrg.identityId,
       identityMembershipOrg.orgId,
       actorAuthMethod,
       actorOrgId
     );
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.orgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
-      membership.shouldUseNewPrivilegeSystem,
+      shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.CreateToken,
       OrgPermissionSubjects.Identity,
       permission,
@@ -481,7 +487,7 @@ export const identityTokenAuthServiceFactory = ({
       throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to update token for identity with more privileged role",
-          membership.shouldUseNewPrivilegeSystem,
+          shouldUseNewPrivilegeSystem,
           OrgPermissionIdentityActions.CreateToken,
           OrgPermissionSubjects.Identity
         ),

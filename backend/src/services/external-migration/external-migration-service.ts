@@ -47,14 +47,14 @@ export const externalMigrationServiceFactory = ({
       throw new BadRequestError({ message: "EnvKey migration is not supported when running in FIPS mode." });
     }
 
-    const { membership } = await permissionService.getOrgPermission(
+    const { hasRole } = await permissionService.getOrgPermission(
       actor,
       actorId,
       actorOrgId,
       actorAuthMethod,
       actorOrgId
     );
-    if (membership.role !== OrgMembershipRole.Admin) {
+    if (hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can import data" });
     }
 
@@ -94,7 +94,7 @@ export const externalMigrationServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TImportVaultDataDTO) => {
-    const { membership } = await permissionService.getOrgPermission(
+    const { hasRole } = await permissionService.getOrgPermission(
       actor,
       actorId,
       actorOrgId,
@@ -102,7 +102,7 @@ export const externalMigrationServiceFactory = ({
       actorOrgId
     );
 
-    if (membership.role !== OrgMembershipRole.Admin) {
+    if (hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can import data" });
     }
 
@@ -150,7 +150,7 @@ export const externalMigrationServiceFactory = ({
     actorAuthMethod,
     provider
   }: THasCustomVaultMigrationDTO) => {
-    const { membership } = await permissionService.getOrgPermission(
+    const { hasRole } = await permissionService.getOrgPermission(
       actor,
       actorId,
       actorOrgId,
@@ -158,7 +158,7 @@ export const externalMigrationServiceFactory = ({
       actorOrgId
     );
 
-    if (membership.role !== OrgMembershipRole.Admin) {
+    if (hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can check custom migration status" });
     }
 
