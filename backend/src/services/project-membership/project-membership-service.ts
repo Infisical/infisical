@@ -43,7 +43,10 @@ import {
 import { TProjectUserMembershipRoleDALFactory } from "./project-user-membership-role-dal";
 
 type TProjectMembershipServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRole">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "getProjectPermissionByRole" | "invalidateProjectPermissionCache"
+  >;
   smtpService: TSmtpService;
   projectBotDAL: TProjectBotDALFactory;
   projectMembershipDAL: TProjectMembershipDALFactory;
@@ -239,6 +242,8 @@ export const projectMembershipServiceFactory = ({
       );
     });
 
+    await permissionService.invalidateProjectPermissionCache(projectId);
+
     if (sendEmails) {
       await notificationService.createUserNotifications(
         orgMembers.map((member) => ({
@@ -371,6 +376,8 @@ export const projectMembershipServiceFactory = ({
       return projectUserMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
     });
 
+    await permissionService.invalidateProjectPermissionCache(projectId);
+
     return updatedRoles;
   };
 
@@ -414,6 +421,9 @@ export const projectMembershipServiceFactory = ({
       );
       return deletedMembership;
     });
+
+    await permissionService.invalidateProjectPermissionCache(projectId);
+
     return membership;
   };
 
@@ -515,6 +525,9 @@ export const projectMembershipServiceFactory = ({
 
       return deletedMemberships;
     });
+
+    await permissionService.invalidateProjectPermissionCache(projectId);
+
     return memberships;
   };
 
