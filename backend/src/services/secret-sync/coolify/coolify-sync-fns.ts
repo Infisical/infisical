@@ -89,7 +89,6 @@ const infisicalSecretToCoolifySecret = (key: string, secret: TSecretMap[keyof TS
   return {
     key,
     value: secret.value,
-    is_build_time: !!secret.secretMetadata?.find((m) => m.key === "is_build_time"),
     is_literal: !!secret.secretMetadata?.find((m) => m.key === "is_literal"),
     is_preview: !!secret.secretMetadata?.find((m) => m.key === "is_preview")
   };
