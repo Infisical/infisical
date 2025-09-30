@@ -134,6 +134,12 @@ postgresql:
   # -- Full name override for PostgreSQL resources
   fullnameOverride: "postgresql"
 
+  image:
+    # -- Image registry for PostgreSQL
+    registry: mirror.gcr.io
+    # -- Image repository for PostgreSQL
+    repository: bitnamilegacy/postgresql
+
   auth:
     # -- Database username for PostgreSQL
     username: infisical
@@ -158,6 +164,12 @@ redis:
   name: "redis"
   # -- Full name override for Redis resources
   fullnameOverride: "redis"
+
+  image:
+    # -- Image registry for Redis
+    registry: mirror.gcr.io
+    # -- Image repository for Redis
+    repository: bitnamilegacy/redis
 
   cluster:
     # -- Clustered Redis deployment
