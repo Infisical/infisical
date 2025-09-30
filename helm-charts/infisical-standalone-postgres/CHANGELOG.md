@@ -1,3 +1,10 @@
+## 1.7.0 (September 30, 2025)
+
+Changes:
+* Moved PostgreSQL and Redis helm dependencies to OCI Bitnami charts
+* Moved default Postgres and Redis repositories to `mirror.gcr.io/postgresql|redis`
+
+
 ## 1.6.1 (July 3, 2025)
 
 Changes:
