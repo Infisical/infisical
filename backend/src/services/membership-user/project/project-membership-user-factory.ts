@@ -134,7 +134,6 @@ export const newProjectMembershipUserFactory = ({
       actorOrgId: dto.permission.orgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Delete, ProjectPermissionSub.Member);
-    return { actorIdOfDeletor: dto.permission.id };
   };
 
   const onListMembershipUserGuard: TMembershipUserScopeFactory["onListMembershipUserGuard"] = async (dto) => {

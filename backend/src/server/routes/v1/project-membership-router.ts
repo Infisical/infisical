@@ -5,6 +5,7 @@ import {
   ProjectMembershipRole,
   ProjectMembershipsSchema,
   ProjectUserMembershipRolesSchema,
+  TemporaryPermissionMode,
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
@@ -14,7 +15,6 @@ import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
 
 export const registerProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -134,18 +134,34 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const membership = await server.services.projectMembership.getProjectMembershipById({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.projectId,
-        id: req.params.membershipId
+      const { userId } = await server.services.convertor.userMembershipIdToUserId(
+        req.params.membershipId,
+        AccessScope.Project,
+        req.permission.orgId
+      );
+      const membership = await server.services.membershipUser.getMembershipByUserId({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId: req.params.projectId
+        },
+        selector: {
+          userId
+        }
       });
-      return { membership };
+
+      return {
+        membership: {
+          ...membership,
+          userId,
+          projectId: req.params.projectId
+        }
+      };
     }
   });
 
+  // TODO(simp): look into multi deletion and this as well
   server.route({
     method: "POST",
     url: "/:projectId/memberships/details",
@@ -317,7 +333,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
               z.object({
                 role: z.string(),
                 isTemporary: z.literal(true),
-                temporaryMode: z.nativeEnum(ProjectUserMembershipTemporaryMode),
+                temporaryMode: z.nativeEnum(TemporaryPermissionMode),
                 temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be a positive number"),
                 temporaryAccessStartTime: z.string().datetime()
               })
@@ -335,17 +351,28 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const roles = await server.services.projectMembership.updateProjectMembership({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.projectId,
-        membershipId: req.params.membershipId,
-        roles: req.body.roles
+      const { userId } = await server.services.convertor.userMembershipIdToUserId(
+        req.params.membershipId,
+        AccessScope.Project,
+        req.permission.orgId
+      );
+
+      const { membership } = await server.services.membershipUser.updateMembership({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId: req.params.projectId
+        },
+        selector: {
+          userId
+        },
+        data: {
+          roles: req.body.roles
+        }
       });
 
-      return { roles };
+      return { roles: membership.roles.map((el) => ({ ...el, projectMembershipId: req.params.membershipId })) };
     }
   });
 
@@ -443,13 +470,22 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const membership = await server.services.projectMembership.deleteProjectMembership({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.projectId,
-        membershipId: req.params.membershipId
+      const { userId } = await server.services.convertor.userMembershipIdToUserId(
+        req.params.membershipId,
+        AccessScope.Project,
+        req.permission.orgId
+      );
+
+      const { membership } = await server.services.membershipUser.deleteMembership({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId: req.params.projectId
+        },
+        selector: {
+          userId
+        }
       });
 
       await server.services.auditLog.createAuditLog({
@@ -458,12 +494,19 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         event: {
           type: EventType.REMOVE_PROJECT_MEMBER,
           metadata: {
-            userId: membership.userId,
+            userId: membership.actorUserId as string,
             email: ""
           }
         }
       });
-      return { membership };
+
+      return {
+        membership: {
+          ...membership,
+          userId,
+          projectId: req.params.projectId
+        }
+      };
     }
   });
 

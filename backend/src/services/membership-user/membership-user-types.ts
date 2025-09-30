@@ -6,7 +6,7 @@ export interface TMembershipUserScopeFactory {
   onCreateMembershipComplete: (arg: { id: string; email: string }[]) => Promise<void>;
 
   onUpdateMembershipUserGuard: (arg: TUpdateMembershipUserDTO) => Promise<void>;
-  onDeleteMembershipUserGuard: (arg: TDeleteMembershipUserDTO) => Promise<{ actorIdOfDeletor: string }>;
+  onDeleteMembershipUserGuard: (arg: TDeleteMembershipUserDTO) => Promise<void>;
   onListMembershipUserGuard: (arg: TListMembershipUserDTO) => Promise<void>;
   onGetMembershipUserByUserIdGuard: (arg: TGetMembershipUserByUserIdDTO) => Promise<void>;
   getScopeField: (scope: AccessScopeData) => { key: "orgId" | "namespaceId" | "projectId"; value: string };
@@ -37,7 +37,7 @@ export type TUpdateMembershipUserDTO = {
   permission: OrgServiceActor;
   scopeData: AccessScopeData;
   selector: {
-    actorId: string;
+    userId: string;
   };
   data: {
     isActive?: boolean;
@@ -67,7 +67,7 @@ export type TDeleteMembershipUserDTO = {
   permission: OrgServiceActor;
   scopeData: AccessScopeData;
   selector: {
-    actorId: string;
+    userId: string;
   };
 };
 
@@ -75,6 +75,6 @@ export type TGetMembershipUserByUserIdDTO = {
   permission: OrgServiceActor;
   scopeData: AccessScopeData;
   selector: {
-    actorId: string;
+    userId: string;
   };
 };
