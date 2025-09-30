@@ -115,29 +115,27 @@ export const newProjectMembershipIdentityFactory = ({
 
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
-      dto.data.roles.map((el) => el.role),
+      dto.data.roles.filter((el) => el.role !== ProjectMembershipRole.NoAccess).map((el) => el.role),
       scope.value
     );
     for (const permissionRole of permissionRoles) {
-      if (permissionRole?.role?.name !== ProjectMembershipRole.NoAccess) {
-        const permissionBoundary = validatePrivilegeChangeOperation(
-          shouldUseNewPrivilegeSystem,
-          ProjectPermissionIdentityActions.GrantPrivileges,
-          ProjectPermissionSub.Identity,
-          permission,
-          permissionRole.permission
-        );
-        if (!permissionBoundary.isValid)
-          throw new PermissionBoundaryError({
-            message: constructPermissionErrorMessage(
-              "Failed to create identity project membership",
-              shouldUseNewPrivilegeSystem,
-              ProjectPermissionIdentityActions.GrantPrivileges,
-              ProjectPermissionSub.Identity
-            ),
-            details: { missingPermissions: permissionBoundary.missingPermissions }
-          });
-      }
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        ProjectPermissionIdentityActions.GrantPrivileges,
+        ProjectPermissionSub.Identity,
+        permission,
+        permissionRole.permission
+      );
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to create identity project membership",
+            shouldUseNewPrivilegeSystem,
+            ProjectPermissionIdentityActions.GrantPrivileges,
+            ProjectPermissionSub.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
     }
   };
 

@@ -55,14 +55,11 @@ export type TUpdateMembershipUserDTO = {
 export type TListMembershipUserDTO = {
   permission: OrgServiceActor;
   scopeData: AccessScopeData;
-  selector: {
-    actorId: string;
-  };
   data: {
     limit?: number;
     offset?: number;
     username?: string;
-    roles: string[];
+    roles?: string[];
   };
 };
 

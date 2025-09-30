@@ -66,12 +66,12 @@ export type TPermissionServiceFactory = {
     actorOrgId: string | undefined
   ) => Promise<{
     permission: MongoAbility<OrgPermissionSet, MongoQuery>;
-    memberships: TMemberships[];
+    memberships: Array<TMemberships & { roles: { role: string; customRoleSlug?: string | null }[] }>;
     hasRole: (role: string) => boolean;
   }>;
   getProjectPermission: (arg: TGetProjectPermissionArg) => Promise<{
     permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
-    memberships: TMemberships[];
+    memberships: Array<TMemberships & { roles: { role: string; customRoleSlug?: string | null }[] }>;
     hasRole: (role: string) => boolean;
   }>;
   // TODO(simp): check what is this doing

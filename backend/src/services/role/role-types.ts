@@ -16,7 +16,7 @@ export type TCreateRoleDTO = {
   scopeData: AccessScopeData;
   data: {
     name: string;
-    description?: string;
+    description?: string | null;
     slug: string;
     permissions: unknown;
   };
@@ -30,7 +30,7 @@ export type TUpdateRoleDTO = {
   };
   data: Partial<{
     name: string;
-    description?: string;
+    description?: string | null;
     slug: string;
     permissions: unknown;
   }>;

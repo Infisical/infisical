@@ -53,6 +53,7 @@ import { TSshHostServiceFactory } from "@app/ee/services/ssh-host/ssh-host-servi
 import { TSshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
+import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
 import { TApiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
@@ -88,6 +89,9 @@ import { TIdentityTokenAuthServiceFactory } from "@app/services/identity-token-a
 import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
+import { TMembershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
+import { TMembershipIdentityServiceFactory } from "@app/services/membership-identity/membership-identity-service";
+import { TMembershipUserServiceFactory } from "@app/services/membership-user/membership-user-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
@@ -106,6 +110,7 @@ import { TProjectKeyServiceFactory } from "@app/services/project-key/project-key
 import { TProjectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
 import { TProjectRoleServiceFactory } from "@app/services/project-role/project-role-service";
 import { TReminderServiceFactory } from "@app/services/reminder/reminder-types";
+import { TRoleServiceFactory } from "@app/services/role/role-service";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretBlindIndexServiceFactory } from "@app/services/secret-blind-index/secret-blind-index-service";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
@@ -125,6 +130,7 @@ import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
+import { TConvertorServiceFactory } from "@app/services/convertor/convertor-service";
 
 declare module "@fastify/request-context" {
   interface RequestContextData {
@@ -324,6 +330,13 @@ declare module "fastify" {
       pamAccount: TPamAccountServiceFactory;
       pamSession: TPamSessionServiceFactory;
       upgradePath: TUpgradePathService;
+
+      membershipUser: TMembershipUserServiceFactory;
+      membershipIdentity: TMembershipIdentityServiceFactory;
+      membershipGroup: TMembershipGroupServiceFactory;
+      role: TRoleServiceFactory;
+      additionalPrivilege: TAdditionalPrivilegeServiceFactory;
+      convertor: TConvertorServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

@@ -386,7 +386,7 @@ export const membershipUserServiceFactory = ({
         limit: dto.data.limit,
         offset: dto.data.offset,
         username: dto.data.username,
-        role: dto.data.roles.length
+        role: dto.data?.roles?.length
           ? {
               [SearchResourceOperators.$in]: dto.data.roles
             }

@@ -43,10 +43,7 @@ type TGroupProjectServiceFactoryDep = {
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
   projectBotDAL: TProjectBotDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findOne" | "findAllGroupPossibleMembers">;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getProjectPermission" | "getProjectPermissionByRole" | "invalidateProjectPermissionCache"
-  >;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles" | "invalidateProjectPermissionCache">;
 };
 
 export type TGroupProjectServiceFactory = ReturnType<typeof groupProjectServiceFactory>;

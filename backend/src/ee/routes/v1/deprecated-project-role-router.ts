@@ -1,7 +1,7 @@
 import { packRules } from "@casl/ability/extra";
 import { z } from "zod";
 
-import { ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   backfillPermissionV1SchemaToV2Schema,
@@ -13,7 +13,6 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedRoleSchemaV1 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ProjectRoleServiceIdentifierType } from "@app/services/project-role/project-role-types";
 
 export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -55,14 +54,16 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions, true))
       );
 
-      const role = await server.services.projectRole.createRole({
-        actorAuthMethod: req.permission.authMethod,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actor: req.permission.type,
-        filter: {
-          type: ProjectRoleServiceIdentifierType.SLUG,
-          projectSlug: req.params.projectSlug
+      const { id: projectId } = await server.services.convertor.projectSlugToId({
+        slug: req.params.projectSlug,
+        orgId: req.permission.orgId
+      });
+      const role = await server.services.role.createRole({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId
         },
         data: {
           ...req.body,
@@ -73,7 +74,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: role.projectId,
+        projectId,
         event: {
           type: EventType.CREATE_PROJECT_ROLE,
           metadata: {
@@ -86,7 +87,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         }
       });
 
-      return { role };
+      return { role: { ...role, projectId: role.projectId as string } };
     }
   });
 
@@ -131,12 +132,21 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         ? JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions, true)))
         : undefined;
 
-      const role = await server.services.projectRole.updateRole({
-        actorAuthMethod: req.permission.authMethod,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actor: req.permission.type,
-        roleId: req.params.roleId,
+      const { id: projectId } = await server.services.convertor.projectSlugToId({
+        slug: req.params.projectSlug,
+        orgId: req.permission.orgId
+      });
+
+      const role = await server.services.role.updateRole({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId
+        },
+        selector: {
+          id: req.params.roleId
+        },
         data: {
           ...req.body,
           permissions: stringifiedPermissions
@@ -146,7 +156,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: role.projectId,
+        projectId: role.projectId as string,
         event: {
           type: EventType.UPDATE_PROJECT_ROLE,
           metadata: {
@@ -159,7 +169,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         }
       });
 
-      return { role };
+      return { role: { ...role, projectId: role.projectId as string } };
     }
   });
 
@@ -188,18 +198,27 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const role = await server.services.projectRole.deleteRole({
-        actorAuthMethod: req.permission.authMethod,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actor: req.permission.type,
-        roleId: req.params.roleId
+      const { id: projectId } = await server.services.convertor.projectSlugToId({
+        slug: req.params.projectSlug,
+        orgId: req.permission.orgId
+      });
+
+      const role = await server.services.role.deleteRole({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId
+        },
+        selector: {
+          id: req.params.roleId
+        }
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: role.projectId,
+        projectId: role.projectId as string,
         event: {
           type: EventType.DELETE_PROJECT_ROLE,
           metadata: {
@@ -210,7 +229,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         }
       });
 
-      return { role };
+      return { role: { ...role, projectId: role.projectId as string } };
     }
   });
 
@@ -238,17 +257,21 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const roles = await server.services.projectRole.listRoles({
-        actorAuthMethod: req.permission.authMethod,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actor: req.permission.type,
-        filter: {
-          type: ProjectRoleServiceIdentifierType.SLUG,
-          projectSlug: req.params.projectSlug
-        }
+      const { id: projectId } = await server.services.convertor.projectSlugToId({
+        slug: req.params.projectSlug,
+        orgId: req.permission.orgId
       });
-      return { roles };
+
+      const { roles } = await server.services.role.listRoles({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId
+        },
+        data: {}
+      });
+      return { roles: roles.map((el) => ({ ...el, projectId: el.projectId as string })) };
     }
   });
 
@@ -265,78 +288,30 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
       }),
       response: {
         200: z.object({
-          role: SanitizedRoleSchemaV1.omit({ version: true })
+          role: SanitizedRoleSchemaV1
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const role = await server.services.projectRole.getRoleBySlug({
-        actorAuthMethod: req.permission.authMethod,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actor: req.permission.type,
-        filter: {
-          type: ProjectRoleServiceIdentifierType.SLUG,
-          projectSlug: req.params.projectSlug
-        },
-        roleSlug: req.params.slug
+      const { id: projectId } = await server.services.convertor.projectSlugToId({
+        slug: req.params.projectSlug,
+        orgId: req.permission.orgId
       });
 
-      return { role };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/:projectId/permissions",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      params: z.object({
-        projectId: z.string().trim()
-      }),
-      response: {
-        200: z.object({
-          data: z.object({
-            membership: z.object({
-              id: z.string(),
-              roles: z
-                .object({
-                  role: z.string()
-                })
-                .array()
-            }),
-            assumedPrivilegeDetails: z
-              .object({
-                actorId: z.string(),
-                actorType: z.string(),
-                actorName: z.string(),
-                actorEmail: z.string().optional()
-              })
-              .optional(),
-            permissions: z.any().array()
-          })
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const { permissions, membership, assumedPrivilegeDetails } = await server.services.projectRole.getUserPermission(
-        req.permission.id,
-        req.params.projectId,
-        req.permission.authMethod,
-        req.permission.orgId
-      );
-
-      return {
-        data: {
-          permissions,
-          membership,
-          assumedPrivilegeDetails
+      const role = await server.services.role.getRoleBySlug({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId
+        },
+        selector: {
+          slug: req.params.slug
         }
-      };
+      });
+
+      return { role: { ...role, projectId: role.projectId as string } };
     }
   });
 };
