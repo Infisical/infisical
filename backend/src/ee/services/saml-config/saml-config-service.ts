@@ -507,7 +507,7 @@ export const samlConfigServiceFactory = ({
               orgId,
               role,
               roleId,
-              status: foundUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, 
+              status: foundUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited,
               isActive: true
             },
             tx
