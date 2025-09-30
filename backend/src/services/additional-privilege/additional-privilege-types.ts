@@ -6,7 +6,9 @@ export interface TAdditionalPrivilegesScopeFactory {
   onUpdateAdditionalPrivilegesGuard: (arg: TUpdateAdditionalPrivilegesDTO) => Promise<{ membershipId: string }>;
   onDeleteAdditionalPrivilegesGuard: (arg: TDeleteAdditionalPrivilegesDTO) => Promise<{ membershipId: string }>;
   onListAdditionalPrivilegesGuard: (arg: TListAdditionalPrivilegesDTO) => Promise<{ membershipId: string }>;
-  onGetAdditionalPrivilegesByIdGuard: (arg: TGetAdditionalPrivilegesByIdDTO) => Promise<{ membershipId: string }>;
+  onGetAdditionalPrivilegesByIdGuard: (
+    arg: TGetAdditionalPrivilegesByIdDTO | TGetAdditionalPrivilegesByNameDTO
+  ) => Promise<{ membershipId: string }>;
   getScopeField: (scope: AccessScopeData) => { key: "orgId" | "namespaceId" | "projectId"; value: string };
 }
 
@@ -67,6 +69,16 @@ export type TGetAdditionalPrivilegesByIdDTO = {
   scopeData: AccessScopeData;
   selector: {
     id: string;
+    actorId: string;
+    actorType: MembershipActors;
+  };
+};
+
+export type TGetAdditionalPrivilegesByNameDTO = {
+  permission: OrgServiceActor;
+  scopeData: AccessScopeData;
+  selector: {
+    name: string;
     actorId: string;
     actorType: MembershipActors;
   };

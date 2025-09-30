@@ -1,9 +1,9 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
+import { AccessScope, MembershipActors, TemporaryPermissionMode } from "@app/db/schemas";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
-import { ProjectUserAdditionalPrivilegeTemporaryMode } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-types";
 import { PROJECT_USER_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -34,7 +34,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
           z.object({
             isTemporary: z.literal(true),
             temporaryMode: z
-              .nativeEnum(ProjectUserAdditionalPrivilegeTemporaryMode)
+              .nativeEnum(TemporaryPermissionMode)
               .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.CREATE.temporaryMode),
             temporaryRange: z
               .string()
@@ -55,17 +55,31 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const privilege = await server.services.projectUserAdditionalPrivilege.create({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        projectMembershipId: req.body.projectMembershipId,
-        ...req.body.type,
-        slug: req.body.slug || slugify(alphaNumericNanoId(8)),
-        permissions: req.body.permissions
+      const { userId, membership } = await server.services.convertor.userMembershipIdToUserId(
+        req.body.projectMembershipId,
+        AccessScope.Project,
+        req.permission.orgId
+      );
+
+      const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.createAdditionalPrivilege({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          projectId: membership.scopeProjectId as string,
+          orgId: req.permission.orgId
+        },
+        data: {
+          actorId: userId,
+          actorType: MembershipActors.User,
+          ...req.body.type,
+          name: req.body.slug || slugify(alphaNumericNanoId(8)),
+          permissions: req.body.permissions
+        }
       });
-      return { privilege };
+
+      return {
+        privilege: { ...privilege, userId, projectId: membership.scopeProjectId as string, slug: privilege.name }
+      };
     }
   });
 
@@ -91,7 +105,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
             z.object({
               isTemporary: z.literal(true).describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.isTemporary),
               temporaryMode: z
-                .nativeEnum(ProjectUserAdditionalPrivilegeTemporaryMode)
+                .nativeEnum(TemporaryPermissionMode)
                 .describe(PROJECT_USER_ADDITIONAL_PRIVILEGE.UPDATE.temporaryMode),
               temporaryRange: z
                 .string()
@@ -113,21 +127,43 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const privilege = await server.services.projectUserAdditionalPrivilege.updateById({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        ...req.body,
-        ...req.body.type,
-        permissions: req.body.permissions
-          ? // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore-error this is valid ts
-            req.body.permissions
-          : undefined,
-        privilegeId: req.params.privilegeId
+      const { membership } = await server.services.convertor.additionalPrivilegeIdToMembershipId(
+        req.params.privilegeId,
+        AccessScope.Project,
+        req.permission.orgId
+      );
+
+      const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.updateAdditionalPrivilege({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          projectId: membership.scopeProjectId as string,
+          orgId: req.permission.orgId
+        },
+        data: {
+          ...req.body,
+          ...req.body.type,
+          permissions: req.body.permissions
+            ? // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore-error this is valid ts
+              req.body.permissions
+            : undefined
+        },
+        selector: {
+          id: req.params.privilegeId,
+          actorId: membership.actorUserId as string,
+          actorType: MembershipActors.User
+        }
       });
-      return { privilege };
+
+      return {
+        privilege: {
+          ...privilege,
+          userId: membership.actorUserId as string,
+          projectId: membership.scopeProjectId as string,
+          slug: privilege.name
+        }
+      };
     }
   });
 
@@ -149,14 +185,34 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const privilege = await server.services.projectUserAdditionalPrivilege.deleteById({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        privilegeId: req.params.privilegeId
+      const { membership } = await server.services.convertor.additionalPrivilegeIdToMembershipId(
+        req.params.privilegeId,
+        AccessScope.Project,
+        req.permission.orgId
+      );
+
+      const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.deleteAdditionalPrivilege({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          projectId: membership.scopeProjectId as string,
+          orgId: req.permission.orgId
+        },
+        selector: {
+          id: req.params.privilegeId,
+          actorId: membership.actorUserId as string,
+          actorType: MembershipActors.User
+        }
       });
-      return { privilege };
+
+      return {
+        privilege: {
+          ...privilege,
+          userId: membership.actorUserId as string,
+          projectId: membership.scopeProjectId as string,
+          slug: privilege.name
+        }
+      };
     }
   });
 
@@ -178,14 +234,33 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const privileges = await server.services.projectUserAdditionalPrivilege.listPrivileges({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        projectMembershipId: req.query.projectMembershipId
+      const { userId, membership } = await server.services.convertor.userMembershipIdToUserId(
+        req.query.projectMembershipId,
+        AccessScope.Project,
+        req.permission.orgId
+      );
+
+      const { additionalPrivileges: privileges } = await server.services.additionalPrivilege.listAdditionalPrivileges({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          projectId: membership.scopeProjectId as string,
+          orgId: req.permission.orgId
+        },
+        selector: {
+          actorId: userId,
+          actorType: MembershipActors.User
+        }
       });
-      return { privileges };
+
+      return {
+        privileges: privileges.map((privilege) => ({
+          ...privilege,
+          userId: membership.actorUserId as string,
+          projectId: membership.scopeProjectId as string,
+          slug: privilege.name
+        }))
+      };
     }
   });
 
@@ -207,14 +282,34 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const privilege = await server.services.projectUserAdditionalPrivilege.getPrivilegeDetailsById({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        privilegeId: req.params.privilegeId
+      const { membership } = await server.services.convertor.additionalPrivilegeIdToMembershipId(
+        req.params.privilegeId,
+        AccessScope.Project,
+        req.permission.orgId
+      );
+
+      const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.getAdditionalPrivilegeById({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          projectId: membership.scopeProjectId as string,
+          orgId: req.permission.orgId
+        },
+        selector: {
+          id: req.params.privilegeId,
+          actorId: membership.actorUserId as string,
+          actorType: MembershipActors.User
+        }
       });
-      return { privilege };
+
+      return {
+        privilege: {
+          ...privilege,
+          userId: membership.actorUserId as string,
+          projectId: membership.scopeProjectId as string,
+          slug: privilege.name
+        }
+      };
     }
   });
 };

@@ -274,7 +274,7 @@ export const membershipUserServiceFactory = ({
     const existingMembership = await membershipUserDAL.findOne({
       scope: scopeData.scope,
       ...scopeDatabaseFields,
-      actorUserId: dto.selector.actorId
+      actorUserId: dto.selector.userId
     });
     if (!existingMembership)
       throw new BadRequestError({
@@ -338,31 +338,31 @@ export const membershipUserServiceFactory = ({
         },
         tx
       );
-      await membershipRoleDAL.insertMany(roleDocs, tx);
-      return doc;
+      const insertedRoles = await membershipRoleDAL.insertMany(roleDocs, tx);
+      return { ...doc, roles: insertedRoles };
     });
 
-    return { memberships: membershipDoc };
+    return { membership: membershipDoc };
   };
 
   const deleteMembership = async (dto: TDeleteMembershipUserDTO) => {
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    const { actorIdOfDeletor } = await factory.onDeleteMembershipUserGuard(dto);
+    await factory.onDeleteMembershipUserGuard(dto);
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipUserDAL.findOne({
       scope: scopeData.scope,
       ...scopeDatabaseFields,
-      actorUserId: dto.selector.actorId
+      actorUserId: dto.selector.userId
     });
     if (!existingMembership)
       throw new BadRequestError({
         message: "User doesn't have membership"
       });
 
-    if (existingMembership.actorUserId === actorIdOfDeletor)
+    if (existingMembership.actorUserId === dto.permission.id)
       throw new BadRequestError({
         message: "You can delete you own membership"
       });
@@ -403,7 +403,7 @@ export const membershipUserServiceFactory = ({
     await factory.onGetMembershipUserByUserIdGuard(dto);
     const membership = await membershipUserDAL.getUserById({
       scopeData,
-      userId: selector.actorId
+      userId: selector.userId
     });
     if (!membership) throw new NotFoundError({ message: `User membership not found` });
 

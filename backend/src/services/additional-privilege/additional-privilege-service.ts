@@ -16,6 +16,7 @@ import {
   TCreateAdditionalPrivilegesDTO,
   TDeleteAdditionalPrivilegesDTO,
   TGetAdditionalPrivilegesByIdDTO,
+  TGetAdditionalPrivilegesByNameDTO,
   TListAdditionalPrivilegesDTO,
   TUpdateAdditionalPrivilegesDTO
 } from "./additional-privilege-types";
@@ -71,7 +72,9 @@ export const additionalPrivilegeServiceFactory = ({
         permissions: JSON.stringify(packRules(data.permissions as RawRule[]))
       });
 
-      return { additionalPrivilege: { ...additionalPrivilege, permissions: data.permissions } };
+      return {
+        additionalPrivilege: { ...additionalPrivilege, permissions: unpackPermissions(additionalPrivilege.permissions) }
+      };
     }
 
     if (!data.temporaryAccessStartTime || !data.temporaryRange) {
@@ -92,7 +95,9 @@ export const additionalPrivilegeServiceFactory = ({
       temporaryRange: data.temporaryRange
     });
 
-    return { additionalPrivilege: { ...additionalPrivilege, permissions: data.permissions } };
+    return {
+      additionalPrivilege: { ...additionalPrivilege, permissions: unpackPermissions(additionalPrivilege.permissions) }
+    };
   };
 
   const updateAdditionalPrivilege = async (dto: TUpdateAdditionalPrivilegesDTO) => {
@@ -169,13 +174,29 @@ export const additionalPrivilegeServiceFactory = ({
   const getAdditionalPrivilegeById = async (dto: TGetAdditionalPrivilegesByIdDTO) => {
     const { scopeData, selector } = dto;
     const factory = scopeFactory[scopeData.scope];
-    const { membershipId } = await factory.onListAdditionalPrivilegesGuard(dto);
+    const { membershipId } = await factory.onGetAdditionalPrivilegesByIdGuard(dto);
     const additionalPrivilege = await additionalPrivilegeDAL.findOne({
       id: selector.id,
       membershipId
     });
     if (!additionalPrivilege)
       throw new NotFoundError({ message: `Additional privilege with id ${selector.id} doesn't exist` });
+
+    return {
+      additionalPrivilege: { ...additionalPrivilege, permissions: unpackPermissions(additionalPrivilege.permissions) }
+    };
+  };
+
+  const getAdditionalPrivilegeByName = async (dto: TGetAdditionalPrivilegesByNameDTO) => {
+    const { scopeData, selector } = dto;
+    const factory = scopeFactory[scopeData.scope];
+    const { membershipId } = await factory.onGetAdditionalPrivilegesByIdGuard(dto);
+    const additionalPrivilege = await additionalPrivilegeDAL.findOne({
+      name: selector.name,
+      membershipId
+    });
+    if (!additionalPrivilege)
+      throw new NotFoundError({ message: `Additional privilege with name ${selector.name} doesn't exist` });
 
     return {
       additionalPrivilege: { ...additionalPrivilege, permissions: unpackPermissions(additionalPrivilege.permissions) }
@@ -203,6 +224,7 @@ export const additionalPrivilegeServiceFactory = ({
     updateAdditionalPrivilege,
     deleteAdditionalPrivilege,
     getAdditionalPrivilegeById,
+    getAdditionalPrivilegeByName,
     listAdditionalPrivileges
   };
 };
