@@ -18,6 +18,31 @@ module.exports = {
         inter: ["Inter"]
       },
       colors: {
+        /* start v3 component colors ************************/
+
+        // features
+        secrets: "#F7FE62",
+        scanning: "#9D4EDD",
+        pki: "#06A77D",
+        kms: "#8BC34A",
+        pam: "#FF8C42",
+        ssh: "#8B2E3D",
+
+        // scopes
+        org: "#00C2CB",
+        namespace: "#E0479E",
+
+        // statuses
+        success: "#4CAF50",
+        danger: "#FF4444",
+        warning: "#FFB627",
+        info: "#4A90E2",
+
+        // generic
+        foreground: "#FFFFFF",
+
+        /* end v3 colors *************************************/
+
         // You can generate your own colors with this tool: https://javisperez.github.io/tailwindcolorshades/
         primary: {
           50: "#fffff5",
