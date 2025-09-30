@@ -1,6 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
+import RE2 from "re2";
 
 import {
   OrgMembershipRole,
@@ -103,6 +104,31 @@ export const samlConfigServiceFactory = ({
   identityMetadataDAL,
   kmsService
 }: TSamlConfigServiceFactoryDep): TSamlConfigServiceFactory => {
+  const parseSamlGroups = (groupsValue: string): string[] => {
+    let samlGroups: string[] = [];
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const parsed = JSON.parse(groupsValue);
+      if (Array.isArray(parsed)) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        samlGroups = parsed;
+      } else if (typeof parsed === "string") {
+        samlGroups = parsed
+          .split(",")
+          .map((g) => g.trim())
+          .filter(Boolean);
+      }
+    } catch {
+      samlGroups = groupsValue
+        .split(",")
+        .map((g) => g.trim())
+        .filter(Boolean);
+    }
+
+    return samlGroups;
+  };
+
   const syncUserGroupMemberships = async ({
     userId,
     orgId,
@@ -147,9 +173,9 @@ export const samlConfigServiceFactory = ({
           const newGroup = await groupDAL.create(
             {
               name: groupName,
-              slug: `${groupName.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now()}`,
+              slug: `${groupName.toLowerCase().replace(new RE2("[^a-z0-9]", "g"), "-")}-${Date.now()}`,
               orgId,
-              role: OrgMembershipRole.Member,
+              role: OrgMembershipRole.NoAccess,
               roleId: null
             },
             transaction
@@ -249,7 +275,7 @@ export const samlConfigServiceFactory = ({
 
     if (enableGroupSync && !GROUP_SYNC_SUPPORTED_PROVIDERS.includes(authProvider)) {
       throw new BadRequestError({
-        message: "Group sync is only supported for Google SAML SSO."
+        message: "Group sync is not supported for this SAML provider."
       });
     }
 
@@ -458,7 +484,7 @@ export const samlConfigServiceFactory = ({
 
     const samlConfig = await samlConfigDAL.findOne({ orgId });
     const groupsMetadata = metadata?.find(({ key }) => key === "groups");
-    const shouldSyncGroups = !!(samlConfig?.enableGroupSync && groupsMetadata?.value);
+    const shouldSyncGroups = !!samlConfig?.enableGroupSync;
 
     let user: TUsers;
     if (userAlias) {
@@ -481,7 +507,7 @@ export const samlConfigServiceFactory = ({
               orgId,
               role,
               roleId,
-              status: foundUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited,
+              status: foundUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, 
               isActive: true
             },
             tx
@@ -512,36 +538,15 @@ export const samlConfigServiceFactory = ({
           }
         }
 
-        if (shouldSyncGroups && metadata && foundUser.id && groupsMetadata?.value) {
-          let samlGroups: string[] = [];
+        if (shouldSyncGroups && metadata && foundUser.id) {
+          const samlGroups = groupsMetadata?.value ? parseSamlGroups(groupsMetadata.value) : [];
 
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            const parsed = JSON.parse(groupsMetadata.value);
-            if (Array.isArray(parsed)) {
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-              samlGroups = parsed;
-            } else if (typeof parsed === "string") {
-              samlGroups = parsed
-                .split(",")
-                .map((g) => g.trim())
-                .filter(Boolean);
-            }
-          } catch {
-            samlGroups = groupsMetadata.value
-              .split(",")
-              .map((g) => g.trim())
-              .filter(Boolean);
-          }
-
-          if (samlGroups.length > 0) {
-            await syncUserGroupMemberships({
-              userId: foundUser.id,
-              orgId,
-              samlGroups,
-              tx
-            });
-          }
+          await syncUserGroupMemberships({
+            userId: foundUser.id,
+            orgId,
+            samlGroups,
+            tx
+          });
         }
 
         return foundUser;
@@ -605,11 +610,12 @@ export const samlConfigServiceFactory = ({
               orgId,
               role,
               roleId,
-              status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited,
+              status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
               isActive: true
             },
             tx
           );
+          // Only update the membership to Accepted if the user account is already completed.
         } else if (orgMembership.status === OrgMembershipStatus.Invited && newUser.isAccepted) {
           await orgDAL.updateMembershipById(
             orgMembership.id,
@@ -635,36 +641,15 @@ export const samlConfigServiceFactory = ({
           }
         }
 
-        if (shouldSyncGroups && metadata && newUser.id && groupsMetadata?.value) {
-          let samlGroups: string[] = [];
+        if (shouldSyncGroups && metadata && newUser.id) {
+          const samlGroups = groupsMetadata?.value ? parseSamlGroups(groupsMetadata.value) : [];
 
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            const parsed = JSON.parse(groupsMetadata.value);
-            if (Array.isArray(parsed)) {
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-              samlGroups = parsed;
-            } else if (typeof parsed === "string") {
-              samlGroups = parsed
-                .split(",")
-                .map((g) => g.trim())
-                .filter(Boolean);
-            }
-          } catch {
-            samlGroups = groupsMetadata.value
-              .split(",")
-              .map((g) => g.trim())
-              .filter(Boolean);
-          }
-
-          if (samlGroups.length > 0) {
-            await syncUserGroupMemberships({
-              userId: newUser.id,
-              orgId,
-              samlGroups,
-              tx
-            });
-          }
+          await syncUserGroupMemberships({
+            userId: newUser.id,
+            orgId,
+            samlGroups,
+            tx
+          });
         }
 
         return newUser;

@@ -327,7 +327,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         entryPoint: z.string().trim().describe(SamlSso.CREATE_CONFIG.entryPoint),
         issuer: z.string().trim().describe(SamlSso.CREATE_CONFIG.issuer),
         cert: z.string().trim().describe(SamlSso.CREATE_CONFIG.cert),
-        enableGroupSync: z.boolean().optional()
+        enableGroupSync: z.boolean().optional().describe(SamlSso.CREATE_CONFIG.enableGroupSync)
       }),
       response: {
         200: SanitizedSamlConfigSchema
@@ -376,7 +376,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           entryPoint: z.string().trim().describe(SamlSso.UPDATE_CONFIG.entryPoint),
           issuer: z.string().trim().describe(SamlSso.UPDATE_CONFIG.issuer),
           cert: z.string().trim().describe(SamlSso.UPDATE_CONFIG.cert),
-          enableGroupSync: z.boolean().optional()
+          enableGroupSync: z.boolean().optional().describe(SamlSso.UPDATE_CONFIG.enableGroupSync)
         })
         .partial()
         .merge(z.object({ organizationId: z.string().trim().describe(SamlSso.UPDATE_CONFIG.organizationId) })),
