@@ -44,6 +44,7 @@ export const membershipUserDALFactory = (db: TDbClient) => {
         })
         .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
         .where(`${TableName.Membership}.actorUserId`, userId)
+        .where(`${TableName.Users}.isGhost`, false)
         .where((qb) => {
           if (scopeData.scope === AccessScope.Organization) {
             void qb.where(`${TableName.Membership}.scope`, AccessScope.Organization);
@@ -60,7 +61,9 @@ export const membershipUserDALFactory = (db: TDbClient) => {
         })
         .select(selectAllTableCols(TableName.Membership))
         .select(
-          db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
+          db.ref("slug").withSchema(TableName.Role).as("customRoleSlug"),
+          db.ref("name").withSchema(TableName.Role).as("customRoleName"),
+          db.ref("id").withSchema(TableName.Role).as("customRoleId"),
           db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
           db.ref("role").withSchema(TableName.MembershipRole).as("membershipRole"),
           db.ref("temporaryMode").withSchema(TableName.MembershipRole).as("membershipRoleTemporaryMode"),
@@ -78,19 +81,35 @@ export const membershipUserDALFactory = (db: TDbClient) => {
           db.ref("updatedAt").withSchema(TableName.MembershipRole).as("membershipRoleUpdatedAt"),
           db.ref("id").withSchema(TableName.IdentityMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
-          db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue")
+          db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue"),
+          db.ref("username").withSchema(TableName.Users).as("userUsername"),
+          db.ref("email").withSchema(TableName.Users).as("userEmail"),
+          db.ref("firstName").withSchema(TableName.Users).as("userFirstName"),
+          db.ref("lastName").withSchema(TableName.Users).as("userLastName"),
+          db.ref("id").withSchema(TableName.Users).as("userId")
         );
 
       const data = sqlNestRelationships({
         data: docs,
         key: "id",
-        parentMapper: (el) => MembershipsSchema.parse(el),
+        parentMapper: (el) => ({
+          ...MembershipsSchema.parse(el),
+          user: {
+            username: el.userUsername,
+            email: el.userEmail,
+            firstName: el.userFirstName,
+            lastName: el.userLastName,
+            id: el.userId
+          }
+        }),
         childrenMapper: [
           {
             key: "membershipRoleId",
             label: "roles" as const,
             mapper: ({
-              roleSlug,
+              customRoleSlug,
+              customRoleName,
+              customRoleId,
               membershipRoleId,
               membershipRole,
               membershipRoleIsTemporary,
@@ -103,7 +122,9 @@ export const membershipUserDALFactory = (db: TDbClient) => {
             }) => ({
               id: membershipRoleId,
               role: membershipRole,
-              customRoleSlug: roleSlug,
+              customRoleSlug,
+              customRoleName,
+              customRoleId,
               temporaryRange: membershipRoleTemporaryRange,
               temporaryMode: membershipRoleTemporaryMode,
               temporaryAccessStartTime: membershipRoleTemporaryAccessStartTime,
@@ -140,6 +161,7 @@ export const membershipUserDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .distinct(`${TableName.Membership}.id`)
         .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
+        .where(`${TableName.Users}.isGhost`, false)
         .where((qb) => {
           if (scopeData.scope === AccessScope.Organization) {
             void qb.where(`${TableName.Membership}.scope`, AccessScope.Organization);
@@ -188,7 +210,9 @@ export const membershipUserDALFactory = (db: TDbClient) => {
         .whereIn(`${TableName.Membership}.id`, paginatedUsers)
         .select(selectAllTableCols(TableName.Membership))
         .select(
-          db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
+          db.ref("slug").withSchema(TableName.Role).as("customRoleSlug"),
+          db.ref("name").withSchema(TableName.Role).as("customRoleName"),
+          db.ref("id").withSchema(TableName.Role).as("customRoleId"),
           db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
           db.ref("role").withSchema(TableName.MembershipRole).as("membershipRole"),
           db.ref("temporaryMode").withSchema(TableName.MembershipRole).as("membershipRoleTemporaryMode"),
@@ -203,7 +227,12 @@ export const membershipUserDALFactory = (db: TDbClient) => {
             .withSchema(TableName.MembershipRole)
             .as("membershipRoleTemporaryAccessEndTime"),
           db.ref("createdAt").withSchema(TableName.MembershipRole).as("membershipRoleCreatedAt"),
-          db.ref("updatedAt").withSchema(TableName.MembershipRole).as("membershipRoleUpdatedAt")
+          db.ref("updatedAt").withSchema(TableName.MembershipRole).as("membershipRoleUpdatedAt"),
+          db.ref("username").withSchema(TableName.Users).as("userUsername"),
+          db.ref("email").withSchema(TableName.Users).as("userEmail"),
+          db.ref("firstName").withSchema(TableName.Users).as("userFirstName"),
+          db.ref("lastName").withSchema(TableName.Users).as("userLastName"),
+          db.ref("id").withSchema(TableName.Users).as("userId")
         )
         .select(
           db.raw(
@@ -214,13 +243,24 @@ export const membershipUserDALFactory = (db: TDbClient) => {
       const data = sqlNestRelationships({
         data: docs,
         key: "id",
-        parentMapper: (el) => MembershipsSchema.parse(el),
+        parentMapper: (el) => ({
+          ...MembershipsSchema.parse(el),
+          user: {
+            username: el.userUsername,
+            email: el.userEmail,
+            firstName: el.userFirstName,
+            lastName: el.userLastName,
+            id: el.userId
+          }
+        }),
         childrenMapper: [
           {
             key: "membershipRoleId",
             label: "roles" as const,
             mapper: ({
-              roleSlug,
+              customRoleSlug,
+              customRoleName,
+              customRoleId,
               membershipRoleId,
               membershipRole,
               membershipRoleIsTemporary,
@@ -233,7 +273,9 @@ export const membershipUserDALFactory = (db: TDbClient) => {
             }) => ({
               id: membershipRoleId,
               role: membershipRole,
-              customRoleSlug: roleSlug,
+              customRoleSlug,
+              customRoleName,
+              customRoleId,
               temporaryRange: membershipRoleTemporaryRange,
               temporaryMode: membershipRoleTemporaryMode,
               temporaryAccessStartTime: membershipRoleTemporaryAccessStartTime,

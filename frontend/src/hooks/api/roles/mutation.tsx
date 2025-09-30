@@ -76,6 +76,7 @@ export const useCreateOrgRole = () => {
         data: { role }
       } = await apiRequest.post(`/api/v1/organization/${orgId}/roles`, {
         ...dto,
+        // TODO(simp): removing packing
         permissions: permissions.length ? packRules(permissions) : []
       });
 

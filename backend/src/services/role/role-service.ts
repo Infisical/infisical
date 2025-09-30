@@ -2,6 +2,7 @@ import { AccessScope, TableName } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
+import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 
 import { newNamespaceRoleFactory } from "./namespace/namespace-role-factory";
 import { newOrgRoleFactory } from "./org/org-role-factory";
@@ -63,7 +64,7 @@ export const roleServiceFactory = ({ roleDAL, permissionService }: TRoleServiceF
       [scope.key]: scope.value
     });
 
-    return { ...role, [scope.key]: scope.value };
+    return { ...role, [scope.key]: scope.value, permissions: unpackPermissions(role.permissions) };
   };
 
   const updateRole = async (dto: TUpdateRoleDTO) => {
@@ -99,7 +100,7 @@ export const roleServiceFactory = ({ roleDAL, permissionService }: TRoleServiceF
       permissions: data?.permissions
     });
 
-    return { ...role, [scope.key]: scope.value };
+    return { ...role, [scope.key]: scope.value, permissions: unpackPermissions(role.permissions) };
   };
 
   const deleteRole = async (dto: TDeleteRoleDTO) => {
@@ -119,7 +120,7 @@ export const roleServiceFactory = ({ roleDAL, permissionService }: TRoleServiceF
       [scope.key]: scope.value
     });
 
-    return { ...role, [scope.key]: scope.value };
+    return { ...role, [scope.key]: scope.value, permissions: unpackPermissions(role.permissions) };
   };
 
   const listRoles = async (dto: TListRoleDTO) => {
@@ -136,7 +137,7 @@ export const roleServiceFactory = ({ roleDAL, permissionService }: TRoleServiceF
       { limit: dto.data.limit, offset: dto.data.offset, sort: [[`${TableName.Role}.slug` as "slug", "asc"]] }
     );
 
-    return { roles };
+    return { roles: roles.map((el) => ({ ...el, permissions: unpackPermissions(el.permissions) })) };
   };
 
   const getRoleById = async (dto: TGetRoleByIdDTO) => {
@@ -152,7 +153,7 @@ export const roleServiceFactory = ({ roleDAL, permissionService }: TRoleServiceF
     });
     if (!role) throw new NotFoundError({ message: `Role with id ${dto.selector.id} not found` });
 
-    return { ...role, [scope.key]: scope.value };
+    return { ...role, [scope.key]: scope.value, permissions: unpackPermissions(role.permissions) };
   };
 
   const getRoleBySlug = async (dto: TGetRoleBySlugDTO) => {
@@ -168,7 +169,7 @@ export const roleServiceFactory = ({ roleDAL, permissionService }: TRoleServiceF
     });
     if (!role) throw new NotFoundError({ message: `Role with slug ${dto.selector.slug} not found` });
 
-    return { ...role, [scope.key]: scope.value };
+    return { ...role, [scope.key]: scope.value, permissions: unpackPermissions(role.permissions) };
   };
 
   return {
