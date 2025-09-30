@@ -503,7 +503,7 @@ export const appConnectionServiceFactory = ({
       );
     }
 
-    if (gatewayId !== undefined && gatewayId !== appConnection.gatewayId) {
+    if (gatewayId && gatewayId !== appConnection.gatewayId) {
       ForbiddenError.from(orgPermission).throwUnlessCan(
         OrgPermissionGatewayActions.AttachGateways,
         OrgPermissionSubjects.Gateway
