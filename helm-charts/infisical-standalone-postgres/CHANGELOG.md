@@ -1,3 +1,9 @@
+## 1.6.2 (July 3, 2025)
+
+Changes:
+* Moved PostgreSQL and Redis helm dependencies to OCI Bitnami repositories 
+
+
 ## 1.6.1 (July 3, 2025)
 
 Changes:
