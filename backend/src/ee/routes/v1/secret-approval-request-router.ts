@@ -320,10 +320,20 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                 .array(),
               secretPath: z.string(),
               commits: secretRawSchema
-                .omit({ _id: true, environment: true, workspace: true, type: true, version: true, secretValue: true })
+                .omit({
+                  _id: true,
+                  environment: true,
+                  workspace: true,
+                  type: true,
+                  version: true,
+                  secretValue: true,
+                  secretComment: true
+                })
                 .extend({
                   secretValueHidden: z.boolean(),
                   secretValue: z.string().optional(),
+                  secretComment: z.string().optional(),
+                  skipMultilineEncoding: z.boolean().nullish(),
                   isRotatedSecret: z.boolean().optional(),
                   op: z.string(),
                   tags: SanitizedTagSchema.array().optional(),
@@ -348,7 +358,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                       secretValueHidden: z.boolean(),
                       secretComment: z.string().optional(),
                       tags: SanitizedTagSchema.array().optional(),
-                      secretMetadata: ResourceMetadataSchema.nullish()
+                      secretMetadata: ResourceMetadataSchema.nullish(),
+                      skipMultilineEncoding: z.boolean().nullish()
                     })
                     .optional()
                 })

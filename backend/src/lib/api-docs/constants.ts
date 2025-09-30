@@ -50,6 +50,7 @@ export enum ApiDocsTags {
   IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
   AppConnections = "App Connections",
   SecretSyncs = "Secret Syncs",
+  PkiSyncs = "PKI Syncs",
   Integrations = "Integrations",
   ServiceTokens = "Service Tokens",
   AuditLogs = "Audit Logs",
@@ -1048,7 +1049,7 @@ export const RAW_SECRETS = {
   },
   GET_ACCESS_LIST: {
     secretName: "The name of the secret to get the access list for.",
-    workspaceId: "The ID of the project where the secret is located.",
+    projectId: "The ID of the project where the secret is located.",
     environment: "The slug of the environment where the the secret is located.",
     secretPath: "The folder path where the secret is located."
   }
@@ -2685,9 +2686,16 @@ export const SecretRotations = {
     },
     OKTA_CLIENT_SECRET: {
       clientId: "The ID of the Okta Application to rotate the client secret for."
+    },
+    REDIS_CREDENTIALS: {
+      permissionScope: "The ACL permission scope to assign to the issued Redis users."
     }
   },
   SECRETS_MAPPING: {
+    REDIS_CREDENTIALS: {
+      username: "The name of the secret that the username will be mapped to.",
+      password: "The name of the secret that the rotated password will be mapped to."
+    },
     SQL_CREDENTIALS: {
       username: "The name of the secret that the active username will be mapped to.",
       password: "The name of the secret that the generated password will be mapped to."

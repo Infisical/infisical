@@ -47,6 +47,7 @@ export type SecretV3RawSanitized = {
   isPending?: boolean;
   pendingAction?: PendingAction;
   reminder?: Reminder;
+  isEmpty?: boolean;
 };
 
 export type SecretV3Raw = {
@@ -73,6 +74,7 @@ export type SecretV3Raw = {
   rotationId?: string;
   secretReminderRecipients?: SecretReminderRecipient[];
   reminder?: Reminder;
+  isEmpty?: boolean;
 };
 
 export type SecretV3RawResponse = {
@@ -135,6 +137,15 @@ export type GetSecretVersionsDTO = {
   secretId: string;
   limit: number;
   offset: number;
+};
+
+export type TGetSecretVersionValue = {
+  secretId: string;
+  version: number;
+};
+
+export type TSecretVersionValue = {
+  value: string;
 };
 
 export type TGetSecretAccessListDTO = {
@@ -228,7 +239,6 @@ export type TDeleteSecretBatchDTO = {
 
 export type TMoveSecretsDTO = {
   projectId: string;
-  projectSlug: string;
   sourceEnvironment: string;
   sourceSecretPath: string;
   destinationEnvironment: string;

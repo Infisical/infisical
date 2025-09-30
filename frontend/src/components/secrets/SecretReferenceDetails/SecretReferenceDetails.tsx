@@ -29,17 +29,54 @@ const INTERPOLATION_SYNTAX_REG = /\${([^}]+)}/;
 export const hasSecretReference = (value: string | undefined) =>
   value ? INTERPOLATION_SYNTAX_REG.test(value) : false;
 
+const createNodeId = (node: TSecretReferenceTraceNode): string =>
+  `${node.environment}:${node.secretPath}:${node.key}`;
+
+const isCircularReference = (
+  node: TSecretReferenceTraceNode,
+  visitedPath: Set<string>
+): boolean => {
+  const nodeId = createNodeId(node);
+  return visitedPath.has(nodeId);
+};
+
+const hasCircularReferences = (
+  node: TSecretReferenceTraceNode,
+  visitedPath: Set<string> = new Set()
+): boolean => {
+  const nodeId = createNodeId(node);
+
+  if (visitedPath.has(nodeId)) {
+    return true;
+  }
+
+  const newVisitedPath = new Set([...visitedPath, nodeId]);
+
+  return node.children.some((child) => hasCircularReferences(child, newVisitedPath));
+};
+
 export const SecretReferenceNode = ({
   node,
   isRoot,
-  secretKey
+  secretKey,
+  visitedPath = new Set()
 }: {
   node: TSecretReferenceTraceNode;
   isRoot?: boolean;
   secretKey?: string;
+  visitedPath?: Set<string>;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const hasChildren = node.children.length > 0;
+
+  const nodeId = createNodeId(node);
+  const isCircular = !isRoot && isCircularReference(node, visitedPath);
+
+  const newVisitedPath = isCircular ? visitedPath : new Set([...visitedPath, nodeId]);
+
+  const safeChildren = isCircular
+    ? []
+    : node.children.filter((child) => !isCircularReference(child, newVisitedPath));
+  const hasChildren = safeChildren.length > 0;
 
   return (
     <li>
@@ -77,8 +114,12 @@ export const SecretReferenceNode = ({
         <Collapsible.Content className={twMerge("mt-4", style.collapsibleContent)}>
           {hasChildren && (
             <ul>
-              {node.children.map((el, index) => (
-                <SecretReferenceNode node={el} key={`${el.key}-${index + 1}`} />
+              {safeChildren.map((el, index) => (
+                <SecretReferenceNode
+                  node={el}
+                  key={`${el.key}-${index + 1}`}
+                  visitedPath={newVisitedPath}
+                />
               ))}
             </ul>
           )}
@@ -101,6 +142,9 @@ export const SecretReferenceTree = ({ secretPath, environment, secretKey }: Prop
 
   const tree = data?.tree;
   const secretValue = data?.value;
+
+  // Check if the tree contains circular references
+  const hasCirculars = tree ? hasCircularReferences(tree) : false;
 
   useEffect(() => {
     if (error instanceof AxiosError) {
@@ -130,9 +174,25 @@ export const SecretReferenceTree = ({ secretPath, environment, secretKey }: Prop
     );
   }
 
+  if (tree?.children?.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <span className="text-mineshaft-400">This secret does not contain references</span>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <FormControl label="Expanded value">
+      <FormControl
+        label="Expanded value"
+        tooltipText={
+          hasCirculars
+            ? "This secret contains circular references. Value shown is resolved once, with circular paths truncated in the reference tree below."
+            : undefined
+        }
+        tooltipClassName="max-w-md break-words"
+      >
         <SecretInput
           key="value-overriden"
           isReadOnly

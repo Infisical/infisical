@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { faCheck, faClose, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faClose, faCopy, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
@@ -78,6 +78,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
     control,
     reset,
     trigger,
+    watch,
     getValues,
     formState: { isDirty, isSubmitting, errors }
   } = useForm<TFormSchema>({
@@ -113,7 +114,6 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
           projectId,
           secretPath,
           secretKey: secret.key,
-          secretValue: secret.value || "",
           type: SecretType.Shared,
           tagIds: secret.tags?.map((tag) => tag.id),
           secretComment: secret.comment,
@@ -145,14 +145,35 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
     setIsSecNameCopied.on();
   };
 
+  const currentSecretValue = watch("key");
+
   return (
     <form
       onSubmit={handleSubmit(handleFormSubmit)}
       className="secret-table relative mb-2 flex w-full flex-row items-center justify-between overflow-hidden rounded-lg border border-solid border-mineshaft-700 bg-mineshaft-800 font-inter"
     >
       <div className="flex h-11 flex-1 flex-shrink-0 items-center">
-        <span className="flex h-full min-w-[11rem] items-center justify-start border-r-2 border-mineshaft-600 px-4">
+        <span className="flex h-full min-w-[11rem] items-center justify-between gap-2 border-r-2 border-mineshaft-600 px-4">
           Key
+          {currentSecretValue?.trim()?.includes(" ") &&
+            currentSecretValue?.trim() !== secretKey && (
+              <Tooltip
+                className={"w-full max-w-72"}
+                content={
+                  <div>
+                    Secret key contains whitespaces.
+                    <br />
+                    <br /> If this is the desired format, you need to provide it as{" "}
+                    <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
+                      {encodeURIComponent(secretKey.trim())}
+                    </code>{" "}
+                    when making API requests.
+                  </div>
+                }
+              >
+                <FontAwesomeIcon icon={faWarning} className="text-yellow-600" />
+              </Tooltip>
+            )}
         </span>
 
         <Controller

@@ -93,6 +93,7 @@ import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-servi
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
 import { TPkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
 import { TPkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
+import { TPkiSyncServiceFactory } from "@app/services/pki-sync/pki-sync-service";
 import { TPkiTemplatesServiceFactory } from "@app/services/pki-templates/pki-templates-service";
 import { TProjectServiceFactory } from "@app/services/project/project-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -114,6 +115,7 @@ import { TSlackServiceFactory } from "@app/services/slack/slack-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TTotpServiceFactory } from "@app/services/totp/totp-service";
+import { TUpgradePathService } from "@app/services/upgrade-path/upgrade-path-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
@@ -267,6 +269,7 @@ declare module "fastify" {
       certificateEst: TCertificateEstServiceFactory;
       pkiCollection: TPkiCollectionServiceFactory;
       pkiSubscriber: TPkiSubscriberServiceFactory;
+      pkiSync: TPkiSyncServiceFactory;
       secretScanning: TSecretScanningServiceFactory;
       license: TLicenseServiceFactory;
       trustedIp: TTrustedIpServiceFactory;
@@ -312,6 +315,7 @@ declare module "fastify" {
       identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
       notification: TNotificationServiceFactory;
       offlineUsageReport: TOfflineUsageReportServiceFactory;
+      upgradePath: TUpgradePathService;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

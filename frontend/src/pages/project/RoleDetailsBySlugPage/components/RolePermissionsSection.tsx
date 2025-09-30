@@ -23,6 +23,7 @@ import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import { PkiSubscriberPermissionConditions } from "./PkiSubscriberPermissionConditions";
+import { PkiSyncPermissionConditions } from "./PkiSyncPermissionConditions";
 import { PkiTemplatePermissionConditions } from "./PkiTemplatePermissionConditions";
 import {
   EXCLUDED_PERMISSION_SUBS,
@@ -72,6 +73,10 @@ export const renderConditionalComponents = (
 
     if (subject === ProjectPermissionSub.SecretSyncs) {
       return <SecretSyncPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.PkiSyncs) {
+      return <PkiSyncPermissionConditions isDisabled={isDisabled} />;
     }
 
     if (subject === ProjectPermissionSub.SecretEvents) {

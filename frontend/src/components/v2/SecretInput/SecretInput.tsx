@@ -7,7 +7,16 @@ import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPa
 
 const REGEX = /(\${([a-zA-Z0-9-_.]+)})/g;
 
-const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?: boolean) => {
+const syntaxHighlight = (
+  content?: string | null,
+  isVisible?: boolean,
+  isImport?: boolean,
+  isLoadingValue?: boolean,
+  isErrorLoadingValue?: boolean
+) => {
+  if (isLoadingValue) return HIDDEN_SECRET_VALUE;
+  if (isErrorLoadingValue)
+    return <span className="ph-no-capture text-red/75">Error loading secret value.</span>;
   if (isImport && !content) return "IMPORTED";
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";
@@ -20,7 +29,8 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?
       skipNext = true;
       return (
         <span className="ph-no-capture text-yellow" key={`secret-value-${i + 1}`}>
-          &#36;&#123;<span className="ph-no-capture text-yellow-200/80">{el.slice(2, -1)}</span>
+          &#36;&#123;
+          <span className="ph-no-capture text-yellow-200/80">{el.slice(2, -1)}</span>
           &#125;
         </span>
       );
@@ -48,6 +58,8 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   isDisabled?: boolean;
   containerClassName?: string;
   canEditButNotView?: boolean;
+  isLoadingValue?: boolean;
+  isErrorLoadingValue?: boolean;
 };
 
 const commonClassName = "font-mono text-sm caret-white border-none outline-none w-full break-all";
@@ -65,6 +77,8 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       isReadOnly,
       onFocus,
       canEditButNotView,
+      isLoadingValue,
+      isErrorLoadingValue,
       ...props
     },
     ref
@@ -83,7 +97,9 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
                 {syntaxHighlight(
                   value,
                   isVisible || (isSecretFocused && !valueAlwaysHidden),
-                  isImport
+                  isImport,
+                  isLoadingValue,
+                  isErrorLoadingValue
                 )}
               </span>
             </code>
@@ -114,7 +130,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             }}
             value={value || ""}
             {...props}
-            readOnly={isReadOnly}
+            readOnly={isReadOnly || isLoadingValue || isErrorLoadingValue}
           />
         </div>
       </div>

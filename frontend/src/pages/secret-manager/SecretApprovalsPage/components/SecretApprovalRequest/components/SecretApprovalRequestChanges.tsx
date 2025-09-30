@@ -245,14 +245,14 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                 : secretApprovalRequestDetails.status}
             </span>
           </div>
-          <div className="-mt-0.5 flex-grow flex-col">
+          <div className="-mt-0.5 w-[calc(100%-20rem)] flex-grow flex-col">
             <div className="text-xl">
               {generateCommitText(
                 secretApprovalRequestDetails.commits,
                 secretApprovalRequestDetails.isReplicated
               )}
             </div>
-            <p className="-mt-1 text-xs text-gray-400">
+            <p className="-mt-1 truncate text-xs text-gray-400">
               By{" "}
               {secretApprovalRequestDetails?.committerUser ? (
                 <>
@@ -559,7 +559,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                       sideOffset={10}
                     >
                       <div className="flex items-center">
-                        <div>{requiredApprover?.email}</div>
+                        <div className="max-w-[200px] truncate">{requiredApprover?.email}</div>
                         <span className="text-red">*</span>
                         {!isOrgMembershipActive && (
                           <FontAwesomeIcon
@@ -630,7 +630,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                       }
                     >
                       <div className="flex items-center">
-                        <span>{reviewer?.email} </span>
+                        <span className="max-w-[200px] truncate">{reviewer?.email}</span>
                         {!isOrgMembershipActive && (
                           <FontAwesomeIcon
                             icon={faUserSlash}

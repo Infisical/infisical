@@ -62,6 +62,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   sshHostGroups: false,
   secretScanning: false,
   enterpriseSecretSyncs: false,
+  enterpriseCertificateSyncs: false,
   enterpriseAppConnections: false,
   fips: false,
   eventSubscriptions: false,

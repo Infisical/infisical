@@ -134,6 +134,7 @@
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/postgres",
                       "integrations/app-connections/railway",
+                      "integrations/app-connections/redis",
                       "integrations/app-connections/render",
                       "integrations/app-connections/supabase",
                       "integrations/app-connections/teamcity",
@@ -173,8 +174,9 @@
                 "group": "Gateway",
                 "pages": [
                   "documentation/platform/gateways/overview",
-                  "documentation/platform/gateways/gateway-security",
-                  "documentation/platform/gateways/networking",
+                  "documentation/platform/gateways/gateway-deployment",
+                  "documentation/platform/gateways/relay-deployment",
+                  "documentation/platform/gateways/security",
                   {
                     "group": "Gateway (Deprecated)",
                     "pages": [
@@ -441,7 +443,8 @@
                       "documentation/platform/secret-rotation/mysql-credentials",
                       "documentation/platform/secret-rotation/okta-client-secret",
                       "documentation/platform/secret-rotation/oracledb-credentials",
-                      "documentation/platform/secret-rotation/postgres-credentials"
+                      "documentation/platform/secret-rotation/postgres-credentials",
+                      "documentation/platform/secret-rotation/redis-credentials"
                     ]
                   },
                   {
@@ -452,6 +455,7 @@
                       "documentation/platform/dynamic-secrets/aws-elasticache",
                       "documentation/platform/dynamic-secrets/aws-iam",
                       "documentation/platform/dynamic-secrets/azure-entra-id",
+                      "documentation/platform/dynamic-secrets/azure-sql-database",
                       "documentation/platform/dynamic-secrets/cassandra",
                       "documentation/platform/dynamic-secrets/couchbase",
                       "documentation/platform/dynamic-secrets/elastic-search",
@@ -710,6 +714,18 @@
                     "pages": [
                       "documentation/platform/pki/pki-issuer",
                       "documentation/platform/pki/integration-guides/gloo-mesh"
+                    ]
+                  },
+                  {
+                    "group": "Certificate Syncs",
+                    "pages": [
+                      "documentation/platform/pki/certificate-syncs/overview",
+                      {
+                        "group": "Syncs",
+                        "pages": [
+                          "documentation/platform/pki/certificate-syncs/azure-key-vault"
+                        ]
+                      }
                     ]
                   }
                 ]
@@ -1376,6 +1392,19 @@
                       "api-reference/endpoints/secret-rotations/postgres-credentials/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/postgres-credentials/update"
                     ]
+                  },
+                  {
+                    "group": "Redis Credentials",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/redis-credentials/create",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/delete",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/get-by-id",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/get-by-name",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/list",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/update"
+                    ]
                   }
                 ]
               },
@@ -1851,6 +1880,18 @@
                       "api-reference/endpoints/app-connections/railway/create",
                       "api-reference/endpoints/app-connections/railway/update",
                       "api-reference/endpoints/app-connections/railway/delete"
+                    ]
+                  },
+                  {
+                    "group": "Redis",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/redis/list",
+                      "api-reference/endpoints/app-connections/redis/available",
+                      "api-reference/endpoints/app-connections/redis/get-by-id",
+                      "api-reference/endpoints/app-connections/redis/get-by-name",
+                      "api-reference/endpoints/app-connections/redis/create",
+                      "api-reference/endpoints/app-connections/redis/update",
+                      "api-reference/endpoints/app-connections/redis/delete"
                     ]
                   },
                   {
@@ -2474,6 +2515,26 @@
                   "api-reference/endpoints/pki-alerts/read",
                   "api-reference/endpoints/pki-alerts/update",
                   "api-reference/endpoints/pki-alerts/delete"
+                ]
+              },
+              {
+                "group": "Certificate Syncs",
+                "pages": [
+                  "api-reference/endpoints/pki/syncs/list",
+                  "api-reference/endpoints/pki/syncs/get-by-id",
+                  "api-reference/endpoints/pki/syncs/options",
+                  {
+                    "group": "Azure Key Vault",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/list",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/get-by-id",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/create",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/update",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/delete",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/remove-certificates"
+                    ]
+                  }
                 ]
               }
             ]

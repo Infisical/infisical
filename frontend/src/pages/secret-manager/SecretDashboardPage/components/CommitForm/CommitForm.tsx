@@ -13,6 +13,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Badge, Button, Input, Modal, ModalContent } from "@app/components/v2";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretVersionDiffView } from "@app/pages/secret-manager/CommitDetailsPage/components/SecretVersionDiffView";
+import { HIDDEN_SECRET_VALUE_API_MASK } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 import {
   PendingChange,
@@ -105,7 +106,12 @@ const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
               version: 1, // placeholder, not used
               secretKey: change.newSecretName ? existingSecret.key : undefined,
               secretValue:
-                change.secretValue !== undefined ? (existingSecret.value ?? "") : undefined,
+                // eslint-disable-next-line no-nested-ternary
+                change.secretValue !== undefined
+                  ? change.existingSecret.secretValueHidden
+                    ? HIDDEN_SECRET_VALUE_API_MASK
+                    : (change.originalValue ?? "")
+                  : undefined,
               tags: change.tags ? (existingSecret.tags?.map((tag) => tag.slug) ?? []) : undefined,
               secretMetadata: change.secretMetadata ? existingSecret.secretMetadata : undefined,
               skipMultilineEncoding:
@@ -130,7 +136,7 @@ const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
   }
 
   if (change.type === PendingAction.Delete) {
-    const { secretKey, secretValue } = change;
+    const { secretKey, secretValue, secretValueHidden } = change;
     return (
       <SecretVersionDiffView
         onDiscard={onDiscard}
@@ -143,7 +149,12 @@ const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
             {
               version: 1, // placeholder, not used
               secretKey,
-              secretValue
+              // eslint-disable-next-line no-nested-ternary
+              secretValue: secretValue
+                ? secretValueHidden
+                  ? HIDDEN_SECRET_VALUE_API_MASK
+                  : secretValue
+                : undefined
             }
           ]
         }}

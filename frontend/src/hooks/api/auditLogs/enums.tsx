@@ -151,6 +151,14 @@ export enum EventType {
   SECRET_SYNC_SYNC_SECRETS = "secret-sync-sync-secrets",
   SECRET_SYNC_IMPORT_SECRETS = "secret-sync-import-secrets",
   SECRET_SYNC_REMOVE_SECRETS = "secret-sync-remove-secrets",
+  GET_PKI_SYNCS = "get-pki-syncs",
+  GET_PKI_SYNC = "get-pki-sync",
+  CREATE_PKI_SYNC = "create-pki-sync",
+  UPDATE_PKI_SYNC = "update-pki-sync",
+  DELETE_PKI_SYNC = "delete-pki-sync",
+  PKI_SYNC_SYNC_CERTIFICATES = "pki-sync-sync-certificates",
+  PKI_SYNC_IMPORT_CERTIFICATES = "pki-sync-import-certificates",
+  PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
   OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
   CREATE_KMIP_CLIENT = "create-kmip-client",
@@ -216,5 +224,21 @@ export enum EventType {
 
   CREATE_PROJECT = "create-project",
   UPDATE_PROJECT = "update-project",
-  DELETE_PROJECT = "delete-project"
+  DELETE_PROJECT = "delete-project",
+
+  CREATE_SECRET_REMINDER = "create-secret-reminder",
+  GET_SECRET_REMINDER = "get-secret-reminder",
+  DELETE_SECRET_REMINDER = "delete-secret-reminder",
+
+  DASHBOARD_LIST_SECRETS = "dashboard-list-secrets",
+  DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
+  DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value",
+
+  CREATE_PROJECT_ROLE = "create-project-role",
+  UPDATE_PROJECT_ROLE = "update-project-role",
+  DELETE_PROJECT_ROLE = "delete-project-role",
+
+  CREATE_ORG_ROLE = "create-org-role",
+  UPDATE_ORG_ROLE = "update-org-role",
+  DELETE_ORG_ROLE = "delete-org-role"
 }

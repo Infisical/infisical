@@ -69,6 +69,7 @@ type Props = {
     | "organization-admin-console"
     | "kmip"
     | "gateway"
+    | "relay"
     | "secret-share"
     | "billing"
     | "audit-logs"

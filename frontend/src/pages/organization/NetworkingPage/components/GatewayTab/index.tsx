@@ -1,0 +1,1 @@
+export { GatewayTab } from "./GatewayTab";

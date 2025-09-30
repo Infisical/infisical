@@ -159,6 +159,7 @@ export type TGetSecretVersionsDTO = Omit<TProjectPermission, "projectId"> & {
   limit?: number;
   offset?: number;
   secretId: string;
+  secretVersions?: string[];
 };
 
 export type TSecretReference = { environment: string; secretPath: string; secretKey: string };

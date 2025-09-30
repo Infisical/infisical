@@ -93,6 +93,7 @@ import {
   RailwayConnectionListItemSchema,
   SanitizedRailwayConnectionSchema
 } from "@app/services/app-connection/railway";
+import { RedisConnectionListItemSchema, SanitizedRedisConnectionSchema } from "@app/services/app-connection/redis";
 import {
   RenderConnectionListItemSchema,
   SanitizedRenderConnectionSchema
@@ -156,7 +157,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedDigitalOceanConnectionSchema.options,
   ...SanitizedNetlifyConnectionSchema.options,
   ...SanitizedOktaConnectionSchema.options,
-  ...SanitizedAzureADCSConnectionSchema.options
+  ...SanitizedAzureADCSConnectionSchema.options,
+  ...SanitizedRedisConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -197,7 +199,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   DigitalOceanConnectionListItemSchema,
   NetlifyConnectionListItemSchema,
   OktaConnectionListItemSchema,
-  AzureADCSConnectionListItemSchema
+  AzureADCSConnectionListItemSchema,
+  RedisConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

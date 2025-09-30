@@ -407,6 +407,14 @@ export enum EventType {
   SECRET_SYNC_SYNC_SECRETS = "secret-sync-sync-secrets",
   SECRET_SYNC_IMPORT_SECRETS = "secret-sync-import-secrets",
   SECRET_SYNC_REMOVE_SECRETS = "secret-sync-remove-secrets",
+  GET_PKI_SYNCS = "get-pki-syncs",
+  GET_PKI_SYNC = "get-pki-sync",
+  CREATE_PKI_SYNC = "create-pki-sync",
+  UPDATE_PKI_SYNC = "update-pki-sync",
+  DELETE_PKI_SYNC = "delete-pki-sync",
+  PKI_SYNC_SYNC_CERTIFICATES = "pki-sync-sync-certificates",
+  PKI_SYNC_IMPORT_CERTIFICATES = "pki-sync-import-certificates",
+  PKI_SYNC_REMOVE_CERTIFICATES = "pki-sync-remove-certificates",
   OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER = "oidc-group-membership-mapping-assign-user",
   OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER = "oidc-group-membership-mapping-remove-user",
   CREATE_KMIP_CLIENT = "create-kmip-client",
@@ -478,9 +486,21 @@ export enum EventType {
   UPDATE_PROJECT = "update-project",
   DELETE_PROJECT = "delete-project",
 
+  CREATE_PROJECT_ROLE = "create-project-role",
+  UPDATE_PROJECT_ROLE = "update-project-role",
+  DELETE_PROJECT_ROLE = "delete-project-role",
+
+  CREATE_ORG_ROLE = "create-org-role",
+  UPDATE_ORG_ROLE = "update-org-role",
+  DELETE_ORG_ROLE = "delete-org-role",
+
   CREATE_SECRET_REMINDER = "create-secret-reminder",
   GET_SECRET_REMINDER = "get-secret-reminder",
-  DELETE_SECRET_REMINDER = "delete-secret-reminder"
+  DELETE_SECRET_REMINDER = "delete-secret-reminder",
+
+  DASHBOARD_LIST_SECRETS = "dashboard-list-secrets",
+  DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
+  DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -591,6 +611,7 @@ interface CreateSecretEvent {
     secretKey: string;
     secretVersion: number;
     secretMetadata?: TSecretMetadata;
+    secretTags?: string[];
   };
 }
 
@@ -605,6 +626,7 @@ interface CreateSecretBatchEvent {
       secretPath?: string;
       secretVersion: number;
       secretMetadata?: TSecretMetadata;
+      secretTags?: string[];
     }>;
   };
 }
@@ -618,6 +640,7 @@ interface UpdateSecretEvent {
     secretKey: string;
     secretVersion: number;
     secretMetadata?: TSecretMetadata;
+    secretTags?: string[];
   };
 }
 
@@ -632,6 +655,7 @@ interface UpdateSecretBatchEvent {
       secretVersion: number;
       secretMetadata?: TSecretMetadata;
       secretPath?: string;
+      secretTags?: string[];
     }>;
   };
 }
@@ -2943,6 +2967,77 @@ interface SecretSyncRemoveSecretsEvent {
   };
 }
 
+interface GetPkiSyncsEvent {
+  type: EventType.GET_PKI_SYNCS;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface GetPkiSyncEvent {
+  type: EventType.GET_PKI_SYNC;
+  metadata: {
+    destination: string;
+    syncId: string;
+  };
+}
+
+interface CreatePkiSyncEvent {
+  type: EventType.CREATE_PKI_SYNC;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+    destination: string;
+  };
+}
+
+interface UpdatePkiSyncEvent {
+  type: EventType.UPDATE_PKI_SYNC;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+  };
+}
+
+interface DeletePkiSyncEvent {
+  type: EventType.DELETE_PKI_SYNC;
+  metadata: {
+    pkiSyncId: string;
+    name: string;
+    destination: string;
+  };
+}
+
+interface PkiSyncSyncCertificatesEvent {
+  type: EventType.PKI_SYNC_SYNC_CERTIFICATES;
+  metadata: {
+    syncId: string;
+    syncMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
+  };
+}
+
+interface PkiSyncImportCertificatesEvent {
+  type: EventType.PKI_SYNC_IMPORT_CERTIFICATES;
+  metadata: {
+    syncId: string;
+    importMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
+  };
+}
+
+interface PkiSyncRemoveCertificatesEvent {
+  type: EventType.PKI_SYNC_REMOVE_CERTIFICATES;
+  metadata: {
+    syncId: string;
+    removeMessage: string | null;
+    jobId: string;
+    jobRanAt: Date;
+  };
+}
+
 interface OidcGroupMembershipMappingAssignUserEvent {
   type: EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER;
   metadata: {
@@ -3502,6 +3597,96 @@ interface ProjectDeleteEvent {
   };
 }
 
+interface DashboardListSecretsEvent {
+  type: EventType.DASHBOARD_LIST_SECRETS;
+  metadata: {
+    environment: string;
+    secretPath: string;
+    numberOfSecrets: number;
+    secretIds: string[];
+  };
+}
+
+interface DashboardGetSecretValueEvent {
+  type: EventType.DASHBOARD_GET_SECRET_VALUE;
+  metadata: {
+    secretId: string;
+    secretKey: string;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface DashboardGetSecretVersionValueEvent {
+  type: EventType.DASHBOARD_GET_SECRET_VERSION_VALUE;
+  metadata: {
+    secretId: string;
+    version: string;
+  };
+}
+
+interface ProjectRoleCreateEvent {
+  type: EventType.CREATE_PROJECT_ROLE;
+  metadata: {
+    roleId: string;
+    slug: string;
+    name: string;
+    description?: string | null;
+    permissions: string;
+  };
+}
+
+interface ProjectRoleUpdateEvent {
+  type: EventType.UPDATE_PROJECT_ROLE;
+  metadata: {
+    roleId: string;
+    slug?: string;
+    name?: string;
+    description?: string | null;
+    permissions?: string;
+  };
+}
+
+interface ProjectRoleDeleteEvent {
+  type: EventType.DELETE_PROJECT_ROLE;
+  metadata: {
+    roleId: string;
+    slug: string;
+    name: string;
+  };
+}
+
+interface OrgRoleCreateEvent {
+  type: EventType.CREATE_ORG_ROLE;
+  metadata: {
+    roleId: string;
+    slug: string;
+    name: string;
+    description?: string | null;
+    permissions: string;
+  };
+}
+
+interface OrgRoleUpdateEvent {
+  type: EventType.UPDATE_ORG_ROLE;
+  metadata: {
+    roleId: string;
+    slug?: string;
+    name?: string;
+    description?: string | null;
+    permissions?: string;
+  };
+}
+
+interface OrgRoleDeleteEvent {
+  type: EventType.DELETE_ORG_ROLE;
+  metadata: {
+    roleId: string;
+    slug: string;
+    name: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -3753,6 +3938,14 @@ export type Event =
   | SecretSyncSyncSecretsEvent
   | SecretSyncImportSecretsEvent
   | SecretSyncRemoveSecretsEvent
+  | GetPkiSyncsEvent
+  | GetPkiSyncEvent
+  | CreatePkiSyncEvent
+  | UpdatePkiSyncEvent
+  | DeletePkiSyncEvent
+  | PkiSyncSyncCertificatesEvent
+  | PkiSyncImportCertificatesEvent
+  | PkiSyncRemoveCertificatesEvent
   | OidcGroupMembershipMappingAssignUserEvent
   | OidcGroupMembershipMappingRemoveUserEvent
   | CreateKmipClientEvent
@@ -3818,4 +4011,13 @@ export type Event =
   | ProjectDeleteEvent
   | SecretReminderCreateEvent
   | SecretReminderGetEvent
-  | SecretReminderDeleteEvent;
+  | SecretReminderDeleteEvent
+  | DashboardListSecretsEvent
+  | DashboardGetSecretValueEvent
+  | DashboardGetSecretVersionValueEvent
+  | ProjectRoleCreateEvent
+  | ProjectRoleUpdateEvent
+  | ProjectRoleDeleteEvent
+  | OrgRoleCreateEvent
+  | OrgRoleUpdateEvent
+  | OrgRoleDeleteEvent;

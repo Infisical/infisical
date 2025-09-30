@@ -35,7 +35,10 @@ type TIdentityProjectServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRole">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "getProjectPermissionByRole" | "invalidateProjectPermissionCache"
+  >;
 };
 
 export type TIdentityProjectServiceFactory = ReturnType<typeof identityProjectServiceFactory>;
@@ -165,6 +168,9 @@ export const identityProjectServiceFactory = ({
       const identityRoles = await identityProjectMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
       return { ...identityProjectMembership, roles: identityRoles };
     });
+
+    await permissionService.invalidateProjectPermissionCache(projectId);
+
     return projectIdentity;
   };
 
@@ -272,6 +278,8 @@ export const identityProjectServiceFactory = ({
       return identityProjectMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
     });
 
+    await permissionService.invalidateProjectPermissionCache(projectId);
+
     return updatedRoles;
   };
 
@@ -302,6 +310,9 @@ export const identityProjectServiceFactory = ({
     );
 
     const [deletedIdentity] = await identityProjectDAL.delete({ identityId, projectId });
+
+    await permissionService.invalidateProjectPermissionCache(projectId);
+
     return deletedIdentity;
   };
 
