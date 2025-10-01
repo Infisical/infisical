@@ -6,6 +6,14 @@
 
 @source not "../public";
 
+@font-face {
+    font-family: 'Alliance No.2';
+    src: url('/fonts/AllianceNo2-Regular.otf') format('opentype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
 /*
   The default border color has changed to `currentcolor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
@@ -25,6 +33,7 @@
 
   html {
     @apply overflow-hidden;
+    font-family: 'Alliance No.2', sans-serif;
   }
 
   :root {

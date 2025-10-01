@@ -5,7 +5,7 @@ import { fn } from "storybook/test";
 import { Badge } from "./Badge";
 
 const meta = {
-  title: "Badge",
+  title: "Generic/Badge",
   component: Badge,
   parameters: {
     layout: "centered"
@@ -17,9 +17,11 @@ const meta = {
       options: [
         "default",
         "outline",
-        "secrets",
-        "scanning",
-        "pki",
+        "org",
+        "namespace",
+        "secrets-manager",
+        "secret-scanning",
+        "cert-manager",
         "ssh",
         "kms",
         "pam",
@@ -28,22 +30,6 @@ const meta = {
         "warning",
         "danger"
       ]
-    },
-    leftIcon: {
-      control: { type: "select" },
-      options: ["UserIcon", "None"],
-      mapping: {
-        UserIcon,
-        None: undefined
-      }
-    },
-    rightIcon: {
-      control: { type: "select" },
-      options: ["LogInIcon", "None"],
-      mapping: {
-        LogInIcon,
-        None: undefined
-      }
     }
   },
   args: { onClick: fn(), children: "Badge" }
@@ -58,27 +44,45 @@ export const Default: Story = {
   }
 };
 
+export const Accent: Story = {
+  args: {
+    variant: "accent"
+  }
+};
+
 export const Outline: Story = {
   args: {
     variant: "outline"
   }
 };
 
+export const Organization: Story = {
+  args: {
+    variant: "org"
+  }
+};
+
+export const Namespace: Story = {
+  args: {
+    variant: "namespace"
+  }
+};
+
 export const SecretsManagement: Story = {
   args: {
-    variant: "secrets"
+    variant: "secret-manager"
   }
 };
 
 export const SecretScanning: Story = {
   args: {
-    variant: "scanning"
+    variant: "secret-scanning"
   }
 };
 
 export const PKI: Story = {
   args: {
-    variant: "pki"
+    variant: "cert-manager"
   }
 };
 
@@ -126,13 +130,22 @@ export const Danger: Story = {
 
 export const LeftIcon: Story = {
   args: {
-    leftIcon: UserIcon
+    children: (
+      <>
+        <UserIcon />
+        Badge
+      </>
+    )
   }
 };
 
 export const RightIcon: Story = {
   args: {
-    rightIcon: LogInIcon
+    children: (
+      <>
+        Badge <LogInIcon />
+      </>
+    )
   }
 };
 
