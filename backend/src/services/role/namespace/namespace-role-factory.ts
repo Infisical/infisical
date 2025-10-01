@@ -29,6 +29,10 @@ export const newNamespaceRoleFactory = (_dto: TNamespaceRoleScopeFactoryDep): TR
     throw new BadRequestError({ message: "Invalid scope provided for the factory" });
   };
 
+  const isCustomRole: TRoleScopeFactory["isCustomRole"] = () => false;
+
+  const getPredefinedRoles: TRoleScopeFactory["getPredefinedRoles"] = async () => [];
+
   return {
     onCreateRoleGuard,
     onUpdateRoleGuard,
@@ -36,6 +40,8 @@ export const newNamespaceRoleFactory = (_dto: TNamespaceRoleScopeFactoryDep): TR
     onListRoleGuard,
     onGetRoleByIdGuard,
     onGetRoleBySlugGuard,
-    getScopeField
+    getScopeField,
+    isCustomRole,
+    getPredefinedRoles
   };
 };

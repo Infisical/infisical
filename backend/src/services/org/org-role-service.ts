@@ -14,7 +14,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
-import { ActorAuthMethod } from "../auth/auth-type";
+import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TOrgRoleDALFactory } from "./org-role-dal";
 
 type TOrgRoleServiceFactoryDep = {
@@ -224,13 +224,14 @@ export const orgRoleServiceFactory = ({
     actorAuthMethod: ActorAuthMethod,
     actorOrgId: string | undefined
   ) => {
-    const { permission, membership } = await permissionService.getUserOrgPermission(
+    const { permission, memberships } = await permissionService.getOrgPermission(
+      ActorType.USER,
       userId,
       orgId,
       actorAuthMethod,
       actorOrgId
     );
-    return { permissions: packRules(permission.rules), membership };
+    return { permissions: packRules(permission.rules), memberships };
   };
 
   return { createRole, getRole, updateRole, deleteRole, listRoles, getUserPermission };

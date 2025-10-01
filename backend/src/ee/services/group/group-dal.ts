@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TGroups } from "@app/db/schemas";
+import { AccessScope, TableName, TGroups } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 
@@ -81,9 +81,11 @@ export const groupDALFactory = (db: TDbClient) => {
   }) => {
     try {
       const query = db
-        .replicaNode()(TableName.OrgMembership)
-        .where(`${TableName.OrgMembership}.orgId`, orgId)
-        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .leftJoin(TableName.UserGroupMembership, (bd) => {
           bd.on(`${TableName.UserGroupMembership}.userId`, "=", `${TableName.Users}.id`).andOn(
             `${TableName.UserGroupMembership}.groupId`,
@@ -92,7 +94,7 @@ export const groupDALFactory = (db: TDbClient) => {
           );
         })
         .select(
-          db.ref("id").withSchema(TableName.OrgMembership),
+          db.ref("id").withSchema(TableName.Membership),
           db.ref("groupId").withSchema(TableName.UserGroupMembership),
           db.ref("createdAt").withSchema(TableName.UserGroupMembership).as("joinedGroupAt"),
           db.ref("email").withSchema(TableName.Users),
@@ -160,8 +162,10 @@ export const groupDALFactory = (db: TDbClient) => {
   const findGroupsByProjectId = async (projectId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.Groups)
-        .join(TableName.GroupProjectMembership, `${TableName.Groups}.id`, `${TableName.GroupProjectMembership}.groupId`)
-        .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
+        .join(TableName.Membership, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
         .select(selectAllTableCols(TableName.Groups));
       return docs;
     } catch (error) {
@@ -172,11 +176,16 @@ export const groupDALFactory = (db: TDbClient) => {
   const findById = async (id: string, tx?: Knex) => {
     try {
       const doc = await (tx || db.replicaNode())(TableName.Groups)
-        .leftJoin(TableName.OrgRoles, `${TableName.Groups}.roleId`, `${TableName.OrgRoles}.id`)
+        .join(TableName.Membership, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .where(`${TableName.Groups}.id`, id)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .select(
           selectAllTableCols(TableName.Groups),
-          db.ref("slug").as("customRoleSlug").withSchema(TableName.OrgRoles)
+          db.ref("slug").as("customRoleSlug").withSchema(TableName.Role),
+          db.ref("customRoleId").as("roleId").withSchema(TableName.MembershipRole),
+          db.ref("role").withSchema(TableName.MembershipRole)
         )
         .first();
 

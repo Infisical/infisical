@@ -76,7 +76,6 @@ import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgBotDALFactory } from "./org-bot-dal";
 import { TOrgDALFactory } from "./org-dal";
 import { deleteOrgMembershipFn, deleteOrgMembershipsFn } from "./org-fns";
-import { TOrgRoleDALFactory } from "./org-role-dal";
 import {
   TDeleteOrgMembershipDTO,
   TDeleteOrgMembershipsDTO,
@@ -92,6 +91,7 @@ import {
   TUpgradePrivilegeSystemDTO,
   TVerifyUserToOrgDTO
 } from "./org-types";
+import { TRoleDALFactory } from "../role/role-dal";
 
 type TOrgServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
@@ -100,7 +100,7 @@ type TOrgServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
   orgDAL: TOrgDALFactory;
   orgBotDAL: TOrgBotDALFactory;
-  orgRoleDAL: TOrgRoleDALFactory;
+  roleDAL: TRoleDALFactory;
   userDAL: TUserDALFactory;
   groupDAL: TGroupDALFactory;
   projectDAL: TProjectDALFactory;
@@ -154,7 +154,7 @@ export const orgServiceFactory = ({
   folderDAL,
   userDAL,
   groupDAL,
-  orgRoleDAL,
+  roleDAL,
   incidentContactDAL,
   permissionService,
   smtpService,
@@ -185,7 +185,7 @@ export const orgServiceFactory = ({
     actorAuthMethod: ActorAuthMethod,
     actorOrgId: string | undefined
   ) => {
-    await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
+    await permissionService.getOrgPermission(ActorType.USER, userId, orgId, actorAuthMethod, actorOrgId);
     const appCfg = getConfig();
     const org = await orgDAL.findOrgById(orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
@@ -221,7 +221,13 @@ export const orgServiceFactory = ({
     actorAuthMethod: ActorAuthMethod,
     actorOrgId: string | undefined
   ) => {
-    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission(
+      ActorType.USER,
+      userId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
 
     const members = await orgDAL.findAllOrgMembers(orgId);
@@ -323,9 +329,15 @@ export const orgServiceFactory = ({
     actorAuthMethod,
     orgId
   }: TUpgradePrivilegeSystemDTO) => {
-    const { membership } = await permissionService.getUserOrgPermission(actorId, orgId, actorAuthMethod, actorOrgId);
+    const { hasRole } = await permissionService.getOrgPermission(
+      ActorType.USER,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
 
-    if (membership.role !== OrgMembershipRole.Admin) {
+    if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({
         message: "Insufficient privileges - only the organization admin can upgrade the privilege system."
       });
@@ -531,7 +543,7 @@ export const orgServiceFactory = ({
       defaultMembershipRole = await getDefaultOrgMembershipRoleForUpdateOrg({
         membershipRoleSlug: defaultMembershipRoleSlug,
         orgId,
-        orgRoleDAL,
+        roleDAL,
         plan
       });
     }
@@ -659,8 +671,14 @@ export const orgServiceFactory = ({
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string | undefined;
   }) => {
-    const { membership } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
-    if ((membership.role as OrgMembershipRole) !== OrgMembershipRole.Admin) {
+    const { hasRole } = await permissionService.getOrgPermission(
+      ActorType.USER,
+      userId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
+    if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({
         name: "DeleteOrganizationById",
         message: "Insufficient privileges"
@@ -739,7 +757,13 @@ export const orgServiceFactory = ({
     actorOrgId,
     metadata
   }: TUpdateOrgMembershipDTO) => {
-    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission(
+      ActorType.USER,
+      userId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
 
     const foundMembership = await orgMembershipDAL.findById(membershipId);
@@ -754,7 +778,7 @@ export const orgServiceFactory = ({
     let userRole = role;
     let userRoleId: string | null = null;
     if (role && isCustomRole) {
-      const customRole = await orgRoleDAL.findOne({ slug: role, orgId });
+      const customRole = await roleDAL.findOne({ slug: role, orgId });
       if (!customRole) throw new BadRequestError({ name: "UpdateMembership", message: "Organization role not found" });
 
       const plan = await licenseService.getPlan(orgId);
@@ -768,16 +792,16 @@ export const orgServiceFactory = ({
     }
     const membership = await orgDAL.transaction(async (tx) => {
       const [updatedOrgMembership] = await orgDAL.updateMembership(
-        { id: membershipId, orgId },
+        { id: membershipId, scopeOrgId: orgId },
         { role: userRole, roleId: userRoleId, isActive }
       );
 
       if (metadata) {
-        await identityMetadataDAL.delete({ userId: updatedOrgMembership.userId, orgId }, tx);
+        await identityMetadataDAL.delete({ userId: updatedOrgMembership.actorUserId, orgId }, tx);
         if (metadata.length) {
           await identityMetadataDAL.insertMany(
             metadata.map(({ key, value }) => ({
-              userId: updatedOrgMembership.userId,
+              userId: updatedOrgMembership.actorUserId as string,
               orgId,
               key,
               value

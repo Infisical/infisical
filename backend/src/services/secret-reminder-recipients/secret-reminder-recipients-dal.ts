@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { AccessScope, TableName } from "@app/db/schemas";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TSecretReminderRecipientsDALFactory = ReturnType<typeof secretReminderRecipientsDALFactory>;
@@ -14,13 +14,13 @@ export const secretReminderRecipientsDALFactory = (db: TDbClient) => {
       .where({ secretId })
       .leftJoin(TableName.Users, `${TableName.SecretReminderRecipients}.userId`, `${TableName.Users}.id`)
       .leftJoin(TableName.Project, `${TableName.SecretReminderRecipients}.projectId`, `${TableName.Project}.id`)
-      .leftJoin(TableName.OrgMembership, (bd) => {
+      .leftJoin(TableName.Membership, (bd) => {
         void bd
-          .on(`${TableName.OrgMembership}.userId`, "=", `${TableName.SecretReminderRecipients}.userId`)
-          .andOn(`${TableName.OrgMembership}.orgId`, "=", `${TableName.Project}.orgId`);
+          .on(`${TableName.Membership}.actorUserId`, "=", `${TableName.SecretReminderRecipients}.userId`)
+          .andOn(`${TableName.Membership}.scopeOrgId`, "=", `${TableName.Project}.orgId`)
+          .andOn(`${TableName.Membership}.scope`, db.raw("?", [AccessScope.Organization]));
       })
-
-      .where(`${TableName.OrgMembership}.isActive`, true)
+      .where(`${TableName.Membership}.isActive`, true)
       .select(selectAllTableCols(TableName.SecretReminderRecipients))
       .select(
         db.ref("email").withSchema(TableName.Users).as("email"),

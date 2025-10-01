@@ -261,7 +261,16 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          memberships: OrgMembershipsSchema.array(),
+          memberships: z
+            .object({
+              id: z.string(),
+              roles: z
+                .object({
+                  role: z.string()
+                })
+                .array()
+            })
+            .array(),
           permissions: z.any().array()
         })
       }
@@ -274,7 +283,16 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         req.permission.authMethod,
         req.permission.orgId
       );
-      return { permissions, memberships };
+      return {
+        permissions,
+        memberships: memberships.map((el) => ({
+          ...el,
+          role: el.roles[0].customRoleSlug || el.roles[0].role,
+          orgId: el.scopeOrgId,
+          status: el.status || "",
+          isActive: el.isActive || true
+        }))
+      };
     }
   });
 };

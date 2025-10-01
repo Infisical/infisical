@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   constructPermissionErrorMessage,
@@ -41,21 +41,25 @@ import {
   TUpdateProjectMembershipDTO
 } from "./project-membership-types";
 import { TProjectUserMembershipRoleDALFactory } from "./project-user-membership-role-dal";
+import { TRoleDALFactory } from "../role/role-dal";
+import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { TMembershipDALFactory } from "../membership/membership-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 
 type TProjectMembershipServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles"|  "invalidateProjectPermissionCache">;
   smtpService: TSmtpService;
-  projectBotDAL: TProjectBotDALFactory;
   projectMembershipDAL: TProjectMembershipDALFactory;
-  projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany" | "find" | "delete">;
+  membershipDAL: TMembershipDALFactory;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find" | "delete">;
   userDAL: Pick<TUserDALFactory, "findById" | "findOne" | "findUserByProjectMembershipId" | "find">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
-  projectRoleDAL: Pick<TProjectRoleDALFactory, "find" | "findOne">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgMembersByUsername">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgMembersByUsername" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction" | "findProjectById">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
   groupProjectDAL: TGroupProjectDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -68,9 +72,7 @@ export const projectMembershipServiceFactory = ({
   projectMembershipDAL,
   projectUserMembershipRoleDAL,
   smtpService,
-  projectRoleDAL,
   orgDAL,
-  projectUserAdditionalPrivilegeDAL,
   userDAL,
   userGroupMembershipDAL,
   groupProjectDAL,
@@ -78,7 +80,11 @@ export const projectMembershipServiceFactory = ({
   projectKeyDAL,
   secretReminderRecipientsDAL,
   licenseService,
-  notificationService
+  notificationService,
+  roleDAL,
+  membershipRoleDAL,
+  additionalPrivilegeDAL,
+  membershipDAL
 }: TProjectMembershipServiceFactoryDep) => {
   const getProjectMemberships = async ({
     actorId,
@@ -170,6 +176,7 @@ export const projectMembershipServiceFactory = ({
     return membership;
   };
 
+  // TODO(simp): cross-check akhil
   const addUsersToProject = async ({
     projectId,
     actorId,
@@ -191,17 +198,20 @@ export const projectMembershipServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
-    const orgMembers = await orgDAL.findMembership({
-      [`${TableName.OrgMembership}.orgId` as "orgId"]: project.orgId,
+    const orgMembers = await membershipDAL.find({
+      [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: project.orgId,
+      scope: AccessScope.Organization,
       $in: {
-        [`${TableName.OrgMembership}.id` as "id"]: members.map(({ orgMembershipId }) => orgMembershipId)
+        [`${TableName.Membership}.id` as "id"]: members.map(({ orgMembershipId }) => orgMembershipId)
       }
     });
+
     if (orgMembers.length !== members.length) throw new BadRequestError({ message: "Some users are not part of org" });
 
-    const existingMembers = await projectMembershipDAL.find({
-      projectId,
-      $in: { userId: orgMembers.map(({ userId }) => userId).filter(Boolean) }
+    const existingMembers = await membershipDAL.find({
+      [`${TableName.Membership}.scopeProjectId` as "scopeProjectId"]: projectId,
+      scope: AccessScope.Project,
+      $in: { actorUserId: orgMembers.map(({ actorUserId }) => actorUserId).filter(Boolean) }
     });
     if (existingMembers.length) throw new BadRequestError({ message: "Some users are already part of project" });
 
@@ -212,7 +222,7 @@ export const projectMembershipServiceFactory = ({
       )
     );
 
-    await projectMembershipDAL.transaction(async (tx) => {
+    await membershipDAL.transaction(async (tx) => {
       const projectMemberships = await projectMembershipDAL.insertMany(
         orgMembers.map(({ userId }) => ({
           projectId,
@@ -275,7 +285,7 @@ export const projectMembershipServiceFactory = ({
     membershipId,
     roles
   }: TUpdateProjectMembershipDTO) => {
-    const { permission, membership } = await permissionService.getProjectPermission({
+    const { permission, memberships } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -290,14 +300,14 @@ export const projectMembershipServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Forbidden member update" });
     }
 
-    for await (const { role: requestedRoleChange } of roles) {
-      const { permission: rolePermission } = await permissionService.getProjectPermissionByRole(
-        requestedRoleChange,
-        projectId
-      );
-
+    const providedRolePermissionDetails = await permissionService.getProjectPermissionByRoles(
+      roles.map((el) => el.role).filter((el) => el !== ProjectMembershipRole.NoAccess),
+      projectId
+    );
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
+    for await (const { permission: rolePermission } of providedRolePermissionDetails) {
       const permissionBoundary = validatePrivilegeChangeOperation(
-        membership.shouldUseNewPrivilegeSystem,
+        shouldUseNewPrivilegeSystem,
         ProjectPermissionMemberActions.GrantPrivileges,
         ProjectPermissionSub.Member,
         permission,
@@ -306,8 +316,8 @@ export const projectMembershipServiceFactory = ({
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
-            `Failed to change role ${requestedRoleChange}`,
-            membership.shouldUseNewPrivilegeSystem,
+            "Failed to assign to role",
+            shouldUseNewPrivilegeSystem,
             ProjectPermissionMemberActions.GrantPrivileges,
             ProjectPermissionSub.Member
           ),
@@ -322,7 +332,7 @@ export const projectMembershipServiceFactory = ({
           // we don't want to include custom in this check;
           // this unintentionally enables setting slug to custom which is reserved
           .filter((r) => r !== ProjectMembershipRole.Custom)
-          .includes(role as ProjectMembershipRole)
+          .includes(role as ProjectMembershipRole.Member)
     );
     const hasCustomRole = Boolean(customInputRoles.length);
     if (hasCustomRole) {
@@ -334,7 +344,7 @@ export const projectMembershipServiceFactory = ({
     }
 
     const customRoles = hasCustomRole
-      ? await projectRoleDAL.find({
+      ? await roleDAL.find({
           projectId,
           $in: { slug: customInputRoles.map(({ role }) => role) }
         })
@@ -368,7 +378,7 @@ export const projectMembershipServiceFactory = ({
       };
     });
 
-    const updatedRoles = await projectMembershipDAL.transaction(async (tx) => {
+    const updatedRoles = await membershipDAL.transaction(async (tx) => {
       await projectUserMembershipRoleDAL.delete({ projectMembershipId: membershipId }, tx);
       return projectUserMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
     });

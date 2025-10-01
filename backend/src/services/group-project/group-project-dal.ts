@@ -1,53 +1,45 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TUserEncryptionKeys } from "@app/db/schemas";
+import { AccessScope, TableName, TMemberships, TUserEncryptionKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, sqlNestRelationships } from "@app/lib/knex";
+import { sqlNestRelationships } from "@app/lib/knex";
 
 export type TGroupProjectDALFactory = ReturnType<typeof groupProjectDALFactory>;
 
 export const groupProjectDALFactory = (db: TDbClient) => {
-  const groupProjectOrm = ormify(db, TableName.GroupProjectMembership);
-
   const findByProjectId = async (projectId: string, filter?: { groupId?: string }, tx?: Knex) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.GroupProjectMembership)
-        .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
+      const docs = await (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
         .where((qb) => {
           if (filter?.groupId) {
             void qb.where(`${TableName.Groups}.id`, "=", filter.groupId);
           }
         })
-        .join(TableName.Groups, `${TableName.GroupProjectMembership}.groupId`, `${TableName.Groups}.id`)
-        .join(
-          TableName.GroupProjectMembershipRole,
-          `${TableName.GroupProjectMembershipRole}.projectMembershipId`,
-          `${TableName.GroupProjectMembership}.id`
-        )
-        .leftJoin(
-          TableName.ProjectRoles,
-          `${TableName.GroupProjectMembershipRole}.customRoleId`,
-          `${TableName.ProjectRoles}.id`
-        )
+        .join(TableName.Groups, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .select(
-          db.ref("id").withSchema(TableName.GroupProjectMembership),
-          db.ref("createdAt").withSchema(TableName.GroupProjectMembership),
-          db.ref("updatedAt").withSchema(TableName.GroupProjectMembership),
+          db.ref("id").withSchema(TableName.Membership),
+          db.ref("createdAt").withSchema(TableName.Membership),
+          db.ref("updatedAt").withSchema(TableName.Membership),
           db.ref("id").as("groupId").withSchema(TableName.Groups),
           db.ref("name").as("groupName").withSchema(TableName.Groups),
           db.ref("slug").as("groupSlug").withSchema(TableName.Groups),
-          db.ref("id").withSchema(TableName.GroupProjectMembership),
-          db.ref("role").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("id").withSchema(TableName.GroupProjectMembershipRole).as("membershipRoleId"),
-          db.ref("customRoleId").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("name").withSchema(TableName.ProjectRoles).as("customRoleName"),
-          db.ref("slug").withSchema(TableName.ProjectRoles).as("customRoleSlug"),
-          db.ref("temporaryMode").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("isTemporary").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("temporaryRange").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("temporaryAccessStartTime").withSchema(TableName.GroupProjectMembershipRole),
-          db.ref("temporaryAccessEndTime").withSchema(TableName.GroupProjectMembershipRole)
+          db.ref("id").withSchema(TableName.Membership),
+          db.ref("role").withSchema(TableName.MembershipRole),
+          db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
+          db.ref("customRoleId").withSchema(TableName.MembershipRole),
+          db.ref("name").withSchema(TableName.Role).as("customRoleName"),
+          db.ref("slug").withSchema(TableName.Role).as("customRoleSlug"),
+          db.ref("temporaryMode").withSchema(TableName.MembershipRole),
+          db.ref("isTemporary").withSchema(TableName.MembershipRole),
+          db.ref("temporaryRange").withSchema(TableName.MembershipRole),
+          db.ref("temporaryAccessStartTime").withSchema(TableName.MembershipRole),
+          db.ref("temporaryAccessEndTime").withSchema(TableName.MembershipRole)
         );
 
       const members = sqlNestRelationships({
@@ -104,8 +96,8 @@ export const groupProjectDALFactory = (db: TDbClient) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.UserGroupMembership)
         .where(`${TableName.UserGroupMembership}.userId`, userId)
-        .join(TableName.Groups, function () {
-          this.on(`${TableName.UserGroupMembership}.groupId`, "=", `${TableName.Groups}.id`).andOn(
+        .join(TableName.Groups, (qb) => {
+          qb.on(`${TableName.UserGroupMembership}.groupId`, "=", `${TableName.Groups}.id`).andOn(
             `${TableName.Groups}.orgId`,
             "=",
             db.raw("?", [orgId])
@@ -131,32 +123,26 @@ export const groupProjectDALFactory = (db: TDbClient) => {
     const docs = await db(TableName.UserGroupMembership)
       // Join the GroupProjectMembership table with the Groups table to get the group name and slug.
       .join(
-        TableName.GroupProjectMembership,
+        TableName.Membership,
         `${TableName.UserGroupMembership}.groupId`,
-        `${TableName.GroupProjectMembership}.groupId` // this gives us access to the project id in the group membership
+        `${TableName.Membership}.actorGroupId` // this gives us access to the project id in the group membership
       )
-
-      .join(TableName.Project, `${TableName.GroupProjectMembership}.projectId`, `${TableName.Project}.id`)
-
-      .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
-
+      .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+      .where(`${TableName.Membership}.scopeProjectId`, projectId)
+      .where(`${TableName.Membership}.scope`, AccessScope.Project)
       .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
       .join<TUserEncryptionKeys>(
         TableName.UserEncryptionKey,
         `${TableName.UserEncryptionKey}.userId`,
         `${TableName.Users}.id`
       )
-      .join(
-        TableName.GroupProjectMembershipRole,
-        `${TableName.GroupProjectMembershipRole}.projectMembershipId`,
-        `${TableName.GroupProjectMembership}.id`
-      )
-      .leftJoin(
-        TableName.ProjectRoles,
-        `${TableName.GroupProjectMembershipRole}.customRoleId`,
-        `${TableName.ProjectRoles}.id`
-      )
-      .join(TableName.OrgMembership, `${TableName.Users}.id`, `${TableName.OrgMembership}.userId`)
+      .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+      .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
+      .join<TMemberships>(db(TableName.Membership).as("orgMembership"), (qb) => {
+        qb.on(`${TableName.Users}.id`, `orgMembership.userId`)
+          .andOn(`orgMembership.scope`, db.raw("?", [AccessScope.Organization]))
+          .andOn(`orgMembership.scopeOrgId`, `${TableName.Project}.orgId`);
+      })
       .select(
         db.ref("id").withSchema(TableName.UserGroupMembership),
         db.ref("createdAt").withSchema(TableName.UserGroupMembership),
@@ -167,18 +153,18 @@ export const groupProjectDALFactory = (db: TDbClient) => {
         db.ref("firstName").withSchema(TableName.Users),
         db.ref("lastName").withSchema(TableName.Users),
         db.ref("id").withSchema(TableName.Users).as("userId"),
-        db.ref("role").withSchema(TableName.GroupProjectMembershipRole),
-        db.ref("id").withSchema(TableName.GroupProjectMembershipRole).as("membershipRoleId"),
-        db.ref("customRoleId").withSchema(TableName.GroupProjectMembershipRole),
-        db.ref("name").withSchema(TableName.ProjectRoles).as("customRoleName"),
-        db.ref("slug").withSchema(TableName.ProjectRoles).as("customRoleSlug"),
-        db.ref("temporaryMode").withSchema(TableName.GroupProjectMembershipRole),
-        db.ref("isTemporary").withSchema(TableName.GroupProjectMembershipRole),
-        db.ref("temporaryRange").withSchema(TableName.GroupProjectMembershipRole),
-        db.ref("temporaryAccessStartTime").withSchema(TableName.GroupProjectMembershipRole),
-        db.ref("temporaryAccessEndTime").withSchema(TableName.GroupProjectMembershipRole),
+        db.ref("role").withSchema(TableName.MembershipRole),
+        db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
+        db.ref("customRoleId").withSchema(TableName.MembershipRole),
+        db.ref("name").withSchema(TableName.Role).as("customRoleName"),
+        db.ref("slug").withSchema(TableName.Role).as("customRoleSlug"),
+        db.ref("temporaryMode").withSchema(TableName.MembershipRole),
+        db.ref("isTemporary").withSchema(TableName.MembershipRole),
+        db.ref("temporaryRange").withSchema(TableName.MembershipRole),
+        db.ref("temporaryAccessStartTime").withSchema(TableName.MembershipRole),
+        db.ref("temporaryAccessEndTime").withSchema(TableName.MembershipRole),
         db.ref("name").as("projectName").withSchema(TableName.Project),
-        db.ref("isActive").withSchema(TableName.OrgMembership)
+        db.ref("isActive").withSchema("orgMembership")
       )
       .where({ isGhost: false });
 
@@ -242,5 +228,5 @@ export const groupProjectDALFactory = (db: TDbClient) => {
     return members;
   };
 
-  return { ...groupProjectOrm, findByProjectId, findByUserId, findAllProjectGroupMembers };
+  return { findByProjectId, findByUserId, findAllProjectGroupMembers };
 };
