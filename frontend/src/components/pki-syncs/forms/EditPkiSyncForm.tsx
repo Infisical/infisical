@@ -8,11 +8,11 @@ import { Button, ModalClose } from "@app/components/v2";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { TPkiSync, useUpdatePkiSync } from "@app/hooks/api/pkiSyncs";
 
+import { TUpdatePkiSyncForm, UpdatePkiSyncFormSchema } from "./schemas/pki-sync-schema";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
 import { PkiSyncSourceFields } from "./PkiSyncSourceFields";
-import { TPkiSyncForm, UpdatePkiSyncFormSchema } from "./schemas";
 
 type Props = {
   onComplete: (pkiSync: TPkiSync) => void;
@@ -24,7 +24,7 @@ export const EditPkiSyncForm = ({ pkiSync, fields, onComplete }: Props) => {
   const updatePkiSync = useUpdatePkiSync();
   const { name: destinationName } = PKI_SYNC_MAP[pkiSync.destination];
 
-  const formMethods = useForm<TPkiSyncForm>({
+  const formMethods = useForm<TUpdatePkiSyncForm>({
     resolver: zodResolver(UpdatePkiSyncFormSchema),
     defaultValues: {
       ...pkiSync,
@@ -33,11 +33,11 @@ export const EditPkiSyncForm = ({ pkiSync, fields, onComplete }: Props) => {
         id: pkiSync.connectionId,
         name: pkiSync.appConnectionName
       }
-    } as Partial<TPkiSyncForm>,
+    } as Partial<TUpdatePkiSyncForm>,
     reValidateMode: "onChange"
   });
 
-  const onSubmit = async ({ connection, ...formData }: TPkiSyncForm) => {
+  const onSubmit = async ({ connection, ...formData }: TUpdatePkiSyncForm) => {
     try {
       const updatedPkiSync = await updatePkiSync.mutateAsync({
         syncId: pkiSync.id,

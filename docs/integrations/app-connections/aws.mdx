@@ -174,6 +174,45 @@ Infisical supports two methods for connecting to AWS.
                             </Accordion>
                         </AccordionGroup>
                     </Tab>
+                    <Tab title="PKI Sync">
+                        <AccordionGroup>
+                            <Accordion title="AWS Certificate Manager">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to sync certificates to AWS Certificate Manager:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowCertificateManagerAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "acm:ListCertificates",
+                                                "acm:DescribeCertificate",
+                                                "acm:GetCertificate",
+                                                "acm:ImportCertificate",
+                                                "acm:ExportCertificate",
+                                                "acm:DeleteCertificate",
+                                                "acm:AddTagsToCertificate",
+                                                "acm:RemoveTagsFromCertificate",
+                                                "acm:ListTagsForCertificate"
+                                            ],
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                                ```
+                                <Note>
+                                    - **ListCertificates**: Lists all certificates in the account
+                                    - **ImportCertificate**: Imports certificates from Infisical into AWS Certificate Manager
+                                    - **ExportCertificate**: Exports certificates for synchronization (only works with imported certificates)
+                                    - **DeleteCertificate**: Removes certificates that are no longer managed by Infisical
+                                    - **DescribeCertificate** and **GetCertificate**: Retrieves certificate details for comparison during sync
+                                    - Tag-related permissions: Manages certificate tags for identification and organization
+                                </Note>
+                            </Accordion>
+                        </AccordionGroup>
+                    </Tab>
                 </Tabs>
             </Step>
 
@@ -348,6 +387,45 @@ Infisical supports two methods for connecting to AWS.
                                     ]
                                 }
                                 ```
+                            </Accordion>
+                        </AccordionGroup>
+                    </Tab>
+                    <Tab title="PKI Sync">
+                        <AccordionGroup>
+                            <Accordion title="AWS Certificate Manager">
+                                Use the following custom policy to grant the minimum permissions required by Infisical to sync certificates to AWS Certificate Manager:
+
+                                ```json
+                                {
+                                    "Version": "2012-10-17",
+                                    "Statement": [
+                                        {
+                                            "Sid": "AllowCertificateManagerAccess",
+                                            "Effect": "Allow",
+                                            "Action": [
+                                                "acm:ListCertificates",
+                                                "acm:DescribeCertificate",
+                                                "acm:GetCertificate",
+                                                "acm:ImportCertificate",
+                                                "acm:ExportCertificate",
+                                                "acm:DeleteCertificate",
+                                                "acm:AddTagsToCertificate",
+                                                "acm:RemoveTagsFromCertificate",
+                                                "acm:ListTagsForCertificate"
+                                            ],
+                                            "Resource": "*"
+                                        }
+                                    ]
+                                }
+                                ```
+                                <Note>
+                                    - **ListCertificates**: Lists all certificates in the account
+                                    - **ImportCertificate**: Imports certificates from Infisical into AWS Certificate Manager
+                                    - **ExportCertificate**: Exports certificates for synchronization (only works with imported certificates)
+                                    - **DeleteCertificate**: Removes certificates that are no longer managed by Infisical
+                                    - **DescribeCertificate** and **GetCertificate**: Retrieves certificate details for comparison during sync
+                                    - Tag-related permissions: Manages certificate tags for identification and organization
+                                </Note>
                             </Accordion>
                         </AccordionGroup>
                     </Tab>
