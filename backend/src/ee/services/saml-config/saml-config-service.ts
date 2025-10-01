@@ -10,7 +10,8 @@ import {
   TGroups,
   TSamlConfigs,
   TSamlConfigsUpdate,
-  TUsers
+  TUsers,
+  AccessScope
 } from "@app/db/schemas";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { getConfig } from "@app/lib/config/env";
@@ -23,12 +24,9 @@ import { TGroupProjectDALFactory } from "@app/services/group-project/group-proje
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
-import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
-import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
@@ -68,16 +66,7 @@ type TSamlConfigServiceFactoryDep = {
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
   >;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "create">;
-  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "find" | "transaction">;
-  userGroupMembershipDAL: Pick<
-    TUserGroupMembershipDALFactory,
-    "find" | "delete" | "transaction" | "insertMany" | "filterProjectsByUserMembership"
-  >;
-  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
-  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser">;
-  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
-  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
@@ -88,7 +77,6 @@ type TSamlConfigServiceFactoryDep = {
 export const samlConfigServiceFactory = ({
   samlConfigDAL,
   orgDAL,
-  orgMembershipDAL,
   userDAL,
   userAliasDAL,
   groupDAL,
@@ -102,7 +90,8 @@ export const samlConfigServiceFactory = ({
   tokenService,
   smtpService,
   identityMetadataDAL,
-  kmsService
+  kmsService,
+  membershipRoleDAL
 }: TSamlConfigServiceFactoryDep): TSamlConfigServiceFactory => {
   const parseSamlGroups = (groupsValue: string): string[] => {
     let samlGroups: string[] = [];
@@ -506,23 +495,32 @@ export const samlConfigServiceFactory = ({
         const foundUser = await userDAL.findById(userAlias.userId, tx);
         const [orgMembership] = await orgDAL.findMembership(
           {
-            [`${TableName.OrgMembership}.userId` as "userId"]: foundUser.id,
-            [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
+            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
           },
           { tx }
         );
+
         if (!orgMembership) {
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
-          await orgMembershipDAL.create(
+          const membership = await orgDAL.createMembership(
             {
-              userId: userAlias.userId,
+              actorUserId: userAlias.userId,
               inviteEmail: email,
-              orgId,
-              role,
-              roleId,
-              status: foundUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited,
+              scopeOrgId: orgId,
+              scope: AccessScope.Organization,
+              status: OrgMembershipStatus.Accepted,
               isActive: true
+            },
+            tx
+          );
+          await membershipRoleDAL.create(
+            {
+              membershipId: membership.id,
+              role,
+              customRoleId: roleId
             },
             tx
           );
@@ -606,8 +604,9 @@ export const samlConfigServiceFactory = ({
 
         const [orgMembership] = await orgDAL.findMembership(
           {
-            [`${TableName.OrgMembership}.userId` as "userId"]: newUser.id,
-            [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
+            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
           },
           { tx }
         );
@@ -617,15 +616,22 @@ export const samlConfigServiceFactory = ({
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
-          await orgMembershipDAL.create(
+          const membership = await orgDAL.createMembership(
             {
-              userId: newUser.id,
-              inviteEmail: email,
-              orgId,
-              role,
-              roleId,
+              actorUserId: newUser.id,
+              scopeOrgId: orgId,
+              scope: AccessScope.Organization,
               status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
-              isActive: true
+              isActive: true,
+              inviteEmail: email.toLowerCase()
+            },
+            tx
+          );
+          await membershipRoleDAL.create(
+            {
+              membershipId: membership.id,
+              role,
+              customRoleId: roleId
             },
             tx
           );

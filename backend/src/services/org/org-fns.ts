@@ -1,20 +1,22 @@
+import { AccessScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { BadRequestError } from "@app/lib/errors";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
+import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+
 type TDeleteOrgMembership = {
   orgMembershipId: string;
   orgId: string;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "deleteMembershipById" | "transaction">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "delete" | "findProjectMembershipsByUserId">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserId">;
+  membershipUserDAL: Pick<TMembershipUserDALFactory, "delete">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete">;
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
-  projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
   userId?: string;
 };
 
@@ -22,11 +24,11 @@ type TDeleteOrgMemberships = {
   orgMembershipIds: string[];
   orgId: string;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "deleteMembershipsById" | "transaction">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "delete" | "findProjectMembershipsByUserIds">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
+  membershipUserDAL: Pick<TMembershipUserDALFactory, "delete">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete">;
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
-  projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
   userId?: string;
 };
 
@@ -35,46 +37,41 @@ export const deleteOrgMembershipFn = async ({
   orgId,
   orgDAL,
   projectMembershipDAL,
-  projectUserAdditionalPrivilegeDAL,
   projectKeyDAL,
   userAliasDAL,
   licenseService,
-  userId
+  userId,
+  membershipUserDAL
 }: TDeleteOrgMembership) => {
   const deletedMembership = await orgDAL.transaction(async (tx) => {
     const orgMembership = await orgDAL.deleteMembershipById(orgMembershipId, orgId, tx);
 
-    if (userId && orgMembership.userId === userId) {
+    if (userId && orgMembership.actorUserId === userId) {
       // scott: this is temporary, we will add a leave org endpoint with proper handling to ensure org isn't abandoned/broken
       throw new BadRequestError({ message: "You cannot remove yourself from an organization" });
     }
 
-    if (!orgMembership.userId) {
+    const deletedUserId = orgMembership.actorUserId;
+    if (!deletedUserId) {
       await licenseService.updateSubscriptionOrgMemberCount(orgId);
       return orgMembership;
     }
 
     await userAliasDAL.delete(
       {
-        userId: orgMembership.userId,
+        userId: deletedUserId,
         orgId
       },
       tx
     );
 
-    await projectUserAdditionalPrivilegeDAL.delete(
-      {
-        userId: orgMembership.userId
-      },
-      tx
-    );
-
     // Get all the project memberships of the user in the organization
-    const projectMemberships = await projectMembershipDAL.findProjectMembershipsByUserId(orgId, orgMembership.userId);
+    const projectMemberships = await projectMembershipDAL.findProjectMembershipsByUserId(orgId, deletedUserId);
 
     // Delete all the project memberships of the user in the organization
-    await projectMembershipDAL.delete(
+    await membershipUserDAL.delete(
       {
+        scope: AccessScope.Project,
         $in: {
           id: projectMemberships.map((membership) => membership.id)
         }
@@ -87,7 +84,7 @@ export const deleteOrgMembershipFn = async ({
       $in: {
         projectId: projectMemberships.map((membership) => membership.projectId)
       },
-      receiverId: orgMembership.userId
+      receiverId: deletedUserId
     });
 
     // Delete all the project keys of the user in the organization
@@ -112,18 +109,18 @@ export const deleteOrgMembershipsFn = async ({
   orgId,
   orgDAL,
   projectMembershipDAL,
-  projectUserAdditionalPrivilegeDAL,
   projectKeyDAL,
   userAliasDAL,
   licenseService,
-  userId
+  userId,
+  membershipUserDAL
 }: TDeleteOrgMemberships) => {
   const deletedMemberships = await orgDAL.transaction(async (tx) => {
     const orgMemberships = await orgDAL.deleteMembershipsById(orgMembershipIds, orgId, tx);
 
     const membershipUserIds = orgMemberships
-      .filter((member) => Boolean(member.userId))
-      .map((member) => member.userId) as string[];
+      .filter((member) => Boolean(member.actorUserId))
+      .map((member) => member.actorUserId) as string[];
 
     if (userId && membershipUserIds.includes(userId)) {
       // scott: this is temporary, we will add a leave org endpoint with proper handling to ensure org isn't abandoned/broken
@@ -145,21 +142,13 @@ export const deleteOrgMembershipsFn = async ({
       tx
     );
 
-    await projectUserAdditionalPrivilegeDAL.delete(
-      {
-        $in: {
-          userId: membershipUserIds
-        }
-      },
-      tx
-    );
-
     // Get all the project memberships of the users in the organization
     const projectMemberships = await projectMembershipDAL.findProjectMembershipsByUserIds(orgId, membershipUserIds);
 
     // Delete all the project memberships of the users in the organization
-    await projectMembershipDAL.delete(
+    await membershipUserDAL.delete(
       {
+        scope: AccessScope.Project,
         $in: {
           id: projectMemberships.map((membership) => membership.id)
         }

@@ -78,10 +78,7 @@ type TGithubOrgSyncServiceFactoryDep = {
   >;
   groupDAL: Pick<TGroupDALFactory, "insertMany" | "transaction" | "find">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgMembershipDAL: Pick<
-    TOrgMembershipDALFactory,
-    "find" | "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId"
-  >;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
 };
 
 export type TGithubOrgSyncServiceFactory = ReturnType<typeof githubOrgSyncServiceFactory>;

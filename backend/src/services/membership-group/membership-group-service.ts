@@ -217,8 +217,8 @@ export const membershipGroupServiceFactory = ({
         },
         tx
       );
-      await membershipRoleDAL.insertMany(roleDocs, tx);
-      return doc;
+      const roles = await membershipRoleDAL.insertMany(roleDocs, tx);
+      return { ...doc, roles };
     });
 
     return { membership: membershipDoc };
@@ -276,7 +276,7 @@ export const membershipGroupServiceFactory = ({
           : undefined
       }
     });
-    return memberships;
+    return { memberships: memberships.data, totalCount: memberships.totalCount };
   };
 
   const getMembershipByGroupId = async (dto: TGetMembershipGroupByGroupIdDTO) => {
@@ -290,7 +290,7 @@ export const membershipGroupServiceFactory = ({
     });
     if (!membership) throw new NotFoundError({ message: `Group membership not found` });
 
-    return membership;
+    return { membership };
   };
 
   return {
