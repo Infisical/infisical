@@ -195,12 +195,36 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findOne = async (filter: Partial<TGroups>, tx?: Knex): Promise<TGroups | undefined> => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.Groups)
+        .join(TableName.Membership, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where((queryBuilder) => {
+          Object.entries(filter).forEach(([key, value]) => {
+            void queryBuilder.where(`${TableName.Membership}.${key}`, value);
+          });
+        })
+        .select(
+          selectAllTableCols(TableName.Groups),
+          db.ref("role").withSchema(TableName.MembershipRole),
+          db.ref("customRoleId").as("roleId").withSchema(TableName.MembershipRole)
+        )
+        .first();
+      return doc;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find one" });
+    }
+  };
+
   return {
     ...groupOrm,
     findGroups,
     findByOrgId,
     findAllGroupPossibleMembers,
     findGroupsByProjectId,
-    findById
+    findById,
+    findOne
   };
 };

@@ -40,7 +40,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("status").defaultTo("invited");
       t.string("inviteEmail");
       t.datetime("lastInvitedAt");
-      t.datetime("lastLoginAuthMethod");
+      t.string("lastLoginAuthMethod");
       t.datetime("lastLoginTime");
       t.specificType("projectFavorites", "text[]");
       t.timestamps(true, true, true);

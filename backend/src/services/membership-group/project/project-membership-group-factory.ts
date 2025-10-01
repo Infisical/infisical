@@ -23,6 +23,7 @@ type TProjectMembershipGroupScopeFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "findOne">;
 };
 
+// TODO(simp): check for group in org
 export const newProjectMembershipGroupFactory = ({
   permissionService,
   orgDAL,
