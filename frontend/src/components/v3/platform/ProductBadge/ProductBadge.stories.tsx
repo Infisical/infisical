@@ -12,7 +12,7 @@ const meta = {
   argTypes: {
     variant: {
       control: "select",
-      options: ["secrets-manager", "secret-scanning", "cert-manager", "ssh", "kms", "pam"]
+      options: ["secret-manager", "secret-scanning", "cert-manager", "ssh", "kms", "pam"]
     },
     size: {
       control: "inline-radio",
@@ -29,7 +29,7 @@ type Story = StoryObj<typeof meta>;
 
 export const SecretsManagement: Story = {
   args: {
-    variant: "secrets-manager"
+    variant: "secret-manager"
   }
 };
 

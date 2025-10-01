@@ -20,6 +20,7 @@ html {
 
 :root {
   --toastify-color-dark: theme(colors.mineshaft.700);
+  --header-height: 102px;
 }
 
 .Toastify__toast {

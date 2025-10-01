@@ -16,7 +16,7 @@ const productBadgeVariants = cva(
   {
     variants: {
       variant: {
-        "secrets-manager": "border-secret-manager/75 bg-secret-manager/40 text-foreground",
+        "secret-manager": "border-secret-manager/75 bg-secret-manager/40 text-foreground",
         "secret-scanning": "border-secret-scanning/75 bg-secret-scanning/40 text-foreground",
         "cert-manager": "border-cert-manager/75 bg-cert-manager/40 text-foreground",
         ssh: "border-ssh/75 bg-ssh/40 text-foreground",
@@ -30,7 +30,7 @@ const productBadgeVariants = cva(
       }
     },
     defaultVariants: {
-      variant: "secrets-manager",
+      variant: "secret-manager",
       size: "md"
     }
   }
@@ -44,7 +44,7 @@ type ProductBadgeProps = Omit<ProductBadgeVariantProps, "variant"> & {
 };
 
 const ProductIconMap: Record<NonNullable<ProductBadgeProps["variant"]>, ReactElement> = {
-  "secrets-manager": <SecretsManagementIcon />,
+  "secret-manager": <SecretsManagementIcon />,
   "secret-scanning": <SecretScanningIcon />,
   "cert-manager": <CertManagementIcon />,
   ssh: <SshIcon />,
