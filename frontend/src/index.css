@@ -5,8 +5,17 @@
 @tailwind base;
 @tailwind components;
 
+@font-face {
+    font-family: 'Alliance No.2';
+    src: url('/fonts/AllianceNo2-Regular.otf') format('opentype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
 html {
   @apply overflow-hidden;
+  font-family: 'Alliance No.2', sans-serif;
 }
 
 :root {

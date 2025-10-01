@@ -20,26 +20,29 @@ module.exports = {
       colors: {
         /* start v3 component colors ************************/
 
-        // features
-        secrets: "#F7FE62",
-        scanning: "#9D4EDD",
-        pki: "#06A77D",
-        kms: "#8BC34A",
-        pam: "#FF8C42",
-        ssh: "#8B2E3D",
-
         // scopes
-        org: "#00C2CB",
-        namespace: "#E0479E",
+        org: "#498587", // teal
+        namespace: "#874982", // purple
 
-        // statuses
-        success: "#4CAF50",
-        danger: "#FF4444",
-        warning: "#FFB627",
-        info: "#4A90E2",
+        // products - using a cohesive jewel-tone palette
+        "secret-manager": "#E6B31E", // golden amber
+        "secret-scanning": "#C44569", // ruby red
+        "cert-manager": "#2ECC71", // emerald green
+        kms: "#5DADE2", // lighter sky blue
+        pam: "#E67E22", // burnt orange
+        ssh: "#9B59B6", // amethyst purple
+
+        // statuses - refined with better thematic harmony
+        success: "#27AE60", // deeper emerald
+        danger: "#E74C3C", // refined red
+        warning: "#F39C12", // amber gold
+        info: "#3498DB", // sapphire
 
         // generic
         foreground: "#FFFFFF",
+        background: "#000000",
+        accent: "#bdbdbd",
+        border: "#525461",
 
         /* end v3 colors *************************************/
 
