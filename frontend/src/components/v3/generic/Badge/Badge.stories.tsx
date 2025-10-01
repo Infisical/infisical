@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { LogInIcon, UserIcon } from "lucide-react";
+import { ChevronsUpDownIcon, LogInIcon } from "lucide-react";
 import { fn } from "storybook/test";
+
+import { NamespaceIcon, OrgIcon } from "@app/components/v3/platform/ScopeBadge/ScopeBadge";
 
 import { Badge } from "./Badge";
 
@@ -16,6 +18,7 @@ const meta = {
       control: "select",
       options: [
         "default",
+        "accent",
         "outline",
         "org",
         "namespace",
@@ -130,10 +133,11 @@ export const Danger: Story = {
 
 export const LeftIcon: Story = {
   args: {
+    variant: "namespace",
     children: (
       <>
-        <UserIcon />
-        Badge
+        <NamespaceIcon />
+        Namespace
       </>
     )
   }
@@ -144,6 +148,19 @@ export const RightIcon: Story = {
     children: (
       <>
         Badge <LogInIcon />
+      </>
+    )
+  }
+};
+
+export const BothIcons: Story = {
+  args: {
+    variant: "org",
+    children: (
+      <>
+        <OrgIcon />
+        Organization
+        <ChevronsUpDownIcon />
       </>
     )
   }

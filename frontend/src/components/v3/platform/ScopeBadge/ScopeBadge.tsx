@@ -9,13 +9,13 @@ const scopeBadgeVariants = cva(
   {
     variants: {
       variant: {
-        org: "border-org/75 bg-org/30 text-foreground",
-        namespace: "border-namespace/75 bg-namespace/30 text-foreground"
+        org: "border-org/75 bg-org/40 text-foreground",
+        namespace: "border-namespace/75 bg-namespace/40 text-foreground"
       },
       size: {
-        sm: "[&>svg]:stroke-[1.5] [&>svg]:size-5 p-0.5 rounded-[2px]",
-        md: "[&>svg]:stroke-[1.5] [&>svg]:size-6 p-1 rounded-[3px]",
-        lg: "[&>svg]:stroke-[1.5] [&>svg]:size-7 p-1 rounded-[4px]"
+        sm: "[&>svg]:stroke-[1.5] [&>svg]:size-[14px] p-[2px] rounded-[4px]",
+        md: "[&>svg]:stroke-[1.5] [&>svg]:size-[18px] p-[3px] rounded-[4px]",
+        lg: "[&>svg]:stroke-[1.5] [&>svg]:size-[22px] p-[3px] rounded-[4px]"
       }
     },
     defaultVariants: {

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import { Tabs, TabsList, TabsTrigger } from "./Tabs";
+import { Tabs, TabsList, TabsProps, TabsTrigger } from "./Tabs";
 
 const DemoTabs = [
   "overview",
@@ -12,9 +12,9 @@ const DemoTabs = [
   "settings"
 ];
 
-const TabsDemo = () => {
+const TabsDemo = ({ variant }: TabsProps) => {
   return (
-    <Tabs defaultValue={DemoTabs[0]}>
+    <Tabs defaultValue={DemoTabs[0]} variant={variant}>
       <TabsList>
         {DemoTabs.map((tab) => (
           <TabsTrigger value={tab} className="capitalize">

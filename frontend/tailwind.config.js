@@ -24,13 +24,13 @@ module.exports = {
         org: "#498587", // teal
         namespace: "#874982", // purple
 
-        // products - using a cohesive jewel-tone palette
-        "secret-manager": "#E6B31E", // golden amber
-        "secret-scanning": "#C44569", // ruby red
-        "cert-manager": "#2ECC71", // emerald green
-        kms: "#5DADE2", // lighter sky blue
-        pam: "#E67E22", // burnt orange
-        ssh: "#9B59B6", // amethyst purple
+        // products
+        "secret-manager": "#848749",
+        "secret-scanning": "#9B59B6",
+        "cert-manager": "#874949",
+        kms: "#45879b",
+        pam: "#be6e29",
+        ssh: "#876A49",
 
         // statuses - refined with better thematic harmony
         success: "#27AE60", // deeper emerald
