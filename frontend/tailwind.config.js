@@ -41,7 +41,7 @@ module.exports = {
         // generic
         foreground: "#FFFFFF",
         background: "#000000",
-        accent: "#bdbdbd",
+        accent: "#c9c9c9",
 
         "nav-border": "#525461",
         "nav-background": "#1E1F22",
