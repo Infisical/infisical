@@ -16,17 +16,17 @@ const productBadgeVariants = cva(
   {
     variants: {
       variant: {
-        "secrets-manager": "border-secret-manager/75 bg-secret-manager/30 text-foreground",
-        "secret-scanning": "border-secret-scanning/75 bg-secret-scanning/30 text-foreground",
-        "cert-manager": "border-cert-manager/75 bg-cert-manager/30 text-foreground",
-        ssh: "border-ssh/75 bg-ssh/30 text-foreground",
-        pam: "border-pam/75 bg-pam/30 text-foreground",
-        kms: "border-kms/75 bg-kms/30 text-foreground"
+        "secrets-manager": "border-secret-manager/75 bg-secret-manager/40 text-foreground",
+        "secret-scanning": "border-secret-scanning/75 bg-secret-scanning/40 text-foreground",
+        "cert-manager": "border-cert-manager/75 bg-cert-manager/40 text-foreground",
+        ssh: "border-ssh/75 bg-ssh/40 text-foreground",
+        pam: "border-pam/75 bg-pam/40 text-foreground",
+        kms: "border-kms/75 bg-kms/40 text-foreground"
       },
       size: {
-        sm: "[&>svg]:stroke-[1.5] [&>svg]:size-5 p-0.5 rounded-[2px]",
-        md: "[&>svg]:stroke-[1.5] [&>svg]:size-6 p-1 rounded-[3px]",
-        lg: "[&>svg]:stroke-[1.5] [&>svg]:size-7 p-1 rounded-[4px]"
+        sm: "[&>svg]:stroke-[1.5] [&>svg]:size-[14px] p-[3px] rounded-[4px]",
+        md: "[&>svg]:stroke-[1.5] [&>svg]:size-[18px] p-[3px] rounded-[4px]",
+        lg: "[&>svg]:stroke-[1.5] [&>svg]:size-[22px] p-[3px] rounded-[4px]"
       }
     },
     defaultVariants: {
