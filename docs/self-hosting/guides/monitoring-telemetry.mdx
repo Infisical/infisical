@@ -18,7 +18,7 @@ Infisical supports three telemetry collection methods:
 
 1. **Pull-based (Prometheus)**: Exposes metrics on a dedicated endpoint for Prometheus to scrape
 2. **Push-based (OTLP)**: Sends metrics to an OpenTelemetry Collector via OTLP protocol
-3. **DataDog Direct Integration**: Sends custom metrics directly to DataDog using OTLP protocol
+3. **DataDog Direct Integration**: Sends custom metrics directly to DataDog using DogStatsD protocol through a DataDog agent
 
 All approaches provide comprehensive metrics data, so you can choose the one that best fits your infrastructure and monitoring strategy.
 
@@ -491,7 +491,7 @@ When DataDog integration is enabled, Infisical will send the following custom me
 
 Each metric includes the following tags:
 - `service` - Service name (configured via `DATADOG_SERVICE_NAME`)
-- `env` - Environment (configured via `DATADOG_ENV`)
+- `env` - Environment (configured via `DATADOG_TELEMETRY_ENV`)
 - `version` - Service version (configured via `DATADOG_SERVICE_VERSION`)
 - `destination` - Target system for the sync operation
 - `sync_id` - Unique identifier for the sync configuration

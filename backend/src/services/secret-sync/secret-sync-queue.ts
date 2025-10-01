@@ -167,6 +167,15 @@ export const secretSyncQueueFactory = ({
     unit: "1"
   });
 
+  const getErrorAttributes = (err: unknown, secretSync: TSecretSyncRaw) => ({
+    destination: secretSync.destination,
+    syncId: secretSync.id,
+    projectId: secretSync.projectId,
+    errorType: err instanceof AxiosError ? "AxiosError" : err?.constructor?.name || "UnknownError",
+    errorStatus: err instanceof AxiosError ? err.response?.status : undefined,
+    errorName: err instanceof Error ? err.name : undefined
+  });
+
   const $createManySecretsRawFn = createManySecretsRawFnFactory({
     projectDAL,
     projectBotDAL,
@@ -555,14 +564,10 @@ export const secretSyncQueueFactory = ({
         });
       }
 
-      dataDogTelemetryService.recordSecretSyncError(DataDogMetric.SECRET_SYNC_OPERATION_ERRORS, {
-        destination: secretSync.destination,
-        syncId: secretSync.id,
-        projectId: secretSync.projectId,
-        errorType: err instanceof AxiosError ? "AxiosError" : err?.constructor?.name || "UnknownError",
-        errorStatus: err instanceof AxiosError ? err.response?.status : undefined,
-        errorName: err instanceof Error ? err.name : undefined
-      });
+      dataDogTelemetryService.recordSecretSyncError(
+        DataDogMetric.SECRET_SYNC_OPERATION_ERRORS,
+        getErrorAttributes(err, secretSync)
+      );
 
       syncMessage = parseSyncErrorMessage(err);
 
@@ -681,14 +686,10 @@ export const secretSyncQueueFactory = ({
         });
       }
 
-      dataDogTelemetryService.recordSecretSyncError(DataDogMetric.SECRET_SYNC_IMPORT_ERRORS, {
-        destination: secretSync.destination,
-        syncId: secretSync.id,
-        projectId: secretSync.projectId,
-        errorType: err instanceof AxiosError ? "AxiosError" : err?.constructor?.name || "UnknownError",
-        errorStatus: err instanceof AxiosError ? err.response?.status : undefined,
-        errorName: err instanceof Error ? err.name : undefined
-      });
+      dataDogTelemetryService.recordSecretSyncError(
+        DataDogMetric.SECRET_SYNC_IMPORT_ERRORS,
+        getErrorAttributes(err, secretSync)
+      );
 
       importMessage = parseSyncErrorMessage(err);
 
@@ -819,14 +820,10 @@ export const secretSyncQueueFactory = ({
         });
       }
 
-      dataDogTelemetryService.recordSecretSyncError(DataDogMetric.SECRET_SYNC_REMOVAL_ERRORS, {
-        destination: secretSync.destination,
-        syncId: secretSync.id,
-        projectId: secretSync.projectId,
-        errorType: err instanceof AxiosError ? "AxiosError" : err?.constructor?.name || "UnknownError",
-        errorStatus: err instanceof AxiosError ? err.response?.status : undefined,
-        errorName: err instanceof Error ? err.name : undefined
-      });
+      dataDogTelemetryService.recordSecretSyncError(
+        DataDogMetric.SECRET_SYNC_REMOVAL_ERRORS,
+        getErrorAttributes(err, secretSync)
+      );
 
       removeMessage = parseSyncErrorMessage(err);
 

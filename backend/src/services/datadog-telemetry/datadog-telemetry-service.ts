@@ -1,4 +1,5 @@
 import { StatsD } from "hot-shots";
+import RE2 from "re2";
 
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
@@ -31,6 +32,21 @@ export interface SecretSyncErrorAttributes {
   errorStatus?: number;
   errorName?: string;
 }
+
+const sanitizeTagValue = (value: string): string => {
+  if (!value) return "";
+
+  return value
+    .split("")
+    .filter((char) => {
+      const charCode = char.charCodeAt(0);
+      return charCode > 31 && charCode !== 127;
+    })
+    .join("")
+    .replace(new RE2("[|:]", "g"), "_")
+    .replace(new RE2("\\s+", "g"), "_")
+    .substring(0, 200);
+};
 
 export const dataDogTelemetryServiceFactory = () => {
   const appCfg = getConfig();
@@ -105,12 +121,12 @@ export const dataDogTelemetryServiceFactory = () => {
 
     try {
       const tags = [
-        `destination:${attributes.destination}`,
-        `sync_id:${attributes.sync_id}`,
-        `project_id:${attributes.project_id}`,
-        `error_type:${attributes.error_type}`,
-        ...(attributes.error_status ? [`error_status:${attributes.error_status}`] : []),
-        ...(attributes.error_name ? [`error_name:${attributes.error_name}`] : [])
+        `destination:${sanitizeTagValue(attributes.destination)}`,
+        `sync_id:${sanitizeTagValue(attributes.sync_id)}`,
+        `project_id:${sanitizeTagValue(attributes.project_id)}`,
+        `error_type:${sanitizeTagValue(attributes.error_type)}`,
+        ...(attributes.error_status ? [`error_status:${sanitizeTagValue(attributes.error_status)}`] : []),
+        ...(attributes.error_name ? [`error_name:${sanitizeTagValue(attributes.error_name)}`] : [])
       ];
 
       dogStatsD.increment(metricName, value, tags);
