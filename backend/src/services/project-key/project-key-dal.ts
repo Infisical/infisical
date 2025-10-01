@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TProjectKeys } from "@app/db/schemas";
+import { AccessScope, TableName, TProjectKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
@@ -34,9 +34,10 @@ export const projectKeyDALFactory = (db: TDbClient) => {
 
   const findAllProjectUserPubKeys = async (projectId: string, tx?: Knex) => {
     try {
-      const pubKeys = await (tx || db.replicaNode())(TableName.ProjectMembership)
-        .where({ projectId })
-        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+      const pubKeys = await (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.scopeProjectId` as "projectId", projectId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
         .select("userId", "publicKey");
       return pubKeys;

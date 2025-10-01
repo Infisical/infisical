@@ -16,20 +16,23 @@ import {
   TListRoleDTO,
   TUpdateRoleDTO
 } from "./role-types";
+import { TProjectDALFactory } from "../project/project-dal";
 
 type TRoleServiceFactoryDep = {
   roleDAL: TRoleDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export type TRoleServiceFactory = ReturnType<typeof roleServiceFactory>;
 
-export const roleServiceFactory = ({ roleDAL, permissionService }: TRoleServiceFactoryDep) => {
+export const roleServiceFactory = ({ roleDAL, permissionService, projectDAL }: TRoleServiceFactoryDep) => {
   const orgRoleFactory = newOrgRoleFactory({
     permissionService
   });
   const projectRoleFactory = newProjectRoleFactory({
-    permissionService
+    permissionService,
+    projectDAL
   });
   const namespaceRoleFactory = newNamespaceRoleFactory({
     permissionService
@@ -130,6 +133,7 @@ export const roleServiceFactory = ({ roleDAL, permissionService }: TRoleServiceF
     await factory.onListRoleGuard(dto);
 
     const scope = factory.getScopeField(scopeData);
+    const predefinedRoles = await factory.getPredefinedRoles(scopeData);
     const roles = await roleDAL.find(
       {
         [scope.key]: scope.value
@@ -137,7 +141,9 @@ export const roleServiceFactory = ({ roleDAL, permissionService }: TRoleServiceF
       { limit: dto.data.limit, offset: dto.data.offset, sort: [[`${TableName.Role}.slug` as "slug", "asc"]] }
     );
 
-    return { roles: roles.map((el) => ({ ...el, permissions: unpackPermissions(el.permissions) })) };
+    return {
+      roles: [...predefinedRoles, ...roles.map((el) => ({ ...el, permissions: unpackPermissions(el.permissions) }))]
+    };
   };
 
   const getRoleById = async (dto: TGetRoleByIdDTO) => {
@@ -163,6 +169,14 @@ export const roleServiceFactory = ({ roleDAL, permissionService }: TRoleServiceF
     await factory.onGetRoleBySlugGuard(dto);
 
     const scope = factory.getScopeField(scopeData);
+    const isCustomRole = factory.isCustomRole(dto.selector.slug);
+    if (!isCustomRole) {
+      const predefinedRole = await factory.getPredefinedRoles(scopeData);
+      const selectedRole = predefinedRole.find((el) => el.slug === dto.selector.slug);
+      if (!selectedRole) throw new BadRequestError({ message: `Role with slug ${dto.selector.slug} not found` });
+      return selectedRole;
+    }
+
     const role = await roleDAL.findOne({
       slug: selector.slug,
       [scope.key]: scope.value

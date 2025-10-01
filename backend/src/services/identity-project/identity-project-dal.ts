@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import {
+  AccessScope,
   TableName,
   TIdentities,
   TIdentityAlicloudAuths,
@@ -15,7 +16,7 @@ import {
   TIdentityUniversalAuths
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 import { ProjectIdentityOrderBy, TListProjectIdentityDTO } from "@app/services/identity-project/identity-project-types";
 
@@ -24,96 +25,82 @@ import { buildAuthMethods } from "../identity/identity-fns";
 export type TIdentityProjectDALFactory = ReturnType<typeof identityProjectDALFactory>;
 
 export const identityProjectDALFactory = (db: TDbClient) => {
-  const identityProjectOrm = ormify(db, TableName.IdentityProjectMembership);
-
   const findByIdentityId = async (identityId: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db.replicaNode())(TableName.IdentityProjectMembership)
-        .where(`${TableName.IdentityProjectMembership}.identityId`, identityId)
-        .join(TableName.Project, `${TableName.IdentityProjectMembership}.projectId`, `${TableName.Project}.id`)
-        .join(TableName.Identity, `${TableName.IdentityProjectMembership}.identityId`, `${TableName.Identity}.id`)
-        .join(
-          TableName.IdentityProjectMembershipRole,
-          `${TableName.IdentityProjectMembershipRole}.projectMembershipId`,
-          `${TableName.IdentityProjectMembership}.id`
-        )
-        .leftJoin(
-          TableName.ProjectRoles,
-          `${TableName.IdentityProjectMembershipRole}.customRoleId`,
-          `${TableName.ProjectRoles}.id`
-        )
-        .leftJoin(
-          TableName.IdentityProjectAdditionalPrivilege,
-          `${TableName.IdentityProjectMembership}.id`,
-          `${TableName.IdentityProjectAdditionalPrivilege}.projectMembershipId`
-        )
-
+      const docs = await (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.actorIdentityId`, identityId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+        .join(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(
           TableName.IdentityUniversalAuth,
-          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.Membership}.actorIdentityId`,
           `${TableName.IdentityUniversalAuth}.identityId`
         )
         .leftJoin(
           TableName.IdentityGcpAuth,
-          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.Membership}.actorIdentityId`,
           `${TableName.IdentityGcpAuth}.identityId`
         )
         .leftJoin(
           TableName.IdentityAliCloudAuth,
-          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.Membership}.actorIdentityId`,
           `${TableName.IdentityAliCloudAuth}.identityId`
         )
         .leftJoin(
           TableName.IdentityAwsAuth,
-          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.Membership}.actorIdentityId`,
           `${TableName.IdentityAwsAuth}.identityId`
         )
         .leftJoin(
           TableName.IdentityKubernetesAuth,
-          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.Membership}.actorIdentityId`,
           `${TableName.IdentityKubernetesAuth}.identityId`
         )
         .leftJoin(
           TableName.IdentityOciAuth,
-          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.Membership}.actorIdentityId`,
           `${TableName.IdentityOciAuth}.identityId`
         )
         .leftJoin(
           TableName.IdentityOidcAuth,
-          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.Membership}.actorIdentityId`,
           `${TableName.IdentityOidcAuth}.identityId`
         )
         .leftJoin(
           TableName.IdentityAzureAuth,
-          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.Membership}.actorIdentityId`,
           `${TableName.IdentityAzureAuth}.identityId`
         )
         .leftJoin(
           TableName.IdentityTokenAuth,
-          `${TableName.IdentityProjectMembership}.identityId`,
+          `${TableName.Membership}.actorIdentityId`,
           `${TableName.IdentityTokenAuth}.identityId`
         )
 
         .select(
-          db.ref("id").withSchema(TableName.IdentityProjectMembership),
-          db.ref("createdAt").withSchema(TableName.IdentityProjectMembership),
-          db.ref("updatedAt").withSchema(TableName.IdentityProjectMembership),
+          db.ref("id").withSchema(TableName.Membership),
+          db.ref("createdAt").withSchema(TableName.Membership),
+          db.ref("updatedAt").withSchema(TableName.Membership),
 
           db.ref("id").as("identityId").withSchema(TableName.Identity),
           db.ref("name").as("identityName").withSchema(TableName.Identity),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity),
-          db.ref("id").withSchema(TableName.IdentityProjectMembership),
-          db.ref("role").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("id").withSchema(TableName.IdentityProjectMembershipRole).as("membershipRoleId"),
-          db.ref("customRoleId").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("name").withSchema(TableName.ProjectRoles).as("customRoleName"),
-          db.ref("slug").withSchema(TableName.ProjectRoles).as("customRoleSlug"),
-          db.ref("temporaryMode").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("isTemporary").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("temporaryRange").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("temporaryAccessStartTime").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("temporaryAccessEndTime").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("projectId").withSchema(TableName.IdentityProjectMembership),
+          db.ref("id").withSchema(TableName.Membership),
+          db.ref("role").withSchema(TableName.MembershipRole),
+          db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
+          db.ref("customRoleId").withSchema(TableName.MembershipRole),
+          db.ref("name").withSchema(TableName.Role).as("customRoleName"),
+          db.ref("slug").withSchema(TableName.Role).as("customRoleSlug"),
+          db.ref("temporaryMode").withSchema(TableName.MembershipRole),
+          db.ref("isTemporary").withSchema(TableName.MembershipRole),
+          db.ref("temporaryRange").withSchema(TableName.MembershipRole),
+          db.ref("temporaryAccessStartTime").withSchema(TableName.MembershipRole),
+          db.ref("temporaryAccessEndTime").withSchema(TableName.MembershipRole),
+          db.ref("scopeProjectId").withSchema(TableName.Membership).as("projectId"),
           db.ref("name").as("projectName").withSchema(TableName.Project),
           db.ref("type").as("projectType").withSchema(TableName.Project),
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
@@ -165,7 +152,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
             })
           },
           project: {
-            id: projectId,
+            id: projectId as string,
             name: projectName,
             type: projectType
           }
@@ -223,12 +210,10 @@ export const identityProjectDALFactory = (db: TDbClient) => {
             void qb.whereILike(`${TableName.Identity}.name`, `%${filter.search}%`);
           }
         })
-        .join(
-          TableName.IdentityProjectMembership,
-          `${TableName.IdentityProjectMembership}.identityId`,
-          `${TableName.Identity}.id`
-        )
-        .where(`${TableName.IdentityProjectMembership}.projectId`, projectId)
+        .join(TableName.Membership, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .orderBy(
           `${TableName.Identity}.${filter.orderBy ?? ProjectIdentityOrderBy.Name}`,
           filter.orderDirection ?? OrderByDirection.ASC
@@ -240,33 +225,20 @@ export const identityProjectDALFactory = (db: TDbClient) => {
         void fetchIdentitySubquery.offset(filter.offset ?? 0).limit(filter.limit);
       }
 
-      const query = (tx || db.replicaNode())(TableName.IdentityProjectMembership)
-        .where(`${TableName.IdentityProjectMembership}.projectId`, projectId)
-        .join(TableName.Project, `${TableName.IdentityProjectMembership}.projectId`, `${TableName.Project}.id`)
+      const query = (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .join<TIdentities, TIdentities>(fetchIdentitySubquery, (bd) => {
-          bd.on(`${TableName.IdentityProjectMembership}.identityId`, `${TableName.Identity}.id`);
+          bd.on(`${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`);
         })
         .where((qb) => {
           if (filter.identityId) {
-            void qb.where(`${TableName.IdentityProjectMembership}.identityId`, filter.identityId);
+            void qb.where(`${TableName.Membership}.actorIdentityId`, filter.identityId);
           }
         })
-        .join(
-          TableName.IdentityProjectMembershipRole,
-          `${TableName.IdentityProjectMembershipRole}.projectMembershipId`,
-          `${TableName.IdentityProjectMembership}.id`
-        )
-        .leftJoin(
-          TableName.ProjectRoles,
-          `${TableName.IdentityProjectMembershipRole}.customRoleId`,
-          `${TableName.ProjectRoles}.id`
-        )
-        .leftJoin(
-          TableName.IdentityProjectAdditionalPrivilege,
-          `${TableName.IdentityProjectMembership}.id`,
-          `${TableName.IdentityProjectAdditionalPrivilege}.projectMembershipId`
-        )
-
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin<TIdentityUniversalAuths>(
           TableName.IdentityUniversalAuth,
           `${TableName.Identity}.id`,
@@ -314,23 +286,23 @@ export const identityProjectDALFactory = (db: TDbClient) => {
         )
 
         .select(
-          db.ref("id").withSchema(TableName.IdentityProjectMembership),
-          db.ref("createdAt").withSchema(TableName.IdentityProjectMembership),
-          db.ref("updatedAt").withSchema(TableName.IdentityProjectMembership),
+          db.ref("id").withSchema(TableName.Membership),
+          db.ref("createdAt").withSchema(TableName.Membership),
+          db.ref("updatedAt").withSchema(TableName.Membership),
           db.ref("authMethod").as("identityAuthMethod").withSchema(TableName.Identity),
           db.ref("id").as("identityId").withSchema(TableName.Identity),
           db.ref("name").as("identityName").withSchema(TableName.Identity),
-          db.ref("id").withSchema(TableName.IdentityProjectMembership),
-          db.ref("role").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("id").withSchema(TableName.IdentityProjectMembershipRole).as("membershipRoleId"),
-          db.ref("customRoleId").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("name").withSchema(TableName.ProjectRoles).as("customRoleName"),
-          db.ref("slug").withSchema(TableName.ProjectRoles).as("customRoleSlug"),
-          db.ref("temporaryMode").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("isTemporary").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("temporaryRange").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("temporaryAccessStartTime").withSchema(TableName.IdentityProjectMembershipRole),
-          db.ref("temporaryAccessEndTime").withSchema(TableName.IdentityProjectMembershipRole),
+          db.ref("id").withSchema(TableName.Membership),
+          db.ref("role").withSchema(TableName.MembershipRole),
+          db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
+          db.ref("customRoleId").withSchema(TableName.MembershipRole),
+          db.ref("name").withSchema(TableName.Role).as("customRoleName"),
+          db.ref("slug").withSchema(TableName.Role).as("customRoleSlug"),
+          db.ref("temporaryMode").withSchema(TableName.MembershipRole),
+          db.ref("isTemporary").withSchema(TableName.MembershipRole),
+          db.ref("temporaryRange").withSchema(TableName.MembershipRole),
+          db.ref("temporaryAccessStartTime").withSchema(TableName.MembershipRole),
+          db.ref("temporaryAccessEndTime").withSchema(TableName.MembershipRole),
           db.ref("name").as("projectName").withSchema(TableName.Project),
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
@@ -450,10 +422,11 @@ export const identityProjectDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const identities = await (tx || db.replicaNode())(TableName.IdentityProjectMembership)
-        .where(`${TableName.IdentityProjectMembership}.projectId`, projectId)
-        .join(TableName.Project, `${TableName.IdentityProjectMembership}.projectId`, `${TableName.Project}.id`)
-        .join(TableName.Identity, `${TableName.IdentityProjectMembership}.identityId`, `${TableName.Identity}.id`)
+      const identities = await (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+        .join(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
         .where((qb) => {
           if (filter.identityId) {
             void qb.where("identityId", filter.identityId);
@@ -472,7 +445,6 @@ export const identityProjectDALFactory = (db: TDbClient) => {
   };
 
   return {
-    ...identityProjectOrm,
     findByIdentityId,
     findByProjectId,
     getCountByProjectId

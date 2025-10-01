@@ -238,17 +238,17 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
 export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalRequestDALFactory => {
   const accessApprovalRequestOrm = ormify(db, TableName.AccessApprovalRequest);
 
+  // TODO(simp): check this from begginging
   const findRequestsWithPrivilegeByPolicyIds: TAccessApprovalRequestDALFactory["findRequestsWithPrivilegeByPolicyIds"] =
     async (policyIds) => {
       try {
         const docs = await db
           .replicaNode()(TableName.AccessApprovalRequest)
           .whereIn(`${TableName.AccessApprovalRequest}.policyId`, policyIds)
-
           .leftJoin(
-            TableName.ProjectUserAdditionalPrivilege,
+            TableName.AdditionalPrivilege,
             `${TableName.AccessApprovalRequest}.privilegeId`,
-            `${TableName.ProjectUserAdditionalPrivilege}.id`
+            `${TableName.AdditionalPrivilege}.id`
           )
           .leftJoin(
             TableName.AccessApprovalPolicy,
@@ -276,7 +276,6 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             `${TableName.UserGroupMembership}.groupId`
           )
           .leftJoin(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
-
           .leftJoin(
             TableName.AccessApprovalPolicyBypasser,
             `${TableName.AccessApprovalPolicy}.id`,

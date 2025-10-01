@@ -239,8 +239,8 @@ export const membershipIdentityServiceFactory = ({
         },
         tx
       );
-      await membershipRoleDAL.insertMany(roleDocs, tx);
-      return doc;
+      const insertedRoleDocs = await membershipRoleDAL.insertMany(roleDocs, tx);
+      return { ...doc, roles: insertedRoleDocs };
     });
 
     return { membership: membershipDoc };

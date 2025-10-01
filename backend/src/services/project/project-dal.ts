@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import {
+  AccessScope,
   ProjectsSchema,
   ProjectType,
   ProjectUpgradeStatus,
@@ -24,10 +25,13 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findIdentityProjects = async (identityId: string, orgId: string, projectType?: ProjectType) => {
     try {
-      const workspaces = await db(TableName.IdentityProjectMembership)
-        .where({ identityId })
-        .join(TableName.Project, `${TableName.IdentityProjectMembership}.projectId`, `${TableName.Project}.id`)
+      const workspaces = await db
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.actorIdentityId`, identityId)
+        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .andWhere((qb) => {
           if (projectType) {
             void qb.where(`${TableName.Project}.type`, projectType);
@@ -74,11 +78,23 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findUserProjects = async (userId: string, orgId: string, projectType?: ProjectType) => {
     try {
-      const workspaces = await db
-        .replicaNode()(TableName.ProjectMembership)
-        .where({ userId })
-        .join(TableName.Project, `${TableName.ProjectMembership}.projectId`, `${TableName.Project}.id`)
+      const userGroupSubquery = db
+        .replicaNode()(TableName.Groups)
+        .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+        .where(`${TableName.Groups}.orgId`, orgId)
+        .where(`${TableName.UserGroupMembership}.userId`, userId)
+        .select(db.ref("id").withSchema(TableName.Groups));
+
+      const projects = await db
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .andWhere((qb) => {
+          void qb
+            .where(`${TableName.Membership}.actorUserId`, userId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupSubquery);
+        })
         .andWhere((qb) => {
           if (projectType) {
             void qb.where(`${TableName.Project}.type`, projectType);
@@ -97,36 +113,8 @@ export const projectDALFactory = (db: TDbClient) => {
           { column: `${TableName.Environment}.position`, order: "asc" }
         ]);
 
-      const groups = db(TableName.UserGroupMembership).where({ userId }).select("groupId");
-
-      const groupWorkspaces = await db(TableName.GroupProjectMembership)
-        .whereIn("groupId", groups)
-        .join(TableName.Project, `${TableName.GroupProjectMembership}.projectId`, `${TableName.Project}.id`)
-        .where(`${TableName.Project}.orgId`, orgId)
-        .andWhere((qb) => {
-          if (projectType) {
-            void qb.where(`${TableName.Project}.type`, projectType);
-          }
-        })
-        .whereNotIn(
-          `${TableName.Project}.id`,
-          workspaces.map(({ id }) => id)
-        )
-        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
-        .select(
-          selectAllTableCols(TableName.Project),
-          db.ref("id").withSchema(TableName.Project).as("_id"),
-          db.ref("id").withSchema(TableName.Environment).as("envId"),
-          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
-          db.ref("name").withSchema(TableName.Environment).as("envName")
-        )
-        .orderBy([
-          { column: `${TableName.Project}.name`, order: "asc" },
-          { column: `${TableName.Environment}.position`, order: "asc" }
-        ]);
-
-      const nestedWorkspaces = sqlNestRelationships({
-        data: workspaces.concat(groupWorkspaces),
+      const formattedProjects = sqlNestRelationships({
+        data: projects,
         key: "id",
         parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
         childrenMapper: [
@@ -142,7 +130,7 @@ export const projectDALFactory = (db: TDbClient) => {
         ]
       });
 
-      return nestedWorkspaces.map((workspace) => ({
+      return formattedProjects.map((workspace) => ({
         ...workspace,
         organization: workspace.orgId
       }));
@@ -153,9 +141,10 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findProjectGhostUser = async (projectId: string, tx?: Knex) => {
     try {
-      const ghostUser = await (tx || db.replicaNode())(TableName.ProjectMembership)
-        .where({ projectId })
-        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+      const ghostUser = await (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .select(selectAllTableCols(TableName.Users))
         .where({ isGhost: true })
         .first();
@@ -174,54 +163,6 @@ export const projectDALFactory = (db: TDbClient) => {
       await (tx || db)(TableName.Project).where({ id: projectId }).update(data);
     } catch (error) {
       throw new DatabaseError({ error, name: "Set project upgrade status" });
-    }
-  };
-
-  const findAllProjectsByIdentity = async (identityId: string, projectType?: ProjectType) => {
-    try {
-      const workspaces = await db
-        .replicaNode()(TableName.IdentityProjectMembership)
-        .where({ identityId })
-        .join(TableName.Project, `${TableName.IdentityProjectMembership}.projectId`, `${TableName.Project}.id`)
-        .andWhere((qb) => {
-          if (projectType) {
-            void qb.where(`${TableName.Project}.type`, projectType);
-          }
-        })
-        .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
-        .select(
-          selectAllTableCols(TableName.Project),
-          db.ref("id").withSchema(TableName.Project).as("_id"),
-          db.ref("id").withSchema(TableName.Environment).as("envId"),
-          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
-          db.ref("name").withSchema(TableName.Environment).as("envName")
-        )
-        .orderBy("createdAt", "asc", "last");
-
-      const nestedWorkspaces = sqlNestRelationships({
-        data: workspaces,
-        key: "id",
-        parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
-        childrenMapper: [
-          {
-            key: "envId",
-            label: "environments" as const,
-            mapper: ({ envId: id, envSlug: slug, envName: name }) => ({
-              id,
-              slug,
-              name
-            })
-          }
-        ]
-      });
-
-      // We need to add the organization field, as it's required for one of our API endpoint responses.
-      return nestedWorkspaces.map((workspace) => ({
-        ...workspace,
-        organization: workspace.orgId
-      }));
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find all projects by identity" });
     }
   };
 
@@ -402,18 +343,27 @@ export const projectDALFactory = (db: TDbClient) => {
     projectIds?: string[];
   }) => {
     const { limit = 20, offset = 0, sortBy = SearchProjectSortBy.NAME, sortDir = SortDirection.ASC } = dto;
+    const groupMembershipSubquery = db(TableName.Groups)
+      .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+      .where(`${TableName.Groups}.orgId`, dto.orgId)
+      .where(`${TableName.UserGroupMembership}.userId`, dto.actorId)
+      .select(db.ref("id").withSchema(TableName.Groups));
+    const userMembershipSubquery = db(TableName.Membership)
+      .where(`${TableName.Membership}.scope`, AccessScope.Project)
+      .where((qb) => {
+        if (dto.actor === ActorType.IDENTITY) {
+        } else {
+          void qb
+            .where(`${TableName.Membership}.actorUserId`, dto.actorId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, groupMembershipSubquery);
+        }
+      })
+      .select("scopeProjectId");
 
-    const userMembershipSubquery = db(TableName.ProjectMembership).where({ userId: dto.actorId }).select("projectId");
-    const groups = db(TableName.UserGroupMembership).where({ userId: dto.actorId }).select("groupId");
-    const groupMembershipSubquery = db(TableName.GroupProjectMembership).whereIn("groupId", groups).select("projectId");
-
-    const identityMembershipSubQuery = db(TableName.IdentityProjectMembership)
-      .where({ identityId: dto.actorId })
-      .select("projectId");
+    const identityMembershipSubQuery = db(TableName.Membership).where({ identityId: dto.actorId }).select("projectId");
 
     // Get the SQL strings for the subqueries
     const userMembershipSql = userMembershipSubquery.toQuery();
-    const groupMembershipSql = groupMembershipSubquery.toQuery();
     const identityMembershipSql = identityMembershipSubQuery.toQuery();
 
     const query = db
@@ -431,7 +381,7 @@ export const projectDALFactory = (db: TDbClient) => {
             ELSE FALSE
           END as "isMember"
         `,
-              [db.raw(userMembershipSql), db.raw(groupMembershipSql)]
+              [db.raw(userMembershipSql)]
             )
           : db.raw(
               `
@@ -495,7 +445,6 @@ export const projectDALFactory = (db: TDbClient) => {
     findUserProjects,
     findIdentityProjects,
     setProjectUpgradeStatus,
-    findAllProjectsByIdentity,
     findProjectGhostUser,
     findProjectById,
     findProjectByFilter,

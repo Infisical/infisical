@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  AccessScope,
   OrgMembershipsSchema,
   ProjectMembershipsSchema,
   ProjectUserMembershipRolesSchema,
@@ -66,14 +67,23 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const memberships = await server.services.projectMembership.getProjectMemberships({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId
+      const { data: memberships } = await server.services.membershipUser.listMemberships({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId: req.params.workspaceId
+        },
+        data: {}
       });
-      return { memberships };
+
+      return {
+        memberships: memberships.map((el) => ({
+          ...el,
+          userId: el.actorUserId as string,
+          projectId: req.params.workspaceId
+        }))
+      };
     }
   });
 
@@ -124,15 +134,30 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const membership = await server.services.projectMembership.getProjectMembershipById({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
-        id: req.params.membershipId
+      const { userId } = await server.services.convertor.userMembershipIdToUserId(
+        req.params.membershipId,
+        AccessScope.Project,
+        req.permission.orgId
+      );
+      const membership = await server.services.membershipUser.getMembershipByUserId({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId: req.params.workspaceId
+        },
+        selector: {
+          userId
+        }
       });
-      return { membership };
+
+      return {
+        membership: {
+          ...membership,
+          userId,
+          projectId: req.params.workspacId
+        }
+      };
     }
   });
 
@@ -241,8 +266,8 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
         ...req.auditLogInfo,
         event: {
           type: EventType.ADD_BATCH_PROJECT_MEMBER,
-          metadata: data.map(({ userId }) => ({
-            userId: userId || "",
+          metadata: data.map(({ actorUserId }) => ({
+            userId: actorUserId || "",
             email: ""
           }))
         }
@@ -300,30 +325,28 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const roles = await server.services.projectMembership.updateProjectMembership({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
-        membershipId: req.params.membershipId,
-        roles: req.body.roles
+      const { userId } = await server.services.convertor.userMembershipIdToUserId(
+        req.params.membershipId,
+        AccessScope.Project,
+        req.permission.orgId
+      );
+
+      const { membership } = await server.services.membershipUser.updateMembership({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId: req.params.projectId
+        },
+        selector: {
+          userId
+        },
+        data: {
+          roles: req.body.roles
+        }
       });
 
-      // await server.services.auditLog.createAuditLog({
-      //   ...req.auditLogInfo,
-      //   projectId: req.params.workspaceId,
-      //   event: {
-      //     type: EventType.UPDATE_USER_WORKSPACE_ROLE,
-      //     metadata: {
-      //       userId: membership.userId,
-      //       newRole: req.body.role,
-      //       oldRole: membership.role,
-      //       email: ""
-      //     }
-      //   }
-      // });
-      return { roles };
+      return { roles: membership.roles.map((el) => ({ ...el, projectMembershipId: req.params.membershipId })) };
     }
   });
 
