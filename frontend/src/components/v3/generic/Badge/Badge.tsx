@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "cva";
 import { cn } from "@app/components/v3/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center [a&]:cursor-pointer justify-center rounded-[4px] border px-[4px] pt-[0.85px] pb-[0.15px] text-xs font-medium w-fit whitespace-nowrap shrink-0 gap-1 [&>svg]:pointer-events-none [&>svg]:stroke-[2.25] [&>svg]:mb-[0.75px] [&>svg]:size-3 overflow-hidden",
+  "inline-flex items-center [a&]:cursor-pointer justify-center rounded-[4px] border px-[6px] pt-[0.85px] pb-[0.15px] text-xs font-medium w-fit whitespace-nowrap shrink-0 gap-1 [&>svg]:pointer-events-none [&>svg]:stroke-[2.25] [&>svg]:mb-[0.75px] [&>svg]:size-3 overflow-hidden",
   {
     variants: {
       variant: {
@@ -12,7 +12,8 @@ const badgeVariants = cva(
           "border-foreground bg-foreground text-background [a&]:hover:bg-foreground/90 [a&]:hover:border-foreground/90",
         accent:
           "border-accent/10 bg-accent/40 text-accent [a&]:hover:bg-accent/50 [a&]:hover:border-accent/20",
-        outline: "text-foreground [a&]:hover:bg-foreground/50 border-foreground",
+        outline:
+          "text-foreground [a&]:hover:bg-foreground/20 border-foreground/50 hover:border-foreground",
         "secret-manager":
           "border-secret-manager/75 bg-secret-manager/40 text-foreground [a&]:hover:bg-secret-manager/50 [a&]:hover:border-secret-manager",
         "secret-scanning":

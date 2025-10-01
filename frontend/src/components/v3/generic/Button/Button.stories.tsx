@@ -1,14 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ChevronsUpDownIcon, LogInIcon } from "lucide-react";
+import { LogInIcon } from "lucide-react";
 import { fn } from "storybook/test";
 
-import { NamespaceIcon, OrgIcon } from "@app/components/v3/platform";
+import { NamespaceIcon } from "@app/components/v3/platform";
 
-import { Badge } from "./Badge";
+import { Button } from "./Button";
 
 const meta = {
-  title: "Generic/Badge",
-  component: Badge,
+  title: "Generic/Button",
+  component: Button,
   parameters: {
     layout: "centered"
   },
@@ -20,6 +20,7 @@ const meta = {
         "default",
         "accent",
         "outline",
+        "ghost",
         "org",
         "namespace",
         "secrets-manager",
@@ -33,10 +34,13 @@ const meta = {
         "warning",
         "danger"
       ]
-    }
+    },
+    size: { control: "inline-radio", options: ["sm", "md", "lg"] },
+    isFullWidth: { control: "boolean" },
+    isLoading: { control: "boolean" }
   },
-  args: { onClick: fn(), children: "Badge" }
-} satisfies Meta<typeof Badge>;
+  args: { onClick: fn(), children: "Button", size: "md", isFullWidth: false, isLoading: true }
+} satisfies Meta<typeof Button>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -56,6 +60,12 @@ export const Accent: Story = {
 export const Outline: Story = {
   args: {
     variant: "outline"
+  }
+};
+
+export const Ghost: Story = {
+  args: {
+    variant: "ghost"
   }
 };
 
@@ -147,28 +157,8 @@ export const RightIcon: Story = {
   args: {
     children: (
       <>
-        Badge <LogInIcon />
+        Button <LogInIcon />
       </>
     )
-  }
-};
-
-export const BothIcons: Story = {
-  args: {
-    variant: "org",
-    children: (
-      <>
-        <OrgIcon />
-        Organization
-        <ChevronsUpDownIcon />
-      </>
-    )
-  }
-};
-
-export const AsLink: Story = {
-  args: {
-    asChild: true,
-    children: <a>Link</a>
   }
 };
