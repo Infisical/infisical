@@ -63,7 +63,7 @@ export const OrgSSOSection = (): JSX.Element => {
     try {
       if (!currentOrg?.id) return;
 
-      if (!subscription?.samlSSO) {
+      if (!subscription?.samlSSO || !subscription?.groups) {
         handlePopUpOpen("upgradePlan");
         return;
       }
@@ -215,7 +215,7 @@ export const OrgSSOSection = (): JSX.Element => {
                   id="enable-saml-group-sync"
                   isChecked={data?.enableGroupSync ?? false}
                   onCheckedChange={(value) => handleSamlGroupManagement(value)}
-                  isDisabled={!isAllowed}
+                  isDisabled={!isAllowed || !subscription?.groups}
                 />
               )}
             </OrgPermissionCan>

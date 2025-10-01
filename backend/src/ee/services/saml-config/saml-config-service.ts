@@ -279,6 +279,12 @@ export const samlConfigServiceFactory = ({
       });
     }
 
+    if (enableGroupSync && !plan.groups) {
+      throw new BadRequestError({
+        message: "Failed to enable SAML group sync due to plan restriction. Upgrade plan to enable group sync."
+      });
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
@@ -335,6 +341,12 @@ export const samlConfigServiceFactory = ({
     if (enableGroupSync && authProvider && !GROUP_SYNC_SUPPORTED_PROVIDERS.includes(authProvider)) {
       throw new BadRequestError({
         message: "Group sync is not supported for this SAML provider."
+      });
+    }
+
+    if (enableGroupSync && !plan.groups) {
+      throw new BadRequestError({
+        message: "Failed to enable SAML group sync due to plan restriction. Upgrade plan to enable group sync."
       });
     }
 
@@ -484,7 +496,9 @@ export const samlConfigServiceFactory = ({
 
     const samlConfig = await samlConfigDAL.findOne({ orgId });
     const groupsMetadata = metadata?.find(({ key }) => key === "groups");
-    const shouldSyncGroups = !!samlConfig?.enableGroupSync;
+
+    const plan = await licenseService.getPlan(orgId);
+    const shouldSyncGroups = !!samlConfig?.enableGroupSync && !!plan.groups;
 
     let user: TUsers;
     if (userAlias) {
