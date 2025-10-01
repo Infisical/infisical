@@ -34,7 +34,8 @@ export const useCreateSSOConfig = () => {
       isActive,
       entryPoint,
       issuer,
-      cert
+      cert,
+      enableGroupSync
     }: {
       organizationId: string;
       authProvider: string;
@@ -42,6 +43,7 @@ export const useCreateSSOConfig = () => {
       entryPoint: string;
       issuer: string;
       cert: string;
+      enableGroupSync?: boolean;
     }) => {
       const { data } = await apiRequest.post("/api/v1/sso/config", {
         organizationId,
@@ -49,7 +51,8 @@ export const useCreateSSOConfig = () => {
         isActive,
         entryPoint,
         issuer,
-        cert
+        cert,
+        ...(enableGroupSync !== undefined ? { enableGroupSync } : {})
       });
 
       return data;
@@ -69,7 +72,8 @@ export const useUpdateSSOConfig = () => {
       isActive,
       entryPoint,
       issuer,
-      cert
+      cert,
+      enableGroupSync
     }: {
       organizationId: string;
       authProvider?: string;
@@ -77,6 +81,7 @@ export const useUpdateSSOConfig = () => {
       entryPoint?: string;
       issuer?: string;
       cert?: string;
+      enableGroupSync?: boolean;
     }) => {
       const { data } = await apiRequest.patch("/api/v1/sso/config", {
         organizationId,
@@ -84,7 +89,8 @@ export const useUpdateSSOConfig = () => {
         ...(isActive !== undefined ? { isActive } : {}),
         ...(entryPoint !== undefined ? { entryPoint } : {}),
         ...(issuer !== undefined ? { issuer } : {}),
-        ...(cert !== undefined ? { cert } : {})
+        ...(cert !== undefined ? { cert } : {}),
+        ...(enableGroupSync !== undefined ? { enableGroupSync } : {})
       });
 
       return data;

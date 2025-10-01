@@ -53,6 +53,13 @@ description: "Learn how to configure Google SAML for Infisical SSO."
 
         ![Google SAML attribute mapping](../../../images/sso/google-saml/attribute-mapping.png)
 
+        <Note>
+        If you want to sync Google groups to Infisical groups, you can also configure:
+        - **groups** -> **groups**
+
+        This requires setting up group claims in Google Workspace. See the [Group Membership Mapping](#saml-group-membership-mapping) section below for details.
+        </Note>
+
         Click **Finish**.
     </Step>
     <Step title="Assign users in Google Workspace to the application">
@@ -89,6 +96,34 @@ description: "Learn how to configure Google SAML for Infisical SSO."
     </Step>
 
 </Steps>
+
+## SAML Group Membership Mapping
+
+Automatically sync Google Workspace group memberships to Infisical.
+
+<Steps>
+    <Step title="Add groups attribute mapping in Google">
+        In your Google Admin console SAML app, go to **Attribute mapping** and add:
+
+        - **Google groups**: Include all groups you want to include in the SAML claim. Only these groups will be synced to Infisical.
+        - **App attribute**: `groups`
+
+        ![Google SAML groups attribute mapping](../../../images/sso/google-saml/groups-attribute-mapping.png)
+
+    </Step>
+    <Step title="Enable SAML Group Membership Mapping in Infisical">
+        Back in Infisical, under Organization Settings, enable **SAML Group Membership Mapping** in the **Single Sign-On (SSO)** tab.
+
+        ![Google SAML group membership mapping](../../../images/sso/google-saml/group-membership-mapping.png)
+    </Step>
+    <Step title="Group synchronization on login">
+        Once configured, Google groups will now be automatically synchronized when users log in through SAML. Users will be added to or removed from Infisical groups based on their current Google group memberships.
+    </Step>
+</Steps>
+
+<Warning>
+Group membership changes in the SAML provider only sync with Infisical when a user logs in via SAML. For example, if you remove a user from a group in the SAML provider, this change will not be reflected in Infisical until their next SAML login. To ensure this behavior, Infisical recommends enabling Enforce SAML SSO.
+</Warning>
 
 <Tip>
     If you are only using one organization on your Infisical instance, you can configure a default organization in the [Server Admin Console](../admin-panel/server-admin#default-organization) to expedite SAML login.
