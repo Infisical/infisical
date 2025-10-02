@@ -71,3 +71,8 @@ export type TGetRoleBySlugDTO = {
     slug: string;
   };
 };
+
+export type TGetUserPermissionDTO = {
+  permission: OrgServiceActor;
+  scopeData: AccessScopeData;
+};

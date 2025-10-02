@@ -204,7 +204,7 @@ export const identityAccessTokenServiceFactory = ({
     }
 
     const identityOrgMembership = await identityOrgMembershipDAL.findOne({
-      identityId: identityAccessToken.identityId
+      actorIdentityId: identityAccessToken.identityId
     });
 
     if (!identityOrgMembership) {
@@ -219,7 +219,7 @@ export const identityAccessTokenServiceFactory = ({
     await validateAccessTokenExp({ ...identityAccessToken, accessTokenNumUses });
 
     await accessTokenQueue.updateIdentityAccessTokenStatus(identityAccessToken.id, Number(accessTokenNumUses) + 1);
-    return { ...identityAccessToken, orgId: identityOrgMembership.orgId };
+    return { ...identityAccessToken, orgId: identityOrgMembership.scopeOrgId };
   };
 
   return { renewAccessToken, revokeAccessToken, fnValidateIdentityAccessToken };

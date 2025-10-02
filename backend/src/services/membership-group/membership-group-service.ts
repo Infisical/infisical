@@ -269,7 +269,7 @@ export const membershipGroupServiceFactory = ({
               [SearchResourceOperators.$contains]: dto.data.groupName
             }
           : undefined,
-        role: dto.data.roles.length
+        role: dto.data.roles?.length
           ? {
               [SearchResourceOperators.$in]: dto.data.roles
             }

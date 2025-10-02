@@ -277,21 +277,16 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { permissions, memberships } = await server.services.orgRole.getUserPermission(
-        req.permission.id,
-        req.params.organizationId,
-        req.permission.authMethod,
-        req.permission.orgId
-      );
+      const { permissions, memberships } = await server.services.role.getUserPermission({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Organization,
+          orgId: req.permission.orgId
+        }
+      });
       return {
         permissions,
-        memberships: memberships.map((el) => ({
-          ...el,
-          role: el.roles[0].customRoleSlug || el.roles[0].role,
-          orgId: el.scopeOrgId,
-          status: el.status || "",
-          isActive: el.isActive || true
-        }))
+        memberships
       };
     }
   });

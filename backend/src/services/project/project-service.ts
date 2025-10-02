@@ -3,6 +3,7 @@ import { PackRule, unpackRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 
 import {
+  AccessScope,
   ActionProjectType,
   ProjectMembershipRole,
   ProjectType,
@@ -49,11 +50,11 @@ import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { expandInternalCa } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
-import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
-import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
-import { TIdentityProjectDALFactory } from "../identity-project/identity-project-dal";
-import { TIdentityProjectMembershipRoleDALFactory } from "../identity-project/identity-project-membership-role-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TMembershipGroupDALFactory } from "../membership-group/membership-group-dal";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { validateMicrosoftTeamsChannelsSchema } from "../microsoft-teams/microsoft-teams-fns";
 import { TMicrosoftTeamsIntegrationDALFactory } from "../microsoft-teams/microsoft-teams-integration-dal";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "../microsoft-teams/project-microsoft-teams-config-dal";
@@ -65,10 +66,9 @@ import { TPkiCollectionDALFactory } from "../pki-collection/pki-collection-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
-import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
-import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { getPredefinedRoles } from "../project-role/project-role-fns";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
+import { TRoleDALFactory } from "../role/role-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { fnDeleteProjectSecretReminders } from "../secret/secret-fns";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -125,7 +125,6 @@ export const DEFAULT_PROJECT_ENVS = [
 
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
-  identityProjectDAL: Pick<TIdentityProjectDALFactory, "create">;
   projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "transaction" | "create" | "findOne" | "updateById">;
   projectQueue: TProjectQueueFactory;
   userDAL: TUserDALFactory;
@@ -134,13 +133,11 @@ type TProjectServiceFactoryDep = {
   secretDAL: Pick<TSecretDALFactory, "find">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "insertMany" | "find">;
-  identityOrgMembershipDAL: TIdentityOrgDALFactory;
-  identityProjectMembershipRoleDAL: Pick<TIdentityProjectMembershipRoleDALFactory, "create">;
-  projectMembershipDAL: Pick<
-    TProjectMembershipDALFactory,
-    "create" | "findProjectGhostUser" | "findOne" | "delete" | "findAllProjectMembers"
-  >;
-  groupProjectDAL: Pick<TGroupProjectDALFactory, "delete">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectGhostUser" | "findAllProjectMembers">;
+  membershipUserDAL: Pick<TMembershipUserDALFactory, "create" | "findOne" | "delete">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "delete">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "create" | "findOne">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectSlackConfigDAL: Pick<
     TProjectSlackConfigDALFactory,
     "findOne" | "transaction" | "updateById" | "create" | "delete"
@@ -154,7 +151,6 @@ type TProjectServiceFactoryDep = {
     TMicrosoftTeamsIntegrationDALFactory,
     "findById" | "findByIdWithWorkflowIntegrationDetails"
   >;
-  projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "find">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find" | "findWithAssociatedCa">;
   certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject">;
@@ -172,7 +168,7 @@ type TProjectServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem">;
-  projectRoleDAL: Pick<TProjectRoleDALFactory, "find" | "insertMany" | "delete">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
   kmsService: Pick<
     TKmsServiceFactory,
     | "updateProjectSecretManagerKmsKey"
@@ -201,20 +197,15 @@ export const projectServiceFactory = ({
   orgDAL,
   userDAL,
   folderDAL,
-  identityOrgMembershipDAL,
   projectMembershipDAL,
   projectEnvDAL,
   licenseService,
-  projectUserMembershipRoleDAL,
-  projectRoleDAL,
   certificateAuthorityDAL,
   certificateDAL,
   certificateTemplateDAL,
   pkiCollectionDAL,
   pkiAlertDAL,
   pkiSubscriberDAL,
-  identityProjectDAL,
-  identityProjectMembershipRoleDAL,
   sshCertificateAuthorityDAL,
   sshCertificateAuthoritySecretDAL,
   sshCertificateDAL,
@@ -228,10 +219,13 @@ export const projectServiceFactory = ({
   slackIntegrationDAL,
   microsoftTeamsIntegrationDAL,
   projectTemplateService,
-  groupProjectDAL,
   smtpService,
   reminderService,
-  notificationService
+  notificationService,
+  membershipIdentityDAL,
+  membershipUserDAL,
+  membershipRoleDAL,
+  roleDAL
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -345,7 +339,7 @@ export const projectServiceFactory = ({
             tx
           );
         }
-        await projectRoleDAL.insertMany(
+        await roleDAL.insertMany(
           projectTemplate.packedRoles.map((role) => ({
             ...role,
             permissions: JSON.stringify(role.permissions),
@@ -374,15 +368,17 @@ export const projectServiceFactory = ({
         }
 
         // Create a membership for the user
-        const userProjectMembership = await projectMembershipDAL.create(
+        const userProjectMembership = await membershipUserDAL.create(
           {
-            projectId: project.id,
-            userId: user.id
+            scopeProjectId: project.id,
+            actorUserId: user.id,
+            scope: AccessScope.Project,
+            scopeOrgId: project.orgId
           },
           tx
         );
-        await projectUserMembershipRoleDAL.create(
-          { projectMembershipId: userProjectMembership.id, role: ProjectMembershipRole.Admin },
+        await membershipRoleDAL.create(
+          { membershipId: userProjectMembership.id, role: ProjectMembershipRole.Admin },
           tx
         );
       }
@@ -390,10 +386,11 @@ export const projectServiceFactory = ({
       // If the project is being created by an identity, add the identity to the project as an admin
       else if (actor === ActorType.IDENTITY) {
         // Find identity org membership
-        const identityOrgMembership = await identityOrgMembershipDAL.findOne(
+        const identityOrgMembership = await membershipIdentityDAL.findOne(
           {
-            identityId: actorId,
-            orgId: project.orgId
+            actorIdentityId: actorId,
+            scopeOrgId: project.orgId,
+            scope: AccessScope.Organization
           },
           tx
         );
@@ -405,17 +402,19 @@ export const projectServiceFactory = ({
           });
         }
 
-        const identityProjectMembership = await identityProjectDAL.create(
+        const identityProjectMembership = await membershipIdentityDAL.create(
           {
-            identityId: actorId,
-            projectId: project.id
+            actorIdentityId: actorId,
+            scopeProjectId: project.id,
+            scope: AccessScope.Project,
+            scopeOrgId: project.orgId
           },
           tx
         );
 
-        await identityProjectMembershipRoleDAL.create(
+        await membershipRoleDAL.create(
           {
-            projectMembershipId: identityProjectMembership.id,
+            membershipId: identityProjectMembership.id,
             role: ProjectMembershipRole.Admin
           },
           tx
@@ -459,8 +458,11 @@ export const projectServiceFactory = ({
     const deletedProject = await projectDAL.transaction(async (tx) => {
       // delete these so that project custom roles can be deleted in cascade effect
       // direct deletion of project without these will cause fk error
-      await projectMembershipDAL.delete({ projectId: project.id }, tx);
-      await groupProjectDAL.delete({ projectId: project.id }, tx);
+      // this will clean up all memberships
+      await membershipUserDAL.delete(
+        { scopeOrgId: project.orgId, scopeProjectId: project.id, scope: AccessScope.Project },
+        tx
+      );
       const delProject = await projectDAL.deleteById(project.id, tx);
       const projectGhostUser = await projectMembershipDAL.findProjectGhostUser(project.id, tx).catch(() => null);
       // akhilmhdh: before removing those kms checking any other project uses it
@@ -521,13 +523,13 @@ export const projectServiceFactory = ({
 
       // `includeRoles` is specifically used by organization admins when inviting new users to the organizations to avoid looping redundant api calls.
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
-      const customRoles = await projectRoleDAL.find({
+      const customRoles = await roleDAL.find({
         $in: {
           projectId: workspaces.map((workspace) => workspace.id)
         }
       });
 
-      const workspaceMappedToRoles = groupBy(customRoles, (role) => role.projectId);
+      const workspaceMappedToRoles = groupBy(customRoles, (role) => role.projectId as string);
 
       const workspacesWithRoles = await Promise.all(
         workspaces.map(async (workspace) => {
@@ -1872,7 +1874,7 @@ export const projectServiceFactory = ({
       .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
       .map((el) => el.user.email!);
     if (filteredProjectMembers.length === 0) {
-      const customRolesWithMemberCreate = await projectRoleDAL.find({ projectId });
+      const customRolesWithMemberCreate = await roleDAL.find({ projectId });
       const customRoleSlugsCanCreate = customRolesWithMemberCreate
         .filter((role) => {
           try {

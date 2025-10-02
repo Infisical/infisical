@@ -3,7 +3,7 @@ import axios, { AxiosError } from "axios";
 import https from "https";
 import RE2 from "re2";
 
-import { IdentityAuthMethod, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
@@ -29,7 +29,7 @@ import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -53,7 +53,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
     "create" | "findOne" | "transaction" | "updateById" | "delete"
   >;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "findById" | "updateById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -70,7 +70,7 @@ const GATEWAY_AUTH_DEFAULT_HOST = "https://kubernetes.default.svc.cluster.local"
 
 export const identityKubernetesAuthServiceFactory = ({
   identityKubernetesAuthDAL,
-  identityOrgMembershipDAL,
+  membershipIdentityDAL,
   identityAccessTokenDAL,
   permissionService,
   licenseService,
@@ -175,8 +175,9 @@ export const identityKubernetesAuthServiceFactory = ({
       });
     }
 
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({
-      identityId: identityKubernetesAuth.identityId
+    const identityMembershipOrg = await membershipIdentityDAL.findOne({
+      actorIdentityId: identityKubernetesAuth.identityId,
+      scope: AccessScope.Organization
     });
     if (!identityMembershipOrg) {
       throw new NotFoundError({
@@ -186,7 +187,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.orgId
+      orgId: identityMembershipOrg.scopeOrgId
     });
 
     let caCert = "";
@@ -429,7 +430,7 @@ export const identityKubernetesAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityKubernetesAuthDAL.transaction(async (tx) => {
-      await identityOrgMembershipDAL.updateById(
+      await membershipIdentityDAL.updateById(
         identityMembershipOrg.id,
         {
           lastLoginAuthMethod: IdentityAuthMethod.KUBERNETES_AUTH,
@@ -499,7 +500,13 @@ export const identityKubernetesAuthServiceFactory = ({
   }: TAttachKubernetesAuthDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.KUBERNETES_AUTH)) {
@@ -515,13 +522,13 @@ export const identityKubernetesAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -541,8 +548,8 @@ export const identityKubernetesAuthServiceFactory = ({
 
     let isGatewayV1 = true;
     if (gatewayId) {
-      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: identityMembershipOrg.orgId });
-      const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: identityMembershipOrg.orgId });
+      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: identityMembershipOrg.scopeOrgId });
+      const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: identityMembershipOrg.scopeOrgId });
       if (!gateway && !gatewayV2) {
         throw new NotFoundError({
           message: `Gateway with ID ${gatewayId} not found`
@@ -556,7 +563,7 @@ export const identityKubernetesAuthServiceFactory = ({
       const { permission: orgPermission } = await permissionService.getOrgPermission(
         actor,
         actorId,
-        identityMembershipOrg.orgId,
+        identityMembershipOrg.scopeOrgId,
         actorAuthMethod,
         actorOrgId
       );
@@ -568,13 +575,13 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.orgId
+      orgId: identityMembershipOrg.scopeOrgId
     });
 
     const identityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
       const doc = await identityKubernetesAuthDAL.create(
         {
-          identityId: identityMembershipOrg.identityId,
+          identityId: identityMembershipOrg.identity.id,
           kubernetesHost,
           tokenReviewMode,
           allowedNamespaces,
@@ -596,7 +603,7 @@ export const identityKubernetesAuthServiceFactory = ({
       return doc;
     });
 
-    return { ...identityKubernetesAuth, caCert, tokenReviewerJwt, orgId: identityMembershipOrg.orgId };
+    return { ...identityKubernetesAuth, caCert, tokenReviewerJwt, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   const updateKubernetesAuth = async ({
@@ -618,7 +625,13 @@ export const identityKubernetesAuthServiceFactory = ({
     actor,
     actorOrgId
   }: TUpdateKubernetesAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.KUBERNETES_AUTH)) {
@@ -640,13 +653,13 @@ export const identityKubernetesAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -666,8 +679,8 @@ export const identityKubernetesAuthServiceFactory = ({
 
     let isGatewayV1 = true;
     if (gatewayId) {
-      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: identityMembershipOrg.orgId });
-      const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: identityMembershipOrg.orgId });
+      const [gateway] = await gatewayDAL.find({ id: gatewayId, orgId: identityMembershipOrg.scopeOrgId });
+      const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: identityMembershipOrg.scopeOrgId });
 
       if (!gateway && !gatewayV2) {
         throw new NotFoundError({
@@ -682,7 +695,7 @@ export const identityKubernetesAuthServiceFactory = ({
       const { permission: orgPermission } = await permissionService.getOrgPermission(
         actor,
         actorId,
-        identityMembershipOrg.orgId,
+        identityMembershipOrg.scopeOrgId,
         actorAuthMethod,
         actorOrgId
       );
@@ -714,7 +727,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.orgId
+      orgId: identityMembershipOrg.scopeOrgId
     });
 
     if (caCert !== undefined) {
@@ -745,7 +758,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     return {
       ...updatedKubernetesAuth,
-      orgId: identityMembershipOrg.orgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       caCert: updatedCACert,
       tokenReviewerJwt: updatedTokenReviewerJwt
     };
@@ -758,7 +771,13 @@ export const identityKubernetesAuthServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TGetKubernetesAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
@@ -775,7 +794,7 @@ export const identityKubernetesAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
@@ -783,7 +802,7 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.orgId
+      orgId: identityMembershipOrg.scopeOrgId
     });
 
     let caCert = "";
@@ -802,7 +821,7 @@ export const identityKubernetesAuthServiceFactory = ({
       ...identityKubernetesAuth,
       caCert,
       tokenReviewerJwt,
-      orgId: identityMembershipOrg.orgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       gatewayId: identityKubernetesAuth.gatewayId ?? identityKubernetesAuth.gatewayV2Id
     };
   };
@@ -814,7 +833,13 @@ export const identityKubernetesAuthServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TRevokeKubernetesAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.KUBERNETES_AUTH)) {
@@ -825,7 +850,7 @@ export const identityKubernetesAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
@@ -833,12 +858,12 @@ export const identityKubernetesAuthServiceFactory = ({
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
-      identityMembershipOrg.identityId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.identity.id,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.orgId);
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
       shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,
@@ -860,7 +885,7 @@ export const identityKubernetesAuthServiceFactory = ({
     const revokedIdentityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
       const deletedKubernetesAuth = await identityKubernetesAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.KUBERNETES_AUTH }, tx);
-      return { ...deletedKubernetesAuth?.[0], orgId: identityMembershipOrg.orgId };
+      return { ...deletedKubernetesAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
     return revokedIdentityKubernetesAuth;
   };

@@ -3,6 +3,7 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import {
+  AccessScope,
   ActionProjectType,
   OrgMembershipRole,
   OrgMembershipStatus,
@@ -31,7 +32,6 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -59,13 +59,14 @@ import { ActorAuthMethod, ActorType, AuthMethod, AuthModeJwtTokenPayload, AuthTo
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
-import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
-import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
+import { TRoleDALFactory } from "../role/role-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { fnDeleteProjectSecretReminders } from "../secret/secret-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -91,7 +92,6 @@ import {
   TUpgradePrivilegeSystemDTO,
   TVerifyUserToOrgDTO
 } from "./org-types";
-import { TRoleDALFactory } from "../role/role-dal";
 
 type TOrgServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
@@ -105,26 +105,17 @@ type TOrgServiceFactoryDep = {
   groupDAL: TGroupDALFactory;
   projectDAL: TProjectDALFactory;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
+  membershipUserDAL: TMembershipUserDALFactory;
   projectMembershipDAL: Pick<
     TProjectMembershipDALFactory,
-    | "findProjectMembershipsByUserId"
-    | "delete"
-    | "create"
-    | "find"
-    | "insertMany"
-    | "transaction"
-    | "findProjectMembershipsByUserIds"
+    "findProjectMembershipsByUserId" | "findProjectMembershipsByUserIds"
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "insertMany" | "findLatestProjectKey" | "create">;
   orgMembershipDAL: Pick<
     TOrgMembershipDALFactory,
-    | "findOrgMembershipById"
-    | "findOne"
-    | "findById"
-    | "findRecentInvitedMemberships"
-    | "updateById"
-    | "updateLastInvitedAtByIds"
+    "findOrgMembershipById" | "findRecentInvitedMemberships" | "updateLastInvitedAtByIds"
   >;
+  membershipRoleDAL: TMembershipRoleDALFactory;
   incidentContactDAL: TIncidentContactsDALFactory;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
@@ -136,9 +127,6 @@ type TOrgServiceFactoryDep = {
     TLicenseServiceFactory,
     "getPlan" | "updateSubscriptionOrgMemberCount" | "generateOrgCustomerId" | "removeOrgCustomer"
   >;
-  projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
-  projectRoleDAL: Pick<TProjectRoleDALFactory, "find">;
-  projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany" | "create">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
@@ -162,19 +150,18 @@ export const orgServiceFactory = ({
   projectMembershipDAL,
   projectKeyDAL,
   orgMembershipDAL,
-  projectUserAdditionalPrivilegeDAL,
   tokenService,
   orgBotDAL,
   licenseService,
-  projectRoleDAL,
   samlConfigDAL,
   oidcConfigDAL,
   ldapConfigDAL,
-  projectUserMembershipRoleDAL,
   identityMetadataDAL,
   projectBotService,
   loginService,
-  reminderService
+  reminderService,
+  membershipRoleDAL,
+  membershipUserDAL
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -273,7 +260,7 @@ export const orgServiceFactory = ({
     }
 
     if (actor === ActorType.IDENTITY) {
-      const workspaces = await projectDAL.findAllProjectsByIdentity(actorId);
+      const workspaces = await projectDAL.findIdentityProjects(actorId, orgId);
       return workspaces;
     }
 
@@ -308,14 +295,21 @@ export const orgServiceFactory = ({
     );
 
     const createMembershipData = {
-      orgId,
-      userId: user.id,
-      role: OrgMembershipRole.Admin,
+      scopeOrgId: orgId,
+      scope: AccessScope.Organization,
+      actorUserId: user.id,
       status: OrgMembershipStatus.Accepted,
       isActive: true
     };
 
-    await orgDAL.createMembership(createMembershipData, tx);
+    const membership = await orgDAL.createMembership(createMembershipData, tx);
+    await membershipRoleDAL.create(
+      {
+        membershipId: membership.id,
+        role: OrgMembershipRole.Admin
+      },
+      tx
+    );
 
     return {
       user,
@@ -613,13 +607,20 @@ export const orgServiceFactory = ({
         tx
       );
       if (userId) {
-        await orgDAL.createMembership(
+        const membership = await orgDAL.createMembership(
           {
-            userId,
-            orgId: org.id,
-            role: OrgMembershipRole.Admin,
+            scope: AccessScope.Organization,
+            actorUserId: userId,
+            scopeOrgId: org.id,
             status: OrgMembershipStatus.Accepted,
             isActive: true
+          },
+          tx
+        );
+        await membershipRoleDAL.create(
+          {
+            membershipId: membership.id,
+            role: OrgMembershipRole.Admin
           },
           tx
         );
@@ -766,12 +767,16 @@ export const orgServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
 
-    const foundMembership = await orgMembershipDAL.findById(membershipId);
+    const foundMembership = await membershipUserDAL.findOne({
+      id: membershipId,
+      scope: AccessScope.Organization,
+      scopeOrgId: actorOrgId
+    });
     if (!foundMembership)
       throw new NotFoundError({ message: `Organization membership with ID ${membershipId} not found` });
-    if (foundMembership.orgId !== orgId)
+    if (foundMembership.scopeOrgId !== orgId)
       throw new UnauthorizedError({ message: "Updated org member doesn't belong to the organization" });
-    if (foundMembership.userId === userId)
+    if (foundMembership.scopeOrgId === userId)
       throw new UnauthorizedError({ message: "Cannot update own organization membership" });
 
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);
@@ -793,8 +798,20 @@ export const orgServiceFactory = ({
     const membership = await orgDAL.transaction(async (tx) => {
       const [updatedOrgMembership] = await orgDAL.updateMembership(
         { id: membershipId, scopeOrgId: orgId },
-        { role: userRole, roleId: userRoleId, isActive }
+        { isActive },
+        tx
       );
+      if (userRole) {
+        await membershipRoleDAL.delete({ membershipId: updatedOrgMembership.id }, tx);
+        await membershipRoleDAL.create(
+          {
+            membershipId: updatedOrgMembership.id,
+            role: userRole,
+            customRoleId: userRoleId
+          },
+          tx
+        );
+      }
 
       if (metadata) {
         await identityMetadataDAL.delete({ userId: updatedOrgMembership.actorUserId, orgId }, tx);
@@ -833,8 +850,9 @@ export const orgServiceFactory = ({
     const org = await orgDAL.findOrgById(orgId);
 
     const [inviteeOrgMembership] = await orgDAL.findMembership({
-      [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId,
-      [`${TableName.OrgMembership}.id` as "id"]: membershipId
+      [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+      [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization,
+      [`${TableName.Membership}.id` as "id"]: membershipId
     });
 
     if (inviteeOrgMembership.status !== OrgMembershipStatus.Invited) {
@@ -845,7 +863,7 @@ export const orgServiceFactory = ({
 
     const token = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
-      userId: inviteeOrgMembership.userId,
+      userId: inviteeOrgMembership.actorUserId as string,
       orgId
     });
 
@@ -873,7 +891,7 @@ export const orgServiceFactory = ({
       }
     });
 
-    await orgMembershipDAL.updateById(inviteeOrgMembership.id, {
+    await membershipUserDAL.updateById(inviteeOrgMembership.id, {
       lastInvitedAt: new Date()
     });
 
@@ -991,8 +1009,9 @@ export const orgServiceFactory = ({
 
         const [inviteeOrgMembership] = await orgDAL.findMembership(
           {
-            [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId,
-            [`${TableName.OrgMembership}.userId` as "userId"]: inviteeUserId
+            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization,
+            [`${TableName.Membership}.id` as "id"]: inviteeUserId
           },
           { tx }
         );
@@ -1019,7 +1038,7 @@ export const orgServiceFactory = ({
           let roleId;
           const orgRole = isCustomOrgRole ? OrgMembershipRole.Custom : organizationRoleSlug;
           if (isCustomOrgRole) {
-            const customRole = await orgRoleDAL.findOne({ slug: organizationRoleSlug, orgId });
+            const customRole = await roleDAL.findOne({ slug: organizationRoleSlug, orgId });
             if (!customRole) {
               throw new NotFoundError({
                 name: "InviteUser",
@@ -1029,15 +1048,22 @@ export const orgServiceFactory = ({
             roleId = customRole.id;
           }
 
-          await orgDAL.createMembership(
+          const membership = await orgDAL.createMembership(
             {
-              userId: inviteeUser.id,
+              actorUserId: inviteeUser.id,
               inviteEmail: inviteeEmail,
-              orgId,
-              role: orgRole,
+              scopeOrgId: orgId,
               status: OrgMembershipStatus.Invited,
               isActive: true,
-              roleId
+              scope: AccessScope.Organization
+            },
+            tx
+          );
+          await membershipRoleDAL.create(
+            {
+              membershipId: membership.id,
+              role: orgRole,
+              customRoleId: roleId
             },
             tx
           );
@@ -1072,14 +1098,16 @@ export const orgServiceFactory = ({
           ProjectPermissionMemberActions.Create,
           ProjectPermissionSub.Member
         );
-        const existingMembers = await projectMembershipDAL.find(
+        const existingMembers = await membershipUserDAL.find(
           {
-            projectId: project.id,
+            scopeOrgId: project.orgId,
+            scope: AccessScope.Project,
+            scopeProjectId: project.id,
             $in: { userId: userIds }
           },
           { tx }
         );
-        const existingMembersGroupByUserId = groupBy(existingMembers, (i) => i.userId);
+        const existingMembersGroupByUserId = groupBy(existingMembers, (i) => i.actorUserId as string);
         const userWithEncryptionKeyInvitedToProject = userEncryptionKeys.filter(
           (user) => !existingMembersGroupByUserId?.[user.userId]
         );
@@ -1246,9 +1274,10 @@ export const orgServiceFactory = ({
     }
 
     const [orgMembership] = await orgDAL.findMembership({
-      [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
+      [`${TableName.Membership}.actorUserId` as "actorUserId"]: user.id,
+      scope: AccessScope.Organization,
       status: OrgMembershipStatus.Invited,
-      [`${TableName.OrgMembership}.orgId` as "orgId"]: orgId
+      [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId
     });
 
     if (!orgMembership)
@@ -1261,7 +1290,7 @@ export const orgServiceFactory = ({
     await tokenService.validateTokenForUser({
       type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
       userId: user.id,
-      orgId: orgMembership.orgId,
+      orgId: orgMembership.scopeOrgId,
       code
     });
 
@@ -1273,16 +1302,17 @@ export const orgServiceFactory = ({
       // this means user has already completed signup process
       // isAccepted is set true when keys are exchanged
       await orgDAL.updateMembershipById(orgMembership.id, {
-        orgId,
+        scopeOrgId: orgId,
         status: OrgMembershipStatus.Accepted
       });
       await licenseService.updateSubscriptionOrgMemberCount(orgId);
       return { user };
     }
 
+    const membershipRole = await membershipRoleDAL.findOne({ membershipId: orgMembership.id });
     if (
       organization.authEnforced &&
-      !(organization.bypassOrgAuthEnabled && orgMembership.role === OrgMembershipRole.Admin)
+      !(organization.bypassOrgAuthEnabled && membershipRole.role === OrgMembershipRole.Admin)
     ) {
       return { user };
     }
@@ -1331,7 +1361,13 @@ export const orgServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TDeleteOrgMembershipDTO) => {
-    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission(
+      ActorType.USER,
+      userId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
 
     const deletedMembership = await deleteOrgMembershipFn({
@@ -1339,11 +1375,11 @@ export const orgServiceFactory = ({
       orgId,
       orgDAL,
       projectMembershipDAL,
-      projectUserAdditionalPrivilegeDAL,
       projectKeyDAL,
       userAliasDAL,
       licenseService,
-      userId
+      userId,
+      membershipUserDAL
     });
 
     return deletedMembership;
@@ -1356,7 +1392,13 @@ export const orgServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TDeleteOrgMembershipsDTO) => {
-    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission(
+      ActorType.USER,
+      userId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
 
     if (membershipIds.includes(userId)) {
@@ -1368,11 +1410,11 @@ export const orgServiceFactory = ({
       orgId,
       orgDAL,
       projectMembershipDAL,
-      projectUserAdditionalPrivilegeDAL,
       projectKeyDAL,
       userAliasDAL,
       licenseService,
-      userId
+      userId,
+      membershipUserDAL
     });
 
     return deletedMemberships;
@@ -1409,7 +1451,13 @@ export const orgServiceFactory = ({
     actorAuthMethod: ActorAuthMethod,
     actorOrgId: string | undefined
   ) => {
-    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission(
+      ActorType.USER,
+      userId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.IncidentAccount);
     const incidentContacts = await incidentContactDAL.findByOrgId(orgId);
     return incidentContacts;
@@ -1422,7 +1470,13 @@ export const orgServiceFactory = ({
     actorAuthMethod: ActorAuthMethod,
     actorOrgId: string | undefined
   ) => {
-    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission(
+      ActorType.USER,
+      userId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.IncidentAccount);
     const doesIncidentContactExist = await incidentContactDAL.findOne(orgId, { email });
     if (doesIncidentContactExist) {
@@ -1443,7 +1497,13 @@ export const orgServiceFactory = ({
     actorAuthMethod: ActorAuthMethod,
     actorOrgId: string | undefined
   ) => {
-    const { permission } = await permissionService.getUserOrgPermission(userId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission(
+      ActorType.USER,
+      userId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.IncidentAccount);
 
     const incidentContact = await incidentContactDAL.deleteById(id, orgId);
@@ -1464,17 +1524,17 @@ export const orgServiceFactory = ({
 
     await Promise.all(
       invitedUsers.map(async (invitedUser) => {
-        let org = orgCache[invitedUser.orgId];
+        let org = orgCache[invitedUser.scopeOrgId];
         if (!org) {
-          org = await orgDAL.findById(invitedUser.orgId);
-          orgCache[invitedUser.orgId] = org;
+          org = await orgDAL.findById(invitedUser.scopeOrgId);
+          orgCache[invitedUser.scopeOrgId] = org;
         }
 
-        if (!org || !invitedUser.userId) return;
+        if (!org || !invitedUser.actorUserId) return;
 
         const token = await tokenService.createTokenForUser({
           type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
-          userId: invitedUser.userId,
+          userId: invitedUser.actorUserId,
           orgId: org.id
         });
 

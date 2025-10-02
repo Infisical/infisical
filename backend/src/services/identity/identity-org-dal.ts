@@ -608,7 +608,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
               }
             : undefined,
           identity: {
-            id: identityId,
+            id: identityId as string,
             name: identityName,
             hasDeleteProtection,
             authMethods: buildAuthMethods({

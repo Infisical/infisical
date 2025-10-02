@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { AxiosError } from "axios";
 import RE2 from "re2";
 
-import { IdentityAuthMethod } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -19,7 +19,7 @@ import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -37,7 +37,7 @@ import { TOrgDALFactory } from "../org/org-dal";
 type TIdentityOciAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   identityOciAuthDAL: Pick<TIdentityOciAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
@@ -48,7 +48,7 @@ export type TIdentityOciAuthServiceFactory = ReturnType<typeof identityOciAuthSe
 export const identityOciAuthServiceFactory = ({
   identityAccessTokenDAL,
   identityOciAuthDAL,
-  identityOrgMembershipDAL,
+  membershipIdentityDAL,
   licenseService,
   permissionService,
   orgDAL
@@ -59,7 +59,10 @@ export const identityOciAuthServiceFactory = ({
       throw new NotFoundError({ message: "OCI auth method not found for identity, did you configure OCI auth?" });
     }
 
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityOciAuth.identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.findOne({
+      actorIdentityId: identityOciAuth.identityId,
+      scope: AccessScope.Organization
+    });
     if (!identityMembershipOrg) throw new UnauthorizedError({ message: "Identity not attached to a organization" });
 
     // Validate OCI host format. Ensures that the host is in "identity.<region>.oraclecloud.com" format.
@@ -95,7 +98,7 @@ export const identityOciAuthServiceFactory = ({
 
     // Generate the token
     const identityAccessToken = await identityOciAuthDAL.transaction(async (tx) => {
-      await identityOrgMembershipDAL.updateById(
+      await membershipIdentityDAL.updateById(
         identityMembershipOrg.id,
         {
           lastLoginAuthMethod: IdentityAuthMethod.OCI_AUTH,
@@ -157,7 +160,13 @@ export const identityOciAuthServiceFactory = ({
   }: TAttachOciAuthDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OCI_AUTH)) {
@@ -173,13 +182,13 @@ export const identityOciAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -200,7 +209,7 @@ export const identityOciAuthServiceFactory = ({
     const identityOciAuth = await identityOciAuthDAL.transaction(async (tx) => {
       const doc = await identityOciAuthDAL.create(
         {
-          identityId: identityMembershipOrg.identityId,
+          identityId: identityMembershipOrg.identity.id,
           type: "iam",
           tenancyOcid,
           allowedUsernames,
@@ -213,7 +222,7 @@ export const identityOciAuthServiceFactory = ({
       );
       return doc;
     });
-    return { ...identityOciAuth, orgId: identityMembershipOrg.orgId };
+    return { ...identityOciAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   const updateOciAuth = async ({
@@ -229,7 +238,13 @@ export const identityOciAuthServiceFactory = ({
     actor,
     actorOrgId
   }: TUpdateOciAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OCI_AUTH)) {
@@ -250,13 +265,13 @@ export const identityOciAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -285,11 +300,17 @@ export const identityOciAuthServiceFactory = ({
         : undefined
     });
 
-    return { ...updatedOciAuth, orgId: identityMembershipOrg.orgId };
+    return { ...updatedOciAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   const getOciAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetOciAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OCI_AUTH)) {
@@ -303,12 +324,12 @@ export const identityOciAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
-    return { ...ociIdentityAuth, orgId: identityMembershipOrg.orgId };
+    return { ...ociIdentityAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   const revokeIdentityOciAuth = async ({
@@ -318,7 +339,13 @@ export const identityOciAuthServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TRevokeOciAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OCI_AUTH)) {
       throw new BadRequestError({
@@ -328,7 +355,7 @@ export const identityOciAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
@@ -336,8 +363,8 @@ export const identityOciAuthServiceFactory = ({
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
-      identityMembershipOrg.identityId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.identity.id,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
@@ -366,7 +393,7 @@ export const identityOciAuthServiceFactory = ({
       const deletedOciAuth = await identityOciAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.OCI_AUTH }, tx);
 
-      return { ...deletedOciAuth?.[0], orgId: identityMembershipOrg.orgId };
+      return { ...deletedOciAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
     return revokedIdentityOciAuth;
   };

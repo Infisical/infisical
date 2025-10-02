@@ -348,10 +348,11 @@ export const projectDALFactory = (db: TDbClient) => {
       .where(`${TableName.Groups}.orgId`, dto.orgId)
       .where(`${TableName.UserGroupMembership}.userId`, dto.actorId)
       .select(db.ref("id").withSchema(TableName.Groups));
-    const userMembershipSubquery = db(TableName.Membership)
+    const membershipSubQuery = db(TableName.Membership)
       .where(`${TableName.Membership}.scope`, AccessScope.Project)
       .where((qb) => {
         if (dto.actor === ActorType.IDENTITY) {
+          void qb.where(`${TableName.Membership}.actorIdentityId`, dto.actorId);
         } else {
           void qb
             .where(`${TableName.Membership}.actorUserId`, dto.actorId)
@@ -360,11 +361,8 @@ export const projectDALFactory = (db: TDbClient) => {
       })
       .select("scopeProjectId");
 
-    const identityMembershipSubQuery = db(TableName.Membership).where({ identityId: dto.actorId }).select("projectId");
-
     // Get the SQL strings for the subqueries
-    const userMembershipSql = userMembershipSubquery.toQuery();
-    const identityMembershipSql = identityMembershipSubQuery.toQuery();
+    const membershipSQL = membershipSubQuery.toQuery();
 
     const query = db
       .replicaNode()(TableName.Project)
@@ -372,26 +370,15 @@ export const projectDALFactory = (db: TDbClient) => {
       .select(selectAllTableCols(TableName.Project))
       .select(db.raw("COUNT(*) OVER() AS count"))
       .select<(TProjects & { isMember: boolean; count: number })[]>(
-        dto.actor === ActorType.USER
-          ? db.raw(
-              `
-          CASE
-            WHEN ${TableName.Project}.id IN (?) THEN TRUE
-            WHEN ${TableName.Project}.id IN (?) THEN TRUE
-            ELSE FALSE
-          END as "isMember"
-        `,
-              [db.raw(userMembershipSql)]
-            )
-          : db.raw(
-              `
-          CASE
-            WHEN ${TableName.Project}.id IN (?) THEN TRUE
-            ELSE FALSE
-          END as "isMember"
-        `,
-              [db.raw(identityMembershipSql)]
-            )
+        db.raw(
+          `
+                  CASE
+                    WHEN ${TableName.Project}.id IN (?) THEN TRUE
+                    ELSE FALSE
+                  END as "isMember"
+                `,
+          [db.raw(membershipSQL)]
+        )
       )
       .limit(limit)
       .offset(offset);

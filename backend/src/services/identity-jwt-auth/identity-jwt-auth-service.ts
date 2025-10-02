@@ -3,7 +3,7 @@ import https from "https";
 import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
 
-import { IdentityAuthMethod, TIdentityJwtAuthsUpdate } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod, TIdentityJwtAuthsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -25,7 +25,7 @@ import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { getValueByDot } from "@app/lib/template/dot-access";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -44,7 +44,7 @@ import {
 
 type TIdentityJwtAuthServiceFactoryDep = {
   identityJwtAuthDAL: TIdentityJwtAuthDALFactory;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -56,7 +56,7 @@ export type TIdentityJwtAuthServiceFactory = ReturnType<typeof identityJwtAuthSe
 
 export const identityJwtAuthServiceFactory = ({
   identityJwtAuthDAL,
-  identityOrgMembershipDAL,
+  membershipIdentityDAL,
   permissionService,
   licenseService,
   identityAccessTokenDAL,
@@ -69,8 +69,9 @@ export const identityJwtAuthServiceFactory = ({
       throw new NotFoundError({ message: "JWT auth method not found for identity, did you configure JWT auth?" });
     }
 
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({
-      identityId: identityJwtAuth.identityId
+    const identityMembershipOrg = await membershipIdentityDAL.findOne({
+      actorIdentityId: identityJwtAuth.identityId,
+      scope: AccessScope.Organization
     });
     if (!identityMembershipOrg) {
       throw new NotFoundError({
@@ -80,7 +81,7 @@ export const identityJwtAuthServiceFactory = ({
 
     const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.orgId
+      orgId: identityMembershipOrg.scopeOrgId
     });
 
     const decodedToken = crypto.jwt().decode(jwtValue, { complete: true });
@@ -210,7 +211,7 @@ export const identityJwtAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityJwtAuthDAL.transaction(async (tx) => {
-      await identityOrgMembershipDAL.updateById(
+      await membershipIdentityDAL.updateById(
         identityMembershipOrg.id,
         {
           lastLoginAuthMethod: IdentityAuthMethod.JWT_AUTH,
@@ -275,10 +276,14 @@ export const identityJwtAuthServiceFactory = ({
   }: TAttachJwtAuthDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
-    if (!identityMembershipOrg) {
-      if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    }
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.JWT_AUTH)) {
       throw new BadRequestError({
         message: "Failed to add JWT Auth to already configured identity"
@@ -292,14 +297,14 @@ export const identityJwtAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -333,7 +338,7 @@ export const identityJwtAuthServiceFactory = ({
     const identityJwtAuth = await identityJwtAuthDAL.transaction(async (tx) => {
       const doc = await identityJwtAuthDAL.create(
         {
-          identityId: identityMembershipOrg.identityId,
+          identityId: identityMembershipOrg.identity.id,
           configurationType,
           jwksUrl,
           encryptedJwksCaCert,
@@ -352,7 +357,7 @@ export const identityJwtAuthServiceFactory = ({
 
       return doc;
     });
-    return { ...identityJwtAuth, orgId: identityMembershipOrg.orgId, jwksCaCert, publicKeys };
+    return { ...identityJwtAuth, orgId: identityMembershipOrg.scopeOrgId, jwksCaCert, publicKeys };
   };
 
   const updateJwtAuth = async ({
@@ -374,7 +379,13 @@ export const identityJwtAuthServiceFactory = ({
     actor,
     actorOrgId
   }: TUpdateJwtAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.JWT_AUTH)) {
@@ -395,14 +406,14 @@ export const identityJwtAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -465,14 +476,20 @@ export const identityJwtAuthServiceFactory = ({
 
     return {
       ...updatedJwtAuth,
-      orgId: identityMembershipOrg.orgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       jwksCaCert: decryptedJwksCaCert,
       publicKeys: decryptedPublicKeys
     };
   };
 
   const getJwtAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetJwtAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.JWT_AUTH)) {
@@ -484,7 +501,7 @@ export const identityJwtAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
@@ -505,14 +522,20 @@ export const identityJwtAuthServiceFactory = ({
 
     return {
       ...identityJwtAuth,
-      orgId: identityMembershipOrg.orgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       jwksCaCert: decryptedJwksCaCert,
       publicKeys: decryptedPublicKeys
     };
   };
 
   const revokeJwtAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TRevokeJwtAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) {
       throw new NotFoundError({ message: "Failed to find identity" });
     }
@@ -526,7 +549,7 @@ export const identityJwtAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
@@ -535,13 +558,13 @@ export const identityJwtAuthServiceFactory = ({
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
-      identityMembershipOrg.identityId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.identity.id,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
 
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.orgId);
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
       shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,
@@ -564,7 +587,7 @@ export const identityJwtAuthServiceFactory = ({
       const deletedJwtAuth = await identityJwtAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.JWT_AUTH }, tx);
 
-      return { ...deletedJwtAuth?.[0], orgId: identityMembershipOrg.orgId };
+      return { ...deletedJwtAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
 
     return revokedIdentityJwtAuth;

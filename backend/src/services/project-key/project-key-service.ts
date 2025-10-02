@@ -1,25 +1,25 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { AccessScope, ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 
-import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TProjectKeyDALFactory } from "./project-key-dal";
 import { TGetLatestProjectKeyDTO, TUploadProjectKeyDTO } from "./project-key-types";
 
 type TProjectKeyServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   projectKeyDAL: TProjectKeyDALFactory;
-  projectMembershipDAL: TProjectMembershipDALFactory;
+  membershipUserDAL: TMembershipUserDALFactory;
 };
 
 export type TProjectKeyServiceFactory = ReturnType<typeof projectKeyServiceFactory>;
 
 export const projectKeyServiceFactory = ({
   projectKeyDAL,
-  projectMembershipDAL,
+  membershipUserDAL,
   permissionService
 }: TProjectKeyServiceFactoryDep) => {
   const uploadProjectKeys = async ({
@@ -42,9 +42,10 @@ export const projectKeyServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
 
-    const receiverMembership = await projectMembershipDAL.findOne({
-      userId: receiverId,
-      projectId
+    const receiverMembership = await membershipUserDAL.findOne({
+      actorUserId: receiverId,
+      scopeProjectId: projectId,
+      scope: AccessScope.Project
     });
     if (!receiverMembership)
       throw new BadRequestError({

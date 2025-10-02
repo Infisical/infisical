@@ -1,4 +1,4 @@
-import { AccessScope, TableName } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, TableName } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
@@ -13,20 +13,34 @@ import {
   TDeleteRoleDTO,
   TGetRoleByIdDTO,
   TGetRoleBySlugDTO,
+  TGetUserPermissionDTO,
   TListRoleDTO,
   TUpdateRoleDTO
 } from "./role-types";
 import { TProjectDALFactory } from "../project/project-dal";
+import { packRules } from "@casl/ability/extra";
+import { requestContext } from "@fastify/request-context";
+import { TIdentityDALFactory } from "../identity/identity-dal";
+import { TUserDALFactory } from "../user/user-dal";
+import { ActorType } from "../auth/auth-type";
 
 type TRoleServiceFactoryDep = {
   roleDAL: TRoleDALFactory;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
+  userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export type TRoleServiceFactory = ReturnType<typeof roleServiceFactory>;
 
-export const roleServiceFactory = ({ roleDAL, permissionService, projectDAL }: TRoleServiceFactoryDep) => {
+export const roleServiceFactory = ({
+  roleDAL,
+  permissionService,
+  projectDAL,
+  identityDAL,
+  userDAL
+}: TRoleServiceFactoryDep) => {
   const orgRoleFactory = newOrgRoleFactory({
     permissionService
   });
@@ -186,12 +200,65 @@ export const roleServiceFactory = ({ roleDAL, permissionService, projectDAL }: T
     return { ...role, [scope.key]: scope.value, permissions: unpackPermissions(role.permissions) };
   };
 
+  const getUserPermission = async (dto: TGetUserPermissionDTO) => {
+    if (dto.scopeData.scope === AccessScope.Organization) {
+      const { permission, memberships } = await permissionService.getOrgPermission(
+        dto.permission.type,
+        dto.permission.id,
+        dto.permission.orgId,
+        dto.permission.authMethod,
+        dto.permission.orgId
+      );
+      return { permissions: packRules(permission.rules), memberships, assumedPrivilegeDetails: undefined };
+    }
+
+    if (dto.scopeData.scope === AccessScope.Project) {
+      const { permission, memberships } = await permissionService.getProjectPermission({
+        actor: dto.permission.type,
+        actorId: dto.permission.id,
+        actionProjectType: ActionProjectType.Any,
+        actorAuthMethod: dto.permission.authMethod,
+        projectId: dto.scopeData.projectId,
+        actorOrgId: dto.permission.orgId
+      });
+
+      const assumedPrivilegeDetailsCtx = requestContext.get("assumedPrivilegeDetails");
+      const isAssumingPrivilege = assumedPrivilegeDetailsCtx?.projectId === dto.scopeData.projectId;
+      const assumedPrivilegeDetails = isAssumingPrivilege
+        ? {
+            actorId: assumedPrivilegeDetailsCtx?.actorId,
+            actorType: assumedPrivilegeDetailsCtx?.actorType,
+            actorName: "",
+            actorEmail: ""
+          }
+        : undefined;
+
+      if (assumedPrivilegeDetails?.actorType === ActorType.IDENTITY) {
+        const identityDetails = await identityDAL.findById(assumedPrivilegeDetails.actorId);
+        if (!identityDetails)
+          throw new NotFoundError({ message: `Identity with ID ${assumedPrivilegeDetails.actorId} not found` });
+        assumedPrivilegeDetails.actorName = identityDetails.name;
+      } else if (assumedPrivilegeDetails?.actorType === ActorType.USER) {
+        const userDetails = await userDAL.findById(assumedPrivilegeDetails?.actorId);
+        if (!userDetails)
+          throw new NotFoundError({ message: `User with ID ${assumedPrivilegeDetails.actorId} not found` });
+        assumedPrivilegeDetails.actorName = `${userDetails?.firstName} ${userDetails?.lastName || ""}`;
+        assumedPrivilegeDetails.actorEmail = userDetails?.email || "";
+      }
+
+      return { permissions: packRules(permission.rules), memberships, assumedPrivilegeDetails };
+    }
+
+    throw new BadRequestError({ message: "Invalid scope defined" });
+  };
+
   return {
     createRole,
     updateRole,
     deleteRole,
     listRoles,
     getRoleById,
-    getRoleBySlug
+    getRoleBySlug,
+    getUserPermission
   };
 };
