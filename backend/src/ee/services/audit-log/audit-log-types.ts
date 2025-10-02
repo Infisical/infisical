@@ -3710,6 +3710,7 @@ interface PamSessionStartEvent {
   type: EventType.PAM_SESSION_START;
   metadata: {
     sessionId: string;
+    accountName: string;
   };
 }
 
@@ -3717,6 +3718,7 @@ interface PamSessionLogsUpdateEvent {
   type: EventType.PAM_SESSION_LOGS_UPDATE;
   metadata: {
     sessionId: string;
+    accountName: string;
   };
 }
 
@@ -3763,6 +3765,7 @@ interface PamFolderDeleteEvent {
   type: EventType.PAM_FOLDER_DELETE;
   metadata: {
     folderId: string;
+    folderName: string;
   };
 }
 
@@ -3778,6 +3781,7 @@ interface PamAccountAccessEvent {
   type: EventType.PAM_ACCOUNT_ACCESS;
   metadata: {
     accountId: string;
+    accountName: string;
     duration?: string;
   };
 }
@@ -3807,6 +3811,7 @@ interface PamAccountUpdateEvent {
 interface PamAccountDeleteEvent {
   type: EventType.PAM_ACCOUNT_DELETE;
   metadata: {
+    accountName: string;
     accountId: string;
     resourceId: string;
     resourceType: string;

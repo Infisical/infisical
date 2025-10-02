@@ -34,12 +34,13 @@ export const BasePamAccountSchemaWithResource = BasePamAccountSchema.extend({
 });
 
 export const BaseCreatePamAccountSchema = z.object({
+  resourceId: z.string().uuid(),
   folderId: z.string().uuid().optional(),
   name: slugSchema({ field: "name" }),
-  description: z.string().max(512).optional()
+  description: z.string().max(512).nullable().optional()
 });
 
 export const BaseUpdatePamAccountSchema = z.object({
   name: slugSchema({ field: "name" }).optional(),
-  description: z.string().max(512).optional()
+  description: z.string().max(512).nullable().optional()
 });

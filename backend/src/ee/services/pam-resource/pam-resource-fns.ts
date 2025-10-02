@@ -2,7 +2,7 @@ import { TPamResources } from "@app/db/schemas";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { TPamAccountCredentials, TPamResource, TPamResourceConnectionDetails } from "./pam-resource-types";
+import { TPamResource, TPamResourceConnectionDetails } from "./pam-resource-types";
 import { getPostgresResourceListItem } from "./postgres/postgres-resource-fns";
 
 export const listResourceOptions = () => {
@@ -11,17 +11,17 @@ export const listResourceOptions = () => {
 
 // Resource
 export const encryptResourceConnectionDetails = async ({
-  orgId,
+  projectId,
   connectionDetails,
   kmsService
 }: {
-  orgId: string;
+  projectId: string;
   connectionDetails: TPamResourceConnectionDetails;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 }) => {
   const { encryptor } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.Organization,
-    orgId
+    type: KmsDataKey.SecretManager,
+    projectId
   });
 
   const { cipherTextBlob: encryptedConnectionDetailsBlob } = encryptor({
@@ -32,17 +32,17 @@ export const encryptResourceConnectionDetails = async ({
 };
 
 export const decryptResourceConnectionDetails = async ({
-  orgId,
+  projectId,
   encryptedConnectionDetails,
   kmsService
 }: {
-  orgId: string;
+  projectId: string;
   encryptedConnectionDetails: Buffer;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 }) => {
   const { decryptor } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.Organization,
-    orgId
+    type: KmsDataKey.SecretManager,
+    projectId
   });
 
   const decryptedPlainTextBlob = decryptor({
@@ -54,73 +54,15 @@ export const decryptResourceConnectionDetails = async ({
 
 export const decryptResource = async (
   resource: TPamResources,
-  orgId: string,
+  projectId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
   return {
     ...resource,
     connectionDetails: await decryptResourceConnectionDetails({
       encryptedConnectionDetails: resource.encryptedConnectionDetails,
-      orgId,
+      projectId,
       kmsService
     })
   } as TPamResource;
-};
-
-// Account
-export const encryptAccountCredentials = async ({
-  orgId,
-  credentials,
-  kmsService
-}: {
-  orgId: string;
-  credentials: TPamAccountCredentials;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-}) => {
-  const { encryptor } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.Organization,
-    orgId
-  });
-
-  const { cipherTextBlob: encryptedCredentialsBlob } = encryptor({
-    plainText: Buffer.from(JSON.stringify(credentials))
-  });
-
-  return encryptedCredentialsBlob;
-};
-
-export const decryptAccountCredentials = async ({
-  orgId,
-  encryptedCredentials,
-  kmsService
-}: {
-  orgId: string;
-  encryptedCredentials: Buffer;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-}) => {
-  const { decryptor } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.Organization,
-    orgId
-  });
-
-  const decryptedPlainTextBlob = decryptor({
-    cipherTextBlob: encryptedCredentials
-  });
-
-  return JSON.parse(decryptedPlainTextBlob.toString()) as TPamAccountCredentials;
-};
-
-export const decryptAccount = async <T extends { encryptedCredentials: Buffer }>(
-  account: T,
-  orgId: string,
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
-): Promise<T & { credentials: TPamAccountCredentials }> => {
-  return {
-    ...account,
-    credentials: await decryptAccountCredentials({
-      encryptedCredentials: account.encryptedCredentials,
-      orgId,
-      kmsService
-    })
-  } as T & { credentials: TPamAccountCredentials };
 };

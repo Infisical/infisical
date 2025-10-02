@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { TableName } from "../schemas";
+import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
   // PAM Folders
@@ -18,6 +19,19 @@ export async function up(knex: Knex): Promise<void> {
 
       t.string("name").notNullable();
       t.index("name");
+
+      // Enforce uniqueness for sub-folders
+      t.unique(["projectId", "parentId", "name"], {
+        indexName: "uidx_pam_folder_children_name",
+        predicate: knex.whereNotNull("parentId")
+      });
+
+      // Enforce uniqueness for root-level folders
+      t.unique(["projectId", "name"], {
+        indexName: "uidx_pam_folder_root_name",
+        predicate: knex.whereNull("parentId")
+      });
+
       t.text("description").nullable();
 
       t.timestamps(true, true, true);
@@ -35,10 +49,14 @@ export async function up(knex: Knex): Promise<void> {
 
       t.string("name").notNullable();
       t.index("name");
-      t.string("gatewayId").notNullable();
+
+      t.uuid("gatewayId").notNullable();
+      t.foreign("gatewayId").references("id").inTable(TableName.GatewayV2);
       t.index("gatewayId");
+
       t.string("resourceType").notNullable();
       t.index("resourceType");
+
       t.binary("encryptedConnectionDetails").notNullable();
 
       t.timestamps(true, true, true);
@@ -59,13 +77,25 @@ export async function up(knex: Knex): Promise<void> {
       t.index("folderId");
 
       t.uuid("resourceId").notNullable();
-      t.foreign("resourceId").references("id").inTable(TableName.PamResource).onDelete("CASCADE");
+      t.foreign("resourceId").references("id").inTable(TableName.PamResource);
       t.index("resourceId");
 
       t.string("name").notNullable();
       t.index("name");
-      t.text("description").nullable();
 
+      // Enforce uniqueness for folders
+      t.unique(["projectId", "folderId", "name"], {
+        indexName: "uidx_pam_account_children_name",
+        predicate: knex.whereNotNull("folderId")
+      });
+
+      // Enforce uniqueness for root-level
+      t.unique(["projectId", "name"], {
+        indexName: "uidx_pam_account_root_name",
+        predicate: knex.whereNull("folderId")
+      });
+
+      t.text("description").nullable();
       t.binary("encryptedCredentials").notNullable();
 
       t.timestamps(true, true, true);
@@ -106,7 +136,7 @@ export async function up(knex: Knex): Promise<void> {
 
       t.binary("encryptedLogsBlob").nullable();
 
-      t.datetime("expiresAt").nullable(); // null means unlimited duration / no expiry
+      t.datetime("expiresAt").notNullable();
 
       t.datetime("startedAt").nullable(); // Not when the row is created, but when the end-to-end connection between user and resource is established
       t.datetime("endedAt").nullable();
@@ -115,6 +145,11 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
   }
+
+  await createOnUpdateTrigger(knex, TableName.PamFolder);
+  await createOnUpdateTrigger(knex, TableName.PamResource);
+  await createOnUpdateTrigger(knex, TableName.PamAccount);
+  await createOnUpdateTrigger(knex, TableName.PamSession);
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -122,4 +157,9 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.PamAccount);
   await knex.schema.dropTableIfExists(TableName.PamResource);
   await knex.schema.dropTableIfExists(TableName.PamFolder);
+
+  await dropOnUpdateTrigger(knex, TableName.PamSession);
+  await dropOnUpdateTrigger(knex, TableName.PamAccount);
+  await dropOnUpdateTrigger(knex, TableName.PamResource);
+  await dropOnUpdateTrigger(knex, TableName.PamFolder);
 }

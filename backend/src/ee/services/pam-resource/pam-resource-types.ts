@@ -25,22 +25,6 @@ export type TUpdateResourceDTO = Partial<Omit<TCreateResourceDTO, "resourceType"
   resourceId: string;
 };
 
-// Account DTOs
-export type TCreateAccountDTO = Pick<TPamAccount, "name" | "description" | "credentials" | "folderId" | "resourceId">;
-
-export type TUpdateAccountDTO = Partial<Omit<TCreateAccountDTO, "folderId" | "resourceId">> & {
-  accountId: string;
-};
-
-export type TAccessAccountDTO = {
-  accountId: string;
-  actorEmail: string;
-  actorIp: string;
-  actorName: string;
-  actorUserAgent: string;
-  duration?: number;
-};
-
 // Resource factory
 export type TPamResourceFactoryValidateConnection<T extends TPamResourceConnectionDetails> = () => Promise<T>;
 export type TPamResourceFactoryValidateAccountCredentials<C extends TPamAccountCredentials> = (

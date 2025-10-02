@@ -138,6 +138,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.PAM_FOLDER_DELETE,
           metadata: {
+            folderName: folder.name,
             folderId: req.params.folderId
           }
         }

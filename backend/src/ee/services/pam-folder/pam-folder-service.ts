@@ -3,7 +3,8 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, TPamFolders } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -50,26 +51,24 @@ export const pamFolderServiceFactory = ({
       }
     }
 
-    const existingFolder = await pamFolderDAL.findOne({
-      name,
-      parentId: parentId || null,
-      projectId
-    });
-
-    if (existingFolder) {
-      throw new BadRequestError({
-        message: `Folder with name '${name}' already exists for this parent`
+    try {
+      const folder = await pamFolderDAL.create({
+        name,
+        description: description ?? null,
+        parentId: parentId || null,
+        projectId
       });
+
+      return folder;
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({
+          message: `Folder with name '${name}' already exists for this path`
+        });
+      }
+
+      throw err;
     }
-
-    const folder = await pamFolderDAL.create({
-      name,
-      description: description ?? null,
-      parentId: parentId || null,
-      projectId
-    });
-
-    return folder;
   };
 
   const updateFolder = async ({ id, name, description }: TUpdateFolderDTO, actor: OrgServiceActor) => {
@@ -104,27 +103,23 @@ export const pamFolderServiceFactory = ({
       updateDoc.description = description;
     }
 
-    if (name && name !== folder.name) {
-      const existingFolder = await pamFolderDAL.findOne({
-        name,
-        parentId: folder.parentId || null,
-        projectId: folder.projectId
-      });
-
-      if (existingFolder) {
-        throw new BadRequestError({
-          message: `Folder with name '${name}' already exists for this parent`
-        });
-      }
-    }
-
     if (Object.keys(updateDoc).length === 0) {
       return folder;
     }
 
-    const updatedFolder = await pamFolderDAL.updateById(id, updateDoc);
+    try {
+      const updatedFolder = await pamFolderDAL.updateById(id, updateDoc);
 
-    return updatedFolder;
+      return updatedFolder;
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({
+          message: `Folder with name '${name}' already exists for this path`
+        });
+      }
+
+      throw err;
+    }
   };
 
   const deleteFolder = async (id: string, actor: OrgServiceActor) => {

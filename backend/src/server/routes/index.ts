@@ -66,9 +66,10 @@ import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
+import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
+import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
-import { pamAccountDALFactory } from "@app/ee/services/pam-resource/pam-account-dal";
 import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
 import { pamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
@@ -2123,14 +2124,22 @@ export const registerRoutes = async (
 
   const pamResourceService = pamResourceServiceFactory({
     pamResourceDAL,
-    pamSessionDAL,
-    pamAccountDAL,
-    pamFolderDAL,
-    projectDAL,
     permissionService,
     licenseService,
     kmsService,
+    gatewayV2Service
+  });
+
+  const pamAccountService = pamAccountServiceFactory({
+    pamAccountDAL,
     gatewayV2Service,
+    kmsService,
+    licenseService,
+    pamFolderDAL,
+    pamResourceDAL,
+    pamSessionDAL,
+    permissionService,
+    projectDAL,
     userDAL
   });
 
@@ -2282,6 +2291,7 @@ export const registerRoutes = async (
     notification: notificationService,
     pamFolder: pamFolderService,
     pamResource: pamResourceService,
+    pamAccount: pamAccountService,
     pamSession: pamSessionService,
     upgradePath: upgradePathService
   });

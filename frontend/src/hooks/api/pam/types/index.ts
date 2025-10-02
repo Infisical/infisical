@@ -72,13 +72,11 @@ export type TUpdatePamAccountDTO = Partial<
   Pick<TPamAccount, "name" | "description" | "credentials">
 > & {
   accountId: string;
-  resourceId: string;
   resourceType: PamResourceType;
 };
 
 export type TDeletePamAccountDTO = {
   accountId: string;
-  resourceId: string;
   resourceType: PamResourceType;
 };
 

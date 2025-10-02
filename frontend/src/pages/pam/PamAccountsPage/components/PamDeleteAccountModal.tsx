@@ -16,7 +16,6 @@ export const PamDeleteAccountModal = ({ isOpen, onOpenChange, account }: Props) 
   const {
     id: accountId,
     name,
-    resourceId,
     resource: { resourceType }
   } = account;
 
@@ -24,7 +23,6 @@ export const PamDeleteAccountModal = ({ isOpen, onOpenChange, account }: Props) 
     try {
       await deletePamAccount.mutateAsync({
         accountId,
-        resourceId,
         resourceType
       });
 

@@ -23,7 +23,8 @@ import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
 import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
-import { registerPamAccountRouter } from "./pam-account-router";
+import { PAM_ACCOUNT_REGISTER_ROUTER_MAP } from "./pam-account-routers";
+import { registerPamAccountRouter } from "./pam-account-routers/pam-account-router";
 import { registerPamFolderRouter } from "./pam-folder-router";
 import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
 import { registerPamResourceRouter } from "./pam-resource-routers/pam-resource-router";
@@ -172,21 +173,39 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     { prefix: "/kmip" }
   );
 
-  await server.register(registerPamFolderRouter, { prefix: "/pam/folders" });
-  await server.register(registerPamAccountRouter, { prefix: "/pam/accounts" });
-  await server.register(registerPamSessionRouter, { prefix: "/pam/sessions" });
-
   await server.register(
-    async (pamResourceRouter) => {
-      await pamResourceRouter.register(registerPamResourceRouter);
+    async (pamRouter) => {
+      await pamRouter.register(registerPamFolderRouter, { prefix: "/folders" });
+      await pamRouter.register(registerPamSessionRouter, { prefix: "/sessions" });
 
-      // Provider-specific endpoints
-      await Promise.all(
-        Object.entries(PAM_RESOURCE_REGISTER_ROUTER_MAP).map(([provider, router]) =>
-          pamResourceRouter.register(router, { prefix: `/${provider}` })
-        )
+      await pamRouter.register(
+        async (pamAccountRouter) => {
+          await pamAccountRouter.register(registerPamAccountRouter);
+
+          // Provider-specific endpoints
+          await Promise.all(
+            Object.entries(PAM_ACCOUNT_REGISTER_ROUTER_MAP).map(([provider, router]) =>
+              pamAccountRouter.register(router, { prefix: `/${provider}` })
+            )
+          );
+        },
+        { prefix: "/accounts" }
+      );
+
+      await pamRouter.register(
+        async (pamResourceRouter) => {
+          await pamResourceRouter.register(registerPamResourceRouter);
+
+          // Provider-specific endpoints
+          await Promise.all(
+            Object.entries(PAM_RESOURCE_REGISTER_ROUTER_MAP).map(([provider, router]) =>
+              pamResourceRouter.register(router, { prefix: `/${provider}` })
+            )
+          );
+        },
+        { prefix: "/resources" }
       );
     },
-    { prefix: "/pam/resources" }
+    { prefix: "/pam" }
   );
 };

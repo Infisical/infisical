@@ -100,7 +100,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
     secretEvents.includes(eventType)
   );
   const showSecretsSection =
-    project?.type !== ProjectType.PAM &&
+    selectedProject?.type !== ProjectType.PAM &&
     (hasSecretEventFilter || currentSelectedEventTypes.length === 0);
 
   const filteredEventTypes = useMemo(() => {

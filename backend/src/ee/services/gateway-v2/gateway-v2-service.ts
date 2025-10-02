@@ -274,7 +274,6 @@ export const gatewayV2ServiceFactory = ({
     gatewayId: string;
     targetHost: string;
     targetPort: number;
-    actorMetadata?: { sessionId?: string; resourceType?: string };
   }) => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
     if (!gateway) {
@@ -817,7 +816,20 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
-    return gatewayV2DAL.deleteById(gateway.id);
+    try {
+      return await gatewayV2DAL.deleteById(gateway.id);
+    } catch (err) {
+      if (
+        err instanceof DatabaseError &&
+        (err.error as { code: string })?.code === DatabaseErrorCode.ForeignKeyViolation
+      ) {
+        throw new BadRequestError({
+          message: "Failed to delete gateway because it is attached to active resources"
+        });
+      }
+
+      throw err;
+    }
   };
 
   const getPamSessionKey = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {

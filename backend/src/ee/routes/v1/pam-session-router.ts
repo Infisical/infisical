@@ -32,7 +32,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { credentials, projectId } = await server.services.pamResource.getSessionCredentials(
+      const { credentials, projectId, account } = await server.services.pamAccount.getSessionCredentials(
         req.params.sessionId,
         req.permission
       );
@@ -44,7 +44,8 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.PAM_SESSION_START,
           metadata: {
-            sessionId: req.params.sessionId
+            sessionId: req.params.sessionId,
+            accountName: account.name
           }
         }
       });
@@ -93,7 +94,8 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.PAM_SESSION_LOGS_UPDATE,
           metadata: {
-            sessionId: req.params.sessionId
+            sessionId: req.params.sessionId,
+            accountName: session.accountName
           }
         }
       });

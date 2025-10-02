@@ -16,13 +16,10 @@ type Props = {
 export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) => {
   const [duration, setDuration] = useState("4h");
 
-  const isDurationValid = useMemo(() => ms(duration || "1s") > 0, [duration]);
+  const isDurationValid = useMemo(() => duration && ms(duration || "1s") > 0, [duration]);
 
   const command = useMemo(
-    () =>
-      account
-        ? `infisical pam access ${account.id}${duration ? ` --duration ${duration}` : ""}`
-        : "",
+    () => (account ? `infisical pam access ${account.id} --duration ${duration}` : ""),
     [account, duration]
   );
 

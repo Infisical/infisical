@@ -17,7 +17,7 @@ export const PamResourceHeader = ({ resourceType, onBack }: Props) => {
       />
       <div>
         <div className="flex items-center text-mineshaft-300">{details.name}</div>
-        <p className="text-sm leading-4 text-mineshaft-400">External resource</p>
+        <p className="text-sm leading-4 text-mineshaft-400">Resource</p>
       </div>
       {onBack && (
         <button

@@ -15,7 +15,7 @@ export const Route = createFileRoute(
         {
           label: "Access Control",
           link: linkOptions({
-            to: "/projects/secret-scanning/$projectId/access-management",
+            to: "/projects/pam/$projectId/access-management",
             params: {
               projectId: params.projectId
             },

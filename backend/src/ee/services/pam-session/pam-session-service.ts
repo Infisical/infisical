@@ -53,7 +53,7 @@ export const pamSessionServiceFactory = ({
     );
 
     return {
-      session: await decryptSession(session, actor.orgId, kmsService)
+      session: await decryptSession(session, session.projectId, kmsService)
     };
   };
 
@@ -75,7 +75,7 @@ export const pamSessionServiceFactory = ({
     const sessions = await pamSessionDAL.find({ projectId });
 
     return {
-      sessions: await Promise.all(sessions.map((session) => decryptSession(session, actor.orgId, kmsService)))
+      sessions: await Promise.all(sessions.map((session) => decryptSession(session, projectId, kmsService)))
     };
   };
 
@@ -112,8 +112,8 @@ export const pamSessionServiceFactory = ({
     );
 
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: project.orgId
+      type: KmsDataKey.SecretManager,
+      projectId: session.projectId
     });
 
     const { cipherTextBlob } = encryptor({

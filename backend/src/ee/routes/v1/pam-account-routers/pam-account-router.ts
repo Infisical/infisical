@@ -34,7 +34,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const response = await server.services.pamResource.listAccounts(req.query.projectId, req.permission);
+      const response = await server.services.pamAccount.list(req.query.projectId, req.permission);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -55,21 +55,18 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/:accountId/access",
+    url: "/access",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       description: "Access PAM account",
-      params: z.object({
-        accountId: z.string().uuid()
-      }),
       body: z.object({
+        accountId: z.string().uuid(),
         duration: z
           .string()
-          .optional()
+          .min(1)
           .transform((val, ctx) => {
-            if (val === undefined) return undefined;
             const parsedMs = ms(val);
 
             if (typeof parsedMs !== "number" || parsedMs <= 0) {
@@ -98,13 +95,13 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      // To prevent type errors when accessing req.auth
       if (req.auth.authMode !== AuthMode.JWT) {
         throw new BadRequestError({ message: "You can only access PAM accounts using JWT auth tokens." });
       }
 
-      const response = await server.services.pamResource.accessAccount(
+      const response = await server.services.pamAccount.access(
         {
-          accountId: req.params.accountId,
           actorEmail: req.auth.user.email ?? "",
           actorIp: req.realIp,
           actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
@@ -121,7 +118,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.PAM_ACCOUNT_ACCESS,
           metadata: {
-            accountId: req.params.accountId,
+            accountId: req.body.accountId,
+            accountName: response.account.name,
             duration: req.body.duration ? new Date(req.body.duration).toISOString() : undefined
           }
         }

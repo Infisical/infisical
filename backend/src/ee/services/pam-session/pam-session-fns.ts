@@ -5,17 +5,17 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TPamSanitizedSession, TPamSessionCommandLog } from "./pam-session.types";
 
 export const decryptSessionCommandLogs = async ({
-  orgId,
+  projectId,
   encryptedLogs,
   kmsService
 }: {
-  orgId: string;
+  projectId: string;
   encryptedLogs: Buffer;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 }) => {
   const { decryptor } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.Organization,
-    orgId
+    type: KmsDataKey.SecretManager,
+    projectId
   });
 
   const decryptedPlainTextBlob = decryptor({
@@ -27,14 +27,14 @@ export const decryptSessionCommandLogs = async ({
 
 export const decryptSession = async (
   session: TPamSessions,
-  orgId: string,
+  projectId: string,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
   return {
     ...session,
     commandLogs: session.encryptedLogsBlob
       ? await decryptSessionCommandLogs({
-          orgId,
+          projectId,
           encryptedLogs: session.encryptedLogsBlob,
           kmsService
         })

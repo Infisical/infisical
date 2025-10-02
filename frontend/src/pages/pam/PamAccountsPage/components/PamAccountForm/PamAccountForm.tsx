@@ -79,7 +79,6 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
     try {
       const updatedAccount = await updatePamAccount.mutateAsync({
         accountId: account.id,
-        resourceId: account.resourceId,
         resourceType: account.resource.resourceType,
         ...formData
       });
