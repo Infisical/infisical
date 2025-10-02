@@ -101,6 +101,9 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
 
                 2. Select **AWS Account** as the **Trusted Entity Type**.
                 3. Select **Another AWS Account** and provide the appropriate Infisical AWS Account ID: use **381492033652** for the **US region**, and **345594589636** for the **EU region**. This restricts the role to be assumed only by Infisical. If self-hosting, provide your AWS account number instead.
+                <Note>
+                  **For Dedicated Instances**: Your AWS account ID differs from the one provided above. Please reach out to Infisical support to obtain your AWS account ID.
+                </Note>
                 4. (Recommended) <strong>Enable "Require external ID"</strong> and input your **Project ID** to strengthen security and mitigate the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html).
                 5. Assign permission as shared in prerequisite.
 
