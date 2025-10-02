@@ -22,7 +22,7 @@ const meta = {
         "outline",
         "org",
         "namespace",
-        "secrets-manager",
+        "secret-manager",
         "secret-scanning",
         "cert-manager",
         "ssh",

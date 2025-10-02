@@ -6,7 +6,7 @@ import { Lottie } from "@app/components/v2";
 import { cn } from "@app/components/v3/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center active:scale-[0.99] justify-center border cursor-pointer gap-1.5 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&>svg]:stroke-[1.5] [&>svg]:mb-[2px] shrink-0 [&>svg]:shrink-0",
+  "inline-flex items-center active:scale-[0.99] justify-center border cursor-pointer gap-1.5 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-75 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&>svg]:stroke-[1.5] [&>svg]:mb-[2px] shrink-0 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -42,7 +42,7 @@ const buttonVariants = cva(
         md: "h-9 px-4 pt-[5px] pb-[3px]",
         lg: "h-10 px-5 pt-[6px] pb-[4px]"
       },
-      isLoading: {
+      isPending: {
         true: "text-transparent"
       },
       isFullWidth: {
@@ -60,17 +60,17 @@ const buttonVariants = cva(
 type ButtonProps = React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
-    isLoading?: boolean;
+    isPending?: boolean;
     isFullWidth?: boolean;
     isDisabled?: boolean;
   };
 
 function Button({
   className,
-  variant,
-  size,
+  variant = "default",
+  size = "md",
   asChild = false,
-  isLoading = false,
+  isPending = false,
   disabled = false,
   isFullWidth = false,
   isDisabled = false,
@@ -82,19 +82,16 @@ function Button({
   return (
     <Comp
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className, isLoading, isFullWidth }))}
-      disabled={isLoading || disabled || isDisabled}
+      className={cn(buttonVariants({ variant, size, className, isPending, isFullWidth }))}
+      disabled={isPending || disabled || isDisabled}
       {...props}
     >
       {children}
-      {isLoading && (
+      {isPending && (
         <Lottie
-          icon={
-            "infisical_loading_bw"
-            // : "infisical_loading"
-          }
+          icon={variant === "default" ? "infisical_loading_bw" : "infisical_loading_white"}
           isAutoPlay
-          className="absolute w-8 rounded-xl opacity-80 shadow-sm"
+          className="absolute w-8 rounded-xl"
         />
       )}
     </Comp>
