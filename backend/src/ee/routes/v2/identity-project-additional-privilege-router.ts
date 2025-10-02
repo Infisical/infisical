@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { AccessScope, MembershipActors, TemporaryPermissionMode } from "@app/db/schemas";
+import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { ApiDocsTags, IDENTITY_ADDITIONAL_PRIVILEGE_V2 } from "@app/lib/api-docs";
@@ -11,7 +11,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedIdentityPrivilegeSchema } from "@app/server/routes/sanitizedSchema/identitiy-additional-privilege";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -73,7 +73,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         },
         data: {
           actorId: req.body.identityId,
-          actorType: MembershipActors.Identity,
+          actorType: ActorType.IDENTITY,
           ...req.body.type,
           name: req.body.slug || slugify(alphaNumericNanoId(8)),
           permissions: req.body.permissions
@@ -84,7 +84,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privilege: {
           ...privilege,
           identityId: req.body.identityId,
-          projectMembershipId: privilege.membershipId,
+          projectMembershipId: "",
           projectId: req.body.projectId,
           slug: privilege.name
         }
@@ -142,23 +142,19 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { membership } = await server.services.convertor.additionalPrivilegeIdToMembershipId(
-        req.params.id,
-        AccessScope.Project,
-        req.permission.orgId
-      );
+      const { privilege: privilegeDoc } = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.id);
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.updateAdditionalPrivilege({
         permission: req.permission,
         scopeData: {
           scope: AccessScope.Project,
-          projectId: membership.scopeProjectId as string,
+          projectId: privilegeDoc.projectId as string,
           orgId: req.permission.orgId
         },
         selector: {
           id: req.params.id,
-          actorId: membership.actorIdentityId as string,
-          actorType: MembershipActors.Identity
+          actorId: privilegeDoc.actorIdentityId as string,
+          actorType: ActorType.IDENTITY
         },
         data: {
           ...req.body,
@@ -170,9 +166,9 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       return {
         privilege: {
           ...privilege,
-          identityId: membership.actorIdentityId as string,
-          projectMembershipId: privilege.membershipId,
-          projectId: membership.scopeProjectId as string,
+          identityId: privilegeDoc.actorIdentityId as string,
+          projectMembershipId: "",
+          projectId: privilegeDoc.projectId as string,
           slug: privilege.name
         }
       };
@@ -205,32 +201,28 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { membership } = await server.services.convertor.additionalPrivilegeIdToMembershipId(
-        req.params.id,
-        AccessScope.Project,
-        req.permission.orgId
-      );
+      const { privilege: privilegeDoc } = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.id);
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.deleteAdditionalPrivilege({
         permission: req.permission,
         scopeData: {
           scope: AccessScope.Project,
-          projectId: membership.scopeProjectId as string,
+          projectId: privilegeDoc.projectId as string,
           orgId: req.permission.orgId
         },
         selector: {
           id: req.params.id,
-          actorId: membership.actorIdentityId as string,
-          actorType: MembershipActors.Identity
+          actorId: privilegeDoc.actorIdentityId as string,
+          actorType: ActorType.IDENTITY
         }
       });
 
       return {
         privilege: {
           ...privilege,
-          identityId: membership.actorIdentityId as string,
-          projectMembershipId: privilege.membershipId,
-          projectId: membership.scopeProjectId as string,
+          identityId: privilegeDoc.actorIdentityId as string,
+          projectMembershipId: "",
+          projectId: privilegeDoc.projectId as string,
           slug: privilege.name
         }
       };
@@ -263,32 +255,28 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { membership } = await server.services.convertor.additionalPrivilegeIdToMembershipId(
-        req.params.id,
-        AccessScope.Project,
-        req.permission.orgId
-      );
+      const { privilege: privilegeDoc } = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.id);
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.getAdditionalPrivilegeById({
         permission: req.permission,
         scopeData: {
           scope: AccessScope.Project,
-          projectId: membership.scopeProjectId as string,
+          projectId: privilegeDoc.projectId as string,
           orgId: req.permission.orgId
         },
         selector: {
           id: req.params.id,
-          actorId: membership.actorIdentityId as string,
-          actorType: MembershipActors.Identity
+          actorId: privilegeDoc.actorIdentityId as string,
+          actorType: ActorType.IDENTITY
         }
       });
 
       return {
         privilege: {
           ...privilege,
-          identityId: membership.actorIdentityId as string,
-          projectMembershipId: privilege.membershipId,
-          projectId: membership.scopeProjectId as string,
+          identityId: privilegeDoc.actorIdentityId as string,
+          projectMembershipId: "",
+          projectId: privilegeDoc.projectId as string,
           slug: privilege.name
         }
       };
@@ -341,7 +329,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           selector: {
             name: req.params.privilegeSlug,
             actorId: req.query.identityId,
-            actorType: MembershipActors.Identity
+            actorType: ActorType.IDENTITY
           }
         }
       );
@@ -350,7 +338,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privilege: {
           ...privilege,
           identityId: req.query.identityId,
-          projectMembershipId: privilege.membershipId,
+          projectMembershipId: "",
           projectId,
           slug: privilege.name
         }
@@ -394,7 +382,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         },
         selector: {
           actorId: req.query.identityId,
-          actorType: MembershipActors.Identity
+          actorType: ActorType.IDENTITY
         }
       });
 
@@ -402,7 +390,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privileges: privileges.map((privilege) => ({
           ...privilege,
           identityId: req.query.identityId,
-          projectMembershipId: privilege.membershipId,
+          projectMembershipId: "",
           projectId: req.query.projectId,
           slug: privilege.name
         }))

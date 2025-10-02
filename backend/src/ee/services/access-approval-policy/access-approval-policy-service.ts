@@ -1,21 +1,18 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { AccessScope, ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
-import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
-import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAccessApprovalRequestDALFactory } from "../access-approval-request/access-approval-request-dal";
 import { TAccessApprovalRequestReviewerDALFactory } from "../access-approval-request/access-approval-request-reviewer-dal";
 import { ApprovalStatus } from "../access-approval-request/access-approval-request-types";
 import { TGroupDALFactory } from "../group/group-dal";
-import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
 import {
   TAccessApprovalPolicyApproverDALFactory,
   TAccessApprovalPolicyBypasserDALFactory
@@ -31,6 +28,8 @@ import {
   TListAccessApprovalPoliciesDTO,
   TUpdateAccessApprovalPolicy
 } from "./access-approval-policy-types";
+import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 
 type TAccessApprovalPolicyServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
@@ -39,14 +38,13 @@ type TAccessApprovalPolicyServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
   accessApprovalPolicyApproverDAL: TAccessApprovalPolicyApproverDALFactory;
   accessApprovalPolicyBypasserDAL: TAccessApprovalPolicyBypasserDALFactory;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   groupDAL: TGroupDALFactory;
   userDAL: Pick<TUserDALFactory, "find">;
   accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "update" | "find" | "resetReviewByPolicyId">;
-  additionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   accessApprovalRequestReviewerDAL: Pick<TAccessApprovalRequestReviewerDALFactory, "update" | "delete">;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find">;
   accessApprovalPolicyEnvironmentDAL: TAccessApprovalPolicyEnvironmentDALFactory;
+  membershipUserDAL: TMembershipUserDALFactory;
 };
 
 export const accessApprovalPolicyServiceFactory = ({
@@ -62,7 +60,7 @@ export const accessApprovalPolicyServiceFactory = ({
   accessApprovalRequestDAL,
   additionalPrivilegeDAL,
   accessApprovalRequestReviewerDAL,
-  orgMembershipDAL
+  membershipUserDAL
 }: TAccessApprovalPolicyServiceFactoryDep): TAccessApprovalPolicyServiceFactory => {
   const $policyExists = async ({
     envId,
@@ -424,13 +422,14 @@ export const accessApprovalPolicyServiceFactory = ({
 
       // Validate user bypassers
       if (bypasserUserIds.length > 0) {
-        const orgMemberships = await orgMembershipDAL.find({
-          $in: { userId: bypasserUserIds },
-          orgId: actorOrgId
+        const orgMemberships = await membershipUserDAL.find({
+          $in: { actorUserId: bypasserUserIds },
+          scopeOrgId: actorOrgId,
+          scope: AccessScope.Organization
         });
 
         if (orgMemberships.length !== bypasserUserIds.length) {
-          const foundUserIdsInOrg = new Set(orgMemberships.map((mem) => mem.userId));
+          const foundUserIdsInOrg = new Set(orgMemberships.map((mem) => mem.actorUserId as string));
           const missingUserIds = bypasserUserIds.filter((id) => !foundUserIdsInOrg.has(id));
           throw new BadRequestError({
             message: `One or more specified bypasser users are not part of the organization or do not exist. Invalid or non-member user IDs: ${missingUserIds.join(", ")}`

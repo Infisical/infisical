@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, ActionProjectType, MembershipActors } from "@app/db/schemas";
+import { AccessScope, ActionProjectType } from "@app/db/schemas";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -11,7 +11,7 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, PermissionBoundaryError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -41,16 +41,6 @@ export const newProjectAdditionalPrivilegesFactory = ({
     });
   };
 
-  const $getActorType = (type: MembershipActors) => {
-    if (type === MembershipActors.Group)
-      throw new InternalServerError({ message: "Group additional privilege not implemented for projects" });
-
-    if (type === MembershipActors.Identity) return ActorType.IDENTITY;
-    if (type === MembershipActors.User) return ActorType.USER;
-
-    throw new InternalServerError({ message: `Group additional privilege not implemented for actor: ${String(type)}` });
-  };
-
   const getScopeField: TAdditionalPrivilegesScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Project) {
       return { key: "projectId" as const, value: dto.projectId };
@@ -61,11 +51,11 @@ export const newProjectAdditionalPrivilegesFactory = ({
   const onCreateAdditionalPrivilegesGuard: TAdditionalPrivilegesScopeFactory["onCreateAdditionalPrivilegesGuard"] =
     async (dto) => {
       const scope = getScopeField(dto.scopeData);
-      const actorType = $getActorType(dto.data.actorType);
 
       const { permission } = await $getPermission(dto.permission, scope.value);
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
 
+      const { actorType } = dto.data;
       const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
       const { permission: targetUserPermission, memberships } = await $getPermission(
         { ...dto.permission, type: actorType, id: dto.data.actorId },
@@ -100,13 +90,12 @@ export const newProjectAdditionalPrivilegesFactory = ({
         (el) => el[actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId"] === dto.data.actorId
       );
       if (!membership) throw new BadRequestError({ message: "Actor doesn't have membership" });
-      return { membershipId: membership.id };
     };
 
   const onUpdateAdditionalPrivilegesGuard: TAdditionalPrivilegesScopeFactory["onUpdateAdditionalPrivilegesGuard"] =
     async (dto) => {
       const scope = getScopeField(dto.scopeData);
-      const actorType = $getActorType(dto.selector.actorType);
+      const { actorType } = dto.selector;
 
       const { permission } = await $getPermission(dto.permission, scope.value);
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
@@ -145,13 +134,12 @@ export const newProjectAdditionalPrivilegesFactory = ({
         (el) => el[actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId"] === dto.selector.actorId
       );
       if (!membership) throw new BadRequestError({ message: "Actor doesn't have membership" });
-      return { membershipId: membership.id };
     };
 
   const onDeleteAdditionalPrivilegesGuard: TAdditionalPrivilegesScopeFactory["onDeleteAdditionalPrivilegesGuard"] =
     async (dto) => {
       const scope = getScopeField(dto.scopeData);
-      const actorType = $getActorType(dto.selector.actorType);
+      const { actorType } = dto.selector;
 
       const { permission } = await $getPermission(dto.permission, scope.value);
       ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
@@ -163,14 +151,13 @@ export const newProjectAdditionalPrivilegesFactory = ({
       });
 
       if (!membership) throw new BadRequestError({ message: "Actor doesn't have membership" });
-      return { membershipId: membership.id };
     };
 
   const onListAdditionalPrivilegesGuard: TAdditionalPrivilegesScopeFactory["onListAdditionalPrivilegesGuard"] = async (
     dto
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const actorType = $getActorType(dto.selector.actorType);
+    const { actorType } = dto.selector;
 
     const permissionSet =
       actorType === ActorType.USER
@@ -186,13 +173,12 @@ export const newProjectAdditionalPrivilegesFactory = ({
     });
 
     if (!membership) throw new BadRequestError({ message: "Actor doesn't have membership" });
-    return { membershipId: membership.id };
   };
 
   const onGetAdditionalPrivilegesByIdGuard: TAdditionalPrivilegesScopeFactory["onGetAdditionalPrivilegesByIdGuard"] =
     async (dto) => {
       const scope = getScopeField(dto.scopeData);
-      const actorType = $getActorType(dto.selector.actorType);
+      const { actorType } = dto.selector;
 
       const permissionSet =
         actorType === ActorType.USER
@@ -208,7 +194,6 @@ export const newProjectAdditionalPrivilegesFactory = ({
       });
 
       if (!membership) throw new BadRequestError({ message: "Actor doesn't have membership" });
-      return { membershipId: membership.id };
     };
 
   return {

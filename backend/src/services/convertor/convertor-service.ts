@@ -86,18 +86,20 @@ export const convertorServiceFactory = ({
     return { membershipId: membership.id, membership };
   };
 
-  const additionalPrivilegeIdToMembershipId = async (privilegeId: string, scope: AccessScope, orgId: string) => {
-    const membership = await additionalPrivilegeDAL.getMembershipById(privilegeId);
-    if (!membership || membership.scope !== scope || membership.scopeOrgId !== orgId) {
+  const additionalPrivilegeIdToDoc = async (privilegeId: string) => {
+    const doc = await additionalPrivilegeDAL.findOne({
+      id: privilegeId
+    });
+    if (!doc) {
       throw new NotFoundError({ message: `Privilege with id ${privilegeId} not found` });
     }
 
-    return { membership, membershipId: membership.id };
+    return { privilege: doc };
   };
-  const additionalPrivilegeNameToId = async (privilegeName: string, membershipId: string) => {
+  const additionalPrivilegeNameToDoc = async (privilegeName: string, projectId: string) => {
     const privilege = await additionalPrivilegeDAL.findOne({
       name: privilegeName,
-      membershipId
+      projectId
     });
     if (!privilege) {
       throw new NotFoundError({ message: `Privilege with slug ${privilegeName} not found` });
@@ -111,8 +113,8 @@ export const convertorServiceFactory = ({
     userMembershipIdToUserId,
     groupMembershipIdToGroupId,
     identityMembershipIdToIdentityId,
-    additionalPrivilegeIdToMembershipId,
-    additionalPrivilegeNameToId,
+    additionalPrivilegeIdToDoc,
+    additionalPrivilegeNameToDoc,
     identityIdToMembershipId
   };
 };

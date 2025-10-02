@@ -11,7 +11,7 @@ import { groupBy } from "@app/lib/fn/array";
 import { omit } from "@app/lib/fn/object";
 
 import { ActorType } from "../auditLogs/enums";
-import { OrgUser, TProjectMembership } from "../users/types";
+import { TUserMembership } from "../users/types";
 import {
   TGetUserOrgPermissionsDTO,
   TGetUserProjectPermissionDTO,
@@ -109,11 +109,11 @@ export const useGetOrgRole = (orgId: string, roleId: string) =>
   });
 
 export const fetchUserOrgPermissions = async ({ orgId }: TGetUserOrgPermissionsDTO) => {
-  if (orgId === "") return { permissions: [], membership: null };
+  if (orgId === "") return { permissions: [], memberships: [] };
 
   const { data } = await apiRequest.get<{
     permissions: PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[];
-    membership: OrgUser;
+    memberships: Array<TUserMembership & { roles: { role: string }[] }>;
   }>(`/api/v1/organization/${orgId}/permissions`);
 
   return data;
@@ -127,7 +127,7 @@ export const useGetUserOrgPermissions = ({ orgId }: TGetUserOrgPermissionsDTO) =
     select: (data) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(data.permissions);
       const ability = createMongoAbility<OrgPermissionSet>(rule, { conditionsMatcher });
-      return { permission: ability, membership: data.membership };
+      return { permission: ability, memberships: data.memberships };
     }
   });
 
@@ -135,7 +135,7 @@ export const fetchUserProjectPermissions = async ({ projectId }: TGetUserProject
   const { data } = await apiRequest.get<{
     data: {
       permissions: PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[];
-      membership: Omit<TProjectMembership, "roles"> & { roles: { role: string }[] };
+      memberships: Array<TUserMembership & { roles: { role: string }[] }>;
       assumedPrivilegeDetails?: {
         actorId: string;
         actorType: ActorType;
@@ -181,11 +181,7 @@ export const useGetUserProjectPermissions = ({ projectId }: TGetUserProjectPermi
           };
         }
       });
-      const membership = {
-        ...data.membership,
-        roles: data.membership.roles.map(({ role }) => role)
-      };
 
-      return { permission: ability, membership };
+      return { permission: ability, memberships: data.memberships };
     }
   });

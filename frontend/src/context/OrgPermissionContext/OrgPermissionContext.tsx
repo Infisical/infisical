@@ -10,6 +10,7 @@ import {
 } from "@app/hooks/api/roles/queries";
 
 import { OrgPermissionSet } from "./types";
+import { useCallback } from "react";
 
 export const useOrgPermission = () => {
   const organizationId = useRouteContext({
@@ -17,16 +18,24 @@ export const useOrgPermission = () => {
     select: (el) => el.organizationId
   });
 
-  const { data } = useSuspenseQuery({
+  const {
+    data: { permission, memberships = [] }
+  } = useSuspenseQuery({
     queryKey: roleQueryKeys.getUserOrgPermissions({ orgId: organizationId }),
     queryFn: () => fetchUserOrgPermissions({ orgId: organizationId }),
     select: (res) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(res.permissions);
       const ability = createMongoAbility<OrgPermissionSet>(rule, { conditionsMatcher });
-      return { permission: ability, membership: res.membership };
+      return { permission: ability, memberships: res.memberships };
     },
     staleTime: Infinity
   });
 
-  return data;
+  const hasOrgRole = useCallback(
+    (role: string) =>
+      memberships?.some((membership) => membership.roles.some((el) => role === el.role)),
+    []
+  );
+
+  return { permission, memberships, hasOrgRole };
 };

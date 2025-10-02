@@ -72,6 +72,13 @@ export type OrgUser = {
   lastLoginTime?: string;
 };
 
+export type TUserMembership = {
+  id: string;
+  scope: string;
+  scopeOrgId: string;
+  actorUserId: string;
+};
+
 export type TProjectMembership = {
   id: string;
   createdAt: string;

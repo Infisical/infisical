@@ -946,12 +946,13 @@ export const superAdminServiceFactory = ({
       }
     }
 
+    const membershipRole = await membershipRoleDAL.findOne({ membershipId });
     const [organizationMembership] = await membershipUserDAL.delete({
       scopeOrgId: organizationId,
       scope: AccessScope.Organization,
       id: membershipId
     });
-    return organizationMembership;
+    return { ...organizationMembership, role: membershipRole.role, orgId: organizationId };
   };
 
   const joinOrganization = async (orgId: string, actor: OrgServiceActor) => {
@@ -988,14 +989,14 @@ export const superAdminServiceFactory = ({
         },
         tx
       );
-      await membershipRoleDAL.create(
+      const membershipRole = await membershipRoleDAL.create(
         {
           membershipId: membership.id,
           role: OrgMembershipRole.Admin
         },
         tx
       );
-      return membership;
+      return { ...membership, role: membershipRole.role, orgId: org.id };
     });
 
     return orgMembership;
@@ -1052,7 +1053,7 @@ export const superAdminServiceFactory = ({
       }
     });
 
-    return orgMembership;
+    return { ...orgMembership, orgId: organizationId, role: "" };
   };
 
   const getIdentities = async ({ offset, limit, searchTerm }: TAdminGetIdentitiesDTO) => {

@@ -1262,7 +1262,12 @@ export const registerRoutes = async (
     projectTemplateService,
     smtpService,
     reminderService,
-    notificationService
+    notificationService,
+    membershipGroupDAL,
+    membershipIdentityDAL,
+    membershipRoleDAL,
+    membershipUserDAL,
+    roleDAL
   });
 
   const projectEnvService = projectEnvServiceFactory({

@@ -37,7 +37,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("scopeNamespaceId").references("id").inTable(TableName.Namespace).onDelete("CASCADE");
 
       t.boolean("isActive").defaultTo(true).notNullable();
-      t.string("status").defaultTo("invited");
+      t.string("status").defaultTo("invited").notNullable();
       t.string("inviteEmail");
       t.datetime("lastInvitedAt");
       t.string("lastLoginAuthMethod");
@@ -139,8 +139,40 @@ export async function up(knex: Knex): Promise<void> {
       t.datetime("temporaryAccessEndTime");
       t.jsonb("permissions").notNullable();
 
-      t.uuid("membershipId").notNullable();
-      t.foreign("membershipId").references("id").inTable(TableName.Membership).onDelete("CASCADE");
+      t.uuid("actorUserId");
+      t.foreign("actorUserId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+      t.uuid("actorIdentityId");
+      t.foreign("actorIdentityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
+
+      t.uuid("orgId");
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+      t.string("projectId", 36);
+      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+      t.uuid("namespaceId");
+      t.foreign("namespaceId").references("id").inTable(TableName.Namespace).onDelete("CASCADE");
+
+      t.check(
+        `(:orgIdColumn: IS NOT NULL AND :namespaceIdColumn: IS NULL AND :projectIdColumn: IS NULL) OR
+         (:namespaceIdColumn: IS NOT NULL AND :orgIdColumn: IS NULL AND :projectIdColumn: IS NULL) OR
+         (:projectIdColumn: IS NOT NULL AND :orgIdColumn: IS NULL AND :namespaceIdColumn: IS NULL)`,
+        {
+          orgIdColumn: "orgId",
+          namespaceIdColumn: "namespaceId",
+          projectIdColumn: "projectId"
+        },
+        "only_one_scope_id"
+      );
+
+      t.check(
+        `(:actorUserIdColumn: IS NOT NULL AND :actorIdentityIdColumn: IS NULL) OR
+         (:actorIdentityIdColumn: IS NOT NULL AND :actorUserIdColumn: IS NULL)
+         `,
+        {
+          actorUserIdColumn: "actorUserId",
+          actorIdentityIdColumn: "actorIdentityId"
+        },
+        "only_one_actor_type"
+      );
       t.timestamps(true, true, true);
     });
 

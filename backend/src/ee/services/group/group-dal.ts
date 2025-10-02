@@ -36,14 +36,21 @@ export const groupDALFactory = (db: TDbClient) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.Groups)
         .where(`${TableName.Groups}.orgId`, orgId)
-        .leftJoin(TableName.OrgRoles, `${TableName.Groups}.roleId`, `${TableName.OrgRoles}.id`)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .join(TableName.Membership, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .join(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .select(selectAllTableCols(TableName.Groups))
         // cr stands for custom role
-        .select(db.ref("id").as("crId").withSchema(TableName.OrgRoles))
-        .select(db.ref("name").as("crName").withSchema(TableName.OrgRoles))
-        .select(db.ref("slug").as("crSlug").withSchema(TableName.OrgRoles))
-        .select(db.ref("description").as("crDescription").withSchema(TableName.OrgRoles))
-        .select(db.ref("permissions").as("crPermission").withSchema(TableName.OrgRoles));
+        .select(db.ref("id").as("crId").withSchema(TableName.Role))
+        .select(db.ref("name").as("crName").withSchema(TableName.Role))
+        .select(db.ref("role").withSchema(TableName.MembershipRole))
+        .select(db.ref("customRoleId").as("roleId").withSchema(TableName.MembershipRole))
+        .select(db.ref("slug").as("crSlug").withSchema(TableName.Role))
+        .select(db.ref("description").as("crDescription").withSchema(TableName.Role))
+        .select(db.ref("permissions").as("crPermission").withSchema(TableName.Role));
+
       return docs.map(({ crId, crDescription, crSlug, crPermission, crName, ...el }) => ({
         ...el,
         customRole: el.roleId

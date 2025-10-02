@@ -1,17 +1,18 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { AccessScope, MembershipActors, TemporaryPermissionMode } from "@app/db/schemas";
+import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { PROJECT_USER_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
+import { NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedUserProjectAdditionalPrivilegeSchema } from "@app/server/routes/sanitizedSchema/user-additional-privilege";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -70,7 +71,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         },
         data: {
           actorId: userId,
-          actorType: MembershipActors.User,
+          actorType: ActorType.USER,
           ...req.body.type,
           name: req.body.slug || slugify(alphaNumericNanoId(8)),
           permissions: req.body.permissions
@@ -127,17 +128,15 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { membership } = await server.services.convertor.additionalPrivilegeIdToMembershipId(
-        req.params.privilegeId,
-        AccessScope.Project,
-        req.permission.orgId
-      );
+      const data = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.privilegeId);
+      if (!data.privilege.actorUserId)
+        throw new NotFoundError({ message: `Privilege with id ${req.params.privilegeId} not found` });
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.updateAdditionalPrivilege({
         permission: req.permission,
         scopeData: {
           scope: AccessScope.Project,
-          projectId: membership.scopeProjectId as string,
+          projectId: data.privilege.projectId as string,
           orgId: req.permission.orgId
         },
         data: {
@@ -151,16 +150,16 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         },
         selector: {
           id: req.params.privilegeId,
-          actorId: membership.actorUserId as string,
-          actorType: MembershipActors.User
+          actorId: data.privilege.actorUserId,
+          actorType: ActorType.USER
         }
       });
 
       return {
         privilege: {
           ...privilege,
-          userId: membership.actorUserId as string,
-          projectId: membership.scopeProjectId as string,
+          userId: data.privilege.actorUserId,
+          projectId: data.privilege.projectId as string,
           slug: privilege.name
         }
       };
@@ -185,31 +184,29 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { membership } = await server.services.convertor.additionalPrivilegeIdToMembershipId(
-        req.params.privilegeId,
-        AccessScope.Project,
-        req.permission.orgId
-      );
+      const data = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.privilegeId);
+      if (!data.privilege.actorUserId)
+        throw new NotFoundError({ message: `Privilege with id ${req.params.privilegeId} not found` });
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.deleteAdditionalPrivilege({
         permission: req.permission,
         scopeData: {
           scope: AccessScope.Project,
-          projectId: membership.scopeProjectId as string,
+          projectId: data.privilege.projectId as string,
           orgId: req.permission.orgId
         },
         selector: {
           id: req.params.privilegeId,
-          actorId: membership.actorUserId as string,
-          actorType: MembershipActors.User
+          actorId: data.privilege.actorUserId,
+          actorType: ActorType.USER
         }
       });
 
       return {
         privilege: {
           ...privilege,
-          userId: membership.actorUserId as string,
-          projectId: membership.scopeProjectId as string,
+          userId: data.privilege.actorUserId,
+          projectId: data.privilege.projectId as string,
           slug: privilege.name
         }
       };
@@ -249,7 +246,7 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         },
         selector: {
           actorId: userId,
-          actorType: MembershipActors.User
+          actorType: ActorType.USER
         }
       });
 
@@ -282,31 +279,29 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { membership } = await server.services.convertor.additionalPrivilegeIdToMembershipId(
-        req.params.privilegeId,
-        AccessScope.Project,
-        req.permission.orgId
-      );
+      const data = await server.services.convertor.additionalPrivilegeIdToDoc(req.params.privilegeId);
+      if (!data.privilege.actorUserId)
+        throw new NotFoundError({ message: `Privilege with id ${req.params.privilegeId} not found` });
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.getAdditionalPrivilegeById({
         permission: req.permission,
         scopeData: {
           scope: AccessScope.Project,
-          projectId: membership.scopeProjectId as string,
+          projectId: data.privilege.projectId as string,
           orgId: req.permission.orgId
         },
         selector: {
           id: req.params.privilegeId,
-          actorId: membership.actorUserId as string,
-          actorType: MembershipActors.User
+          actorId: data.privilege.actorUserId,
+          actorType: ActorType.USER
         }
       });
 
       return {
         privilege: {
           ...privilege,
-          userId: membership.actorUserId as string,
-          projectId: membership.scopeProjectId as string,
+          userId: data.privilege.actorUserId,
+          projectId: data.privilege.projectId as string,
           slug: privilege.name
         }
       };

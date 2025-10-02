@@ -1,3 +1,4 @@
+// eslint-disable-next-line simple-import-sort/imports
 import { RawRule } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
@@ -23,6 +24,7 @@ import {
 import { newNamespaceAdditionalPrivilegesFactory } from "./namespace/namespace-additional-privilege-factory";
 import { newOrgAdditionalPrivilegesFactory } from "./org/org-additional-privilege-factory";
 import { newProjectAdditionalPrivilegesFactory } from "./project/project-additional-privilege-factory";
+import { ActorType } from "../auth/auth-type";
 
 type TAdditionalPrivilegeServiceFactoryDep = {
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
@@ -52,11 +54,14 @@ export const additionalPrivilegeServiceFactory = ({
   const createAdditionalPrivilege = async (dto: TCreateAdditionalPrivilegesDTO) => {
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
-    const { membershipId } = await factory.onCreateAdditionalPrivilegesGuard(dto);
+    await factory.onCreateAdditionalPrivilegesGuard(dto);
+    const scope = factory.getScopeField(dto.scopeData);
+    const dbActorField = data.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
 
     const existingSlug = await additionalPrivilegeDAL.findOne({
       name: data.name,
-      membershipId
+      [dbActorField]: data.actorId,
+      [scope.key]: scope.value
     });
     if (existingSlug) throw new BadRequestError({ message: `Additional privilege with name ${data.name} exist` });
 
@@ -66,8 +71,9 @@ export const additionalPrivilegeServiceFactory = ({
 
     if (!data.isTemporary) {
       const additionalPrivilege = await additionalPrivilegeDAL.create({
-        membershipId,
         name: data.name,
+        [dbActorField]: data.actorId,
+        [scope.key]: scope.value,
         isTemporary: data.isTemporary,
         permissions: JSON.stringify(packRules(data.permissions as RawRule[]))
       });
@@ -83,7 +89,8 @@ export const additionalPrivilegeServiceFactory = ({
 
     const relativeTempAllocatedTimeInMs = ms(data.temporaryRange);
     const additionalPrivilege = await additionalPrivilegeDAL.create({
-      membershipId,
+      [dbActorField]: data.actorId,
+      [scope.key]: scope.value,
       name: data.name,
       isTemporary: data.isTemporary,
       permissions: data.permissions,
@@ -103,11 +110,14 @@ export const additionalPrivilegeServiceFactory = ({
   const updateAdditionalPrivilege = async (dto: TUpdateAdditionalPrivilegesDTO) => {
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
-    const { membershipId } = await factory.onUpdateAdditionalPrivilegesGuard(dto);
+    await factory.onUpdateAdditionalPrivilegesGuard(dto);
+    const scope = factory.getScopeField(dto.scopeData);
+    const dbActorField = dto.selector.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
 
     const existingPrivilege = await additionalPrivilegeDAL.findOne({
       id: dto.selector.id,
-      membershipId
+      [dbActorField]: dto.selector.actorId,
+      [scope.key]: scope.value
     });
     if (!existingPrivilege)
       throw new NotFoundError({ message: `Additional privilege with name ${data.name} doesn't exist` });
@@ -135,8 +145,7 @@ export const additionalPrivilegeServiceFactory = ({
     }
 
     const relativeTempAllocatedTimeInMs = ms(updatedData.temporaryRange);
-    const additionalPrivilege = await additionalPrivilegeDAL.create({
-      membershipId,
+    const additionalPrivilege = await additionalPrivilegeDAL.updateById(existingPrivilege.id, {
       name: updatedData.name,
       isTemporary: updatedData.isTemporary,
       permissions: updatedData.permissions,
@@ -156,11 +165,14 @@ export const additionalPrivilegeServiceFactory = ({
   const deleteAdditionalPrivilege = async (dto: TDeleteAdditionalPrivilegesDTO) => {
     const { scopeData, selector } = dto;
     const factory = scopeFactory[scopeData.scope];
-    const { membershipId } = await factory.onDeleteAdditionalPrivilegesGuard(dto);
+    await factory.onDeleteAdditionalPrivilegesGuard(dto);
+    const scope = factory.getScopeField(dto.scopeData);
+    const dbActorField = dto.selector.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
 
     const existingPrivilege = await additionalPrivilegeDAL.findOne({
       id: selector.id,
-      membershipId
+      [dbActorField]: dto.selector.actorId,
+      [scope.key]: scope.value
     });
     if (!existingPrivilege)
       throw new NotFoundError({ message: `Additional privilege with id ${selector.id} doesn't exist` });
@@ -174,10 +186,14 @@ export const additionalPrivilegeServiceFactory = ({
   const getAdditionalPrivilegeById = async (dto: TGetAdditionalPrivilegesByIdDTO) => {
     const { scopeData, selector } = dto;
     const factory = scopeFactory[scopeData.scope];
-    const { membershipId } = await factory.onGetAdditionalPrivilegesByIdGuard(dto);
+    await factory.onGetAdditionalPrivilegesByIdGuard(dto);
+    const scope = factory.getScopeField(dto.scopeData);
+    const dbActorField = dto.selector.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
+
     const additionalPrivilege = await additionalPrivilegeDAL.findOne({
       id: selector.id,
-      membershipId
+      [dbActorField]: dto.selector.actorId,
+      [scope.key]: scope.value
     });
     if (!additionalPrivilege)
       throw new NotFoundError({ message: `Additional privilege with id ${selector.id} doesn't exist` });
@@ -190,10 +206,14 @@ export const additionalPrivilegeServiceFactory = ({
   const getAdditionalPrivilegeByName = async (dto: TGetAdditionalPrivilegesByNameDTO) => {
     const { scopeData, selector } = dto;
     const factory = scopeFactory[scopeData.scope];
-    const { membershipId } = await factory.onGetAdditionalPrivilegesByIdGuard(dto);
+    await factory.onGetAdditionalPrivilegesByIdGuard(dto);
+    const dbActorField = dto.selector.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
+    const scope = factory.getScopeField(dto.scopeData);
+
     const additionalPrivilege = await additionalPrivilegeDAL.findOne({
       name: selector.name,
-      membershipId
+      [dbActorField]: dto.selector.actorId,
+      [scope.key]: scope.value
     });
     if (!additionalPrivilege)
       throw new NotFoundError({ message: `Additional privilege with name ${selector.name} doesn't exist` });
@@ -206,9 +226,13 @@ export const additionalPrivilegeServiceFactory = ({
   const listAdditionalPrivileges = async (dto: TListAdditionalPrivilegesDTO) => {
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
-    const { membershipId } = await factory.onListAdditionalPrivilegesGuard(dto);
+    await factory.onListAdditionalPrivilegesGuard(dto);
+    const scope = factory.getScopeField(dto.scopeData);
+    const dbActorField = dto.selector.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
+
     const additionalPrivileges = await additionalPrivilegeDAL.find({
-      membershipId
+      [dbActorField]: dto.selector.actorId,
+      [scope.key]: scope.value
     });
 
     return {

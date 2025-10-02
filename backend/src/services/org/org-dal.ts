@@ -305,7 +305,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(
           db.ref("id").withSchema(TableName.Membership),
           db.ref("inviteEmail").withSchema(TableName.Membership),
-          db.ref("actorOrgId").withSchema(TableName.Membership).as("orgId"),
+          db.ref("scopeOrgId").withSchema(TableName.Membership).as("orgId"),
           db.ref("role").withSchema(TableName.MembershipRole),
           db.ref("customRoleId").withSchema(TableName.MembershipRole).as("roleId"),
           db.ref("status").withSchema(TableName.Membership),

@@ -123,7 +123,8 @@ export const orgAdminServiceFactory = ({
         {
           scopeProjectId: projectId,
           actorUserId: actorId,
-          scope: AccessScope.Project
+          scope: AccessScope.Project,
+          scopeOrgId: actorOrgId
         },
         tx
       );

@@ -20,7 +20,7 @@ export const AuditLogsRetentionSection = () => {
   const { mutateAsync: updateAuditLogsRetention } = useUpdateWorkspaceAuditLogsRetention();
 
   const { currentProject } = useProject();
-  const { membership } = useProjectPermission();
+  const { hasProjectRole } = useProjectPermission();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
@@ -82,7 +82,7 @@ export const AuditLogsRetentionSection = () => {
     return null;
   }
 
-  const isAdmin = membership.roles.includes(ProjectMembershipRole.Admin);
+  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   return (
     <>
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">

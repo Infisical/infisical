@@ -1,14 +1,16 @@
-import { AccessScopeData, MembershipActors, TemporaryPermissionMode } from "@app/db/schemas";
+import { AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
 import { OrgServiceActor } from "@app/lib/types";
 
+import { ActorType } from "../auth/auth-type";
+
 export interface TAdditionalPrivilegesScopeFactory {
-  onCreateAdditionalPrivilegesGuard: (arg: TCreateAdditionalPrivilegesDTO) => Promise<{ membershipId: string }>;
-  onUpdateAdditionalPrivilegesGuard: (arg: TUpdateAdditionalPrivilegesDTO) => Promise<{ membershipId: string }>;
-  onDeleteAdditionalPrivilegesGuard: (arg: TDeleteAdditionalPrivilegesDTO) => Promise<{ membershipId: string }>;
-  onListAdditionalPrivilegesGuard: (arg: TListAdditionalPrivilegesDTO) => Promise<{ membershipId: string }>;
+  onCreateAdditionalPrivilegesGuard: (arg: TCreateAdditionalPrivilegesDTO) => Promise<void>;
+  onUpdateAdditionalPrivilegesGuard: (arg: TUpdateAdditionalPrivilegesDTO) => Promise<void>;
+  onDeleteAdditionalPrivilegesGuard: (arg: TDeleteAdditionalPrivilegesDTO) => Promise<void>;
+  onListAdditionalPrivilegesGuard: (arg: TListAdditionalPrivilegesDTO) => Promise<void>;
   onGetAdditionalPrivilegesByIdGuard: (
     arg: TGetAdditionalPrivilegesByIdDTO | TGetAdditionalPrivilegesByNameDTO
-  ) => Promise<{ membershipId: string }>;
+  ) => Promise<void>;
   getScopeField: (scope: AccessScopeData) => { key: "orgId" | "namespaceId" | "projectId"; value: string };
 }
 
@@ -17,7 +19,7 @@ export type TCreateAdditionalPrivilegesDTO = {
   scopeData: AccessScopeData;
   data: {
     actorId: string;
-    actorType: MembershipActors;
+    actorType: ActorType.USER | ActorType.IDENTITY;
     name: string;
     permissions: unknown;
     isTemporary: boolean;
@@ -33,7 +35,7 @@ export type TUpdateAdditionalPrivilegesDTO = {
   selector: {
     id: string;
     actorId: string;
-    actorType: MembershipActors;
+    actorType: ActorType.USER | ActorType.IDENTITY;
   };
   data: Partial<{
     name: string;
@@ -50,7 +52,7 @@ export type TListAdditionalPrivilegesDTO = {
   scopeData: AccessScopeData;
   selector: {
     actorId: string;
-    actorType: MembershipActors;
+    actorType: ActorType.USER | ActorType.IDENTITY;
   };
 };
 
@@ -60,7 +62,7 @@ export type TDeleteAdditionalPrivilegesDTO = {
   selector: {
     id: string;
     actorId: string;
-    actorType: MembershipActors;
+    actorType: ActorType.USER | ActorType.IDENTITY;
   };
 };
 
@@ -70,7 +72,7 @@ export type TGetAdditionalPrivilegesByIdDTO = {
   selector: {
     id: string;
     actorId: string;
-    actorType: MembershipActors;
+    actorType: ActorType.USER | ActorType.IDENTITY;
   };
 };
 
@@ -80,6 +82,6 @@ export type TGetAdditionalPrivilegesByNameDTO = {
   selector: {
     name: string;
     actorId: string;
-    actorType: MembershipActors;
+    actorType: ActorType.USER | ActorType.IDENTITY;
   };
 };

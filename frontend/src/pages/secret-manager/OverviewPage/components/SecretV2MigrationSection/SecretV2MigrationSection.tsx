@@ -38,7 +38,7 @@ export const SecretV2MigrationSection = () => {
         currentProject?.upgradeStatus === ProjectUpgradeStatus.InProgress ? 2000 : false
     }
   );
-  const { membership } = useProjectPermission();
+  const { hasProjectRole } = useProjectPermission();
   const migrateProjectToV3 = useMigrateProjectToV3();
   const { handleSubmit, control, reset } = useForm({ resolver: zodResolver(formSchema) });
   useEffect(() => {
@@ -81,7 +81,7 @@ export const SecretV2MigrationSection = () => {
     }
   };
 
-  const isAdmin = membership?.roles.includes(ProjectMembershipRole.Admin);
+  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   return (
     <div className="mt-4 flex max-w-2xl flex-col rounded-lg border border-primary/50 bg-primary/10 px-6 py-5">
       {isUpgrading && (
