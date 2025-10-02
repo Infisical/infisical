@@ -15,7 +15,6 @@ import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-g
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { TOrgRoleDALFactory } from "./org-role-dal";
 
 type TOrgRoleServiceFactoryDep = {
   orgRoleDAL: TOrgRoleDALFactory;

@@ -2,7 +2,7 @@
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { IdentityAuthMethod } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod } from "@app/db/schemas";
 import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -32,7 +32,7 @@ import { logger } from "@app/lib/logger";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -56,7 +56,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
     TIdentityLdapAuthDALFactory,
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: TKmsServiceFactory;
@@ -80,7 +80,7 @@ export const identityLdapAuthServiceFactory = ({
   identityAccessTokenDAL,
   identityDAL,
   identityLdapAuthDAL,
-  identityOrgMembershipDAL,
+  membershipIdentityDAL,
   licenseService,
   permissionService,
   kmsService,
@@ -92,7 +92,10 @@ export const identityLdapAuthServiceFactory = ({
     const identity = await identityDAL.findOne({ id: identityId });
     if (!identity) throw new NotFoundError({ message: `Identity with ID '${identityId}' not found` });
 
-    const identityOrgMembership = await identityOrgMembershipDAL.findOne({ identityId: identity.id });
+    const identityOrgMembership = await membershipIdentityDAL.findOne({
+      actorIdentityId: identity.id,
+      scope: AccessScope.Organization
+    });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Identity with ID '${identityId}' not found` });
 
     const ldapAuth = await identityLdapAuthDAL.findOne({ identityId: identity.id });
@@ -104,7 +107,7 @@ export const identityLdapAuthServiceFactory = ({
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: identityOrgMembership.orgId
+      orgId: identityOrgMembership.scopeOrgId
     });
 
     const bindDN = decryptor({ cipherTextBlob: ldapAuth.encryptedBindDN }).toString();
@@ -115,7 +118,7 @@ export const identityLdapAuthServiceFactory = ({
 
     const ldapConfig = {
       id: ldapAuth.id,
-      organization: identityOrgMembership.orgId,
+      organization: identityOrgMembership.scopeOrgId,
       url: ldapAuth.url,
       bindDN,
       bindPass,
@@ -147,7 +150,10 @@ export const identityLdapAuthServiceFactory = ({
   };
 
   const login = async ({ identityId }: TLoginLdapAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.findOne({
+      actorIdentityId: identityId,
+      scope: AccessScope.Organization
+    });
 
     if (!identityMembershipOrg) {
       throw new UnauthorizedError({
@@ -163,7 +169,7 @@ export const identityLdapAuthServiceFactory = ({
       });
     }
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     if (!plan.ldap) {
       throw new BadRequestError({
         message:
@@ -172,7 +178,7 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityLdapAuthDAL.transaction(async (tx) => {
-      await identityOrgMembershipDAL.updateById(
+      await membershipIdentityDAL.updateById(
         identityMembershipOrg.id,
         {
           lastLoginAuthMethod: IdentityAuthMethod.LDAP_AUTH,
@@ -240,7 +246,13 @@ export const identityLdapAuthServiceFactory = ({
   }: TAttachLdapAuthDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.LDAP_AUTH)) {
@@ -256,7 +268,7 @@ export const identityLdapAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
@@ -269,7 +281,7 @@ export const identityLdapAuthServiceFactory = ({
       );
     }
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
 
     if (!plan.ldap) {
       throw new BadRequestError({
@@ -299,11 +311,11 @@ export const identityLdapAuthServiceFactory = ({
     const identityLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
       const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
-        orgId: identityMembershipOrg.orgId
+        orgId: identityMembershipOrg.scopeOrgId
       });
 
       const template = templateId
-        ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.orgId)
+        ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.scopeOrgId)
         : undefined;
 
       let ldapConfig: { bindDN: string; bindPass: string; searchBase: string; url: string; ldapCaCertificate?: string };
@@ -357,7 +369,7 @@ export const identityLdapAuthServiceFactory = ({
 
       const doc = await identityLdapAuthDAL.create(
         {
-          identityId: identityMembershipOrg.identityId,
+          identityId: identityMembershipOrg.identity.id,
           encryptedBindDN,
           encryptedBindPass,
           searchBase: ldapConfig.searchBase,
@@ -379,7 +391,7 @@ export const identityLdapAuthServiceFactory = ({
       );
       return doc;
     });
-    return { ...identityLdapAuth, orgId: identityMembershipOrg.orgId };
+    return { ...identityLdapAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   const updateLdapAuth = async ({
@@ -405,7 +417,13 @@ export const identityLdapAuthServiceFactory = ({
     lockoutDurationSeconds,
     lockoutCounterResetSeconds
   }: TUpdateLdapAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.LDAP_AUTH)) {
@@ -426,7 +444,7 @@ export const identityLdapAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
@@ -439,7 +457,7 @@ export const identityLdapAuthServiceFactory = ({
       );
     }
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
 
     if (!plan.ldap) {
       throw new BadRequestError({
@@ -468,11 +486,11 @@ export const identityLdapAuthServiceFactory = ({
 
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.orgId
+      orgId: identityMembershipOrg.scopeOrgId
     });
 
     const template = templateId
-      ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.orgId)
+      ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.scopeOrgId)
       : undefined;
     let config: {
       bindDN?: string;
@@ -558,11 +576,17 @@ export const identityLdapAuthServiceFactory = ({
       lockoutCounterResetSeconds
     });
 
-    return { ...updatedLdapAuth, orgId: identityMembershipOrg.orgId };
+    return { ...updatedLdapAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   const getLdapAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetLdapAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.LDAP_AUTH)) {
@@ -576,14 +600,14 @@ export const identityLdapAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.orgId
+      orgId: identityMembershipOrg.scopeOrgId
     });
 
     const bindDN = decryptor({ cipherTextBlob: ldapIdentityAuth.encryptedBindDN }).toString();
@@ -593,7 +617,7 @@ export const identityLdapAuthServiceFactory = ({
       : undefined;
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
-    return { ...ldapIdentityAuth, orgId: identityMembershipOrg.orgId, bindDN, bindPass, ldapCaCertificate };
+    return { ...ldapIdentityAuth, orgId: identityMembershipOrg.scopeOrgId, bindDN, bindPass, ldapCaCertificate };
   };
 
   const revokeIdentityLdapAuth = async ({
@@ -603,7 +627,13 @@ export const identityLdapAuthServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TRevokeLdapAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.LDAP_AUTH)) {
       throw new BadRequestError({
@@ -613,7 +643,7 @@ export const identityLdapAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
@@ -621,13 +651,13 @@ export const identityLdapAuthServiceFactory = ({
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
-      identityMembershipOrg.identityId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.identity.id,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
 
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.orgId);
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
       shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,
@@ -651,7 +681,7 @@ export const identityLdapAuthServiceFactory = ({
       const [deletedLdapAuth] = await identityLdapAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.LDAP_AUTH }, tx);
 
-      return { ...deletedLdapAuth, orgId: identityMembershipOrg.orgId };
+      return { ...deletedLdapAuth, orgId: identityMembershipOrg.scopeOrgId };
     });
     return revokedIdentityLdapAuth;
   };
@@ -740,7 +770,13 @@ export const identityLdapAuthServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TClearLdapAuthLockoutsDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.LDAP_AUTH)) {
@@ -752,7 +788,7 @@ export const identityLdapAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
@@ -762,7 +798,7 @@ export const identityLdapAuthServiceFactory = ({
       pattern: `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:*`
     });
 
-    return { deleted, identityId, orgId: identityMembershipOrg.orgId };
+    return { deleted, identityId, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   return {

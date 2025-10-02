@@ -1,26 +1,25 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ProjectMembershipRole, ProjectVersion } from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, ProjectVersion } from "@app/db/schemas";
 import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
-import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TAccessProjectDTO, TListOrgProjectsDTO } from "./org-admin-types";
 
 type TOrgAdminServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   projectDAL: Pick<TProjectDALFactory, "find" | "findById" | "findProjectGhostUser" | "findOne">;
-  projectMembershipDAL: Pick<
-    TProjectMembershipDALFactory,
-    "findOne" | "create" | "transaction" | "delete" | "findAllProjectMembers"
-  >;
-  projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create" | "delete">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
+  membershipUserDAL: TMembershipUserDALFactory;
+  membershipRoleDAL: TMembershipRoleDALFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
@@ -31,9 +30,10 @@ export const orgAdminServiceFactory = ({
   permissionService,
   projectDAL,
   projectMembershipDAL,
-  projectUserMembershipRoleDAL,
   smtpService,
-  notificationService
+  notificationService,
+  membershipUserDAL,
+  membershipRoleDAL
 }: TOrgAdminServiceFactoryDep) => {
   const listOrgProjects = async ({
     actor,
@@ -98,17 +98,18 @@ export const orgAdminServiceFactory = ({
     }
 
     // check already there exist a membership if there return it
-    const projectMembership = await projectMembershipDAL.findOne({
-      projectId,
-      userId: actorId
+    const projectMembership = await membershipUserDAL.findOne({
+      scopeProjectId: projectId,
+      scope: AccessScope.Project,
+      actorUserId: actorId
     });
     if (projectMembership) {
       // reset and make the user admin
-      await projectMembershipDAL.transaction(async (tx) => {
-        await projectUserMembershipRoleDAL.delete({ projectMembershipId: projectMembership.id }, tx);
-        await projectUserMembershipRoleDAL.create(
+      await membershipUserDAL.transaction(async (tx) => {
+        await membershipRoleDAL.delete({ membershipId: projectMembership.id }, tx);
+        await membershipRoleDAL.create(
           {
-            projectMembershipId: projectMembership.id,
+            membershipId: projectMembership.id,
             role: ProjectMembershipRole.Admin
           },
           tx
@@ -117,18 +118,16 @@ export const orgAdminServiceFactory = ({
       return { isExistingMember: true, membership: projectMembership };
     }
 
-    const updatedMembership = await projectMembershipDAL.transaction(async (tx) => {
-      const newProjectMembership = await projectMembershipDAL.create(
+    const updatedMembership = await membershipUserDAL.transaction(async (tx) => {
+      const newProjectMembership = await membershipUserDAL.create(
         {
-          projectId,
-          userId: actorId
+          scopeProjectId: projectId,
+          actorUserId: actorId,
+          scope: AccessScope.Project
         },
         tx
       );
-      await projectUserMembershipRoleDAL.create(
-        { projectMembershipId: newProjectMembership.id, role: ProjectMembershipRole.Admin },
-        tx
-      );
+      await membershipRoleDAL.create({ membershipId: newProjectMembership.id, role: ProjectMembershipRole.Admin }, tx);
 
       return newProjectMembership;
     });

@@ -14,6 +14,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { TRoleScopeFactory } from "../role-types";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
+// TODO(simp): missing external group checking
 type TOrgRoleScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
