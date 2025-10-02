@@ -8,7 +8,7 @@ export const AzureKeyVaultPkiSyncDestinationSchema = BasePkiSyncSchema().merge(
   z.object({
     destination: z.literal(PkiSync.AzureKeyVault),
     destinationConfig: z.object({
-      vaultBaseUrl: z.string().url("Valid URL is required")
+      vaultBaseUrl: z.string().min(1, "Vault base URL is required").url("Valid URL is required")
     })
   })
 );
@@ -24,7 +24,10 @@ export const UpdateAzureKeyVaultPkiSyncDestinationSchema =
       destination: z.literal(PkiSync.AzureKeyVault),
       connection: z.object({
         id: z.string().uuid("Invalid connection ID format"),
-        name: z.string().max(255, "Connection name must be less than 255 characters")
+        name: z
+          .string()
+          .min(1, "Connection name is required")
+          .max(255, "Connection name must be less than 255 characters")
       })
     })
   );

@@ -12,7 +12,7 @@ export const AwsCertificateManagerPkiSyncConfigSchema = z.object({
 });
 
 const AwsCertificateManagerPkiSyncOptionsSchema = z.object({
-  canImportCertificates: z.boolean().default(true),
+  canImportCertificates: z.boolean().default(false),
   canRemoveCertificates: z.boolean().default(true),
   certificateNameSchema: z
     .string()

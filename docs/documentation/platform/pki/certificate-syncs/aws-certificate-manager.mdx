@@ -5,9 +5,9 @@ description: "Learn how to configure an AWS Certificate Manager Certificate Sync
 
 **Prerequisites:**
 
-        - Set up and configure a [Certificate Authority](/documentation/platform/pki/overview)
-        - Create an [AWS Connection](/integrations/app-connections/aws)
-        - Ensure your network security policies allow incoming requests from Infisical to this certificate sync provider, if network restrictions apply.
+- Set up and configure a [Certificate Authority](/documentation/platform/pki/overview)
+- Create an [AWS Connection](/integrations/app-connections/aws)
+- Ensure your network security policies allow incoming requests from Infisical to this certificate sync provider, if network restrictions apply.
 
 <Note>
   The AWS Certificate Manager Certificate Sync requires the following ACM permissions to be set on the IAM user/role
@@ -38,7 +38,6 @@ description: "Learn how to configure an AWS Certificate Manager Certificate Sync
 
             - **AWS Connection**: The AWS Connection to authenticate with.
             - **AWS Region**: The AWS region where certificates should be stored.
-            <p class="height:1px"  />
 
         5. Configure the **Sync Options** to specify how certificates should be synced, then click **Next**.
         ![Configure Options](/images/certificate-syncs/aws-certificate-manager/acm-options.png)

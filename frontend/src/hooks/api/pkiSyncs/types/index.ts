@@ -22,7 +22,7 @@ export type TListPkiSyncs = { pkiSyncs: TPkiSync[] };
 
 export type TListPkiSyncOptions = { pkiSyncOptions: TPkiSyncOption[] };
 
-export type TCreatePkiSyncDTO = {
+type TCreatePkiSyncDTOBase = {
   name: string;
   description?: string;
   connectionId: string;
@@ -32,11 +32,17 @@ export type TCreatePkiSyncDTO = {
     certificateNamePrefix?: string;
     certificateNameSchema?: string;
   };
-  destination: PkiSync;
   isAutoSyncEnabled: boolean;
   subscriberId?: string;
   projectId: string;
-  destinationConfig: Record<string, any>;
+};
+
+export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
+  destination: PkiSync;
+  destinationConfig: {
+    vaultBaseUrl?: string;
+    region?: string;
+  };
 };
 
 export type TUpdatePkiSyncDTO = Partial<Omit<TCreatePkiSyncDTO, "projectId">> & {
