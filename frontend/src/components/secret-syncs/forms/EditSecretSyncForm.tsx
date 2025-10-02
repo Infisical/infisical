@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useCallback, useEffect, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -53,31 +53,34 @@ export const EditSecretSyncForm = ({ secretSync, fields, onComplete }: Props) =>
     { enabled: checkDuplicateEnabled && Boolean(destinationConfigToCheck) }
   );
 
-  const performUpdate = async (formData: TSecretSyncForm) => {
-    try {
-      const { environment, connection, ...updateData } = formData;
-      const updatedSecretSync = await updateSecretSync.mutateAsync({
-        syncId: secretSync.id,
-        ...updateData,
-        environment: environment?.slug,
-        connectionId: connection.id,
-        projectId: secretSync.projectId
-      });
+  const performUpdate = useCallback(
+    async (formData: TSecretSyncForm) => {
+      try {
+        const { environment, connection, ...updateData } = formData;
+        const updatedSecretSync = await updateSecretSync.mutateAsync({
+          syncId: secretSync.id,
+          ...updateData,
+          environment: environment?.slug,
+          connectionId: connection.id,
+          projectId: secretSync.projectId
+        });
 
-      createNotification({
-        text: `Successfully updated ${destinationName} Sync`,
-        type: "success"
-      });
-      onComplete(updatedSecretSync);
-    } catch (err: any) {
-      console.error(err);
-      createNotification({
-        title: `Failed to update ${destinationName} Sync`,
-        text: err.message,
-        type: "error"
-      });
-    }
-  };
+        createNotification({
+          text: `Successfully updated ${destinationName} Sync`,
+          type: "success"
+        });
+        onComplete(updatedSecretSync);
+      } catch (err: any) {
+        console.error(err);
+        createNotification({
+          title: `Failed to update ${destinationName} Sync`,
+          text: err.message,
+          type: "error"
+        });
+      }
+    },
+    [updateSecretSync, secretSync.id, secretSync.projectId, destinationName, onComplete]
+  );
 
   useEffect(() => {
     if (checkDuplicateEnabled && !isCheckingDuplicate && destinationConfigToCheck) {

@@ -326,7 +326,7 @@ export type TDeleteSecretSyncDTO = {
 
 export type TCheckDuplicateDestinationDTO = {
   destination: SecretSync;
-  destinationConfig: unknown;
+  destinationConfig: Record<string, unknown>;
   excludeSyncId?: string;
   projectId: string;
 };

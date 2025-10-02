@@ -12,7 +12,7 @@ import {
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
-import { deepEqual } from "@app/lib/fn/object";
+import { deepEqualSkipFields } from "@app/lib/fn/object";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -698,10 +698,46 @@ export const secretSyncServiceFactory = ({
     return updatedSecretSync as TSecretSync;
   };
 
+  const getSkipFieldsForDestination = (destination: SecretSync): string[] => {
+    switch (destination) {
+      case SecretSync.AWSSecretsManager:
+        return ["mappingBehavior", "secretName"];
+      case SecretSync.OnePass:
+        return ["valueLabel"];
+      case SecretSync.AzureAppConfiguration:
+        return ["label"];
+      case SecretSync.AzureDevOps:
+        return ["devopsProjectName"];
+      case SecretSync.Checkly:
+        return ["groupName", "accountName"];
+      case SecretSync.DigitalOceanAppPlatform:
+        return ["appName"];
+      case SecretSync.GitLab:
+        return ["projectName", "shouldProtectSecrets", "shouldMaskSecrets", "shouldHideSecrets"];
+      case SecretSync.Heroku:
+        return ["appName"];
+      case SecretSync.Netlify:
+        return ["accountName", "siteName"];
+      case SecretSync.Railway:
+        return ["projectName", "environmentName", "serviceName"];
+      case SecretSync.Supabase:
+        return ["projectName"];
+      case SecretSync.TerraformCloud:
+        return ["variableSetName", "workspaceName"];
+      case SecretSync.Vercel:
+        return ["appName"];
+      case SecretSync.Zabbix:
+        return ["hostName", "macroType"];
+      default:
+        return [];
+    }
+  };
+
   const checkDuplicateDestination = async (
     { destination, destinationConfig, excludeSyncId, projectId }: TCheckDuplicateDestinationDTO,
     actor: OrgServiceActor
   ) => {
+    const skipFields = getSkipFieldsForDestination(destination);
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -716,14 +752,12 @@ export const secretSyncServiceFactory = ({
       ProjectPermissionSub.SecretSyncs
     );
 
-    if (!destinationConfig || typeof destinationConfig !== "object") {
+    if (!destinationConfig || Object.keys(destinationConfig).length === 0) {
       return { hasDuplicate: false };
     }
 
     try {
-      const existingSyncs = await secretSyncDAL.find({
-        destination
-      });
+      const existingSyncs = await secretSyncDAL.findByDestinationAndOrgId(destination, actor.orgId);
 
       const duplicates = existingSyncs.filter((sync) => {
         if (sync.id === excludeSyncId) {
@@ -731,7 +765,7 @@ export const secretSyncServiceFactory = ({
         }
 
         try {
-          return deepEqual(sync.destinationConfig, destinationConfig);
+          return deepEqualSkipFields(sync.destinationConfig, destinationConfig, skipFields);
         } catch {
           return false;
         }

@@ -449,7 +449,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
 
       const result = await server.services.secretSync.checkDuplicateDestination(
         {
-          destinationConfig,
+          destinationConfig: destinationConfig as Record<string, unknown>,
           destination,
           excludeSyncId,
           projectId

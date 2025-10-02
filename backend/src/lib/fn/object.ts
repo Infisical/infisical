@@ -84,3 +84,22 @@ export const deepEqual = (obj1: unknown, obj2: unknown): boolean => {
     deepEqual((obj1 as Record<string, unknown>)[key], (obj2 as Record<string, unknown>)[key])
   );
 };
+
+export const deepEqualSkipFields = (obj1: unknown, obj2: unknown, skipFields: string[] = []): boolean => {
+  if (skipFields.length === 0) {
+    return deepEqual(obj1, obj2);
+  }
+
+  if (typeof obj1 !== "object" || typeof obj2 !== "object" || obj1 === null || obj2 === null) {
+    return deepEqual(obj1, obj2);
+  }
+
+  const filtered1 = Object.fromEntries(
+    Object.entries(obj1 as Record<string, unknown>).filter(([key]) => !skipFields.includes(key))
+  );
+  const filtered2 = Object.fromEntries(
+    Object.entries(obj2 as Record<string, unknown>).filter(([key]) => !skipFields.includes(key))
+  );
+
+  return deepEqual(filtered1, filtered2);
+};
