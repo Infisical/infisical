@@ -265,12 +265,14 @@ export async function up(knex: Knex): Promise<void> {
         });
 
         // Create folder commit changes
+        const currentBatchFolderIds = new Set(newCommitsInserted.map((commit) => commit.folderId));
         // eslint-disable-next-line no-await-in-loop
         await knex.batchInsert(
           TableName.FolderCommitChanges,
           foldersCommitsList
             .map((folderCommit) => folderCommit.changes)
             .flat()
+            .filter((change) => currentBatchFolderIds.has(change.folderId))
             .map((change) => ({
               folderCommitId: newCommitsMap[change.folderId],
               changeType: change.changeType,
@@ -289,6 +291,7 @@ export async function up(knex: Knex): Promise<void> {
           foldersCommitsList
             .map((folderCommit) => folderCommit.changes)
             .flat()
+            .filter((change) => currentBatchFolderIds.has(change.folderId))
             .map((change) => ({
               folderCheckpointId: newCheckpointsMap[change.folderId],
               folderVersionId: change.folderVersionId,
@@ -303,9 +306,11 @@ export async function up(knex: Knex): Promise<void> {
         const newTreeCheckpoints = (await knex
           .batchInsert(
             TableName.FolderTreeCheckpoint,
-            Object.keys(rootFoldersMap).map((folderId) => ({
-              folderCommitId: newCommitsMap[folderId]
-            }))
+            Object.keys(rootFoldersMap)
+              .filter((folderId) => currentBatchFolderIds.has(folderId))
+              .map((folderId) => ({
+                folderCommitId: newCommitsMap[folderId]
+              }))
           )
           .returning("*")) as TFolderTreeCheckpoints[];
 
@@ -321,11 +326,13 @@ export async function up(knex: Knex): Promise<void> {
         await knex
           .batchInsert(
             TableName.FolderTreeCheckpointResources,
-            newCommitsInserted.map((folderCommit) => ({
-              folderTreeCheckpointId: newTreeCheckpointsMap[folderCommit.envId],
-              folderId: folderCommit.folderId,
-              folderCommitId: folderCommit.id
-            }))
+            newCommitsInserted
+              .filter((folderCommit) => newTreeCheckpointsMap[folderCommit.envId])
+              .map((folderCommit) => ({
+                folderTreeCheckpointId: newTreeCheckpointsMap[folderCommit.envId],
+                folderId: folderCommit.folderId,
+                folderCommitId: folderCommit.id
+              }))
           )
           .returning("*");
 
