@@ -6,7 +6,7 @@ import {
   BaseCreatePamResourceSchema,
   BasePamAccountSchema,
   BasePamAccountSchemaWithResource,
-  BasePamResoureSchema,
+  BasePamResourceSchema,
   BaseUpdatePamAccountSchema,
   BaseUpdatePamResourceSchema
 } from "../pam-resource-schemas";
@@ -18,7 +18,7 @@ import {
 // Resources
 export const PostgresResourceConnectionDetailsSchema = BaseSqlResourceConnectionDetailsSchema;
 
-const BasePostgresResourceSchema = BasePamResoureSchema.extend({ resourceType: z.literal(PamResource.Postgres) });
+const BasePostgresResourceSchema = BasePamResourceSchema.extend({ resourceType: z.literal(PamResource.Postgres) });
 
 export const PostgresResourceSchema = BasePostgresResourceSchema.extend({
   connectionDetails: PostgresResourceConnectionDetailsSchema

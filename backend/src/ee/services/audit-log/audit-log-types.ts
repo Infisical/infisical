@@ -3726,6 +3726,7 @@ interface PamSessionEndEvent {
   type: EventType.PAM_SESSION_END;
   metadata: {
     sessionId: string;
+    accountName: string;
   };
 }
 

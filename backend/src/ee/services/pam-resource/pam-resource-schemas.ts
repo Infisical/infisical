@@ -4,7 +4,7 @@ import { PamAccountsSchema, PamResourcesSchema } from "@app/db/schemas";
 import { slugSchema } from "@app/server/lib/schemas";
 
 // Resources
-export const BasePamResoureSchema = PamResourcesSchema.omit({
+export const BasePamResourceSchema = PamResourcesSchema.omit({
   encryptedConnectionDetails: true,
   resourceType: true
 });

@@ -23,7 +23,7 @@ export const PamSessionsSchema = z.object({
   actorUserAgent: z.string(),
   status: z.string(),
   encryptedLogsBlob: zodBuffer.nullable().optional(),
-  expiresAt: z.date().nullable().optional(),
+  expiresAt: z.date(),
   startedAt: z.date().nullable().optional(),
   endedAt: z.date().nullable().optional(),
   createdAt: z.date(),

@@ -138,7 +138,8 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.PAM_SESSION_END,
           metadata: {
-            sessionId: req.params.sessionId
+            sessionId: req.params.sessionId,
+            accountName: session.accountName
           }
         }
       });

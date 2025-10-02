@@ -405,6 +405,7 @@ export const pamAccountServiceFactory = ({
     );
 
     const user = await userDAL.findById(actor.id);
+    if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 
     const gatewayConnectionDetails = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId,
