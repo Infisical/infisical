@@ -226,7 +226,7 @@ export async function up(knex: Knex): Promise<void> {
       // Insert New Commits in batches of 9000
       const newCommits = foldersCommitsList.map((folderCommit) => folderCommit.commit);
       const commitBatches = chunkArray(newCommits, 9000);
-
+      let pendingDeepTreeCommitResources: TFolderCommits[] = [];
       let j = 0;
       for (const commitBatch of commitBatches) {
         j += 1;
@@ -322,20 +322,31 @@ export async function up(knex: Knex): Promise<void> {
         });
 
         // Create Folder Tree Checkpoint Resources
-        // eslint-disable-next-line no-await-in-loop
-        await knex
-          .batchInsert(
-            TableName.FolderTreeCheckpointResources,
-            newCommitsInserted
-              .filter((folderCommit) => newTreeCheckpointsMap[folderCommit.envId])
-              .map((folderCommit) => ({
+        const commitsToProcess = pendingDeepTreeCommitResources.concat(newCommitsInserted);
+        const unprocessableCommits: TFolderCommits[] = [];
+        const processableCommits = commitsToProcess.filter((folderCommit) => {
+          const isProcessable = newTreeCheckpointsMap[folderCommit.envId];
+          if (!isProcessable) {
+            unprocessableCommits.push(folderCommit);
+          }
+          return isProcessable;
+        });
+
+        if (processableCommits.length > 0) {
+          // eslint-disable-next-line no-await-in-loop
+          await knex
+            .batchInsert(
+              TableName.FolderTreeCheckpointResources,
+              processableCommits.map((folderCommit) => ({
                 folderTreeCheckpointId: newTreeCheckpointsMap[folderCommit.envId],
                 folderId: folderCommit.folderId,
                 folderCommitId: folderCommit.id
               }))
-          )
-          .returning("*");
+            )
+            .returning("*");
+        }
 
+        pendingDeepTreeCommitResources = unprocessableCommits;
         logger.info(`Finished inserting folder tree checkpoint resources - batch ${j} of ${commitBatches.length}`);
       }
     }
