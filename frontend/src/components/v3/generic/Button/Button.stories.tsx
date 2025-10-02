@@ -23,7 +23,7 @@ const meta = {
         "ghost",
         "org",
         "namespace",
-        "secrets-manager",
+        "secret-manager",
         "secret-scanning",
         "cert-manager",
         "ssh",
@@ -37,9 +37,24 @@ const meta = {
     },
     size: { control: "inline-radio", options: ["sm", "md", "lg"] },
     isFullWidth: { control: "boolean" },
-    isLoading: { control: "boolean" }
+    isPending: { control: "boolean" },
+    isDisabled: { control: "boolean" }
   },
-  args: { onClick: fn(), children: "Button", size: "md", isFullWidth: false, isLoading: true }
+  args: {
+    onClick: fn(),
+    children: "Button",
+    size: "md",
+    isFullWidth: false,
+    isPending: false,
+    isDisabled: false
+  },
+  decorators: (Story) => {
+    return (
+      <div className="flex w-[240px] justify-center">
+        <Story />
+      </div>
+    );
+  }
 } satisfies Meta<typeof Button>;
 
 export default meta;
@@ -138,6 +153,24 @@ export const Warning: Story = {
 export const Danger: Story = {
   args: {
     variant: "danger"
+  }
+};
+
+export const IsFullWidth: Story = {
+  args: {
+    isFullWidth: true
+  }
+};
+
+export const IsDisabled: Story = {
+  args: {
+    isDisabled: true
+  }
+};
+
+export const IsPending: Story = {
+  args: {
+    isPending: true
   }
 };
 
