@@ -20,7 +20,7 @@ export const useProjectPermission = () => {
   }
 
   const {
-    data: { permission, membership, assumedPrivilegeDetails }
+    data: { permission, memberships, assumedPrivilegeDetails }
   } = useSuspenseQuery({
     queryKey: roleQueryKeys.getUserProjectPermissions({ projectId }),
     queryFn: () => fetchUserProjectPermissions({ projectId }),
@@ -31,18 +31,16 @@ export const useProjectPermission = () => {
       return {
         permission: ability,
         assumedPrivilegeDetails: data.assumedPrivilegeDetails,
-        membership: {
-          ...data.membership,
-          roles: data.membership.roles.map(({ role }) => role)
-        }
+        memberships: data.memberships
       };
     }
   });
 
   const hasProjectRole = useCallback(
-    (role: string) => membership?.roles?.includes(role) || false,
+    (role: string) =>
+      memberships?.some((membership) => membership.roles.some((el) => role === el.role)),
     []
   );
 
-  return { permission, membership, hasProjectRole, assumedPrivilegeDetails };
+  return { permission, memberships, hasProjectRole, assumedPrivilegeDetails };
 };

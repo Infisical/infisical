@@ -4,12 +4,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Button } from "@app/components/v2";
 import { useOrgPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { SelectImportFromPlatformModal } from "./components/SelectImportFromPlatformModal";
+import { OrgMembershipRole } from "@app/helpers/roles";
 
 export const ExternalMigrationsTab = () => {
-  const { membership } = useOrgPermission();
+  const { hasOrgRole } = useOrgPermission();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["selectImportPlatform"] as const);
 
@@ -41,7 +41,7 @@ export const ExternalMigrationsTab = () => {
           onClick={() => {
             handlePopUpOpen("selectImportPlatform");
           }}
-          isDisabled={membership?.role !== ProjectMembershipRole.Admin}
+          isDisabled={hasOrgRole(OrgMembershipRole.Admin)}
           leftIcon={<FontAwesomeIcon icon={faPlus} />}
         >
           Import

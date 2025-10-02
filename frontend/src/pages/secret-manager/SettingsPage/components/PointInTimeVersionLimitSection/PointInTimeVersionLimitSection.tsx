@@ -18,7 +18,7 @@ export const PointInTimeVersionLimitSection = () => {
   const { mutateAsync: updateProject } = useUpdateProject();
 
   const { currentProject, projectId } = useProject();
-  const { membership } = useProjectPermission();
+  const { hasProjectRole } = useProjectPermission();
 
   const {
     control,
@@ -52,7 +52,7 @@ export const PointInTimeVersionLimitSection = () => {
     }
   };
 
-  const isAdmin = membership.roles.includes(ProjectMembershipRole.Admin);
+  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex w-full items-center justify-between">

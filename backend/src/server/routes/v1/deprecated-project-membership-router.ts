@@ -2,9 +2,11 @@ import { z } from "zod";
 
 import {
   AccessScope,
+  OrgMembershipRole,
   OrgMembershipsSchema,
   ProjectMembershipsSchema,
   ProjectUserMembershipRolesSchema,
+  TemporaryPermissionMode,
   UserEncryptionKeysSchema,
   UsersSchema
 } from "@app/db/schemas";
@@ -14,7 +16,6 @@ import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
 
 export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -155,7 +156,7 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
         membership: {
           ...membership,
           userId,
-          projectId: req.params.workspacId
+          projectId: req.params.workspaceId
         }
       };
     }
@@ -273,7 +274,10 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
         }
       });
 
-      return { data, success: true };
+      return {
+        data: data.map((el) => ({ ...el, orgId: req.permission.orgId, role: OrgMembershipRole.Member })),
+        success: true
+      };
     }
   });
 
@@ -307,7 +311,7 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
               z.object({
                 role: z.string(),
                 isTemporary: z.literal(true),
-                temporaryMode: z.nativeEnum(ProjectUserMembershipTemporaryMode),
+                temporaryMode: z.nativeEnum(TemporaryPermissionMode),
                 temporaryRange: z.string().refine((val) => ms(val) > 0, "Temporary range must be a positive number"),
                 temporaryAccessStartTime: z.string().datetime()
               })
@@ -336,7 +340,7 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
-          projectId: req.params.projectId
+          projectId: req.params.workspaceId
         },
         selector: {
           userId
@@ -375,13 +379,22 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const membership = await server.services.projectMembership.deleteProjectMembership({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
-        membershipId: req.params.membershipId
+      const { userId } = await server.services.convertor.userMembershipIdToUserId(
+        req.params.membershipId,
+        AccessScope.Project,
+        req.permission.orgId
+      );
+
+      const { membership } = await server.services.membershipUser.deleteMembership({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId: req.params.workspaceId
+        },
+        selector: {
+          userId
+        }
       });
 
       await server.services.auditLog.createAuditLog({
@@ -390,12 +403,19 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
         event: {
           type: EventType.REMOVE_PROJECT_MEMBER,
           metadata: {
-            userId: membership.userId,
+            userId: membership.actorUserId as string,
             email: ""
           }
         }
       });
-      return { membership };
+
+      return {
+        membership: {
+          ...membership,
+          userId,
+          projectId: req.params.workspaceId
+        }
+      };
     }
   });
 };

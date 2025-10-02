@@ -2,7 +2,7 @@ import { AccessScope, ActionProjectType, TableName } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
-import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
+import { UnpackedPermissionSchema, unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 
 import { newNamespaceRoleFactory } from "./namespace/namespace-role-factory";
 import { newOrgRoleFactory } from "./org/org-role-factory";
@@ -188,7 +188,7 @@ export const roleServiceFactory = ({
       const predefinedRole = await factory.getPredefinedRoles(scopeData);
       const selectedRole = predefinedRole.find((el) => el.slug === dto.selector.slug);
       if (!selectedRole) throw new BadRequestError({ message: `Role with slug ${dto.selector.slug} not found` });
-      return selectedRole;
+      return { ...selectedRole, permissions: UnpackedPermissionSchema.array().parse(selectedRole.permissions) };
     }
 
     const role = await roleDAL.findOne({

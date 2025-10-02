@@ -24,7 +24,7 @@ type TForm = z.infer<typeof formSchema>;
 
 export const SecretDetectionIgnoreValuesSection = () => {
   const { currentProject } = useProject();
-  const { membership } = useProjectPermission();
+  const { hasProjectRole } = useProjectPermission();
   const { mutateAsync: updateProject } = useUpdateProject();
 
   const {
@@ -73,7 +73,7 @@ export const SecretDetectionIgnoreValuesSection = () => {
     }
   };
 
-  const isAdmin = membership.roles.includes(ProjectMembershipRole.Admin);
+  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
   if (!currentProject) return null;
 

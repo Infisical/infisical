@@ -16,7 +16,11 @@ export const AdditionalPrivilegesSchema = z.object({
   temporaryAccessStartTime: z.date().nullable().optional(),
   temporaryAccessEndTime: z.date().nullable().optional(),
   permissions: z.unknown(),
-  membershipId: z.string().uuid(),
+  actorUserId: z.string().uuid().nullable().optional(),
+  actorIdentityId: z.string().uuid().nullable().optional(),
+  orgId: z.string().uuid().nullable().optional(),
+  projectId: z.string().nullable().optional(),
+  namespaceId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
