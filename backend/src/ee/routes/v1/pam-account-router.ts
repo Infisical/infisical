@@ -67,11 +67,9 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         duration: z
           .string()
-          .nullable()
           .optional()
           .transform((val, ctx) => {
             if (val === undefined) return undefined;
-            if (!val || val === "permanent") return null;
             const parsedMs = ms(val);
 
             if (typeof parsedMs !== "number" || parsedMs <= 0) {
@@ -88,8 +86,12 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           sessionId: z.string(),
           resourceType: z.nativeEnum(PamResource),
-          relayCertificate: z.string(),
-          gatewayCertificate: z.string(),
+          relayClientCertificate: z.string(),
+          relayClientPrivateKey: z.string(),
+          relayServerCertificateChain: z.string(),
+          gatewayClientCertificate: z.string(),
+          gatewayClientPrivateKey: z.string(),
+          gatewayServerCertificateChain: z.string(),
           relayHost: z.string()
         })
       }

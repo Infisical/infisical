@@ -38,7 +38,7 @@ export type TAccessAccountDTO = {
   actorIp: string;
   actorName: string;
   actorUserAgent: string;
-  duration?: number | null;
+  duration?: number;
 };
 
 // Resource factory

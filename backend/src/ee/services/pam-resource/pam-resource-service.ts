@@ -12,6 +12,7 @@ import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -51,7 +52,11 @@ type TPamResourceServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayV2Service: Pick<
+    TGatewayV2ServiceFactory,
+    "getPAMConnectionDetails" | "getPlatformConnectionDetailsByGatewayId"
+  >;
+  userDAL: TUserDALFactory;
 };
 
 export type TPamResourceServiceFactory = ReturnType<typeof pamResourceServiceFactory>;
@@ -62,6 +67,7 @@ export const pamResourceServiceFactory = ({
   pamAccountDAL,
   pamFolderDAL,
   projectDAL,
+  userDAL,
   permissionService,
   licenseService,
   kmsService,
@@ -561,13 +567,19 @@ export const pamResourceServiceFactory = ({
 
     const { connectionDetails, gatewayId, resourceType } = await decryptResource(resource, actor.orgId, kmsService);
 
-    const gatewayConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+    const user = await userDAL.findById(actor.id);
+
+    const gatewayConnectionDetails = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId,
-      targetHost: connectionDetails.host,
-      targetPort: connectionDetails.port,
+      duration,
+      sessionId: session.id,
+      resourceType: resource.resourceType as PamResource,
+      host: connectionDetails.host,
+      port: connectionDetails.port,
       actorMetadata: {
-        sessionId: session.id,
-        resourceType: resource.resourceType
+        id: actor.id,
+        type: actor.type,
+        name: user.email ?? ""
       }
     });
 
@@ -578,8 +590,12 @@ export const pamResourceServiceFactory = ({
     return {
       sessionId: session.id,
       resourceType,
-      relayCertificate: gatewayConnectionDetails.relay.clientCertificate,
-      gatewayCertificate: gatewayConnectionDetails.gateway.clientCertificate,
+      relayClientCertificate: gatewayConnectionDetails.relay.clientCertificate,
+      relayClientPrivateKey: gatewayConnectionDetails.relay.clientPrivateKey,
+      relayServerCertificateChain: gatewayConnectionDetails.relay.serverCertificateChain,
+      gatewayClientCertificate: gatewayConnectionDetails.gateway.clientCertificate,
+      gatewayClientPrivateKey: gatewayConnectionDetails.gateway.clientPrivateKey,
+      gatewayServerCertificateChain: gatewayConnectionDetails.gateway.serverCertificateChain,
       relayHost: gatewayConnectionDetails.relayHost,
       projectId: account.projectId
     };

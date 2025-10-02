@@ -2130,7 +2130,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     kmsService,
-    gatewayV2Service
+    gatewayV2Service,
+    userDAL
   });
 
   const pamSessionService = pamSessionServiceFactory({

@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { GatewaysV2Schema } from "@app/db/schemas";
+import { zodBuffer } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -128,6 +129,27 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
         id: req.params.id
       });
       return gateway;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/pam-session-key",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: zodBuffer
+      }
+    },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const pamSessionKey = await server.services.gatewayV2.getPamSessionKey({
+        orgPermission: req.permission
+      });
+
+      return pamSessionKey;
     }
   });
 };
