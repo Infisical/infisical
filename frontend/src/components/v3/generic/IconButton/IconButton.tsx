@@ -5,11 +5,14 @@ import { cva, type VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 
 import { Lottie } from "@app/components/v2";
-import { Button, ButtonProps } from "@app/components/v3/generic";
+import { Button } from "@app/components/v3/generic";
 import { cn } from "@app/components/v3/utils";
 
 const iconButtonVariants = cva(
-  "inline-flex items-center active:scale-[0.99] justify-center border cursor-pointer whitespace-nowrap rounded-[4px] text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-75 [&_svg]:pointer-events-none shrink-0 [&>svg]:shrink-0",
+  cn(
+    "inline-flex items-center active:scale-[0.99] justify-center border cursor-pointer whitespace-nowrap rounded-[4px] text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-75 [&_svg]:pointer-events-none shrink-0 [&>svg]:shrink-0",
+    "focus-visible:ring-ring outline-0 focus-visible:ring-2"
+  ),
   {
     variants: {
       variant: {

@@ -60,8 +60,7 @@ const inputParentContainerVariants = cva(
       },
       isError: {
         true: "border-danger",
-        false:
-          "border-border focus-within:ring-ring/50 focus-within:ring-1 focus-within:border-foreground"
+        false: "border-border has-[:is(input):focus]:ring-2 has-[:is(input):focus]:ring-ring"
       },
       isReadOnly: {
         true: "!ring-0 !border-border"
