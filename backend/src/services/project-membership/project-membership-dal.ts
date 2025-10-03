@@ -24,7 +24,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         .join<TMemberships>(db(TableName.Membership).as("orgMembership"), (qb) => {
           qb.on(`${TableName.Users}.id`, "=", `orgMembership.actorUserId`)
             .andOn(`orgMembership.scopeOrgId`, "=", `${TableName.Project}.orgId`)
-            .andOn("orgMembership.scope", AccessScope.Organization);
+            .andOn("orgMembership.scope", db.raw("?", [AccessScope.Organization]));
         })
         .where((qb) => {
           if (filter.usernames) {

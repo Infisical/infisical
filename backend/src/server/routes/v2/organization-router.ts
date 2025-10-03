@@ -220,7 +220,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         ...req.body
       });
-      return { membership };
+      return {
+        membership: {
+          ...membership,
+          role: "",
+          orgId: req.params.organizationId
+        }
+      };
     }
   });
 
@@ -260,7 +266,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         membershipId: req.params.membershipId,
         actorOrgId: req.permission.orgId
       });
-      return { membership };
+      return {
+        membership: {
+          ...membership,
+          role: "",
+          orgId: req.params.organizationId
+        }
+      };
     }
   });
 
@@ -302,7 +314,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         membershipIds: req.body.membershipIds,
         actorOrgId: req.permission.orgId
       });
-      return { memberships };
+      return {
+        memberships: memberships.map((el) => ({
+          ...el,
+          role: "",
+          orgId: req.params.organizationId
+        }))
+      };
     }
   });
 

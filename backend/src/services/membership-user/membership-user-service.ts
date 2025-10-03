@@ -1,4 +1,5 @@
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -7,10 +8,16 @@ import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 
 import { AuthMethod } from "../auth/auth-type";
+import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
+import { deleteOrgMembershipsFn } from "../org/org-fns";
+import { TProjectDALFactory } from "../project/project-dal";
+import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TRoleDALFactory } from "../role/role-dal";
+import { TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
+import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TMembershipUserDALFactory } from "./membership-user-dal";
 import {
   TCreateMembershipUserDTO,
@@ -26,23 +33,20 @@ import { newProjectMembershipUserFactory } from "./project/project-membership-us
 type TMembershipUserServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "transaction">;
   roleDAL: Pick<TRoleDALFactory, "find">;
-  userDAL: Pick<
-    TUserDALFactory,
-    | "findUserByUsername"
-    | "find"
-    | "transaction"
-    | "create"
-    | "createUserEncryption"
-    | "findUserByEmail"
-    | "findUserEncKeyByUserId"
-  >;
+  userDAL: TUserDALFactory;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermission"
   >;
+  licenseService: TLicenseServiceFactory;
+  projectKeyDAL: TProjectKeyDALFactory;
+  userAliasDAL: TUserAliasDALFactory;
+  smtpService: TSmtpService;
+  tokenService: TAuthTokenServiceFactory;
+  userGroupMembershipDAL: TUserGroupMembershipDALFactory;
+  projectDAL: TProjectDALFactory;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -50,20 +54,35 @@ export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServ
 export const membershipUserServiceFactory = ({
   membershipUserDAL,
   roleDAL,
-  licenseService,
   membershipRoleDAL,
   userDAL,
   permissionService,
-  orgDAL
+  orgDAL,
+  projectKeyDAL,
+  userAliasDAL,
+  licenseService,
+  smtpService,
+  tokenService,
+  userGroupMembershipDAL,
+  projectDAL
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
-      permissionService
+      permissionService,
+      licenseService,
+      smtpService,
+      orgDAL,
+      tokenService,
+      userDAL,
+      userGroupMembershipDAL
     }),
     [AccessScope.Namespace]: newNamespaceMembershipUserFactory({}),
     [AccessScope.Project]: newProjectMembershipUserFactory({
       orgDAL,
-      permissionService
+      permissionService,
+      membershipUserDAL,
+      projectDAL,
+      smtpService
     })
   };
 
@@ -157,11 +176,11 @@ export const membershipUserServiceFactory = ({
         actorUserId: users.map((el) => el.id)
       }
     });
-    // TODO(simp): do we really do this - check it out
+
     if (existingMemberships.length === users.length) return { memberships: [] };
 
-    await factory.onCreateMembershipUserGuard(dto);
     const newMembershipUsers = users.filter((user) => !existingMemberships?.find((el) => el.actorUserId === user.id));
+    await factory.onCreateMembershipUserGuard(dto, newMembershipUsers);
     const newMemberships = newMembershipUsers.map((user) => ({
       scope: scopeData.scope,
       ...scopeDatabaseFields,
@@ -230,7 +249,8 @@ export const membershipUserServiceFactory = ({
       return docs;
     });
 
-    return { memberships: membershipDoc };
+    const { signUpTokens } = await factory.onCreateMembershipComplete(dto, newMembershipUsers);
+    return { memberships: membershipDoc, signUpTokens };
   };
 
   const updateMembership = async (dto: TUpdateMembershipUserDTO) => {
@@ -364,10 +384,26 @@ export const membershipUserServiceFactory = ({
 
     if (existingMembership.actorUserId === dto.permission.id)
       throw new BadRequestError({
-        message: "You can delete you own membership"
+        message: "You can't delete you own membership"
       });
 
     const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
+      if (dto.scopeData.scope === AccessScope.Organization) {
+        const [doc] = await deleteOrgMembershipsFn({
+          orgMembershipIds: [],
+          orgId: dto.permission.orgId,
+          orgDAL,
+          projectKeyDAL,
+          userAliasDAL,
+          licenseService,
+          userId: dto.permission.id,
+          membershipUserDAL,
+          userGroupMembershipDAL,
+          membershipRoleDAL
+        });
+        return doc;
+      }
+
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipUserDAL.deleteById(existingMembership.id, tx);
       return doc;

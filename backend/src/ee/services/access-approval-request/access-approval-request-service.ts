@@ -58,7 +58,6 @@ type TSecretApprovalRequestServiceFactoryDep = {
     "create" | "find" | "findOne" | "transaction" | "delete"
   >;
   groupDAL: Pick<TGroupDALFactory, "findAllGroupPossibleMembers">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findById">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<
     TUserDALFactory,

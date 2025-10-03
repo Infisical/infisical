@@ -76,7 +76,7 @@ type TSuperAdminServiceFactoryDep = {
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
-  orgService: Pick<TOrgServiceFactory, "createOrganization" | "inviteUserToOrganization">;
+  orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
   licenseService: Pick<TLicenseServiceFactory, "onPremFeatures" | "updateSubscriptionOrgMemberCount">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;

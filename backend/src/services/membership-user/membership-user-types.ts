@@ -2,11 +2,18 @@ import { AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
 import { OrgServiceActor } from "@app/lib/types";
 
 export interface TMembershipUserScopeFactory {
-  onCreateMembershipUserGuard: (arg: TCreateMembershipUserDTO) => Promise<void>;
-  onCreateMembershipComplete: (arg: { id: string; email: string }[]) => Promise<void>;
+  onCreateMembershipUserGuard: (
+    arg: TCreateMembershipUserDTO,
+    newMembers: { id: string; email?: string | null }[]
+  ) => Promise<void>;
+  onCreateMembershipComplete: (
+    arg: TCreateMembershipUserDTO,
+    newMembers: { id: string; email?: string | null }[]
+  ) => Promise<{ signUpTokens: { email: string; link: string }[] }>;
 
   onUpdateMembershipUserGuard: (arg: TUpdateMembershipUserDTO) => Promise<void>;
-  onDeleteMembershipUserGuard: (arg: TDeleteMembershipUserDTO) => Promise<void>;
+  onDeleteMembershipUserGuard: (arg: TDeleteMembershipUserDTO | TBulkDeleteMembershipByUsernameDTO) => Promise<void>;
+
   onListMembershipUserGuard: (arg: TListMembershipUserDTO) => Promise<void>;
   onGetMembershipUserByUserIdGuard: (arg: TGetMembershipUserByUserIdDTO) => Promise<void>;
   getScopeField: (scope: AccessScopeData) => { key: "orgId" | "namespaceId" | "projectId"; value: string };
@@ -68,6 +75,14 @@ export type TDeleteMembershipUserDTO = {
   scopeData: AccessScopeData;
   selector: {
     userId: string;
+  };
+};
+
+export type TBulkDeleteMembershipByUsernameDTO = {
+  permission: OrgServiceActor;
+  scopeData: AccessScopeData;
+  data: {
+    usernames: string[];
   };
 };
 

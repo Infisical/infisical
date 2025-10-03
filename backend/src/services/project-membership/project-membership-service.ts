@@ -3,59 +3,42 @@ import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import {
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { TProjectUserAdditionalPrivilegeDALFactory } from "@app/ee/services/project-user-additional-privilege/project-user-additional-privilege-dal";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
-import { ms } from "@app/lib/ms";
 
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
+import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
-import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
-import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
-import { TProjectRoleDALFactory } from "../project-role/project-role-dal";
 import { TSecretReminderRecipientsDALFactory } from "../secret-reminder-recipients/secret-reminder-recipients-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectMembershipDALFactory } from "./project-membership-dal";
 import {
-  ProjectUserMembershipTemporaryMode,
   TAddUsersToWorkspaceDTO,
-  TDeleteProjectMembershipOldDTO,
   TDeleteProjectMembershipsDTO,
-  TGetProjectMembershipByIdDTO,
   TGetProjectMembershipByUsernameDTO,
   TGetProjectMembershipDTO,
-  TLeaveProjectDTO,
-  TUpdateProjectMembershipDTO
+  TLeaveProjectDTO
 } from "./project-membership-types";
-import { TProjectUserMembershipRoleDALFactory } from "./project-user-membership-role-dal";
-import { TRoleDALFactory } from "../role/role-dal";
-import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
-import { TMembershipDALFactory } from "../membership/membership-dal";
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 
 type TProjectMembershipServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles"|  "invalidateProjectPermissionCache">;
   smtpService: TSmtpService;
   projectMembershipDAL: TProjectMembershipDALFactory;
-  membershipDAL: TMembershipDALFactory;
+  membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find" | "delete">;
-  userDAL: Pick<TUserDALFactory, "findById" | "findOne" | "findUserByProjectMembershipId" | "find">;
+  userDAL: Pick<TUserDALFactory, "find">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
-  roleDAL: Pick<TRoleDALFactory, "find" | "findOne">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership" | "findOrgMembersByUsername" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction" | "findProjectById">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -70,21 +53,17 @@ export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembersh
 export const projectMembershipServiceFactory = ({
   permissionService,
   projectMembershipDAL,
-  projectUserMembershipRoleDAL,
   smtpService,
-  orgDAL,
-  userDAL,
   userGroupMembershipDAL,
   groupProjectDAL,
   projectDAL,
   projectKeyDAL,
   secretReminderRecipientsDAL,
-  licenseService,
   notificationService,
-  roleDAL,
-  membershipRoleDAL,
   additionalPrivilegeDAL,
-  membershipDAL
+  membershipUserDAL,
+  userDAL,
+  membershipRoleDAL
 }: TProjectMembershipServiceFactoryDep) => {
   const getProjectMemberships = async ({
     actorId,
@@ -153,30 +132,6 @@ export const projectMembershipServiceFactory = ({
     return membership;
   };
 
-  const getProjectMembershipById = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectId,
-    id
-  }: TGetProjectMembershipByIdDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
-
-    const [membership] = await projectMembershipDAL.findAllProjectMembers(projectId, { id });
-    if (!membership) throw new NotFoundError({ message: `Project membership not found for user ${id}` });
-    return membership;
-  };
-
-  // TODO(simp): cross-check akhil
   const addUsersToProject = async ({
     projectId,
     actorId,
@@ -198,7 +153,7 @@ export const projectMembershipServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
-    const orgMembers = await membershipDAL.find({
+    const orgMembers = await membershipUserDAL.find({
       [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: project.orgId,
       scope: AccessScope.Organization,
       $in: {
@@ -208,41 +163,48 @@ export const projectMembershipServiceFactory = ({
 
     if (orgMembers.length !== members.length) throw new BadRequestError({ message: "Some users are not part of org" });
 
-    const existingMembers = await membershipDAL.find({
+    const existingMembers = await membershipUserDAL.find({
       [`${TableName.Membership}.scopeProjectId` as "scopeProjectId"]: projectId,
       scope: AccessScope.Project,
       $in: { actorUserId: orgMembers.map(({ actorUserId }) => actorUserId).filter(Boolean) }
     });
     if (existingMembers.length) throw new BadRequestError({ message: "Some users are already part of project" });
 
+    const orgMembershipUsernames = await userDAL.find({
+      $in: {
+        id: orgMembers.filter((el) => Boolean(el.actorUserId)).map((el) => el.actorUserId as string)
+      }
+    });
     const userIdsToExcludeForProjectKeyAddition = new Set(
       await userGroupMembershipDAL.findUserGroupMembershipsInProject(
-        orgMembers.map(({ username }) => username),
+        orgMembershipUsernames.map(({ username }) => username),
         projectId
       )
     );
 
-    await membershipDAL.transaction(async (tx) => {
-      const projectMemberships = await projectMembershipDAL.insertMany(
-        orgMembers.map(({ userId }) => ({
-          projectId,
-          userId
+    await membershipUserDAL.transaction(async (tx) => {
+      const projectMemberships = await membershipUserDAL.insertMany(
+        orgMembers.map(({ actorUserId }) => ({
+          scopeProjectId: projectId,
+          actorUserId,
+          scope: AccessScope.Project,
+          scopeOrgId: project.orgId
         })),
         tx
       );
-      await projectUserMembershipRoleDAL.insertMany(
-        projectMemberships.map(({ id }) => ({ projectMembershipId: id, role: ProjectMembershipRole.Member })),
+      await membershipRoleDAL.insertMany(
+        projectMemberships.map(({ id }) => ({ membershipId: id, role: ProjectMembershipRole.Member })),
         tx
       );
       const encKeyGroupByOrgMembId = groupBy(members, (i) => i.orgMembershipId);
       await projectKeyDAL.insertMany(
         orgMembers
-          .filter(({ userId }) => !userIdsToExcludeForProjectKeyAddition.has(userId))
-          .map(({ userId, id }) => ({
+          .filter(({ actorUserId }) => !userIdsToExcludeForProjectKeyAddition.has(actorUserId as string))
+          .map(({ actorUserId, id }) => ({
             encryptedKey: encKeyGroupByOrgMembId[id][0].workspaceEncryptedKey,
             nonce: encKeyGroupByOrgMembId[id][0].workspaceEncryptedNonce,
             senderId: actorId,
-            receiverId: userId,
+            receiverId: actorUserId as string,
             projectId
           })),
         tx
@@ -253,8 +215,8 @@ export const projectMembershipServiceFactory = ({
 
     if (sendEmails) {
       await notificationService.createUserNotifications(
-        orgMembers.map((member) => ({
-          userId: member.userId,
+        orgMembershipUsernames.map((member) => ({
+          userId: member.id,
           orgId: project.orgId,
           type: NotificationType.PROJECT_INVITATION,
           title: "Project Invitation",
@@ -266,7 +228,7 @@ export const projectMembershipServiceFactory = ({
       await smtpService.sendMail({
         template: SmtpTemplates.WorkspaceInvite,
         subjectLine: "Infisical project invitation",
-        recipients: orgMembers.filter((i) => i.email).map((i) => i.email as string),
+        recipients: orgMembershipUsernames.filter((i) => i.email).map((i) => i.email as string),
         substitutions: {
           workspaceName: project.name,
           callback_url: `${appCfg.SITE_URL}/login`
@@ -274,164 +236,6 @@ export const projectMembershipServiceFactory = ({
       });
     }
     return orgMembers;
-  };
-
-  const updateProjectMembership = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectId,
-    membershipId,
-    roles
-  }: TUpdateProjectMembershipDTO) => {
-    const { permission, memberships } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
-
-    const membershipUser = await userDAL.findUserByProjectMembershipId(membershipId);
-    if (membershipUser?.isGhost || membershipUser?.projectId !== projectId) {
-      throw new ForbiddenRequestError({ message: "Forbidden member update" });
-    }
-
-    const providedRolePermissionDetails = await permissionService.getProjectPermissionByRoles(
-      roles.map((el) => el.role).filter((el) => el !== ProjectMembershipRole.NoAccess),
-      projectId
-    );
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
-    for await (const { permission: rolePermission } of providedRolePermissionDetails) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        ProjectPermissionMemberActions.GrantPrivileges,
-        ProjectPermissionSub.Member,
-        permission,
-        rolePermission
-      );
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to assign to role",
-            shouldUseNewPrivilegeSystem,
-            ProjectPermissionMemberActions.GrantPrivileges,
-            ProjectPermissionSub.Member
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
-    }
-
-    // validate custom roles input
-    const customInputRoles = roles.filter(
-      ({ role }) =>
-        !Object.values(ProjectMembershipRole)
-          // we don't want to include custom in this check;
-          // this unintentionally enables setting slug to custom which is reserved
-          .filter((r) => r !== ProjectMembershipRole.Custom)
-          .includes(role as ProjectMembershipRole.Member)
-    );
-    const hasCustomRole = Boolean(customInputRoles.length);
-    if (hasCustomRole) {
-      const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan?.rbac)
-        throw new BadRequestError({
-          message: "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
-        });
-    }
-
-    const customRoles = hasCustomRole
-      ? await roleDAL.find({
-          projectId,
-          $in: { slug: customInputRoles.map(({ role }) => role) }
-        })
-      : [];
-    if (customRoles.length !== customInputRoles.length) {
-      throw new NotFoundError({ message: "One or more custom roles not found" });
-    }
-    const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
-
-    const sanitizedProjectMembershipRoles = roles.map((inputRole) => {
-      const isCustomRole = Boolean(customRolesGroupBySlug?.[inputRole.role]?.[0]);
-      if (!inputRole.isTemporary) {
-        return {
-          projectMembershipId: membershipId,
-          role: isCustomRole ? ProjectMembershipRole.Custom : inputRole.role,
-          customRoleId: customRolesGroupBySlug[inputRole.role] ? customRolesGroupBySlug[inputRole.role][0].id : null
-        };
-      }
-
-      // check cron or relative here later for now its just relative
-      const relativeTimeInMs = ms(inputRole.temporaryRange);
-      return {
-        projectMembershipId: membershipId,
-        role: isCustomRole ? ProjectMembershipRole.Custom : inputRole.role,
-        customRoleId: customRolesGroupBySlug[inputRole.role] ? customRolesGroupBySlug[inputRole.role][0].id : null,
-        isTemporary: true,
-        temporaryMode: ProjectUserMembershipTemporaryMode.Relative,
-        temporaryRange: inputRole.temporaryRange,
-        temporaryAccessStartTime: new Date(inputRole.temporaryAccessStartTime),
-        temporaryAccessEndTime: new Date(new Date(inputRole.temporaryAccessStartTime).getTime() + relativeTimeInMs)
-      };
-    });
-
-    const updatedRoles = await membershipDAL.transaction(async (tx) => {
-      await projectUserMembershipRoleDAL.delete({ projectMembershipId: membershipId }, tx);
-      return projectUserMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
-    });
-
-    await permissionService.invalidateProjectPermissionCache(projectId);
-
-    return updatedRoles;
-  };
-
-  // This is old and should be removed later. Its not used anywhere, but it is exposed in our API. So to avoid breaking changes, we are keeping it for now.
-  const deleteProjectMembership = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectId,
-    membershipId
-  }: TDeleteProjectMembershipOldDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Delete, ProjectPermissionSub.Member);
-
-    const member = await userDAL.findUserByProjectMembershipId(membershipId);
-
-    if (member?.isGhost) {
-      throw new ForbiddenRequestError({
-        message: "Forbidden membership deletion",
-        name: "DeleteProjectMembership"
-      });
-    }
-
-    const membership = await projectMembershipDAL.transaction(async (tx) => {
-      const [deletedMembership] = await projectMembershipDAL.delete({ projectId, id: membershipId }, tx);
-      await projectKeyDAL.delete({ receiverId: deletedMembership.userId, projectId }, tx);
-      await secretReminderRecipientsDAL.delete(
-        {
-          projectId,
-          userId: deletedMembership.userId
-        },
-        tx
-      );
-      return deletedMembership;
-    });
-
-    await permissionService.invalidateProjectPermissionCache(projectId);
-
-    return membership;
   };
 
   const deleteProjectMemberships = async ({
@@ -485,20 +289,21 @@ export const projectMembershipServiceFactory = ({
       await userGroupMembershipDAL.findUserGroupMembershipsInProject(usernamesAndEmails, projectId)
     );
 
-    const memberships = await projectMembershipDAL.transaction(async (tx) => {
-      await projectUserAdditionalPrivilegeDAL.delete(
+    const memberships = await membershipUserDAL.transaction(async (tx) => {
+      await additionalPrivilegeDAL.delete(
         {
           projectId,
           $in: {
-            userId: projectMembers.map((membership) => membership.user.id)
+            actorUserId: projectMembers.map((membership) => membership.user.id)
           }
         },
         tx
       );
 
-      const deletedMemberships = await projectMembershipDAL.delete(
+      const deletedMemberships = await membershipUserDAL.delete(
         {
-          projectId,
+          scopeProjectId: projectId,
+          scope: AccessScope.Project,
           $in: {
             id: projectMembers.map(({ id }) => id)
           }
@@ -571,11 +376,11 @@ export const projectMembershipServiceFactory = ({
       });
     }
 
-    const deletedMembership = await projectMembershipDAL.transaction(async (tx) => {
-      await projectUserAdditionalPrivilegeDAL.delete(
+    const deletedMembership = await membershipUserDAL.transaction(async (tx) => {
+      await additionalPrivilegeDAL.delete(
         {
           projectId: project.id,
-          userId: actorId
+          actorUserId: actorId
         },
         tx
       );
@@ -591,10 +396,11 @@ export const projectMembershipServiceFactory = ({
       );
 
       const membership = (
-        await projectMembershipDAL.delete(
+        await membershipUserDAL.delete(
           {
-            projectId: project.id,
-            userId: actorId
+            scope: AccessScope.Project,
+            scopeProjectId: project.id,
+            actorUserId: actorId
           },
           tx
         )
@@ -612,11 +418,8 @@ export const projectMembershipServiceFactory = ({
   return {
     getProjectMemberships,
     getProjectMembershipByUsername,
-    updateProjectMembership,
     deleteProjectMemberships,
-    deleteProjectMembership, // TODO: Remove this
     addUsersToProject,
-    leaveProject,
-    getProjectMembershipById
+    leaveProject
   };
 };

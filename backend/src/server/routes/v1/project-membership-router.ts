@@ -435,13 +435,19 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
           event: {
             type: EventType.REMOVE_PROJECT_MEMBER,
             metadata: {
-              userId: membership.userId,
+              userId: membership.actorUserId as string,
               email: ""
             }
           }
         });
       }
-      return { memberships };
+      return {
+        memberships: memberships.map((el) => ({
+          ...el,
+          userId: el.actorUserId as string,
+          projectId: req.params.projectId
+        }))
+      };
     }
   });
 
@@ -534,7 +540,13 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         projectId: req.params.projectId
       });
-      return { membership };
+      return {
+        membership: {
+          ...membership,
+          userId: membership.actorUserId as string,
+          projectId: req.params.projectId
+        }
+      };
     }
   });
 };

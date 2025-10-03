@@ -25,13 +25,12 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { deleteOrgMembershipFn } from "@app/services/org/org-fns";
+import { deleteOrgMembershipsFn } from "@app/services/org/org-fns";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
 import { OrgAuthMethod } from "@app/services/org/org-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
-import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -65,7 +64,6 @@ type TScimServiceFactoryDep = {
   >;
   membershipUserDAL: TMembershipUserDALFactory;
   projectDAL: Pick<TProjectDALFactory, "find" | "findProjectGhostUser" | "findById">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserId">;
   groupDAL: Pick<
     TGroupDALFactory,
     | "create"
@@ -78,7 +76,7 @@ type TScimServiceFactoryDep = {
     | "update"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "update">;
+  membershipRoleDAL: TMembershipRoleDALFactory;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
     | "find"
@@ -104,7 +102,6 @@ export const scimServiceFactory = ({
   userAliasDAL,
   orgDAL,
   projectDAL,
-  projectMembershipDAL,
   groupDAL,
   userGroupMembershipDAL,
   projectKeyDAL,
@@ -667,15 +664,16 @@ export const scimServiceFactory = ({
       });
     }
 
-    await deleteOrgMembershipFn({
-      orgMembershipId: membership.id,
+    await deleteOrgMembershipsFn({
+      orgMembershipIds: [membership.id],
       orgId: membership.scopeOrgId,
       orgDAL,
-      projectMembershipDAL,
       projectKeyDAL,
       userAliasDAL,
       licenseService,
-      membershipUserDAL
+      membershipUserDAL,
+      membershipRoleDAL,
+      userGroupMembershipDAL
     });
 
     return {}; // intentionally return empty object upon success

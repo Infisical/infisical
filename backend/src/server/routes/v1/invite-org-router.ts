@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { OrgMembershipRole, ProjectMembershipRole, UsersSchema } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, UsersSchema } from "@app/db/schemas";
 import { inviteUserRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -23,13 +23,6 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
           .array()
           .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase"),
         organizationId: z.string().trim(),
-        projects: z
-          .object({
-            id: z.string(),
-            projectRoleSlug: z.string().array().default([ProjectMembershipRole.Member])
-          })
-          .array()
-          .optional(),
         organizationRoleSlug: z.string().default(OrgMembershipRole.Member)
       }),
       response: {
@@ -50,15 +43,16 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       if (req.auth.actor !== ActorType.USER) return;
 
-      const { signupTokens: completeInviteLinks } = await server.services.org.inviteUserToOrganization({
-        orgId: req.body.organizationId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        inviteeEmails: req.body.inviteeEmails,
-        projects: req.body.projects,
-        organizationRoleSlug: req.body.organizationRoleSlug,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+      const { signUpTokens: completeInviteLinks } = await server.services.membershipUser.createMembership({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Organization,
+          orgId: req.permission.orgId
+        },
+        data: {
+          usernames: req.body.inviteeEmails,
+          roles: [{ isTemporary: false, role: req.body.organizationRoleSlug }]
+        }
       });
 
       await server.services.telemetry.sendPostHogEvents({

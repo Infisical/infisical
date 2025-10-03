@@ -167,6 +167,13 @@ export const roleServiceFactory = ({
     await factory.onGetRoleByIdGuard(dto);
 
     const scope = factory.getScopeField(scopeData);
+
+    const predefinedRole = await factory.getPredefinedRoles(scopeData);
+    const selectedRole = predefinedRole.find((el) => el.id === dto.selector.id);
+    if (selectedRole) {
+      return { ...selectedRole, permissions: UnpackedPermissionSchema.array().parse(selectedRole.permissions) };
+    }
+
     const role = await roleDAL.findOne({
       id: selector.id,
       [scope.key]: scope.value

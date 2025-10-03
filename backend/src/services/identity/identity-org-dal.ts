@@ -193,62 +193,62 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         })
         .leftJoin<TIdentityUniversalAuths>(
           TableName.IdentityUniversalAuth,
-          "paginatedIdentity.identityId",
+          "paginatedIdentity.actorIdentityId",
           `${TableName.IdentityUniversalAuth}.identityId`
         )
         .leftJoin<TIdentityGcpAuths>(
           TableName.IdentityGcpAuth,
-          "paginatedIdentity.identityId",
+          "paginatedIdentity.actorIdentityId",
           `${TableName.IdentityGcpAuth}.identityId`
         )
         .leftJoin<TIdentityAlicloudAuths>(
           TableName.IdentityAliCloudAuth,
-          "paginatedIdentity.identityId",
+          "paginatedIdentity.actorIdentityId",
           `${TableName.IdentityAliCloudAuth}.identityId`
         )
         .leftJoin<TIdentityAwsAuths>(
           TableName.IdentityAwsAuth,
-          "paginatedIdentity.identityId",
+          "paginatedIdentity.actorIdentityId",
           `${TableName.IdentityAwsAuth}.identityId`
         )
         .leftJoin<TIdentityKubernetesAuths>(
           TableName.IdentityKubernetesAuth,
-          "paginatedIdentity.identityId",
+          "paginatedIdentity.actorIdentityId",
           `${TableName.IdentityKubernetesAuth}.identityId`
         )
         .leftJoin<TIdentityOciAuths>(
           TableName.IdentityOciAuth,
-          "paginatedIdentity.identityId",
+          "paginatedIdentity.actorIdentityId",
           `${TableName.IdentityOciAuth}.identityId`
         )
         .leftJoin<TIdentityOidcAuths>(
           TableName.IdentityOidcAuth,
-          "paginatedIdentity.identityId",
+          "paginatedIdentity.actorIdentityId",
           `${TableName.IdentityOidcAuth}.identityId`
         )
         .leftJoin<TIdentityAzureAuths>(
           TableName.IdentityAzureAuth,
-          "paginatedIdentity.identityId",
+          "paginatedIdentity.actorIdentityId",
           `${TableName.IdentityAzureAuth}.identityId`
         )
         .leftJoin<TIdentityTokenAuths>(
           TableName.IdentityTokenAuth,
-          "paginatedIdentity.identityId",
+          "paginatedIdentity.actorIdentityId",
           `${TableName.IdentityTokenAuth}.identityId`
         )
         .leftJoin<TIdentityJwtAuths>(
           TableName.IdentityJwtAuth,
-          "paginatedIdentity.identityId",
+          "paginatedIdentity.actorIdentityId",
           `${TableName.IdentityJwtAuth}.identityId`
         )
         .leftJoin<TIdentityLdapAuths>(
           TableName.IdentityLdapAuth,
-          "paginatedIdentity.identityId",
+          "paginatedIdentity.actorIdentityId",
           `${TableName.IdentityLdapAuth}.identityId`
         )
         .leftJoin<TIdentityTlsCertAuths>(
           TableName.IdentityTlsCertAuth,
-          "paginatedIdentity.identityId",
+          "paginatedIdentity.actorIdentityId",
           `${TableName.IdentityTlsCertAuth}.identityId`
         )
         .select(

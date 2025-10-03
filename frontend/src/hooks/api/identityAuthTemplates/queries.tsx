@@ -39,7 +39,7 @@ export const useGetIdentityAuthTemplates = (dto: GetIdentityAuthTemplatesDTO) =>
       });
       return data;
     },
-    enabled: Boolean(dto.organizationId)
+    enabled: Boolean(dto.organizationId && !dto.isDisabled)
   });
 };
 

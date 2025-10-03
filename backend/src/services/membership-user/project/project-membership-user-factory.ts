@@ -11,19 +11,29 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+import { getConfig } from "@app/lib/config/env";
+import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
+import { TMembershipUserDALFactory } from "../membership-user-dal";
 import { TMembershipUserScopeFactory } from "../membership-user-types";
 
 type TProjectMembershipUserScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export const newProjectMembershipUserFactory = ({
   permissionService,
-  orgDAL
+  orgDAL,
+  projectDAL,
+  membershipUserDAL,
+  smtpService
 }: TProjectMembershipUserScopeFactoryDep): TMembershipUserScopeFactory => {
   const getScopeField: TMembershipUserScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Project) {
@@ -41,7 +51,10 @@ export const newProjectMembershipUserFactory = ({
 
   const isCustomRole: TMembershipUserScopeFactory["isCustomRole"] = (role) => isCustomProjectRole(role);
 
-  const onCreateMembershipUserGuard: TMembershipUserScopeFactory["onCreateMembershipUserGuard"] = async (dto) => {
+  const onCreateMembershipUserGuard: TMembershipUserScopeFactory["onCreateMembershipUserGuard"] = async (
+    dto,
+    newUsers
+  ) => {
     const scope = getScopeField(dto.scopeData);
     const { permission } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
@@ -52,6 +65,21 @@ export const newProjectMembershipUserFactory = ({
       actorOrgId: dto.permission.orgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
+
+    // TODO(namespace): this becomes tricky in namespace due to group flow
+    const orgMemberships = await membershipUserDAL.find({
+      scope: AccessScope.Organization,
+      scopeOrgId: dto.permission.orgId,
+      $in: {
+        actorUserId: newUsers.map((el) => el.id)
+      }
+    });
+    if (orgMemberships.length !== newUsers.length) {
+      const missingUsers = newUsers
+        .filter((el) => !orgMemberships.find((memb) => memb.actorUserId === el.id))
+        .map((el) => el.email);
+      throw new BadRequestError({ message: `Users ${missingUsers.join(",")} not part of organization` });
+    }
 
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
@@ -80,8 +108,24 @@ export const newProjectMembershipUserFactory = ({
     }
   };
 
-  const onCreateMembershipComplete: TMembershipUserScopeFactory["onCreateMembershipComplete"] = async () => {
-    throw new InternalServerError({ message: "Project membership user create complete not implemented" });
+  const onCreateMembershipComplete: TMembershipUserScopeFactory["onCreateMembershipComplete"] = async (
+    dto,
+    newMembers
+  ) => {
+    const appCfg = getConfig();
+    const scope = getScopeField(dto.scopeData);
+    const project = await projectDAL.findById(scope.value);
+    const emails = newMembers.filter((el) => Boolean(el?.email)).map((el) => el?.email as string);
+    await smtpService.sendMail({
+      template: SmtpTemplates.WorkspaceInvite,
+      subjectLine: "Infisical project invitation",
+      recipients: emails,
+      substitutions: {
+        workspaceName: project.name,
+        callback_url: `${appCfg.SITE_URL}/login`
+      }
+    });
+    return { signUpTokens: [] };
   };
 
   const onUpdateMembershipUserGuard: TMembershipUserScopeFactory["onUpdateMembershipUserGuard"] = async (dto) => {
