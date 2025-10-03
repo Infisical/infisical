@@ -216,11 +216,9 @@ export const identityServiceFactory = ({
 
       if (role) {
         await membershipRoleDAL.delete({ membershipId: identityOrgMembership.id }, tx);
-        await membershipRoleDAL.update(
+        await membershipRoleDAL.create(
           {
-            membershipId: identityOrgMembership.id
-          },
-          {
+            membershipId: identityOrgMembership.id,
             role: customRole ? OrgMembershipRole.Custom : role,
             customRoleId: customRole?.id || null
           },

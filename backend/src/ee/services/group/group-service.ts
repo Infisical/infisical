@@ -223,16 +223,20 @@ export const groupServiceFactory = ({
         }
       }
 
-      const [updated] = await groupDAL.update(
-        {
-          id: group.id
-        },
-        {
-          name,
-          slug: slug ? slugify(slug) : undefined
-        },
-        tx
-      );
+      let updated = group;
+
+      if (name || slug) {
+        [updated] = await groupDAL.update(
+          {
+            id: group.id
+          },
+          {
+            name,
+            slug: slug ? slugify(slug) : undefined
+          },
+          tx
+        );
+      }
 
       if (role) {
         const membership = await membershipGroupDAL.findOne(

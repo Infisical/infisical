@@ -190,19 +190,10 @@ export const useAddUsersToOrg = () => {
     mutationFn: (dto) => {
       return apiRequest.post("/api/v1/invite-org/signup", dto);
     },
-    onSuccess: (_, { organizationId, projects }) => {
+    onSuccess: (_, { organizationId }) => {
       queryClient.invalidateQueries({ queryKey: userKeys.getOrgUsers(organizationId) });
       queryClient.invalidateQueries({
         queryKey: subscriptionQueryKeys.getOrgSubsription(organizationId)
-      });
-
-      projects?.forEach((project) => {
-        if (project.slug) {
-          queryClient.invalidateQueries({
-            queryKey: projectKeys.getProjectGroupMemberships(project.slug)
-          });
-        }
-        queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(project.id) });
       });
     }
   });

@@ -211,7 +211,6 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // TODO(simp): switch to top level roles
   server.route({
     method: "GET",
     url: "/:organizationId/roles",
@@ -248,7 +247,6 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // TODO(simp): get this fixed
   server.route({
     method: "GET",
     url: "/:organizationId/permissions",

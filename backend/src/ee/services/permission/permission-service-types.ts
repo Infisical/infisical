@@ -95,7 +95,6 @@ export type TPermissionServiceFactory = {
       membershipId: string;
     }[];
   }>;
-  // TODO(simp): switch to role dal later
   getOrgPermissionByRoles: (
     roles: string[],
     orgId: string

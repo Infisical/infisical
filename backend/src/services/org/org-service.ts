@@ -779,16 +779,20 @@ export const orgServiceFactory = ({
       userRoleId = customRole.id;
     }
     const membership = await orgDAL.transaction(async (tx) => {
-      const [updatedOrgMembership] = await orgDAL.updateMembership(
-        { id: membershipId, scopeOrgId: orgId },
-        { isActive },
-        tx
-      );
+      // this is because if isActive is undefined then this would fail due to knexjs error
+      const [updatedOrgMembership] =
+        typeof isActive === "undefined"
+          ? [foundMembership]
+          : await orgDAL.updateMembership(
+              { id: membershipId, scopeOrgId: orgId, scope: AccessScope.Organization },
+              { isActive },
+              tx
+            );
       if (userRole) {
-        await membershipRoleDAL.delete({ membershipId: updatedOrgMembership.id }, tx);
+        await membershipRoleDAL.delete({ membershipId }, tx);
         await membershipRoleDAL.create(
           {
-            membershipId: updatedOrgMembership.id,
+            membershipId,
             role: userRole,
             customRoleId: userRoleId
           },

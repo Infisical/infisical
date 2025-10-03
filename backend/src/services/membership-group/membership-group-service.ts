@@ -54,8 +54,8 @@ export const membershipGroupServiceFactory = ({
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    const hasOnePermanentRole = data.roles.some((el) => el.isTemporary);
-    if (hasOnePermanentRole) {
+    const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
+    if (hasNoPermanentRole) {
       throw new BadRequestError({
         message: "Group must have atleast one permanent role"
       });
@@ -148,8 +148,8 @@ export const membershipGroupServiceFactory = ({
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
 
-    const hasOnePermanentRole = data.roles.some((el) => el.isTemporary);
-    if (hasOnePermanentRole) {
+    const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
+    if (hasNoPermanentRole) {
       throw new BadRequestError({
         message: "Group must have atleast one permanent role"
       });
@@ -172,7 +172,7 @@ export const membershipGroupServiceFactory = ({
     const existingMembership = await membershipGroupDAL.findOne({
       scope: scopeData.scope,
       ...scopeDatabaseFields,
-      actorIdentityId: dto.selector.groupId
+      actorGroupId: dto.selector.groupId
     });
     if (!existingMembership)
       throw new BadRequestError({
@@ -193,13 +193,16 @@ export const membershipGroupServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipGroupDAL.transaction(async (tx) => {
-      const doc = await membershipGroupDAL.updateById(
-        existingMembership.id,
-        {
-          isActive: data.isActive
-        },
-        tx
-      );
+      const doc =
+        typeof data?.isActive === "undefined"
+          ? existingMembership
+          : await membershipGroupDAL.updateById(
+              existingMembership.id,
+              {
+                isActive: data.isActive
+              },
+              tx
+            );
 
       const roleDocs: TMembershipRolesInsert[] = [];
       data.roles.forEach((membershipRole) => {
@@ -253,14 +256,14 @@ export const membershipGroupServiceFactory = ({
     const existingMembership = await membershipGroupDAL.findOne({
       scope: scopeData.scope,
       ...scopeDatabaseFields,
-      actorIdentityId: dto.selector.groupId
+      actorGroupId: dto.selector.groupId
     });
     if (!existingMembership)
       throw new BadRequestError({
         message: "Group doesn't have membership"
       });
 
-    if (existingMembership.actorIdentityId === dto.permission.id)
+    if (existingMembership.actorGroupId === dto.permission.id)
       throw new BadRequestError({
         message: "You can't delete you own membership"
       });

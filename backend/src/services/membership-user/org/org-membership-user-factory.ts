@@ -105,10 +105,12 @@ export const newOrgMembershipUserFactory = ({
         });
 
         if (el.email) {
-          signUpTokens.push({
-            email: el.email,
-            link: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${el.email}&organization_id=${dto.permission.orgId}`
-          });
+          if (!appCfg.isSmtpConfigured) {
+            signUpTokens.push({
+              email: el.email,
+              link: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${el.email}&organization_id=${dto.permission.orgId}`
+            });
+          }
 
           await smtpService.sendMail({
             template: SmtpTemplates.OrgInvite,
