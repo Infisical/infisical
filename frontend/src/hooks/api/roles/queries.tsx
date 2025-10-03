@@ -80,10 +80,7 @@ const getOrgRoles = async (orgId: string) => {
   const { data } = await apiRequest.get<{
     data: { roles: Array<Omit<TOrgRole, "permissions"> & { permissions: unknown }> };
   }>(`/api/v1/organization/${orgId}/roles`);
-  return data.data.roles.map(({ permissions, ...el }) => ({
-    ...el,
-    permissions: unpackRules(permissions as PackRule<TPermission>[])
-  }));
+  return data.data.roles;
 };
 
 export const useGetOrgRoles = (orgId: string, enable = true) =>
@@ -102,7 +99,7 @@ export const useGetOrgRole = (orgId: string, roleId: string) =>
       }>(`/api/v1/organization/${orgId}/roles/${roleId}`);
       return {
         ...data.role,
-        permissions: unpackRules(data.role.permissions as PackRule<TPermission>[])
+        permissions: data.role.permissions as PackRule<TPermission>[]
       };
     },
     enabled: Boolean(orgId && roleId)

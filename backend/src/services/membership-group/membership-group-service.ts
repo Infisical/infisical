@@ -1,10 +1,12 @@
-import { ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TMembershipGroupDALFactory } from "./membership-group-dal";
 import {
@@ -12,14 +14,18 @@ import {
   TDeleteMembershipGroupDTO,
   TGetMembershipGroupByGroupIdDTO,
   TListMembershipGroupDTO,
-  TMembershipGroupScopeFactory,
   TUpdateMembershipGroupDTO
 } from "./membership-group-types";
+import { newNamespaceMembershipGroupFactory } from "./namespace/namespace-membership-group-factory";
+import { newOrgMembershipGroupFactory } from "./org/org-membership-group-factory";
+import { newProjectMembershipGroupFactory } from "./project/project-membership-group-factory";
 
 type TMembershipGroupServiceFactoryDep = {
   membershipGroupDAL: TMembershipGroupDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
   roleDAL: Pick<TRoleDALFactory, "find">;
+  permissionService: TPermissionServiceFactory;
+  orgDAL: TOrgDALFactory;
 };
 
 export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupServiceFactory>;
@@ -27,9 +33,22 @@ export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupSe
 export const membershipGroupServiceFactory = ({
   membershipGroupDAL,
   roleDAL,
-  membershipRoleDAL
+  membershipRoleDAL,
+  orgDAL,
+  permissionService
 }: TMembershipGroupServiceFactoryDep) => {
-  const scopeFactory: Record<string, TMembershipGroupScopeFactory> = {};
+  const scopeFactory = {
+    [AccessScope.Organization]: newOrgMembershipGroupFactory({
+      orgDAL,
+      permissionService
+    }),
+    [AccessScope.Namespace]: newNamespaceMembershipGroupFactory({}),
+    [AccessScope.Project]: newProjectMembershipGroupFactory({
+      membershipGroupDAL,
+      orgDAL,
+      permissionService
+    })
+  };
 
   const createMembership = async (dto: TCreateMembershipGroupDTO) => {
     const { scopeData, data } = dto;

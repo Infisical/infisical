@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { OrgMembershipRole, ProjectMembershipRole, ProjectMembershipsSchema } from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, ProjectMembershipsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECT_USERS } from "@app/lib/api-docs";
 import { writeLimit } from "@app/server/config/rateLimiter";
@@ -51,20 +51,17 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const usernamesAndEmails = [...req.body.emails, ...req.body.usernames];
-      const { projectMemberships: memberships } = await server.services.org.inviteUserToOrganization({
-        actorAuthMethod: req.permission.authMethod,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actor: req.permission.type,
-        inviteeEmails: usernamesAndEmails,
-        orgId: req.permission.orgId,
-        organizationRoleSlug: OrgMembershipRole.NoAccess,
-        projects: [
-          {
-            id: req.params.projectId,
-            projectRoleSlug: req.body.roleSlugs || [ProjectMembershipRole.Member]
-          }
-        ]
+      const { memberships } = await server.services.membershipUser.createMembership({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId: req.params.projectId
+        },
+        data: {
+          usernames: usernamesAndEmails,
+          roles: (req.body.roleSlugs || [ProjectMembershipRole.Member]).map((role) => ({ isTemporary: false, role }))
+        }
       });
 
       await server.services.auditLog.createAuditLog({
@@ -72,15 +69,21 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
         ...req.auditLogInfo,
         event: {
           type: EventType.ADD_BATCH_PROJECT_MEMBER,
-          metadata: memberships.map(({ userId, id }) => ({
-            userId: userId || "",
+          metadata: memberships.map(({ actorUserId, id }) => ({
+            userId: actorUserId || "",
             membershipId: id,
             email: ""
           }))
         }
       });
 
-      return { memberships };
+      return {
+        memberships: memberships.map((el) => ({
+          ...el,
+          userId: el.actorUserId as string,
+          projectId: req.params.projectId
+        }))
+      };
     }
   });
 
@@ -143,13 +146,19 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
           event: {
             type: EventType.REMOVE_PROJECT_MEMBER,
             metadata: {
-              userId: membership.userId,
+              userId: membership.actorUserId as string,
               email: ""
             }
           }
         });
       }
-      return { memberships };
+      return {
+        memberships: memberships.map((el) => ({
+          ...el,
+          userId: el.actorUserId as string,
+          projectId: req.params.projectId
+        }))
+      };
     }
   });
 };

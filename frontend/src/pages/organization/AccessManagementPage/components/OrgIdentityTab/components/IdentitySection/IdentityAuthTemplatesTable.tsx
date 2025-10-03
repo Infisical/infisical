@@ -1,6 +1,7 @@
 import {
   faArrowDown,
   faArrowUp,
+  faBan,
   faEdit,
   faEllipsisV,
   faEye,
@@ -30,7 +31,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionSubjects, useOrganization } from "@app/context";
+import { OrgPermissionSubjects, useOrganization, useSubscription } from "@app/context";
 import { OrgPermissionMachineIdentityAuthTemplateActions } from "@app/context/OrgPermissionContext/types";
 import {
   getUserTablePreference,
@@ -86,12 +87,14 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
   };
 
   const organizationId = currentOrg?.id || "";
+  const { subscription } = useSubscription();
 
   const { data, isPending, isFetching } = useGetIdentityAuthTemplates({
     organizationId,
     limit,
     offset,
-    search: debouncedSearch
+    search: debouncedSearch,
+    isDisabled: !subscription.machineIdentityAuthTemplates
   });
 
   const { templates = [], totalCount = 0 } = data ?? {};
@@ -172,7 +175,10 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
             </Tr>
           </THead>
           <TBody>
-            {isPending && <TableSkeleton columns={4} innerKey="identity-auth-templates" />}
+            {subscription.machineIdentityAuthTemplates && isPending && (
+              <TableSkeleton columns={4} innerKey="identity-auth-templates" />
+            )}
+
             {!isPending &&
               templates?.map((template) => (
                 <Tr
@@ -264,6 +270,9 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
             onChangePage={(newPage) => setPage(newPage)}
             onChangePerPage={handlePerPageChange}
           />
+        )}
+        {!subscription.machineIdentityAuthTemplates && (
+          <EmptyState title="This feature is not yet activated for your license." icon={faBan} />
         )}
         {!isPending && templates.length === 0 && (
           <EmptyState

@@ -344,7 +344,7 @@ export const orgDALFactory = (db: TDbClient) => {
 
       const count = await db
         .replicaNode()(TableName.Membership)
-        .where(`${TableName.Membership}.orgId`, orgId)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .count("*")
@@ -376,7 +376,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(
           conn.ref("id").withSchema(TableName.Membership),
           conn.ref("inviteEmail").withSchema(TableName.Membership),
-          conn.ref("orgId").withSchema(TableName.Membership),
+          conn.ref("scopeOrgId").withSchema(TableName.Membership).as("orgId"),
           db.ref("role").withSchema(TableName.MembershipRole),
           db.ref("customRoleId").withSchema(TableName.MembershipRole).as("roleId"),
           conn.ref("status").withSchema(TableName.Membership),
@@ -416,7 +416,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(
           conn.ref("id").withSchema(TableName.Membership),
           conn.ref("inviteEmail").withSchema(TableName.Membership),
-          conn.ref("orgId").withSchema(TableName.Membership),
+          conn.ref("scopeOrgId").withSchema(TableName.Membership).as("orgId"),
           conn.ref("role").withSchema(TableName.MembershipRole),
           conn.ref("customRoleId").withSchema(TableName.MembershipRole).as("roleId"),
           conn.ref("status").withSchema(TableName.Membership),
