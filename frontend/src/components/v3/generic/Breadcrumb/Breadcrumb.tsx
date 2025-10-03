@@ -45,7 +45,11 @@ function BreadcrumbLink({
   return (
     <Comp
       data-slot="breadcrumb-link"
-      className={cn("transition-colors hover:text-foreground", className)}
+      className={cn(
+        "rounded-[4px] text-accent transition-colors hover:text-foreground",
+        "outline-0 focus-visible:ring-2 focus-visible:ring-ring",
+        className
+      )}
       {...props}
     />
   );
@@ -87,7 +91,7 @@ function BreadcrumbEllipsis({ className, ...props }: React.ComponentProps<"span"
       className={cn("flex size-9 items-center justify-center", className)}
       {...props}
     >
-      <MoreHorizontal className="size-4" />
+      <MoreHorizontal className="size-4 text-accent" />
       <span className="sr-only">More</span>
     </span>
   );

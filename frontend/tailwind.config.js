@@ -21,8 +21,8 @@ module.exports = {
         /* start v3 component colors ************************/
 
         // scopes
-        org: "#498587", // teal
-        namespace: "#874982", // purple
+        org: "#498587",
+        namespace: "#874982",
 
         // products
         "secret-manager": "#848749",
@@ -32,7 +32,7 @@ module.exports = {
         pam: "#be6e29",
         ssh: "#876A49",
 
-        // statuses - refined with better thematic harmony
+        // statuses
         success: "#27AE60", // deeper emerald
         danger: "#E74C3C", // refined red
         warning: "#F39C12", // amber gold
@@ -47,7 +47,10 @@ module.exports = {
         header: "#1E1F22",
         input: "#1E1F22",
         popover: "#1E1F22",
-        ring: "#6e6e6e",
+        // highlight (menus, selects, etc)
+        // card
+        // label
+        ring: "#dde329",
         placeholder: "#8E8F90",
         /* end v3 colors *************************************/
 
