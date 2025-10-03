@@ -103,23 +103,28 @@ export const useCheckDuplicateDestination = (
   projectId: string,
   excludeSyncId?: string,
   options?: Omit<
-    UseQueryOptions<boolean, unknown, boolean, ReturnType<typeof secretSyncKeys.duplicateCheck>>,
+    UseQueryOptions<
+      { hasDuplicate: boolean; duplicateProjectId?: string },
+      unknown,
+      { hasDuplicate: boolean; duplicateProjectId?: string },
+      ReturnType<typeof secretSyncKeys.duplicateCheck>
+    >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
     queryKey: secretSyncKeys.duplicateCheck(destination, destinationConfig, excludeSyncId),
     queryFn: async () => {
-      const { data } = await apiRequest.post<{ hasDuplicate: boolean }>(
-        `/api/v1/secret-syncs/${destination}/check-destination`,
-        {
-          destinationConfig,
-          excludeSyncId,
-          projectId
-        }
-      );
+      const { data } = await apiRequest.post<{
+        hasDuplicate: boolean;
+        duplicateProjectId?: string;
+      }>(`/api/v1/secret-syncs/${destination}/check-destination`, {
+        destinationConfig,
+        excludeSyncId,
+        projectId
+      });
 
-      return data.hasDuplicate;
+      return data;
     },
     enabled: Boolean(destinationConfig) && Object.keys(destinationConfig || {}).length > 0,
     ...options

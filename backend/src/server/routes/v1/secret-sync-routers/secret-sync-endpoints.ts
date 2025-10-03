@@ -440,7 +440,10 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         projectId: z.string().uuid()
       }),
       response: {
-        200: z.object({ hasDuplicate: z.boolean() })
+        200: z.object({
+          hasDuplicate: z.boolean(),
+          duplicateProjectId: z.string().uuid().optional()
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),

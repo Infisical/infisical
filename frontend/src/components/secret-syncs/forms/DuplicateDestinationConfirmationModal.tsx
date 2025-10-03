@@ -5,13 +5,15 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   onConfirm: () => void;
   isLoading?: boolean;
+  duplicateProjectId?: string;
 };
 
 export const DuplicateDestinationConfirmationModal = ({
   isOpen,
   onOpenChange,
   onConfirm,
-  isLoading
+  isLoading,
+  duplicateProjectId
 }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -21,6 +23,14 @@ export const DuplicateDestinationConfirmationModal = ({
             Another secret sync in your organization is already configured with the same
             destination. Proceeding may cause conflicts or overwrite existing data.
           </p>
+          {duplicateProjectId && (
+            <p className="mt-2 text-xs text-mineshaft-400">
+              Duplicate found in project ID:{" "}
+              <code className="rounded bg-mineshaft-600 px-1 py-0.5 text-mineshaft-200">
+                {duplicateProjectId}
+              </code>
+            </p>
+          )}
           <p className="mt-2">Are you sure you want to continue?</p>
         </div>
 

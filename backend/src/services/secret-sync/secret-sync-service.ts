@@ -713,7 +713,16 @@ export const secretSyncServiceFactory = ({
       case SecretSync.DigitalOceanAppPlatform:
         return ["appName"];
       case SecretSync.GitLab:
-        return ["projectName", "shouldProtectSecrets", "shouldMaskSecrets", "shouldHideSecrets"];
+        return [
+          "projectName",
+          "shouldProtectSecrets",
+          "shouldMaskSecrets",
+          "shouldHideSecrets",
+          "targetEnvironment",
+          "groupName",
+          "groupId",
+          "projectId"
+        ];
       case SecretSync.Heroku:
         return ["appName"];
       case SecretSync.Netlify:
@@ -730,6 +739,34 @@ export const secretSyncServiceFactory = ({
         return ["hostName", "macroType"];
       default:
         return [];
+    }
+  };
+
+  const handleSpecialCaseDuplicateCheck = (
+    destination: SecretSync,
+    existingConfig: Record<string, unknown>,
+    newConfig: Record<string, unknown>
+  ): boolean => {
+    switch (destination) {
+      case SecretSync.GitLab: {
+        const existingTargetEnv = existingConfig.targetEnvironment as string | undefined;
+        const newTargetEnv = newConfig.targetEnvironment as string | undefined;
+
+        // If either has wildcard '*', it conflicts with any targetEnvironment
+        if (existingTargetEnv === "*" || newTargetEnv === "*") {
+          return true;
+        }
+
+        return (
+          existingTargetEnv === newTargetEnv &&
+          ((newConfig.scope as string) === "group"
+            ? existingConfig.groupId === newConfig.groupId
+            : existingConfig.projectId === newConfig.projectId)
+        );
+      }
+      default:
+        // For other sync types, no special handling needed
+        return true;
     }
   };
 
@@ -753,7 +790,7 @@ export const secretSyncServiceFactory = ({
     );
 
     if (!destinationConfig || Object.keys(destinationConfig).length === 0) {
-      return { hasDuplicate: false };
+      return { hasDuplicate: false, duplicateProjectId: undefined };
     }
 
     try {
@@ -765,15 +802,27 @@ export const secretSyncServiceFactory = ({
         }
 
         try {
-          return deepEqualSkipFields(sync.destinationConfig, destinationConfig, skipFields);
+          const baseFieldsMatch = deepEqualSkipFields(sync.destinationConfig, destinationConfig, skipFields);
+          if (baseFieldsMatch) {
+            return handleSpecialCaseDuplicateCheck(
+              destination,
+              sync.destinationConfig as Record<string, unknown>,
+              destinationConfig
+            );
+          }
+          return false;
         } catch {
           return false;
         }
       });
 
-      return { hasDuplicate: duplicates.length > 0 };
+      const hasDuplicate = duplicates.length > 0;
+      return {
+        hasDuplicate,
+        duplicateProjectId: hasDuplicate ? duplicates[0].projectId : undefined
+      };
     } catch (error) {
-      return { hasDuplicate: false };
+      return { hasDuplicate: false, duplicateProjectId: undefined };
     }
   };
 

@@ -44,8 +44,9 @@ export const EditSecretSyncForm = ({ secretSync, fields, onComplete }: Props) =>
 
   const [destinationConfigToCheck, setDestinationConfigToCheck] = useState<unknown>(null);
   const [checkDuplicateEnabled, setCheckDuplicateEnabled] = useState(false);
+  const [storedDuplicateProjectId, setStoredDuplicateProjectId] = useState<string | undefined>();
 
-  const { data: hasDuplicate, isLoading: isCheckingDuplicate } = useCheckDuplicateDestination(
+  const { data: duplicateData, isLoading: isCheckingDuplicate } = useCheckDuplicateDestination(
     secretSync.destination,
     destinationConfigToCheck,
     secretSync.projectId,
@@ -84,7 +85,8 @@ export const EditSecretSyncForm = ({ secretSync, fields, onComplete }: Props) =>
 
   useEffect(() => {
     if (checkDuplicateEnabled && !isCheckingDuplicate && destinationConfigToCheck) {
-      if (hasDuplicate) {
+      if (duplicateData?.hasDuplicate) {
+        setStoredDuplicateProjectId(duplicateData.duplicateProjectId);
         setShowDuplicateConfirmation(true);
       } else if (pendingFormData) {
         performUpdate(pendingFormData);
@@ -96,7 +98,8 @@ export const EditSecretSyncForm = ({ secretSync, fields, onComplete }: Props) =>
   }, [
     checkDuplicateEnabled,
     isCheckingDuplicate,
-    hasDuplicate,
+    duplicateData?.hasDuplicate,
+    duplicateData?.duplicateProjectId,
     destinationConfigToCheck,
     pendingFormData,
     performUpdate
@@ -197,9 +200,15 @@ export const EditSecretSyncForm = ({ secretSync, fields, onComplete }: Props) =>
 
       <DuplicateDestinationConfirmationModal
         isOpen={showDuplicateConfirmation}
-        onOpenChange={setShowDuplicateConfirmation}
+        onOpenChange={(open) => {
+          setShowDuplicateConfirmation(open);
+          if (!open) {
+            setStoredDuplicateProjectId(undefined);
+          }
+        }}
         onConfirm={handleConfirmDuplicate}
         isLoading={updateSecretSync.isPending}
+        duplicateProjectId={storedDuplicateProjectId}
       />
     </>
   );

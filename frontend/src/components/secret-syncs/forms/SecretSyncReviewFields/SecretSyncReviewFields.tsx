@@ -67,7 +67,7 @@ export const SecretSyncReviewFields = () => {
 
   const destinationName = SECRET_SYNC_MAP[destination].name;
 
-  const { hasDuplicate, isChecking } = useDuplicateDestinationCheck({
+  const { hasDuplicate, duplicateProjectId, isChecking } = useDuplicateDestinationCheck({
     destination,
     projectId: currentProject?.id || "",
     enabled: true,
@@ -192,10 +192,17 @@ export const SecretSyncReviewFields = () => {
           <div className="mb-2 flex items-start rounded-md border border-yellow-600 bg-yellow-900/20 px-3 py-2">
             <div className="flex text-sm text-yellow-100">
               <FontAwesomeIcon icon={faWarning} className="mr-2 mt-1 text-yellow-600" />
-              <p>
-                Another secret sync in your organization is already configured with the same
-                destination. This may lead to conflicts or unexpected behavior.
-              </p>
+              <div>
+                <p>
+                  Another secret sync in your organization is already configured with the same
+                  destination. This may lead to conflicts or unexpected behavior.
+                </p>
+                {duplicateProjectId && (
+                  <p className="mt-1 text-xs text-yellow-200">
+                    Duplicate found in project ID: <code className="rounded bg-yellow-800/50 px-1 py-0.5">{duplicateProjectId}</code>
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         )}

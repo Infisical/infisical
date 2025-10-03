@@ -30,7 +30,7 @@ export const useDuplicateDestinationCheck = ({
   const shouldCheck = enabled && hasValidConfig;
 
   const {
-    data: hasDuplicate,
+    data: duplicateData,
     isLoading,
     error,
     refetch
@@ -41,7 +41,8 @@ export const useDuplicateDestinationCheck = ({
   });
 
   return {
-    hasDuplicate: shouldCheck ? Boolean(hasDuplicate) : false,
+    hasDuplicate: shouldCheck ? Boolean(duplicateData?.hasDuplicate) : false,
+    duplicateProjectId: duplicateData?.duplicateProjectId,
     isChecking: shouldCheck && isLoading,
     hasError: Boolean(error),
     hasValidConfig,
