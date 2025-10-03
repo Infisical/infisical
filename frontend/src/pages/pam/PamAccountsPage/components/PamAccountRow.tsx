@@ -5,6 +5,7 @@ import {
   faCopy,
   faEdit,
   faEllipsisV,
+  faFolder,
   faRightToBracket,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
@@ -37,9 +38,19 @@ type Props = {
   onUpdate: (resource: TPamAccount) => void;
   onDelete: (resource: TPamAccount) => void;
   search: string;
+  isFlatView: boolean;
+  accountPath?: string;
 };
 
-export const PamAccountRow = ({ account, search, onAccess, onUpdate, onDelete }: Props) => {
+export const PamAccountRow = ({
+  account,
+  search,
+  onAccess,
+  onUpdate,
+  onDelete,
+  isFlatView,
+  accountPath
+}: Props) => {
   const { id, name } = account;
 
   const { image, name: resourceTypeName } = PAM_RESOURCE_TYPE_MAP[account.resource.resourceType];
@@ -81,6 +92,14 @@ export const PamAccountRow = ({ account, search, onAccess, onUpdate, onDelete }:
                 <HighlightText text={account.resource.name} highlight={search} />
               </span>
             </Badge>
+            {isFlatView && accountPath && (
+              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-bunker-300/20 text-bunker-300">
+                <FontAwesomeIcon icon={faFolder} />
+                <span>
+                  <HighlightText text={accountPath} highlight={search} />
+                </span>
+              </Badge>
+            )}
           </div>
         </div>
       </Td>

@@ -13,7 +13,7 @@ export const PamSessionLogsSection = ({ session }: Props) => {
       <div className="flex items-center border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">Session Logs</h3>
       </div>
-      <div className="flex grow flex-col gap-4 overflow-y-auto text-xs">
+      <div className="flex grow flex-col gap-8 overflow-y-auto text-xs">
         {session.commandLogs.length > 0 ? (
           session.commandLogs.map((log) => (
             <div key={log.timestamp} className="flex flex-col">

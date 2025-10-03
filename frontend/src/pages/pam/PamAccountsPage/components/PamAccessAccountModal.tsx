@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
+import { faCopy } from "@fortawesome/free-regular-svg-icons";
 import { faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ms from "ms";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormLabel, Input, Modal, ModalClose, ModalContent } from "@app/components/v2";
+import { FormLabel, IconButton, Input, Modal, ModalContent } from "@app/components/v2";
 import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
 
 type Props = {
@@ -28,21 +29,10 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
 
   if (!account) return null;
 
-  const copyCommand = () => {
-    navigator.clipboard.writeText(command);
-
-    createNotification({
-      text: "Command copied to clipboard",
-      type: "info"
-    });
-
-    onOpenChange(false);
-  };
-
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
-        className="max-w-2xl"
+        className="max-w-2xl pb-2"
         title="Access Account"
         subTitle={`Access ${account.name} using a CLI command.`}
       >
@@ -57,7 +47,27 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
           isError={!isDurationValid}
         />
         <FormLabel label="CLI Command" className="mt-4" />
-        <Input value={command} isDisabled />
+        <div className="flex gap-2">
+          <Input value={command} isDisabled className="opacity-50" />
+          <IconButton
+            ariaLabel="copy"
+            variant="outline_bg"
+            colorSchema="secondary"
+            onClick={() => {
+              navigator.clipboard.writeText(command);
+
+              createNotification({
+                text: "Command copied to clipboard",
+                type: "info"
+              });
+
+              onOpenChange(false);
+            }}
+            className="w-10"
+          >
+            <FontAwesomeIcon icon={faCopy} />
+          </IconButton>
+        </div>
         <a
           href="https://infisical.com/docs/cli/overview"
           target="_blank"
@@ -67,22 +77,6 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
           <span>Install the Infisical CLI</span>
           <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />
         </a>
-        <div className="mt-6 flex items-center">
-          <Button
-            isDisabled={!isDurationValid}
-            className="mr-4"
-            size="sm"
-            colorSchema="secondary"
-            onClick={copyCommand}
-          >
-            Copy Command
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
       </ModalContent>
     </Modal>
   );

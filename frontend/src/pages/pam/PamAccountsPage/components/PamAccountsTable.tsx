@@ -114,10 +114,11 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
     setOrderBy
   } = usePagination<OrderBy>(OrderBy.Name, { initPerPage: 20, initSearch });
 
-  const { foldersByParentId, pathMap } = useMemo(() => {
+  const { foldersByParentId, pathMap, folderPaths } = useMemo(() => {
     const foldersById: Record<string, TPamFolder> = {};
     const tempFoldersByParentId: Record<string, TPamFolder[]> = { null: [] };
     const tempPathMap: Record<string, string> = { "/": "null" };
+    const tempFolderPaths: Record<string, string> = {};
 
     folders.forEach((folder) => {
       foldersById[folder.id] = folder;
@@ -131,13 +132,18 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
       (tempFoldersByParentId[parentId || "null"] || []).forEach((folder) => {
         const newPath = `${currentPath}${folder.name}/`;
         tempPathMap[newPath] = folder.id;
+        tempFolderPaths[folder.id] = newPath;
         buildPaths(folder.id, newPath);
       });
     };
 
     buildPaths(null, "/");
 
-    return { foldersByParentId: tempFoldersByParentId, pathMap: tempPathMap };
+    return {
+      foldersByParentId: tempFoldersByParentId,
+      pathMap: tempPathMap,
+      folderPaths: tempFolderPaths
+    };
   }, [folders]);
 
   const effectiveFolderIdForFiltering = useMemo(() => {
@@ -181,11 +187,13 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
           }
 
           const searchValue = search.trim().toLowerCase();
+          const path = (account.folderId && folderPaths[account.folderId]) || "";
 
           return (
             name.toLowerCase().includes(searchValue) ||
             resourceName.toLowerCase().includes(searchValue) ||
-            (description || "").toLowerCase().includes(searchValue)
+            (description || "").toLowerCase().includes(searchValue) ||
+            path.toLowerCase().includes(searchValue)
           );
         })
         .sort((a, b) => {
@@ -197,7 +205,7 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
               return accOne.name.toLowerCase().localeCompare(accTwo.name.toLowerCase());
           }
         }),
-    [accountsToProcess, orderDirection, search, orderBy, filters]
+    [accountsToProcess, orderDirection, search, orderBy, filters, folderPaths]
   );
 
   useResetPageHelper({
@@ -434,6 +442,10 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
                 key={account.id}
                 account={account}
                 search={search}
+                isFlatView={accountView === AccountView.Flat}
+                accountPath={
+                  account.folderId ? folderPaths[account.folderId]?.slice(0, -1) : undefined
+                }
                 onAccess={(e) => {
                   handlePopUpOpen("accessAccount", e);
                 }}
