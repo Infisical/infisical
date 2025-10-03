@@ -611,7 +611,7 @@ export const registerRoutes = async (
     secretApprovalPolicyDAL,
     licenseService,
     userDAL,
-    orgMembershipDAL,
+    projectMembershipDAL,
     secretApprovalRequestDAL
   });
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, orgMembershipDAL });
@@ -1421,8 +1421,7 @@ export const registerRoutes = async (
     userDAL,
     accessApprovalRequestDAL,
     additionalPrivilegeDAL: projectUserAdditionalPrivilegeDAL,
-    accessApprovalRequestReviewerDAL,
-    orgMembershipDAL
+    accessApprovalRequestReviewerDAL
   });
 
   const accessApprovalRequestService = accessApprovalRequestServiceFactory({
