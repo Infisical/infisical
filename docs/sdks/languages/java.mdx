@@ -143,6 +143,21 @@ var input = AwsAuthProvider.defaultProvider()
   .toLoginInput("<machine-identity-id>");
 ```
 
+Since this is the most common use case for AWS authentication, we also provide an overloaded method for `AwsAuthLogin`:
+
+```java
+public void AwsAuthLogin(
+  String identityId
+)
+throws InfisicalException
+```
+
+With this method, you can pass in the `identityId`, and it will retrieve AWS credentials automatically for you from your current environment:
+
+```java
+sdk.Auth().AwsAuthLogin("<machine-identity-id>");
+```
+
 If you prefer to retrieve AWS credentials manually from your local AWS environment, you can generate the login input by providing the AWS credentials yourself, as shown below:
 
 ```java
