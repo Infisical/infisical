@@ -50,7 +50,7 @@ module.exports = {
         // highlight (menus, selects, etc)
         // card
         // label
-        ring: "#dde329",
+        ring: "#3f3f3c",
         placeholder: "#8E8F90",
         /* end v3 colors *************************************/
 

@@ -34,7 +34,7 @@ function DropdownMenuContent({
         sideOffset={sideOffset}
         className={cn(
           "max-h-(--radix-dropdown-menu-content-available-height) origin-(--radix-dropdown-menu-content-transform-origin)",
-          "bg-popover z-50 min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-[4px] border border-border p-1 text-xs text-foreground shadow-md",
+          "z-50 min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-[6px] border border-border bg-popover p-1 text-xs text-foreground shadow-md",
           className
         )}
         {...props}
@@ -64,7 +64,7 @@ function DropdownMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "focus:text-accent-foreground text-xs",
+        "text-xs",
         "data-[variant=danger]:*:[svg]:!text-danger data-[variant=danger]:text-danger data-[variant=danger]:focus:bg-danger/10",
         "relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 pb-1.5 pt-2 outline-0 focus:bg-foreground/10",
         "data-[disabled]:pointer-events-none data-[inset]:pl-8 data-[disabled]:opacity-50",
@@ -87,13 +87,17 @@ function DropdownMenuCheckboxItem({
     <DropdownMenuPrimitive.CheckboxItem
       data-slot="dropdown-menu-checkbox-item"
       className={cn(
-        "focus:text-accent-foreground outline-hidden relative flex cursor-default select-none items-center gap-2 rounded-sm py-1.5 pl-8 pr-2 text-sm focus:bg-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "relative flex cursor-pointer select-none items-center gap-2 rounded-sm pb-1.5 pl-2 pr-8 pt-2 text-xs outline-0",
+        "focus:bg-foreground/10",
+        "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "[&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:mb-0.5 [&_svg]:shrink-0",
+
         className
       )}
       checked={checked}
       {...props}
     >
-      <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+      <span className="pointer-events-none absolute right-2 flex size-3.5 items-center justify-center">
         <DropdownMenuPrimitive.ItemIndicator>
           <CheckIcon className="size-4" />
         </DropdownMenuPrimitive.ItemIndicator>
@@ -118,12 +122,15 @@ function DropdownMenuRadioItem({
     <DropdownMenuPrimitive.RadioItem
       data-slot="dropdown-menu-radio-item"
       className={cn(
-        "focus:text-accent-foreground outline-hidden relative flex cursor-default select-none items-center gap-2 rounded-sm py-1.5 pl-8 pr-2 text-sm focus:bg-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "relative flex cursor-pointer select-none items-center gap-2 rounded-sm pb-1.5 pl-2 pr-8 pt-2 text-xs outline-0",
+        "focus:bg-foreground/10",
+        "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "[&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:mb-0.5 [&_svg]:shrink-0",
         className
       )}
       {...props}
     >
-      <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+      <span className="pointer-events-none absolute right-2 flex size-3.5 items-center justify-center">
         <DropdownMenuPrimitive.ItemIndicator>
           <CircleIcon className="size-2 fill-current" />
         </DropdownMenuPrimitive.ItemIndicator>
@@ -210,7 +217,7 @@ function DropdownMenuSubContent({
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"
       className={cn(
-        "origin-(--radix-dropdown-menu-content-transform-origin) bg-popover z-50 min-w-[8rem] overflow-hidden rounded-[4px] border border-border p-1 text-foreground shadow-lg",
+        "origin-(--radix-dropdown-menu-content-transform-origin) z-50 min-w-[8rem] overflow-hidden rounded-[6px] border border-border bg-popover p-1 text-foreground shadow-lg",
         className
       )}
       sideOffset={sideOffset}
@@ -219,9 +226,12 @@ function DropdownMenuSubContent({
   );
 }
 
+type DropdownMenuChecked = DropdownMenuPrimitive.DropdownMenuCheckboxItemProps["checked"];
+
 export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
+  type DropdownMenuChecked,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
