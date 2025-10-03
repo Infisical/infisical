@@ -105,32 +105,6 @@ sdk.Auth().UniversalAuthLogin(
 - `clientId` (string): The client ID of your Machine Identity.
 - `clientSecret` (string): The client secret of your Machine Identity.
 
-### LDAP Auth
-
-```java
-public void LdapAuthLogin(
-  LdapAuthLoginInput input
-)
-throws InfisicalException
-```
-
-```java
-var input = LdapAuthLoginInput
-  .builder()
-  .identityId("<machine-identity-id>")
-  .username("<ldap-username>")
-  .password("<ldap-password>")
-  .build();
-
-sdk.Auth().LdapAuthLogin(input);
-```
-
-**Parameters:**
-- `input` (LdapAuthLoginInput): The input for authenticating with LDAP.
-  - `identityId` (String): The ID of the machine identity to authenticate with.
-  - `username` (String): The LDAP username.
-  - `password` (String): The LDAP password.
-
 ### AWS Auth
 
 ```java
@@ -182,6 +156,32 @@ var input = AwsAuthProvider.defaultProvider()
   )
   .toLoginInput("<machine-identity-id>");
 ```
+
+### LDAP Auth
+
+```java
+public void LdapAuthLogin(
+  LdapAuthLoginInput input
+)
+throws InfisicalException
+```
+
+```java
+var input = LdapAuthLoginInput
+  .builder()
+  .identityId("<machine-identity-id>")
+  .username("<ldap-username>")
+  .password("<ldap-password>")
+  .build();
+
+sdk.Auth().LdapAuthLogin(input);
+```
+
+**Parameters:**
+- `input` (LdapAuthLoginInput): The input for authenticating with LDAP.
+  - `identityId` (String): The ID of the machine identity to authenticate with.
+  - `username` (String): The LDAP username.
+  - `password` (String): The LDAP password.
 
 ### Access Token Auth
 
