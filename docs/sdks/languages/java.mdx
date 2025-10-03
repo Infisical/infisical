@@ -131,6 +131,58 @@ sdk.Auth().LdapAuthLogin(input);
   - `username` (String): The LDAP username.
   - `password` (String): The LDAP password.
 
+### AWS Auth
+
+```java
+public void AwsAuthLogin(
+  AwsAuthLoginInput input
+)
+throws InfisicalException
+```
+
+```java
+var input = AwsAuthLoginInput
+  .builder()
+  .identityId("<machine-identity-id>")
+  .iamHttpRequestMethod("<iam-http-request-method>")
+  .iamRequestHeaders("<iam-request-headers>")
+  .iamRequestBody("<iam-request-body>")
+  .build();
+
+sdk.Auth().AwsAuthLogin(input);
+```
+
+**Parameters:**
+- `input` (AwsAuthLoginInput): The input for authenticating with AWS.
+  - `identityId` (String): The ID of the machine identity to authenticate with.
+  - `iamHttpRequestMethod` (String): The HTTP request method used in the signed request.
+  - `iamRequestHeaders` (String): The base64-encoded headers of the sts:GetCallerIdentity signed request.
+  - `iamRequestBody` (String): The base64-encoded body of the signed request. Most likely, the base64-encoding of Action=GetCallerIdentity&Version=2011-06-15.
+
+Generating the login input requires retrieving AWS credentials from the current local environment and performing an AWS Signature Version 4 on the retrieved data.
+To make it much easier for users, we provide a helper class to automatically generate the login input for you.
+
+```java
+import com.infisical.sdk.auth.AwsAuthProvider;
+var input = AwsAuthProvider.defaultProvider()
+  .fromInstanceProfile()
+  .toLoginInput("<machine-identity-id>");
+```
+
+If you prefer to retrieve AWS credentials manually from your local AWS environment, you can generate the login input by providing the AWS credentials yourself, as shown below:
+
+```java
+import com.infisical.sdk.auth.AwsAuthProvider;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+var input = AwsAuthProvider.defaultProvider()
+  .fromCredentials(
+    "<aws-region>",
+    AwsBasicCredentials.create("<aws-access-key>", "<aws-secret-key>"),
+    "<aws-session-token>"
+  )
+  .toLoginInput("<machine-identity-id>");
+```
+
 ### Access Token Auth
 
 #### Authenticating
