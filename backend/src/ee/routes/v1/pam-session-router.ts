@@ -124,7 +124,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { session, projectId } = await server.services.pamSession.endSessionById(
         req.params.sessionId,

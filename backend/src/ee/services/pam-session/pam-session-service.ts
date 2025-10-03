@@ -95,6 +95,10 @@ export const pamSessionServiceFactory = ({
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
 
+    if (session.status !== PamSessionStatus.Active) {
+      throw new BadRequestError({ message: "Cannot update logs for sessions that are not active" });
+    }
+
     const project = await projectDAL.findById(session.projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
 
@@ -110,6 +114,10 @@ export const pamSessionServiceFactory = ({
       OrgPermissionGatewayActions.CreateGateways,
       OrgPermissionSubjects.Gateway
     );
+
+    if (session.gatewayIdentityId !== actor.id) {
+      throw new ForbiddenRequestError({ message: "Identity does not have access to update logs for this session" });
+    }
 
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -128,11 +136,6 @@ export const pamSessionServiceFactory = ({
   };
 
   const endSessionById = async (sessionId: string, actor: OrgServiceActor) => {
-    // To be hit by gateways only
-    if (actor.type !== ActorType.IDENTITY) {
-      throw new ForbiddenRequestError({ message: "Only gateways can perform this action" });
-    }
-
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
 
@@ -147,10 +150,22 @@ export const pamSessionServiceFactory = ({
       actor.orgId
     );
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.CreateGateways,
-      OrgPermissionSubjects.Gateway
-    );
+    if (actor.type === ActorType.IDENTITY) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionGatewayActions.CreateGateways,
+        OrgPermissionSubjects.Gateway
+      );
+
+      if (session.gatewayIdentityId !== actor.id) {
+        throw new ForbiddenRequestError({ message: "Identity does not have access to end this session" });
+      }
+    } else if (actor.type === ActorType.USER) {
+      if (session.userId !== actor.id) {
+        throw new ForbiddenRequestError({ message: "You are not authorized to end this session" });
+      }
+    } else {
+      throw new ForbiddenRequestError({ message: "Only identities and users can perform this action" });
+    }
 
     if (session.status === PamSessionStatus.Ended) {
       return {
@@ -159,8 +174,8 @@ export const pamSessionServiceFactory = ({
       };
     }
 
-    if (session.status !== PamSessionStatus.Active) {
-      throw new BadRequestError({ message: "Cannot end sessions that are not active" });
+    if (session.status !== PamSessionStatus.Active && session.status !== PamSessionStatus.Starting) {
+      throw new BadRequestError({ message: "Cannot end sessions that are not active or starting" });
     }
 
     const updatedSession = await pamSessionDAL.updateById(sessionId, {
