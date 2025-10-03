@@ -1,6 +1,6 @@
 import * as React from "react";
 import { forwardRef } from "react";
-import { Slot } from "@radix-ui/react-slot";
+import { Link, LinkProps } from "@tanstack/react-router";
 import { cva, type VariantProps } from "cva";
 
 import { Lottie } from "@app/components/v2";
@@ -63,23 +63,24 @@ const buttonVariants = cva(
   }
 );
 
-type ButtonProps = React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean;
-    isPending?: boolean;
-    isFullWidth?: boolean;
-    isDisabled?: boolean;
-  };
+type ButtonProps = (VariantProps<typeof buttonVariants> & {
+  isPending?: boolean;
+  isFullWidth?: boolean;
+  isDisabled?: boolean;
+}) &
+  (
+    | ({ as?: "button" | undefined } & React.ComponentProps<"button">)
+    | ({ as: "link"; className?: string } & LinkProps)
+    | ({ as: "a" } & React.ComponentProps<"a">)
+  );
 
-const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonProps>(
   (
     {
       className,
       variant = "default",
       size = "md",
-      asChild = false,
       isPending = false,
-      disabled = false,
       isFullWidth = false,
       isDisabled = false,
       children,
@@ -87,17 +88,13 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ): JSX.Element => {
-    const Comp = asChild ? Slot : "button";
+    const sharedProps = {
+      "data-slot": "button",
+      className: cn(buttonVariants({ variant, size, isPending, isFullWidth }), className)
+    };
 
-    return (
-      <Comp
-        ref={ref}
-        data-slot="button"
-        type="button"
-        className={cn(buttonVariants({ variant, size, isPending, isFullWidth }), className)}
-        disabled={isPending || disabled || isDisabled}
-        {...props}
-      >
+    const child = (
+      <>
         {children}
         {isPending && (
           <Lottie
@@ -106,8 +103,35 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             className="absolute w-8 rounded-xl"
           />
         )}
-      </Comp>
+      </>
     );
+
+    switch (props.as) {
+      case "a":
+        return (
+          <a target="_blank" rel="noopener noreferrer" {...props} {...sharedProps}>
+            {child}
+          </a>
+        );
+      case "link":
+        return (
+          <Link {...props} {...sharedProps}>
+            {child}
+          </Link>
+        );
+      default:
+        return (
+          <button
+            ref={ref as React.Ref<HTMLButtonElement>}
+            type="button"
+            disabled={isPending || isDisabled}
+            {...props}
+            {...sharedProps}
+          >
+            {child}
+          </button>
+        );
+    }
   }
 );
 

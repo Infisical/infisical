@@ -1,5 +1,7 @@
 import type { Preview } from "@storybook/react-vite";
 
+import { RouterDecorator } from "./decorators";
+
 import "../src/index.css";
 
 const preview: Preview = {
@@ -10,7 +12,8 @@ const preview: Preview = {
       root.setAttribute("class", "overflow-visible");
 
       return <Story />;
-    }
+    },
+    RouterDecorator
   ],
   parameters: {
     controls: {

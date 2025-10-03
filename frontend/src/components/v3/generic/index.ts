@@ -2,6 +2,7 @@ export * from "./Badge";
 export * from "./Breadcrumb";
 export * from "./Button";
 export * from "./DropdownMenu";
+export * from "./IconButton";
 export * from "./Input";
 export * from "./ScrollArea";
 export * from "./Tabs";
