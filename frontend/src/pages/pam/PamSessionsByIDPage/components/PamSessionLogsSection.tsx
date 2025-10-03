@@ -13,7 +13,7 @@ export const PamSessionLogsSection = ({ session }: Props) => {
       <div className="flex items-center border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">Session Logs</h3>
       </div>
-      <div className="flex grow flex-col gap-4 text-xs">
+      <div className="flex grow flex-col gap-4 overflow-y-auto text-xs">
         {session.commandLogs.length > 0 ? (
           session.commandLogs.map((log) => (
             <div key={log.timestamp} className="flex flex-col">
@@ -22,8 +22,12 @@ export const PamSessionLogsSection = ({ session }: Props) => {
                 <span>{new Date(log.timestamp).toLocaleString()}</span>
               </div>
 
-              <div className="whitespace-pre-wrap font-mono">{log.input}</div>
-              <div className="whitespace-pre-wrap font-mono text-bunker-300">{log.output}</div>
+              <div className="overflow-hidden whitespace-pre-wrap break-all font-mono">
+                {log.input}
+              </div>
+              <div className="overflow-hidden whitespace-pre-wrap break-all font-mono text-bunker-300">
+                {log.output}
+              </div>
             </div>
           ))
         ) : (

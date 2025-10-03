@@ -152,6 +152,13 @@ export const pamSessionServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
+    if (session.status === PamSessionStatus.Ended) {
+      return {
+        session,
+        projectId: project.id
+      };
+    }
+
     if (session.status !== PamSessionStatus.Active) {
       throw new BadRequestError({ message: "Cannot end sessions that are not active" });
     }

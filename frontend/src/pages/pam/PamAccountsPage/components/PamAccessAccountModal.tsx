@@ -5,7 +5,7 @@ import ms from "ms";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormLabel, Input, Modal, ModalClose, ModalContent } from "@app/components/v2";
-import { TPamAccount } from "@app/hooks/api/pam";
+import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
 
 type Props = {
   account?: TPamAccount;
@@ -19,7 +19,10 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
   const isDurationValid = useMemo(() => duration && ms(duration || "1s") > 0, [duration]);
 
   const command = useMemo(
-    () => (account ? `infisical pam access ${account.id} --duration ${duration}` : ""),
+    () =>
+      account && account.resource.resourceType === PamResourceType.Postgres
+        ? `infisical pam db access-account ${account.id} --duration ${duration}`
+        : "",
     [account, duration]
   );
 
