@@ -78,7 +78,7 @@ export const useGetProjectRoleBySlug = (projectId: string, roleSlug: string) =>
 
 const getOrgRoles = async (orgId: string) => {
   const { data } = await apiRequest.get<{
-    data: { roles: Array<Omit<TOrgRole, "permissions"> & { permissions: unknown }> };
+    data: { roles: Array<Omit<TOrgRole, "permissions"> & { permissions: TPermission[] }> };
   }>(`/api/v1/organization/${orgId}/roles`);
   return data.data.roles;
 };

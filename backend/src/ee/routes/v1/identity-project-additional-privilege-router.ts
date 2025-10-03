@@ -92,7 +92,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privilege: {
           ...privilege,
           identityId: req.body.identityId,
-          projectMembershipId: "",
+          projectMembershipId: projectId,
           projectId,
           slug: privilege.name
         }
@@ -186,7 +186,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privilege: {
           ...privilege,
           identityId: req.body.identityId,
-          projectMembershipId: "",
+          projectMembershipId: projectId,
           projectId,
           slug: privilege.name
         }
@@ -299,7 +299,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privilege: {
           ...privilege,
           identityId: req.body.identityId,
-          projectMembershipId: "",
+          projectMembershipId: projectId,
           projectId,
           slug: privilege.name
         }
@@ -363,7 +363,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privilege: {
           ...privilege,
           identityId: req.body.identityId,
-          projectMembershipId: "",
+          projectMembershipId: projectId,
           projectId,
           slug: privilege.name
         }
@@ -429,7 +429,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privilege: {
           ...privilege,
           identityId: req.query.identityId,
-          projectMembershipId: "",
+          projectMembershipId: projectId,
           projectId,
           slug: privilege.name
         }
@@ -486,7 +486,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privileges: privileges.map((privilege) => ({
           ...privilege,
           identityId: req.query.identityId,
-          projectMembershipId: "",
+          projectMembershipId: projectId,
           projectId,
           slug: privilege.name
         }))

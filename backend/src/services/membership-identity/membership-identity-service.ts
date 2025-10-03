@@ -57,8 +57,8 @@ export const membershipIdentityServiceFactory = ({
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    const hasOnePermanentRole = data.roles.some((el) => el.isTemporary);
-    if (hasOnePermanentRole) {
+    const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
+    if (hasNoPermanentRole) {
       throw new BadRequestError({
         message: "Identity must have atleast one permanent role"
       });
@@ -151,8 +151,8 @@ export const membershipIdentityServiceFactory = ({
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
 
-    const hasOnePermanentRole = data.roles.some((el) => el.isTemporary);
-    if (hasOnePermanentRole) {
+    const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
+    if (hasNoPermanentRole) {
       throw new BadRequestError({
         message: "Identity must have atleast one permanent role"
       });
@@ -196,13 +196,16 @@ export const membershipIdentityServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipIdentityDAL.transaction(async (tx) => {
-      const doc = await membershipIdentityDAL.updateById(
-        existingMembership.id,
-        {
-          isActive: data.isActive
-        },
-        tx
-      );
+      const doc =
+        typeof data.isActive === "undefined"
+          ? existingMembership
+          : await membershipIdentityDAL.updateById(
+              existingMembership.id,
+              {
+                isActive: data.isActive
+              },
+              tx
+            );
 
       const roleDocs: TMembershipRolesInsert[] = [];
       data.roles.forEach((membershipRole) => {

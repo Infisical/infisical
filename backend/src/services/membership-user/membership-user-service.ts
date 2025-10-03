@@ -1,4 +1,10 @@
-import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import {
+  AccessScope,
+  OrgMembershipStatus,
+  ProjectMembershipRole,
+  TemporaryPermissionMode,
+  TMembershipRolesInsert
+} from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -147,8 +153,8 @@ export const membershipUserServiceFactory = ({
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    const hasOnePermanentRole = data.roles.some((el) => el.isTemporary);
-    if (hasOnePermanentRole) {
+    const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
+    if (hasNoPermanentRole) {
       throw new BadRequestError({
         message: "User must have atleast one permanent role"
       });
@@ -184,7 +190,9 @@ export const membershipUserServiceFactory = ({
     const newMemberships = newMembershipUsers.map((user) => ({
       scope: scopeData.scope,
       ...scopeDatabaseFields,
-      actorUserId: user.id
+      actorUserId: user.id,
+      status: scopeData.scope === AccessScope.Organization ? OrgMembershipStatus.Invited : undefined,
+      inviteEmail: scopeData.scope === AccessScope.Organization ? user.email : undefined
     }));
 
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
@@ -270,8 +278,8 @@ export const membershipUserServiceFactory = ({
         });
     }
 
-    const hasOnePermanentRole = data.roles.some((el) => el.isTemporary);
-    if (hasOnePermanentRole) {
+    const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
+    if (hasNoPermanentRole) {
       throw new BadRequestError({
         message: "User must have atleast one permanent role"
       });
@@ -315,13 +323,16 @@ export const membershipUserServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
-      const doc = await membershipUserDAL.updateById(
-        existingMembership.id,
-        {
-          isActive: data.isActive
-        },
-        tx
-      );
+      const doc =
+        typeof data?.isActive === "undefined"
+          ? existingMembership
+          : await membershipUserDAL.updateById(
+              existingMembership.id,
+              {
+                isActive: data.isActive
+              },
+              tx
+            );
 
       const roleDocs: TMembershipRolesInsert[] = [];
       data.roles.forEach((membershipRole) => {

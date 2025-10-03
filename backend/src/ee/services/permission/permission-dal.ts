@@ -236,7 +236,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           } else if (actorType === ActorType.IDENTITY) {
             void qb.where(`${TableName.Membership}.actorIdentityId`, actorId);
           }
-
+        })
+        .where((qb) => {
           if (scopeData.scope === AccessScope.Organization) {
             void qb.where(`${TableName.Membership}.scope`, AccessScope.Organization);
           } else if (scopeData.scope === AccessScope.Namespace) {
@@ -361,6 +362,8 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           }
         ]
       });
+
+      console.log(">>>", data);
       return data;
     } catch (error) {
       throw new DatabaseError({ error, name: "Get Permission" });

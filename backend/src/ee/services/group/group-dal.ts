@@ -40,7 +40,7 @@ export const groupDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .join(TableName.Membership, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
-        .join(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
+        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .select(selectAllTableCols(TableName.Groups))
         // cr stands for custom role
         .select(db.ref("id").as("crId").withSchema(TableName.Role))
@@ -210,7 +210,7 @@ export const groupDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .where((queryBuilder) => {
           Object.entries(filter).forEach(([key, value]) => {
-            void queryBuilder.where(`${TableName.Membership}.${key}`, value);
+            void queryBuilder.where(`${TableName.Groups}.${key}`, value);
           });
         })
         .select(
