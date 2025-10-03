@@ -47,7 +47,7 @@ module.exports = {
         header: "#1E1F22",
         input: "#1E1F22",
         popover: "#1E1F22",
-        ring: "#8c8c8c",
+        ring: "#6e6e6e",
         placeholder: "#8E8F90",
         /* end v3 colors *************************************/
 
