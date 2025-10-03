@@ -1,14 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { LogInIcon } from "lucide-react";
+import { EditIcon } from "lucide-react";
 import { fn } from "storybook/test";
 
-import { NamespaceIcon } from "@app/components/v3/platform";
-
-import { Button } from "./Button";
+import { IconButton } from "./IconButton";
 
 const meta = {
-  title: "Generic/Button",
-  component: Button,
+  title: "Generic/IconButton",
+  component: IconButton,
   parameters: {
     layout: "centered"
   },
@@ -36,26 +34,17 @@ const meta = {
       ]
     },
     size: { control: "inline-radio", options: ["xs", "sm", "md", "lg"] },
-    isFullWidth: { control: "boolean" },
     isPending: { control: "boolean" },
     isDisabled: { control: "boolean" }
   },
   args: {
     onClick: fn(),
-    children: "Button",
     size: "md",
-    isFullWidth: false,
     isPending: false,
-    isDisabled: false
-  },
-  decorators: (Story) => {
-    return (
-      <div className="flex w-[240px] justify-center">
-        <Story />
-      </div>
-    );
+    isDisabled: false,
+    children: <EditIcon />
   }
-} satisfies Meta<typeof Button>;
+} satisfies Meta<typeof IconButton>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -189,27 +178,5 @@ export const Small: Story = {
 export const Large: Story = {
   args: {
     size: "lg"
-  }
-};
-
-export const LeftIcon: Story = {
-  args: {
-    variant: "namespace",
-    children: (
-      <>
-        <NamespaceIcon />
-        Namespace
-      </>
-    )
-  }
-};
-
-export const RightIcon: Story = {
-  args: {
-    children: (
-      <>
-        Button <LogInIcon />
-      </>
-    )
   }
 };

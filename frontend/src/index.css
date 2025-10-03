@@ -208,3 +208,16 @@ html {
   top: 0.5rem;
   @apply text-sm text-gray-500 opacity-50;
 }
+
+.tooltip-content {
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
