@@ -2,17 +2,14 @@ import * as React from "react";
 import { forwardRef } from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "cva";
+import { twMerge } from "tailwind-merge";
 
 import { Lottie } from "@app/components/v2";
+import { Button, ButtonProps } from "@app/components/v3/generic";
 import { cn } from "@app/components/v3/utils";
 
-const buttonVariants = cva(
-  cn(
-    "inline-flex items-center active:scale-[0.99] justify-center border cursor-pointer gap-1.5 whitespace-nowrap",
-    "rounded-[4px] text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-75 shrink-0",
-    "[&>svg]:pointer-events-none [&>svg]:size-4 [&>svg]:stroke-[1.5] [&>svg]:mb-[2px] [&>svg]:shrink-0",
-    "focus-visible:ring-ring/50 outline-0 focus-visible:ring-2"
-  ),
+const iconButtonVariants = cva(
+  "inline-flex items-center active:scale-[0.99] justify-center border cursor-pointer whitespace-nowrap rounded-[4px] text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-75 [&_svg]:pointer-events-none shrink-0 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -43,10 +40,10 @@ const buttonVariants = cva(
           "border-danger/75 bg-danger/40 text-foreground hover:bg-danger/50 hover:border-danger"
       },
       size: {
-        xs: "h-7 px-2 text-xs gap-1 rounded-[4px] pt-[3px] pb-[1px] [&>svg]:size-3 [&>svg]:stroke-[1.75]",
-        sm: "h-8 px-3 pt-[4px] pb-[2px]",
-        md: "h-9 px-4 pt-[5px] pb-[3px]",
-        lg: "h-10 px-5 pt-[6px] pb-[4px]"
+        xs: "h-7 w-7 [&>svg]:size-4 rounded-[5px] [&>svg]:stroke-[1.75]",
+        sm: "h-8 w-8 [&>svg]:size-5 [&>svg]:stroke-[1.5]",
+        md: "h-9 w-9 [&>svg]:size-6 [&>svg]:stroke-[1.5]",
+        lg: "h-10 w-10 [&>svg]:size-7 [&>svg]:stroke-[1.5]"
       },
       isPending: {
         true: "text-transparent"
@@ -63,15 +60,14 @@ const buttonVariants = cva(
   }
 );
 
-type ButtonProps = React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & {
+type IconButtonProps = React.ComponentProps<"button"> &
+  VariantProps<typeof iconButtonVariants> & {
     asChild?: boolean;
     isPending?: boolean;
-    isFullWidth?: boolean;
     isDisabled?: boolean;
   };
 
-const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
   (
     {
       className,
@@ -80,7 +76,6 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       asChild = false,
       isPending = false,
       disabled = false,
-      isFullWidth = false,
       isDisabled = false,
       children,
       ...props
@@ -93,8 +88,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         ref={ref}
         data-slot="button"
-        type="button"
-        className={cn(buttonVariants({ variant, size, isPending, isFullWidth }), className)}
+        className={cn(iconButtonVariants({ variant, size, isPending }), className)}
         disabled={isPending || disabled || isDisabled}
         {...props}
       >
@@ -103,7 +97,13 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           <Lottie
             icon={variant === "default" ? "infisical_loading_bw" : "infisical_loading_white"}
             isAutoPlay
-            className="absolute w-8 rounded-xl"
+            className={twMerge(
+              "absolute rounded-xl",
+              size === "xs" && "w-6",
+              size === "sm" && "w-7",
+              size === "md" && "w-8",
+              size === "lg" && "w-9"
+            )}
           />
         )}
       </Comp>
@@ -111,6 +111,6 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   }
 );
 
-Button.displayName = "Button";
+Button.displayName = "IconButton";
 
-export { Button, type ButtonProps, buttonVariants };
+export { IconButton, type IconButtonProps, iconButtonVariants };

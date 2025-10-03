@@ -1,5 +1,22 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ChevronsUpDownIcon } from "lucide-react";
+import {
+  BellIcon,
+  ChevronsUpDownIcon,
+  CircleQuestionMarkIcon,
+  CircleUserIcon,
+  LogOutIcon
+} from "lucide-react";
+
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Input
+} from "@app/components/v3/generic";
+import { IconButton } from "@app/components/v3/generic/IconButton";
 
 import { Badge } from "../../generic/Badge";
 import {
@@ -24,7 +41,7 @@ const DemoTabs = [
 
 const HeaderDemo = ({ variant }: { variant: ProductBadgeProps["variant"] }) => {
   return (
-    <Header className="w-full">
+    <Header className="w-[95vw]">
       <div className="flex w-full items-center justify-between">
         <Breadcrumb>
           <BreadcrumbList>
@@ -61,6 +78,40 @@ const HeaderDemo = ({ variant }: { variant: ProductBadgeProps["variant"] }) => {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
+        <div className="flex items-center gap-2 whitespace-nowrap">
+          <Input
+            size="sm"
+            placeholder="Find..."
+            endAdornment={<Button variant="outline">F</Button>}
+          />
+          <div className="[&>*:first-child]:rounded-r-none [&>*:last-child]:rounded-l-none [&>*:not(:first-child):not(:last-child)]:rounded-none [&>*:not(:first-child):not(:last-child)]:border-x-0">
+            <IconButton size="sm" variant="outline">
+              <CircleQuestionMarkIcon />
+            </IconButton>
+            <IconButton size="sm" variant="outline">
+              <BellIcon />
+            </IconButton>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton size="sm" variant="outline">
+                  <CircleUserIcon />
+                </IconButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>Personal Settings</DropdownMenuItem>
+                <DropdownMenuItem>Documentation</DropdownMenuItem>
+                <DropdownMenuItem>Join Slack Community</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Copy Token</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <LogOutIcon />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
       </div>
       <Tabs className="mt-auto" defaultValue={DemoTabs[0]} variant={variant}>
         <TabsList>

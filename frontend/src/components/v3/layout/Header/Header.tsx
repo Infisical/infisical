@@ -10,7 +10,7 @@ function Header({ children, className }: HeaderProps) {
   return (
     <header
       className={twMerge(
-        "flex h-[calc(var(--header-height))] w-screen min-w-fit flex-col border-b-2 border-nav-border bg-nav-background px-6 pt-6",
+        "bg-header flex h-[calc(var(--header-height))] w-screen min-w-fit flex-col border-b-2 border-border px-5 pt-5",
         className
       )}
     >

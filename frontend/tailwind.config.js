@@ -43,8 +43,12 @@ module.exports = {
         background: "#000000",
         accent: "#c9c9c9",
 
-        "nav-border": "#525461",
-        "nav-background": "#1E1F22",
+        border: "#525461",
+        header: "#1E1F22",
+        input: "#1E1F22",
+        popover: "#1E1F22",
+        ring: "#8c8c8c",
+        placeholder: "#8E8F90",
         /* end v3 colors *************************************/
 
         // You can generate your own colors with this tool: https://javisperez.github.io/tailwindcolorshades/
