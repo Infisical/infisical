@@ -189,10 +189,10 @@ export const SecretSyncReviewFields = () => {
           {isChecking && <span className="text-xs text-mineshaft-400">Checking...</span>}
         </div>
         {hasDuplicate && (
-          <div className="mb-2 flex items-start rounded-md border border-yellow-600 bg-yellow-900/20 p-3">
-            <div className="text-sm text-yellow-200">
+          <div className="mb-2 flex items-start rounded-md border border-yellow-600 bg-yellow-900/20 px-3 py-2">
+            <div className="flex text-sm text-yellow-100">
+              <FontAwesomeIcon icon={faWarning} className="mr-2 mt-1 text-yellow-600" />
               <p>
-                <FontAwesomeIcon icon={faWarning} className="mr-1" />
                 Another secret sync in your organization is already configured with the same
                 destination. This may lead to conflicts or unexpected behavior.
               </p>
