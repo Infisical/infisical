@@ -399,6 +399,7 @@ export const projectDALFactory = (db: TDbClient) => {
     name?: string;
     sortBy?: SearchProjectSortBy;
     sortDir?: SortDirection;
+    projectIds?: string[];
   }) => {
     const { limit = 20, offset = 0, sortBy = SearchProjectSortBy.NAME, sortDir = SortDirection.ASC } = dto;
 
@@ -454,6 +455,11 @@ export const projectDALFactory = (db: TDbClient) => {
     if (dto.name) {
       void query.whereILike(`${TableName.Project}.name`, `%${dto.name}%`);
     }
+
+    if (dto.projectIds?.length) {
+      void query.whereIn(`${TableName.Project}.id`, dto.projectIds);
+    }
+
     const docs = await query;
 
     return { docs, totalCount: Number(docs?.[0]?.count ?? 0) };

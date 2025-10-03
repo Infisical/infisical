@@ -5,7 +5,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
@@ -18,7 +18,7 @@ import {
 
 export const IntegrationsListPage = () => {
   const navigate = useNavigate();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { t } = useTranslation();
 
   const { selectedTab } = useSearch({
@@ -28,9 +28,11 @@ export const IntegrationsListPage = () => {
   const updateSelectedTab = (tab: string) => {
     navigate({
       to: ROUTE_PATHS.SecretManager.IntegrationsListPage.path,
-      search: (prev) => ({ ...prev, selectedTab: tab as IntegrationsListPageTabs }),
+      search: {
+        selectedTab: tab as IntegrationsListPageTabs
+      },
       params: {
-        projectId: currentWorkspace.id
+        projectId: currentProject.id
       }
     });
   };

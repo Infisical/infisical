@@ -18,6 +18,8 @@ import { ms } from "@app/lib/ms";
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
+import { TNotificationServiceFactory } from "../notification/notification-service";
+import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
@@ -41,7 +43,10 @@ import {
 import { TProjectUserMembershipRoleDALFactory } from "./project-user-membership-role-dal";
 
 type TProjectMembershipServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRole">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "getProjectPermissionByRole" | "invalidateProjectPermissionCache"
+  >;
   smtpService: TSmtpService;
   projectBotDAL: TProjectBotDALFactory;
   projectMembershipDAL: TProjectMembershipDALFactory;
@@ -56,6 +61,7 @@ type TProjectMembershipServiceFactoryDep = {
   projectUserAdditionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
   secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
   groupProjectDAL: TGroupProjectDALFactory;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembershipServiceFactory>;
@@ -74,7 +80,8 @@ export const projectMembershipServiceFactory = ({
   projectDAL,
   projectKeyDAL,
   secretReminderRecipientsDAL,
-  licenseService
+  licenseService,
+  notificationService
 }: TProjectMembershipServiceFactoryDep) => {
   const getProjectMemberships = async ({
     actorId,
@@ -235,7 +242,19 @@ export const projectMembershipServiceFactory = ({
       );
     });
 
+    await permissionService.invalidateProjectPermissionCache(projectId);
+
     if (sendEmails) {
+      await notificationService.createUserNotifications(
+        orgMembers.map((member) => ({
+          userId: member.userId,
+          orgId: project.orgId,
+          type: NotificationType.PROJECT_INVITATION,
+          title: "Project Invitation",
+          body: `You've been invited to join the project **${project.name}**.`
+        }))
+      );
+
       const appCfg = getConfig();
       await smtpService.sendMail({
         template: SmtpTemplates.WorkspaceInvite,
@@ -357,6 +376,8 @@ export const projectMembershipServiceFactory = ({
       return projectUserMembershipRoleDAL.insertMany(sanitizedProjectMembershipRoles, tx);
     });
 
+    await permissionService.invalidateProjectPermissionCache(projectId);
+
     return updatedRoles;
   };
 
@@ -400,6 +421,9 @@ export const projectMembershipServiceFactory = ({
       );
       return deletedMembership;
     });
+
+    await permissionService.invalidateProjectPermissionCache(projectId);
+
     return membership;
   };
 
@@ -501,6 +525,9 @@ export const projectMembershipServiceFactory = ({
 
       return deletedMemberships;
     });
+
+    await permissionService.invalidateProjectPermissionCache(projectId);
+
     return memberships;
   };
 

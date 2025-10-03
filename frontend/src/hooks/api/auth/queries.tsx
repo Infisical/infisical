@@ -5,8 +5,8 @@ import { apiRequest } from "@app/config/request";
 import { SessionStorageKeys } from "@app/const";
 
 import { organizationKeys } from "../organization/queries";
+import { projectKeys } from "../projects";
 import { setAuthToken } from "../reactQuery";
-import { workspaceKeys } from "../workspace";
 import {
   CompleteAccountDTO,
   CompleteAccountSignupDTO,
@@ -101,7 +101,7 @@ export const useSelectOrganization = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [organizationKeys.getUserOrganizations, workspaceKeys.getAllUserWorkspace]
+        queryKey: [organizationKeys.getUserOrganizations, projectKeys.getAllUserProjects]
       });
     }
   });
@@ -181,6 +181,13 @@ export const useVerifyMfaToken = () => {
       });
     }
   });
+};
+
+export const verifyRecoveryCode = async (recoveryCode: string) => {
+  const { data } = await apiRequest.post("/api/v2/auth/mfa/verify/recovery-code", {
+    recoveryCode
+  });
+  return data;
 };
 
 export const verifySignupInvite = async (details: VerifySignupInviteDTO) => {

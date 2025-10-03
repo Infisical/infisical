@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace";
+import { projectKeys } from "../projects";
 import { userKeys } from "./query-keys";
 import { AddUserToWsDTONonE2EE } from "./types";
 
@@ -11,14 +11,14 @@ export const useAddUserToWsNonE2EE = () => {
 
   return useMutation<object, object, AddUserToWsDTONonE2EE>({
     mutationFn: async ({ projectId, usernames, roleSlugs }) => {
-      const { data } = await apiRequest.post(`/api/v2/workspace/${projectId}/memberships`, {
+      const { data } = await apiRequest.post(`/api/v1/projects/${projectId}/memberships`, {
         usernames,
         roleSlugs
       });
       return data;
     },
     onSuccess: (_, { orgId, projectId }) => {
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.getWorkspaceUsers(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
       queryClient.invalidateQueries({
         queryKey: userKeys.allOrgMembershipProjectMemberships(orgId)
       });
@@ -77,13 +77,16 @@ export const useUpdateUserProjectFavorites = () => {
 };
 
 export const useVerifyUserTotpRegistration = () => {
-  return useMutation({
+  return useMutation<{ recoveryCodes: string[] }, unknown, { totp: string }>({
     mutationFn: async ({ totp }: { totp: string }) => {
-      await apiRequest.post("/api/v1/user/me/totp/verify", {
-        totp
-      });
+      const { data } = await apiRequest.post<{ recoveryCodes: string[] }>(
+        "/api/v1/user/me/totp/verify",
+        {
+          totp
+        }
+      );
 
-      return {};
+      return data;
     }
   });
 };

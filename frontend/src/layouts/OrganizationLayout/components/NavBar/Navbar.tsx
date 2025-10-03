@@ -13,6 +13,7 @@ import {
   faInfoCircle,
   faServer,
   faSignOut,
+  faToolbox,
   faUser,
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
@@ -40,7 +41,7 @@ import { envConfig } from "@app/config/env";
 import { useOrganization, useSubscription, useUser } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
-import { useGetOrganizations, useLogoutUser, workspaceKeys } from "@app/hooks/api";
+import { projectKeys, useGetOrganizations, useLogoutUser } from "@app/hooks/api";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
@@ -104,6 +105,11 @@ export const INFISICAL_SUPPORT_OPTIONS = [
     <FontAwesomeIcon key={5} className="pr-4 text-sm" icon={faUsers} />,
     "Instance Admins",
     () => "server-admins"
+  ],
+  [
+    <FontAwesomeIcon key={6} className="pr-4 text-sm" icon={faToolbox} />,
+    "Version Upgrade Tool",
+    () => "/upgrade-path"
   ]
 ] as const;
 
@@ -135,7 +141,7 @@ export const Navbar = () => {
 
   const handleOrgChange = async (orgId: string) => {
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-    queryClient.removeQueries({ queryKey: workspaceKeys.getAllUserWorkspace() });
+    queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
 
     const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
       organizationId: orgId
@@ -343,6 +349,9 @@ export const Navbar = () => {
                 : getUrl();
 
             if (url === "server-admins" && isInfisicalCloud()) {
+              return null;
+            }
+            if (url === "upgrade-path" && isInfisicalCloud()) {
               return null;
             }
             return (

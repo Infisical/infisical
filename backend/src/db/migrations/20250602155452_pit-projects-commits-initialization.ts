@@ -226,7 +226,7 @@ export async function up(knex: Knex): Promise<void> {
       // Insert New Commits in batches of 9000
       const newCommits = foldersCommitsList.map((folderCommit) => folderCommit.commit);
       const commitBatches = chunkArray(newCommits, 9000);
-
+      let pendingDeepTreeCommitResources: TFolderCommits[] = [];
       let j = 0;
       for (const commitBatch of commitBatches) {
         j += 1;
@@ -265,12 +265,14 @@ export async function up(knex: Knex): Promise<void> {
         });
 
         // Create folder commit changes
+        const currentBatchFolderIds = new Set(newCommitsInserted.map((commit) => commit.folderId));
         // eslint-disable-next-line no-await-in-loop
         await knex.batchInsert(
           TableName.FolderCommitChanges,
           foldersCommitsList
             .map((folderCommit) => folderCommit.changes)
             .flat()
+            .filter((change) => currentBatchFolderIds.has(change.folderId))
             .map((change) => ({
               folderCommitId: newCommitsMap[change.folderId],
               changeType: change.changeType,
@@ -289,6 +291,7 @@ export async function up(knex: Knex): Promise<void> {
           foldersCommitsList
             .map((folderCommit) => folderCommit.changes)
             .flat()
+            .filter((change) => currentBatchFolderIds.has(change.folderId))
             .map((change) => ({
               folderCheckpointId: newCheckpointsMap[change.folderId],
               folderVersionId: change.folderVersionId,
@@ -303,9 +306,11 @@ export async function up(knex: Knex): Promise<void> {
         const newTreeCheckpoints = (await knex
           .batchInsert(
             TableName.FolderTreeCheckpoint,
-            Object.keys(rootFoldersMap).map((folderId) => ({
-              folderCommitId: newCommitsMap[folderId]
-            }))
+            Object.keys(rootFoldersMap)
+              .filter((folderId) => currentBatchFolderIds.has(folderId))
+              .map((folderId) => ({
+                folderCommitId: newCommitsMap[folderId]
+              }))
           )
           .returning("*")) as TFolderTreeCheckpoints[];
 
@@ -317,18 +322,31 @@ export async function up(knex: Knex): Promise<void> {
         });
 
         // Create Folder Tree Checkpoint Resources
-        // eslint-disable-next-line no-await-in-loop
-        await knex
-          .batchInsert(
-            TableName.FolderTreeCheckpointResources,
-            newCommitsInserted.map((folderCommit) => ({
-              folderTreeCheckpointId: newTreeCheckpointsMap[folderCommit.envId],
-              folderId: folderCommit.folderId,
-              folderCommitId: folderCommit.id
-            }))
-          )
-          .returning("*");
+        const commitsToProcess = pendingDeepTreeCommitResources.concat(newCommitsInserted);
+        const unprocessableCommits: TFolderCommits[] = [];
+        const processableCommits = commitsToProcess.filter((folderCommit) => {
+          const isProcessable = newTreeCheckpointsMap[folderCommit.envId];
+          if (!isProcessable) {
+            unprocessableCommits.push(folderCommit);
+          }
+          return isProcessable;
+        });
 
+        if (processableCommits.length > 0) {
+          // eslint-disable-next-line no-await-in-loop
+          await knex
+            .batchInsert(
+              TableName.FolderTreeCheckpointResources,
+              processableCommits.map((folderCommit) => ({
+                folderTreeCheckpointId: newTreeCheckpointsMap[folderCommit.envId],
+                folderId: folderCommit.folderId,
+                folderCommitId: folderCommit.id
+              }))
+            )
+            .returning("*");
+        }
+
+        pendingDeepTreeCommitResources = unprocessableCommits;
         logger.info(`Finished inserting folder tree checkpoint resources - batch ${j} of ${commitBatches.length}`);
       }
     }

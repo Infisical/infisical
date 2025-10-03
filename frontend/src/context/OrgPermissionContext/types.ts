@@ -1,4 +1,4 @@
-import { MongoAbility } from "@casl/ability";
+import { ForcedSubject, MongoAbility } from "@casl/ability";
 
 export enum OrgPermissionActions {
   Read = "read",
@@ -21,6 +21,13 @@ export enum OrgGatewayPermissionActions {
   AttachGateways = "attach-gateways"
 }
 
+export enum OrgRelayPermissionActions {
+  CreateRelays = "create-relays",
+  ListRelays = "list-relays",
+  EditRelays = "edit-relays",
+  DeleteRelays = "delete-relays"
+}
+
 export enum OrgPermissionMachineIdentityAuthTemplateActions {
   ListTemplates = "list-templates",
   CreateTemplates = "create-templates",
@@ -32,6 +39,7 @@ export enum OrgPermissionMachineIdentityAuthTemplateActions {
 
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
+  Project = "project",
   Role = "role",
   Member = "member",
   Settings = "settings",
@@ -50,6 +58,7 @@ export enum OrgPermissionSubjects {
   AppConnections = "app-connections",
   Kmip = "kmip",
   Gateway = "gateway",
+  Relay = "relay",
   SecretShare = "secret-share",
   GithubOrgSync = "github-org-sync",
   GithubOrgSyncManual = "github-org-sync-manual",
@@ -109,6 +118,7 @@ export type AppConnectionSubjectFields = {
 
 export type OrgPermissionSet =
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Workspace]
+  | [OrgPermissionActions.Create, OrgPermissionSubjects.Project]
   | [OrgPermissionActions.Read, OrgPermissionSubjects.Workspace]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
   | [OrgPermissionActions, OrgPermissionSubjects.Member]
@@ -126,7 +136,6 @@ export type OrgPermissionSet =
   | [OrgPermissionAdminConsoleAction, OrgPermissionSubjects.AdminConsole]
   | [OrgPermissionAuditLogsActions, OrgPermissionSubjects.AuditLogs]
   | [OrgPermissionActions, OrgPermissionSubjects.ProjectTemplates]
-  | [OrgPermissionAppConnectionActions, OrgPermissionSubjects.AppConnections]
   | [OrgPermissionIdentityActions, OrgPermissionSubjects.Identity]
   | [OrgPermissionKmipActions, OrgPermissionSubjects.Kmip]
   | [
@@ -134,14 +143,14 @@ export type OrgPermissionSet =
       OrgPermissionSubjects.MachineIdentityAuthTemplate
     ]
   | [OrgGatewayPermissionActions, OrgPermissionSubjects.Gateway]
-  | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare];
-// TODO(scott): add back once org UI refactored
-// | [
-//     OrgPermissionAppConnectionActions,
-//     (
-//       | OrgPermissionSubjects.AppConnections
-//       | (ForcedSubject<OrgPermissionSubjects.AppConnections> & AppConnectionSubjectFields)
-//     )
-//   ];
+  | [OrgRelayPermissionActions, OrgPermissionSubjects.Relay]
+  | [OrgPermissionSecretShareAction, OrgPermissionSubjects.SecretShare]
+  | [
+      OrgPermissionAppConnectionActions,
+      (
+        | OrgPermissionSubjects.AppConnections
+        | (ForcedSubject<OrgPermissionSubjects.AppConnections> & AppConnectionSubjectFields)
+      )
+    ];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;

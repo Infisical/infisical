@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const AzureDevopsAuthorizePage = () => {
@@ -16,7 +16,7 @@ export const AzureDevopsAuthorizePage = () => {
   const [devopsOrgName, setDevopsOrgName] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const handleButtonClick = async () => {
     try {
@@ -31,7 +31,7 @@ export const AzureDevopsAuthorizePage = () => {
       localStorage.setItem("azure-devops-org-name", devopsOrgName);
 
       const integrationAuth = await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         integration: "azure-devops",
         accessToken: btoa(`:${apiKey}`) // This is a base64 encoding of the API key without any username
       });
@@ -41,7 +41,7 @@ export const AzureDevopsAuthorizePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations/azure-devops/create",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           integrationAuthId: integrationAuth.id

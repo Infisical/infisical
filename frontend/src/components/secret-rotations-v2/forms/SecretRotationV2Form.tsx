@@ -11,8 +11,9 @@ import { SecretRotationV2ParametersFields } from "@app/components/secret-rotatio
 import { SecretRotationV2ReviewFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2ReviewFields";
 import { SecretRotationV2SecretsMappingFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2SecretsMappingFields";
 import { Button } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { IS_ROTATION_DUAL_CREDENTIALS, SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
+import { ProjectEnv } from "@app/hooks/api/projects/types";
 import {
   SecretRotation,
   TSecretRotationV2,
@@ -22,7 +23,6 @@ import {
   useCreateSecretRotationV2,
   useUpdateSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2/mutations";
-import { WorkspaceEnv } from "@app/hooks/api/workspace/types";
 
 import { SecretRotationV2FormSchema, TSecretRotationV2Form } from "./schemas";
 
@@ -32,8 +32,9 @@ type Props = {
   onCancel: () => void;
   secretPath: string;
   environment?: string;
-  environments?: WorkspaceEnv[];
+  environments?: ProjectEnv[];
   secretRotation?: TSecretRotationV2;
+  initialFormData?: Partial<TSecretRotationV2Form>;
 };
 
 const FORM_TABS: { name: string; key: string; fields: (keyof TSecretRotationV2Form)[] }[] = [
@@ -64,11 +65,12 @@ export const SecretRotationV2Form = ({
   environment: envSlug,
   secretPath,
   secretRotation,
-  environments
+  environments,
+  initialFormData
 }: Props) => {
   const createSecretRotation = useCreateSecretRotationV2();
   const updateSecretRotation = useUpdateSecretRotationV2();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { name: rotationType } = SECRET_ROTATION_MAP[type];
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
@@ -80,7 +82,7 @@ export const SecretRotationV2Form = ({
     defaultValues: secretRotation
       ? {
           ...secretRotation,
-          environment: currentWorkspace?.environments.find((env) => env.slug === envSlug),
+          environment: currentProject?.environments.find((env) => env.slug === envSlug),
           secretPath
         }
       : {
@@ -91,9 +93,10 @@ export const SecretRotationV2Form = ({
             hours: 0,
             minutes: 0
           },
-          environment: currentWorkspace?.environments.find((env) => env.slug === envSlug),
+          environment: currentProject?.environments.find((env) => env.slug === envSlug),
           secretPath,
-          ...(rotationOption!.template as object) // can't infer type since we don't know which specific type it is
+          ...((rotationOption?.template as object) ?? {}), // can't infer type since we don't know which specific type it is
+          ...(initialFormData as object)
         },
     reValidateMode: "onChange"
   });
@@ -115,7 +118,7 @@ export const SecretRotationV2Form = ({
 
           connectionId: connection.id,
           environment: environment.slug,
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         });
     try {
       const rotation = await mutation;

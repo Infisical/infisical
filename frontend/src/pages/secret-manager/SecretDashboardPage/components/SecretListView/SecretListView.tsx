@@ -37,7 +37,7 @@ import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
 type Props = {
   secrets?: SecretV3RawSanitized[];
   environment: string;
-  workspaceId: string;
+  projectId: string;
   secretPath?: string;
   tags?: WsTag[];
   isVisible?: boolean;
@@ -57,7 +57,7 @@ type Props = {
 export const SecretListView = ({
   secrets = [],
   environment,
-  workspaceId,
+  projectId,
   secretPath = "/",
   tags: wsTags = [],
   isVisible,
@@ -93,7 +93,7 @@ export const SecretListView = ({
     message:
       "You have unsaved changes. If you leave now, your work will be lost. Do you want to continue?",
     context: {
-      workspaceId,
+      projectId,
       environment,
       secretPath
     }
@@ -140,7 +140,7 @@ export const SecretListView = ({
     if (operation === "delete") {
       await deleteSecretV3({
         environment,
-        workspaceId,
+        projectId,
         secretPath,
         secretKey: key,
         type,
@@ -161,7 +161,7 @@ export const SecretListView = ({
 
       await updateSecretV3({
         environment,
-        workspaceId,
+        projectId,
         secretPath,
         secretKey: key,
         ...(!isRotatedSecret && {
@@ -183,7 +183,7 @@ export const SecretListView = ({
     await createSecretV3(
       {
         environment,
-        workspaceId,
+        projectId,
         secretPath,
         secretKey: key,
         secretValue: value || "",
@@ -337,7 +337,7 @@ export const SecretListView = ({
               };
 
               addPendingChange(updatedCreate, {
-                workspaceId,
+                projectId,
                 environment,
                 secretPath
               });
@@ -369,7 +369,7 @@ export const SecretListView = ({
               };
 
               addPendingChange(updateChange, {
-                workspaceId,
+                projectId,
                 environment,
                 secretPath
               });
@@ -400,27 +400,39 @@ export const SecretListView = ({
         }
         queryClient.invalidateQueries({
           queryKey: dashboardKeys.getDashboardSecrets({
-            projectId: workspaceId,
+            projectId,
             secretPath
           })
         });
         queryClient.invalidateQueries({
-          queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+          queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
         });
         queryClient.invalidateQueries({
-          queryKey: secretSnapshotKeys.list({ workspaceId, environment, directory: secretPath })
+          queryKey: secretSnapshotKeys.list({
+            projectId,
+            environment,
+            directory: secretPath
+          })
         });
         queryClient.invalidateQueries({
-          queryKey: secretSnapshotKeys.count({ workspaceId, environment, directory: secretPath })
+          queryKey: secretSnapshotKeys.count({
+            projectId,
+            environment,
+            directory: secretPath
+          })
         });
         queryClient.invalidateQueries({
-          queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
+          queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
         });
         queryClient.invalidateQueries({
-          queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
+          queryKey: commitKeys.history({
+            projectId,
+            environment,
+            directory: secretPath
+          })
         });
         queryClient.invalidateQueries({
-          queryKey: secretApprovalRequestKeys.count({ workspaceId })
+          queryKey: secretApprovalRequestKeys.count({ projectId })
         });
         if (!isReminderEvent) {
           handlePopUpClose("secretDetail");
@@ -450,11 +462,16 @@ export const SecretListView = ({
         });
       }
     },
-    [environment, secretPath, isProtectedBranch, isBatchMode, workspaceId, addPendingChange]
+    [environment, secretPath, isProtectedBranch, isBatchMode, projectId, addPendingChange]
   );
 
   const handleSecretDelete = useCallback(async () => {
-    const { key, id: secretId, value } = popUp.deleteSecret?.data as SecretV3RawSanitized;
+    const {
+      key,
+      id: secretId,
+      value,
+      secretValueHidden
+    } = popUp.deleteSecret?.data as SecretV3RawSanitized;
     try {
       if (isBatchMode) {
         const deleteChange: PendingSecretDelete = {
@@ -463,11 +480,12 @@ export const SecretListView = ({
           secretKey: key,
           secretValue: value || "",
           timestamp: Date.now(),
-          resourceType: "secret"
+          resourceType: "secret",
+          secretValueHidden
         };
 
         addPendingChange(deleteChange, {
-          workspaceId,
+          projectId,
           environment,
           secretPath
         });
@@ -480,25 +498,33 @@ export const SecretListView = ({
       await handleSecretOperation("delete", SecretType.Shared, key, { secretId });
       // wrap this in another function and then reuse
       queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ workspaceId, environment, directory: secretPath })
+        queryKey: secretSnapshotKeys.list({
+          projectId,
+          environment,
+          directory: secretPath
+        })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ workspaceId, environment, directory: secretPath })
+        queryKey: secretSnapshotKeys.count({
+          projectId,
+          environment,
+          directory: secretPath
+        })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ workspaceId, environment, directory: secretPath })
+        queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretApprovalRequestKeys.count({ workspaceId })
+        queryKey: secretApprovalRequestKeys.count({ projectId })
       });
       handlePopUpClose("deleteSecret");
       handlePopUpClose("secretDetail");
@@ -521,7 +547,7 @@ export const SecretListView = ({
     secretPath,
     isProtectedBranch,
     isBatchMode,
-    workspaceId,
+    projectId,
     addPendingChange
   ]);
 
@@ -596,19 +622,21 @@ export const SecretListView = ({
           </>
         }
       />
-      <SecretDetailSidebar
-        environment={environment}
-        secretPath={secretPath}
-        isOpen={popUp.secretDetail.isOpen}
-        onToggle={(isOpen) => handlePopUpToggle("secretDetail", isOpen)}
-        secret={popUp.secretDetail.data as SecretV3RawSanitized}
-        onDeleteSecret={() => handlePopUpOpen("deleteSecret", popUp.secretDetail.data)}
-        onClose={() => handlePopUpClose("secretDetail")}
-        onSaveSecret={handleSaveSecret}
-        tags={wsTags}
-        onCreateTag={() => handlePopUpOpen("createTag")}
-        handleSecretShare={(value: string) => handlePopUpOpen("createSharedSecret", { value })}
-      />
+      {popUp.secretDetail.data && (
+        <SecretDetailSidebar
+          environment={environment}
+          secretPath={secretPath}
+          isOpen={popUp.secretDetail.isOpen}
+          onToggle={(isOpen) => handlePopUpToggle("secretDetail", isOpen)}
+          secret={popUp.secretDetail.data as SecretV3RawSanitized}
+          onDeleteSecret={() => handlePopUpOpen("deleteSecret", popUp.secretDetail.data)}
+          onClose={() => handlePopUpClose("secretDetail")}
+          onSaveSecret={handleSaveSecret}
+          tags={wsTags}
+          onCreateTag={() => handlePopUpOpen("createTag")}
+          handleSecretShare={(value: string) => handlePopUpOpen("createSharedSecret", { value })}
+        />
+      )}
       <CreateTagModal
         isOpen={popUp.createTag.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("createTag", isOpen)}

@@ -9,6 +9,7 @@ import { AzureClientSecretRotationSecretsMappingFields } from "./AzureClientSecr
 import { LdapPasswordRotationSecretsMappingFields } from "./LdapPasswordRotationSecretsMappingFields";
 import { OktaClientSecretRotationSecretsMappingFields } from "./OktaClientSecretRotationSecretsMappingFields";
 import { SqlCredentialsRotationSecretsMappingFields } from "./shared";
+import { RedisCredentialsRotationSecretsMappingFields } from "./RedisCredentialsRotationSecretsMappingFields";
 
 const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.PostgresCredentials]: SqlCredentialsRotationSecretsMappingFields,
@@ -19,7 +20,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.AzureClientSecret]: AzureClientSecretRotationSecretsMappingFields,
   [SecretRotation.LdapPassword]: LdapPasswordRotationSecretsMappingFields,
   [SecretRotation.AwsIamUserSecret]: AwsIamUserSecretRotationSecretsMappingFields,
-  [SecretRotation.OktaClientSecret]: OktaClientSecretRotationSecretsMappingFields
+  [SecretRotation.OktaClientSecret]: OktaClientSecretRotationSecretsMappingFields,
+  [SecretRotation.RedisCredentials]: RedisCredentialsRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {

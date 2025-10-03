@@ -1,9 +1,9 @@
 import { forwardRef, TextareaHTMLAttributes, useCallback, useMemo, useRef, useState } from "react";
-import { faFolder, faKey, faLayerGroup } from "@fortawesome/free-solid-svg-icons";
+import { faFolder, faKey, faLayerGroup, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
 
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useDebounce, useToggle } from "@app/hooks";
 import { useGetProjectFolders, useGetProjectSecrets } from "@app/hooks/api";
 
@@ -55,6 +55,8 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "val
   secretPath?: string;
   environment?: string;
   containerClassName?: string;
+  isLoadingValue?: boolean;
+  isErrorLoadingValue?: boolean;
 };
 
 type ReferenceItem = {
@@ -76,8 +78,8 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     },
     ref
   ) => {
-    const { currentWorkspace } = useWorkspace();
-    const workspaceId = currentWorkspace?.id || "";
+    const { currentProject } = useProject();
+    const projectId = currentProject?.id || "";
 
     const [debouncedValue] = useDebounce(value, 100);
 
@@ -101,7 +103,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       let predicate = suggestionSourceValue;
       if (isDeep) {
         const [envSlug, ...folderPaths] = suggestionSourceValue.split(".");
-        const isValidEnvSlug = currentWorkspace?.environments.find((e) => e.slug === envSlug);
+        const isValidEnvSlug = currentProject?.environments.find((e) => e.slug === envSlug);
         suggestionSourceEnv = isValidEnvSlug ? envSlug : undefined;
         suggestionSourceSecretPath = `/${folderPaths.slice(0, -1)?.join("/")}`;
         predicate = folderPaths[folderPaths.length - 1];
@@ -125,7 +127,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       viewSecretValue: false,
       environment: suggestionSource.environment || "",
       secretPath: suggestionSource.secretPath || "",
-      workspaceId,
+      projectId,
       options: {
         enabled: isPopupOpen
       }
@@ -133,7 +135,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const { data: folders } = useGetProjectFolders({
       environment: suggestionSource.environment || "",
       path: suggestionSource.secretPath || "",
-      projectId: workspaceId,
+      projectId,
       options: {
         enabled: isPopupOpen
       }
@@ -148,7 +150,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
       if (!suggestionSource.isDeep) {
         // At first level only environments and secrets
-        (currentWorkspace?.environments || []).forEach(({ name, slug }) => {
+        (currentProject?.environments || []).forEach(({ name, slug }) => {
           if (name.toLowerCase().startsWith(predicate))
             suggestionsArr.push({
               label: name,
@@ -175,13 +177,29 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             type: ReferenceType.SECRET
           });
       });
+
+      if (suggestionsArr.length === 0 && suggestionSource.predicate.trim()) {
+        suggestionsArr.push({
+          label: "No matches found",
+          slug: "__no_match__",
+          type: ReferenceType.SECRET
+        });
+      }
+
       return suggestionsArr;
-    }, [secrets, folders, currentWorkspace?.environments, isPopupOpen, suggestionSource.value]);
+    }, [
+      secrets,
+      folders,
+      currentProject?.environments,
+      isPopupOpen,
+      suggestionSource.value,
+      suggestionSource.predicate
+    ]);
 
     const handleSuggestionSelect = (selectIndex?: number) => {
       const selectedSuggestion =
         suggestions[typeof selectIndex !== "undefined" ? selectIndex : highlightedIndex];
-      if (!selectedSuggestion) {
+      if (!selectedSuggestion || selectedSuggestion.slug === "__no_match__") {
         return;
       }
 
@@ -226,21 +244,40 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       if (isPopupOpen) {
         if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
           setHighlightedIndex((prevIndex) => {
-            const pos = mod(prevIndex + 1, suggestions.length);
-            popoverContentRef.current?.children?.[pos]?.scrollIntoView({
+            let nextIndex = mod(prevIndex + 1, suggestions.length);
+            // Skip "no match" messages
+            while (
+              nextIndex < suggestions.length &&
+              suggestions[nextIndex].slug === "__no_match__"
+            ) {
+              nextIndex = mod(nextIndex + 1, suggestions.length);
+            }
+            // If we only have no-match messages, don't highlight anything
+            if (suggestions[nextIndex]?.slug === "__no_match__") {
+              return -1;
+            }
+            popoverContentRef.current?.children?.[nextIndex]?.scrollIntoView({
               block: "nearest",
               behavior: "smooth"
             });
-            return pos;
+            return nextIndex;
           });
         } else if (e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) {
           setHighlightedIndex((prevIndex) => {
-            const pos = mod(prevIndex - 1, suggestions.length);
-            popoverContentRef.current?.children?.[pos]?.scrollIntoView({
+            let prevIdx = mod(prevIndex - 1, suggestions.length);
+            // Skip "no match" messages
+            while (prevIdx >= 0 && suggestions[prevIdx].slug === "__no_match__") {
+              prevIdx = mod(prevIdx - 1, suggestions.length);
+            }
+            // If we only have no-match messages, don't highlight anything
+            if (suggestions[prevIdx]?.slug === "__no_match__") {
+              return -1;
+            }
+            popoverContentRef.current?.children?.[prevIdx]?.scrollIntoView({
               block: "nearest",
               behavior: "smooth"
             });
-            return pos;
+            return prevIdx;
           });
         } else if (e.key === "Enter" && highlightedIndex >= 0) {
           e.preventDefault();
@@ -279,11 +316,16 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             ref={handleRef}
             onKeyDown={handleKeyDown}
             value={value}
-            onFocus={() => setIsFocused.on()}
+            onFocus={(evt) => {
+              if (props.onFocus) props.onFocus(evt);
+              setIsFocused.on();
+            }}
             onBlur={(evt) => {
               // should not on blur when its mouse down selecting a item from suggestion
               if (!(evt.relatedTarget?.getAttribute("aria-label") === "suggestion-item"))
                 setIsFocused.off();
+
+              if (props.onBlur) props.onBlur(evt);
             }}
             onChange={(e) => onChange?.(e.target.value)}
             containerClassName={containerClassName}
@@ -304,7 +346,12 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             {suggestions.map((item, i) => {
               let entryIcon;
               let subText;
-              if (item.type === ReferenceType.SECRET) {
+              const isNoMatchMessage = item.slug === "__no_match__";
+
+              if (isNoMatchMessage) {
+                entryIcon = <FontAwesomeIcon icon={faSearch} className="text-gray-400" />;
+                subText = "No results";
+              } else if (item.type === ReferenceType.SECRET) {
                 entryIcon = <FontAwesomeIcon icon={faKey} className="text-bunker-300" />;
                 subText = "Secret";
               } else if (item.type === ReferenceType.ENVIRONMENT) {
@@ -315,10 +362,28 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                 subText = "Folder";
               }
 
-              return (
+              return isNoMatchMessage ? (
                 <div
-                  tabIndex={0}
-                  role="button"
+                  role="status"
+                  aria-label="no-match-message"
+                  className="flex w-full items-center justify-between border-mineshaft-600 text-left"
+                  key={`secret-reference-secret-${i + 1}`}
+                >
+                  <div className="text-md relative flex w-full cursor-default select-none items-center justify-between px-2 py-2 opacity-75 outline-none transition-all">
+                    <div className="flex w-full items-start gap-2">
+                      <div className="mt-1 flex items-center">{entryIcon}</div>
+                      <div className="text-md w-10/12 truncate text-left">
+                        <span className="text-gray-400">{item.label}</span>
+                        <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
+                          {subText}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleSuggestionSelect(i);
                   }}
@@ -330,8 +395,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                     handleSuggestionSelect(i);
                   }}
                   onMouseEnter={() => setHighlightedIndex(i)}
-                  style={{ pointerEvents: "auto" }}
-                  className="flex w-full items-center justify-between border-mineshaft-600 text-left"
+                  className="flex w-full items-center justify-between border-none border-mineshaft-600 bg-transparent p-0 text-left"
                   key={`secret-reference-secret-${i + 1}`}
                 >
                   <div
@@ -342,14 +406,14 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                     <div className="flex w-full items-start gap-2">
                       <div className="mt-1 flex items-center">{entryIcon}</div>
                       <div className="text-md w-10/12 truncate text-left">
-                        {item.label}
+                        <span>{item.label}</span>
                         <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
                           {subText}
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

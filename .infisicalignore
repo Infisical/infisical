@@ -51,3 +51,4 @@ docs/integrations/app-connections/bitbucket.mdx:generic-api-key:123
 docs/integrations/app-connections/railway.mdx:generic-api-key:156
 .github/workflows/validate-db-schemas.yml:generic-api-key:21
 k8-operator/config/samples/universalAuthIdentitySecret.yaml:generic-api-key:8
+docs/integrations/app-connections/redis.mdx:generic-api-key:80

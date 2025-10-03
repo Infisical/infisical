@@ -9,7 +9,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Card, CardBody, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 const formSchema = z.object({
@@ -25,7 +25,7 @@ export const HashicorpVaultAuthorizePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useSaveIntegrationAccessToken();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const {
     control,
     handleSubmit,
@@ -43,7 +43,7 @@ export const HashicorpVaultAuthorizePage = () => {
   const handleFormSubmit = async (formData: TForm) => {
     try {
       const integrationAuth = await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         integration: "hashicorp-vault",
         accessId: formData.vaultRoleID,
         accessToken: formData.vaultSecretID,
@@ -53,7 +53,7 @@ export const HashicorpVaultAuthorizePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations/hashicorp-vault/create",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           integrationAuthId: integrationAuth.id

@@ -8,6 +8,7 @@ import {
   faServer,
   faUser
 } from "@fortawesome/free-solid-svg-icons";
+import { useRouterState } from "@tanstack/react-router";
 
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
@@ -35,6 +36,7 @@ import {
   OnePassConnectionMethod,
   OracleDBConnectionMethod,
   PostgresConnectionMethod,
+  RedisConnectionMethod,
   TAppConnection,
   TeamCityConnectionMethod,
   TerraformCloudConnectionMethod,
@@ -112,7 +114,8 @@ export const APP_CONNECTION_MAP: Record<
     name: "Netlify",
     image: "Netlify.png"
   },
-  [AppConnection.Okta]: { name: "Okta", image: "Okta.png" }
+  [AppConnection.Okta]: { name: "Okta", image: "Okta.png" },
+  [AppConnection.Redis]: { name: "Redis", image: "Redis.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -154,6 +157,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case MySqlConnectionMethod.UsernameAndPassword:
     case OracleDBConnectionMethod.UsernameAndPassword:
     case AzureADCSConnectionMethod.UsernamePassword:
+    case RedisConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:
@@ -221,3 +225,11 @@ export const AWS_REGIONS = [
   { name: "AWS GovCloud (US-East)", slug: "us-gov-east-1" },
   { name: "AWS GovCloud (US-West)", slug: "us-gov-west-1" }
 ];
+
+export const useGetAppConnectionOauthReturnUrl = () => {
+  const {
+    location: { pathname }
+  } = useRouterState();
+
+  return pathname;
+};

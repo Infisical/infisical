@@ -29,6 +29,7 @@ export enum DynamicSecretProviders {
   MongoDB = "mongo-db",
   RabbitMq = "rabbit-mq",
   AzureEntraId = "azure-entra-id",
+  AzureSqlDatabase = "azure-sql-database",
   Ldap = "ldap",
   SapHana = "sap-hana",
   Snowflake = "snowflake",
@@ -57,6 +58,11 @@ export enum DynamicSecretAwsIamAuth {
   AssumeRole = "assume-role",
   AccessKey = "access-key",
   IRSA = "irsa"
+}
+
+export enum DynamicSecretAwsIamCredentialType {
+  IamUser = "iam-user",
+  TemporaryCredentials = "temporary-credentials"
 }
 
 export type TDynamicSecretProvider =
@@ -97,6 +103,7 @@ export type TDynamicSecretProvider =
       inputs:
         | {
             method: DynamicSecretAwsIamAuth.AccessKey;
+            credentialType: DynamicSecretAwsIamCredentialType;
             accessKey: string;
             secretAccessKey: string;
             region: string;
@@ -107,6 +114,7 @@ export type TDynamicSecretProvider =
           }
         | {
             method: DynamicSecretAwsIamAuth.AssumeRole;
+            credentialType: DynamicSecretAwsIamCredentialType;
             roleArn: string;
             region: string;
             awsPath?: string;
@@ -116,6 +124,7 @@ export type TDynamicSecretProvider =
           }
         | {
             method: DynamicSecretAwsIamAuth.IRSA;
+            credentialType: DynamicSecretAwsIamCredentialType;
             region: string;
             awsPath?: string;
             policyDocument?: string;
@@ -232,6 +241,34 @@ export type TDynamicSecretProvider =
         email: string;
         applicationId: string;
         clientSecret: string;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.AzureSqlDatabase;
+      inputs: {
+        host: string;
+        port: number;
+        database: string;
+        masterDatabase?: string;
+        username: string;
+        password: string;
+        passwordRequirements?: {
+          length: number;
+          required: {
+            lowercase: number;
+            uppercase: number;
+            digits: number;
+            symbols: number;
+          };
+          allowedSymbols?: string;
+        };
+        masterCreationStatement: string;
+        creationStatement: string;
+        revocationStatement: string;
+        renewStatement?: string;
+        ca?: string;
+        sslEnabled?: boolean;
+        gatewayId?: string;
       };
     }
   | {

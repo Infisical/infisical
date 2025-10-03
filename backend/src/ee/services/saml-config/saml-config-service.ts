@@ -1,6 +1,17 @@
+/* eslint-disable no-await-in-loop */
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
+import RE2 from "re2";
 
-import { OrgMembershipStatus, TableName, TSamlConfigs, TSamlConfigsUpdate, TUsers } from "@app/db/schemas";
+import {
+  OrgMembershipRole,
+  OrgMembershipStatus,
+  TableName,
+  TGroups,
+  TSamlConfigs,
+  TSamlConfigsUpdate,
+  TUsers
+} from "@app/db/schemas";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
@@ -8,12 +19,16 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
@@ -22,17 +37,30 @@ import { normalizeUsername } from "@app/services/user/user-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
+import { TGroupDALFactory } from "../group/group-dal";
+import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "../group/group-fns";
+import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TSamlConfigDALFactory } from "./saml-config-dal";
-import { TSamlConfigServiceFactory } from "./saml-config-types";
+import { SamlProviders, TSamlConfigServiceFactory } from "./saml-config-types";
+
+// SAML providers that support group sync
+const GROUP_SYNC_SUPPORTED_PROVIDERS = [SamlProviders.GOOGLE_SAML] as SamlProviders[];
 
 type TSamlConfigServiceFactoryDep = {
   samlConfigDAL: Pick<TSamlConfigDALFactory, "create" | "findOne" | "update" | "findById">;
   userDAL: Pick<
     TUserDALFactory,
-    "create" | "findOne" | "transaction" | "updateById" | "findById" | "findUserEncKeyByUserId"
+    | "create"
+    | "findOne"
+    | "find"
+    | "transaction"
+    | "updateById"
+    | "findById"
+    | "findUserEncKeyByUserId"
+    | "findUserEncKeyByUserIdsBatch"
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   orgDAL: Pick<
@@ -41,6 +69,15 @@ type TSamlConfigServiceFactoryDep = {
   >;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "create">;
+  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "find" | "transaction">;
+  userGroupMembershipDAL: Pick<
+    TUserGroupMembershipDALFactory,
+    "find" | "delete" | "transaction" | "insertMany" | "filterProjectsByUserMembership"
+  >;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser">;
+  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
@@ -54,6 +91,12 @@ export const samlConfigServiceFactory = ({
   orgMembershipDAL,
   userDAL,
   userAliasDAL,
+  groupDAL,
+  userGroupMembershipDAL,
+  groupProjectDAL,
+  projectDAL,
+  projectBotDAL,
+  projectKeyDAL,
   permissionService,
   licenseService,
   tokenService,
@@ -61,6 +104,139 @@ export const samlConfigServiceFactory = ({
   identityMetadataDAL,
   kmsService
 }: TSamlConfigServiceFactoryDep): TSamlConfigServiceFactory => {
+  const parseSamlGroups = (groupsValue: string): string[] => {
+    let samlGroups: string[] = [];
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const parsed = JSON.parse(groupsValue);
+      if (Array.isArray(parsed)) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        samlGroups = parsed;
+      } else if (typeof parsed === "string") {
+        samlGroups = parsed
+          .split(",")
+          .map((g) => g.trim())
+          .filter(Boolean);
+      }
+    } catch {
+      samlGroups = groupsValue
+        .split(",")
+        .map((g) => g.trim())
+        .filter(Boolean);
+    }
+
+    return samlGroups;
+  };
+
+  const syncUserGroupMemberships = async ({
+    userId,
+    orgId,
+    samlGroups,
+    tx
+  }: {
+    userId: string;
+    orgId: string;
+    samlGroups: string[];
+    tx?: Knex;
+  }) => {
+    const processGroupSync = async (transaction: Knex) => {
+      const currentGroupMemberships = await userGroupMembershipDAL.find(
+        {
+          userId
+        },
+        { tx: transaction }
+      );
+
+      const orgGroups = await groupDAL.find({ orgId }, { tx: transaction });
+      const orgGroupsMap = new Map(orgGroups.map((g: TGroups) => [g.name, g]));
+      const orgGroupIds = new Set(orgGroups.map((g) => g.id));
+
+      const currentOrgGroupMemberships = currentGroupMemberships.filter((m) => orgGroupIds.has(m.groupId));
+      const currentGroupNames = new Set(
+        currentOrgGroupMemberships
+          .map((m) => {
+            const group = orgGroups.find((g) => g.id === m.groupId);
+            return group?.name;
+          })
+          .filter(Boolean)
+      );
+
+      const targetGroupNames = new Set(samlGroups);
+      const groupsToAdd = samlGroups.filter((groupName) => !currentGroupNames.has(groupName));
+      const groupsToRemove = Array.from(currentGroupNames).filter(
+        (groupName) => groupName && !targetGroupNames.has(groupName)
+      );
+      // eslint-disable-next-line no-await-in-loop
+      for (const groupName of groupsToAdd) {
+        if (!orgGroupsMap.has(groupName)) {
+          const newGroup = await groupDAL.create(
+            {
+              name: groupName,
+              slug: `${groupName.toLowerCase().replace(new RE2("[^a-z0-9]", "g"), "-")}-${Date.now()}`,
+              orgId,
+              role: OrgMembershipRole.NoAccess,
+              roleId: null
+            },
+            transaction
+          );
+          orgGroupsMap.set(groupName, newGroup);
+        }
+      }
+
+      // eslint-disable-next-line no-await-in-loop
+      for (const groupName of groupsToAdd) {
+        const group = orgGroupsMap.get(groupName);
+        if (group) {
+          try {
+            await addUsersToGroupByUserIds({
+              userIds: [userId],
+              group,
+              userDAL,
+              userGroupMembershipDAL,
+              orgDAL,
+              groupProjectDAL,
+              projectKeyDAL,
+              projectDAL,
+              projectBotDAL,
+              tx: transaction
+            });
+          } catch (error) {
+            // Continue if user already in group
+          }
+        }
+      }
+
+      // eslint-disable-next-line no-await-in-loop
+      for (const groupName of groupsToRemove) {
+        if (groupName) {
+          const group = orgGroupsMap.get(groupName);
+          if (group) {
+            try {
+              await removeUsersFromGroupByUserIds({
+                userIds: [userId],
+                group,
+                userDAL,
+                userGroupMembershipDAL,
+                groupProjectDAL,
+                projectKeyDAL,
+                tx: transaction
+              });
+            } catch (error) {
+              // Continue if user not in group
+            }
+          }
+        }
+      }
+    };
+
+    if (tx) {
+      await processGroupSync(tx);
+    } else {
+      await userDAL.transaction(processGroupSync);
+    }
+  };
+
   const createSamlCfg: TSamlConfigServiceFactory["createSamlCfg"] = async ({
     idpCert,
     actor,
@@ -71,7 +247,8 @@ export const samlConfigServiceFactory = ({
     actorId,
     isActive,
     entryPoint,
-    authProvider
+    authProvider,
+    enableGroupSync
   }) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
@@ -96,6 +273,18 @@ export const samlConfigServiceFactory = ({
       });
     }
 
+    if (enableGroupSync && !GROUP_SYNC_SUPPORTED_PROVIDERS.includes(authProvider)) {
+      throw new BadRequestError({
+        message: "Group sync is not supported for this SAML provider."
+      });
+    }
+
+    if (enableGroupSync && !plan.groups) {
+      throw new BadRequestError({
+        message: "Failed to enable SAML group sync due to plan restriction. Upgrade plan to enable group sync."
+      });
+    }
+
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
@@ -107,7 +296,8 @@ export const samlConfigServiceFactory = ({
       isActive,
       encryptedSamlCertificate: encryptor({ plainText: Buffer.from(idpCert) }).cipherTextBlob,
       encryptedSamlEntryPoint: encryptor({ plainText: Buffer.from(entryPoint) }).cipherTextBlob,
-      encryptedSamlIssuer: encryptor({ plainText: Buffer.from(issuer) }).cipherTextBlob
+      encryptedSamlIssuer: encryptor({ plainText: Buffer.from(issuer) }).cipherTextBlob,
+      enableGroupSync: enableGroupSync || false
     });
 
     return samlConfig;
@@ -123,7 +313,8 @@ export const samlConfigServiceFactory = ({
     issuer,
     isActive,
     entryPoint,
-    authProvider
+    authProvider,
+    enableGroupSync
   }) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
@@ -147,7 +338,27 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    const updateQuery: TSamlConfigsUpdate = { authProvider, isActive, lastUsed: null };
+    if (enableGroupSync && authProvider && !GROUP_SYNC_SUPPORTED_PROVIDERS.includes(authProvider)) {
+      throw new BadRequestError({
+        message: "Group sync is not supported for this SAML provider."
+      });
+    }
+
+    if (enableGroupSync && !plan.groups) {
+      throw new BadRequestError({
+        message: "Failed to enable SAML group sync due to plan restriction. Upgrade plan to enable group sync."
+      });
+    }
+
+    const updateQuery: TSamlConfigsUpdate = {
+      authProvider,
+      isActive,
+      lastUsed: null
+    };
+
+    if (enableGroupSync !== undefined) {
+      updateQuery.enableGroupSync = enableGroupSync;
+    }
     const { encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId
@@ -250,7 +461,8 @@ export const samlConfigServiceFactory = ({
       entryPoint,
       issuer,
       cert,
-      lastUsed: samlConfig.lastUsed
+      lastUsed: samlConfig.lastUsed,
+      enableGroupSync: samlConfig.enableGroupSync
     };
   };
 
@@ -282,6 +494,12 @@ export const samlConfigServiceFactory = ({
     const organization = await orgDAL.findOrgById(orgId);
     if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
+    const samlConfig = await samlConfigDAL.findOne({ orgId });
+    const groupsMetadata = metadata?.find(({ key }) => key === "groups");
+
+    const plan = await licenseService.getPlan(orgId);
+    const shouldSyncGroups = !!samlConfig?.enableGroupSync && !!plan.groups;
+
     let user: TUsers;
     if (userAlias) {
       user = await userDAL.transaction(async (tx) => {
@@ -303,7 +521,7 @@ export const samlConfigServiceFactory = ({
               orgId,
               role,
               roleId,
-              status: foundUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              status: foundUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited,
               isActive: true
             },
             tx
@@ -332,6 +550,17 @@ export const samlConfigServiceFactory = ({
               tx
             );
           }
+        }
+
+        if (shouldSyncGroups && metadata && foundUser.id) {
+          const samlGroups = groupsMetadata?.value ? parseSamlGroups(groupsMetadata.value) : [];
+
+          await syncUserGroupMemberships({
+            userId: foundUser.id,
+            orgId,
+            samlGroups,
+            tx
+          });
         }
 
         return foundUser;
@@ -425,6 +654,18 @@ export const samlConfigServiceFactory = ({
             );
           }
         }
+
+        if (shouldSyncGroups && metadata && newUser.id) {
+          const samlGroups = groupsMetadata?.value ? parseSamlGroups(groupsMetadata.value) : [];
+
+          await syncUserGroupMemberships({
+            userId: newUser.id,
+            orgId,
+            samlGroups,
+            tx
+          });
+        }
+
         return newUser;
       });
     }

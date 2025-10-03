@@ -15,7 +15,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useDeleteSshCa, useGetSshCaById } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -23,9 +23,9 @@ import { SshCaModal } from "../SshCasPage/components/SshCaModal";
 import { SshCaDetailsSection, SshCertificateTemplatesSection } from "./components";
 
 const Page = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const navigate = useNavigate();
-  const projectId = currentWorkspace?.id || "";
+  const projectId = currentProject?.id || "";
   const caId = useParams({
     from: ROUTE_PATHS.Ssh.SshCaByIDPage.id,
     select: (el) => el.caId

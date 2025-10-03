@@ -31,7 +31,7 @@ Infisical supports the use of [API Tokens](https://www.zabbix.com/documentation/
     <Tab title="Infisical UI">
         <Steps>
             <Step title="Navigate to App Connections">
-                In your Infisical dashboard, go to **Organization Settings** and select the [**App Connections**](https://app.infisical.com/organization/app-connections) tab.
+                In your Infisical dashboard, navigate to the **App Connections** page in the desired project.
 
                 ![App Connections Tab](/images/app-connections/general/add-connection.png)
             </Step>
@@ -50,7 +50,7 @@ Infisical supports the use of [API Tokens](https://www.zabbix.com/documentation/
                 ![Zabbix Connection Modal](/images/app-connections/zabbix/zabbix-app-connection-form.png)
             </Step>
             <Step title="Connection Created">
-                After clicking Create, your **Zabbix Connection** is established and ready to use with your Infisical projects.
+                After clicking Create, your **Zabbix Connection** is established and ready to use with your Infisical project.
 
                 ![Zabbix Connection Created](/images/app-connections/zabbix/zabbix-app-connection-generated.png)
             </Step>
@@ -68,6 +68,7 @@ Infisical supports the use of [API Tokens](https://www.zabbix.com/documentation/
                 --data '{
                     "name": "my-zabbix-connection",
                     "method": "api-token",
+                    "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
                     "credentials": {
                         "apiToken": "[API TOKEN]",
                         "instanceUrl": "https://zabbix.example.com"
@@ -82,6 +83,7 @@ Infisical supports the use of [API Tokens](https://www.zabbix.com/documentation/
           "appConnection": {
               "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
               "name": "my-zabbix-connection",
+              "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
               "description": null,
               "version": 1,
               "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",

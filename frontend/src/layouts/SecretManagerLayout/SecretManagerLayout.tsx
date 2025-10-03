@@ -6,6 +6,7 @@ import {
   faCog,
   faHome,
   faMobile,
+  faPlug,
   faPuzzlePiece,
   faUsers,
   faVault
@@ -15,7 +16,7 @@ import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import { Badge, Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
-import { useProjectPermission, useWorkspace } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import {
   useGetAccessRequestsCount,
   useGetSecretApprovalRequestCount,
@@ -25,16 +26,15 @@ import {
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
 export const SecretManagerLayout = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject, projectId } = useProject();
   const { assumedPrivilegeDetails } = useProjectPermission();
 
   const { t } = useTranslation();
-  const workspaceId = currentWorkspace?.id || "";
-  const projectSlug = currentWorkspace?.slug || "";
+  const projectSlug = currentProject?.slug || "";
   const location = useLocation();
 
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({
-    workspaceId
+    projectId
   });
   const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({
     projectSlug
@@ -42,7 +42,7 @@ export const SecretManagerLayout = () => {
 
   // we only show the secret rotations v1 tab if they have existing rotations
   const { data: secretRotations } = useGetSecretRotations({
-    workspaceId,
+    workspaceId: projectId,
     options: {
       refetchOnMount: false
     }
@@ -74,9 +74,9 @@ export const SecretManagerLayout = () => {
                     <Link
                       to="/projects/secret-management/$projectId/overview"
                       params={{
-                        projectId: currentWorkspace.id,
-                        ...(currentWorkspace.environments.length
-                          ? { envSlug: currentWorkspace.environments[0]?.slug }
+                        projectId: currentProject.id,
+                        ...(currentProject.environments.length
+                          ? { envSlug: currentProject.environments[0]?.slug }
                           : {})
                       }}
                     >
@@ -85,7 +85,7 @@ export const SecretManagerLayout = () => {
                           isSelected={
                             isActive ||
                             location.pathname.startsWith(
-                              `/projects/secret-management/${currentWorkspace.id}/overview`
+                              `/projects/secret-management/${currentProject.id}/overview`
                             )
                           }
                         >
@@ -101,7 +101,7 @@ export const SecretManagerLayout = () => {
                     <Link
                       to="/projects/secret-management/$projectId/integrations"
                       params={{
-                        projectId: currentWorkspace.id
+                        projectId: currentProject.id
                       }}
                     >
                       {({ isActive }) => (
@@ -119,7 +119,7 @@ export const SecretManagerLayout = () => {
                       <Link
                         to="/projects/secret-management/$projectId/secret-rotation"
                         params={{
-                          projectId: currentWorkspace.id
+                          projectId: currentProject.id
                         }}
                       >
                         {({ isActive }) => (
@@ -137,7 +137,7 @@ export const SecretManagerLayout = () => {
                     <Link
                       to="/projects/secret-management/$projectId/approval"
                       params={{
-                        projectId: currentWorkspace.id
+                        projectId: currentProject.id
                       }}
                     >
                       {({ isActive }) => (
@@ -159,12 +159,29 @@ export const SecretManagerLayout = () => {
                         </MenuItem>
                       )}
                     </Link>
+                    <Link
+                      to="/projects/secret-management/$projectId/app-connections"
+                      params={{
+                        projectId: currentProject.id
+                      }}
+                    >
+                      {({ isActive }) => (
+                        <MenuItem isSelected={isActive}>
+                          <div className="mx-1 flex gap-2">
+                            <div className="w-6">
+                              <FontAwesomeIcon icon={faPlug} />
+                            </div>
+                            App Connections
+                          </div>
+                        </MenuItem>
+                      )}
+                    </Link>
                   </MenuGroup>
                   <MenuGroup title="Others">
                     <Link
                       to="/projects/secret-management/$projectId/access-management"
                       params={{
-                        projectId: currentWorkspace.id
+                        projectId: currentProject.id
                       }}
                     >
                       {({ isActive }) => (
@@ -181,7 +198,7 @@ export const SecretManagerLayout = () => {
                     <Link
                       to="/projects/secret-management/$projectId/audit-logs"
                       params={{
-                        projectId: currentWorkspace.id
+                        projectId: currentProject.id
                       }}
                     >
                       {({ isActive }) => (
@@ -198,7 +215,7 @@ export const SecretManagerLayout = () => {
                     <Link
                       to="/projects/secret-management/$projectId/settings"
                       params={{
-                        projectId: currentWorkspace.id
+                        projectId: currentProject.id
                       }}
                     >
                       {({ isActive }) => (

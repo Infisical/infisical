@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { TCreateCertificateResponse } from "../ca/types";
-import { workspaceKeys } from "../workspace/query-keys";
+import { projectKeys } from "../projects/query-keys";
 import { pkiSubscriberKeys } from "./queries";
 import {
   TCreatePkiSubscriberDTO,
@@ -22,7 +22,7 @@ export const useCreatePkiSubscriber = () => {
     },
     onSuccess: ({ projectId, name }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspacePkiSubscribers(projectId)
+        queryKey: projectKeys.getProjectPkiSubscribers(projectId)
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.getPkiSubscriber({
@@ -46,7 +46,7 @@ export const useUpdatePkiSubscriber = () => {
     },
     onSuccess: ({ projectId, name }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspacePkiSubscribers(projectId)
+        queryKey: projectKeys.getProjectPkiSubscribers(projectId)
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.getPkiSubscriber({
@@ -74,7 +74,7 @@ export const useDeletePkiSubscriber = () => {
     },
     onSuccess: ({ name, projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getWorkspacePkiSubscribers(projectId)
+        queryKey: projectKeys.getProjectPkiSubscribers(projectId)
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.getPkiSubscriber({

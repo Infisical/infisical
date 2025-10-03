@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalClose, ModalContent } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateWsTag } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
@@ -27,7 +27,7 @@ type Props = {
 };
 
 export const AddSecretTagModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const createWsTag = useCreateWsTag();
   const {
     control,
@@ -40,10 +40,10 @@ export const AddSecretTagModal = ({ popUp, handlePopUpClose, handlePopUpToggle }
 
   const onFormSubmit = async ({ slug }: FormData) => {
     try {
-      if (!currentWorkspace?.id) return;
+      if (!currentProject?.id) return;
 
       await createWsTag.mutateAsync({
-        workspaceID: currentWorkspace?.id,
+        projectId: currentProject?.id,
         tagSlug: slug,
         tagColor: ""
       });
@@ -73,7 +73,7 @@ export const AddSecretTagModal = ({ popUp, handlePopUpClose, handlePopUpToggle }
       }}
     >
       <ModalContent
-        title={`Add a tag for ${currentWorkspace?.name ?? ""}`}
+        title={`Add a tag for ${currentProject?.name ?? ""}`}
         subTitle="Specify your tag name, and the slug will be created automatically."
       >
         <form onSubmit={handleSubmit(onFormSubmit)}>

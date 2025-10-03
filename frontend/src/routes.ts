@@ -40,7 +40,7 @@ const organizationRoutes = route("/organization", [
       "organization/AppConnections/OauthCallbackPage/route.tsx"
     )
   ]),
-  route("/gateways", [index("organization/Gateways/GatewayListPage/route.tsx")])
+  route("/networking", [index("organization/NetworkingPage/route.tsx")])
 ]);
 
 const secretManagerRoutes = route("/projects/secret-management/$projectId", [
@@ -63,6 +63,7 @@ const secretManagerRoutes = route("/projects/secret-management/$projectId", [
     ]),
     route("/audit-logs", "project/AuditLogsPage/route-secret-manager.tsx"),
     route("/access-management", "project/AccessControlPage/route-secret-manager.tsx"),
+    route("/app-connections", "project/AppConnectionsPage/route-secret-manager.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-secret-manager.tsx"),
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-secret-manager.tsx"),
     route("/members/$membershipId", "project/MemberDetailsByIDPage/route-secret-manager.tsx"),
@@ -310,9 +311,14 @@ const certManagerRoutes = route("/projects/cert-management/$projectId", [
     route("/alerting", "cert-manager/AlertingPage/route.tsx"),
     route("/ca/$caName", "cert-manager/CertAuthDetailsByIDPage/route.tsx"),
     route("/pki-collections/$collectionId", "cert-manager/PkiCollectionDetailsByIDPage/routes.tsx"),
+    route("/integrations", [
+      index("cert-manager/IntegrationsListPage/route.tsx"),
+      route("/$syncId", "cert-manager/PkiSyncDetailsByIDPage/route.tsx")
+    ]),
     route("/settings", "cert-manager/SettingsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-cert-manager.tsx"),
     route("/access-management", "project/AccessControlPage/route-cert-manager.tsx"),
+    route("/app-connections", "project/AppConnectionsPage/route-cert-manager.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-cert-manager.tsx"),
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-cert-manager.tsx"),
     route("/members/$membershipId", "project/MemberDetailsByIDPage/route-cert-manager.tsx"),
@@ -361,6 +367,7 @@ const secretScanningRoutes = route("/projects/secret-scanning/$projectId", [
     route("/settings", "secret-scanning/SettingsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-secret-scanning.tsx"),
     route("/access-management", "project/AccessControlPage/route-secret-scanning.tsx"),
+    route("/app-connections", "project/AppConnectionsPage/route-secret-scanning.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-secret-scanning.tsx"),
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-secret-scanning.tsx"),
     route("/members/$membershipId", "project/MemberDetailsByIDPage/route-secret-scanning.tsx"),
@@ -373,6 +380,7 @@ export const routes = rootRoute("root.tsx", [
   route("/shared/secret/$secretId", "public/ViewSharedSecretByIDPage/route.tsx"),
   route("/secret-request/secret/$secretRequestId", "public/ViewSecretRequestByIDPage/route.tsx"),
   route("/share-secret", "public/ShareSecretPage/route.tsx"),
+  route("/upgrade-path", "public/UpgradePathPage/route.tsx"),
   route("/cli-redirect", "auth/CliRedirectPage/route.tsx"),
   middleware("restrict-login-signup.tsx", [
     route("/admin/signup", "admin/SignUpPage/route.tsx"),

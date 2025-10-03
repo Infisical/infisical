@@ -24,7 +24,7 @@ export type TOfflineLicense = {
 
 export type TFeatureSet = {
   _id: null;
-  slug: null;
+  slug: string | null;
   tier: -1;
   workspaceLimit: null;
   workspacesUsed: number;
@@ -75,6 +75,7 @@ export type TFeatureSet = {
   sshHostGroups: false;
   secretScanning: false;
   enterpriseSecretSyncs: false;
+  enterpriseCertificateSyncs: false;
   enterpriseAppConnections: false;
   machineIdentityAuthTemplates: false;
   fips: false;

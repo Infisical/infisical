@@ -3,49 +3,93 @@ title: "AWS IAM"
 description: "Learn how to dynamically generate AWS IAM Users."
 ---
 
-The Infisical AWS IAM dynamic secret allows you to generate AWS IAM Users on demand based on a configured AWS policy. Infisical supports several authentication methods to connect to your AWS account, including assuming an IAM Role, using IAM Roles for Service Accounts (IRSA) on EKS, or static Access Keys.
+The Infisical AWS IAM dynamic secret allows you to generate AWS IAM Users and temporary credentials on demand based on a configured AWS policy. Infisical supports several authentication methods to connect to your AWS account, including assuming an IAM Role, using IAM Roles for Service Accounts (IRSA) on EKS, or static Access Keys.
+
+## AWS STS Duration Limits
+
+When using **Temporary Credentials**, AWS STS has specific maximum duration limits:
+
+- **AssumeRole operations**: Maximum 1 hour (3600 seconds) when using temporary credentials
+- **GetSessionToken operations** (Access Key & IRSA): Maximum 12 hours (43200 seconds)
+
+<Info>
+**Automatic Duration Adjustment**: If you specify a TTL that exceeds these AWS limits, Infisical will automatically use the maximum allowed duration instead of failing the operation. This ensures your dynamic secrets work reliably within AWS constraints.
+</Info>
 
 ## Prerequisite
 
-Infisical needs an AWS IAM principal (a user or a role) with the required permissions to create and manage other IAM users. This principal will be responsible for the lifecycle of the dynamically generated users.
+Infisical needs an AWS IAM principal (a user or a role) with the required permissions to create and manage other IAM users and temporary credentials. This principal will be responsible for the lifecycle of the dynamically generated users and temporary credentials.
 
 <Accordion title="Required IAM Permissions">
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
+<Tabs>
+  <Tab title="IAM User">
+    Required permissions for creating temporary IAM users:
+
+    ```json
     {
-      "Effect": "Allow",
-      "Action": [
-        "iam:AttachUserPolicy",
-        "iam:CreateAccessKey",
-        "iam:CreateUser",
-        "iam:DeleteAccessKey",
-        "iam:DeleteUser",
-        "iam:DeleteUserPolicy",
-        "iam:DetachUserPolicy",
-        "iam:GetUser",
-        "iam:ListAccessKeys",
-        "iam:ListAttachedUserPolicies",
-        "iam:ListGroupsForUser",
-        "iam:ListUserPolicies",
-        "iam:PutUserPolicy",
-        "iam:AddUserToGroup",
-        "iam:RemoveUserFromGroup",
-        "iam:TagUser"
-      ],
-      "Resource": ["*"]
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "iam:AttachUserPolicy",
+            "iam:CreateAccessKey",
+            "iam:CreateUser",
+            "iam:DeleteAccessKey",
+            "iam:DeleteUser",
+            "iam:DeleteUserPolicy",
+            "iam:DetachUserPolicy",
+            "iam:GetUser",
+            "iam:ListAccessKeys",
+            "iam:ListAttachedUserPolicies",
+            "iam:ListGroupsForUser",
+            "iam:ListUserPolicies",
+            "iam:PutUserPolicy",
+            "iam:AddUserToGroup",
+            "iam:RemoveUserFromGroup",
+            "iam:TagUser"
+          ],
+          "Resource": ["*"]
+        }
+      ]
     }
-  ]
-}
-```
+    ```
 
-To minimize managing user access you can attach a resource in format
+    To minimize managing user access you can attach a resource in format
 
-> arn:aws:iam::\<account-id\>:user/\<aws-scope-path\>
+    > arn:aws:iam::\<account-id\>:user/\<aws-scope-path\>
 
-Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** with a path to minimize managing user access.
+    Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** with a path to minimize managing user access.
+  </Tab>
+
+  <Tab title="Temporary Credentials">
+    Required permissions for Access Key and Assume Role methods:
+
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "sts:GetSessionToken",
+            "sts:AssumeRole"
+          ],
+          "Resource": ["*"]
+        }
+      ]
+    }
+    ```
+
+
+    To minimize managing user access you can attach a resource in format
+
+    > arn:aws:iam::\<account-id\>:user/\<aws-scope-path\>
+
+    Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** with a path to minimize managing user access.
+  </Tab>
+</Tabs>
 
 </Accordion>
 
@@ -101,6 +145,9 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
 
                 2. Select **AWS Account** as the **Trusted Entity Type**.
                 3. Select **Another AWS Account** and provide the appropriate Infisical AWS Account ID: use **381492033652** for the **US region**, and **345594589636** for the **EU region**. This restricts the role to be assumed only by Infisical. If self-hosting, provide your AWS account number instead.
+                <Note>
+                  **For Dedicated Instances**: Your AWS account ID differs from the one provided above. Please reach out to Infisical support to obtain your AWS account ID.
+                </Note>
                 4. (Recommended) <strong>Enable "Require external ID"</strong> and input your **Project ID** to strengthen security and mitigate the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html).
                 5. Assign permission as shared in prerequisite.
 
@@ -170,43 +217,76 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
             Select *Assume Role* method.
         </ParamField>
 
-        <ParamField path="Aws Role ARN" type="string" required>
-    			   The ARN of the AWS Role to assume.
+        <ParamField path="Credential Type" type="string" required>
+            Choose the credential generation approach:
+            - **IAM User (Default)**: Creates new temporary IAM users in your AWS account
+            - **Temporary Credentials**: Generates temporary credentials from your role connection
         </ParamField>
 
-        <ParamField path="AWS IAM Path" type="string">
-          [IAM AWS Path](https://aws.amazon.com/blogs/security/optimize-aws-administration-with-iam-paths/) to scope created IAM User resource access.
+        <ParamField path="Aws Role ARN" type="string" required>
+    			   The ARN of the AWS Role to assume.
         </ParamField>
 
         <ParamField path="AWS Region" type="string" required>
           The AWS data center region.
         </ParamField>
 
-        <ParamField path="IAM User Permission Boundary" type="string" required>
-          The IAM Policy ARN of the [AWS Permissions Boundary](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) to attach to IAM users created in the role.
-        </ParamField>
+        <Tabs>
+          <Tab title="IAM User">
+            <ParamField path="AWS IAM Path" type="string">
+              [IAM AWS Path](https://aws.amazon.com/blogs/security/optimize-aws-administration-with-iam-paths/) to scope created IAM User resource access.
+            </ParamField>
 
-        <ParamField path="AWS IAM Groups" type="string">
-          The AWS IAM groups that should be assigned to the created users. Multiple values can be provided by separating them with commas
-        </ParamField>
+            <ParamField path="IAM User Permission Boundary" type="string">
+              The IAM Policy ARN of the [AWS Permissions Boundary](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) to attach to IAM users created in the role.
+            </ParamField>
 
-        <ParamField path="AWS Policy ARNs" type="string">
-          The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas
-        </ParamField>
+            <ParamField path="AWS IAM Groups" type="string">
+              The AWS IAM groups that should be assigned to the created users. Multiple values can be provided by separating them with commas.
+            </ParamField>
 
-        <ParamField path="AWS IAM Policy Document" type="string">
-          The AWS IAM inline policy that should be attached to the created users.
-          Multiple values can be provided by separating them with commas
-        </ParamField>
+            <ParamField path="AWS Policy ARNs" type="string">
+              The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas.
+            </ParamField>
 
-        <ParamField path="Username Template" type="string" default="{{randomUsername}}">
-          Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
+            <ParamField path="AWS IAM Policy Document" type="string">
+              The AWS IAM inline policy that should be attached to the created users. Multiple values can be provided by separating them with commas.
+            </ParamField>
 
-          Allowed template variables are
+            <ParamField path="Username Template" type="string" default="{{randomUsername}}">
+              Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
 
-          - `{{randomUsername}}`: Random username string
-          - `{{unixTimestamp}}`: Current Unix timestamp
-        </ParamField>
+              Allowed template variables are:
+              - `{{randomUsername}}`: Random username string
+              - `{{unixTimestamp}}`: Current Unix timestamp
+              - `{{identity.name}}`: Name of the identity that is generating the secret
+              - `{{random N}}`: Random string of N characters
+
+              Allowed template functions are:
+              - `truncate`: Truncates a string to a specified length
+              - `replace`: Replaces a substring with another value
+            </ParamField>
+
+            <ParamField path="Tags" type="map<string, string>[]">
+              Tags to be added to the created IAM User resource.
+            </ParamField>
+          </Tab>
+
+          <Tab title="Temporary Credentials">
+            When **Credential Type** is set to **Temporary Credentials**:
+
+            <Info>
+              No additional configuration parameters are required. The generated credentials will:
+              - Inherit the permissions of the assumed role
+              - Include an AWS Session Token
+              - Be valid for the duration specified in Default TTL
+            </Info>
+
+            <Warning>
+              **Duration Limit**: AssumeRole temporary credentials are limited to 1 hour maximum by AWS. TTL values exceeding this limit will be automatically adjusted to 1 hour.
+            </Warning>
+          </Tab>
+        </Tabs>
       </Step>
 
       <Step title="Click 'Submit'">
@@ -231,6 +311,18 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
         </Tip>
 
         Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you.
+
+        **Credentials format depends on your chosen credential type:**
+
+        **IAM User credential type:**
+        - AWS Username
+        - AWS Access Key ID
+        - AWS Secret Access Key
+
+        **Temporary Credentials credential type:**
+        - AWS Access Key ID
+        - AWS Secret Access Key
+        - AWS Session Token
 
         ![Provision Lease](/images/platform/dynamic-secrets/lease-values-aws-iam.png)
       </Step>
@@ -342,36 +434,75 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
             <ParamField path="Method" type="string" required>
                 Select *IRSA* method.
             </ParamField>
+            <ParamField path="Credential Type" type="string" required>
+                Choose the credential generation approach:
+                - **IAM User**: Creates new temporary IAM users in your AWS account
+                - **Temporary Credentials**: Generates temporary credentials from your IRSA role connection
+            </ParamField>
             <ParamField path="Aws Role ARN" type="string" required>
                 The ARN of the AWS IAM Role for the service account to assume.
             </ParamField>
-            <ParamField path="AWS IAM Path" type="string">
-                [IAM AWS Path](https://aws.amazon.com/blogs/security/optimize-aws-administration-with-iam-paths/) to scope created IAM User resource access.
-            </ParamField>
+
             <ParamField path="AWS Region" type="string" required>
                 The AWS data center region.
             </ParamField>
-            <ParamField path="IAM User Permission Boundary" type="string" required>
-                The IAM Policy ARN of the [AWS Permissions Boundary](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) to attach to IAM users created in the role.
-            </ParamField>
-            <ParamField path="AWS IAM Groups" type="string">
-                The AWS IAM groups that should be assigned to the created users. Multiple values can be provided by separating them with commas
-            </ParamField>
-            <ParamField path="AWS Policy ARNs" type="string">
-                The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas
-            </ParamField>
-            <ParamField path="AWS IAM Policy Document" type="string">
-                The AWS IAM inline policy that should be attached to the created users.
-                Multiple values can be provided by separating them with commas
-            </ParamField>
-            <ParamField path="Username Template" type="string" default="{{randomUsername}}">
-                Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
 
-                Allowed template variables are
+            <Tabs>
+              <Tab title="IAM User">
+                <ParamField path="AWS IAM Path" type="string">
+                    [IAM AWS Path](https://aws.amazon.com/blogs/security/optimize-aws-administration-with-iam-paths/) to scope created IAM User resource access.
+                </ParamField>
 
-                - `{{randomUsername}}`: Random username string
-                - `{{unixTimestamp}}`: Current Unix timestamp
-            </ParamField>
+                <ParamField path="IAM User Permission Boundary" type="string">
+                    The IAM Policy ARN of the [AWS Permissions Boundary](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) to attach to IAM users created in the role.
+                </ParamField>
+
+                <ParamField path="AWS IAM Groups" type="string">
+                    The AWS IAM groups that should be assigned to the created users. Multiple values can be provided by separating them with commas.
+                </ParamField>
+
+                <ParamField path="AWS Policy ARNs" type="string">
+                    The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas.
+                </ParamField>
+
+                <ParamField path="AWS IAM Policy Document" type="string">
+                    The AWS IAM inline policy that should be attached to the created users. Multiple values can be provided by separating them with commas.
+                </ParamField>
+
+                <ParamField path="Username Template" type="string" default="{{randomUsername}}">
+                    Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
+
+                    Allowed template variables are:
+                    - `{{randomUsername}}`: Random username string
+                    - `{{unixTimestamp}}`: Current Unix timestamp
+                    - `{{identity.name}}`: Name of the identity that is generating the secret
+                    - `{{random N}}`: Random string of N characters
+
+                    Allowed template functions are:
+                    - `truncate`: Truncates a string to a specified length
+                    - `replace`: Replaces a substring with another value
+                </ParamField>
+
+                <ParamField path="Tags" type="map<string, string>[]">
+                    Tags to be added to the created IAM User resource.
+                </ParamField>
+              </Tab>
+
+              <Tab title="Temporary Credentials">
+                When **Credential Type** is set to **Temporary Credentials**:
+
+                <Info>
+                  No additional configuration parameters are required. The generated credentials will:
+                  - Inherit the permissions of the assumed IRSA role
+                  - Include an AWS Session Token
+                  - Be valid for the duration specified in Default TTL
+                </Info>
+
+                <Note>
+                  **Duration Limit**: IRSA temporary credentials support up to 12 hours maximum via GetSessionToken. TTL values exceeding this limit will be automatically adjusted.
+                </Note>
+              </Tab>
+            </Tabs>
         </Step>
         <Step title="Click 'Submit'">
             After submitting the form, you will see a dynamic secret created in the dashboard.
@@ -429,6 +560,12 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
           Select *Access Key* method.
        </ParamField>
 
+        <ParamField path="Credential Type" type="string" required>
+            Choose the credential generation approach:
+            - **IAM User**: Creates new temporary IAM users in your AWS account
+            - **Temporary Credentials**: Generates temporary credentials from your access key connection
+        </ParamField>
+
         <ParamField path="AWS Access Key" type="string" required>
           The managing AWS IAM User Access Key
         </ParamField>
@@ -437,43 +574,66 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
           The managing AWS IAM User Secret Key
         </ParamField>
 
-        <ParamField path="AWS IAM Path" type="string">
-          [IAM AWS Path](https://aws.amazon.com/blogs/security/optimize-aws-administration-with-iam-paths/) to scope created IAM User resource access.
-        </ParamField>
-
         <ParamField path="AWS Region" type="string" required>
           The AWS data center region.
         </ParamField>
 
-        <ParamField path="IAM User Permission Boundary" type="string" required>
-          The IAM Policy ARN of the [AWS Permissions Boundary](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) to attach to IAM users created in the role.
-        </ParamField>
+        <Tabs>
+          <Tab title="IAM User">
+            <ParamField path="AWS IAM Path" type="string">
+              [IAM AWS Path](https://aws.amazon.com/blogs/security/optimize-aws-administration-with-iam-paths/) to scope created IAM User resource access.
+            </ParamField>
 
-        <ParamField path="AWS IAM Groups" type="string">
-          The AWS IAM groups that should be assigned to the created users. Multiple values can be provided by separating them with commas
-        </ParamField>
+            <ParamField path="IAM User Permission Boundary" type="string">
+              The IAM Policy ARN of the [AWS Permissions Boundary](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html) to attach to IAM users created in the role.
+            </ParamField>
 
-        <ParamField path="AWS Policy ARNs" type="string">
-          The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas
-        </ParamField>
+            <ParamField path="AWS IAM Groups" type="string">
+              The AWS IAM groups that should be assigned to the created users. Multiple values can be provided by separating them with commas.
+            </ParamField>
 
-        <ParamField path="AWS IAM Policy Document" type="string">
-          The AWS IAM inline policy that should be attached to the created users.
-          Multiple values can be provided by separating them with commas
-        </ParamField>
+            <ParamField path="AWS Policy ARNs" type="string">
+              The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas.
+            </ParamField>
 
-        <ParamField path="Username Template" type="string" default="{{randomUsername}}">
-          Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
+            <ParamField path="AWS IAM Policy Document" type="string">
+              The AWS IAM inline policy that should be attached to the created users. Multiple values can be provided by separating them with commas.
+            </ParamField>
 
-          Allowed template variables are
+            <ParamField path="Username Template" type="string" default="{{randomUsername}}">
+              Specifies a template for generating usernames. This field allows customization of how usernames are automatically created.
 
-          - `{{randomUsername}}`: Random username string
-          - `{{unixTimestamp}}`: Current Unix timestamp
-        </ParamField>
+              Allowed template variables are:
+              - `{{randomUsername}}`: Random username string
+              - `{{unixTimestamp}}`: Current Unix timestamp
+              - `{{identity.name}}`: Name of the identity that is generating the secret
+              - `{{random N}}`: Random string of N characters
 
-        <ParamField path="Tags" type="map[string]string">
-          Tags to be added to the created IAM User resource.
-        </ParamField>
+              Allowed template functions are:
+              - `truncate`: Truncates a string to a specified length
+              - `replace`: Replaces a substring with another value
+            </ParamField>
+
+            <ParamField path="Tags" type="map[string]string">
+              Tags to be added to the created IAM User resource.
+            </ParamField>
+          </Tab>
+
+          <Tab title="Temporary Credentials">
+            When **Credential Type** is set to **Temporary Credentials**:
+
+            <Info>
+              No additional configuration parameters are required. The generated credentials will:
+              - Inherit the permissions of your access key connection
+              - Include an AWS Session Token
+              - Be valid for the duration specified in Default TTL
+            </Info>
+
+            <Note>
+              **Duration Limit**: Access Key temporary credentials support up to 12 hours maximum via GetSessionToken. TTL values exceeding this limit will be automatically adjusted.
+            </Note>
+          </Tab>
+        </Tabs>
 
       </Step>
 
@@ -499,6 +659,18 @@ Replace **\<account id\>** with your AWS account id and **\<aws-scope-path\>** w
         </Tip>
 
         Once you click the `Submit` button, a new secret lease will be generated and the credentials for it will be shown to you.
+
+        **Credentials format depends on your chosen credential type:**
+
+        **IAM User credential type:**
+        - AWS Username
+        - AWS Access Key ID
+        - AWS Secret Access Key
+
+        **Temporary Credentials credential type:**
+        - AWS Access Key ID
+        - AWS Secret Access Key
+        - AWS Session Token
 
         ![Provision Lease](/images/platform/dynamic-secrets/lease-values-aws-iam.png)
       </Step>

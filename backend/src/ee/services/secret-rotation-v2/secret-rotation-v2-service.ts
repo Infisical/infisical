@@ -85,11 +85,12 @@ import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/se
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { awsIamUserSecretRotationFactory } from "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns";
 import { oktaClientSecretRotationFactory } from "./okta-client-secret/okta-client-secret-rotation-fns";
+import { redisCredentialsRotationFactory } from "./redis-credentials/redis-credentials-rotation-fns";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 
 export type TSecretRotationV2ServiceFactoryDep = {
   secretRotationV2DAL: TSecretRotationV2DALFactory;
-  appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -132,7 +133,8 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.AzureClientSecret]: azureClientSecretRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.AwsIamUserSecret]: awsIamUserSecretRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.LdapPassword]: ldapPasswordRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.OktaClientSecret]: oktaClientSecretRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.OktaClientSecret]: oktaClientSecretRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.RedisCredentials]: redisCredentialsRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -459,7 +461,11 @@ export const secretRotationV2ServiceFactory = ({
     const typeApp = SECRET_ROTATION_CONNECTION_MAP[payload.type];
 
     // validates permission to connect and app is valid for rotation type
-    const connection = await appConnectionService.connectAppConnectionById(typeApp, payload.connectionId, actor);
+    const connection = await appConnectionService.validateAppConnectionUsageById(
+      typeApp,
+      { connectionId: payload.connectionId, projectId },
+      actor
+    );
 
     const rotationFactory = SECRET_ROTATION_FACTORY_MAP[payload.type](
       {

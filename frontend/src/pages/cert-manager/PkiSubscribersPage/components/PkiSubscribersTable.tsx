@@ -30,7 +30,7 @@ import {
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { useListWorkspacePkiSubscribers } from "@app/hooks/api";
 import {
@@ -49,8 +49,8 @@ type Props = {
 
 export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
-  const { currentWorkspace } = useWorkspace();
-  const { data, isPending } = useListWorkspacePkiSubscribers(currentWorkspace?.id || "");
+  const { currentProject } = useProject();
+  const { data, isPending } = useListWorkspacePkiSubscribers(currentProject?.id || "");
   return (
     <div>
       <TableContainer>
@@ -77,7 +77,7 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
                       navigate({
                         to: "/projects/cert-management/$projectId/subscribers/$subscriberName",
                         params: {
-                          projectId: currentWorkspace.id,
+                          projectId: currentProject.id,
                           subscriberName: subscriber.name
                         }
                       })

@@ -9,14 +9,16 @@ import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useAppConnectionOptions } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 type Props = {
   onSelect: (app: AppConnection) => void;
+  projectType?: ProjectType;
 };
 
-export const AppConnectionsSelect = ({ onSelect }: Props) => {
+export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
   const { subscription } = useSubscription();
-  const { isPending, data: appConnectionOptions } = useAppConnectionOptions();
+  const { isPending, data: appConnectionOptions } = useAppConnectionOptions(projectType);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 

@@ -14,6 +14,8 @@ import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
+import { TNotificationServiceFactory } from "../notification/notification-service";
+import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { getDefaultOrgMembershipRole } from "../org/org-role-fns";
 import { TOrgMembershipDALFactory } from "../org-membership/org-membership-dal";
@@ -47,6 +49,7 @@ type TAuthLoginServiceFactoryDep = {
   totpService: Pick<TTotpServiceFactory, "verifyUserTotp" | "verifyWithUserRecoveryCode">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   orgMembershipDAL: TOrgMembershipDALFactory;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
@@ -57,7 +60,8 @@ export const authLoginServiceFactory = ({
   orgDAL,
   orgMembershipDAL,
   totpService,
-  auditLogService
+  auditLogService,
+  notificationService
 }: TAuthLoginServiceFactoryDep) => {
   /*
    * Private
@@ -71,6 +75,16 @@ export const authLoginServiceFactory = ({
     if (!isDeviceSeen) {
       const newDeviceList = devices.concat([{ ip, userAgent }]);
       await userDAL.updateById(user.id, { devices: JSON.stringify(newDeviceList) }, tx);
+
+      await notificationService.createUserNotifications([
+        {
+          userId: user.id,
+          type: NotificationType.LOGIN_FROM_NEW_DEVICE,
+          title: "Login From New Device",
+          body: `A new device with IP **${ip}** and User Agent **${userAgent}** has logged into your account.`
+        }
+      ]);
+
       if (user.email) {
         await smtpService.sendMail({
           template: SmtpTemplates.NewDeviceJoin,
@@ -563,6 +577,18 @@ export const authLoginServiceFactory = ({
         .filter(Boolean) as string[];
 
       if (adminEmails.length > 0) {
+        await notificationService.createUserNotifications(
+          orgAdmins
+            .filter((admin) => admin.user.id !== user.id)
+            .map((admin) => ({
+              userId: admin.user.id,
+              orgId: organizationId,
+              type: NotificationType.ADMIN_SSO_BYPASS,
+              title: "Security Alert: Admin SSO Bypass",
+              body: `The org admin **${user.email}** has bypassed enforced SSO login.`
+            }))
+        );
+
         await smtpService.sendMail({
           recipients: adminEmails,
           subjectLine: "Security Alert: Admin SSO Bypass",
@@ -658,7 +684,8 @@ export const authLoginServiceFactory = ({
     mfaJwtToken,
     ip,
     userAgent,
-    orgId
+    orgId,
+    isRecoveryCode = false
   }: TVerifyMfaTokenDTO) => {
     const appCfg = getConfig();
     const user = await userDAL.findById(userId);
@@ -672,15 +699,20 @@ export const authLoginServiceFactory = ({
           code: mfaToken
         });
       } else if (mfaMethod === MfaMethod.TOTP) {
-        if (mfaToken.length === 6) {
-          await totpService.verifyUserTotp({
-            userId,
-            totp: mfaToken
-          });
-        } else {
+        if (isRecoveryCode) {
           await totpService.verifyWithUserRecoveryCode({
             userId,
             recoveryCode: mfaToken
+          });
+        } else {
+          if (mfaToken.length !== 6) {
+            throw new BadRequestError({
+              message: "Please use a valid TOTP code."
+            });
+          }
+          await totpService.verifyUserTotp({
+            userId,
+            totp: mfaToken
           });
         }
       }

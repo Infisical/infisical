@@ -33,6 +33,7 @@ export const constructGroupOrgMembershipRoleMappings = async ({
   let customRolesMap: Map<string, TOrgRoles> = new Map();
   if (customRoleSlugs.length > 0) {
     const customRoles = await orgRoleDAL.find({
+      orgId,
       $in: {
         slug: customRoleSlugs
       }

@@ -16,8 +16,8 @@ import {
 export const accessApprovalKeys = {
   getAccessApprovalPolicies: (projectSlug: string) =>
     [{ projectSlug }, "access-approval-policies"] as const,
-  getAccessApprovalPolicyOfABoard: (workspaceId: string, environment: string) =>
-    [{ workspaceId, environment }, "access-approval-policy"] as const,
+  getAccessApprovalPolicyOfABoard: (projectId: string, environment: string) =>
+    [{ projectId, environment }, "access-approval-policy"] as const,
 
   getAccessApprovalRequests: (
     projectSlug: string,

@@ -1,5 +1,5 @@
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName, TCertificates } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
@@ -22,6 +22,20 @@ export const certificateDALFactory = (db: TDbClient) => {
       return cert;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find latest active certificate for subscriber" });
+    }
+  };
+
+  const findAllActiveCertsForSubscriber = async ({ subscriberId }: { subscriberId: string }) => {
+    try {
+      const certs = await db
+        .replicaNode()(TableName.Certificate)
+        .where({ pkiSubscriberId: subscriberId, status: CertStatus.ACTIVE })
+        .where("notAfter", ">", new Date())
+        .orderBy("notBefore", "desc");
+
+      return certs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find all active certificates for subscriber" });
     }
   };
 
@@ -79,10 +93,33 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findExpiredSyncedCertificates = async (): Promise<TCertificates[]> => {
+    try {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const certs = await db
+        .replicaNode()(TableName.Certificate)
+        .where("notAfter", ">=", yesterday)
+        .where("notAfter", "<", today)
+        .whereNotNull("pkiSubscriberId");
+
+      return certs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find expired synced certificates" });
+    }
+  };
+
   return {
     ...certificateOrm,
     countCertificatesInProject,
     countCertificatesForPkiSubscriber,
-    findLatestActiveCertForSubscriber
+    findLatestActiveCertForSubscriber,
+    findAllActiveCertsForSubscriber,
+    findExpiredSyncedCertificates
   };
 };

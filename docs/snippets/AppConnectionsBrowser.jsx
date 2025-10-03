@@ -42,6 +42,7 @@ export const AppConnectionsBrowser = () => {
     {"name": "PostgreSQL", "slug": "postgres", "path": "/integrations/app-connections/postgres", "description": "Learn how to connect your PostgreSQL database to pull secrets from Infisical.", "category": "Databases"},
     {"name": "Microsoft SQL Server", "slug": "mssql", "path": "/integrations/app-connections/mssql", "description": "Learn how to connect your SQL Server database to pull secrets from Infisical.", "category": "Databases"},
     {"name": "Oracle Database", "slug": "oracledb", "path": "/integrations/app-connections/oracledb", "description": "Learn how to connect your Oracle database to pull secrets from Infisical.", "category": "Databases"},
+    {"name": "Redis", "slug": "redis", "path": "/integrations/app-connections/redis", "description": "Learn how to connect Redis to pull secrets from Infisical.", "category": "Databases"},
     {"name": "LDAP", "slug": "ldap", "path": "/integrations/app-connections/ldap", "description": "Learn how to connect your LDAP to pull secrets from Infisical.", "category": "Directory Services"},
     {"name": "Auth0", "slug": "auth0", "path": "/integrations/app-connections/auth0", "description": "Learn how to connect your Auth0 to pull secrets from Infisical.", "category": "Identity & Auth"},
     {"name": "Okta", "slug": "okta", "path": "/integrations/app-connections/okta", "description": "Learn how to connect your Okta to pull secrets from Infisical.", "category": "Identity & Auth"}

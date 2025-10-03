@@ -10,7 +10,7 @@ import { z } from "zod";
 import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 // import { RadioGroup } from "@app/components/v2/RadioGroup";
 import { useCreateIntegration } from "@app/hooks/api";
 import {
@@ -41,13 +41,13 @@ type FormData = z.infer<typeof schema>;
 export const HerokuConfigurePage = () => {
   const navigate = useNavigate();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { control, handleSubmit, setValue, watch } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       secretPath: "/",
       initialSyncBehavior: IntegrationSyncBehavior.PREFER_SOURCE,
-      selectedSourceEnvironment: currentWorkspace.environments[0].slug
+      selectedSourceEnvironment: currentProject.environments[0].slug
     }
   });
 
@@ -100,7 +100,7 @@ export const HerokuConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -158,7 +158,7 @@ export const HerokuConfigurePage = () => {
                   onValueChange={(e) => onChange(e)}
                   className="w-full"
                 >
-                  {currentWorkspace?.environments.map((sourceEnvironment) => (
+                  {currentProject?.environments.map((sourceEnvironment) => (
                     <SelectItem
                       value={sourceEnvironment.slug}
                       key={`source-environment-${sourceEnvironment.slug}`}

@@ -9,7 +9,7 @@ import {
   IconButton
 } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { PolicySelectionModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicySelectionModal";
 import { PolicyTemplateModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicyTemplateModal";
 

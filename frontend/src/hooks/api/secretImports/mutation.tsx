@@ -16,10 +16,10 @@ export const useCreateSecretImport = () => {
 
   return useMutation<object, object, TCreateSecretImportDTO>({
     mutationFn: async ({ import: secretImport, environment, isReplication, projectId, path }) => {
-      const { data } = await apiRequest.post("/api/v1/secret-imports", {
+      const { data } = await apiRequest.post("/api/v2/secret-imports", {
         import: secretImport,
         environment,
-        workspaceId: projectId,
+        projectId,
         path,
         isReplication
       });
@@ -44,11 +44,11 @@ export const useUpdateSecretImport = () => {
 
   return useMutation<object, object, TUpdateSecretImportDTO>({
     mutationFn: async ({ environment, import: secretImports, projectId, path, id }) => {
-      const { data } = await apiRequest.patch(`/api/v1/secret-imports/${id}`, {
+      const { data } = await apiRequest.patch(`/api/v2/secret-imports/${id}`, {
         import: secretImports,
         environment,
         path,
-        workspaceId: projectId
+        projectId
       });
       return data;
     },
@@ -69,10 +69,10 @@ export const useUpdateSecretImport = () => {
 export const useResyncSecretReplication = () => {
   return useMutation<object, object, TResyncSecretReplicationDTO>({
     mutationFn: async ({ environment, projectId, path, id }) => {
-      const { data } = await apiRequest.post(`/api/v1/secret-imports/${id}/replication-resync`, {
+      const { data } = await apiRequest.post(`/api/v2/secret-imports/${id}/replication-resync`, {
         environment,
         path,
-        workspaceId: projectId
+        projectId
       });
       return data;
     }
@@ -84,9 +84,9 @@ export const useDeleteSecretImport = () => {
 
   return useMutation<object, object, TDeleteSecretImportDTO>({
     mutationFn: async ({ id, projectId, path, environment }) => {
-      const { data } = await apiRequest.delete(`/api/v1/secret-imports/${id}`, {
+      const { data } = await apiRequest.delete(`/api/v2/secret-imports/${id}`, {
         data: {
-          workspaceId: projectId,
+          projectId,
           path,
           environment
         }

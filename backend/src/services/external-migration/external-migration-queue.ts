@@ -5,6 +5,8 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { TNotificationServiceFactory } from "../notification/notification-service";
+import { NotificationType } from "../notification/notification-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectServiceFactory } from "../project/project-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -42,6 +44,7 @@ export type TExternalMigrationQueueFactoryDep = {
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "create">;
 
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 export type TExternalMigrationQueueFactory = ReturnType<typeof externalMigrationQueueFactory>;
@@ -62,9 +65,12 @@ export const externalMigrationQueueFactory = ({
   folderDAL,
   folderCommitService,
   folderVersionDAL,
-  resourceMetadataDAL
+  resourceMetadataDAL,
+  notificationService
 }: TExternalMigrationQueueFactoryDep) => {
   const startImport = async (dto: {
+    orgId: string;
+    actorId: string;
     actorEmail: string;
     importType: ExternalPlatforms;
     data: {
@@ -87,9 +93,19 @@ export const externalMigrationQueueFactory = ({
   };
 
   queueService.start(QueueName.ImportSecretsFromExternalSource, async (job) => {
-    const { data, actorEmail, importType } = job.data;
+    const { data, actorEmail, importType, actorId, orgId } = job.data;
 
     try {
+      await notificationService.createUserNotifications([
+        {
+          userId: actorId,
+          orgId,
+          type: NotificationType.IMPORT_STARTED,
+          title: "Import Started",
+          body: `An import from **${importType}** to Infisical has been started.`
+        }
+      ]);
+
       await smtpService.sendMail({
         recipients: [actorEmail],
         subjectLine: "Infisical import started",
@@ -137,6 +153,16 @@ export const externalMigrationQueueFactory = ({
         );
       }
 
+      await notificationService.createUserNotifications([
+        {
+          userId: actorId,
+          orgId,
+          type: NotificationType.IMPORT_SUCCESSFUL,
+          title: "Import Successful",
+          body: `An import from **${importType}** to Infisical has successfully completed.`
+        }
+      ]);
+
       await smtpService.sendMail({
         recipients: [actorEmail],
         subjectLine: "Infisical import successful",
@@ -146,6 +172,17 @@ export const externalMigrationQueueFactory = ({
         template: SmtpTemplates.ExternalImportSuccessful
       });
     } catch (err) {
+      await notificationService.createUserNotifications([
+        {
+          userId: actorId,
+          orgId,
+          type: NotificationType.IMPORT_FAILED,
+          title: "Import Failed",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+          body: `An import from **${importType}** to Infisical has failed: ${(err as any)?.message || "Unknown error"}.`
+        }
+      ]);
+
       await smtpService.sendMail({
         recipients: [job.data.actorEmail],
         subjectLine: "Infisical import failed",

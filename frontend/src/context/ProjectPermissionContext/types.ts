@@ -62,6 +62,16 @@ export enum ProjectPermissionSecretSyncActions {
   RemoveSecrets = "remove-secrets"
 }
 
+export enum ProjectPermissionPkiSyncActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  SyncCertificates = "sync-certificates",
+  ImportCertificates = "import-certificates",
+  RemoveCertificates = "remove-certificates"
+}
+
 export enum ProjectPermissionIdentityActions {
   Read = "read",
   Create = "create",
@@ -154,6 +164,14 @@ export enum ProjectPermissionAuditLogsActions {
   Read = "read"
 }
 
+export enum ProjectPermissionAppConnectionActions {
+  Read = "read-app-connections",
+  Create = "create-app-connections",
+  Edit = "edit-app-connections",
+  Delete = "delete-app-connections",
+  Connect = "connect-app-connections"
+}
+
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
@@ -173,8 +191,13 @@ export type IdentityManagementSubjectFields = {
   identityId: string;
 };
 
+export type AppConnectionSubjectFields = {
+  connectionId: string;
+};
+
 export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SecretSyncs
+  | ProjectPermissionSub.PkiSyncs
   | ProjectPermissionSub.Secrets
   | ProjectPermissionSub.DynamicSecrets
   | ProjectPermissionSub.Identity
@@ -184,7 +207,8 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SecretFolders
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.SecretRotation
-  | ProjectPermissionSub.SecretEvents;
+  | ProjectPermissionSub.SecretEvents
+  | ProjectPermissionSub.AppConnections;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
@@ -258,12 +282,14 @@ export enum ProjectPermissionSub {
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
+  PkiSyncs = "pki-syncs",
   Kmip = "kmip",
   Commits = "commits",
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
   SecretScanningConfigs = "secret-scanning-configs",
-  SecretEvents = "secret-events"
+  SecretEvents = "secret-events",
+  AppConnections = "app-connections"
 }
 
 export type SecretSubjectFields = {
@@ -300,6 +326,10 @@ export type SecretImportSubjectFields = {
 export type SecretSyncSubjectFields = {
   environment: string;
   secretPath: string;
+};
+
+export type PkiSyncSubjectFields = {
+  subscriberId: string;
 };
 
 export type SecretRotationSubjectFields = {
@@ -347,6 +377,13 @@ export type ProjectPermissionSet =
       (
         | ProjectPermissionSub.SecretSyncs
         | (ForcedSubject<ProjectPermissionSub.SecretSyncs> & SecretSyncSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionPkiSyncActions,
+      (
+        | ProjectPermissionSub.PkiSyncs
+        | (ForcedSubject<ProjectPermissionSub.PkiSyncs> & PkiSyncSubjectFields)
       )
     ]
   | [
@@ -430,6 +467,13 @@ export type ProjectPermissionSet =
       (
         | ProjectPermissionSub.SecretEvents
         | (ForcedSubject<ProjectPermissionSub.SecretEvents> & SecretEventSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionAppConnectionActions,
+      (
+        | ProjectPermissionSub.AppConnections
+        | (ForcedSubject<ProjectPermissionSub.AppConnections> & AppConnectionSubjectFields)
       )
     ];
 

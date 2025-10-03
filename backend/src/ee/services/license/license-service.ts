@@ -160,7 +160,10 @@ export const licenseServiceFactory = ({
         }
 
         if (isValidOfflineLicense) {
-          onPremFeatures = contents.license.features;
+          onPremFeatures = {
+            ...contents.license.features,
+            slug: "enterprise"
+          };
           instanceType = InstanceType.EnterpriseOnPremOffline;
           logger.info(`Instance type: ${InstanceType.EnterpriseOnPremOffline}`);
           isValidLicense = true;
@@ -458,17 +461,16 @@ export const licenseServiceFactory = ({
   };
 
   const fetchPlanTableFromServer = async (customerId: string | null | undefined) => {
-    if (!customerId) {
-      throw new NotFoundError({ message: "Organization customer ID is required for plan table retrieval" });
-    }
-
-    const baseUrl = `/api/license-server/v1/customers/${customerId}`;
+    const baseUrl = `/api/license-server/v1/customers`;
 
     if (instanceType === InstanceType.Cloud) {
+      if (!customerId) {
+        throw new NotFoundError({ message: "Organization customer ID is required for plan table retrieval" });
+      }
       const { data } = await licenseServerCloudApi.request.get<{
         head: { name: string }[];
         rows: { name: string; allowed: boolean }[];
-      }>(`${baseUrl}/cloud-plan/table`);
+      }>(`${baseUrl}/${customerId}/cloud-plan/table`);
       return data;
     }
 

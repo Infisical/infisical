@@ -1,4 +1,4 @@
-import { WorkspaceEnv } from "../workspace/types";
+import { ProjectEnv } from "../projects/types";
 
 export enum TProviderFunctionTypes {
   HTTP = "http",
@@ -80,7 +80,7 @@ export type TSecretRotation = {
   customProvider: string;
   workspace: string;
   envId: string;
-  environment: WorkspaceEnv;
+  environment: ProjectEnv;
   secretPath: string;
   outputs: Array<{
     key: string;

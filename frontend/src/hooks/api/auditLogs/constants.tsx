@@ -20,7 +20,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_SECRET]: "Create secret",
   [EventType.UPDATE_SECRET]: "Update secret",
   [EventType.DELETE_SECRET]: "Delete secret",
-  [EventType.GET_WORKSPACE_KEY]: "Read project key",
+  [EventType.GET_PROJECT_KEY]: "Read project key",
   [EventType.AUTHORIZE_INTEGRATION]: "Authorize integration",
   [EventType.UPDATE_INTEGRATION_AUTH]: "Update integration auth",
   [EventType.UNAUTHORIZE_INTEGRATION]: "Unauthorize integration",
@@ -45,8 +45,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_ENVIRONMENT]: "Create environment",
   [EventType.UPDATE_ENVIRONMENT]: "Update environment",
   [EventType.DELETE_ENVIRONMENT]: "Delete environment",
-  [EventType.ADD_WORKSPACE_MEMBER]: "Add member",
-  [EventType.REMOVE_WORKSPACE_MEMBER]: "Remove member",
+  [EventType.ADD_PROJECT_MEMBER]: "Add member",
+  [EventType.REMOVE_PROJECT_MEMBER]: "Remove member",
   [EventType.CREATE_FOLDER]: "Create folder",
   [EventType.UPDATE_FOLDER]: "Update folder",
   [EventType.DELETE_FOLDER]: "Delete folder",
@@ -58,8 +58,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_SECRET_IMPORT]: "Create secret import",
   [EventType.UPDATE_SECRET_IMPORT]: "Update secret import",
   [EventType.DELETE_SECRET_IMPORT]: "Delete secret import",
-  [EventType.UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS]: "Update denied permissions",
-  [EventType.UPDATE_USER_WORKSPACE_ROLE]: "Update user role",
+  [EventType.UPDATE_USER_PROJECT_DENIED_PERMISSIONS]: "Update denied permissions",
+  [EventType.UPDATE_USER_PROJECT_ROLE]: "Update user role",
   [EventType.CREATE_CA]: "Create CA",
   [EventType.GET_CA]: "Get CA",
   [EventType.UPDATE_CA]: "Update CA",
@@ -132,6 +132,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_APP_CONNECTION]: "Create App Connection",
   [EventType.UPDATE_APP_CONNECTION]: "Update App Connection",
   [EventType.DELETE_APP_CONNECTION]: "Delete App Connection",
+  [EventType.GET_APP_CONNECTION_USAGE]: "Get App Connection Usage",
+  [EventType.MIGRATE_APP_CONNECTION]: "Migrate App Connection",
   [EventType.GET_SECRET_SYNCS]: "List secret syncs",
   [EventType.GET_SECRET_SYNC]: "Get Secret Sync",
   [EventType.CREATE_SECRET_SYNC]: "Create Secret Sync",
@@ -140,6 +142,14 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.SECRET_SYNC_SYNC_SECRETS]: "Secret Sync synced secrets",
   [EventType.SECRET_SYNC_IMPORT_SECRETS]: "Secret Sync imported secrets",
   [EventType.SECRET_SYNC_REMOVE_SECRETS]: "Secret Sync removed secrets",
+  [EventType.GET_PKI_SYNCS]: "List PKI syncs",
+  [EventType.GET_PKI_SYNC]: "Get PKI sync",
+  [EventType.CREATE_PKI_SYNC]: "Create PKI sync",
+  [EventType.UPDATE_PKI_SYNC]: "Update PKI sync",
+  [EventType.DELETE_PKI_SYNC]: "Delete PKI sync",
+  [EventType.PKI_SYNC_SYNC_CERTIFICATES]: "PKI Sync synced certificates",
+  [EventType.PKI_SYNC_IMPORT_CERTIFICATES]: "PKI Sync imported certificates",
+  [EventType.PKI_SYNC_REMOVE_CERTIFICATES]: "PKI Sync removed certificates",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_ASSIGN_USER]:
     "OIDC group membership mapping assigned user to groups",
   [EventType.OIDC_GROUP_MEMBERSHIP_MAPPING_REMOVE_USER]:
@@ -192,6 +202,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_IDENTITY_LDAP_AUTH]: "Updated LDAP Auth for identity",
   [EventType.GET_IDENTITY_LDAP_AUTH]: "Retrieved LDAP Auth for identity",
   [EventType.REVOKE_IDENTITY_LDAP_AUTH]: "Revoked LDAP Auth for identity",
+  [EventType.CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS]: "Clear LDAP Auth lockouts",
 
   [EventType.SECRET_SCANNING_DATA_SOURCE_LIST]: "List Secret Scanning Data Sources",
   [EventType.SECRET_SCANNING_DATA_SOURCE_CREATE]: "Create Secret Scanning Data Source",
@@ -219,7 +230,23 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_ORG]: "Update Organization",
   [EventType.CREATE_PROJECT]: "Create Project",
   [EventType.UPDATE_PROJECT]: "Update Project",
-  [EventType.DELETE_PROJECT]: "Delete Project"
+  [EventType.DELETE_PROJECT]: "Delete Project",
+
+  [EventType.CREATE_SECRET_REMINDER]: "Create Secret Reminder",
+  [EventType.GET_SECRET_REMINDER]: "Get Secret Reminder",
+  [EventType.DELETE_SECRET_REMINDER]: "Delete Secret Reminder",
+
+  [EventType.DASHBOARD_LIST_SECRETS]: "Dashboard List Secrets",
+  [EventType.DASHBOARD_GET_SECRET_VALUE]: "Dashboard Get Secret Value",
+  [EventType.DASHBOARD_GET_SECRET_VERSION_VALUE]: "Dashboard Get Secret Version Value",
+
+  [EventType.CREATE_PROJECT_ROLE]: "Create Project Role",
+  [EventType.UPDATE_PROJECT_ROLE]: "Update Project Role",
+  [EventType.DELETE_PROJECT_ROLE]: "Delete Project Role",
+
+  [EventType.CREATE_ORG_ROLE]: "Create Org Role",
+  [EventType.UPDATE_ORG_ROLE]: "Update Org Role",
+  [EventType.DELETE_ORG_ROLE]: "Delete Org Role"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

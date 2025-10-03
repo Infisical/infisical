@@ -1,11 +1,11 @@
+import { ProjectEnv } from "../projects/types";
 import { SecretV3Raw } from "../secrets/types";
-import { WorkspaceEnv } from "../workspace/types";
 
 export type TSecretImport = {
   id: string;
   folderId: string;
   importPath: string;
-  importEnv: WorkspaceEnv;
+  importEnv: ProjectEnv;
   position: string;
   createdAt: string;
   updatedAt: string;
@@ -25,10 +25,10 @@ export type TGetImportedFoldersByEnvDTO = {
 
 export type TImportedSecrets = {
   environment: string;
-  environmentInfo: WorkspaceEnv;
+  environmentInfo: ProjectEnv;
   secretPath: string;
   folderId: string;
-  secrets: SecretV3Raw[];
+  secrets: Omit<SecretV3Raw, "secretValue">[];
 };
 
 export type TGetSecretImports = {

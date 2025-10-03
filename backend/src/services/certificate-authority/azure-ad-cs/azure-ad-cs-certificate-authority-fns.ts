@@ -26,6 +26,9 @@ import {
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TPkiSubscriberProperties } from "@app/services/pki-subscriber/pki-subscriber-types";
+import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
+import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
+import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
@@ -41,10 +44,10 @@ import {
 
 type TAzureAdCsCertificateAuthorityFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
-    "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa"
+    "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
@@ -55,6 +58,8 @@ type TAzureAdCsCertificateAuthorityFnsDeps = {
     "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
   >;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
+  pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
 };
 
@@ -584,7 +589,9 @@ export const AzureAdCsCertificateAuthorityFns = ({
   certificateSecretDAL,
   kmsService,
   projectDAL,
-  pkiSubscriberDAL
+  pkiSubscriberDAL,
+  pkiSyncDAL,
+  pkiSyncQueue
 }: TAzureAdCsCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
     name,
@@ -621,9 +628,9 @@ export const AzureAdCsCertificateAuthorityFns = ({
       });
     }
 
-    await appConnectionService.connectAppConnectionById(
+    await appConnectionService.validateAppConnectionUsageById(
       appConnection.app as AppConnection,
-      azureAdcsConnectionId,
+      { connectionId: azureAdcsConnectionId, projectId },
       actor
     );
 
@@ -705,9 +712,15 @@ export const AzureAdCsCertificateAuthorityFns = ({
           });
         }
 
-        await appConnectionService.connectAppConnectionById(
+        const ca = await certificateAuthorityDAL.findById(id);
+
+        if (!ca) {
+          throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+        }
+
+        await appConnectionService.validateAppConnectionUsageById(
           appConnection.app as AppConnection,
-          azureAdcsConnectionId,
+          { connectionId: azureAdcsConnectionId, projectId: ca.projectId },
           actor
         );
 
@@ -1017,6 +1030,8 @@ export const AzureAdCsCertificateAuthorityFns = ({
         tx
       );
     });
+
+    await triggerAutoSyncForSubscriber(subscriber.id, { pkiSyncDAL, pkiSyncQueue });
 
     return {
       certificate: certificatePem,
