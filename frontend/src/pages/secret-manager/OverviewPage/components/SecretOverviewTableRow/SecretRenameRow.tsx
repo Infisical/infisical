@@ -158,7 +158,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
           {currentSecretValue?.trim()?.includes(" ") &&
             currentSecretValue?.trim() !== secretKey && (
               <Tooltip
-                className={"w-full max-w-72"}
+                className="w-full max-w-72"
                 content={
                   <div>
                     Secret key contains whitespaces.

@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const GatewaysV2Schema = z.object({
@@ -15,7 +17,8 @@ export const GatewaysV2Schema = z.object({
   identityId: z.string().uuid(),
   relayId: z.string().uuid().nullable().optional(),
   name: z.string(),
-  heartbeat: z.date().nullable().optional()
+  heartbeat: z.date().nullable().optional(),
+  encryptedPamSessionKey: zodBuffer.nullable().optional()
 });
 
 export type TGatewaysV2 = z.infer<typeof GatewaysV2Schema>;

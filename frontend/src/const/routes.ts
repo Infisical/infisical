@@ -350,6 +350,24 @@ export const ROUTE_PATHS = Object.freeze({
       "/_authenticate/_inject-org-details/_org-layout/projects/secret-scanning/$projectId/_secret-scanning-layout/findings"
     )
   },
+  Pam: {
+    AccountsPage: setRoute(
+      "/projects/pam/$projectId/accounts",
+      "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/accounts"
+    ),
+    ResourcesPage: setRoute(
+      "/projects/pam/$projectId/resources",
+      "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/resources"
+    ),
+    SessionsPage: setRoute(
+      "/projects/pam/$projectId/sessions",
+      "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/sessions/"
+    ),
+    PamSessionByIDPage: setRoute(
+      "/projects/pam/$projectId/sessions/$sessionId",
+      "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/sessions/$sessionId"
+    )
+  },
   Public: {
     ViewSharedSecretByIDPage: setRoute("/shared/secret/$secretId", "/shared/secret/$secretId"),
     ViewSecretRequestByIDPage: setRoute(

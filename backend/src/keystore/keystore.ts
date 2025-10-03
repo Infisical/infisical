@@ -23,6 +23,7 @@ export const PgSqlLock = {
   InstanceRelayConfigInit: () => pgAdvisoryLockHashText("instance-relay-config-init"),
   OrgGatewayV2Init: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-v2-init:${orgId}`),
   OrgRelayConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-relay-config-init:${orgId}`),
+  GatewayPamSessionKey: (gatewayId: string) => pgAdvisoryLockHashText(`gateway-pam-session-key:${gatewayId}`),
   IdentityLogin: (identityId: string, nonce: string) => pgAdvisoryLockHashText(`identity-login:${identityId}:${nonce}`)
 } as const;
 
