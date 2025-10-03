@@ -490,6 +490,12 @@ export const pamAccountServiceFactory = ({
     const resource = await pamResourceDAL.findById(account.resourceId);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
 
+    if (resource.gatewayIdentityId !== actor.id) {
+      throw new ForbiddenRequestError({
+        message: "Identity does not have access to fetch the PAM session credentials"
+      });
+    }
+
     const decryptedAccount = await decryptAccount(account, session.projectId, kmsService);
 
     const decryptedResource = await decryptResource(resource, session.projectId, kmsService);
