@@ -95,8 +95,8 @@ export const pamSessionServiceFactory = ({
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
 
-    if (session.status !== PamSessionStatus.Active) {
-      throw new BadRequestError({ message: "Cannot update logs for sessions that are not active" });
+    if (session.encryptedLogsBlob) {
+      throw new BadRequestError({ message: "Cannot update logs for sessions with existing logs" });
     }
 
     const project = await projectDAL.findById(session.projectId);
