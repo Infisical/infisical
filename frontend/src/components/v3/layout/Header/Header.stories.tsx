@@ -84,6 +84,7 @@ const HeaderDemo = ({ variant }: { variant: ProductBadgeProps["variant"] }) => {
             placeholder="Find..."
             endAdornment={<Button variant="outline">F</Button>}
           />
+          {/* TODO button group */}
           <div className="[&>*:first-child]:rounded-r-none [&>*:last-child]:rounded-l-none [&>*:not(:first-child):not(:last-child)]:rounded-none [&>*:not(:first-child):not(:last-child)]:border-x-0">
             <IconButton size="sm" variant="outline">
               <CircleQuestionMarkIcon />
@@ -97,7 +98,7 @@ const HeaderDemo = ({ variant }: { variant: ProductBadgeProps["variant"] }) => {
                   <CircleUserIcon />
                 </IconButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent className="w-48" align="end">
                 <DropdownMenuItem>Personal Settings</DropdownMenuItem>
                 <DropdownMenuItem>Documentation</DropdownMenuItem>
                 <DropdownMenuItem>Join Slack Community</DropdownMenuItem>
