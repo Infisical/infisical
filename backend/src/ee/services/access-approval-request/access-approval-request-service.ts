@@ -33,7 +33,7 @@ import { ApprovalStatus, TAccessApprovalRequestServiceFactory } from "./access-a
 
 type TSecretApprovalRequestServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create" | "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectPermissionCache">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<

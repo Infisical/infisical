@@ -6,8 +6,8 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { Button, Checkbox, Modal, ModalContent, Tooltip } from "@app/components/v2";
 import { useOrgPermission } from "@app/context";
-import { useUpgradePrivilegeSystem } from "@app/hooks/api";
 import { OrgMembershipRole } from "@app/helpers/roles";
+import { useUpgradePrivilegeSystem } from "@app/hooks/api";
 
 const formSchema = z.object({
   isProjectPrivilegesUpdated: z.literal(true),
@@ -275,7 +275,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                 <Tooltip
                   content={
                     !isAdmin
-                      ? `You cannot perform this upgrade because you are not an organization admin.`
+                      ? "You cannot perform this upgrade because you are not an organization admin."
                       : undefined
                   }
                 >

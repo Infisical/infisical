@@ -8,7 +8,6 @@ import { queryClient as qc } from "@app/hooks/api/reactQuery";
 import { APIKeyDataV2 } from "../apiKeys/types";
 import { MfaMethod } from "../auth/types";
 import { TGroupWithProjectMemberships } from "../groups/types";
-import { projectKeys } from "../projects";
 import { setAuthToken } from "../reactQuery";
 import { subscriptionQueryKeys } from "../subscriptions/queries";
 import { userKeys } from "./query-keys";

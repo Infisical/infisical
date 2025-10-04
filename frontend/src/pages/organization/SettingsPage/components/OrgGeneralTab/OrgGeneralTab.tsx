@@ -1,9 +1,9 @@
 import { useOrgPermission } from "@app/context";
+import { OrgMembershipRole } from "@app/helpers/roles";
 
 import { OrgDeleteSection } from "../OrgDeleteSection";
 import { OrgIncidentContactsSection } from "../OrgIncidentContactsSection";
 import { OrgNameChangeSection } from "../OrgNameChangeSection";
-import { OrgMembershipRole } from "@app/helpers/roles";
 
 export const OrgGeneralTab = () => {
   const { hasOrgRole } = useOrgPermission();

@@ -32,7 +32,10 @@ import {
 } from "./project-membership-types";
 
 type TProjectMembershipServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles"|  "invalidateProjectPermissionCache">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "getProjectPermissionByRoles" | "invalidateProjectPermissionCache"
+  >;
   smtpService: TSmtpService;
   projectMembershipDAL: TProjectMembershipDALFactory;
   membershipUserDAL: TMembershipUserDALFactory;

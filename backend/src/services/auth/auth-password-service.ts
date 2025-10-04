@@ -1,3 +1,4 @@
+import { AccessScope } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
@@ -6,7 +7,7 @@ import { OrgServiceActor } from "@app/lib/types";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
-import { TOrgMembershipDALFactory } from "../org-membership/org-membership-dal";
+import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TTotpConfigDALFactory } from "../totp/totp-config-dal";
 import { TUserDALFactory } from "../user/user-dal";
@@ -23,7 +24,7 @@ import { ActorType, AuthMethod, AuthTokenType } from "./auth-type";
 type TAuthPasswordServiceFactoryDep = {
   authDAL: TAuthDALFactory;
   userDAL: TUserDALFactory;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find">;
+  membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
   totpConfigDAL: Pick<TTotpConfigDALFactory, "delete">;
@@ -33,7 +34,7 @@ export type TAuthPasswordFactory = ReturnType<typeof authPaswordServiceFactory>;
 export const authPaswordServiceFactory = ({
   authDAL,
   userDAL,
-  orgMembershipDAL,
+  membershipUserDAL,
   tokenService,
   smtpService,
   totpConfigDAL
@@ -54,7 +55,10 @@ export const authPaswordServiceFactory = ({
         const hasEmailAuth = user.authMethods?.includes(AuthMethod.EMAIL);
 
         if (!hasEmailAuth) {
-          const orgMemberships = await orgMembershipDAL.find({ userId: user.id });
+          const orgMemberships = await membershipUserDAL.find({
+            actorUserId: user.id,
+            scope: AccessScope.Organization
+          });
           const lastLoginMethod =
             orgMemberships
               .filter((membership) => membership.lastLoginAuthMethod)
