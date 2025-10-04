@@ -380,7 +380,7 @@ export const ActionBar = ({
     }
   };
 
-  // Replicate Folder Logic
+  // Replicate Secrets Logic
   const createSecretCount = Object.keys(
     (popUp.confirmUpload?.data as TSecOverwriteOpt)?.create || {}
   ).length;
@@ -439,17 +439,22 @@ export const ActionBar = ({
           const processBatches = async () => {
             await secretBatches.reduce(async (previous, batch) => {
               await previous;
+              try {
+                const { secrets: batchSecrets } = await fetchDashboardProjectSecretsByKeys({
+                  secretPath: normalizedPath,
+                  environment,
+                  projectId,
+                  keys: batch
+                });
 
-              const { secrets: batchSecrets } = await fetchDashboardProjectSecretsByKeys({
-                secretPath: normalizedPath,
-                environment,
-                projectId,
-                keys: batch
-              });
-
-              batchSecrets.forEach((secret) => {
-                existingSecretLookup.add(`${normalizedPath}-${secret.secretKey}`);
-              });
+                batchSecrets.forEach((secret) => {
+                  existingSecretLookup.add(`${normalizedPath}-${secret.secretKey}`);
+                });
+              } catch (error) {
+                if (!(error instanceof AxiosError && error.response?.status === 404)) {
+                  throw error;
+                }
+              }
             }, Promise.resolve());
           };
 
@@ -1050,7 +1055,7 @@ export const ActionBar = ({
                       className="h-10 text-left"
                       isFullWidth
                     >
-                      Replicate Folder
+                      Replicate Secrets
                     </Button>
                   )}
                 </ProjectPermissionCan>
