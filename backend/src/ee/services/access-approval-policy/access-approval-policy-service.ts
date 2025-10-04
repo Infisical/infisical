@@ -5,7 +5,6 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
-import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
@@ -45,7 +44,6 @@ type TAccessApprovalPolicyServiceFactoryDep = {
   accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "update" | "find" | "resetReviewByPolicyId">;
   additionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "delete">;
   accessApprovalRequestReviewerDAL: Pick<TAccessApprovalRequestReviewerDALFactory, "update" | "delete">;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find">;
   accessApprovalPolicyEnvironmentDAL: TAccessApprovalPolicyEnvironmentDALFactory;
 };
 
@@ -62,7 +60,7 @@ export const accessApprovalPolicyServiceFactory = ({
   accessApprovalRequestDAL,
   additionalPrivilegeDAL,
   accessApprovalRequestReviewerDAL,
-  orgMembershipDAL
+  projectMembershipDAL
 }: TAccessApprovalPolicyServiceFactoryDep): TAccessApprovalPolicyServiceFactory => {
   const $policyExists = async ({
     envId,
@@ -83,6 +81,22 @@ export const accessApprovalPolicyServiceFactory = ({
       envIds: envId ? [envId] : (envIds as string[])
     });
     return policyId ? policy && policy.id !== policyId : Boolean(policy);
+  };
+
+  const verifyProjectUserMembership = async (userIds: string[], projectId: string) => {
+    if (userIds.length === 0) return;
+    const projectMemberships = await projectMembershipDAL.find({
+      $in: { userId: userIds },
+      projectId
+    });
+
+    if (projectMemberships.length !== userIds.length) {
+      const projectMemberUserIds = new Set(projectMemberships.map((member) => member.userId));
+      const userIdsNotInProject = userIds.filter((id) => !projectMemberUserIds.has(id));
+      throw new BadRequestError({
+        message: `Some users are not members of the project: ${userIdsNotInProject.join(", ")}`
+      });
+    }
   };
 
   const createAccessApprovalPolicy: TAccessApprovalPolicyServiceFactory["createAccessApprovalPolicy"] = async ({
@@ -162,7 +176,7 @@ export const accessApprovalPolicyServiceFactory = ({
 
       if (invalidUsernames.length) {
         throw new BadRequestError({
-          message: `Invalid approver user: ${invalidUsernames.join(", ")}`
+          message: `Invalid approver user: ${invalidUsernames.map((i) => i.username).join(", ")}`
         });
       }
 
@@ -171,6 +185,13 @@ export const accessApprovalPolicyServiceFactory = ({
           id: approverUsersInDBGroupByUsername[el.username]?.[0].id,
           sequence: el.sequence
         }))
+      );
+    }
+
+    if (approverUserIds.length > 0) {
+      await verifyProjectUserMembership(
+        approverUserIds.map((au) => au.id),
+        project.id
       );
     }
     let groupBypassers: string[] = [];
@@ -424,18 +445,7 @@ export const accessApprovalPolicyServiceFactory = ({
 
       // Validate user bypassers
       if (bypasserUserIds.length > 0) {
-        const orgMemberships = await orgMembershipDAL.find({
-          $in: { userId: bypasserUserIds },
-          orgId: actorOrgId
-        });
-
-        if (orgMemberships.length !== bypasserUserIds.length) {
-          const foundUserIdsInOrg = new Set(orgMemberships.map((mem) => mem.userId));
-          const missingUserIds = bypasserUserIds.filter((id) => !foundUserIdsInOrg.has(id));
-          throw new BadRequestError({
-            message: `One or more specified bypasser users are not part of the organization or do not exist. Invalid or non-member user IDs: ${missingUserIds.join(", ")}`
-          });
-        }
+        await verifyProjectUserMembership(bypasserUserIds, accessApprovalPolicy.projectId);
       }
 
       // Validate group bypassers
@@ -488,7 +498,7 @@ export const accessApprovalPolicyServiceFactory = ({
 
           if (invalidUsernames.length) {
             throw new BadRequestError({
-              message: `Invalid approver user: ${invalidUsernames.join(", ")}`
+              message: `Invalid approver user: ${invalidUsernames.map((i) => i.username).join(", ")}`
             });
           }
 
@@ -497,6 +507,13 @@ export const accessApprovalPolicyServiceFactory = ({
               id: approverUsersInDBGroupByUsername[el.username]?.[0].id,
               sequence: el.sequence
             }))
+          );
+        }
+
+        if (approverUserIds.length > 0) {
+          await verifyProjectUserMembership(
+            approverUserIds.map((au) => au.id),
+            accessApprovalPolicy.projectId
           );
         }
         await accessApprovalPolicyApproverDAL.insertMany(
