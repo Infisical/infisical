@@ -99,7 +99,7 @@ export const useGetOrgRole = (orgId: string, roleId: string) =>
       }>(`/api/v1/organization/${orgId}/roles/${roleId}`);
       return {
         ...data.role,
-        permissions: data.role.permissions as PackRule<TPermission>[]
+        permissions: data.role.permissions as TPermission[]
       };
     },
     enabled: Boolean(orgId && roleId)

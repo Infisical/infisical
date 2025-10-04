@@ -3,10 +3,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button } from "@app/components/v2";
 import { useOrgPermission } from "@app/context";
+import { OrgMembershipRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 
 import { SelectImportFromPlatformModal } from "./components/SelectImportFromPlatformModal";
-import { OrgMembershipRole } from "@app/helpers/roles";
 
 export const ExternalMigrationsTab = () => {
   const { hasOrgRole } = useOrgPermission();

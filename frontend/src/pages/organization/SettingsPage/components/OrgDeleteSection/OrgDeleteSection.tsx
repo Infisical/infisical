@@ -3,10 +3,10 @@ import { useNavigate } from "@tanstack/react-router";
 import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { useOrganization, useOrgPermission } from "@app/context";
+import { OrgMembershipRole } from "@app/helpers/roles";
 import { useDeleteOrgById } from "@app/hooks/api";
 import { clearSession } from "@app/hooks/api/users/queries";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { OrgMembershipRole } from "@app/helpers/roles";
 
 export const OrgDeleteSection = () => {
   const navigate = useNavigate();

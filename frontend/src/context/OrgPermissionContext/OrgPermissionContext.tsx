@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { unpackRules } from "@casl/ability/extra";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -10,7 +11,6 @@ import {
 } from "@app/hooks/api/roles/queries";
 
 import { OrgPermissionSet } from "./types";
-import { useCallback } from "react";
 
 export const useOrgPermission = () => {
   const organizationId = useRouteContext({

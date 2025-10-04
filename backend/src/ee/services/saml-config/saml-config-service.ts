@@ -4,14 +4,14 @@ import { Knex } from "knex";
 import RE2 from "re2";
 
 import {
+  AccessScope,
   OrgMembershipRole,
   OrgMembershipStatus,
   TableName,
   TGroups,
   TSamlConfigs,
   TSamlConfigsUpdate,
-  TUsers,
-  AccessScope
+  TUsers
 } from "@app/db/schemas";
 import { throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { getConfig } from "@app/lib/config/env";
@@ -20,13 +20,16 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
+import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
@@ -72,6 +75,15 @@ type TSamlConfigServiceFactoryDep = {
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  userGroupMembershipDAL: Pick<
+    TUserGroupMembershipDALFactory,
+    "find" | "delete" | "transaction" | "insertMany" | "filterProjectsByUserMembership"
+  >;
+  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "find" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser">;
+  projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
+  projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
 };
 
 export const samlConfigServiceFactory = ({
@@ -81,7 +93,6 @@ export const samlConfigServiceFactory = ({
   userAliasDAL,
   groupDAL,
   userGroupMembershipDAL,
-  groupProjectDAL,
   projectDAL,
   projectBotDAL,
   projectKeyDAL,
@@ -91,7 +102,8 @@ export const samlConfigServiceFactory = ({
   smtpService,
   identityMetadataDAL,
   kmsService,
-  membershipRoleDAL
+  membershipRoleDAL,
+  membershipGroupDAL
 }: TSamlConfigServiceFactoryDep): TSamlConfigServiceFactory => {
   const parseSamlGroups = (groupsValue: string): string[] => {
     let samlGroups: string[] = [];
@@ -184,10 +196,10 @@ export const samlConfigServiceFactory = ({
               userDAL,
               userGroupMembershipDAL,
               orgDAL,
-              groupProjectDAL,
               projectKeyDAL,
               projectDAL,
               projectBotDAL,
+              membershipGroupDAL,
               tx: transaction
             });
           } catch (error) {
@@ -207,7 +219,7 @@ export const samlConfigServiceFactory = ({
                 group,
                 userDAL,
                 userGroupMembershipDAL,
-                groupProjectDAL,
+                membershipGroupDAL,
                 projectKeyDAL,
                 tx: transaction
               });
