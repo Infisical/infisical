@@ -21,16 +21,16 @@ const Page = () => {
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {session && (
-        <div className="mx-auto mb-6 w-full max-w-7xl">
+        <div className="mx-auto mb-6 flex w-full max-w-7xl flex-col">
           <PageHeader
             title={`${session.accountName} Session`}
             description={`View details for this ${session.accountName} session.`}
           />
           <div className="flex">
-            <div className="mr-4 w-96">
+            <div className="mr-4 flex h-fit w-96">
               <PamSessionDetailsSection session={session} />
             </div>
-            <div className="w-full">
+            <div className="flex w-full min-w-0">
               <PamSessionLogsSection session={session} />
             </div>
           </div>
