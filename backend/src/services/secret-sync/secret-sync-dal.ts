@@ -204,5 +204,19 @@ export const secretSyncDALFactory = (
     }
   };
 
-  return { ...secretSyncOrm, findById, findOne, find, create, updateById };
+  const findByDestinationAndOrgId = async (destination: string, orgId: string, tx?: Knex) => {
+    try {
+      const response = await (tx || db.replicaNode())(TableName.SecretSync)
+        .join(TableName.Project, `${TableName.SecretSync}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.SecretSync}.destination`, destination)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .select(selectAllTableCols(TableName.SecretSync));
+
+      return response;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find By Destination And Org ID - Secret Sync" });
+    }
+  };
+
+  return { ...secretSyncOrm, findById, findOne, find, create, updateById, findByDestinationAndOrgId };
 };

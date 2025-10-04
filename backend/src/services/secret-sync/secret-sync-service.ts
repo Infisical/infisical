@@ -12,6 +12,7 @@ import {
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { deepEqualSkipFields } from "@app/lib/fn/object";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -20,6 +21,7 @@ import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { enterpriseSyncCheck, listSecretSyncOptions } from "@app/services/secret-sync/secret-sync-fns";
 import {
   SecretSyncStatus,
+  TCheckDuplicateDestinationDTO,
   TCreateSecretSyncDTO,
   TDeleteSecretSyncDTO,
   TFindSecretSyncByIdDTO,
@@ -696,6 +698,134 @@ export const secretSyncServiceFactory = ({
     return updatedSecretSync as TSecretSync;
   };
 
+  const getSkipFieldsForDestination = (destination: SecretSync): string[] => {
+    switch (destination) {
+      case SecretSync.AWSSecretsManager:
+        return ["mappingBehavior", "secretName"];
+      case SecretSync.OnePass:
+        return ["valueLabel"];
+      case SecretSync.AzureAppConfiguration:
+        return ["label"];
+      case SecretSync.AzureDevOps:
+        return ["devopsProjectName"];
+      case SecretSync.Checkly:
+        return ["groupName", "accountName"];
+      case SecretSync.DigitalOceanAppPlatform:
+        return ["appName"];
+      case SecretSync.GitLab:
+        return [
+          "projectName",
+          "shouldProtectSecrets",
+          "shouldMaskSecrets",
+          "shouldHideSecrets",
+          "targetEnvironment",
+          "groupName",
+          "groupId",
+          "projectId"
+        ];
+      case SecretSync.Heroku:
+        return ["appName"];
+      case SecretSync.Netlify:
+        return ["accountName", "siteName"];
+      case SecretSync.Railway:
+        return ["projectName", "environmentName", "serviceName"];
+      case SecretSync.Supabase:
+        return ["projectName"];
+      case SecretSync.TerraformCloud:
+        return ["variableSetName", "workspaceName"];
+      case SecretSync.Vercel:
+        return ["appName"];
+      case SecretSync.Zabbix:
+        return ["hostName", "macroType"];
+      default:
+        return [];
+    }
+  };
+
+  const handleSpecialCaseDuplicateCheck = (
+    destination: SecretSync,
+    existingConfig: Record<string, unknown>,
+    newConfig: Record<string, unknown>
+  ): boolean => {
+    switch (destination) {
+      case SecretSync.GitLab: {
+        const existingTargetEnv = existingConfig.targetEnvironment as string | undefined;
+        const newTargetEnv = newConfig.targetEnvironment as string | undefined;
+
+        // If either has wildcard '*', it conflicts with any targetEnvironment
+        if (existingTargetEnv === "*" || newTargetEnv === "*") {
+          return true;
+        }
+
+        return (
+          existingTargetEnv === newTargetEnv &&
+          ((newConfig.scope as string) === "group"
+            ? existingConfig.groupId === newConfig.groupId
+            : existingConfig.projectId === newConfig.projectId)
+        );
+      }
+      default:
+        // For other sync types, no special handling needed
+        return true;
+    }
+  };
+
+  const checkDuplicateDestination = async (
+    { destination, destinationConfig, excludeSyncId, projectId }: TCheckDuplicateDestinationDTO,
+    actor: OrgServiceActor
+  ) => {
+    const skipFields = getSkipFieldsForDestination(destination);
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.Read,
+      ProjectPermissionSub.SecretSyncs
+    );
+
+    if (!destinationConfig || Object.keys(destinationConfig).length === 0) {
+      return { hasDuplicate: false, duplicateProjectId: undefined };
+    }
+
+    try {
+      const existingSyncs = await secretSyncDAL.findByDestinationAndOrgId(destination, actor.orgId);
+
+      const duplicates = existingSyncs.filter((sync) => {
+        if (sync.id === excludeSyncId) {
+          return false;
+        }
+
+        try {
+          const baseFieldsMatch = deepEqualSkipFields(sync.destinationConfig, destinationConfig, skipFields);
+          if (baseFieldsMatch) {
+            return handleSpecialCaseDuplicateCheck(
+              destination,
+              sync.destinationConfig as Record<string, unknown>,
+              destinationConfig
+            );
+          }
+          return false;
+        } catch {
+          return false;
+        }
+      });
+
+      const hasDuplicate = duplicates.length > 0;
+      return {
+        hasDuplicate,
+        duplicateProjectId: hasDuplicate ? duplicates[0].projectId : undefined
+      };
+    } catch (error) {
+      return { hasDuplicate: false, duplicateProjectId: undefined };
+    }
+  };
+
   return {
     listSecretSyncOptions,
     listSecretSyncsByProjectId,
@@ -707,6 +837,7 @@ export const secretSyncServiceFactory = ({
     deleteSecretSync,
     triggerSecretSyncSyncSecretsById,
     triggerSecretSyncImportSecretsById,
-    triggerSecretSyncRemoveSecretsById
+    triggerSecretSyncRemoveSecretsById,
+    checkDuplicateDestination
   };
 };
