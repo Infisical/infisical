@@ -11,7 +11,6 @@ const AccessListEntrySchema = z
   .object({
     allowedActions: z.nativeEnum(ProjectPermissionSecretActions).array(),
     id: z.string(),
-    membershipId: z.string(),
     name: z.string()
   })
   .array();

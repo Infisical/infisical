@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import {
+  AccessScope,
   TableName,
   TUserActionsInsert,
   TUserActionsUpdate,
@@ -118,9 +119,13 @@ export const userDALFactory = (db: TDbClient) => {
   const findUserByProjectMembershipId = async (projectMembershipId: string) => {
     try {
       return await db
-        .replicaNode()(TableName.ProjectMembership)
-        .where({ [`${TableName.ProjectMembership}.id` as "id"]: projectMembershipId })
-        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .replicaNode()(TableName.Membership)
+        .where({
+          [`${TableName.Membership}.id` as "id"]: projectMembershipId,
+          [`${TableName.Membership}.scope` as "scope"]: AccessScope.Project
+        })
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .first();
     } catch (error) {
       throw new DatabaseError({ error, name: "Find user by project membership id" });
@@ -130,9 +135,11 @@ export const userDALFactory = (db: TDbClient) => {
   const findUsersByProjectMembershipIds = async (projectMembershipIds: string[]) => {
     try {
       return await db
-        .replicaNode()(TableName.ProjectMembership)
-        .whereIn(`${TableName.ProjectMembership}.id`, projectMembershipIds)
-        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .replicaNode()(TableName.Membership)
+        .whereIn(`${TableName.Membership}.id`, projectMembershipIds)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .select("*");
     } catch (error) {
       throw new DatabaseError({ error, name: "Find users by project membership ids" });
@@ -182,8 +189,10 @@ export const userDALFactory = (db: TDbClient) => {
     try {
       const doc = await db(TableName.Users)
         .where({ email })
-        .leftJoin(TableName.OrgMembership, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
-        .leftJoin(TableName.Organization, `${TableName.Organization}.id`, `${TableName.OrgMembership}.orgId`)
+        .leftJoin(TableName.Membership, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .leftJoin(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
         .select(selectAllTableCols(TableName.Users))
         .select(
           db.ref("name").withSchema(TableName.Organization).as("orgName"),

@@ -16,11 +16,6 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter(filter, TableName.GatewayV2))
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.GatewayV2}.identityId`)
-        .join(
-          TableName.IdentityOrgMembership,
-          `${TableName.IdentityOrgMembership}.identityId`,
-          `${TableName.GatewayV2}.identityId`
-        )
         .select(selectAllTableCols(TableName.GatewayV2))
         .select(db.ref("name").withSchema(TableName.Identity).as("identityName"));
 

@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TProjectBots, TUserEncryptionKeys } from "@app/db/schemas";
+import { AccessScope, TableName, TProjectBots, TUserEncryptionKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
@@ -44,12 +44,13 @@ export const projectBotDALFactory = (db: TDbClient) => {
   const findProjectUserWorkspaceKey = async (projectId: string) => {
     try {
       const doc = await db
-        .replicaNode()(TableName.ProjectMembership)
-        .where(`${TableName.ProjectMembership}.projectId` as "projectId", projectId)
-        .where(`${TableName.ProjectKeys}.projectId` as "projectId", projectId)
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.scopeProjectId` as "projectId", projectId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Users}.isGhost` as "isGhost", false)
-        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
-        .join(TableName.ProjectKeys, `${TableName.ProjectMembership}.userId`, `${TableName.ProjectKeys}.receiverId`)
+        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
+        .join(TableName.ProjectKeys, `${TableName.Membership}.actorUserId`, `${TableName.ProjectKeys}.receiverId`)
+        .where(`${TableName.ProjectKeys}.projectId` as "projectId", projectId)
         .join<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,

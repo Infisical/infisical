@@ -72,6 +72,13 @@ export type OrgUser = {
   lastLoginTime?: string;
 };
 
+export type TUserMembership = {
+  id: string;
+  scope: string;
+  scopeOrgId: string;
+  actorUserId: string;
+};
+
 export type TProjectMembership = {
   id: string;
   createdAt: string;
@@ -160,9 +167,6 @@ export type AddUserToOrgDTO = {
   inviteeEmails: string[];
   organizationRoleSlug: string;
   organizationId: string;
-
-  // We need the slug in order to invalidate the groups query. `slug` is only used for invalidation purposes.
-  projects?: { id: string; slug?: string; projectRoleSlug: string[] }[];
 };
 
 export type CreateAPIKeyRes = {

@@ -44,10 +44,7 @@ type TSshHostGroupServiceFactoryDep = {
   sshHostLoginUserDAL: Pick<TSshHostLoginUserDALFactory, "create" | "transaction" | "delete">;
   sshHostLoginUserMappingDAL: Pick<TSshHostLoginUserMappingDALFactory, "insertMany">;
   userDAL: Pick<TUserDALFactory, "find">;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getProjectPermission" | "getUserProjectPermission" | "checkGroupProjectPermission"
-  >;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "checkGroupProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   groupDAL: Pick<TGroupDALFactory, "findGroupsByProjectId">;
 };

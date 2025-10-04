@@ -746,18 +746,9 @@ export const SecretDetailSidebar = ({
                                 .join(", ")}
                               className="z-[100] capitalize"
                             >
-                              <Link
-                                to={
-                                  `${getProjectBaseURL(currentProject.type)}/members/$membershipId` as const
-                                }
-                                params={{
-                                  projectId: currentProject.id,
-                                  membershipId: user.membershipId
-                                }}
-                                className="text-secondary/80 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 py-0.5 text-sm hover:text-mineshaft-100"
-                              >
+                              <div className="text-secondary/80 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 py-0.5 text-sm hover:text-mineshaft-100">
                                 {user.name}
-                              </Link>
+                              </div>
                             </Tooltip>
                           </div>
                         ))}

@@ -1,6 +1,7 @@
 import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
 import { z } from "zod";
 
+import { ProjectMembershipRole } from "@app/db/schemas";
 import {
   CASL_ACTION_SCHEMA_ENUM,
   CASL_ACTION_SCHEMA_NATIVE_ENUM
@@ -198,6 +199,9 @@ export enum ProjectPermissionPamSessionActions {
   Read = "read"
   // Terminate = "terminate"
 }
+
+export const isCustomProjectRole = (slug: string) =>
+  !Object.values(ProjectMembershipRole).includes(slug as ProjectMembershipRole);
 
 export enum ProjectPermissionSub {
   Role = "role",

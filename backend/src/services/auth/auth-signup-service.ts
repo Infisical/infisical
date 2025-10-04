@@ -1,4 +1,4 @@
-import { OrgMembershipStatus, TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { convertPendingGroupAdditionsToGroupMemberships } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -8,17 +8,15 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { getMinExpiresIn } from "@app/lib/fn";
 import { isDisposableEmail } from "@app/lib/validator";
-import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
+import { TMembershipGroupDALFactory } from "../membership-group/membership-group-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
-import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
-import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { getServerCfg } from "../super-admin/super-admin-service";
 import { TUserDALFactory } from "../user/user-dal";
@@ -42,14 +40,12 @@ type TAuthSignupDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany">;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findProjectById" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
-  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   orgService: Pick<TOrgServiceFactory, "createOrganization" | "findOrganizationById">;
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find" | "transaction" | "insertMany">;
-  projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "insertMany">;
+  membershipGroupDAL: TMembershipGroupDALFactory;
 };
 
 export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
@@ -60,11 +56,11 @@ export const authSignupServiceFactory = ({
   projectKeyDAL,
   projectDAL,
   projectBotDAL,
-  groupProjectDAL,
   tokenService,
   smtpService,
   orgService,
   orgDAL,
+  membershipGroupDAL,
   licenseService
 }: TAuthSignupDep) => {
   // first step of signup. create user and send email
@@ -200,9 +196,10 @@ export const authSignupServiceFactory = ({
         organizationId
       ) {
         const [pendingOrgMembership] = await orgDAL.findMembership({
-          [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
+          [`${TableName.Membership}.actorUserId` as "actorUserId"]: user.id,
           status: OrgMembershipStatus.Invited,
-          [`${TableName.OrgMembership}.orgId` as "orgId"]: organizationId
+          [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: organizationId,
+          [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
         });
 
         if (pendingOrgMembership) {
@@ -241,18 +238,18 @@ export const authSignupServiceFactory = ({
     }
 
     const updatedMembersips = await orgDAL.updateMembership(
-      { inviteEmail: sanitizedEmail, status: OrgMembershipStatus.Invited },
-      { userId: user.id, status: OrgMembershipStatus.Accepted }
+      { inviteEmail: sanitizedEmail, status: OrgMembershipStatus.Invited, scope: AccessScope.Organization },
+      { actorUserId: user.id, status: OrgMembershipStatus.Accepted }
     );
-    const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
+    const uniqueOrgId = [...new Set(updatedMembersips.map(({ scopeOrgId }) => scopeOrgId))];
     await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId)));
 
     await convertPendingGroupAdditionsToGroupMemberships({
       userIds: [user.id],
       userDAL,
       userGroupMembershipDAL,
-      groupProjectDAL,
       projectKeyDAL,
+      membershipGroupDAL,
       projectDAL,
       projectBotDAL
     });
@@ -351,21 +348,21 @@ export const authSignupServiceFactory = ({
       );
 
       const updatedMembersips = await orgDAL.updateMembership(
-        { inviteEmail: sanitizedEmail, status: OrgMembershipStatus.Invited },
-        { userId: us.id, status: OrgMembershipStatus.Accepted },
+        { inviteEmail: sanitizedEmail, status: OrgMembershipStatus.Invited, scope: AccessScope.Organization },
+        { actorUserId: us.id, status: OrgMembershipStatus.Accepted },
         tx
       );
-      const uniqueOrgId = [...new Set(updatedMembersips.map(({ orgId }) => orgId))];
+      const uniqueOrgId = [...new Set(updatedMembersips.map(({ scopeOrgId }) => scopeOrgId))];
       await Promise.allSettled(uniqueOrgId.map((orgId) => licenseService.updateSubscriptionOrgMemberCount(orgId, tx)));
 
       await convertPendingGroupAdditionsToGroupMemberships({
         userIds: [user.id],
         userDAL,
         userGroupMembershipDAL,
-        groupProjectDAL,
         projectKeyDAL,
         projectDAL,
         projectBotDAL,
+        membershipGroupDAL,
         tx
       });
 

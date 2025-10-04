@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TUserEncryptionKeys } from "@app/db/schemas";
+import { AccessScope, TableName, TUserEncryptionKeys } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
@@ -18,21 +18,19 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
    */
   const filterProjectsByUserMembership = async (userId: string, groupId: string, projectIds: string[], tx?: Knex) => {
     try {
-      const userProjectMemberships: string[] = await (tx || db.replicaNode())(TableName.ProjectMembership)
-        .where(`${TableName.ProjectMembership}.userId`, userId)
-        .whereIn(`${TableName.ProjectMembership}.projectId`, projectIds)
-        .pluck(`${TableName.ProjectMembership}.projectId`);
+      const userProjectMemberships: string[] = await (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.actorUserId`, userId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .whereIn(`${TableName.Membership}.scopeProjectId`, projectIds)
+        .pluck(`${TableName.Membership}.scopeProjectId`);
 
       const userGroupMemberships: string[] = await (tx || db.replicaNode())(TableName.UserGroupMembership)
         .where(`${TableName.UserGroupMembership}.userId`, userId)
         .whereNot(`${TableName.UserGroupMembership}.groupId`, groupId)
-        .join(
-          TableName.GroupProjectMembership,
-          `${TableName.UserGroupMembership}.groupId`,
-          `${TableName.GroupProjectMembership}.groupId`
-        )
-        .whereIn(`${TableName.GroupProjectMembership}.projectId`, projectIds)
-        .pluck(`${TableName.GroupProjectMembership}.projectId`);
+        .join(TableName.Membership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Membership}.actorGroupId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .whereIn(`${TableName.Membership}.scopeProjectId`, projectIds)
+        .pluck(`${TableName.Membership}.scopeProjectId`);
 
       return new Set(userProjectMemberships.concat(userGroupMemberships));
     } catch (error) {
@@ -44,13 +42,10 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
   const findUserGroupMembershipsInProject = async (usernames: string[], projectId: string, tx?: Knex) => {
     try {
       const usernameDocs: string[] = await (tx || db.replicaNode())(TableName.UserGroupMembership)
-        .join(
-          TableName.GroupProjectMembership,
-          `${TableName.UserGroupMembership}.groupId`,
-          `${TableName.GroupProjectMembership}.groupId`
-        )
+        .join(TableName.Membership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Membership}.actorGroupId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
-        .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
         .whereIn(`${TableName.Users}.username`, usernames)
         .pluck(`${TableName.Users}.id`);
 
@@ -73,24 +68,25 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     try {
       // get list of groups in the project with id [projectId]
       // that that are not the group with id [groupId]
-      const groups: string[] = await (tx || db.replicaNode())(TableName.GroupProjectMembership)
-        .where(`${TableName.GroupProjectMembership}.projectId`, projectId)
-        .whereNot(`${TableName.GroupProjectMembership}.groupId`, groupId)
-        .pluck(`${TableName.GroupProjectMembership}.groupId`);
+      const groups: string[] = await (tx || db.replicaNode())(TableName.Membership)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .whereNot(`${TableName.Membership}.actorGroupId`, groupId)
+        .pluck(`${TableName.Membership}.groupId`);
 
       // main query
       const members = await (tx || db.replicaNode())(TableName.UserGroupMembership)
         .where(`${TableName.UserGroupMembership}.groupId`, groupId)
         .where(`${TableName.UserGroupMembership}.isPending`, false)
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
-        .leftJoin(TableName.ProjectMembership, (bd) => {
-          bd.on(`${TableName.Users}.id`, "=", `${TableName.ProjectMembership}.userId`).andOn(
-            `${TableName.ProjectMembership}.projectId`,
+        .leftJoin(TableName.Membership, (bd) => {
+          bd.on(`${TableName.Users}.id`, "=", `${TableName.Membership}.actorUserId`).andOn(
+            `${TableName.Membership}.scopeProjectId`,
             "=",
             db.raw("?", [projectId])
           );
         })
-        .whereNull(`${TableName.ProjectMembership}.userId`)
+        .whereNull(`${TableName.Membership}.actorUserId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .leftJoin<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,
@@ -166,15 +162,17 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
       const docs = await db
         .replicaNode()(TableName.UserGroupMembership)
         .join(TableName.Groups, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
-        .join(TableName.OrgMembership, `${TableName.UserGroupMembership}.userId`, `${TableName.OrgMembership}.userId`)
+        .join(TableName.Membership, `${TableName.UserGroupMembership}.userId`, `${TableName.Membership}.actorUserId`)
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
         .where(`${TableName.UserGroupMembership}.userId`, userId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.Groups}.orgId`, orgId)
         .select(
           db.ref("id").withSchema(TableName.UserGroupMembership),
           db.ref("groupId").withSchema(TableName.UserGroupMembership),
           db.ref("name").withSchema(TableName.Groups).as("groupName"),
-          db.ref("id").withSchema(TableName.OrgMembership).as("orgMembershipId"),
+          db.ref("id").withSchema(TableName.Membership).as("orgMembershipId"),
           db.ref("firstName").withSchema(TableName.Users).as("firstName"),
           db.ref("lastName").withSchema(TableName.Users).as("lastName"),
           db.ref("slug").withSchema(TableName.Groups).as("groupSlug")
@@ -191,15 +189,17 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
       const docs = await db
         .replicaNode()(TableName.UserGroupMembership)
         .join(TableName.Groups, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
-        .join(TableName.OrgMembership, `${TableName.UserGroupMembership}.userId`, `${TableName.OrgMembership}.userId`)
+        .join(TableName.Membership, `${TableName.UserGroupMembership}.userId`, `${TableName.Membership}.actorGroupId`)
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
         .where(`${TableName.Groups}.id`, groupId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.Groups}.orgId`, orgId)
         .select(
           db.ref("id").withSchema(TableName.UserGroupMembership),
           db.ref("groupId").withSchema(TableName.UserGroupMembership),
           db.ref("name").withSchema(TableName.Groups).as("groupName"),
-          db.ref("id").withSchema(TableName.OrgMembership).as("orgMembershipId"),
+          db.ref("id").withSchema(TableName.Membership).as("orgMembershipId"),
           db.ref("firstName").withSchema(TableName.Users).as("firstName"),
           db.ref("lastName").withSchema(TableName.Users).as("lastName")
         );

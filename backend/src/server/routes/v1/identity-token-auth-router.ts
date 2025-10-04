@@ -332,7 +332,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg.orgId,
+        orgId: identityMembershipOrg.scopeOrgId,
         event: {
           type: EventType.CREATE_TOKEN_IDENTITY_TOKEN_AUTH,
           metadata: {
@@ -393,7 +393,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg.orgId,
+        orgId: identityMembershipOrg.scopeOrgId,
         event: {
           type: EventType.GET_TOKENS_IDENTITY_TOKEN_AUTH,
           metadata: {
@@ -447,7 +447,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg.orgId,
+        orgId: identityMembershipOrg.scopeOrgId,
         event: {
           type: EventType.UPDATE_TOKEN_IDENTITY_TOKEN_AUTH,
           metadata: {

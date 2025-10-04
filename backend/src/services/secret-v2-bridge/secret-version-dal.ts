@@ -2,7 +2,13 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { SecretVersionsV2Schema, TableName, TSecretVersionsV2, TSecretVersionsV2Update } from "@app/db/schemas";
+import {
+  AccessScope,
+  SecretVersionsV2Schema,
+  TableName,
+  TSecretVersionsV2,
+  TSecretVersionsV2Update
+} from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFindOpt } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
@@ -191,11 +197,11 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
       const { offset, limit, sort = [["createdAt", "desc"]] } = findOpt;
       const query = (tx || db.replicaNode())(TableName.SecretVersionV2)
         .leftJoin(TableName.Users, `${TableName.Users}.id`, `${TableName.SecretVersionV2}.userActorId`)
-        .leftJoin(
-          TableName.ProjectMembership,
-          `${TableName.ProjectMembership}.userId`,
-          `${TableName.SecretVersionV2}.userActorId`
-        )
+        .leftJoin(TableName.Membership, (qb) => {
+          void qb
+            .on(`${TableName.Membership}.actorUserId`, `${TableName.SecretVersionV2}.userActorId`)
+            .andOn(`${TableName.Membership}.scope`, db.raw("?", [AccessScope.Project]));
+        })
         .leftJoin(TableName.Identity, `${TableName.Identity}.id`, `${TableName.SecretVersionV2}.identityActorId`)
         .leftJoin(TableName.SecretV2, `${TableName.SecretVersionV2}.secretId`, `${TableName.SecretV2}.id`)
         .leftJoin(
@@ -210,19 +216,19 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         )
         .where((qb) => {
           void qb.where(`${TableName.SecretVersionV2}.secretId`, secretId);
-          void qb.where(`${TableName.ProjectMembership}.projectId`, projectId);
+          void qb.where(`${TableName.Membership}.scopeProjectId`, projectId);
           if (secretVersions?.length) void qb.whereIn(`${TableName.SecretVersionV2}.version`, secretVersions);
         })
         .orWhere((qb) => {
           void qb.where(`${TableName.SecretVersionV2}.secretId`, secretId);
-          void qb.whereNull(`${TableName.ProjectMembership}.projectId`);
+          void qb.whereNull(`${TableName.Membership}.actorProjectId`);
           if (secretVersions?.length) void qb.whereIn(`${TableName.SecretVersionV2}.version`, secretVersions);
         })
         .select(
           selectAllTableCols(TableName.SecretVersionV2),
           db.ref("username").withSchema(TableName.Users).as("userActorName"),
           db.ref("name").withSchema(TableName.Identity).as("identityActorName"),
-          db.ref("id").withSchema(TableName.ProjectMembership).as("membershipId"),
+          db.ref("id").withSchema(TableName.Membership).as("membershipId"),
           db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
           db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
           db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")

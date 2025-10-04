@@ -6,14 +6,15 @@ import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { initLogger, logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { AuthMethod } from "@app/services/auth/auth-type";
+import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { membershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { assignWorkspaceKeysToMembers, createProjectKey } from "@app/services/project/project-fns";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
-import { projectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
-import { projectUserMembershipRoleDALFactory } from "@app/services/project-membership/project-user-membership-role-dal";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 
 import {
+  AccessScope,
   OrgMembershipRole,
   OrgMembershipStatus,
   ProjectMembershipRole,
@@ -39,8 +40,8 @@ const createUserWithGhostUser = async (
 ) => {
   const projectKeyDAL = projectKeyDALFactory(knex);
   const userDAL = userDALFactory(knex);
-  const projectMembershipDAL = projectMembershipDALFactory(knex);
-  const projectUserMembershipRoleDAL = projectUserMembershipRoleDALFactory(knex);
+  const membershipDAL = membershipUserDALFactory(knex);
+  const membershipRoleDAL = membershipRoleDALFactory(knex);
 
   const email = `sudo-${alphaNumericNanoId(16)}-${orgId}@infisical.com`; // We add a nanoid because the email is unique. And we have to create a new ghost user each time, so we can have access to the private key.
 
@@ -63,25 +64,36 @@ const createUserWithGhostUser = async (
     .onConflict("userId")
     .merge();
 
-  await knex(TableName.OrgMembership)
+  const [orgMembership] = await knex(TableName.Membership)
     .insert({
-      orgId,
-      userId: ghostUser.id,
-      role: OrgMembershipRole.Admin,
+      scope: AccessScope.Organization,
+      scopeOrgId: orgId,
+      actorUserId: ghostUser.id,
       status: OrgMembershipStatus.Accepted,
       isActive: true
     })
     .returning("*");
 
-  const [projectMembership] = await knex(TableName.ProjectMembership)
+  await knex(TableName.MembershipRole).insert([
+    {
+      membershipId: orgMembership.id,
+      role: OrgMembershipRole.Admin
+    }
+  ]);
+
+  const [projectMembership] = await knex(TableName.Membership)
     .insert({
-      userId: ghostUser.id,
-      projectId
+      actorUserId: ghostUser.id,
+      scopeProjectId: projectId,
+      scope: AccessScope.Project,
+      scopeOrgId: orgId,
+      status: OrgMembershipStatus.Accepted,
+      isActive: true
     })
     .returning("*");
 
-  await knex(TableName.ProjectUserMembershipRole).insert({
-    projectMembershipId: projectMembership.id,
+  await knex(TableName.MembershipRole).insert({
+    membershipId: projectMembership.id,
     role: ProjectMembershipRole.Admin
   });
 
@@ -142,17 +154,16 @@ const createUserWithGhostUser = async (
   });
 
   // Create a membership for the user
-  const userProjectMembership = await projectMembershipDAL.create(
+  const userProjectMembership = await membershipDAL.create(
     {
-      projectId,
-      userId: user.id
+      scopeProjectId: projectId,
+      scope: AccessScope.Project,
+      actorUserId: user.id,
+      scopeOrgId: orgId
     },
     knex
   );
-  await projectUserMembershipRoleDAL.create(
-    { projectMembershipId: userProjectMembership.id, role: ProjectMembershipRole.Admin },
-    knex
-  );
+  await membershipRoleDAL.create({ membershipId: userProjectMembership.id, role: ProjectMembershipRole.Admin }, knex);
 
   // Create a project key for the user
   await projectKeyDAL.create(
@@ -195,10 +206,11 @@ export async function seed(knex: Knex): Promise<void> {
     })
     .returning("*");
 
-  const userOrgMembership = await knex(TableName.OrgMembership)
+  const userOrgMembership = await knex(TableName.Membership)
     .where({
-      orgId: seedData1.organization.id,
-      userId: seedData1.id
+      scopeOrgId: seedData1.organization.id,
+      actorUserId: seedData1.id,
+      scope: AccessScope.Organization
     })
     .first();
 

@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import { Knex } from "knex";
 
 import {
+  AccessScope,
   ProjectMembershipRole,
   ProjectType,
   ProjectUpgradeStatus,
@@ -43,6 +44,8 @@ import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-
 import { syncIntegrationSecrets } from "../integration-auth/integration-sync-secret";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TMembershipDALFactory } from "../membership/membership-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { createProjectKey } from "../project/project-fns";
@@ -50,7 +53,6 @@ import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
-import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataDTO } from "../resource-metadata/resource-metadata-schema";
@@ -92,7 +94,9 @@ type TSecretQueueFactoryDep = {
   projectDAL: TProjectDALFactory;
   projectBotDAL: TProjectBotDALFactory;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "create">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers" | "create">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
+  membershipUserDAL: Pick<TMembershipDALFactory, "create">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   smtpService: TSmtpService;
   secretVersionDAL: TSecretVersionDALFactory;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
@@ -110,7 +114,6 @@ type TSecretQueueFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
-  projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
@@ -173,14 +176,15 @@ export const secretQueueFactory = ({
   keyStore,
   auditLogService,
   orgService,
-  projectUserMembershipRoleDAL,
   projectKeyDAL,
   resourceMetadataDAL,
   secretSyncQueue,
   folderCommitService,
   reminderService,
   eventBusService,
-  licenseService
+  licenseService,
+  membershipUserDAL,
+  membershipRoleDAL
 }: TSecretQueueFactoryDep) => {
   const integrationMeter = opentelemetry.metrics.getMeter("Integrations");
   const errorHistogram = integrationMeter.createHistogram("integration_secret_sync_errors", {
@@ -1165,17 +1169,16 @@ export const secretQueueFactory = ({
       // if project v1 create the project ghost user
       if (project.version === ProjectVersion.V1) {
         const ghostUser = await orgService.addGhostUser(project.orgId, tx);
-        const projectMembership = await projectMembershipDAL.create(
+        const projectMembership = await membershipUserDAL.create(
           {
-            userId: ghostUser.user.id,
-            projectId: project.id
+            actorUserId: ghostUser.user.id,
+            scopeOrgId: project.orgId,
+            scope: AccessScope.Project,
+            scopeProjectId: project.id
           },
           tx
         );
-        await projectUserMembershipRoleDAL.create(
-          { projectMembershipId: projectMembership.id, role: ProjectMembershipRole.Admin },
-          tx
-        );
+        await membershipRoleDAL.create({ membershipId: projectMembership.id, role: ProjectMembershipRole.Admin }, tx);
 
         const { key: encryptedProjectKey, iv: encryptedProjectKeyIv } = createProjectKey({
           publicKey: ghostUser.keys.publicKey,

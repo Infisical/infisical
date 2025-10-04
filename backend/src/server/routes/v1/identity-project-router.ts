@@ -1,10 +1,12 @@
 import { z } from "zod";
 
 import {
+  AccessScope,
   IdentitiesSchema,
   IdentityProjectMembershipsSchema,
   ProjectMembershipRole,
-  ProjectUserMembershipRolesSchema
+  ProjectUserMembershipRolesSchema,
+  TemporaryPermissionMode
 } from "@app/db/schemas";
 import { ApiDocsTags, ORGANIZATIONS, PROJECT_IDENTITIES } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
@@ -14,7 +16,6 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectIdentityOrderBy } from "@app/services/identity-project/identity-project-types";
-import { ProjectUserMembershipTemporaryMode } from "@app/services/project-membership/project-membership-types";
 
 import { SanitizedProjectSchema } from "../sanitizedSchemas";
 
@@ -56,7 +57,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
                 role: z.string().describe(PROJECT_IDENTITIES.CREATE_IDENTITY_MEMBERSHIP.roles.role),
                 isTemporary: z.literal(true).describe(PROJECT_IDENTITIES.CREATE_IDENTITY_MEMBERSHIP.roles.role),
                 temporaryMode: z
-                  .nativeEnum(ProjectUserMembershipTemporaryMode)
+                  .nativeEnum(TemporaryPermissionMode)
                   .describe(PROJECT_IDENTITIES.CREATE_IDENTITY_MEMBERSHIP.roles.role),
                 temporaryRange: z
                   .string()
@@ -82,16 +83,22 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       const { role, roles } = req.body;
       if (!role && !roles) throw new BadRequestError({ message: "You must provide either role or roles field" });
 
-      const identityMembership = await server.services.identityProject.createProjectIdentity({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId,
-        projectId: req.params.projectId,
-        roles: roles || [{ role }]
+      const { membership } = await server.services.membershipIdentity.createMembership({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId: req.params.projectId
+        },
+        data: {
+          identityId: req.params.identityId,
+          roles: roles || [{ role, isTemporary: false }]
+        }
       });
-      return { identityMembership };
+
+      return {
+        identityMembership: { ...membership, identityId: req.params.identityId, projectId: req.params.projectId }
+      };
     }
   });
 
@@ -130,7 +137,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
                 role: z.string().describe(PROJECT_IDENTITIES.UPDATE_IDENTITY_MEMBERSHIP.roles.role),
                 isTemporary: z.literal(true).describe(PROJECT_IDENTITIES.UPDATE_IDENTITY_MEMBERSHIP.roles.isTemporary),
                 temporaryMode: z
-                  .nativeEnum(ProjectUserMembershipTemporaryMode)
+                  .nativeEnum(TemporaryPermissionMode)
                   .describe(PROJECT_IDENTITIES.UPDATE_IDENTITY_MEMBERSHIP.roles.temporaryMode),
                 temporaryRange: z
                   .string()
@@ -153,16 +160,24 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       }
     },
     handler: async (req) => {
-      const roles = await server.services.identityProject.updateProjectIdentity({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId,
-        projectId: req.params.projectId,
-        roles: req.body.roles
+      const { membership } = await server.services.membershipIdentity.updateMembership({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId: req.params.projectId
+        },
+        selector: {
+          identityId: req.params.identityId
+        },
+        data: {
+          roles: req.body.roles
+        }
       });
-      return { roles };
+
+      return {
+        roles: membership.roles.map((el) => ({ ...el, projectMembershipId: membership.id }))
+      };
     }
   });
 
@@ -193,15 +208,21 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
       }
     },
     handler: async (req) => {
-      const identityMembership = await server.services.identityProject.deleteProjectIdentity({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        identityId: req.params.identityId,
-        projectId: req.params.projectId
+      const { membership } = await server.services.membershipIdentity.deleteMembership({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId: req.params.projectId
+        },
+        selector: {
+          identityId: req.params.identityId
+        }
       });
-      return { identityMembership };
+
+      return {
+        identityMembership: { ...membership, identityId: req.params.identityId, projectId: req.params.projectId }
+      };
     }
   });
 
@@ -362,6 +383,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
     }
   });
 
+  // TODO(simp): look into how to handle projects
   server.route({
     method: "GET",
     url: "/identity-memberships/:identityMembershipId",
