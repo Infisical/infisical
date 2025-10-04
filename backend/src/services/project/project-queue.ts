@@ -30,6 +30,8 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
@@ -41,8 +43,6 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TProjectDALFactory } from "./project-dal";
 import { assignWorkspaceKeysToMembers, createProjectKey } from "./project-fns";
-import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 
 export type TProjectQueueFactory = ReturnType<typeof projectQueueFactory>;
 

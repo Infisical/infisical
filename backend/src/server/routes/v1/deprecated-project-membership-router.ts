@@ -4,6 +4,7 @@ import {
   AccessScope,
   OrgMembershipRole,
   OrgMembershipsSchema,
+  OrgMembershipStatus,
   ProjectMembershipsSchema,
   ProjectUserMembershipRolesSchema,
   TemporaryPermissionMode,
@@ -275,7 +276,12 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
       });
 
       return {
-        data: data.map((el) => ({ ...el, orgId: req.permission.orgId, role: OrgMembershipRole.Member })),
+        data: data.map((el) => ({
+          ...el,
+          orgId: req.permission.orgId,
+          role: OrgMembershipRole.Member,
+          status: el.status || OrgMembershipStatus.Accepted
+        })),
         success: true
       };
     }

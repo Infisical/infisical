@@ -6,6 +6,7 @@ import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { initLogger, logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { AuthMethod } from "@app/services/auth/auth-type";
+import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { membershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { assignWorkspaceKeysToMembers, createProjectKey } from "@app/services/project/project-fns";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
@@ -23,7 +24,6 @@ import {
   TableName
 } from "../schemas";
 import { seedData1 } from "../seed-data";
-import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 export const DEFAULT_PROJECT_ENVS = [
   { name: "Development", slug: "dev" },

@@ -1,16 +1,7 @@
-import { v4 as uuidv4 } from "uuid";
 import { ForbiddenError } from "@casl/ability";
+import { v4 as uuidv4 } from "uuid";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  isCustomProjectRole,
-  ProjectPermissionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import { BadRequestError } from "@app/lib/errors";
-
-import { TRoleScopeFactory } from "../role-types";
 import {
   cryptographicOperatorPermissions,
   projectAdminPermissions,
@@ -19,7 +10,16 @@ import {
   projectViewerPermission,
   sshHostBootstrapPermissions
 } from "@app/ee/services/permission/default-roles";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  isCustomProjectRole,
+  ProjectPermissionActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
+import { BadRequestError } from "@app/lib/errors";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+
+import { TRoleScopeFactory } from "../role-types";
 
 type TProjectRoleScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;

@@ -350,6 +350,7 @@ export const permissionServiceFactory = ({
       actorType: actor
     });
     if (!permissionData?.length) throw new ForbiddenRequestError({ name: "You are not member of this organization" });
+
     const permissionFromRoles = permissionData.flatMap((membership) => {
       const activeRoles = membership?.roles
         .filter(
@@ -426,9 +427,9 @@ export const permissionServiceFactory = ({
     };
   };
 
-  const getProjectPermissions: TPermissionServiceFactory["getProjectPermissions"] = async (projectId) => {
+  const getProjectPermissions: TPermissionServiceFactory["getProjectPermissions"] = async (projectId, orgId) => {
     // fetch user permissions
-    const rawUserProjectPermissions = await permissionDAL.getProjectUserPermissions(projectId);
+    const rawUserProjectPermissions = await permissionDAL.getProjectUserPermissions(projectId, orgId);
     const userPermissions = rawUserProjectPermissions.map((userProjectPermission) => {
       const rolePermissions =
         userProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
@@ -468,13 +469,12 @@ export const permissionServiceFactory = ({
       return {
         permission,
         id: userProjectPermission.userId,
-        name: userProjectPermission.username,
-        membershipId: userProjectPermission.id
+        name: userProjectPermission.username
       };
     });
 
     // fetch identity permissions
-    const rawIdentityProjectPermissions = await permissionDAL.getProjectIdentityPermissions(projectId);
+    const rawIdentityProjectPermissions = await permissionDAL.getProjectIdentityPermissions(projectId, orgId);
     const identityPermissions = rawIdentityProjectPermissions.map((identityProjectPermission) => {
       const rolePermissions =
         identityProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
@@ -514,8 +514,7 @@ export const permissionServiceFactory = ({
       return {
         permission,
         id: identityProjectPermission.identityId,
-        name: identityProjectPermission.username,
-        membershipId: identityProjectPermission.id
+        name: identityProjectPermission.username
       };
     });
 
@@ -532,8 +531,7 @@ export const permissionServiceFactory = ({
       return {
         permission,
         id: groupProjectPermission.groupId,
-        name: groupProjectPermission.username,
-        membershipId: groupProjectPermission.id
+        name: groupProjectPermission.username
       };
     });
 

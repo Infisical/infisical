@@ -5,6 +5,7 @@ import {
   IdentitiesSchema,
   OrganizationsSchema,
   OrgMembershipsSchema,
+  OrgMembershipStatus,
   SuperAdminSchema,
   UsersSchema
 } from "@app/db/schemas";
@@ -279,7 +280,10 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       );
 
       return {
-        organizationMembership
+        organizationMembership: {
+          ...organizationMembership,
+          status: organizationMembership?.status || OrgMembershipStatus.Accepted
+        }
       };
     }
   });
@@ -892,7 +896,13 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const organizationMembership = await server.services.superAdmin.resendOrgInvite(req.params, req.permission);
-      return { organizationMembership };
+
+      return {
+        organizationMembership: {
+          ...organizationMembership,
+          status: organizationMembership?.status || OrgMembershipStatus.Accepted
+        }
+      };
     }
   });
 
@@ -922,7 +932,12 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         req.params.organizationId,
         req.permission
       );
-      return { organizationMembership };
+      return {
+        organizationMembership: {
+          ...organizationMembership,
+          status: organizationMembership?.status || OrgMembershipStatus.Accepted
+        }
+      };
     }
   });
 

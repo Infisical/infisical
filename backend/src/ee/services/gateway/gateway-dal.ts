@@ -19,7 +19,7 @@ export const gatewayDALFactory = (db: TDbClient) => {
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Gateway}.identityId`)
         .join(TableName.Membership, `${TableName.Membership}.actorIdentityId`, `${TableName.Gateway}.identityId`)
         .select(selectAllTableCols(TableName.Gateway))
-        .select(db.ref("scopeOrgId").withSchema(TableName.IdentityOrgMembership).as("identityOrgId"))
+        .select(db.ref("scopeOrgId").withSchema(TableName.Membership).as("identityOrgId"))
         .select(db.ref("name").withSchema(TableName.Identity).as("identityName"))
         .where(`${TableName.Membership}.scope`, AccessScope.Organization);
 

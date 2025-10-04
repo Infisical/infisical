@@ -17,7 +17,7 @@ export const MembershipsSchema = z.object({
   scopeProjectId: z.string().nullable().optional(),
   scopeNamespaceId: z.string().uuid().nullable().optional(),
   isActive: z.boolean().default(true),
-  status: z.string().default("invited"),
+  status: z.string().nullable().optional(),
   inviteEmail: z.string().nullable().optional(),
   lastInvitedAt: z.date().nullable().optional(),
   lastLoginAuthMethod: z.string().nullable().optional(),

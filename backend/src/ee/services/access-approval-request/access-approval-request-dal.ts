@@ -3,9 +3,10 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import {
   AccessApprovalRequestsSchema,
+  AccessScope,
   TableName,
   TAccessApprovalRequests,
-  TOrgMemberships,
+  TMemberships,
   TUserGroupMembership,
   TUsers
 } from "@app/db/schemas";
@@ -238,7 +239,6 @@ export interface TAccessApprovalRequestDALFactory extends Omit<TOrmify<TableName
 export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalRequestDALFactory => {
   const accessApprovalRequestOrm = ormify(db, TableName.AccessApprovalRequest);
 
-  // TODO(simp): check this from begginging
   const findRequestsWithPrivilegeByPolicyIds: TAccessApprovalRequestDALFactory["findRequestsWithPrivilegeByPolicyIds"] =
     async (policyIds) => {
       try {
@@ -293,24 +293,24 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             `requestedByUser.id`
           )
 
-          .leftJoin<TOrgMemberships>(
-            db(TableName.OrgMembership).as("approverOrgMembership"),
-            `${TableName.AccessApprovalPolicyApprover}.approverUserId`,
-            `approverOrgMembership.userId`
-          )
-
-          .leftJoin<TOrgMemberships>(
-            db(TableName.OrgMembership).as("approverGroupOrgMembership"),
-            `${TableName.Users}.id`,
-            `approverGroupOrgMembership.userId`
-          )
-
-          .leftJoin<TOrgMemberships>(
-            db(TableName.OrgMembership).as("reviewerOrgMembership"),
-            `${TableName.AccessApprovalRequestReviewer}.reviewerUserId`,
-            `reviewerOrgMembership.userId`
-          )
-
+          .leftJoin<TMemberships>(db(TableName.Membership).as("approverOrgMembership"), (qb) => {
+            qb.on(
+              `${TableName.AccessApprovalPolicyApprover}.approverUserId`,
+              `approverOrgMembership.actorUserId`
+            ).andOn(`approverOrgMembership.scope`, db.raw("?", [AccessScope.Organization]));
+          })
+          .leftJoin<TMemberships>(db(TableName.Membership).as("approverGroupOrgMembership"), (qb) => {
+            qb.on(`${TableName.Users}.id`, `approverGroupOrgMembership.actorUserId`).andOn(
+              `approverGroupOrgMembership.scope`,
+              db.raw("?", [AccessScope.Organization])
+            );
+          })
+          .leftJoin<TMemberships>(db(TableName.Membership).as("reviewerOrgMembership"), (qb) => {
+            qb.on(
+              `${TableName.AccessApprovalRequestReviewer}.reviewerUserId`,
+              `reviewerOrgMembership.actorUserId`
+            ).andOn(`reviewerOrgMembership.scope`, db.raw("?", [AccessScope.Organization]));
+          })
           .leftJoin(TableName.Environment, `${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`)
 
           .select(selectAllTableCols(TableName.AccessApprovalRequest))
@@ -359,22 +359,22 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             db.ref("firstName").withSchema("requestedByUser").as("requestedByUserFirstName"),
             db.ref("lastName").withSchema("requestedByUser").as("requestedByUserLastName"),
 
-            db.ref("userId").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegeUserId"),
-            db.ref("projectId").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegeMembershipId"),
+            db.ref("actorUserId").withSchema(TableName.AdditionalPrivilege).as("privilegeUserId"),
+            db.ref("projectId").withSchema(TableName.AdditionalPrivilege).as("privilegeMembershipId"),
 
-            db.ref("isTemporary").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegeIsTemporary"),
-            db.ref("temporaryMode").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegeTemporaryMode"),
-            db.ref("temporaryRange").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegeTemporaryRange"),
+            db.ref("isTemporary").withSchema(TableName.AdditionalPrivilege).as("privilegeIsTemporary"),
+            db.ref("temporaryMode").withSchema(TableName.AdditionalPrivilege).as("privilegeTemporaryMode"),
+            db.ref("temporaryRange").withSchema(TableName.AdditionalPrivilege).as("privilegeTemporaryRange"),
             db
               .ref("temporaryAccessStartTime")
-              .withSchema(TableName.ProjectUserAdditionalPrivilege)
+              .withSchema(TableName.AdditionalPrivilege)
               .as("privilegeTemporaryAccessStartTime"),
             db
               .ref("temporaryAccessEndTime")
-              .withSchema(TableName.ProjectUserAdditionalPrivilege)
+              .withSchema(TableName.AdditionalPrivilege)
               .as("privilegeTemporaryAccessEndTime"),
 
-            db.ref("permissions").withSchema(TableName.ProjectUserAdditionalPrivilege).as("privilegePermissions")
+            db.ref("permissions").withSchema(TableName.AdditionalPrivilege).as("privilegePermissions")
           )
           .orderBy(`${TableName.AccessApprovalRequest}.createdAt`, "desc");
 
@@ -407,7 +407,7 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             privilege: doc.privilegeId
               ? {
                   membershipId: doc.privilegeMembershipId,
-                  userId: doc.privilegeUserId,
+                  userId: doc.privilegeUserId || "",
                   projectId: doc.projectId,
                   isTemporary: doc.privilegeIsTemporary,
                   temporaryMode: doc.privilegeTemporaryMode,
@@ -772,9 +772,9 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         )
         .leftJoin(TableName.Environment, `${TableName.AccessApprovalPolicy}.envId`, `${TableName.Environment}.id`)
         .leftJoin(
-          TableName.ProjectUserAdditionalPrivilege,
+          TableName.AdditionalPrivilege,
           `${TableName.AccessApprovalRequest}.privilegeId`,
-          `${TableName.ProjectUserAdditionalPrivilege}.id`
+          `${TableName.AdditionalPrivilege}.id`
         )
 
         .leftJoin(

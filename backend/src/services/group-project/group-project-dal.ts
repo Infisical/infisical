@@ -139,7 +139,7 @@ export const groupProjectDALFactory = (db: TDbClient) => {
       .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
       .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
       .join<TMemberships>(db(TableName.Membership).as("orgMembership"), (qb) => {
-        qb.on(`${TableName.Users}.id`, `orgMembership.userId`)
+        qb.on(`${TableName.Users}.id`, `orgMembership.actorUserId`)
           .andOn(`orgMembership.scope`, db.raw("?", [AccessScope.Organization]))
           .andOn(`orgMembership.scopeOrgId`, `${TableName.Project}.orgId`);
       })

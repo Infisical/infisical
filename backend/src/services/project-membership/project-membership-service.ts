@@ -385,8 +385,6 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
-      // TODO(simp): likewise check in all services if i am missing anything
-      // Deletion should handle all cleanups like wise
       await secretReminderRecipientsDAL.delete(
         {
           projectId,

@@ -1,14 +1,14 @@
 import { AccessScope } from "@app/db/schemas";
 import { NotFoundError } from "@app/lib/errors";
 
+import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TProjectDALFactory } from "../project/project-dal";
-import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 
 type TConvertorServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
-  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "getMembershipById" | "findOne">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "findOne">;
 };
 
 export type TConvertorServiceFactory = ReturnType<typeof convertorServiceFactory>;

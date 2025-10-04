@@ -1,7 +1,7 @@
 import { packRules } from "@casl/ability/extra";
 import { z } from "zod";
 
-import { AccessScope, OrgMembershipRole, OrgMembershipsSchema, OrgRolesSchema } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, OrgRolesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { OrgPermissionSchema } from "@app/ee/services/permission/org-permission";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
