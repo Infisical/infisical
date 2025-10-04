@@ -629,7 +629,6 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  // TODO(simp): resolve this role field later
   const findIdentityOrganization = async (
     identityId: string
   ): Promise<{ id: string; name: string; slug: string; role: string }> => {

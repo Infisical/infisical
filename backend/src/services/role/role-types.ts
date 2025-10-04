@@ -1,6 +1,7 @@
+import { MongoAbility, RawRuleOf } from "@casl/ability";
+
 import { AccessScopeData, TRoles } from "@app/db/schemas";
 import { OrgServiceActor } from "@app/lib/types";
-import { MongoAbility, RawRuleOf } from "@casl/ability";
 
 export interface TRoleScopeFactory {
   onCreateRoleGuard: (arg: TCreateRoleDTO) => Promise<void>;

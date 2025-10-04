@@ -6,6 +6,7 @@ import {
   GroupsSchema,
   IncidentContactsSchema,
   OrgMembershipsSchema,
+  OrgMembershipStatus,
   OrgRolesSchema,
   UsersSchema
 } from "@app/db/schemas";
@@ -263,7 +264,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         req.permission.authMethod,
         req.permission.orgId
       );
-      return { users };
+      return { users: users.map((el) => ({ ...el, status: el.status || OrgMembershipStatus.Accepted })) };
     }
   });
 

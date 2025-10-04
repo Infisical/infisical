@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   OrgMembershipsSchema,
+  OrgMembershipStatus,
   ProjectMembershipsSchema,
   ProjectsSchema,
   UserEncryptionKeysSchema,
@@ -63,7 +64,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         req.permission.authMethod,
         req.permission.orgId
       );
-      return { users };
+      return { users: users.map((el) => ({ ...el, status: el.status || OrgMembershipStatus.Accepted })) };
     }
   });
 
@@ -168,7 +169,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         orgId: req.params.organizationId,
         membershipId: req.params.membershipId
       });
-      return { membership };
+      return { membership: { ...membership, status: membership.status || OrgMembershipStatus.Accepted } };
     }
   });
 
@@ -224,7 +225,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         membership: {
           ...membership,
           role: "",
-          orgId: req.params.organizationId
+          orgId: req.params.organizationId,
+          status: membership.status || OrgMembershipStatus.Accepted
         }
       };
     }
@@ -269,6 +271,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       return {
         membership: {
           ...membership,
+          status: membership.status || OrgMembershipStatus.Accepted,
           role: "",
           orgId: req.params.organizationId
         }
@@ -317,6 +320,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       return {
         memberships: memberships.map((el) => ({
           ...el,
+          status: el?.status || OrgMembershipStatus.Accepted,
           role: "",
           orgId: req.params.organizationId
         }))

@@ -1,4 +1,4 @@
-import { TIdentityAccessTokens, TMemberships, TIdentityTlsCertAuths } from "@app/db/schemas";
+import { TIdentityAccessTokens, TIdentityTlsCertAuths, TMemberships } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 export type TLoginTlsCertAuthDTO = {

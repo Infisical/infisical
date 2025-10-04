@@ -12,6 +12,8 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityDALFactory } from "./identity-dal";
@@ -26,8 +28,6 @@ import {
   TSearchOrgIdentitiesByOrgIdDTO,
   TUpdateIdentityDTO
 } from "./identity-types";
-import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 
 type TIdentityServiceFactoryDep = {
   identityDAL: TIdentityDALFactory;

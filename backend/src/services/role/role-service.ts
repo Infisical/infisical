@@ -1,9 +1,16 @@
+import { packRules } from "@casl/ability/extra";
+import { requestContext } from "@fastify/request-context";
+
 import { AccessScope, ActionProjectType, TableName } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { UnpackedPermissionSchema, unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 
+import { ActorType } from "../auth/auth-type";
+import { TIdentityDALFactory } from "../identity/identity-dal";
+import { TProjectDALFactory } from "../project/project-dal";
+import { TUserDALFactory } from "../user/user-dal";
 import { newNamespaceRoleFactory } from "./namespace/namespace-role-factory";
 import { newOrgRoleFactory } from "./org/org-role-factory";
 import { newProjectRoleFactory } from "./project/project-role-factory";
@@ -17,12 +24,6 @@ import {
   TListRoleDTO,
   TUpdateRoleDTO
 } from "./role-types";
-import { TProjectDALFactory } from "../project/project-dal";
-import { packRules } from "@casl/ability/extra";
-import { requestContext } from "@fastify/request-context";
-import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TUserDALFactory } from "../user/user-dal";
-import { ActorType } from "../auth/auth-type";
 
 type TRoleServiceFactoryDep = {
   roleDAL: TRoleDALFactory;

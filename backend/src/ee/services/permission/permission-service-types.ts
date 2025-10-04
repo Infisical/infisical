@@ -74,25 +74,24 @@ export type TPermissionServiceFactory = {
     memberships: Array<TMemberships & { roles: { role: string; customRoleSlug?: string | null }[] }>;
     hasRole: (role: string) => boolean;
   }>;
-  // TODO(simp): check what is this doing
-  getProjectPermissions: (projectId: string) => Promise<{
+  getProjectPermissions: (
+    projectId: string,
+    orgId: string
+  ) => Promise<{
     userPermissions: {
       permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
       id: string;
       name: string;
-      membershipId: string;
     }[];
     identityPermissions: {
       permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
       id: string;
       name: string;
-      membershipId: string;
     }[];
     groupPermissions: {
       permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
       id: string;
       name: string;
-      membershipId: string;
     }[];
   }>;
   getOrgPermissionByRoles: (

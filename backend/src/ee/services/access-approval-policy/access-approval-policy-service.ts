@@ -5,6 +5,8 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -28,8 +30,6 @@ import {
   TListAccessApprovalPoliciesDTO,
   TUpdateAccessApprovalPolicy
 } from "./access-approval-policy-types";
-import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
-import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 
 type TAccessApprovalPolicyServiceFactoryDep = {
   projectDAL: TProjectDALFactory;

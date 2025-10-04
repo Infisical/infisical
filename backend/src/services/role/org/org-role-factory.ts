@@ -10,9 +10,9 @@ import {
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError } from "@app/lib/errors";
+import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
 import { TRoleScopeFactory } from "../role-types";
-import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
 // TODO(simp): missing external group checking
 type TOrgRoleScopeFactoryDep = {

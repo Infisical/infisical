@@ -37,7 +37,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("scopeNamespaceId").references("id").inTable(TableName.Namespace).onDelete("CASCADE");
 
       t.boolean("isActive").defaultTo(true).notNullable();
-      t.string("status").defaultTo("invited").notNullable();
+      t.string("status");
       t.string("inviteEmail");
       t.datetime("lastInvitedAt");
       t.string("lastLoginAuthMethod");

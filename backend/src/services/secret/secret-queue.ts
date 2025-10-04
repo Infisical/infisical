@@ -44,6 +44,8 @@ import { TIntegrationAuthServiceFactory } from "../integration-auth/integration-
 import { syncIntegrationSecrets } from "../integration-auth/integration-sync-secret";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
+import { TMembershipDALFactory } from "../membership/membership-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { createProjectKey } from "../project/project-fns";
@@ -76,8 +78,6 @@ import {
   TRemoveSecretReminderDTO,
   TSyncSecretsDTO
 } from "./secret-types";
-import { TMembershipDALFactory } from "../membership/membership-dal";
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 
 export type TSecretQueueFactory = ReturnType<typeof secretQueueFactory>;
 type TSecretQueueFactoryDep = {
