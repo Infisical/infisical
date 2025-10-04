@@ -10,7 +10,7 @@ import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { PKI_SYNC_CONNECTION_MAP } from "@app/helpers/pkiSyncs";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 
-import { TPkiSyncForm } from "./schemas";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 type Props = {
   onChange?: VoidFunction;

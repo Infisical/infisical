@@ -1,6 +1,6 @@
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
-import { DiscriminativePick } from "@app/types";
 
+import { TAwsCertificateManagerPkiSync } from "./aws-certificate-manager-sync";
 import { TAzureKeyVaultPkiSync } from "./azure-key-vault-sync";
 
 export type TPkiSyncOption = {
@@ -16,27 +16,38 @@ export type TPkiSyncOption = {
   minCertificateNameLength?: number;
 };
 
-export type TPkiSync = TAzureKeyVaultPkiSync;
+export type TPkiSync = TAzureKeyVaultPkiSync | TAwsCertificateManagerPkiSync;
 
 export type TListPkiSyncs = { pkiSyncs: TPkiSync[] };
 
 export type TListPkiSyncOptions = { pkiSyncOptions: TPkiSyncOption[] };
 
-export type TCreatePkiSyncDTO = DiscriminativePick<
-  TPkiSync,
-  | "name"
-  | "destinationConfig"
-  | "description"
-  | "connectionId"
-  | "syncOptions"
-  | "destination"
-  | "isAutoSyncEnabled"
-> & { subscriberId?: string; projectId: string };
+type TCreatePkiSyncDTOBase = {
+  name: string;
+  description?: string;
+  connectionId: string;
+  syncOptions: {
+    canImportCertificates: boolean;
+    canRemoveCertificates: boolean;
+    certificateNamePrefix?: string;
+    certificateNameSchema?: string;
+  };
+  isAutoSyncEnabled: boolean;
+  subscriberId?: string;
+  projectId: string;
+};
+
+export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
+  destination: PkiSync;
+  destinationConfig: {
+    vaultBaseUrl?: string;
+    region?: string;
+  };
+};
 
 export type TUpdatePkiSyncDTO = Partial<Omit<TCreatePkiSyncDTO, "projectId">> & {
   syncId: string;
   projectId: string;
-  destination: PkiSync;
 };
 
 export type TDeletePkiSyncDTO = {
@@ -63,4 +74,6 @@ export type TTriggerPkiSyncRemoveCertificatesDTO = {
   projectId: string;
 };
 
+export * from "./aws-certificate-manager-sync";
+export * from "./azure-key-vault-sync";
 export * from "./common";

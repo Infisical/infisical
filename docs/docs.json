@@ -723,6 +723,7 @@
                       {
                         "group": "Syncs",
                         "pages": [
+                          "documentation/platform/pki/certificate-syncs/aws-certificate-manager",
                           "documentation/platform/pki/certificate-syncs/azure-key-vault"
                         ]
                       }
@@ -2523,6 +2524,18 @@
                   "api-reference/endpoints/pki/syncs/list",
                   "api-reference/endpoints/pki/syncs/get-by-id",
                   "api-reference/endpoints/pki/syncs/options",
+                  {
+                    "group": "AWS Certificate Manager",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/list",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/get-by-id",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/create",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/update",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/delete",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/remove-certificates"
+                    ]
+                  },
                   {
                     "group": "Azure Key Vault",
                     "pages": [

@@ -5,7 +5,7 @@ import { useProject } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { useListWorkspacePkiSubscribers } from "@app/hooks/api";
 
-import { TPkiSyncForm } from "./schemas";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 export const PkiSyncReviewFields = () => {
   const { watch } = useFormContext<TPkiSyncForm>();

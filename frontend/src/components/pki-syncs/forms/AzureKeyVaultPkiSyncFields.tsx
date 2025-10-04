@@ -3,8 +3,8 @@ import { Controller, useFormContext } from "react-hook-form";
 import { FormControl, Input } from "@app/components/v2";
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { PkiSyncConnectionField } from "./PkiSyncConnectionField";
-import { TPkiSyncForm } from "./schemas";
 
 export const AzureKeyVaultPkiSyncFields = () => {
   const { control, setValue } = useFormContext<

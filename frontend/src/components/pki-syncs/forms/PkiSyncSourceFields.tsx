@@ -4,7 +4,7 @@ import { FilterableSelect, FormControl } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { useListWorkspacePkiSubscribers } from "@app/hooks/api";
 
-import { TPkiSyncForm } from "./schemas";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 export const PkiSyncSourceFields = () => {
   const { control } = useFormContext<TPkiSyncForm>();

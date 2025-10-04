@@ -12,12 +12,12 @@ import { useProject } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { PkiSync, TPkiSync, useCreatePkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
+import { PkiSyncFormSchema, TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
 import { PkiSyncReviewFields } from "./PkiSyncReviewFields";
 import { PkiSyncSourceFields } from "./PkiSyncSourceFields";
-import { PkiSyncFormSchema, TPkiSyncForm } from "./schemas";
 
 type Props = {
   onComplete: (pkiSync: TPkiSync) => void;
