@@ -174,6 +174,7 @@ import { certificateTemplateDALFactory } from "@app/services/certificate-templat
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
+import { dataDogTelemetryServiceFactory } from "@app/services/datadog-telemetry/datadog-telemetry-service";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
@@ -608,6 +609,8 @@ export const registerRoutes = async (
   });
 
   const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
+
+  const dataDogTelemetryService = dataDogTelemetryServiceFactory();
 
   const auditLogService = auditLogServiceFactory({ auditLogDAL, permissionService, auditLogQueue });
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
@@ -1160,7 +1163,8 @@ export const registerRoutes = async (
     licenseService,
     gatewayService,
     gatewayV2Service,
-    notificationService
+    notificationService,
+    dataDogTelemetryService
   });
 
   const secretQueueService = secretQueueFactory({

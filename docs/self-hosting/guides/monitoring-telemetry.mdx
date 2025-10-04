@@ -3,7 +3,7 @@ title: "Monitoring and Telemetry Setup"
 description: "Learn how to set up monitoring and telemetry for your self-hosted Infisical instance using Grafana, Prometheus, and OpenTelemetry."
 ---
 
-Infisical provides comprehensive monitoring and telemetry capabilities to help you monitor the health, performance, and usage of your self-hosted instance. This guide covers setting up monitoring using Grafana with two different telemetry collection approaches.
+Infisical provides comprehensive monitoring and telemetry capabilities to help you monitor the health, performance, and usage of your self-hosted instance. This guide covers setting up monitoring using both traditional OpenTelemetry approaches and modern DataDog integration.
 
 ## Overview
 
@@ -14,12 +14,13 @@ Infisical exports metrics in **OpenTelemetry (OTEL) format**, which provides max
 - **Custom backends**: Any system that supports OTEL ingestion
 - **Traditional monitoring**: Prometheus, Grafana (as covered in this guide)
 
-Infisical supports two telemetry collection methods:
+Infisical supports three telemetry collection methods:
 
 1. **Pull-based (Prometheus)**: Exposes metrics on a dedicated endpoint for Prometheus to scrape
 2. **Push-based (OTLP)**: Sends metrics to an OpenTelemetry Collector via OTLP protocol
+3. **DataDog Direct Integration**: Sends custom metrics directly to DataDog using DogStatsD protocol through a DataDog agent
 
-Both approaches provide the same metrics data in OTEL format, so you can choose the one that best fits your infrastructure and monitoring strategy.
+All approaches provide comprehensive metrics data, so you can choose the one that best fits your infrastructure and monitoring strategy.
 
 ## Prerequisites
 
@@ -364,6 +365,205 @@ service:
       processors: [batch]
       exporters: [prometheus, awsemf, datadog] # Send to multiple backends
 ```
+
+## Option 3: DataDog Agent Integration
+
+This approach sends custom metrics to DataDog using the DogStatsD protocol through a DataDog agent. This is the recommended approach for DataDog users as it provides better performance and reliability.
+
+### Configuration
+
+1. **Install and configure DataDog Agent**:
+
+   Follow the [DataDog Agent installation guide](https://docs.datadoghq.com/agent/) for your platform. The agent must be running and accessible from your Infisical instance.
+
+2. **Enable DataDog telemetry in Infisical**:
+
+   ```bash
+   DATADOG_ENABLED=true
+   DATADOG_AGENT_HOST=localhost  # DataDog agent host
+   DATADOG_AGENT_PORT=8125       # DogStatsD port (default: 8125)
+   DATADOG_SERVICE_NAME=infisical
+   DATADOG_SERVICE_VERSION=1.0.0
+   DATADOG_TELEMETRY_ENV=production  # Optional, defaults to development
+   ```
+
+3. **Configure DataDog Agent**:
+
+   Ensure your DataDog agent has DogStatsD enabled (this is the default). In your `datadog.yaml` configuration:
+
+   ```yaml
+   # Enable DogStatsD
+   dogstatsd_enabled: true
+   dogstatsd_port: 8125
+   dogstatsd_non_local_traffic: false  # Set to true if Infisical runs on different host
+   ```
+
+### Environment Variables Reference
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DATADOG_ENABLED` | Yes | `false` | Enable/disable DataDog telemetry |
+| `DATADOG_AGENT_HOST` | No | `localhost` | DataDog agent hostname or IP address |
+| `DATADOG_AGENT_PORT` | No | `8125` | DogStatsD port on the DataDog agent |
+| `DATADOG_SERVICE_NAME` | No | `infisical` | Service name for metrics |
+| `DATADOG_SERVICE_VERSION` | No | `1.0.0` | Service version tag |
+| `DATADOG_TELEMETRY_ENV` | No | `development` | Environment tag |
+
+### Deployment Examples
+
+#### Docker Compose
+
+```yaml
+services:
+  datadog-agent:
+    image: datadog/agent:latest
+    environment:
+      - DD_API_KEY=${DD_API_KEY}
+      - DD_SITE=${DD_SITE:-datadoghq.com}
+      - DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
+    ports:
+      - "8125:8125/udp"  # DogStatsD
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+
+  infisical-backend:
+    # ... other configuration
+    environment:
+      - DATADOG_ENABLED=true
+      - DATADOG_AGENT_HOST=datadog-agent
+      - DATADOG_AGENT_PORT=8125
+      - DATADOG_SERVICE_NAME=infisical
+      - DATADOG_SERVICE_VERSION=1.0.0
+      - DATADOG_TELEMETRY_ENV=production
+    depends_on:
+      - datadog-agent
+```
+
+#### Kubernetes
+
+First, install the DataDog agent using the official Helm chart:
+
+```bash
+helm repo add datadog https://helm.datadoghq.com
+helm install datadog datadog/datadog \
+  --set datadog.apiKey=${DD_API_KEY} \
+  --set datadog.site=${DD_SITE:-datadoghq.com}
+```
+
+Then configure your Infisical deployment:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infisical-backend
+spec:
+  template:
+    spec:
+      containers:
+      - name: infisical
+        env:
+        - name: DATADOG_ENABLED
+          value: "true"
+        - name: DATADOG_AGENT_HOST
+          value: "datadog.default.svc.cluster.local"  # DataDog agent service
+        - name: DATADOG_AGENT_PORT
+          value: "8125"
+        - name: DATADOG_SERVICE_NAME
+          value: "infisical"
+        - name: DATADOG_SERVICE_VERSION
+          value: "1.0.0"
+        - name: DATADOG_TELEMETRY_ENV
+          value: "production"
+```
+
+### Available Metrics in DataDog
+
+When DataDog integration is enabled, Infisical will send the following custom metrics:
+
+#### Secret Sync Error Metrics
+
+- `infisical.secret_sync.operation_errors` - Errors during secret synchronization operations
+- `infisical.secret_sync.import_errors` - Errors during secret import operations
+- `infisical.secret_sync.removal_errors` - Errors during secret removal operations
+
+Each metric includes the following tags:
+- `service` - Service name (configured via `DATADOG_SERVICE_NAME`)
+- `env` - Environment (configured via `DATADOG_TELEMETRY_ENV`)
+- `version` - Service version (configured via `DATADOG_SERVICE_VERSION`)
+- `destination` - Target system for the sync operation
+- `sync_id` - Unique identifier for the sync configuration
+- `project_id` - Infisical project identifier
+- `error_type` - Type of error (e.g., "AxiosError", "ValidationError")
+- `error_status` - HTTP status code (when applicable)
+- `error_name` - Specific error name
+
+### Setting Up DataDog Dashboards
+
+1. **Access DataDog Dashboards**:
+   - Log into your DataDog account
+   - Navigate to **Dashboards** → **New Dashboard**
+
+2. **Create Secret Sync Monitoring Dashboard**:
+   ```json
+   {
+     "title": "Infisical Secret Sync Monitoring",
+     "widgets": [
+       {
+         "definition": {
+           "type": "timeseries",
+           "requests": [
+             {
+               "q": "sum:infisical.secret_sync.operation_errors{*} by {destination,error_type}",
+               "display_type": "bars"
+             }
+           ],
+           "title": "Secret Sync Errors by Destination"
+         }
+       },
+       {
+         "definition": {
+           "type": "query_value",
+           "requests": [
+             {
+               "q": "sum:infisical.secret_sync.operation_errors{*}.as_count()",
+               "aggregator": "sum"
+             }
+           ],
+           "title": "Total Sync Errors (24h)"
+         }
+       }
+     ]
+   }
+   ```
+
+3. **Set Up Alerts**:
+   - Navigate to **Monitors** → **New Monitor**
+   - Choose **Metric** monitor type
+   - Configure alert condition: `sum:infisical.secret_sync.operation_errors{*}.as_count() > 5`
+   - Set notification preferences
+
+### Troubleshooting DataDog Integration
+
+1. **Metrics not appearing in DataDog**:
+   - Verify `DATADOG_ENABLED=true`
+   - Check DataDog API key validity
+   - Ensure correct DataDog site configuration
+   - Check Infisical logs for DataDog initialization messages
+
+2. **Authentication errors**:
+   - Validate your DataDog API key
+   - Ensure API key has the necessary permissions for metric submission
+
+3. **Regional endpoint issues**:
+   - Confirm your DataDog account region matches the configured site
+   - Verify the OTLP endpoint URL for your region
+
+4. **Missing tags or incorrect data**:
+   - Check environment variable configuration
+   - Verify service name and version settings```
 
 ## Setting Up Grafana
 

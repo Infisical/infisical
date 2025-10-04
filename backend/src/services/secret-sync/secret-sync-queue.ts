@@ -60,6 +60,7 @@ import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/se
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
+import { DataDogMetric, TDataDogTelemetryServiceFactory } from "../datadog-telemetry/datadog-telemetry-service";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
@@ -103,6 +104,7 @@ type TSecretSyncQueueFactoryDep = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  dataDogTelemetryService: Pick<TDataDogTelemetryServiceFactory, "recordSecretSyncError">;
 };
 
 type SecretSyncActionJob = Job<
@@ -146,7 +148,8 @@ export const secretSyncQueueFactory = ({
   licenseService,
   gatewayService,
   gatewayV2Service,
-  notificationService
+  notificationService,
+  dataDogTelemetryService
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -162,6 +165,15 @@ export const secretSyncQueueFactory = ({
   const removeSecretsErrorHistogram = integrationMeter.createHistogram("secret_sync_remove_secrets_errors", {
     description: "Secret Sync - remove secrets errors",
     unit: "1"
+  });
+
+  const getErrorAttributes = (err: unknown, secretSync: TSecretSyncRaw) => ({
+    destination: secretSync.destination,
+    syncId: secretSync.id,
+    projectId: secretSync.projectId,
+    errorType: err instanceof AxiosError ? "AxiosError" : err?.constructor?.name || "UnknownError",
+    errorStatus: err instanceof AxiosError ? err.response?.status : undefined,
+    errorName: err instanceof Error ? err.name : undefined
   });
 
   const $createManySecretsRawFn = createManySecretsRawFnFactory({
@@ -552,6 +564,11 @@ export const secretSyncQueueFactory = ({
         });
       }
 
+      dataDogTelemetryService.recordSecretSyncError(
+        DataDogMetric.SECRET_SYNC_OPERATION_ERRORS,
+        getErrorAttributes(err, secretSync)
+      );
+
       syncMessage = parseSyncErrorMessage(err);
 
       if (err instanceof SecretSyncError && !err.shouldRetry) {
@@ -668,6 +685,11 @@ export const secretSyncQueueFactory = ({
           name: err instanceof Error ? err.name : undefined
         });
       }
+
+      dataDogTelemetryService.recordSecretSyncError(
+        DataDogMetric.SECRET_SYNC_IMPORT_ERRORS,
+        getErrorAttributes(err, secretSync)
+      );
 
       importMessage = parseSyncErrorMessage(err);
 
@@ -797,6 +819,11 @@ export const secretSyncQueueFactory = ({
           name: err instanceof Error ? err.name : undefined
         });
       }
+
+      dataDogTelemetryService.recordSecretSyncError(
+        DataDogMetric.SECRET_SYNC_REMOVAL_ERRORS,
+        getErrorAttributes(err, secretSync)
+      );
 
       removeMessage = parseSyncErrorMessage(err);
 
