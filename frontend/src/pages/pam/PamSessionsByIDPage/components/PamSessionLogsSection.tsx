@@ -71,11 +71,11 @@ export const PamSessionLogsSection = ({ session }: Props) => {
           <div className="flex w-full grow items-center justify-center text-bunker-300">
             {session.startedAt && session.endedAt ? (
               <div className="text-center">
-                <div className="mb-2">Session logs are not available</div>
+                <div className="mb-2">Session logs are not yet available</div>
                 <div className="text-xs text-bunker-400">
-                  Logs failed to upload from the Gateway.
+                  Logs will be uploaded after the session duration has elapsed.
                   <br />
-                  Please contact your Gateway administrators.
+                  If logs do not appear after some time, please contact your Gateway administrators.
                 </div>
               </div>
             ) : (
