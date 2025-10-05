@@ -73,7 +73,7 @@ jobs:
               with:
                 image: infisical/infisical:${{ steps.extract_version.outputs.version }}
                 command: monitor
-                args: --file=Dockerfile.standalone-infisical
+                args: --file=Dockerfile.standalone-infisical --project-name="infisical-core-docker-image"
 
     infisical-fips-standalone:
         name: Build infisical standalone image postgres
