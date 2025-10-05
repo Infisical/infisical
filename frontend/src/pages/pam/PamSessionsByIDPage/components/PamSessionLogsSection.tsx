@@ -1,6 +1,6 @@
-import { faChevronRight, faChevronDown } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState } from "react";
+import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { TPamSession } from "@app/hooks/api/pam";
 
@@ -33,10 +33,11 @@ export const PamSessionLogsSection = ({ session }: Props) => {
           session.commandLogs.map((log) => {
             const isExpanded = expandedLogTimestamps.has(log.timestamp);
             return (
-              <div
+              <button
+                type="button"
                 key={log.timestamp}
-                className={`flex cursor-pointer flex-col rounded-md border border-mineshaft-700 p-3 ${
-                  isExpanded ? "bg-mineshaft-700" : "bg-mineshaft-800"
+                className={`flex w-full flex-col rounded-md border border-mineshaft-700 p-3 text-left focus:outline-none focus:ring-2 focus:ring-mineshaft-400 ${
+                  isExpanded ? "bg-mineshaft-700" : "bg-mineshaft-800 hover:bg-mineshaft-700"
                 }`}
                 onClick={() => toggleExpand(log.timestamp)}
               >
@@ -63,7 +64,7 @@ export const PamSessionLogsSection = ({ session }: Props) => {
                     {log.output}
                   </div>
                 )}
-              </div>
+              </button>
             );
           })
         ) : (
