@@ -1,10 +1,11 @@
 import { Knex } from "knex";
 
-import { TableName } from "../schemas";
+import { AccessScope, TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.Namespace))) {
+  const hasNamespaceTable = await knex.schema.hasTable(TableName.Namespace);
+  if (!hasNamespaceTable) {
     await knex.schema.createTable(TableName.Namespace, (t) => {
       t.uuid("id").primary().defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
@@ -17,7 +18,8 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.Namespace);
   }
 
-  if (!(await knex.schema.hasTable(TableName.Membership))) {
+  const hasMembershipTable = await knex.schema.hasTable(TableName.Membership);
+  if (!hasMembershipTable) {
     await knex.schema.createTable(TableName.Membership, (t) => {
       t.uuid("id").primary().defaultTo(knex.fn.uuid());
       t.string("scope", 24).notNullable();
@@ -44,6 +46,8 @@ export async function up(knex: Knex): Promise<void> {
       t.datetime("lastLoginTime");
       t.specificType("projectFavorites", "text[]");
       t.timestamps(true, true, true);
+
+      t.index(["scope", "scopeOrgId"]);
 
       t.check(
         `(:actorUserIdColumn: IS NOT NULL AND :actorIdentityIdColumn: IS NULL AND :actorGroupIdColumn: IS NULL) OR
@@ -74,7 +78,8 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.Membership);
   }
 
-  if (!(await knex.schema.hasTable(TableName.Role))) {
+  const hasRoleTable = await knex.schema.hasTable(TableName.Role);
+  if (!hasRoleTable) {
     await knex.schema.createTable(TableName.Role, (t) => {
       t.uuid("id").primary().defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
@@ -104,10 +109,29 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
 
+    await knex.schema.raw(`
+      CREATE UNIQUE INDEX role_name_org_id_unique
+      ON "${TableName.Role}" (name, "orgId")
+      WHERE "orgId" IS NOT NULL;
+    `);
+
+    await knex.schema.raw(`
+      CREATE UNIQUE INDEX role_name_project_id_unique
+      ON "${TableName.Role}" (name, "projectId")
+      WHERE "projectId" IS NOT NULL;
+    `);
+
+    await knex.schema.raw(`
+      CREATE UNIQUE INDEX role_name_namespace_id_unique
+      ON "${TableName.Role}" (name, "namespaceId")
+      WHERE "namespaceId" IS NOT NULL;
+    `);
+
     await createOnUpdateTrigger(knex, TableName.Role);
   }
 
-  if (!(await knex.schema.hasTable(TableName.MembershipRole))) {
+  const hasMembershipRoleTable = await knex.schema.hasTable(TableName.MembershipRole);
+  if (!hasMembershipRoleTable) {
     await knex.schema.createTable(TableName.MembershipRole, (t) => {
       t.uuid("id").primary().defaultTo(knex.fn.uuid());
       t.string("role").notNullable();
@@ -122,13 +146,16 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("membershipId").notNullable();
       t.foreign("membershipId").references("id").inTable(TableName.Membership).onDelete("CASCADE");
 
+      t.index("membershipId");
+
       t.timestamps(true, true, true);
     });
 
     await createOnUpdateTrigger(knex, TableName.MembershipRole);
   }
 
-  if (!(await knex.schema.hasTable(TableName.AdditionalPrivilege))) {
+  const hasAdditionalPrivilegeTable = await knex.schema.hasTable(TableName.AdditionalPrivilege);
+  if (!hasAdditionalPrivilegeTable) {
     await knex.schema.createTable(TableName.AdditionalPrivilege, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name", 60).notNullable();
@@ -177,6 +204,28 @@ export async function up(knex: Knex): Promise<void> {
     });
 
     await createOnUpdateTrigger(knex, TableName.AdditionalPrivilege);
+  }
+
+  // no mean this has been created before
+  if (!hasMembershipTable) {
+    await knex(TableName.Membership).insert(
+      // @ts-expect-error never mind
+      knex(TableName.OrgMembership).select(
+        "id",
+        "status",
+        "inviteEmail",
+        "createdAt",
+        "updatedAt",
+        "userId as actorUserId",
+        "orgId as scopeOrgId",
+        "projectFavorites",
+        "isActive",
+        "lastInvitedAt",
+        "lastLoginAuthMethod",
+        "lastLoginTime",
+        knex.raw("? as scope", [AccessScope.Organization])
+      )
+    );
   }
 }
 
