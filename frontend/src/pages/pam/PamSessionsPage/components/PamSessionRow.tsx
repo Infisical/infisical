@@ -167,10 +167,10 @@ export const PamSessionRow = ({ session, search, filteredCommandLogs }: Props) =
                 </div>
 
                 <div className="font-mono">
-                  <HighlightText text={log.input} highlight={search} />
+                  <HighlightText text={log.input.trim()} highlight={search} />
                 </div>
                 <div className="font-mono text-bunker-300">
-                  <HighlightText text={log.output} highlight={search} />
+                  <HighlightText text={log.output.trim()} highlight={search} />
                 </div>
               </div>
             ))}
