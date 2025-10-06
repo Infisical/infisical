@@ -1,5 +1,6 @@
 export * from "./AccessApprovalRequestTemplate";
 export * from "./AccessApprovalRequestUpdatedTemplate";
+export * from "./AccountDeletionConfirmationTemplate";
 export * from "./EmailMfaTemplate";
 export * from "./EmailVerificationTemplate";
 export * from "./ExternalImportFailedTemplate";
@@ -30,4 +31,3 @@ export * from "./SecretSyncFailedTemplate";
 export * from "./ServiceTokenExpiryNoticeTemplate";
 export * from "./SignupEmailVerificationTemplate";
 export * from "./UnlockAccountTemplate";
-export * from "./AccountDeletionConfirmationTemplate";
