@@ -19,6 +19,7 @@ import { AwsParameterStoreSyncOptionsSection } from "./AwsParameterStoreSyncOpti
 import { AwsSecretsManagerSyncOptionsSection } from "./AwsSecretsManagerSyncOptionsSection";
 import { CloudflarePagesSyncOptionsSection } from "./CloudflarePagesSyncOptionsSection";
 import { CloudflareWorkersSyncOptionsSection } from "./CloudflareWorkersSyncOptionsSection";
+import { CoolifySyncOptionsSection } from "./CoolifySyncOptionsSection";
 import { FlyioSyncOptionsSection } from "./FlyioSyncOptionsSection";
 import { QoverySyncOptionsSection } from "./QoverySyncOptionsSection";
 import { RenderSyncOptionsSection } from "./RenderSyncOptionsSection";
@@ -70,6 +71,9 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
         <CloudflareWorkersSyncOptionsSection secretSync={secretSync} />
       );
       break;
+    case SecretSync.Coolify:
+      AdditionalSyncOptionsComponent = <CoolifySyncOptionsSection secretSync={secretSync} />;
+      break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
     case SecretSync.AzureKeyVault:
@@ -113,7 +117,6 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
     case SecretSync.Cloud66:
     case SecretSync.Daytona:
     case SecretSync.Keeper:
-    case SecretSync.Coolify:
       AdditionalSyncOptionsComponent = null;
       break;
     case SecretSync.Spacelift:
