@@ -17,7 +17,7 @@ const badgeVariants = cva(
         accent:
           "border-accent/10 bg-accent/30 text-accent [a&]:hover:bg-accent/40 [a&]:hover:border-accent/20 [button&]:hover:bg-accent/40 [button&]:hover:border-accent/20",
         outline:
-          "text-foreground border-foreground/40 hover:border-foreground [a&]:hover:bg-foreground/20 [button&]:hover:bg-foreground/20",
+          "text-foreground border-foreground/40 [a&]:hover:border-foreground [a&]:hover:bg-foreground/20",
         "secret-manager":
           "border-secret-manager/75 bg-secret-manager/30 text-foreground [a&]:hover:bg-secret-manager/40 [a&]:hover:border-secret-manager [button&]:hover:bg-secret-manager/40 [button&]:hover:border-secret-manager",
         "secret-scanning":

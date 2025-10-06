@@ -187,6 +187,7 @@ export const BothIcons: Story = {
 export const AsExternalLink: Story = {
   name: "Example: As External Link",
   args: {
+    variant: "info",
     as: "a",
     href: "https://infisical.com/",
     children: (
@@ -209,8 +210,15 @@ export const AsRouterLink: Story = {
 export const AsButton: Story = {
   name: "Example: As Button",
   args: {
+    variant: "org",
     as: "button",
     onClick: fn(() => alert("Congrats")),
-    children: "Button"
+    children: (
+      <>
+        <OrgIcon />
+        Organization
+        <ChevronsUpDownIcon />
+      </>
+    )
   }
 };

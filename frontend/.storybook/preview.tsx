@@ -27,7 +27,7 @@ const preview: Preview = {
     },
     backgrounds: {
       options: {
-        dark: { name: "Dark", value: "#000000" }
+        dark: { name: "Dark", value: "#191919" }
       }
     }
   },

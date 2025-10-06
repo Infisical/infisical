@@ -147,36 +147,42 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const SecretsManagement: Story = {
+  name: "Variant: Secret Scanning",
   args: {
     variant: "secret-manager"
   }
 };
 
 export const SecretScanning: Story = {
+  name: "Variant: Secret Scanning",
   args: {
     variant: "secret-scanning"
   }
 };
 
 export const PKI: Story = {
+  name: "Variant: PKI",
   args: {
     variant: "cert-manager"
   }
 };
 
 export const SSH: Story = {
+  name: "Variant: SSH",
   args: {
     variant: "ssh"
   }
 };
 
 export const KMS: Story = {
+  name: "Variant: KMS",
   args: {
     variant: "kms"
   }
 };
 
 export const PAM: Story = {
+  name: "Variant: PAM",
   args: {
     variant: "pam"
   }
