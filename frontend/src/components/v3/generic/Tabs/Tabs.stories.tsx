@@ -1,12 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import {
-  HardDrive,
-  HardDriveIcon,
-  IdCardLanyardIcon,
-  KeySquareIcon,
-  UserIcon,
-  UsersIcon
-} from "lucide-react";
+import { HardDriveIcon, IdCardLanyardIcon, KeySquareIcon, UserIcon, UsersIcon } from "lucide-react";
 
 import { Tabs, TabsList, TabsProps, TabsTrigger } from "./Tabs";
 
