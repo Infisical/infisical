@@ -6,6 +6,8 @@ import { BadRequestError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
+import { AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION } from "./aws-certificate-manager/aws-certificate-manager-pki-sync-constants";
+import { awsCertificateManagerPkiSyncFactory } from "./aws-certificate-manager/aws-certificate-manager-pki-sync-fns";
 import { AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION } from "./azure-key-vault/azure-key-vault-pki-sync-constants";
 import { azureKeyVaultPkiSyncFactory } from "./azure-key-vault/azure-key-vault-pki-sync-fns";
 import { PkiSync } from "./pki-sync-enums";
@@ -14,7 +16,8 @@ import { TCertificateMap, TPkiSyncWithCredentials } from "./pki-sync-types";
 const ENTERPRISE_PKI_SYNCS: PkiSync[] = [];
 
 const PKI_SYNC_LIST_OPTIONS = {
-  [PkiSync.AzureKeyVault]: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION
+  [PkiSync.AzureKeyVault]: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION,
+  [PkiSync.AwsCertificateManager]: AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION
 };
 
 export const enterprisePkiSyncCheck = async (
@@ -144,8 +147,10 @@ export const matchesCertificateNameSchema = (name: string, environment: string, 
   return name.startsWith(prefix) && name.endsWith(suffix);
 };
 
-const isAzureKeyVaultPkiSync = (pkiSync: TPkiSyncWithCredentials): boolean => {
-  return pkiSync.destination === PkiSync.AzureKeyVault;
+const checkPkiSyncDestination = (pkiSync: TPkiSyncWithCredentials, destination: PkiSync): void => {
+  if (pkiSync.destination !== destination) {
+    throw new Error(`Invalid PKI sync destination: ${pkiSync.destination}`);
+  }
 };
 
 export const PkiSyncFns = {
@@ -161,6 +166,11 @@ export const PkiSyncFns = {
       case PkiSync.AzureKeyVault: {
         throw new Error(
           "Azure Key Vault does not support importing certificates into Infisical (private keys cannot be extracted)"
+        );
+      }
+      case PkiSync.AwsCertificateManager: {
+        throw new Error(
+          "AWS Certificate Manager does not support importing certificates into Infisical (private keys cannot be extracted)"
         );
       }
       default:
@@ -188,11 +198,14 @@ export const PkiSyncFns = {
   }> => {
     switch (pkiSync.destination) {
       case PkiSync.AzureKeyVault: {
-        if (!isAzureKeyVaultPkiSync(pkiSync)) {
-          throw new Error("Invalid Azure Key Vault PKI sync configuration");
-        }
+        checkPkiSyncDestination(pkiSync, PkiSync.AzureKeyVault);
         const azureKeyVaultPkiSync = azureKeyVaultPkiSyncFactory(dependencies);
         return azureKeyVaultPkiSync.syncCertificates(pkiSync, certificateMap);
+      }
+      case PkiSync.AwsCertificateManager: {
+        checkPkiSyncDestination(pkiSync, PkiSync.AwsCertificateManager);
+        const awsCertificateManagerPkiSync = awsCertificateManagerPkiSyncFactory(dependencies);
+        return awsCertificateManagerPkiSync.syncCertificates(pkiSync, certificateMap);
       }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
@@ -209,11 +222,15 @@ export const PkiSyncFns = {
   ): Promise<void> => {
     switch (pkiSync.destination) {
       case PkiSync.AzureKeyVault: {
-        if (!isAzureKeyVaultPkiSync(pkiSync)) {
-          throw new Error("Invalid Azure Key Vault PKI sync configuration");
-        }
+        checkPkiSyncDestination(pkiSync, PkiSync.AzureKeyVault);
         const azureKeyVaultPkiSync = azureKeyVaultPkiSyncFactory(dependencies);
         await azureKeyVaultPkiSync.removeCertificates(pkiSync, certificateNames);
+        break;
+      }
+      case PkiSync.AwsCertificateManager: {
+        checkPkiSyncDestination(pkiSync, PkiSync.AwsCertificateManager);
+        const awsCertificateManagerPkiSync = awsCertificateManagerPkiSyncFactory(dependencies);
+        await awsCertificateManagerPkiSync.removeCertificates(pkiSync, certificateNames);
         break;
       }
       default:
