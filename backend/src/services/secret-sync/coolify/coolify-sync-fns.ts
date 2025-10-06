@@ -145,7 +145,6 @@ export const CoolifySyncFns = {
         value: secret.real_value,
         skipMultilineEncoding: secret.is_multiline,
         secretMetadata: [
-          { key: "is_build_time", value: String(secret.is_build_time) },
           { key: "is_literal", value: String(secret.is_literal) },
           { key: "is_preview", value: String(secret.is_preview) }
         ]
