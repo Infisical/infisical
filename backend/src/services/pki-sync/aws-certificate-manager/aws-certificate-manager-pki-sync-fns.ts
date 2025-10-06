@@ -81,11 +81,7 @@ const validateCertificateContent = (cert: string, privateKey: string): void => {
 };
 
 const isAwsIssuedCertificate = (certificate: AWS.ACM.CertificateSummary): boolean => {
-  return (
-    certificate.Type === "AMAZON_ISSUED" ||
-    certificate.KeyAlgorithm === "EC-prime256v1" ||
-    (!!certificate.DomainName && (certificate.SubjectAlternativeNameSummaries?.length || 0) === 0)
-  );
+  return certificate.Type === "AMAZON_ISSUED";
 };
 
 const shouldSkipCertificateExport = (certificate: AWS.ACM.CertificateSummary): boolean => {
