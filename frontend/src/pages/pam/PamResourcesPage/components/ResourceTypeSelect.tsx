@@ -19,12 +19,13 @@ type Props = {
 export const ResourceTypeSelect = ({ onSelect }: Props) => {
   const { isPending, data: resourceOptions } = useListPamResourceOptions();
   const { subscription } = useSubscription();
-  const { popUp, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
   const appendedResourceOptions = useMemo(() => {
     if (!resourceOptions) return [];
     return [
       ...resourceOptions,
+      // We are temporarily showing these resources so that we can gauge interest before committing
       { name: "RDP", resource: PamResourceType.RDP },
       { name: "SSH", resource: PamResourceType.SSH },
       { name: "Kubernetes", resource: PamResourceType.Kubernetes }
@@ -52,16 +53,24 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
   });
 
   const handleResourceSelect = (resource: PamResourceType) => {
-    if (!subscription?.pam) {
-      handlePopUpToggle("upgradePlan", true);
+    if (!subscription.pam) {
+      handlePopUpOpen(
+        "upgradePlan",
+        "PAM (Privileged Access Management) requires an enterprise plan."
+      );
       return;
     }
 
+    // We temporarily show a special license modal for these because we will have to write some code to complete the integration
     if (
       resource === PamResourceType.RDP ||
       resource === PamResourceType.SSH ||
       resource === PamResourceType.Kubernetes
     ) {
+      handlePopUpOpen(
+        "upgradePlan",
+        "This resource type requires a special license add-on to be enabled in your enterprise plan."
+      );
       return;
     }
 
@@ -167,13 +176,11 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
           perPageList={[16]}
         />
       )}
-      {subscription && (
-        <UpgradePlanModal
-          isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text="PAM (Privileged Access Management) requires an enterprise plan."
-        />
-      )}
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text={popUp.upgradePlan.data || ""}
+      />
     </div>
   );
 };
