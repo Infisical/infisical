@@ -347,6 +347,23 @@ export const userServiceFactory = ({
 
   const deleteUser = async (userId: string) => {
     const user = await userDAL.deleteById(userId);
+
+    try {
+      if (user?.email) {
+        // Send email to user to confirm account deletion
+        await smtpService.sendMail({
+          template: SmtpTemplates.AccountDeletionConfirmation,
+          subjectLine: "Your Infisical account has been deleted",
+          recipients: [user.email],
+          substitutions: {
+            email: user.email
+          }
+        });
+      }
+    } catch (error) {
+      logger.error(error, `Failed to send account deletion confirmation email to ${user.email}`);
+    }
+
     return user;
   };
 
