@@ -35,7 +35,6 @@ import {
   Tr
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useSubscription } from "@app/context";
 import {
   ProjectPermissionActions,
   ProjectPermissionPamAccountActions,
@@ -71,7 +70,6 @@ type Props = {
 };
 
 export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
-  const { subscription } = useSubscription();
   const navigate = useNavigate({ from: ROUTE_PATHS.Pam.AccountsPage.path });
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -357,7 +355,7 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
                 variant="outline_bg"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => handlePopUpOpen("addAccount")}
-                isDisabled={!isAllowedToCreateAccounts || !subscription.pam}
+                isDisabled={!isAllowedToCreateAccounts}
                 className={`h-10 transition-colors ${accountView === AccountView.Flat ? "" : "rounded-r-none"}`}
               >
                 Add Account
