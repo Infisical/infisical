@@ -12,7 +12,8 @@ export const AUDIT_LOG_STREAM_PROVIDER_MAP: Record<
   [LogProvider.Cribl]: { name: "Cribl", image: "Cribl.png", size: 60 },
   [LogProvider.Custom]: { name: "Custom", icon: faCode },
   [LogProvider.Datadog]: { name: "Datadog", image: "Datadog.png" },
-  [LogProvider.Splunk]: { name: "Splunk", image: "Splunk.png", size: 65 }
+  [LogProvider.Splunk]: { name: "Splunk", image: "Splunk.png", size: 65 },
+  [LogProvider.QRadar]: { name: "IBM QRadar", image: "IBM.png" }
 };
 
 // Strictly for showing to the client in the front-end
