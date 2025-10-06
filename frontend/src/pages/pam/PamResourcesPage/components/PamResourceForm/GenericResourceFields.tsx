@@ -14,21 +14,18 @@ export const genericResourceFieldsSchema = z.object({
 export const GenericResourceFields = () => {
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
-  const {
-    formState: { errors },
-    control
-  } = useFormContext<{ name: string; gatewayId: string }>();
+  const { control } = useFormContext<{ name: string; gatewayId: string }>();
 
   return (
     <>
       <Controller
         name="name"
         control={control}
-        render={({ field }) => (
+        render={({ field, fieldState: { error } }) => (
           <FormControl
             helperText="Name must be slug-friendly"
-            errorText={errors.name?.message}
-            isError={Boolean(errors.name?.message)}
+            errorText={error?.message}
+            isError={Boolean(error?.message)}
             label="Name"
           >
             <Input autoFocus placeholder="my-resource" {...field} />
