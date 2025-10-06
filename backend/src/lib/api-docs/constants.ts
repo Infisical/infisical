@@ -2725,6 +2725,10 @@ export const SecretSyncs = {
     RENDER: {
       autoRedeployServices:
         "Whether Infisical should automatically redeploy the configured Render service upon secret changes."
+    },
+    COOLIFY: {
+      autoRedeployServices:
+        "Whether Infisical should automatically redeploy the configured coolify application upon secret changes."
     }
   },
   DESTINATION_CONFIG: {
