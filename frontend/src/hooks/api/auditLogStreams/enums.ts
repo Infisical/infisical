@@ -4,5 +4,5 @@ export enum LogProvider {
   Custom = "custom",
   Datadog = "datadog",
   Splunk = "splunk",
-  QRadar = "QRadar"
+  QRadar = "qradar"
 }
