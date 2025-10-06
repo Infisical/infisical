@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { subject } from "@casl/ability";
 
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import { Checkbox, FilterableSelect, FormControl } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { useProject, useProjectPermission } from "@app/context";
 import {
@@ -20,6 +20,7 @@ export const SecretSyncSourceFields = () => {
 
   const selectedEnvironment = watch("environment");
   const selectedSecretPath = watch("secretPath");
+  const recursive = watch("recursive");
 
   useEffect(() => {
     const hasAccessToSource =
@@ -28,7 +29,8 @@ export const SecretSyncSourceFields = () => {
         ProjectPermissionSecretSyncActions.Create,
         subject(ProjectPermissionSub.SecretSyncs, {
           environment: selectedEnvironment.slug,
-          secretPath: selectedSecretPath
+          secretPath: selectedSecretPath,
+          recursive: recursive
         })
       );
 
@@ -39,7 +41,7 @@ export const SecretSyncSourceFields = () => {
     } else {
       clearErrors("secretPath");
     }
-  }, [selectedEnvironment, selectedSecretPath]);
+  }, [selectedEnvironment, selectedSecretPath, recursive]);
 
   return (
     <>
@@ -78,6 +80,21 @@ export const SecretSyncSourceFields = () => {
         control={control}
         name="secretPath"
       />
+    <Controller
+      name="recursive" 
+      control={control}
+      defaultValue={false}
+      render={({ field: { value, onChange } }) => (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-bunker-200">Sync subfolders recursively</span>
+          <Checkbox
+            id="recursive"
+            isChecked={value}
+            onCheckedChange={onChange}
+          />
+        </div>
+      )}
+    />
     </>
   );
 };

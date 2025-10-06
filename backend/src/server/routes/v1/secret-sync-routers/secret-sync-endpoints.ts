@@ -29,6 +29,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     syncOptions: I["syncOptions"];
     description?: string | null;
     isAutoSyncEnabled?: boolean;
+    recursive?: boolean;
   }>;
   updateSchema: z.ZodType<{
     connectionId?: string;
@@ -39,6 +40,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     syncOptions?: I["syncOptions"];
     description?: string | null;
     isAutoSyncEnabled?: boolean;
+    recursive?: boolean;
   }>;
   responseSchema: z.ZodTypeAny;
 }) => {

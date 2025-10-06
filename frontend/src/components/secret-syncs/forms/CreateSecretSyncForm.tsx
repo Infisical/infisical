@@ -33,7 +33,7 @@ type Props = {
 };
 
 const FORM_TABS: { name: string; key: string; fields: (keyof TSecretSyncForm)[] }[] = [
-  { name: "Source", key: "source", fields: ["secretPath", "environment"] },
+  { name: "Source", key: "source", fields: ["secretPath", "environment", "recursive"] },
   { name: "Destination", key: "destination", fields: ["connection", "destinationConfig"] },
   { name: "Sync Options", key: "options", fields: ["syncOptions"] },
   { name: "Details", key: "details", fields: ["name", "description"] },
