@@ -85,6 +85,22 @@ const deleteCoolifySecret = async (secretSync: TCoolifySyncWithCredentials, envI
   });
 };
 
+const redeployApplication = async (secretSync: TCoolifySyncWithCredentials) => {
+  const {
+    connection,
+    destinationConfig: { appId }
+  } = secretSync;
+
+  const instanceUrl = getCoolifyInstanceUrl(connection);
+  const { apiToken } = connection.credentials;
+
+  await request.post<TCoolifyAPICreateEnvResponse>(`${instanceUrl}/api/v1/applications/${appId}/restart`, undefined, {
+    headers: {
+      Authorization: `Bearer ${apiToken}`
+    }
+  });
+};
+
 const infisicalSecretToCoolifySecret = (key: string, secret: TSecretMap[keyof TSecretMap]): TCoolifyNewSecret => {
   return {
     key,
@@ -120,8 +136,9 @@ export const CoolifySyncFns = {
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
     for await (const coolifySecret of existingCoolifySecrets) {
-      // eslint-disable-next-line no-continue
-      if (!matchesSchema(coolifySecret.key, secretSync.syncOptions.keySchema)) continue;
+      if (!matchesSchema(coolifySecret.key, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema))
+        // eslint-disable-next-line no-continue
+        continue;
 
       if (!(coolifySecret.key in secretMap)) {
         try {
@@ -133,6 +150,10 @@ export const CoolifySyncFns = {
           });
         }
       }
+    }
+
+    if (secretSync.syncOptions.autoRedeployServices) {
+      await redeployApplication(secretSync);
     }
   },
   getSecrets: async (secretSync: TCoolifySyncWithCredentials): Promise<TSecretMap> => {
@@ -161,6 +182,10 @@ export const CoolifySyncFns = {
       if (coolifySecret) {
         await deleteCoolifySecret(secretSync, coolifySecret.uuid);
       }
+    }
+
+    if (secretSync.syncOptions.autoRedeployServices) {
+      await redeployApplication(secretSync);
     }
   }
 };
