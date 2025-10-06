@@ -80,11 +80,11 @@ const PROJECT_TYPE_MENU_ITEMS = [
   {
     label: "Secret Scanning",
     value: ProjectType.SecretScanning
+  },
+  {
+    label: "PAM",
+    value: ProjectType.PAM
   }
-  // {
-  //   label: "PAM",
-  //   value: ProjectType.PAM
-  // }
 ];
 
 const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
