@@ -1,4 +1,5 @@
 import knex, { Knex } from "knex";
+import tls, { PeerCertificate } from "tls";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -30,7 +31,12 @@ const getConnectionConfig = (
           ? {
               rejectUnauthorized: sslRejectUnauthorized,
               ca: sslCertificate,
-              servername: host
+              servername: host,
+              // When using proxy, we need to bypass hostname validation since we connect to localhost
+              // but validate the certificate against the actual hostname
+              checkServerIdentity: (hostname: string, cert: PeerCertificate) => {
+                return tls.checkServerIdentity(host, cert);
+              }
             }
           : false
       };
@@ -111,6 +117,10 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
       // Hacky way to know if we successfully hit the database
       if (error instanceof BadRequestError) {
         if (error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"`) {
+          return connectionDetails;
+        }
+
+        if (error.message.includes("no pg_hba.conf entry for host")) {
           return connectionDetails;
         }
 
