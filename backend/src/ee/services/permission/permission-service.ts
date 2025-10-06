@@ -32,7 +32,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { orgAdminPermissions, orgMemberPermissions, orgNoAccessPermissions, OrgPermissionSet } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
-import { escapeHandlebarsMissingDict } from "./permission-fns";
+import { escapeHandlebarsMissingDict, validateOrgSSO } from "./permission-fns";
 import {
   TBuildOrgPermissionDTO,
   TBuildProjectPermissionDTO,
@@ -223,24 +223,25 @@ export const permissionServiceFactory = ({
       return activeRoles.concat(activeAdditionalPrivileges);
     });
 
+    const hasRole = (role: string) =>
+      permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)));
+
+    validateOrgSSO(
+      authMethod,
+      permissionData?.[0].orgAuthEnforced,
+      Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
+      Boolean(permissionData?.[0].bypassOrgAuthEnabled),
+      hasRole(OrgMembershipRole.Admin)
+    );
+
     const permission = createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules(permissionFromRoles), {
       conditionsMatcher
     });
 
-    // TODO(simp): validate this
-    // validateOrgSSO(
-    //     authMethod,
-    //     membership.orgAuthEnforced,
-    //     membership.orgGoogleSsoAuthEnforced,
-    //     membership.bypassOrgAuthEnabled,
-    //     membership.role as OrgMembershipRole
-    //   );
-
     return {
       permission,
       memberships: permissionData,
-      hasRole: (role: string) =>
-        permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)))
+      hasRole
     };
   };
 
@@ -367,13 +368,16 @@ export const permissionServiceFactory = ({
       return activeRoles.concat(activeAdditionalPrivileges);
     });
 
-    // validateOrgSSO(
-    //   authMethod,
-    //   userProjectPermission.orgAuthEnforced,
-    //   userProjectPermission.orgGoogleSsoAuthEnforced,
-    //   userProjectPermission.bypassOrgAuthEnabled,
-    //   userProjectPermission.orgRole
-    // );
+    const hasRole = (role: string) =>
+      permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)));
+
+    validateOrgSSO(
+      actorAuthMethod,
+      permissionData?.[0].orgAuthEnforced,
+      Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
+      Boolean(permissionData?.[0].bypassOrgAuthEnabled),
+      hasRole(ProjectMembershipRole.Admin)
+    );
 
     const rules = buildProjectPermissionRules(permissionFromRoles);
     const templatedRules = handlebars.compile(JSON.stringify(rules), { data: false });
@@ -422,8 +426,7 @@ export const permissionServiceFactory = ({
     return {
       permission,
       memberships: permissionData,
-      hasRole: (role: string) =>
-        permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)))
+      hasRole
     };
   };
 

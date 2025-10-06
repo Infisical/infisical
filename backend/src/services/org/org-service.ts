@@ -36,6 +36,7 @@ import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-r
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
+import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { ActorAuthMethod, ActorType, AuthMethod, AuthModeJwtTokenPayload, AuthTokenType } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
@@ -112,6 +113,7 @@ type TOrgServiceFactoryDep = {
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
+  additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -144,7 +146,8 @@ export const orgServiceFactory = ({
   reminderService,
   membershipRoleDAL,
   membershipUserDAL,
-  userGroupMembershipDAL
+  userGroupMembershipDAL,
+  additionalPrivilegeDAL
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -1004,7 +1007,8 @@ export const orgServiceFactory = ({
       userId,
       membershipUserDAL,
       membershipRoleDAL,
-      userGroupMembershipDAL
+      userGroupMembershipDAL,
+      additionalPrivilegeDAL
     });
 
     return deletedMembership;
@@ -1040,7 +1044,8 @@ export const orgServiceFactory = ({
       userId,
       membershipUserDAL,
       membershipRoleDAL,
-      userGroupMembershipDAL
+      userGroupMembershipDAL,
+      additionalPrivilegeDAL
     });
 
     return deletedMemberships;

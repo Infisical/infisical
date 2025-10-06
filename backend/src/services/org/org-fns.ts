@@ -6,6 +6,7 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
+import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 
@@ -20,6 +21,7 @@ type TDeleteOrgMemberships = {
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
   userId?: string;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
 };
 
 export const deleteOrgMembershipsFn = async ({
@@ -32,7 +34,8 @@ export const deleteOrgMembershipsFn = async ({
   userId,
   membershipUserDAL,
   userGroupMembershipDAL,
-  membershipRoleDAL
+  membershipRoleDAL,
+  additionalPrivilegeDAL
 }: TDeleteOrgMemberships) => {
   const deletedMemberships = await orgDAL.transaction(async (tx) => {
     await membershipRoleDAL.delete(
@@ -111,6 +114,16 @@ export const deleteOrgMembershipsFn = async ({
     const projectIds = otherMemberships
       .filter((el) => el.scope === AccessScope.Project && el.scopeProjectId)
       .map((el) => el.scopeProjectId as string);
+
+    await additionalPrivilegeDAL.delete(
+      {
+        $in: {
+          projectId: projectIds,
+          actorUserId: membershipUserIds
+        }
+      },
+      tx
+    );
 
     // Delete all the project keys of the user in the organization
     await projectKeyDAL.delete(

@@ -8,6 +8,7 @@ import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars
 import { UnpackedPermissionSchema, unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 
 import { ActorType } from "../auth/auth-type";
+import { TExternalGroupOrgRoleMappingDALFactory } from "../external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TUserDALFactory } from "../user/user-dal";
@@ -31,6 +32,7 @@ type TRoleServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
+  externalGroupOrgRoleMappingDAL: Pick<TExternalGroupOrgRoleMappingDALFactory, "findOne">;
 };
 
 export type TRoleServiceFactory = ReturnType<typeof roleServiceFactory>;
@@ -40,10 +42,12 @@ export const roleServiceFactory = ({
   permissionService,
   projectDAL,
   identityDAL,
-  userDAL
+  userDAL,
+  externalGroupOrgRoleMappingDAL
 }: TRoleServiceFactoryDep) => {
   const orgRoleFactory = newOrgRoleFactory({
-    permissionService
+    permissionService,
+    externalGroupOrgRoleMappingDAL
   });
   const projectRoleFactory = newProjectRoleFactory({
     permissionService,

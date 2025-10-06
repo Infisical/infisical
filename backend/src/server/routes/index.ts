@@ -575,7 +575,8 @@ export const registerRoutes = async (
     smtpService,
     tokenService,
     userAliasDAL,
-    userGroupMembershipDAL
+    userGroupMembershipDAL,
+    additionalPrivilegeDAL
   });
 
   const membershipIdentityService = membershipIdentityServiceFactory({
@@ -583,7 +584,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     orgDAL,
     permissionService,
-    roleDAL
+    roleDAL,
+    additionalPrivilegeDAL
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
@@ -599,7 +601,8 @@ export const registerRoutes = async (
     roleDAL,
     projectDAL,
     identityDAL,
-    userDAL
+    userDAL,
+    externalGroupOrgRoleMappingDAL
   });
   const additionalPrivilegeService = additionalPrivilegeServiceFactory({
     additionalPrivilegeDAL,
@@ -764,7 +767,8 @@ export const registerRoutes = async (
     groupDAL,
     membershipGroupDAL,
     membershipRoleDAL,
-    membershipUserDAL
+    membershipUserDAL,
+    additionalPrivilegeDAL
   });
 
   const githubOrgSyncConfigService = githubOrgSyncServiceFactory({
@@ -891,7 +895,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     roleDAL,
-    userGroupMembershipDAL
+    userGroupMembershipDAL,
+    additionalPrivilegeDAL
   });
   const signupService = authSignupServiceFactory({
     tokenService,

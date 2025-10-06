@@ -16,6 +16,9 @@ import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";
 
 interface TPermissionDataReturn extends TMemberships {
+  orgAuthEnforced?: boolean | null;
+  orgGoogleSsoAuthEnforced?: boolean | null;
+  bypassOrgAuthEnabled?: boolean | null;
   roles: {
     id: string;
     createdAt: Date;
@@ -177,6 +180,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
       const docs = await (tx || db)
         .replicaNode()(TableName.Membership)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+        .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.AdditionalPrivilege, (qb) => {
           if (actorType === ActorType.IDENTITY) {
@@ -264,13 +268,22 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           db.ref("updatedAt").withSchema(TableName.AdditionalPrivilege).as("additionalPrivilegeUpdatedAt"),
           db.ref("id").withSchema(TableName.IdentityMetadata).as("metadataId"),
           db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
-          db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue")
+          db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue"),
+          db.ref("shouldUseNewPrivilegeSystem").withSchema(TableName.Organization),
+          db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
+          db.ref("googleSsoAuthEnforced").withSchema(TableName.Organization).as("orgGoogleSsoAuthEnforced"),
+          db.ref("bypassOrgAuthEnabled").withSchema(TableName.Organization).as("bypassOrgAuthEnabled")
         );
 
       const data = sqlNestRelationships({
         data: docs,
         key: "id",
-        parentMapper: (el) => MembershipsSchema.parse(el),
+        parentMapper: (el) =>
+          MembershipsSchema.extend({
+            orgAuthEnforced: z.boolean().optional().nullable(),
+            orgGoogleSsoAuthEnforced: z.boolean(),
+            bypassOrgAuthEnabled: z.boolean()
+          }).parse(el),
         childrenMapper: [
           {
             key: "additionalPrivilegeId",

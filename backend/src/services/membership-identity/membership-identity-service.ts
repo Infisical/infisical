@@ -5,6 +5,7 @@ import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 
+import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TRoleDALFactory } from "../role/role-dal";
@@ -29,6 +30,7 @@ type TMembershipIdentityServiceFactoryDep = {
     "getOrgPermission" | "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermissionByRoles"
   >;
   orgDAL: Pick<TOrgDALFactory, "findById">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -38,7 +40,8 @@ export const membershipIdentityServiceFactory = ({
   roleDAL,
   membershipRoleDAL,
   permissionService,
-  orgDAL
+  orgDAL,
+  additionalPrivilegeDAL
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
@@ -255,6 +258,7 @@ export const membershipIdentityServiceFactory = ({
 
     await factory.onDeleteMembershipIdentityGuard(dto);
 
+    const scopeField = factory.getScopeField(scopeData);
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipIdentityDAL.findOne({
       scope: scopeData.scope,
@@ -272,6 +276,13 @@ export const membershipIdentityServiceFactory = ({
       });
 
     const membershipDoc = await membershipIdentityDAL.transaction(async (tx) => {
+      await additionalPrivilegeDAL.delete(
+        {
+          actorIdentityId: dto.selector.identityId,
+          [scopeField.key]: scopeField.value
+        },
+        tx
+      );
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipIdentityDAL.deleteById(existingMembership.id, tx);
       return doc;

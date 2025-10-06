@@ -13,6 +13,7 @@ import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 
+import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { AuthMethod } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -53,6 +54,7 @@ type TMembershipUserServiceFactoryDep = {
   tokenService: TAuthTokenServiceFactory;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectDAL: TProjectDALFactory;
+  additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -70,7 +72,8 @@ export const membershipUserServiceFactory = ({
   smtpService,
   tokenService,
   userGroupMembershipDAL,
-  projectDAL
+  projectDAL,
+  additionalPrivilegeDAL
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -410,9 +413,20 @@ export const membershipUserServiceFactory = ({
           userId: dto.permission.id,
           membershipUserDAL,
           userGroupMembershipDAL,
-          membershipRoleDAL
+          membershipRoleDAL,
+          additionalPrivilegeDAL
         });
         return doc;
+      }
+
+      if (dto.scopeData.scope === AccessScope.Project) {
+        await additionalPrivilegeDAL.delete(
+          {
+            actorUserId: dto.selector.userId,
+            projectId: dto.scopeData.projectId
+          },
+          tx
+        );
       }
 
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);

@@ -161,7 +161,6 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     }
   });
 
-  // TODO(simp): look into multi deletion and this as well
   server.route({
     method: "POST",
     url: "/:projectId/memberships/details",

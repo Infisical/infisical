@@ -10,6 +10,7 @@ import {
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError } from "@app/lib/errors";
+import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
 import { TRoleScopeFactory } from "../role-types";
@@ -17,9 +18,13 @@ import { TRoleScopeFactory } from "../role-types";
 // TODO(simp): missing external group checking
 type TOrgRoleScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  externalGroupOrgRoleMappingDAL: Pick<TExternalGroupOrgRoleMappingDALFactory, "findOne">;
 };
 
-export const newOrgRoleFactory = ({ permissionService }: TOrgRoleScopeFactoryDep): TRoleScopeFactory => {
+export const newOrgRoleFactory = ({
+  permissionService,
+  externalGroupOrgRoleMappingDAL
+}: TOrgRoleScopeFactoryDep): TRoleScopeFactory => {
   const getScopeField: TRoleScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Organization) {
       return { key: "orgId" as const, value: dto.orgId };
@@ -60,6 +65,17 @@ export const newOrgRoleFactory = ({ permissionService }: TOrgRoleScopeFactoryDep
       dto.permission.orgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Role);
+
+    const externalGroupMapping = await externalGroupOrgRoleMappingDAL.findOne({
+      orgId: dto.permission.orgId,
+      roleId: dto.selector.id
+    });
+
+    if (externalGroupMapping)
+      throw new BadRequestError({
+        message:
+          "Cannot delete role assigned to external group organization role mapping. Please re-assign external mapping and try again."
+      });
   };
 
   const onListRoleGuard: TRoleScopeFactory["onListRoleGuard"] = async (dto) => {

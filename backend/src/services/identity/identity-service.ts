@@ -273,7 +273,7 @@ export const identityServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
-    // TODO(simp): check this in identity service
+    // TODO(namespace): check this in identity service
     const activeLockouts = await keyStore.getKeysByPattern(`lockout:identity:${id}:*`);
 
     const activeLockoutAuthMethods = new Set<string>();

@@ -19,6 +19,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, ScimRequestError, UnauthorizedError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -93,6 +94,7 @@ type TScimServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   smtpService: Pick<TSmtpService, "sendMail">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
+  additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
 };
 
 export const scimServiceFactory = ({
@@ -111,7 +113,8 @@ export const scimServiceFactory = ({
   externalGroupOrgRoleMappingDAL,
   membershipGroupDAL,
   membershipUserDAL,
-  membershipRoleDAL
+  membershipRoleDAL,
+  additionalPrivilegeDAL
 }: TScimServiceFactoryDep): TScimServiceFactory => {
   const createScimToken: TScimServiceFactory["createScimToken"] = async ({
     actor,
@@ -673,7 +676,8 @@ export const scimServiceFactory = ({
       licenseService,
       membershipUserDAL,
       membershipRoleDAL,
-      userGroupMembershipDAL
+      userGroupMembershipDAL,
+      additionalPrivilegeDAL
     });
 
     return {}; // intentionally return empty object upon success
