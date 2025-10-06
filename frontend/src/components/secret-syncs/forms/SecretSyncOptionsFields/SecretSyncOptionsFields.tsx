@@ -19,6 +19,7 @@ import { TSecretSyncForm } from "../schemas";
 import { AwsParameterStoreSyncOptionsFields } from "./AwsParameterStoreSyncOptionsFields";
 import { AwsSecretsManagerSyncOptionsFields } from "./AwsSecretsManagerSyncOptionsFields";
 import { AzureKeyVaultSyncOptionsFields } from "./AzureKeyVaultSyncOptionsFields";
+import { CoolifySyncOptionsFields } from "./CoolifySyncOptionsFields";
 import { FlyioSyncOptionsFields } from "./FlyioSyncOptionsFields";
 import { RenderSyncOptionsFields } from "./RenderSyncOptionsFields";
 
@@ -53,6 +54,9 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
       break;
     case SecretSync.AzureKeyVault:
       AdditionalSyncOptionsFieldsComponent = <AzureKeyVaultSyncOptionsFields />;
+      break;
+    case SecretSync.Coolify:
+      AdditionalSyncOptionsFieldsComponent = <CoolifySyncOptionsFields />;
       break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:

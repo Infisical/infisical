@@ -2880,6 +2880,10 @@ export const SecretSyncs = {
     AZURE_KEY_VAULT: {
       disableCertificateImport:
         "Whether Infisical should skip importing certificate objects from Azure Key Vault when syncing secrets."
+    },
+    COOLIFY: {
+      autoRedeployServices:
+        "Whether Infisical should automatically redeploy the configured coolify application upon secret changes."
     }
   },
   DESTINATION_CONFIG: {
