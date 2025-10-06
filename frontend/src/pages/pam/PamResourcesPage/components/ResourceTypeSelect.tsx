@@ -2,8 +2,10 @@ import { useMemo } from "react";
 import { faInfoCircle, faMagnifyingGlass, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { EmptyState, Input, Pagination, Spinner, Tooltip } from "@app/components/v2";
-import { usePagination, useResetPageHelper } from "@app/hooks";
+import { useSubscription } from "@app/context";
+import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
   PAM_RESOURCE_TYPE_MAP,
   PamResourceType,
@@ -16,6 +18,18 @@ type Props = {
 
 export const ResourceTypeSelect = ({ onSelect }: Props) => {
   const { isPending, data: resourceOptions } = useListPamResourceOptions();
+  const { subscription } = useSubscription();
+  const { popUp, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+
+  const appendedResourceOptions = useMemo(() => {
+    if (!resourceOptions) return [];
+    return [
+      ...resourceOptions,
+      { name: "RDP", resource: PamResourceType.RDP },
+      { name: "SSH", resource: PamResourceType.SSH },
+      { name: "Kubernetes", resource: PamResourceType.Kubernetes }
+    ];
+  }, [resourceOptions]);
 
   const { search, setSearch, setPage, page, perPage, setPerPage, offset } = usePagination("", {
     initPerPage: 16
@@ -23,12 +37,12 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
 
   const filteredOptions = useMemo(
     () =>
-      resourceOptions?.filter(
+      appendedResourceOptions?.filter(
         ({ name, resource }) =>
           name.toLowerCase().includes(search.trim().toLowerCase()) ||
           resource.toLowerCase().includes(search.trim().toLowerCase())
       ) ?? [],
-    [resourceOptions, search]
+    [appendedResourceOptions, search]
   );
 
   useResetPageHelper({
@@ -36,6 +50,23 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
     offset,
     setPage
   });
+
+  const handleResourceSelect = (resource: PamResourceType) => {
+    if (!subscription?.pam) {
+      handlePopUpToggle("upgradePlan", true);
+      return;
+    }
+
+    if (
+      resource === PamResourceType.RDP ||
+      resource === PamResourceType.SSH ||
+      resource === PamResourceType.Kubernetes
+    ) {
+      return;
+    }
+
+    onSelect(resource);
+  };
 
   if (isPending) {
     return (
@@ -62,7 +93,7 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
           return (
             <button
               type="button"
-              onClick={() => onSelect(option.resource)}
+              onClick={() => handleResourceSelect(option.resource)}
               className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
             >
               <div className="relative">
@@ -134,6 +165,13 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
           onChangePage={setPage}
           onChangePerPage={setPerPage}
           perPageList={[16]}
+        />
+      )}
+      {subscription && (
+        <UpgradePlanModal
+          isOpen={popUp.upgradePlan.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          text="PAM (Privileged Access Management) requires an enterprise plan."
         />
       )}
     </div>
