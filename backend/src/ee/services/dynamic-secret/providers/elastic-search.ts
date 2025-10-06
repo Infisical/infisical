@@ -34,6 +34,7 @@ export const ElasticSearchProvider = (): TDynamicProviderFns => {
 
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretElasticSearchSchema>) => {
     const connection = new ElasticSearchClient({
+      requestTimeout: 30_000,
       node: {
         url: new URL(`${providerInputs.host}:${providerInputs.port}`),
         ...(providerInputs.ca && {
