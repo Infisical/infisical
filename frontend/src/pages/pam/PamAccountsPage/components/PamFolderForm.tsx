@@ -34,7 +34,7 @@ export const PamFolderForm = ({ folder, onSubmit }: Props) => {
   const {
     control,
     handleSubmit,
-    formState: { isSubmitting, isDirty, errors }
+    formState: { isSubmitting, isDirty }
   } = form;
 
   return (
@@ -47,11 +47,11 @@ export const PamFolderForm = ({ folder, onSubmit }: Props) => {
         <Controller
           name="name"
           control={control}
-          render={({ field }) => (
+          render={({ field, fieldState: { error } }) => (
             <FormControl
               helperText="Name must be slug-friendly"
-              errorText={errors.name?.message}
-              isError={Boolean(errors.name?.message)}
+              errorText={error?.message}
+              isError={Boolean(error?.message)}
               label="Name"
             >
               <Input autoFocus placeholder="my-folder" {...field} />
@@ -61,10 +61,10 @@ export const PamFolderForm = ({ folder, onSubmit }: Props) => {
         <Controller
           name="description"
           control={control}
-          render={({ field }) => (
+          render={({ field, fieldState: { error } }) => (
             <FormControl
-              errorText={errors.name?.message}
-              isError={Boolean(errors.name?.message)}
+              errorText={error?.message}
+              isError={Boolean(error?.message)}
               label="Description"
               isOptional
             >

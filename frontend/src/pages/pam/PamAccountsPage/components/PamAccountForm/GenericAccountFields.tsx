@@ -10,21 +10,18 @@ export const genericAccountFieldsSchema = z.object({
 });
 
 export const GenericAccountFields = () => {
-  const {
-    formState: { errors },
-    control
-  } = useFormContext<{ name: string; description: string }>();
+  const { control } = useFormContext<{ name: string; description: string }>();
 
   return (
     <>
       <Controller
         name="name"
         control={control}
-        render={({ field }) => (
+        render={({ field, fieldState: { error } }) => (
           <FormControl
             helperText="Name must be slug-friendly"
-            errorText={errors.name?.message}
-            isError={Boolean(errors.name?.message)}
+            errorText={error?.message}
+            isError={Boolean(error?.message)}
             label="Name"
           >
             <Input autoFocus placeholder="my-account" {...field} />
@@ -34,10 +31,10 @@ export const GenericAccountFields = () => {
       <Controller
         name="description"
         control={control}
-        render={({ field }) => (
+        render={({ field, fieldState: { error } }) => (
           <FormControl
-            errorText={errors.name?.message}
-            isError={Boolean(errors.name?.message)}
+            errorText={error?.message}
+            isError={Boolean(error?.message)}
             label="Description"
           >
             <TextArea {...field} />
