@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 
+import SecurityClient from "@app/components/utilities/SecurityClient";
 import { apiRequest } from "@app/config/request";
 import { SessionStorageKeys } from "@app/const";
 import { queryClient as qc } from "@app/hooks/api/reactQuery";
@@ -86,6 +87,8 @@ export const useDeleteMe = () => {
       localStorage.removeItem("tag");
       localStorage.removeItem("PRIVATE_KEY");
       localStorage.removeItem("orgData.id");
+      setAuthToken("");
+      SecurityClient.setToken("");
 
       queryClient.clear();
     }
