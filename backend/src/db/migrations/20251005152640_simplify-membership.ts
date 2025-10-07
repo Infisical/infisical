@@ -107,19 +107,19 @@ const createRoleTable = async (knex: Knex) => {
 
   await knex.schema.raw(`
     CREATE UNIQUE INDEX role_name_org_id_unique
-    ON "${TableName.Role}" (name, "orgId")
+    ON "${TableName.Role}" (slug, "orgId")
     WHERE "orgId" IS NOT NULL;
   `);
 
   await knex.schema.raw(`
     CREATE UNIQUE INDEX role_name_project_id_unique
-    ON "${TableName.Role}" (name, "projectId")
+    ON "${TableName.Role}" (slug, "projectId")
     WHERE "projectId" IS NOT NULL;
   `);
 
   await knex.schema.raw(`
     CREATE UNIQUE INDEX role_name_namespace_id_unique
-    ON "${TableName.Role}" (name, "namespaceId")
+    ON "${TableName.Role}" (slug, "namespaceId")
     WHERE "namespaceId" IS NOT NULL;
   `);
 
