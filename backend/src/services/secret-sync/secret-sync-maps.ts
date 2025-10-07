@@ -171,6 +171,14 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
     const newTargetEnv = newConfig.targetEnvironment as string | undefined;
 
     const wildcardValues = ["*", ""];
+
+    if (
+      (newConfig.scope as string) === "group"
+        ? existingConfig.groupId !== newConfig.groupId
+        : existingConfig.projectId !== newConfig.projectId
+    )
+      return false;
+
     // If either has wildcard, it conflicts with any targetEnvironment
     if (
       !existingTargetEnv ||
@@ -181,12 +189,7 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
       return true;
     }
 
-    return (
-      existingTargetEnv === newTargetEnv &&
-      ((newConfig.scope as string) === "group"
-        ? existingConfig.groupId === newConfig.groupId
-        : existingConfig.projectId === newConfig.projectId)
-    );
+    return existingTargetEnv === newTargetEnv;
   },
   [SecretSync.CloudflarePages]: defaultDuplicateCheck,
   [SecretSync.CloudflareWorkers]: defaultDuplicateCheck,
