@@ -174,7 +174,7 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
               <Controller
                 control={control}
                 name="relativeModeValue"
-                render={({ field }) => {
+                render={({ field, fieldState: { error } }) => {
                   const duration = field.value?.substring(0, field.value.length - 1);
                   const unitOfTime = field.value?.at(-1);
                   return (
@@ -200,31 +200,42 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
                           })}
                         </div>
                       ))}
-                      <div className="flex items-center gap-2">
-                        <FormControl className="mb-0 w-28" label="Duration">
-                          <Input
-                            type="number"
-                            value={duration || "1"}
-                            onChange={(val) => {
-                              const durationVal = val.target.value;
-                              field.onChange(`${durationVal}${unitOfTime}`);
-                            }}
-                            max={60}
-                            min={1}
-                          />
-                        </FormControl>
-                        <FormControl className="mb-0 w-36" label="Unit of Time">
-                          <Select
-                            value={unitOfTime}
-                            onValueChange={(val) => field.onChange(`${duration}${val}`)}
-                            className="w-full"
-                            position="popper"
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <FormControl
+                            className="mb-0 w-28"
+                            label="Duration"
+                            isError={Boolean(error)}
                           >
-                            {RELATIVE_OPTIONS.map((opt) => (
-                              <SelectItem value={opt.unit}>{opt.label}</SelectItem>
-                            ))}
-                          </Select>
-                        </FormControl>
+                            <Input
+                              type="number"
+                              value={duration}
+                              onChange={(val) => {
+                                const durationVal = val.target.value;
+                                field.onChange(`${durationVal}${unitOfTime}`);
+                              }}
+                              max={60}
+                              min={1}
+                            />
+                          </FormControl>
+                          <FormControl className="mb-0 w-36" label="Unit of Time">
+                            <Select
+                              value={unitOfTime}
+                              onValueChange={(val) => field.onChange(`${duration}${val}`)}
+                              className="w-full"
+                              position="popper"
+                            >
+                              {RELATIVE_OPTIONS.map((opt) => (
+                                <SelectItem value={opt.unit}>{opt.label}</SelectItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </div>
+                        {error && (
+                          <span className="text-xs text-red-600 text-opacity-90">
+                            {error.message}
+                          </span>
+                        )}
                       </div>
                     </div>
                   );
