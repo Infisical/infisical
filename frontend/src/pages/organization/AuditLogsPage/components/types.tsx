@@ -1,3 +1,4 @@
+import ms from "ms";
 import { z } from "zod";
 
 import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
@@ -27,7 +28,18 @@ export const auditLogFilterFormSchema = z.object({
 export const auditLogDateFilterFormSchema = z
   .object({
     type: z.nativeEnum(AuditLogDateFilterType),
-    relativeModeValue: z.string().optional(),
+    relativeModeValue: z
+      .string()
+      .refine(
+        (val) => {
+          const parsedMs = ms(val);
+          return typeof parsedMs === "number" && parsedMs > 0;
+        },
+        {
+          message: "Invalid duration format. Must be a positive duration."
+        }
+      )
+      .optional(),
     startDate: z.date(),
     endDate: z.date()
   })

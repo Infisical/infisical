@@ -79,18 +79,17 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-
   "overrides": {
     "cipher-base": "1.0.5",
     "sha.js": "2.4.12"
   },
-
   "devDependencies": {
     "@babel/cli": "^7.18.10",
     "@babel/core": "^7.18.10",
     "@babel/plugin-syntax-import-attributes": "^7.24.7",
     "@babel/preset-env": "^7.18.10",
     "@babel/preset-react": "^7.24.7",
+    "@react-email/preview-server": "^4.3.0",
     "@smithy/types": "^4.3.1",
     "@types/bcrypt": "^5.0.2",
     "@types/jmespath": "^0.15.2",
@@ -126,7 +125,7 @@
     "nodemon": "^3.0.2",
     "pino-pretty": "^10.2.3",
     "prompt-sync": "^4.2.0",
-    "react-email": "4.0.7",
+    "react-email": "^4.3.0",
     "rimraf": "^5.0.5",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.8",
