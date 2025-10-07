@@ -16,9 +16,9 @@ import {
   AdminGetOrganizationsFilters,
   AdminGetUsersFilters,
   AdminIntegrationsConfig,
-  OrganizationWithProjects,
   TGetEnvOverrides,
   TGetInvalidatingCacheStatus,
+  TGetOrganizationsResponse,
   TGetServerRootKmsEncryptionDetails,
   TServerConfig
 } from "./types";
@@ -49,24 +49,21 @@ export const fetchServerConfig = async () => {
 };
 
 export const useAdminGetOrganizations = (filters: AdminGetOrganizationsFilters) => {
-  return useInfiniteQuery({
-    initialPageParam: 0,
+  return useQuery({
     queryKey: adminQueryKeys.getOrganizations(filters),
-    queryFn: async ({ pageParam }) => {
-      const { data } = await apiRequest.get<{ organizations: OrganizationWithProjects[] }>(
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetOrganizationsResponse>(
         "/api/v1/admin/organization-management/organizations",
         {
           params: {
-            ...filters,
-            offset: pageParam
+            ...filters
           }
         }
       );
 
-      return data.organizations;
+      return { organizations: data.organizations, totalCount: data.meta.total };
     },
-    getNextPageParam: (lastPage, pages) =>
-      lastPage.length !== 0 ? pages.length * filters.limit : undefined
+    placeholderData: (previousData) => previousData
   });
 };
 

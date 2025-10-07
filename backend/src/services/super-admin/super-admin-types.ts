@@ -34,6 +34,10 @@ export type TGetOrganizationsDTO = {
   searchTerm: string;
 };
 
+export type TCountOrganizationsDTO = {
+  searchTerm: string;
+};
+
 export type TCreateOrganizationDTO = {
   name: string;
   inviteAdminEmails: string[];

@@ -138,6 +138,27 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countOrganizationsByFilter = async ({ searchTerm }: { searchTerm: string }) => {
+    interface CountResult {
+      count: string;
+    }
+    try {
+      const count = await db
+        .replicaNode()(TableName.Organization)
+        .where((qb) => {
+          if (searchTerm) {
+            void qb.whereILike(`${TableName.Organization}.name`, `%${searchTerm}%`);
+          }
+        })
+        .count("*")
+        .first();
+
+      return parseInt((count as unknown as CountResult).count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count organizations by filter" });
+    }
+  };
+
   const findOrgById = async (orgId: string) => {
     try {
       const org = (await db
@@ -670,6 +691,7 @@ export const orgDALFactory = (db: TDbClient) => {
     findOrgBySlug,
     findAllOrgsByUserId,
     findOrganizationsByFilter,
+    countOrganizationsByFilter,
     ghostUserExists,
     findOrgMembersByUsername,
     findOrgMembersByRole,

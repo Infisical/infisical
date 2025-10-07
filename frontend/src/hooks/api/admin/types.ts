@@ -34,6 +34,13 @@ export type OrganizationWithProjects = Organization & {
   }[];
 };
 
+export type TGetOrganizationsResponse = {
+  organizations: OrganizationWithProjects[];
+  meta: {
+    total: number;
+  };
+};
+
 export type TServerConfig = {
   initialized: boolean;
   allowSignUp: boolean;
@@ -81,8 +88,9 @@ export type TCreateAdminUserDTO = {
 };
 
 export type AdminGetOrganizationsFilters = {
-  limit: number;
-  searchTerm: string;
+  searchTerm?: string;
+  limit?: number;
+  offset?: number;
 };
 
 export type AdminGetUsersFilters = {
@@ -162,3 +170,7 @@ export type TResendOrgInviteDTO = {
   organizationId: string;
   membershipId: string;
 };
+
+export enum AdminOrganizationOrderBy {
+  Name = "name"
+}

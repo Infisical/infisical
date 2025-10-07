@@ -230,7 +230,10 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
                 createdAt: z.date()
               })
               .array()
-          }).array()
+          }).array(),
+          meta: z.object({
+            total: z.number()
+          })
         })
       }
     },
@@ -243,9 +246,15 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const organizations = await server.services.superAdmin.getOrganizations({
         ...req.query
       });
+      const count = await server.services.superAdmin.countOrganizations({
+        ...req.query
+      });
 
       return {
-        organizations
+        organizations,
+        meta: {
+          total: count
+        }
       };
     }
   });

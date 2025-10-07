@@ -48,6 +48,11 @@ import {
 } from "@app/components/v2";
 import { useUser } from "@app/context";
 import { OrgMembershipRole } from "@app/helpers/roles";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
   useAdminDeleteOrganization,
@@ -57,7 +62,7 @@ import {
   useServerAdminAccessOrg,
   useServerAdminResendOrgInvite
 } from "@app/hooks/api";
-import { OrganizationWithProjects } from "@app/hooks/api/admin/types";
+import { AdminOrganizationOrderBy, OrganizationWithProjects } from "@app/hooks/api/admin/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { OrgMembershipStatus } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -443,13 +448,32 @@ const OrganizationsPanelTable = ({
   const { user } = useUser();
 
   const navigate = useNavigate();
-  const { data, isPending, isFetchingNextPage, hasNextPage, fetchNextPage } =
-    useAdminGetOrganizations({
-      limit: 20,
-      searchTerm: debouncedSearchTerm
+
+  const { offset, limit, setPage, perPage, page, setPerPage } =
+    usePagination<AdminOrganizationOrderBy>(AdminOrganizationOrderBy.Name, {
+      initPerPage: getUserTablePreference("ResourceOverviewOrgsTable", PreferenceKey.PerPage, 10)
     });
 
-  const isEmpty = !isPending && !data?.pages?.[0].length;
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("ResourceOverviewOrgsTable", PreferenceKey.PerPage, newPerPage);
+  };
+
+  const { data, isPending } = useAdminGetOrganizations({
+    limit,
+    offset,
+    searchTerm: debouncedSearchTerm
+  });
+
+  const { organizations, totalCount = 0 } = data ?? {};
+
+  const isEmpty = !isPending && !totalCount;
+
+  useResetPageHelper({
+    totalCount,
+    offset,
+    setPage
+  });
 
   const { mutateAsync: accessOrganization } = useServerAdminAccessOrg();
 
@@ -499,125 +523,120 @@ const OrganizationsPanelTable = ({
             <TBody>
               {isPending && <TableSkeleton columns={4} innerKey="organizations" />}
               {!isPending &&
-                data?.pages?.map((orgs) =>
-                  orgs.map((org) => {
-                    const isMember = org.members.find((member) => member.user.id === user.id);
+                organizations?.map((org) => {
+                  const isMember = org.members.find((member) => member.user.id === user.id);
 
-                    return (
-                      <Tr key={`org-${org.id}`} className="w-full">
-                        <Td className="w-1/2 max-w-0">
-                          <div className="flex items-center gap-x-1.5">
-                            {org.name ? (
-                              <p className="truncate">{org.name}</p>
-                            ) : (
-                              <span className="text-mineshaft-400">Not Set</span>
-                            )}
-                          </div>
-                        </Td>
-                        <Td className="w-1/3">
-                          <button
-                            type="button"
-                            onClick={() => handlePopUpOpen("viewMembers", { organization: org })}
-                            className="flex items-center hover:underline"
-                          >
-                            <Tooltip className="text-center" content="View Members">
-                              <FontAwesomeIcon
-                                icon={faEye}
-                                className="mr-1.5 text-mineshaft-300"
-                                size="sm"
-                              />
+                  return (
+                    <Tr key={`org-${org.id}`} className="w-full">
+                      <Td className="w-1/2 max-w-0">
+                        <div className="flex items-center gap-x-1.5">
+                          {org.name ? (
+                            <p className="truncate">{org.name}</p>
+                          ) : (
+                            <span className="text-mineshaft-400">Not Set</span>
+                          )}
+                        </div>
+                      </Td>
+                      <Td className="w-1/3">
+                        <button
+                          type="button"
+                          onClick={() => handlePopUpOpen("viewMembers", { organization: org })}
+                          className="flex items-center hover:underline"
+                        >
+                          <Tooltip className="text-center" content="View Members">
+                            <FontAwesomeIcon
+                              icon={faEye}
+                              className="mr-1.5 text-mineshaft-300"
+                              size="sm"
+                            />
+                          </Tooltip>
+                          {org.members.length} {org.members.length === 1 ? "Member" : "Members"}
+                          {!org.members.some(
+                            (member) =>
+                              member.role === OrgMembershipRole.Admin &&
+                              member.status === OrgMembershipStatus.Accepted
+                          ) && (
+                            <Tooltip content="No admins have accepted their invitations.">
+                              <div className="ml-1.5">
+                                <FontAwesomeIcon className="text-yellow" icon={faWarning} />
+                              </div>
                             </Tooltip>
-                            {org.members.length} {org.members.length === 1 ? "Member" : "Members"}
-                            {!org.members.some(
-                              (member) =>
-                                member.role === OrgMembershipRole.Admin &&
-                                member.status === OrgMembershipStatus.Accepted
-                            ) && (
-                              <Tooltip content="No admins have accepted their invitations.">
-                                <div className="ml-1.5">
-                                  <FontAwesomeIcon className="text-yellow" icon={faWarning} />
-                                </div>
-                              </Tooltip>
-                            )}
-                          </button>
-                        </Td>
-                        <Td className="w-1/3">
-                          {org.projects.length} {org.projects.length === 1 ? "Project" : "Projects"}
-                        </Td>
-                        <Td>
-                          <div className="flex justify-end gap-x-1">
-                            {isMember && (
-                              <Tooltip
-                                className="text-center"
-                                content="You are a member of this organization"
+                          )}
+                        </button>
+                      </Td>
+                      <Td className="w-1/3">
+                        {org.projects.length} {org.projects.length === 1 ? "Project" : "Projects"}
+                      </Td>
+                      <Td>
+                        <div className="flex justify-end gap-x-1">
+                          {isMember && (
+                            <Tooltip
+                              className="text-center"
+                              content="You are a member of this organization"
+                            >
+                              <div>
+                                <FontAwesomeIcon
+                                  className="text-mineshaft-400"
+                                  icon={faUserCheck}
+                                  size="sm"
+                                />
+                              </div>
+                            </Tooltip>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
+                                ariaLabel="Options"
+                                colorSchema="secondary"
+                                className="w-6"
+                                variant="plain"
                               >
-                                <div>
-                                  <FontAwesomeIcon
-                                    className="text-mineshaft-400"
-                                    icon={faUserCheck}
-                                    size="sm"
-                                  />
-                                </div>
-                              </Tooltip>
-                            )}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <IconButton
-                                  ariaLabel="Options"
-                                  colorSchema="secondary"
-                                  className="w-6"
-                                  variant="plain"
-                                >
-                                  <FontAwesomeIcon icon={faEllipsisV} />
-                                </IconButton>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent sideOffset={2} align="end">
-                                {!isMember && (
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleAccessOrg(org.id);
-                                    }}
-                                    icon={<FontAwesomeIcon icon={faUserPlus} />}
-                                  >
-                                    Join Organization
-                                  </DropdownMenuItem>
-                                )}
+                                <FontAwesomeIcon icon={faEllipsisV} />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent sideOffset={2} align="end">
+                              {!isMember && (
                                 <DropdownMenuItem
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handlePopUpOpen("deleteOrganization", {
-                                      orgId: org.id,
-                                      orgName: org.name
-                                    });
+                                    handleAccessOrg(org.id);
                                   }}
-                                  icon={<FontAwesomeIcon icon={faTrash} />}
+                                  icon={<FontAwesomeIcon icon={faUserPlus} />}
                                 >
-                                  Delete Organization
+                                  Join Organization
                                 </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </Td>
-                      </Tr>
-                    );
-                  })
-                )}
+                              )}
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("deleteOrganization", {
+                                    orgId: org.id,
+                                    orgName: org.name
+                                  });
+                                }}
+                                icon={<FontAwesomeIcon icon={faTrash} />}
+                              >
+                                Delete Organization
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </Td>
+                    </Tr>
+                  );
+                })}
             </TBody>
           </Table>
           {!isPending && isEmpty && <EmptyState title="No organizations found" icon={faBuilding} />}
         </TableContainer>
-        {!isEmpty && (
-          <Button
-            className="mt-4 py-3 text-sm"
-            isFullWidth
-            variant="outline_bg"
-            isLoading={isFetchingNextPage}
-            isDisabled={isFetchingNextPage || !hasNextPage}
-            onClick={() => fetchNextPage()}
-          >
-            {hasNextPage ? "Load More" : "End of list"}
-          </Button>
+        {!isPending && totalCount > 0 && (
+          <Pagination
+            count={totalCount}
+            page={page}
+            perPage={perPage}
+            onChangePage={(newPage) => setPage(newPage)}
+            onChangePerPage={handlePerPageChange}
+          />
         )}
       </div>
       <ViewMembersModal

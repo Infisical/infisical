@@ -55,6 +55,7 @@ import {
   TAdminGetUsersDTO,
   TAdminIntegrationConfig,
   TAdminSignUpDTO,
+  TCountOrganizationsDTO,
   TCreateOrganizationDTO,
   TGetOrganizationsDTO,
   TResendOrgInviteDTO
@@ -750,6 +751,13 @@ export const superAdminServiceFactory = ({
     return organizations;
   };
 
+  const countOrganizations = async ({ searchTerm }: TCountOrganizationsDTO) => {
+    const count = await orgDAL.countOrganizationsByFilter({
+      searchTerm
+    });
+    return count;
+  };
+
   const createOrganization = async (
     { name, inviteAdminEmails: emails }: TCreateOrganizationDTO,
     actor: OrgServiceActor
@@ -1146,6 +1154,7 @@ export const superAdminServiceFactory = ({
     invalidateCache,
     checkIfInvalidatingCache,
     getOrganizations,
+    countOrganizations,
     deleteOrganization,
     deleteOrganizationMembership,
     initializeAdminIntegrationConfigSync,
