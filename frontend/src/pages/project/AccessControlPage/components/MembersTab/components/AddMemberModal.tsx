@@ -121,12 +121,12 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
           .map((member) => {
             if (!member) return null;
 
-            if (member.user.email) {
-              return member.user.email;
-            }
-
             if (member.user.username) {
               return member.user.username;
+            }
+
+            if (member.user.email) {
+              return member.user.email;
             }
 
             return null;

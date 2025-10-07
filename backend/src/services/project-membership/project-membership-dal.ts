@@ -224,11 +224,6 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .where(`${TableName.Users}.id`, userId)
         .where(`${TableName.Project}.orgId`, orgId)
-        .join<TUserEncryptionKeys>(
-          TableName.UserEncryptionKey,
-          `${TableName.UserEncryptionKey}.userId`,
-          `${TableName.Users}.id`
-        )
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .select(
@@ -236,7 +231,6 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           db.ref("isGhost").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
           db.ref("email").withSchema(TableName.Users),
-          db.ref("publicKey").withSchema(TableName.UserEncryptionKey),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("id").withSchema(TableName.Users).as("userId"),
@@ -258,22 +252,11 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
 
       const members = sqlNestRelationships({
         data: docs,
-        parentMapper: ({
-          email,
-          firstName,
-          username,
-          lastName,
-          publicKey,
-          isGhost,
-          id,
-          projectId,
-          projectName,
-          projectType
-        }) => ({
+        parentMapper: ({ email, firstName, username, lastName, isGhost, id, projectId, projectName, projectType }) => ({
           id,
           userId,
           projectId,
-          user: { email, username, firstName, lastName, id: userId, publicKey, isGhost },
+          user: { email, username, firstName, lastName, id: userId, isGhost, publicKey: "" },
           project: {
             id: projectId,
             name: projectName,
