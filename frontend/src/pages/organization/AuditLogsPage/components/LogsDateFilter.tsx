@@ -211,7 +211,9 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
                               type="number"
                               value={duration}
                               onChange={(val) => {
-                                const durationVal = val.target.value;
+                                const durationVal = val.target.value
+                                  ? Number(val.target.value)
+                                  : undefined;
                                 field.onChange(`${durationVal}${unitOfTime}`);
                               }}
                               max={60}
