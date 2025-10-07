@@ -126,7 +126,7 @@ export const groupServiceFactory = ({
           slug: slug || slugify(`${name}-${alphaNumericNanoId(4)}`),
           orgId: actorOrgId,
           role: isCustomRole ? OrgMembershipRole.Custom : role,
-          roleId: rolePermissionDetails?.role?.id
+          roleId: null
         },
         tx
       );

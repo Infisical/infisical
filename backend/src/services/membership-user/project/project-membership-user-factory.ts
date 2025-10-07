@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, OrgMembershipStatus, ProjectMembershipRole } from "@app/db/schemas";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
@@ -112,19 +112,36 @@ export const newProjectMembershipUserFactory = ({
     dto,
     newMembers
   ) => {
+    const orgMembershipAccepted = await membershipUserDAL.find({
+      scope: AccessScope.Organization,
+      scopeOrgId: dto.permission.orgId,
+      status: OrgMembershipStatus.Accepted,
+      $in: {
+        actorUserId: newMembers.map((el) => el.id)
+      }
+    });
+
+    if (!orgMembershipAccepted.length) return { signUpTokens: [] };
+
     const appCfg = getConfig();
     const scope = getScopeField(dto.scopeData);
     const project = await projectDAL.findById(scope.value);
-    const emails = newMembers.filter((el) => Boolean(el?.email)).map((el) => el?.email as string);
-    await smtpService.sendMail({
-      template: SmtpTemplates.WorkspaceInvite,
-      subjectLine: "Infisical project invitation",
-      recipients: emails,
-      substitutions: {
-        workspaceName: project.name,
-        callback_url: `${appCfg.SITE_URL}/login`
-      }
-    });
+
+    const orgMembershipAcceptedUserIds = orgMembershipAccepted.map((el) => el.actorUserId as string);
+    const emails = newMembers
+      .filter((el) => Boolean(el?.email) && orgMembershipAcceptedUserIds.includes(el.id))
+      .map((el) => el?.email as string);
+    if (emails.length) {
+      await smtpService.sendMail({
+        template: SmtpTemplates.WorkspaceInvite,
+        subjectLine: "Infisical project invitation",
+        recipients: emails,
+        substitutions: {
+          workspaceName: project.name,
+          callback_url: `${appCfg.SITE_URL}/login`
+        }
+      });
+    }
     return { signUpTokens: [] };
   };
 

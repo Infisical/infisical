@@ -1061,14 +1061,14 @@ const rollbackMembershipData = async (knex: Knex) => {
 };
 
 export async function down(knex: Knex): Promise<void> {
-  const hasMembershipTable = await knex.schema.hasTable(TableName.Membership);
-  if (hasMembershipTable) {
-    await rollbackMembershipData(knex);
-  }
-
   const hasRoleTable = await knex.schema.hasTable(TableName.Role);
   if (hasRoleTable) {
     await rollbackRoleData(knex);
+  }
+
+  const hasMembershipTable = await knex.schema.hasTable(TableName.Membership);
+  if (hasMembershipTable) {
+    await rollbackMembershipData(knex);
   }
 
   const hasMembershipRoleTable = await knex.schema.hasTable(TableName.MembershipRole);
