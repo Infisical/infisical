@@ -74,7 +74,6 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       }
     },
     handler: async (req) => {
-      // TODO(simp): name to id convertor
       const { membership: groupMembership } = await server.services.membershipGroup.createMembership({
         permission: req.permission,
         data: {

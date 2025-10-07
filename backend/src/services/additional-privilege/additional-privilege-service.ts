@@ -93,7 +93,7 @@ export const additionalPrivilegeServiceFactory = ({
       [scope.key]: scope.value,
       name: data.name,
       isTemporary: data.isTemporary,
-      permissions: data.permissions,
+      permissions: JSON.stringify(packRules(data.permissions as RawRule[])),
       temporaryAccessEndTime: new Date(
         new Date(data.temporaryAccessStartTime).getTime() + relativeTempAllocatedTimeInMs
       ),
@@ -148,7 +148,7 @@ export const additionalPrivilegeServiceFactory = ({
     const additionalPrivilege = await additionalPrivilegeDAL.updateById(existingPrivilege.id, {
       name: updatedData.name,
       isTemporary: updatedData.isTemporary,
-      permissions: updatedData.permissions,
+      permissions: JSON.stringify(packRules(updatedData.permissions as RawRule[])),
       temporaryAccessEndTime: new Date(
         new Date(updatedData.temporaryAccessStartTime).getTime() + relativeTempAllocatedTimeInMs
       ),

@@ -184,15 +184,17 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.AdditionalPrivilege, (qb) => {
           if (actorType === ActorType.IDENTITY) {
-            qb.on(`${TableName.Membership}.actorIdentityId`, `${TableName.AdditionalPrivilege}.actorIdentityId`).andOn(
-              `${TableName.Membership}.scopeOrgId`,
-              `${TableName.AdditionalPrivilege}.orgId`
-            );
+            qb.on(`${TableName.Membership}.actorIdentityId`, `${TableName.AdditionalPrivilege}.actorIdentityId`);
           } else {
-            qb.on(`${TableName.Membership}.actorUserId`, `${TableName.AdditionalPrivilege}.actorUserId`).andOn(
-              `${TableName.Membership}.scopeOrgId`,
-              `${TableName.AdditionalPrivilege}.orgId`
-            );
+            qb.on(`${TableName.Membership}.actorUserId`, `${TableName.AdditionalPrivilege}.actorUserId`);
+          }
+
+          if (scopeData.scope === AccessScope.Organization) {
+            qb.andOn(`${TableName.Membership}.scopeOrgId`, `${TableName.AdditionalPrivilege}.orgId`);
+          } else if (scopeData.scope === AccessScope.Project) {
+            qb.andOn(`${TableName.Membership}.scopeProjectId`, `${TableName.AdditionalPrivilege}.projectId`);
+          } else {
+            qb.andOn(`${TableName.Membership}.scopeNamespaceId`, `${TableName.AdditionalPrivilege}.namespaceId`);
           }
         })
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {

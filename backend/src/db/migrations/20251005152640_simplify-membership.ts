@@ -683,9 +683,405 @@ export async function up(knex: Knex): Promise<void> {
   }
 }
 
+const rollbackAdditionalPrivilegeData = async (knex: Knex) => {
+  const projectUserAdditionalPrivilegeFields = [
+    "id",
+    "slug",
+    "isTemporary",
+    "temporaryMode",
+    "temporaryRange",
+    "temporaryAccessStartTime",
+    "temporaryAccessEndTime",
+    "permissions",
+    "userId",
+    "projectId",
+    "createdAt",
+    "updatedAt"
+  ];
+
+  await knex
+    .insert(
+      knex(TableName.AdditionalPrivilege)
+        .whereNotNull("actorUserId")
+        .whereNotNull("projectId")
+        .select(
+          "id",
+          "name",
+          "isTemporary",
+          "temporaryMode",
+          "temporaryRange",
+          "temporaryAccessStartTime",
+          "temporaryAccessEndTime",
+          "permissions",
+          "actorUserId",
+          "projectId",
+          "createdAt",
+          "updatedAt"
+        )
+    )
+    .into(
+      knex.raw("?? (??,??,??,??,??,??,??,??,??,??,??,??)", [
+        TableName.ProjectUserAdditionalPrivilege,
+        ...projectUserAdditionalPrivilegeFields
+      ])
+    )
+    .onConflict("id")
+    .merge(projectUserAdditionalPrivilegeFields);
+
+  const identityProjectAdditionalPrivilegeFields = [
+    "id",
+    "slug",
+    "isTemporary",
+    "temporaryMode",
+    "temporaryRange",
+    "temporaryAccessStartTime",
+    "temporaryAccessEndTime",
+    "permissions",
+    "projectMembershipId",
+    "createdAt",
+    "updatedAt"
+  ];
+
+  await knex
+    .insert(
+      knex(TableName.AdditionalPrivilege)
+        .join(TableName.Membership, (qb) => {
+          qb.on(`${TableName.AdditionalPrivilege}.actorIdentityId`, `${TableName.Membership}.actorIdentityId`)
+            .andOn(`${TableName.AdditionalPrivilege}.projectId`, `${TableName.Membership}.scopeProjectId`)
+            .andOn(`${TableName.Membership}.scope`, knex.raw("?", [AccessScope.Project]));
+        })
+        .whereNotNull(`${TableName.AdditionalPrivilege}.actorIdentityId`)
+        .whereNotNull(`${TableName.AdditionalPrivilege}.projectId`)
+        .select(
+          knex.ref("id").withSchema(TableName.AdditionalPrivilege),
+          "name",
+          "isTemporary",
+          "temporaryMode",
+          "temporaryRange",
+          "temporaryAccessStartTime",
+          "temporaryAccessEndTime",
+          "permissions",
+          knex.ref("id").withSchema(TableName.Membership).as("projectMembershipId"),
+          knex.ref("createdAt").withSchema(TableName.AdditionalPrivilege),
+          knex.ref("updatedAt").withSchema(TableName.AdditionalPrivilege)
+        )
+    )
+    .into(
+      knex.raw("?? (??,??,??,??,??,??,??,??,??,??,??)", [
+        TableName.IdentityProjectAdditionalPrivilege,
+        ...identityProjectAdditionalPrivilegeFields
+      ])
+    )
+    .onConflict("id")
+    .merge(identityProjectAdditionalPrivilegeFields);
+};
+
+const rollbackMembershipRoleData = async (knex: Knex) => {
+  const groupRoleFields = ["id", "name", "slug", "createdAt", "updatedAt", "role", "roleId", "orgId"];
+
+  await knex
+    .insert(
+      knex(TableName.MembershipRole)
+        .join(TableName.Membership, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .join(TableName.Groups, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .select(
+          knex.ref("actorGroupId").withSchema(TableName.Membership),
+          knex.ref("name").withSchema(TableName.Groups),
+          knex.ref("slug").withSchema(TableName.Groups),
+          knex.ref("createdAt").withSchema(TableName.Groups),
+          knex.ref("updatedAt").withSchema(TableName.Groups),
+          knex.ref("role").withSchema(TableName.MembershipRole),
+          "customRoleId",
+          knex.ref("orgId").withSchema(TableName.Groups)
+        )
+    )
+    .into(knex.raw("?? (??,??,??,??,??,??,??,??)", [TableName.Groups, ...groupRoleFields]))
+    .onConflict("id")
+    .merge(groupRoleFields);
+
+  const projectMembershipRoleFields = [
+    "id",
+    "role",
+    "projectMembershipId",
+    "customRoleId",
+    "isTemporary",
+    "temporaryMode",
+    "temporaryRange",
+    "temporaryAccessStartTime",
+    "temporaryAccessEndTime",
+    "createdAt",
+    "updatedAt"
+  ];
+
+  await knex
+    .insert(
+      knex(TableName.MembershipRole)
+        .join(TableName.Membership, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .select(
+          knex.ref("id").withSchema(TableName.MembershipRole),
+          "role",
+          knex.ref("membershipId").withSchema(TableName.MembershipRole),
+          "customRoleId",
+          "isTemporary",
+          "temporaryMode",
+          "temporaryRange",
+          "temporaryAccessStartTime",
+          "temporaryAccessEndTime",
+          knex.ref("createdAt").withSchema(TableName.MembershipRole),
+          knex.ref("updatedAt").withSchema(TableName.MembershipRole)
+        )
+    )
+    .into(
+      knex.raw("?? (??,??,??,??,??,??,??,??,??,??,??)", [
+        TableName.ProjectUserMembershipRole,
+        ...projectMembershipRoleFields
+      ])
+    )
+    .onConflict("id")
+    .merge(projectMembershipRoleFields);
+
+  await knex
+    .insert(
+      knex(TableName.MembershipRole)
+        .join(TableName.Membership, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .select(
+          knex.ref("id").withSchema(TableName.MembershipRole),
+          "role",
+          knex.ref("membershipId").withSchema(TableName.MembershipRole),
+          "customRoleId",
+          "isTemporary",
+          "temporaryMode",
+          "temporaryRange",
+          "temporaryAccessStartTime",
+          "temporaryAccessEndTime",
+          knex.ref("createdAt").withSchema(TableName.MembershipRole),
+          knex.ref("updatedAt").withSchema(TableName.MembershipRole)
+        )
+    )
+    .into(
+      knex.raw("?? (??,??,??,??,??,??,??,??,??,??,??)", [
+        TableName.IdentityProjectMembershipRole,
+        ...projectMembershipRoleFields
+      ])
+    )
+    .onConflict("id")
+    .merge(projectMembershipRoleFields);
+
+  await knex
+    .insert(
+      knex(TableName.MembershipRole)
+        .join(TableName.Membership, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .select(
+          knex.ref("id").withSchema(TableName.MembershipRole),
+          "role",
+          knex.ref("membershipId").withSchema(TableName.MembershipRole),
+          "customRoleId",
+          "isTemporary",
+          "temporaryMode",
+          "temporaryRange",
+          "temporaryAccessStartTime",
+          "temporaryAccessEndTime",
+          knex.ref("createdAt").withSchema(TableName.MembershipRole),
+          knex.ref("updatedAt").withSchema(TableName.MembershipRole)
+        )
+    )
+    .into(
+      knex.raw("?? (??,??,??,??,??,??,??,??,??,??,??)", [
+        TableName.GroupProjectMembershipRole,
+        ...projectMembershipRoleFields
+      ])
+    )
+    .onConflict("id")
+    .merge(projectMembershipRoleFields);
+};
+
+const rollbackRoleData = async (knex: Knex) => {
+  const orgRoleFields = ["id", "name", "description", "slug", "permissions", "createdAt", "updatedAt", "orgId"];
+
+  await knex
+    .insert(
+      knex(TableName.Role)
+        .whereNotNull("orgId")
+        .select("id", "name", "description", "slug", "permissions", "createdAt", "updatedAt", "orgId")
+    )
+    .into(knex.raw("?? (??, ??, ??, ??, ??, ??, ??, ??)", [TableName.OrgRoles, ...orgRoleFields]))
+    .onConflict("id")
+    .merge(orgRoleFields);
+
+  const projectRoleFields = ["id", "name", "description", "slug", "permissions", "createdAt", "updatedAt", "projectId"];
+
+  await knex
+    .insert(
+      knex(TableName.Role)
+        .whereNotNull("projectId")
+        .select("id", "name", "description", "slug", "permissions", "createdAt", "updatedAt", "projectId")
+    )
+    .into(knex.raw("?? (??, ??, ??, ??, ??, ??, ??, ??)", [TableName.ProjectRoles, ...projectRoleFields]))
+    .onConflict("id")
+    .merge(projectRoleFields);
+};
+
+const rollbackMembershipData = async (knex: Knex) => {
+  const orgMembershipFields = [
+    "id",
+    "status",
+    "inviteEmail",
+    "createdAt",
+    "updatedAt",
+    "userId",
+    "orgId",
+    "projectFavorites",
+    "isActive",
+    "lastInvitedAt",
+    "lastLoginAuthMethod",
+    "lastLoginTime",
+    "role",
+    "roleId"
+  ];
+  await knex
+    .insert(
+      knex(TableName.Membership)
+        .leftJoin(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .select(
+          knex.ref("id").withSchema(TableName.Membership),
+          "status",
+          "inviteEmail",
+          knex.ref("createdAt").withSchema(TableName.Membership),
+          knex.ref("updatedAt").withSchema(TableName.Membership),
+          "actorUserId",
+          "scopeOrgId",
+          "projectFavorites",
+          "isActive",
+          "lastInvitedAt",
+          "lastLoginAuthMethod",
+          "lastLoginTime",
+          "role",
+          "customRoleId"
+        )
+    )
+    .into(
+      knex.raw("?? (??, ??, ??, ??, ??, ??, ??, ??, ??, ??, ??, ??, ??, ??)", [
+        TableName.OrgMembership,
+        ...orgMembershipFields
+      ])
+    )
+    .onConflict("id")
+    .merge(orgMembershipFields);
+
+  const identityOrgMembershipFields = [
+    "id",
+    "identityId",
+    "orgId",
+    "lastLoginAuthMethod",
+    "lastLoginTime",
+    "createdAt",
+    "updatedAt",
+    "role",
+    "roleId"
+  ];
+
+  await knex
+    .insert(
+      knex(TableName.Membership)
+        .leftJoin(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .select(
+          knex.ref("id").withSchema(TableName.Membership),
+          "actorIdentityId",
+          "scopeOrgId",
+          "lastLoginAuthMethod",
+          "lastLoginTime",
+          knex.ref("createdAt").withSchema(TableName.Membership),
+          knex.ref("updatedAt").withSchema(TableName.Membership),
+          "role",
+          "customRoleId"
+        )
+    )
+    .into(
+      knex.raw("?? (??, ??, ??, ??, ??, ??, ??, ??, ??)", [
+        TableName.IdentityOrgMembership,
+        ...identityOrgMembershipFields
+      ])
+    )
+    .onConflict("id")
+    .merge(identityOrgMembershipFields);
+
+  const projectMembershipFields = ["id", "userId", "projectId", "createdAt", "updatedAt"];
+
+  await knex
+    .insert(
+      knex(TableName.Membership)
+        .where("scope", AccessScope.Project)
+        .whereNotNull("actorUserId")
+        .select("id", "actorUserId", "scopeProjectId", "createdAt", "updatedAt")
+    )
+    .into(knex.raw("?? (??, ??, ??, ??, ??)", [TableName.ProjectMembership, ...projectMembershipFields]))
+    .onConflict("id")
+    .merge(projectMembershipFields);
+
+  const identityProjectMembershipFields = ["id", "identityId", "projectId", "createdAt", "updatedAt"];
+
+  await knex
+    .insert(
+      knex(TableName.Membership)
+        .where("scope", AccessScope.Project)
+        .whereNotNull("actorIdentityId")
+        .select("id", "actorIdentityId", "scopeProjectId", "createdAt", "updatedAt")
+    )
+    .into(
+      knex.raw("?? (??, ??, ??, ??, ??)", [TableName.IdentityProjectMembership, ...identityProjectMembershipFields])
+    )
+    .onConflict("id")
+    .merge(identityProjectMembershipFields);
+
+  const groupProjectMembershipFields = ["id", "groupId", "projectId", "createdAt", "updatedAt"];
+
+  await knex
+    .insert(
+      knex(TableName.Membership)
+        .where("scope", AccessScope.Project)
+        .whereNotNull("actorGroupId")
+        .select("id", "actorGroupId", "scopeProjectId", "createdAt", "updatedAt")
+    )
+    .into(knex.raw("?? (??, ??, ??, ??, ??)", [TableName.GroupProjectMembership, ...groupProjectMembershipFields]))
+    .onConflict("id")
+    .merge(groupProjectMembershipFields);
+};
+
 export async function down(knex: Knex): Promise<void> {
-  // we can bring fk to these tables because the data may not exist anymore
-  // we can do insert back with merge conflict merge in
+  const hasMembershipTable = await knex.schema.hasTable(TableName.Membership);
+  if (hasMembershipTable) {
+    await rollbackMembershipData(knex);
+  }
+
+  const hasRoleTable = await knex.schema.hasTable(TableName.Role);
+  if (hasRoleTable) {
+    await rollbackRoleData(knex);
+  }
+
+  const hasMembershipRoleTable = await knex.schema.hasTable(TableName.MembershipRole);
+  if (hasMembershipRoleTable) {
+    await rollbackMembershipRoleData(knex);
+  }
+
+  const hasAdditionalPrivilegeTable = await knex.schema.hasTable(TableName.AdditionalPrivilege);
+  if (hasAdditionalPrivilegeTable) {
+    await rollbackAdditionalPrivilegeData(knex);
+  }
+
+  // Restore foreign key references
   const hasApColumnInAccessApprovalRequest = await knex.schema.hasColumn(
     TableName.AccessApprovalRequest,
     "privilegeId"
@@ -708,6 +1104,7 @@ export async function down(knex: Knex): Promise<void> {
     });
   }
 
+  // Drop new tables
   await dropOnUpdateTrigger(knex, TableName.AdditionalPrivilege);
   await knex.schema.dropTableIfExists(TableName.AdditionalPrivilege);
 

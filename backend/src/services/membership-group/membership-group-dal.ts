@@ -58,6 +58,7 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Groups).as("groupName"),
           db.ref("slug").withSchema(TableName.Groups).as("groupSlug"),
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
+          db.ref("name").withSchema(TableName.Role).as("roleName"),
           db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
           db.ref("role").withSchema(TableName.MembershipRole).as("membershipRole"),
           db.ref("temporaryMode").withSchema(TableName.MembershipRole).as("membershipRoleTemporaryMode"),
@@ -95,6 +96,7 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
             label: "roles" as const,
             mapper: ({
               roleSlug,
+              roleName,
               membershipRoleId,
               membershipRole,
               membershipRoleIsTemporary,
@@ -108,6 +110,7 @@ export const membershipGroupDALFactory = (db: TDbClient) => {
               id: membershipRoleId,
               role: membershipRole,
               customRoleSlug: roleSlug,
+              customRoleName: roleName,
               temporaryRange: membershipRoleTemporaryRange,
               temporaryMode: membershipRoleTemporaryMode,
               temporaryAccessStartTime: membershipRoleTemporaryAccessStartTime,

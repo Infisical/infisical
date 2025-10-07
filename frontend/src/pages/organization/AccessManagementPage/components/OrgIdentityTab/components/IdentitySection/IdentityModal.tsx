@@ -75,7 +75,6 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
     control,
     name: "metadata"
   });
-
   useEffect(() => {
     const identity = popUp?.identity?.data as {
       identityId: string;
