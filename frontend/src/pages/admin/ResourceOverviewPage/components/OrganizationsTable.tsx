@@ -62,7 +62,7 @@ import {
   useServerAdminAccessOrg,
   useServerAdminResendOrgInvite
 } from "@app/hooks/api";
-import { AdminOrganizationOrderBy, OrganizationWithProjects } from "@app/hooks/api/admin/types";
+import { AdminOrganizationsOrderBy, OrganizationWithProjects } from "@app/hooks/api/admin/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { OrgMembershipStatus } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -450,7 +450,7 @@ const OrganizationsPanelTable = ({
   const navigate = useNavigate();
 
   const { offset, limit, setPage, perPage, page, setPerPage } =
-    usePagination<AdminOrganizationOrderBy>(AdminOrganizationOrderBy.Name, {
+    usePagination<AdminOrganizationsOrderBy>(AdminOrganizationsOrderBy.Name, {
       initPerPage: getUserTablePreference("ResourceOverviewOrgsTable", PreferenceKey.PerPage, 10)
     });
 

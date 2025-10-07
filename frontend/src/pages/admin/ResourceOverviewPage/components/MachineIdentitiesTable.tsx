@@ -11,7 +11,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
-  Button,
   DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +19,7 @@ import {
   EmptyState,
   IconButton,
   Input,
+  Pagination,
   Table,
   TableContainer,
   TableSkeleton,
@@ -29,9 +29,15 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useDebounce, usePopUp } from "@app/hooks";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useAdminRemoveIdentitySuperAdminAccess } from "@app/hooks/api/admin";
 import { useAdminGetIdentities } from "@app/hooks/api/admin/queries";
+import { AdminIdentitiesOrderBy } from "@app/hooks/api/admin/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const IdentityPanelTable = ({
@@ -48,14 +54,35 @@ const IdentityPanelTable = ({
   const [searchIdentityFilter, setSearchIdentityFilter] = useState("");
   const [debouncedSearchTerm] = useDebounce(searchIdentityFilter, 500);
 
-  const { data, isPending, isFetchingNextPage, hasNextPage, fetchNextPage } = useAdminGetIdentities(
-    {
-      limit: 20,
-      searchTerm: debouncedSearchTerm
-    }
-  );
+  const { offset, limit, setPage, perPage, page, setPerPage } =
+    usePagination<AdminIdentitiesOrderBy>(AdminIdentitiesOrderBy.Name, {
+      initPerPage: getUserTablePreference(
+        "ResourceOverviewIdentitiesTable",
+        PreferenceKey.PerPage,
+        10
+      )
+    });
 
-  const isEmpty = !isPending && !data?.pages?.[0].length;
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("ResourceOverviewIdentitiesTable", PreferenceKey.PerPage, newPerPage);
+  };
+
+  const { data, isPending } = useAdminGetIdentities({
+    limit,
+    offset,
+    searchTerm: debouncedSearchTerm
+  });
+
+  const { identities, totalCount = 0 } = data ?? {};
+
+  const isEmpty = !isPending && !totalCount;
+
+  useResetPageHelper({
+    totalCount,
+    offset,
+    setPage
+  });
 
   return (
     <>
@@ -80,75 +107,70 @@ const IdentityPanelTable = ({
             <TBody>
               {isPending && <TableSkeleton columns={2} innerKey="identities" />}
               {!isPending &&
-                data?.pages?.map((identities) =>
-                  identities.map(({ name, id, isInstanceAdmin }) => (
-                    <Tr key={`identity-${id}`} className="w-full">
-                      <Td>
-                        {name}
-                        {isInstanceAdmin && (
-                          <Badge variant="primary" className="ml-2">
-                            Server Admin
-                          </Badge>
-                        )}
-                      </Td>
-                      <Td>
-                        {isInstanceAdmin && (
-                          <div className="flex justify-end">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <IconButton
-                                  ariaLabel="Options"
-                                  colorSchema="secondary"
-                                  className="w-6"
-                                  variant="plain"
+                identities?.map(({ name, id, isInstanceAdmin }) => (
+                  <Tr key={`identity-${id}`} className="w-full">
+                    <Td>
+                      {name}
+                      {isInstanceAdmin && (
+                        <Badge variant="primary" className="ml-2">
+                          Server Admin
+                        </Badge>
+                      )}
+                    </Td>
+                    <Td>
+                      {isInstanceAdmin && (
+                        <div className="flex justify-end">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
+                                ariaLabel="Options"
+                                colorSchema="secondary"
+                                className="w-6"
+                                variant="plain"
+                              >
+                                <FontAwesomeIcon icon={faEllipsisV} />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent sideOffset={2} align="end">
+                              {isInstanceAdmin && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePopUpOpen("removeServerAdmin", { name, id });
+                                  }}
+                                  icon={
+                                    <div className="relative">
+                                      <FontAwesomeIcon icon={faShieldHalved} />
+                                      <FontAwesomeIcon
+                                        className="absolute -bottom-[0.01rem] -right-1"
+                                        size="2xs"
+                                        icon={faXmark}
+                                      />
+                                    </div>
+                                  }
                                 >
-                                  <FontAwesomeIcon icon={faEllipsisV} />
-                                </IconButton>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent sideOffset={2} align="end">
-                                {isInstanceAdmin && (
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePopUpOpen("removeServerAdmin", { name, id });
-                                    }}
-                                    icon={
-                                      <div className="relative">
-                                        <FontAwesomeIcon icon={faShieldHalved} />
-                                        <FontAwesomeIcon
-                                          className="absolute -bottom-[0.01rem] -right-1"
-                                          size="2xs"
-                                          icon={faXmark}
-                                        />
-                                      </div>
-                                    }
-                                  >
-                                    Remove Server Admin
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        )}
-                      </Td>
-                    </Tr>
-                  ))
-                )}
+                                  Remove Server Admin
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
+                    </Td>
+                  </Tr>
+                ))}
             </TBody>
           </Table>
           {!isPending && isEmpty && <EmptyState title="No identities found" icon={faWrench} />}
         </TableContainer>
-        {!isEmpty && (
-          <Button
-            className="mt-4 py-3 text-sm"
-            isFullWidth
-            variant="outline_bg"
-            isLoading={isFetchingNextPage}
-            isDisabled={isFetchingNextPage || !hasNextPage}
-            onClick={() => fetchNextPage()}
-          >
-            {hasNextPage ? "Load More" : "End of List"}
-          </Button>
+        {!isPending && totalCount > 0 && (
+          <Pagination
+            count={totalCount}
+            page={page}
+            perPage={perPage}
+            onChangePage={(newPage) => setPage(newPage)}
+            onChangePerPage={handlePerPageChange}
+          />
         )}
       </div>
     </>

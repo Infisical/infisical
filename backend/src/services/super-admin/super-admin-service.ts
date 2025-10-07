@@ -55,6 +55,7 @@ import {
   TAdminGetUsersDTO,
   TAdminIntegrationConfig,
   TAdminSignUpDTO,
+  TCountIdentitiesDTO,
   TCountOrganizationsDTO,
   TCreateOrganizationDTO,
   TGetOrganizationsDTO,
@@ -1037,6 +1038,13 @@ export const superAdminServiceFactory = ({
     }));
   };
 
+  const countIdentities = async ({ searchTerm }: TCountIdentitiesDTO) => {
+    const count = await identityDAL.countIdentitiesByFilter({
+      searchTerm
+    });
+    return count;
+  };
+
   const grantServerAdminAccessToUser = async (userId: string) => {
     if (!licenseService.onPremFeatures?.instanceUserManagement) {
       throw new BadRequestError({
@@ -1145,6 +1153,7 @@ export const superAdminServiceFactory = ({
     getUsers,
     deleteUser,
     getIdentities,
+    countIdentities,
     getAdminIntegrationsConfig,
     updateRootEncryptionStrategy,
     getConfiguredEncryptionStrategies,

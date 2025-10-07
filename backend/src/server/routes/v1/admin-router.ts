@@ -346,7 +346,10 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             .extend({
               isInstanceAdmin: z.boolean()
             })
-            .array()
+            .array(),
+          meta: z.object({
+            total: z.number()
+          })
         })
       }
     },
@@ -360,8 +363,15 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         ...req.query
       });
 
+      const count = await server.services.superAdmin.countIdentities({
+        ...req.query
+      });
+
       return {
-        identities
+        identities,
+        meta: {
+          total: count
+        }
       };
     }
   });

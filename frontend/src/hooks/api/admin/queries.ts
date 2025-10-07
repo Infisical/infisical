@@ -8,7 +8,6 @@ import {
 } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { Identity } from "@app/hooks/api/identities/types";
 
 import { User } from "../types";
 import {
@@ -17,6 +16,7 @@ import {
   AdminGetUsersFilters,
   AdminIntegrationsConfig,
   TGetEnvOverrides,
+  TGetIdentitiesResponse,
   TGetInvalidatingCacheStatus,
   TGetOrganizationsResponse,
   TGetServerRootKmsEncryptionDetails,
@@ -122,24 +122,21 @@ export const useAdminGetUsers = (
 };
 
 export const useAdminGetIdentities = (filters: AdminGetIdentitiesFilters) => {
-  return useInfiniteQuery({
-    initialPageParam: 0,
+  return useQuery({
     queryKey: adminQueryKeys.getIdentities(filters),
-    queryFn: async ({ pageParam }) => {
-      const { data } = await apiRequest.get<{ identities: Identity[] }>(
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetIdentitiesResponse>(
         "/api/v1/admin/identity-management/identities",
         {
           params: {
-            ...filters,
-            offset: pageParam
+            ...filters
           }
         }
       );
 
-      return data.identities;
+      return { identities: data.identities, totalCount: data.meta.total };
     },
-    getNextPageParam: (lastPage, pages) =>
-      lastPage.length !== 0 ? pages.length * filters.limit : undefined
+    placeholderData: (previousData) => previousData
   });
 };
 

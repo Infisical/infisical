@@ -1,3 +1,4 @@
+import { Identity } from "@app/hooks/api/identities/types";
 import { OrgMembershipStatus } from "@app/hooks/api/organization/types";
 
 import { Organization } from "../types";
@@ -34,11 +35,18 @@ export type OrganizationWithProjects = Organization & {
   }[];
 };
 
+type PaginatedDataMeta = {
+  total: number;
+};
+
 export type TGetOrganizationsResponse = {
   organizations: OrganizationWithProjects[];
-  meta: {
-    total: number;
-  };
+  meta: PaginatedDataMeta;
+};
+
+export type TGetIdentitiesResponse = {
+  identities: Identity[];
+  meta: PaginatedDataMeta;
 };
 
 export type TServerConfig = {
@@ -100,8 +108,9 @@ export type AdminGetUsersFilters = {
 };
 
 export type AdminGetIdentitiesFilters = {
-  limit: number;
-  searchTerm: string;
+  limit?: number;
+  offset?: number;
+  searchTerm?: string;
 };
 
 export type AdminIntegrationsConfig = {
@@ -171,6 +180,10 @@ export type TResendOrgInviteDTO = {
   membershipId: string;
 };
 
-export enum AdminOrganizationOrderBy {
+export enum AdminOrganizationsOrderBy {
+  Name = "name"
+}
+
+export enum AdminIdentitiesOrderBy {
   Name = "name"
 }
