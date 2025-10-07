@@ -37,7 +37,12 @@ import {
 
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretSyncDALFactory } from "./secret-sync-dal";
-import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "./secret-sync-maps";
+import {
+  DESTINATION_DUPLICATE_CHECK_MAP,
+  SECRET_SYNC_CONNECTION_MAP,
+  SECRET_SYNC_NAME_MAP,
+  SECRET_SYNC_SKIP_FIELDS_MAP
+} from "./secret-sync-maps";
 import { TSecretSyncQueueFactory } from "./secret-sync-queue";
 
 type TSecretSyncServiceFactoryDep = {
@@ -698,83 +703,11 @@ export const secretSyncServiceFactory = ({
     return updatedSecretSync as TSecretSync;
   };
 
-  const getSkipFieldsForDestination = (destination: SecretSync): string[] => {
-    switch (destination) {
-      case SecretSync.AWSSecretsManager:
-        return ["mappingBehavior", "secretName"];
-      case SecretSync.OnePass:
-        return ["valueLabel"];
-      case SecretSync.AzureAppConfiguration:
-        return ["label"];
-      case SecretSync.AzureDevOps:
-        return ["devopsProjectName"];
-      case SecretSync.Checkly:
-        return ["groupName", "accountName"];
-      case SecretSync.DigitalOceanAppPlatform:
-        return ["appName"];
-      case SecretSync.GitLab:
-        return [
-          "projectName",
-          "shouldProtectSecrets",
-          "shouldMaskSecrets",
-          "shouldHideSecrets",
-          "targetEnvironment",
-          "groupName",
-          "groupId",
-          "projectId"
-        ];
-      case SecretSync.Heroku:
-        return ["appName"];
-      case SecretSync.Netlify:
-        return ["accountName", "siteName"];
-      case SecretSync.Railway:
-        return ["projectName", "environmentName", "serviceName"];
-      case SecretSync.Supabase:
-        return ["projectName"];
-      case SecretSync.TerraformCloud:
-        return ["variableSetName", "workspaceName"];
-      case SecretSync.Vercel:
-        return ["appName"];
-      case SecretSync.Zabbix:
-        return ["hostName", "macroType"];
-      default:
-        return [];
-    }
-  };
-
-  const handleSpecialCaseDuplicateCheck = (
-    destination: SecretSync,
-    existingConfig: Record<string, unknown>,
-    newConfig: Record<string, unknown>
-  ): boolean => {
-    switch (destination) {
-      case SecretSync.GitLab: {
-        const existingTargetEnv = existingConfig.targetEnvironment as string | undefined;
-        const newTargetEnv = newConfig.targetEnvironment as string | undefined;
-
-        // If either has wildcard '*', it conflicts with any targetEnvironment
-        if (existingTargetEnv === "*" || newTargetEnv === "*") {
-          return true;
-        }
-
-        return (
-          existingTargetEnv === newTargetEnv &&
-          ((newConfig.scope as string) === "group"
-            ? existingConfig.groupId === newConfig.groupId
-            : existingConfig.projectId === newConfig.projectId)
-        );
-      }
-      default:
-        // For other sync types, no special handling needed
-        return true;
-    }
-  };
-
   const checkDuplicateDestination = async (
     { destination, destinationConfig, excludeSyncId, projectId }: TCheckDuplicateDestinationDTO,
     actor: OrgServiceActor
   ) => {
-    const skipFields = getSkipFieldsForDestination(destination);
+    const skipFields = SECRET_SYNC_SKIP_FIELDS_MAP[destination];
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -804,8 +737,7 @@ export const secretSyncServiceFactory = ({
         try {
           const baseFieldsMatch = deepEqualSkipFields(sync.destinationConfig, destinationConfig, skipFields);
           if (baseFieldsMatch) {
-            return handleSpecialCaseDuplicateCheck(
-              destination,
+            return DESTINATION_DUPLICATE_CHECK_MAP[destination](
               sync.destinationConfig as Record<string, unknown>,
               destinationConfig
             );

@@ -415,3 +415,8 @@ export type TSecretMap = Record<
     secretMetadata?: ResourceMetadataDTO;
   }
 >;
+
+export type DestinationDuplicateCheckFn = (
+  existingConfig: Record<string, unknown>,
+  newConfig: Record<string, unknown>
+) => boolean;

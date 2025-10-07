@@ -1,5 +1,6 @@
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
+import { DestinationDuplicateCheckFn } from "@app/services/secret-sync/secret-sync-types";
 
 export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.AWSParameterStore]: "AWS Parameter Store",
@@ -98,4 +99,102 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.DigitalOceanAppPlatform]: SecretSyncPlanType.Regular,
   [SecretSync.Netlify]: SecretSyncPlanType.Regular,
   [SecretSync.Bitbucket]: SecretSyncPlanType.Regular
+};
+
+export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
+  [SecretSync.AWSParameterStore]: [],
+  [SecretSync.AWSSecretsManager]: ["mappingBehavior", "secretName"],
+  [SecretSync.GitHub]: [],
+  [SecretSync.GCPSecretManager]: [],
+  [SecretSync.AzureKeyVault]: [],
+  [SecretSync.AzureAppConfiguration]: ["label"],
+  [SecretSync.AzureDevOps]: ["devopsProjectName"],
+  [SecretSync.Databricks]: [],
+  [SecretSync.Humanitec]: [],
+  [SecretSync.TerraformCloud]: ["variableSetName", "workspaceName"],
+  [SecretSync.Camunda]: [],
+  [SecretSync.Vercel]: ["appName"],
+  [SecretSync.Windmill]: [],
+  [SecretSync.HCVault]: [],
+  [SecretSync.TeamCity]: [],
+  [SecretSync.OCIVault]: [],
+  [SecretSync.OnePass]: ["valueLabel"],
+  [SecretSync.Heroku]: ["appName"],
+  [SecretSync.Render]: [],
+  [SecretSync.Flyio]: [],
+  [SecretSync.GitLab]: [
+    "projectName",
+    "shouldProtectSecrets",
+    "shouldMaskSecrets",
+    "shouldHideSecrets",
+    "targetEnvironment",
+    "groupName",
+    "groupId",
+    "projectId"
+  ],
+  [SecretSync.CloudflarePages]: [],
+  [SecretSync.CloudflareWorkers]: [],
+  [SecretSync.Supabase]: ["projectName"],
+  [SecretSync.Zabbix]: ["hostName", "macroType"],
+  [SecretSync.Railway]: ["projectName", "environmentName", "serviceName"],
+  [SecretSync.Checkly]: ["groupName", "accountName"],
+  [SecretSync.DigitalOceanAppPlatform]: ["appName"],
+  [SecretSync.Netlify]: ["accountName", "siteName"],
+  [SecretSync.Bitbucket]: []
+};
+
+const defaultDuplicateCheck: DestinationDuplicateCheckFn = () => true;
+
+export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDuplicateCheckFn> = {
+  [SecretSync.AWSParameterStore]: defaultDuplicateCheck,
+  [SecretSync.AWSSecretsManager]: defaultDuplicateCheck,
+  [SecretSync.GitHub]: defaultDuplicateCheck,
+  [SecretSync.GCPSecretManager]: defaultDuplicateCheck,
+  [SecretSync.AzureKeyVault]: defaultDuplicateCheck,
+  [SecretSync.AzureAppConfiguration]: defaultDuplicateCheck,
+  [SecretSync.AzureDevOps]: defaultDuplicateCheck,
+  [SecretSync.Databricks]: defaultDuplicateCheck,
+  [SecretSync.Humanitec]: defaultDuplicateCheck,
+  [SecretSync.TerraformCloud]: defaultDuplicateCheck,
+  [SecretSync.Camunda]: defaultDuplicateCheck,
+  [SecretSync.Vercel]: defaultDuplicateCheck,
+  [SecretSync.Windmill]: defaultDuplicateCheck,
+  [SecretSync.HCVault]: defaultDuplicateCheck,
+  [SecretSync.TeamCity]: defaultDuplicateCheck,
+  [SecretSync.OCIVault]: defaultDuplicateCheck,
+  [SecretSync.OnePass]: defaultDuplicateCheck,
+  [SecretSync.Heroku]: defaultDuplicateCheck,
+  [SecretSync.Render]: defaultDuplicateCheck,
+  [SecretSync.Flyio]: defaultDuplicateCheck,
+  [SecretSync.GitLab]: (existingConfig, newConfig) => {
+    const existingTargetEnv = existingConfig.targetEnvironment as string | undefined;
+    const newTargetEnv = newConfig.targetEnvironment as string | undefined;
+
+    const wildcardValues = ["*", ""];
+    // If either has wildcard, it conflicts with any targetEnvironment
+    if (
+      !existingTargetEnv ||
+      !newTargetEnv ||
+      wildcardValues.includes(existingTargetEnv) ||
+      wildcardValues.includes(newTargetEnv)
+    ) {
+      return true;
+    }
+
+    return (
+      existingTargetEnv === newTargetEnv &&
+      ((newConfig.scope as string) === "group"
+        ? existingConfig.groupId === newConfig.groupId
+        : existingConfig.projectId === newConfig.projectId)
+    );
+  },
+  [SecretSync.CloudflarePages]: defaultDuplicateCheck,
+  [SecretSync.CloudflareWorkers]: defaultDuplicateCheck,
+  [SecretSync.Supabase]: defaultDuplicateCheck,
+  [SecretSync.Zabbix]: defaultDuplicateCheck,
+  [SecretSync.Railway]: defaultDuplicateCheck,
+  [SecretSync.Checkly]: defaultDuplicateCheck,
+  [SecretSync.DigitalOceanAppPlatform]: defaultDuplicateCheck,
+  [SecretSync.Netlify]: defaultDuplicateCheck,
+  [SecretSync.Bitbucket]: defaultDuplicateCheck
 };
