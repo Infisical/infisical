@@ -87,6 +87,8 @@ export const useDeleteMe = () => {
       localStorage.removeItem("PRIVATE_KEY");
       localStorage.removeItem("orgData.id");
 
+      setAuthToken("");
+
       queryClient.clear();
     }
   });
