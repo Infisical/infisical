@@ -56,11 +56,6 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
             });
           }
         })
-        .join<TUserEncryptionKeys>(
-          TableName.UserEncryptionKey,
-          `${TableName.UserEncryptionKey}.userId`,
-          `${TableName.Users}.id`
-        )
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .select(
@@ -69,7 +64,6 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           db.ref("isGhost").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
           db.ref("email").withSchema(TableName.Users),
-          db.ref("publicKey").withSchema(TableName.UserEncryptionKey),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
           db.ref("id").withSchema(TableName.Users).as("userId"),
@@ -96,7 +90,6 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           firstName,
           username,
           lastName,
-          publicKey,
           isGhost,
           id,
           userId,
@@ -113,7 +106,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
             firstName,
             lastName,
             id: userId,
-            publicKey,
+            publicKey: "",
             isGhost,
             isOrgMembershipActive: isActive
           },
