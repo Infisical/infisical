@@ -35,6 +35,7 @@
     "@lexical/react": "^0.29.0",
     "@lottiefiles/dotlottie-react": "^0.12.0",
     "@lottiefiles/dotlottie-web": "^0.38.2",
+    "@monaco-editor/react": "^4.7.0",
     "@octokit/rest": "^21.0.2",
     "@peculiar/x509": "^1.12.3",
     "@radix-ui/react-accordion": "^1.2.2",
