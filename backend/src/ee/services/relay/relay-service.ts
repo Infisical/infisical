@@ -708,7 +708,8 @@ export const relayServiceFactory = ({
     relayPkiClientCaCertificate,
     relayPkiClientCaPrivateKey,
     relayPkiServerCaCertificate,
-    relayPkiServerCaCertificateChain
+    relayPkiServerCaCertificateChain,
+    duration
   }: {
     gatewayId: string;
     gatewayName: string;
@@ -718,6 +719,7 @@ export const relayServiceFactory = ({
     relayPkiClientCaPrivateKey: Buffer;
     relayPkiServerCaCertificate: Buffer;
     relayPkiServerCaCertificateChain: Buffer;
+    duration?: number;
   }) => {
     const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
     const relayClientCaCert = new x509.X509Certificate(relayPkiClientCaCertificate);
@@ -737,7 +739,7 @@ export const relayServiceFactory = ({
     );
 
     const clientCertIssuedAt = new Date();
-    const clientCertExpiration = new Date(new Date().getTime() + 5 * 60 * 1000);
+    const clientCertExpiration = new Date(new Date().getTime() + (duration ?? 5 * 60 * 1000));
     const clientKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const clientCertPrivateKey = crypto.nativeCrypto.KeyObject.from(clientKeys.privateKey);
     const clientCertSerialNumber = createSerialNumber();
@@ -866,13 +868,15 @@ export const relayServiceFactory = ({
     orgId,
     orgName,
     gatewayId,
-    gatewayName
+    gatewayName,
+    duration
   }: {
     relayId: string;
     orgId: string;
     orgName: string;
     gatewayId: string;
     gatewayName: string;
+    duration?: number;
   }) => {
     const relay = await relayDAL.findOne({
       id: relayId
@@ -896,7 +900,8 @@ export const relayServiceFactory = ({
         relayPkiClientCaCertificate: instanceCAs.instanceRelayPkiClientCaCertificate,
         relayPkiClientCaPrivateKey: instanceCAs.instanceRelayPkiClientCaPrivateKey,
         relayPkiServerCaCertificate: instanceCAs.instanceRelayPkiServerCaCertificate,
-        relayPkiServerCaCertificateChain: instanceCAs.instanceRelayPkiServerCaCertificateChain
+        relayPkiServerCaCertificateChain: instanceCAs.instanceRelayPkiServerCaCertificateChain,
+        duration
       });
 
       return {
@@ -914,7 +919,8 @@ export const relayServiceFactory = ({
       relayPkiClientCaCertificate: orgCAs.relayPkiClientCaCertificate,
       relayPkiClientCaPrivateKey: orgCAs.relayPkiClientCaPrivateKey,
       relayPkiServerCaCertificate: orgCAs.relayPkiServerCaCertificate,
-      relayPkiServerCaCertificateChain: orgCAs.relayPkiServerCaCertificateChain
+      relayPkiServerCaCertificateChain: orgCAs.relayPkiServerCaCertificateChain,
+      duration
     });
 
     return {

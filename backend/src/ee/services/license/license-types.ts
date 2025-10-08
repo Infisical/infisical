@@ -80,6 +80,7 @@ export type TFeatureSet = {
   machineIdentityAuthTemplates: false;
   fips: false;
   eventSubscriptions: false;
+  pam: false;
 };
 
 export type TOrgPlansTableDTO = {

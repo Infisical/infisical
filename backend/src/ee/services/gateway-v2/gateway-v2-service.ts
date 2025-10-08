@@ -22,11 +22,12 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
+import { PamResource } from "../pam-resource/pam-resource-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TRelayServiceFactory } from "../relay/relay-service";
-import { GATEWAY_ACTOR_OID, GATEWAY_ROUTING_INFO_OID } from "./gateway-v2-constants";
+import { GATEWAY_ACTOR_OID, GATEWAY_ROUTING_INFO_OID, PAM_INFO_OID } from "./gateway-v2-constants";
 import { TGatewayV2DALFactory } from "./gateway-v2-dal";
 import { TOrgGatewayConfigV2DALFactory } from "./org-gateway-config-v2-dal";
 
@@ -414,6 +415,176 @@ export const gatewayV2ServiceFactory = ({
     };
   };
 
+  const getPAMConnectionDetails = async ({
+    gatewayId,
+    sessionId,
+    duration,
+    resourceType,
+    host,
+    port,
+    actorMetadata
+  }: {
+    gatewayId: string;
+    sessionId: string;
+    resourceType: PamResource;
+    duration?: number;
+    host: string;
+    port: number;
+    actorMetadata: { id: string; type: ActorType; name: string };
+  }) => {
+    const gateway = await gatewayV2DAL.findById(gatewayId);
+    if (!gateway) {
+      return;
+    }
+
+    const orgGatewayConfig = await orgGatewayConfigV2DAL.findOne({ orgId: gateway.orgId });
+    if (!orgGatewayConfig) {
+      throw new NotFoundError({ message: `Gateway Config for org ${gateway.orgId} not found.` });
+    }
+
+    if (!gateway.relayId) {
+      throw new BadRequestError({
+        message: "Gateway is not associated with a relay"
+      });
+    }
+
+    const orgLicensePlan = await licenseService.getPlan(orgGatewayConfig.orgId);
+    if (!orgLicensePlan.gateway) {
+      throw new BadRequestError({
+        message: "Please upgrade your instance to Infisical's Enterprise plan to use gateways."
+      });
+    }
+
+    const { decryptor: orgKmsDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: orgGatewayConfig.orgId
+    });
+
+    const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
+
+    const rootGatewayCaCert = new x509.X509Certificate(
+      orgKmsDecryptor({
+        cipherTextBlob: orgGatewayConfig.encryptedRootGatewayCaCertificate
+      })
+    );
+
+    const gatewayClientCaCert = new x509.X509Certificate(
+      orgKmsDecryptor({
+        cipherTextBlob: orgGatewayConfig.encryptedGatewayClientCaCertificate
+      })
+    );
+
+    const gatewayServerCaCert = new x509.X509Certificate(
+      orgKmsDecryptor({
+        cipherTextBlob: orgGatewayConfig.encryptedGatewayServerCaCertificate
+      })
+    );
+
+    const gatewayClientCaPrivateKey = orgKmsDecryptor({
+      cipherTextBlob: orgGatewayConfig.encryptedGatewayClientCaPrivateKey
+    });
+
+    const gatewayClientCaSkObj = crypto.nativeCrypto.createPrivateKey({
+      key: gatewayClientCaPrivateKey,
+      format: "der",
+      type: "pkcs8"
+    });
+
+    const importedGatewayClientCaPrivateKey = await crypto.nativeCrypto.subtle.importKey(
+      "pkcs8",
+      gatewayClientCaSkObj.export({ format: "der", type: "pkcs8" }),
+      alg,
+      true,
+      ["sign"]
+    );
+
+    const clientCertIssuedAt = new Date();
+    const clientCertExpiration = new Date(new Date().getTime() + (duration ?? 5 * 60 * 1000));
+    const clientKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const clientCertSerialNumber = createSerialNumber();
+
+    const routingInfo = {
+      targetHost: host,
+      targetPort: port
+    };
+
+    const routingExtension = new x509.Extension(
+      GATEWAY_ROUTING_INFO_OID,
+      false,
+      Buffer.from(JSON.stringify(routingInfo))
+    );
+
+    const pamInfoExtension = new x509.Extension(
+      PAM_INFO_OID,
+      false,
+      Buffer.from(
+        JSON.stringify({
+          sessionId,
+          resourceType
+        })
+      )
+    );
+
+    const actorExtension = new x509.Extension(
+      GATEWAY_ACTOR_OID,
+      false,
+      Buffer.from(JSON.stringify({ type: actorMetadata.type, id: actorMetadata.id, name: actorMetadata.name }))
+    );
+
+    const clientCert = await x509.X509CertificateGenerator.create({
+      serialNumber: clientCertSerialNumber,
+      subject: `O=${orgGatewayConfig.orgId},OU=gateway-client,CN=${actorMetadata.type}:${gatewayId}`,
+      issuer: gatewayClientCaCert.subject,
+      notAfter: clientCertExpiration,
+      notBefore: clientCertIssuedAt,
+      signingKey: importedGatewayClientCaPrivateKey,
+      publicKey: clientKeys.publicKey,
+      signingAlgorithm: alg,
+      extensions: [
+        new x509.BasicConstraintsExtension(false),
+        await x509.AuthorityKeyIdentifierExtension.create(gatewayClientCaCert, false),
+        await x509.SubjectKeyIdentifierExtension.create(clientKeys.publicKey),
+        new x509.CertificatePolicyExtension(["2.5.29.32.0"]), // anyPolicy
+        new x509.KeyUsagesExtension(
+          // eslint-disable-next-line no-bitwise
+          x509.KeyUsageFlags[CertKeyUsage.DIGITAL_SIGNATURE] |
+            x509.KeyUsageFlags[CertKeyUsage.KEY_ENCIPHERMENT] |
+            x509.KeyUsageFlags[CertKeyUsage.KEY_AGREEMENT],
+          true
+        ),
+        new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage[CertExtendedKeyUsage.CLIENT_AUTH]], true),
+        routingExtension,
+        actorExtension,
+        pamInfoExtension
+      ]
+    });
+
+    const gatewayClientCertPrivateKey = crypto.nativeCrypto.KeyObject.from(clientKeys.privateKey);
+
+    const relayCredentials = await relayService.getCredentialsForClient({
+      relayId: gateway.relayId,
+      orgId: gateway.orgId,
+      orgName: gateway.orgName,
+      gatewayId,
+      gatewayName: gateway.name,
+      duration
+    });
+
+    return {
+      relayHost: relayCredentials.relayHost,
+      gateway: {
+        clientCertificate: clientCert.toString("pem"),
+        clientPrivateKey: gatewayClientCertPrivateKey.export({ format: "pem", type: "pkcs8" }).toString(),
+        serverCertificateChain: constructPemChainFromCerts([gatewayServerCaCert, rootGatewayCaCert])
+      },
+      relay: {
+        clientCertificate: relayCredentials.clientCertificate,
+        clientPrivateKey: relayCredentials.clientPrivateKey,
+        serverCertificateChain: relayCredentials.serverCertificateChain
+      }
+    };
+  };
+
   const registerGateway = async ({
     orgId,
     actorId,
@@ -645,14 +816,75 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
-    return gatewayV2DAL.deleteById(gateway.id);
+    try {
+      return await gatewayV2DAL.deleteById(gateway.id);
+    } catch (err) {
+      if (
+        err instanceof DatabaseError &&
+        (err.error as { code: string })?.code === DatabaseErrorCode.ForeignKeyViolation
+      ) {
+        throw new BadRequestError({
+          message: "Failed to delete gateway because it is attached to active resources"
+        });
+      }
+
+      throw err;
+    }
+  };
+
+  const getPamSessionKey = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
+    const { permission } = await permissionService.getOrgPermission(
+      orgPermission.type,
+      orgPermission.id,
+      orgPermission.orgId,
+      orgPermission.authMethod,
+      orgPermission.orgId
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionGatewayActions.CreateGateways,
+      OrgPermissionSubjects.Gateway
+    );
+
+    return gatewayV2DAL.transaction(async (tx) => {
+      const gateway = await gatewayV2DAL.findOne(
+        {
+          identityId: orgPermission.id
+        },
+        tx
+      );
+
+      if (!gateway) {
+        throw new NotFoundError({ message: "Gateway not found" });
+      }
+
+      const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId: orgPermission.orgId
+      });
+
+      if (gateway.encryptedPamSessionKey) {
+        return decryptor({ cipherTextBlob: gateway.encryptedPamSessionKey });
+      }
+
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.GatewayPamSessionKey(gateway.id)]);
+
+      const newPamSessionKey = crypto.randomBytes(32);
+      const { cipherTextBlob: encryptedPamSessionKey } = encryptor({ plainText: newPamSessionKey });
+
+      await gatewayV2DAL.updateById(gateway.id, { encryptedPamSessionKey }, tx);
+
+      return newPamSessionKey;
+    });
   };
 
   return {
     listGateways,
     registerGateway,
     getPlatformConnectionDetailsByGatewayId,
+    getPAMConnectionDetails,
     deleteGatewayById,
-    heartbeat
+    heartbeat,
+    getPamSessionKey
   };
 };

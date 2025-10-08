@@ -286,7 +286,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           entryPoint: z.string(),
           issuer: z.string(),
           cert: z.string(),
-          lastUsed: z.date().nullable().optional()
+          lastUsed: z.date().nullable().optional(),
+          enableGroupSync: z.boolean().optional()
         })
       }
     },
@@ -325,14 +326,15 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         isActive: z.boolean().describe(SamlSso.CREATE_CONFIG.isActive),
         entryPoint: z.string().trim().describe(SamlSso.CREATE_CONFIG.entryPoint),
         issuer: z.string().trim().describe(SamlSso.CREATE_CONFIG.issuer),
-        cert: z.string().trim().describe(SamlSso.CREATE_CONFIG.cert)
+        cert: z.string().trim().describe(SamlSso.CREATE_CONFIG.cert),
+        enableGroupSync: z.boolean().optional().describe(SamlSso.CREATE_CONFIG.enableGroupSync)
       }),
       response: {
         200: SanitizedSamlConfigSchema
       }
     },
     handler: async (req) => {
-      const { isActive, authProvider, issuer, entryPoint, cert } = req.body;
+      const { isActive, authProvider, issuer, entryPoint, cert, enableGroupSync } = req.body;
       const { permission } = req;
 
       return server.services.saml.createSamlCfg({
@@ -341,6 +343,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         issuer,
         entryPoint,
         idpCert: cert,
+        enableGroupSync,
         actor: permission.type,
         actorId: permission.id,
         actorAuthMethod: permission.authMethod,
@@ -372,7 +375,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           isActive: z.boolean().describe(SamlSso.UPDATE_CONFIG.isActive),
           entryPoint: z.string().trim().describe(SamlSso.UPDATE_CONFIG.entryPoint),
           issuer: z.string().trim().describe(SamlSso.UPDATE_CONFIG.issuer),
-          cert: z.string().trim().describe(SamlSso.UPDATE_CONFIG.cert)
+          cert: z.string().trim().describe(SamlSso.UPDATE_CONFIG.cert),
+          enableGroupSync: z.boolean().optional().describe(SamlSso.UPDATE_CONFIG.enableGroupSync)
         })
         .partial()
         .merge(z.object({ organizationId: z.string().trim().describe(SamlSso.UPDATE_CONFIG.organizationId) })),
@@ -381,7 +385,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { isActive, authProvider, issuer, entryPoint, cert } = req.body;
+      const { isActive, authProvider, issuer, entryPoint, cert, enableGroupSync } = req.body;
       const { permission } = req;
 
       return server.services.saml.updateSamlCfg({
@@ -390,6 +394,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         issuer,
         entryPoint,
         idpCert: cert,
+        enableGroupSync,
         actor: permission.type,
         actorId: permission.id,
         actorAuthMethod: permission.authMethod,

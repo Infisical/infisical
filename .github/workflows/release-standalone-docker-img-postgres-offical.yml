@@ -65,6 +65,15 @@ jobs:
                       INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
                       DD_GIT_REPOSITORY_URL=${{ github.server_url }}/${{ github.repository }}
                       DD_GIT_COMMIT_SHA=${{ github.sha }}
+            - name: Snyk to check Docker image for vulnerabilities
+              continue-on-error: true 
+              uses: snyk/actions/docker@master
+              env:
+                SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+              with:
+                image: infisical/infisical:${{ steps.extract_version.outputs.version }}
+                command: monitor
+                args: --file=Dockerfile.standalone-infisical --project-name="infisical-core-docker-image"
 
     infisical-fips-standalone:
         name: Build infisical standalone image postgres

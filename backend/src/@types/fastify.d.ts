@@ -28,6 +28,10 @@ import { TKmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
+import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
+import { TPamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
+import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-types";
@@ -315,6 +319,10 @@ declare module "fastify" {
       identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
       notification: TNotificationServiceFactory;
       offlineUsageReport: TOfflineUsageReportServiceFactory;
+      pamFolder: TPamFolderServiceFactory;
+      pamResource: TPamResourceServiceFactory;
+      pamAccount: TPamAccountServiceFactory;
+      pamSession: TPamSessionServiceFactory;
       upgradePath: TUpgradePathService;
     };
     // this is exclusive use for middlewares in which we need to inject data

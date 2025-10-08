@@ -1,5 +1,6 @@
 export * from "./AccessApprovalRequestTemplate";
 export * from "./AccessApprovalRequestUpdatedTemplate";
+export * from "./AccountDeletionConfirmationTemplate";
 export * from "./EmailMfaTemplate";
 export * from "./EmailVerificationTemplate";
 export * from "./ExternalImportFailedTemplate";

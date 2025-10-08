@@ -12,6 +12,8 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
+  ProjectPermissionPamAccountActions,
+  ProjectPermissionPamSessionActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
@@ -49,7 +51,9 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SshCertificateAuthorities,
     ProjectPermissionSub.SshCertificates,
     ProjectPermissionSub.SshCertificateTemplates,
-    ProjectPermissionSub.SshHostGroups
+    ProjectPermissionSub.SshHostGroups,
+    ProjectPermissionSub.PamFolders,
+    ProjectPermissionSub.PamResources
   ].forEach((el) => {
     can(
       [
@@ -290,6 +294,19 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.AppConnections
   );
 
+  can(
+    [
+      ProjectPermissionPamAccountActions.Access,
+      ProjectPermissionPamAccountActions.Read,
+      ProjectPermissionPamAccountActions.Create,
+      ProjectPermissionPamAccountActions.Edit,
+      ProjectPermissionPamAccountActions.Delete
+    ],
+    ProjectPermissionSub.PamAccounts
+  );
+
+  can([ProjectPermissionPamSessionActions.Read], ProjectPermissionSub.PamSessions);
+
   return rules;
 };
 
@@ -518,6 +535,15 @@ const buildMemberPermissionRules = () => {
 
   can(ProjectPermissionAppConnectionActions.Connect, ProjectPermissionSub.AppConnections);
 
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.PamFolders);
+
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.PamResources);
+
+  can(
+    [ProjectPermissionPamAccountActions.Access, ProjectPermissionPamAccountActions.Read],
+    ProjectPermissionSub.PamAccounts
+  );
+
   return rules;
 };
 
@@ -578,6 +604,12 @@ const buildViewerPermissionRules = () => {
     ],
     ProjectPermissionSub.SecretEvents
   );
+
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.PamFolders);
+
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.PamResources);
+
+  can([ProjectPermissionPamAccountActions.Read], ProjectPermissionSub.PamAccounts);
 
   return rules;
 };

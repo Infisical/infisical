@@ -105,6 +105,22 @@ sdk.Auth().UniversalAuthLogin(
 - `clientId` (string): The client ID of your Machine Identity.
 - `clientSecret` (string): The client secret of your Machine Identity.
 
+### AWS Auth
+
+```java
+public void AwsAuthLogin(
+  String identityId
+)
+throws InfisicalException
+```
+
+```java
+sdk.Auth().AwsAuthLogin("<machine-identity-id>");
+```
+
+**Parameters:**
+- `identityId` (String): The ID of the machine identity to authenticate with.
+
 ### LDAP Auth
 
 ```java

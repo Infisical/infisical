@@ -2872,7 +2872,9 @@ export const SamlSso = {
     entryPoint:
       "The entry point for the SAML authentication. This is the URL that the user will be redirected to after they have authenticated with the SAML provider.",
     issuer: "The SAML provider issuer URL or entity ID.",
-    cert: "The certificate to use for SAML authentication."
+    cert: "The certificate to use for SAML authentication.",
+    enableGroupSync:
+      "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups."
   },
   CREATE_CONFIG: {
     organizationId: "The ID of the organization to create the SAML config for.",
@@ -2881,7 +2883,9 @@ export const SamlSso = {
     entryPoint:
       "The entry point for the SAML authentication. This is the URL that the user will be redirected to after they have authenticated with the SAML provider.",
     issuer: "The SAML provider issuer URL or entity ID.",
-    cert: "The certificate to use for SAML authentication."
+    cert: "The certificate to use for SAML authentication.",
+    enableGroupSync:
+      "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups."
   }
 };
 

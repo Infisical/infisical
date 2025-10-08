@@ -24,12 +24,13 @@ import { useOrganization } from "@app/context";
 import { useGetUserProjects } from "@app/hooks/api";
 import {
   eventToNameMap,
+  projectToEventsMap,
   secretEvents,
   userAgentTypeToNameMap
 } from "@app/hooks/api/auditLogs/constants";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { UserAgentType } from "@app/hooks/api/auth/types";
-import { Project } from "@app/hooks/api/projects/types";
+import { Project, ProjectType } from "@app/hooks/api/projects/types";
 
 import { LogFilterItem } from "./LogFilterItem";
 import { auditLogFilterFormSchema, Presets, TAuditLogFilterFormData } from "./types";
@@ -94,10 +95,20 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
   const selectedEventTypes = watch("eventType") as EventType[] | undefined;
   const selectedProject = project ?? watch("project");
 
+  const currentSelectedEventTypes = selectedEventTypes ?? [];
+  const hasSecretEventFilter = currentSelectedEventTypes.some((eventType) =>
+    secretEvents.includes(eventType)
+  );
   const showSecretsSection =
-    selectedEventTypes?.some(
-      (eventType) => secretEvents.includes(eventType) && eventType !== EventType.GET_SECRETS
-    ) || selectedEventTypes?.length === 0;
+    selectedProject?.type !== ProjectType.PAM &&
+    (hasSecretEventFilter || currentSelectedEventTypes.length === 0);
+
+  const filteredEventTypes = useMemo(() => {
+    const projectEvents = project?.type ? projectToEventsMap[project.type] : undefined;
+    if (!projectEvents) return eventTypes;
+
+    return eventTypes.filter((v) => projectEvents.includes(v.value as EventType));
+  }, [project]);
 
   const availableEnvironments = useMemo(() => {
     if (!selectedProject) return [];
@@ -166,7 +177,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                         <DropdownMenuTrigger asChild>
                           <div className="thin-scrollbar inline-flex w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-md border border-mineshaft-500 bg-mineshaft-700 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
                             {selectedEventTypes?.length === 1
-                              ? eventTypes.find(
+                              ? filteredEventTypes.find(
                                   (eventType) => eventType.value === selectedEventTypes[0]
                                 )?.label
                               : selectedEventTypes?.length === 0
@@ -181,8 +192,8 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                           className="thin-scrollbar z-[100] max-h-80 overflow-hidden"
                         >
                           <div className="max-h-80 overflow-y-auto">
-                            {eventTypes && eventTypes.length > 0 ? (
-                              eventTypes.map((eventType) => {
+                            {filteredEventTypes.length > 0 ? (
+                              filteredEventTypes.map((eventType) => {
                                 const isSelected = selectedEventTypes?.includes(
                                   eventType.value as EventType
                                 );
@@ -190,7 +201,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                                 return (
                                   <DropdownMenuItem
                                     onSelect={(event) =>
-                                      eventTypes.length > 1 && event.preventDefault()
+                                      filteredEventTypes.length > 1 && event.preventDefault()
                                     }
                                     onClick={() => {
                                       if (

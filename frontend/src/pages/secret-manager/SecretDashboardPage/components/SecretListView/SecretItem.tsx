@@ -491,7 +491,7 @@ export const SecretItem = memo(
                       field?.value !== (originalSecret.originalKey || originalSecret.key) &&
                       field.value?.includes(" ") ? (
                         <Tooltip
-                          className={"w-full max-w-72"}
+                          className="w-full max-w-72"
                           content={
                             <div>
                               Secret key contains whitespaces.

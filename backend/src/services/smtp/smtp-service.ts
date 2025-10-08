@@ -9,6 +9,7 @@ import { logger } from "@app/lib/logger";
 import {
   AccessApprovalRequestTemplate,
   AccessApprovalRequestUpdatedTemplate,
+  AccountDeletionConfirmationTemplate,
   EmailMfaTemplate,
   EmailVerificationTemplate,
   ExternalImportFailedTemplate,
@@ -83,7 +84,8 @@ export enum SmtpTemplates {
   OrgAdminBreakglassAccess = "orgAdminBreakglassAccess",
   ServiceTokenExpired = "serviceTokenExpired",
   SecretScanningV2ScanFailed = "secretScanningV2ScanFailed",
-  SecretScanningV2SecretsDetected = "secretScanningV2SecretsDetected"
+  SecretScanningV2SecretsDetected = "secretScanningV2SecretsDetected",
+  AccountDeletionConfirmation = "accountDeletionConfirmation"
 }
 
 export enum SmtpHost {
@@ -128,7 +130,8 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.SetupPassword]: PasswordSetupTemplate,
   [SmtpTemplates.PkiExpirationAlert]: PkiExpirationAlertTemplate,
   [SmtpTemplates.SecretScanningV2ScanFailed]: SecretScanningScanFailedTemplate,
-  [SmtpTemplates.SecretScanningV2SecretsDetected]: SecretScanningSecretsDetectedTemplate
+  [SmtpTemplates.SecretScanningV2SecretsDetected]: SecretScanningSecretsDetectedTemplate,
+  [SmtpTemplates.AccountDeletionConfirmation]: AccountDeletionConfirmationTemplate
 };
 
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {
