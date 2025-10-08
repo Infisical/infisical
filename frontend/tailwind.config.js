@@ -1,4 +1,3 @@
-const colors = require("tailwindcss/colors");
 const round = (num) =>
   num
     .toFixed(7)
@@ -6,7 +5,6 @@ const round = (num) =>
     .replace(/\.0$/, "");
 const em = (px, base) => `${round(px / base)}em`;
 
-const plugin = require("tailwindcss/plugin");
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -391,12 +389,12 @@ module.exports = {
               color: "var(--tw-prose-lead)"
             },
             a: {
-              color: colors.gray[200],
+              color: "#e5e7eb",
               textDecoration: "underline",
               fontWeight: "500"
             },
             strong: {
-              color: colors.gray[200],
+              color: "#e5e7eb",
               fontWeight: "600"
             },
             "a strong": {
@@ -467,7 +465,7 @@ module.exports = {
               content: "close-quote"
             },
             h1: {
-              color: colors.gray[200],
+              color: "#e5e7eb",
               fontWeight: "800"
             },
             "h1 strong": {
@@ -475,7 +473,7 @@ module.exports = {
               color: "inherit"
             },
             h2: {
-              color: colors.gray[200],
+              color: "#e5e7eb",
               fontWeight: "700"
             },
             "h2 strong": {
@@ -483,7 +481,7 @@ module.exports = {
               color: "inherit"
             },
             h3: {
-              color: colors.gray[300],
+              color: "#d1d5db",
               fontWeight: "600"
             },
             "h3 strong": {
@@ -491,7 +489,7 @@ module.exports = {
               color: "inherit"
             },
             h4: {
-              color: colors.gray[400],
+              color: "#9ca3af",
               fontWeight: "600"
             },
             "h4 strong": {
@@ -537,7 +535,7 @@ module.exports = {
             },
             pre: {
               color: "var(--tw-prose-pre-code)",
-              backgroundColor: colors.gray[800],
+              backgroundColor: "#1f2937",
               overflowX: "auto",
               fontWeight: "400"
             },
@@ -597,17 +595,6 @@ module.exports = {
     })
   },
   plugins: [
-    plugin(function ({ addUtilities }) {
-      addUtilities({
-        ".no-scrollbar::-webkit-scrollbar": {
-          display: "none"
-        },
-        ".no-scrollbar": {
-          "-ms-overflow-style": "none",
-          "scrollbar-width": "none"
-        }
-      });
-    }),
     require("@tailwindcss/typography")
   ]
 };
