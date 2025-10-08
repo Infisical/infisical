@@ -32,10 +32,27 @@ export const initDbConnection = ({
     return selectedReplica;
   });
 
+  // Parse out ?sslmode=... from the connection URI if its not equal to "disable" and dbRootCert is defined
+  let modifiedDbConnectionUri = dbConnectionUri;
+  if (dbRootCert) {
+    const parts = dbConnectionUri.split("?");
+    const baseUrl = parts[0];
+    const queryString = parts.length > 1 ? parts[1] : "";
+
+    if (queryString) {
+      const params = new URLSearchParams(queryString);
+      if (params.has("sslmode") && params.get("sslmode") !== "disable") {
+        params.delete("sslmode");
+        const newQueryString = params.toString();
+        modifiedDbConnectionUri = baseUrl + (newQueryString ? `?${newQueryString}` : "");
+      }
+    }
+  }
+
   db = knex({
     client: "pg",
     connection: {
-      connectionString: dbConnectionUri,
+      connectionString: modifiedDbConnectionUri,
       host: process.env.DB_HOST,
       // @ts-expect-error I have no clue why only for the port there is a type error
       // eslint-disable-next-line
