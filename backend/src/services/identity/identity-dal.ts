@@ -69,7 +69,7 @@ export const identityDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.Identity)
         .where((qb) => {
           if (searchTerm) {
-            void qb.whereILike(`${TableName.Identity}.name`, `%${searchTerm}%`);
+            void qb.whereILike(`name`, `%${searchTerm}%`);
           }
         })
         .count("*")

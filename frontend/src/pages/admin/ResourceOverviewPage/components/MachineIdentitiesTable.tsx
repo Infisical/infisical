@@ -132,26 +132,24 @@ const IdentityPanelTable = ({
                               </IconButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent sideOffset={2} align="end">
-                              {isInstanceAdmin && (
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePopUpOpen("removeServerAdmin", { name, id });
-                                  }}
-                                  icon={
-                                    <div className="relative">
-                                      <FontAwesomeIcon icon={faShieldHalved} />
-                                      <FontAwesomeIcon
-                                        className="absolute -bottom-[0.01rem] -right-1"
-                                        size="2xs"
-                                        icon={faXmark}
-                                      />
-                                    </div>
-                                  }
-                                >
-                                  Remove Server Admin
-                                </DropdownMenuItem>
-                              )}
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePopUpOpen("removeServerAdmin", { name, id });
+                                }}
+                                icon={
+                                  <div className="relative">
+                                    <FontAwesomeIcon icon={faShieldHalved} />
+                                    <FontAwesomeIcon
+                                      className="absolute -bottom-[0.01rem] -right-1"
+                                      size="2xs"
+                                      icon={faXmark}
+                                    />
+                                  </div>
+                                }
+                              >
+                                Remove Server Admin
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
