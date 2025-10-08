@@ -55,7 +55,7 @@ export default function InitialSignupStep({
             leftIcon={<FontAwesomeIcon icon={faGithub} className="mr-2" />}
             className="mx-0 h-12 w-full"
           >
-            Continue with GitHub
+            {t("signup.continue-with-github")??"Continue with GitHub"}
           </Button>
         </div>
       )}
@@ -86,7 +86,7 @@ export default function InitialSignupStep({
             leftIcon={<FontAwesomeIcon icon={faEnvelope} className="mr-2" />}
             className="mx-0 h-12 w-full"
           >
-            Continue with Email
+            {t("signup.continue-with-email")}
           </Button>
         </div>
       )}

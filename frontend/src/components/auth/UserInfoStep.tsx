@@ -145,7 +145,7 @@ export default function UserInfoStep({
       <div className="mx-auto mb-36 h-full w-max rounded-xl py-6 md:mb-16 md:border md:border-mineshaft-600 md:bg-mineshaft-800 md:px-8">
         <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
           <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
-            Your Name
+            {t("signup.step3-you-name")??"Your Name"}
           </p>
           <Input
             placeholder="Jane Doe"
@@ -157,13 +157,13 @@ export default function UserInfoStep({
           />
           {nameError && (
             <p className="ml-1 mt-1 w-full text-left text-xs text-red-600">
-              Please, specify your name
+              {t("login.step3-please-specify-you-name") ?? "Please, specify your name"}
             </p>
           )}
         </div>
         <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
           <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
-            Organization Name
+            {t("signup.step3-organization-name")??"Organization Name"}
           </p>
           <Input
             placeholder="Infisical"
@@ -175,13 +175,13 @@ export default function UserInfoStep({
           />
           {organizationNameError && (
             <p className="ml-1 mt-1 w-full text-left text-xs text-red-600">
-              Please, specify your organization name
+              {t("signup.step3-please-specify-organization-name") ?? "Please, specify your organization name"}
             </p>
           )}
         </div>
         <div className="relative z-0 flex w-full min-w-[20rem] flex-col items-center justify-end rounded-lg py-2 lg:w-1/6">
           <p className="mb-1 ml-1 w-full text-left text-sm font-medium text-bunker-300">
-            Where did you hear about us? <span className="font-light">(optional)</span>
+            {t("signup.step3-how-did-you-hear-about-us")??"Where did you hear about us?"} <span className="font-light">(optional)</span>
           </p>
           <Input
             placeholder=""
