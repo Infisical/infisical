@@ -7,3 +7,9 @@ export * from "./Input";
 export * from "./ScrollArea";
 export * from "./Tabs";
 export * from "./Tooltip";
+
+// akhilmhdh
+export * from "./Sheet";
+export * from "./Label";
+export * from "./Checkbox";
+export * from "./Dialog";

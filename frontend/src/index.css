@@ -7,11 +7,11 @@
 @source not "../public";
 
 @font-face {
-    font-family: 'Alliance No.2';
-    src: url('/fonts/AllianceNo2-Regular.otf') format('opentype');
-    font-weight: 400;
-    font-style: normal;
-    font-display: swap;
+  font-family: "Alliance No.2";
+  src: url("/fonts/AllianceNo2-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 
 /*
@@ -23,12 +23,15 @@
   color utility to any element that depends on these defaults.
 */
 @layer base {
+
   *,
   ::after,
   ::before,
   ::backdrop,
   ::file-selector-button {
     border-color: var(--color-gray-200, currentcolor);
+    /* border-color: var(--border); */
+
   }
 
   html {
@@ -42,7 +45,10 @@
     --background: oklch(0.145 0 0);
 
     --toastify-color-dark: var(--color-mineshaft-700);
+    --header-height: 102px;
+    --border: oklch(1 0 0 / 10%);
   }
+
 }
 
 @theme {
@@ -256,6 +262,7 @@
   &::-webkit-scrollbar-thumb {
     background-color: gray;
   }
+
   scrollbar-width: thin;
   scrollbar-color: gray transparent;
 }
@@ -264,6 +271,7 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -274,6 +282,7 @@
     0% {
       opacity: 0;
     }
+
     100% {
       opacity: 1;
     }
@@ -284,6 +293,7 @@
       opacity: 0;
       transform: translate(-50%, -48%) scale(0.96);
     }
+
     to {
       opacity: 1;
       transform: translate(-50%, -50%) scale(1);
@@ -294,16 +304,19 @@
     0% {
       transform: translateY(-90%);
     }
+
     100% {
       transform: translateY(-100%);
     }
   }
 
   @keyframes wiggle {
+
     0%,
     100% {
       transform: rotate(-3deg);
     }
+
     50% {
       transform: rotate(3deg);
     }
@@ -314,6 +327,7 @@
       transform: scale(0.2);
       opacity: 0;
     }
+
     100% {
       transform: scale(1);
       opacity: 1;
@@ -324,6 +338,7 @@
     0% {
       transform: rotate(0deg);
     }
+
     40%,
     100% {
       transform: rotate(360deg);
@@ -334,42 +349,52 @@
     0% {
       transform: translateX(0ch);
     }
+
     5%,
     10% {
       transform: translateX(1ch);
     }
+
     15%,
     20% {
       transform: translateX(2ch);
     }
+
     25%,
     30% {
       transform: translateX(3ch);
     }
+
     35%,
     40% {
       transform: translateX(4ch);
     }
+
     45%,
     50% {
       transform: translateX(5ch);
     }
+
     55%,
     60% {
       transform: translateX(6ch);
     }
+
     65%,
     70% {
       transform: translateX(7ch);
     }
+
     75%,
     80% {
       transform: translateX(8ch);
     }
+
     85%,
     90% {
       transform: translateX(9ch);
     }
+
     95%,
     100% {
       transform: translateX(11ch);
@@ -425,13 +450,11 @@
 }
 
 .tags-conic-bg {
-  background: conic-gradient(
-    rgb(235, 87, 87),
-    rgb(242, 201, 76),
-    rgb(76, 183, 130),
-    rgb(78, 167, 252),
-    rgb(250, 96, 122)
-  );
+  background: conic-gradient(rgb(235, 87, 87),
+      rgb(242, 201, 76),
+      rgb(76, 183, 130),
+      rgb(78, 167, 252),
+      rgb(250, 96, 122));
 }
 
 #nprogress .bar {
@@ -446,14 +469,15 @@
 }
 
 .tooltip-content {
-    animation: fadeIn 0.2s ease-out;
+  animation: fadeIn 0.2s ease-out;
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
