@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -72,18 +72,13 @@ const Content = ({ onClose }: ContentProps) => {
   const [searchUserFilter, setSearchUserFilter] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useDebounce(searchUserFilter, 500);
 
-  const { data, isFetching } = useAdminGetUsers(
-    {
-      limit: 20,
-      searchTerm: debouncedSearchTerm,
-      adminsOnly: false
-    },
-    {
-      placeholderData: (prev) => prev
-    }
-  );
+  const { data, isPending } = useAdminGetUsers({
+    limit: 20,
+    searchTerm: debouncedSearchTerm,
+    adminsOnly: false
+  });
 
-  const users = useMemo(() => data?.pages.flat() ?? [], [data]);
+  const { users = [] } = data ?? {};
 
   const onSubmit = async ({ name, invitees }: FormData) => {
     try {
@@ -155,7 +150,7 @@ const Content = ({ onClose }: ContentProps) => {
                   })
                   .includes(input)
               }
-              isLoading={searchUserFilter !== debouncedSearchTerm || isFetching}
+              isLoading={searchUserFilter !== debouncedSearchTerm || isPending}
               className="w-full"
               placeholder="Search users or invite new ones..."
               isMulti

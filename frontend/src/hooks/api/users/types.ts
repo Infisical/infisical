@@ -103,29 +103,29 @@ export type TWorkspaceUser = {
   organization: string;
   roles: (
     | {
-        id: string;
-        role: "owner" | "admin" | "member" | "no-access" | "custom";
-        customRoleId: string;
-        customRoleName: string;
-        customRoleSlug: string;
-        isTemporary: false;
-        temporaryRange: null;
-        temporaryMode: null;
-        temporaryAccessEndTime: null;
-        temporaryAccessStartTime: null;
-      }
+      id: string;
+      role: "owner" | "admin" | "member" | "no-access" | "custom";
+      customRoleId: string;
+      customRoleName: string;
+      customRoleSlug: string;
+      isTemporary: false;
+      temporaryRange: null;
+      temporaryMode: null;
+      temporaryAccessEndTime: null;
+      temporaryAccessStartTime: null;
+    }
     | {
-        id: string;
-        role: "owner" | "admin" | "member" | "no-access" | "custom";
-        customRoleId: string;
-        customRoleName: string;
-        customRoleSlug: string;
-        isTemporary: true;
-        temporaryRange: string;
-        temporaryMode: ProjectUserMembershipTemporaryMode;
-        temporaryAccessEndTime: string;
-        temporaryAccessStartTime: string;
-      }
+      id: string;
+      role: "owner" | "admin" | "member" | "no-access" | "custom";
+      customRoleId: string;
+      customRoleName: string;
+      customRoleSlug: string;
+      isTemporary: true;
+      temporaryRange: string;
+      temporaryMode: ProjectUserMembershipTemporaryMode;
+      temporaryAccessEndTime: string;
+      temporaryAccessStartTime: string;
+    }
   )[];
   status: "invited" | "accepted" | "verified" | "completed";
   deniedPermissions: any[];

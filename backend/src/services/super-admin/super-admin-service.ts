@@ -57,6 +57,7 @@ import {
   TAdminSignUpDTO,
   TCountIdentitiesDTO,
   TCountOrganizationsDTO,
+  TCountUsersDTO,
   TCreateOrganizationDTO,
   TGetOrganizationsDTO,
   TResendOrgInviteDTO
@@ -670,6 +671,15 @@ export const superAdminServiceFactory = ({
     });
   };
 
+  const countUsers = async ({ searchTerm, adminsOnly }: TCountUsersDTO) => {
+    const count = await userDAL.countUsersByFilter({
+      searchTerm,
+      adminsOnly
+    });
+
+    return count;
+  };
+
   const deleteUser = async (userId: string) => {
     const superAdmins = await userDAL.find({
       superAdmin: true
@@ -1151,6 +1161,7 @@ export const superAdminServiceFactory = ({
     adminSignUp,
     bootstrapInstance,
     getUsers,
+    countUsers,
     deleteUser,
     getIdentities,
     countIdentities,

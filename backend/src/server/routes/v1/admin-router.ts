@@ -172,7 +172,10 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             email: true,
             id: true,
             superAdmin: true
-          }).array()
+          }).array(),
+          meta: z.object({
+            total: z.number()
+          })
         })
       }
     },
@@ -186,8 +189,16 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         ...req.query
       });
 
+      const count = await server.services.superAdmin.countUsers({
+        searchTerm: req.query.searchTerm,
+        adminsOnly: req.query.adminsOnly
+      });
+
       return {
-        users
+        users,
+        meta: {
+          total: count
+        }
       };
     }
   });
@@ -247,7 +258,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         ...req.query
       });
       const count = await server.services.superAdmin.countOrganizations({
-        ...req.query
+        searchTerm: req.query.searchTerm
       });
 
       return {
@@ -364,7 +375,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
 
       const count = await server.services.superAdmin.countIdentities({
-        ...req.query
+        searchTerm: req.query.searchTerm
       });
 
       return {

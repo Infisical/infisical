@@ -1,7 +1,7 @@
 import { Identity } from "@app/hooks/api/identities/types";
 import { OrgMembershipStatus } from "@app/hooks/api/organization/types";
 
-import { Organization } from "../types";
+import { Organization, User } from "../types";
 
 export enum LoginMethod {
   EMAIL = "email",
@@ -46,6 +46,11 @@ export type TGetOrganizationsResponse = {
 
 export type TGetIdentitiesResponse = {
   identities: Identity[];
+  meta: PaginatedDataMeta;
+};
+
+export type TGetUsersResponse = {
+  users: User[];
   meta: PaginatedDataMeta;
 };
 
@@ -102,9 +107,10 @@ export type AdminGetOrganizationsFilters = {
 };
 
 export type AdminGetUsersFilters = {
-  limit: number;
-  searchTerm: string;
-  adminsOnly: boolean;
+  limit?: number;
+  offset?: number;
+  searchTerm?: string;
+  adminsOnly?: boolean;
 };
 
 export type AdminGetIdentitiesFilters = {
@@ -186,4 +192,8 @@ export enum AdminOrganizationsOrderBy {
 
 export enum AdminIdentitiesOrderBy {
   Name = "name"
+}
+
+export enum AdminUsersOrderBy {
+  Username = "username"
 }

@@ -42,6 +42,11 @@ export type TCountIdentitiesDTO = {
   searchTerm: string;
 };
 
+export type TCountUsersDTO = {
+  searchTerm: string;
+  adminsOnly: boolean;
+};
+
 export type TCreateOrganizationDTO = {
   name: string;
   inviteAdminEmails: string[];

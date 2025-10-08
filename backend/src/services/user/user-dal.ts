@@ -70,6 +70,35 @@ export const userDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countUsersByFilter = async ({ searchTerm, adminsOnly }: { searchTerm: string; adminsOnly: boolean }) => {
+    interface CountResult {
+      count: string;
+    }
+    try {
+      const count = await db
+        .replicaNode()(TableName.Users)
+        .where("isGhost", "=", false)
+        .where((qb) => {
+          if (searchTerm) {
+            void qb
+              .whereILike("email", `%${searchTerm}%`)
+              .orWhereILike("firstName", `%${searchTerm}%`)
+              .orWhereILike("lastName", `%${searchTerm}%`)
+              .orWhereRaw('lower("username") like ?', `%${searchTerm}%`);
+          }
+          if (adminsOnly) {
+            void qb.where("superAdmin", true);
+          }
+        })
+        .count("*")
+        .first();
+
+      return parseInt((count as unknown as CountResult).count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count Users by filter" });
+    }
+  };
+
   // USER ENCRYPTION FUNCTIONS
   // -------------------------
   const findUserEncKeyByUsername = async ({ username }: { username: string }) => {
@@ -243,6 +272,7 @@ export const userDALFactory = (db: TDbClient) => {
     findOneUserAction,
     createUserAction,
     getUsersByFilter,
+    countUsersByFilter,
     findAllMyAccounts,
     findUserByEmail
   };

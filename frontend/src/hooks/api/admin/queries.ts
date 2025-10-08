@@ -1,15 +1,7 @@
-import {
-  DefaultError,
-  InfiniteData,
-  UndefinedInitialDataInfiniteOptions,
-  useInfiniteQuery,
-  useQuery,
-  UseQueryOptions
-} from "@tanstack/react-query";
+import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { User } from "../types";
 import {
   AdminGetIdentitiesFilters,
   AdminGetOrganizationsFilters,
@@ -20,6 +12,7 @@ import {
   TGetInvalidatingCacheStatus,
   TGetOrganizationsResponse,
   TGetServerRootKmsEncryptionDetails,
+  TGetUsersResponse,
   TServerConfig
 } from "./types";
 
@@ -87,37 +80,22 @@ export const useGetServerConfig = ({
     enabled: options?.enabled ?? true
   });
 
-export const useAdminGetUsers = (
-  filters: AdminGetUsersFilters,
-  options?: Partial<
-    UndefinedInitialDataInfiniteOptions<
-      User[],
-      DefaultError,
-      InfiniteData<User[]>,
-      ReturnType<typeof adminQueryKeys.getUsers>,
-      number
-    >
-  >
-) => {
-  return useInfiniteQuery({
-    initialPageParam: 0,
+export const useAdminGetUsers = (filters: AdminGetUsersFilters) => {
+  return useQuery({
     queryKey: adminQueryKeys.getUsers(filters),
-    queryFn: async ({ pageParam }) => {
-      const { data } = await apiRequest.get<{ users: User[] }>(
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TGetUsersResponse>(
         "/api/v1/admin/user-management/users",
         {
           params: {
-            ...filters,
-            offset: pageParam
+            ...filters
           }
         }
       );
 
-      return data.users;
+      return { users: data.users, totalCount: data.meta.total };
     },
-    getNextPageParam: (lastPage, pages) =>
-      lastPage.length !== 0 ? pages.length * filters.limit : undefined,
-    ...options
+    placeholderData: (previousData) => previousData
   });
 };
 
