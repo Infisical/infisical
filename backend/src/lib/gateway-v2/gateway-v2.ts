@@ -18,7 +18,7 @@ interface IGatewayRelayServer {
   getRelayError: () => string;
 }
 
-const createRelayConnection = async ({
+export const createRelayConnection = async ({
   relayHost,
   clientCertificate,
   clientPrivateKey,

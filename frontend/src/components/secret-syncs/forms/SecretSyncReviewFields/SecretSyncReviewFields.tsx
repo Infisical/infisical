@@ -199,7 +199,10 @@ export const SecretSyncReviewFields = () => {
                 </p>
                 {duplicateProjectId && (
                   <p className="mt-1 text-xs text-yellow-200">
-                    Duplicate found in project ID: <code className="rounded bg-yellow-800/50 px-1 py-0.5">{duplicateProjectId}</code>
+                    Duplicate found in project ID:{" "}
+                    <code className="rounded bg-yellow-800/50 px-1 py-0.5">
+                      {duplicateProjectId}
+                    </code>
                   </p>
                 )}
               </div>

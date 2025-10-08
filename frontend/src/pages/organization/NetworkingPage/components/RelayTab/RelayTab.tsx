@@ -5,6 +5,7 @@ import {
   faCopy,
   faDoorClosed,
   faEllipsisV,
+  faInfoCircle,
   faMagnifyingGlass,
   faSearch,
   faTrash
@@ -40,6 +41,8 @@ import {
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useDeleteRelayById, useGetRelays } from "@app/hooks/api/relays";
+
+import { GatewayHealthStatus } from "../GatewayTab/GatewayTab";
 
 export const RelayTab = withPermission(
   () => {
@@ -106,6 +109,16 @@ export const RelayTab = withPermission(
                   <Th className="w-1/3">Name</Th>
                   <Th>Host</Th>
                   <Th>Created</Th>
+                  <Th>
+                    Health Check
+                    <Tooltip
+                      asChild={false}
+                      className="normal-case"
+                      content="The last known healthcheck. Triggers every 1 hour."
+                    >
+                      <FontAwesomeIcon icon={faInfoCircle} className="ml-2" />
+                    </Tooltip>
+                  </Th>
                   <Th className="w-5" />
                 </Tr>
               </THead>
@@ -129,6 +142,9 @@ export const RelayTab = withPermission(
                     </Td>
                     <Td>{el.host}</Td>
                     <Td>{formatRelative(new Date(el.createdAt), new Date())}</Td>
+                    <Td>
+                      <GatewayHealthStatus heartbeat={el.heartbeat} />
+                    </Td>
                     <Td className="w-5">
                       <Tooltip className="max-w-sm text-center" content="Options">
                         <DropdownMenu>

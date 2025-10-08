@@ -6,7 +6,8 @@ import * as x509 from "@peculiar/x509";
 import { TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts, prependCertToPemChain } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
@@ -1056,6 +1057,78 @@ export const relayServiceFactory = ({
     });
   };
 
+  const heartbeat = async ({
+    name,
+    identityId,
+    actorAuthMethod,
+    orgId
+  }: {
+    name: string;
+    identityId?: string;
+    actorAuthMethod?: ActorAuthMethod;
+    orgId?: string;
+  }) => {
+    const relay = await relayDAL.findOne({
+      name,
+      orgId: orgId ?? null
+    });
+
+    if (!relay) {
+      throw new NotFoundError({ message: `Relay with name ${name} not found.` });
+    }
+
+    let clientOrgId: string;
+    let clientOrgName: string;
+
+    if (relay.orgId) {
+      if (!identityId || !orgId || relay.orgId !== orgId) {
+        throw new ForbiddenRequestError({
+          message: "You do not have permission to perform this action on this relay."
+        });
+      }
+
+      const { permission } = await permissionService.getOrgPermission(
+        ActorType.IDENTITY,
+        identityId,
+        orgId,
+        actorAuthMethod!,
+        orgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionRelayActions.CreateRelays,
+        OrgPermissionSubjects.Relay
+      );
+      clientOrgId = orgId;
+      clientOrgName = orgId;
+    } else {
+      clientOrgId = "00000000-0000-0000-0000-000000000000";
+      clientOrgName = "heartbeat";
+    }
+
+    const relayClientCredentials = await getCredentialsForClient({
+      relayId: relay.id,
+      orgId: clientOrgId,
+      orgName: clientOrgName,
+      gatewayId: "00000000-0000-0000-0000-000000000000",
+      gatewayName: "heartbeat",
+      duration: 60 * 1000 // 1 minute
+    });
+
+    try {
+      await createRelayConnection({
+        relayHost: relayClientCredentials.relayHost,
+        clientCertificate: relayClientCredentials.clientCertificate,
+        clientPrivateKey: relayClientCredentials.clientPrivateKey,
+        serverCertificateChain: relayClientCredentials.serverCertificateChain
+      });
+
+      await relayDAL.updateById(relay.id, { heartbeat: new Date() });
+    } catch (err) {
+      const error = err as Error;
+      throw new BadRequestError({ message: `Relay ${name} is not reachable: ${error.message}` });
+    }
+  };
+
   const getRelays = async ({
     actorId,
     actor,
@@ -1125,6 +1198,7 @@ export const relayServiceFactory = ({
     getCredentialsForGateway,
     getCredentialsForClient,
     getRelays,
-    deleteRelay
+    deleteRelay,
+    heartbeat
   };
 };
