@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import axios from "axios";
+import { z } from "zod";
 
-import { createNotification } from "@app/components/notifications";
 import { useSendVerificationEmail } from "@app/hooks/api";
 
 import { Button, Input } from "../v2";
@@ -35,11 +34,10 @@ export default function EnterEmailStep({
    * Verifies if the entered email "looks" correct
    */
   const emailCheck = async () => {
+    const isValid = z.string().email().safeParse(email);
+
     let emailCheckBool = false;
-    if (!email) {
-      setEmailError(true);
-      emailCheckBool = true;
-    } else if (!email.includes("@") || !email.includes(".") || !/[a-z]/.test(email)) {
+    if (!isValid.success) {
       setEmailError(true);
       emailCheckBool = true;
     } else {
@@ -48,24 +46,9 @@ export default function EnterEmailStep({
 
     // If everything is correct, go to the next step
     if (!emailCheckBool) {
-      try {
-        await mutateAsync({ email: email.toLowerCase() });
-        setEmail(email.toLowerCase());
-        incrementStep();
-      } catch (e) {
-        if (axios.isAxiosError(e)) {
-          let { message } = e.response?.data as { message: string };
-
-          if (typeof message !== "string") {
-            message = "Something went wrong";
-          }
-
-          createNotification({
-            type: "error",
-            text: message
-          });
-        }
-      }
+      await mutateAsync({ email: email.toLowerCase() });
+      setEmail(email.toLowerCase());
+      incrementStep();
     }
   };
 
