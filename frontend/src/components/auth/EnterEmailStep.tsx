@@ -54,11 +54,10 @@ export default function EnterEmailStep({
         incrementStep();
       } catch (e) {
         if (axios.isAxiosError(e)) {
-          let message = "Something went wrong";
-          if (e?.status === 422) {
-            message = "Invalid email";
-          } else {
-            message = (e.response?.data as { message: string })?.message || message;
+          let { message } = e.response?.data as { message: string };
+
+          if (typeof message !== "string") {
+            message = "Something went wrong";
           }
 
           createNotification({
