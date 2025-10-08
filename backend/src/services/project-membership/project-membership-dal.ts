@@ -106,6 +106,8 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
             firstName,
             lastName,
             id: userId,
+            // akhilmhdh: if we do user encryption based join this would fail for scim user who haven't logged in yet
+            // public key is not used anymore as well
             publicKey: "",
             isGhost,
             isOrgMembershipActive: isActive
@@ -249,7 +251,17 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           id,
           userId,
           projectId,
-          user: { email, username, firstName, lastName, id: userId, isGhost, publicKey: "" },
+          user: {
+            email,
+            username,
+            firstName,
+            lastName,
+            id: userId,
+            isGhost,
+            // akhilmhdh: if we do user encryption based join this would fail for scim user who haven't logged in yet
+            // public key is not used anymore as well
+            publicKey: ""
+          },
           project: {
             id: projectId,
             name: projectName,

@@ -189,7 +189,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
       const docs = await db
         .replicaNode()(TableName.UserGroupMembership)
         .join(TableName.Groups, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
-        .join(TableName.Membership, `${TableName.UserGroupMembership}.userId`, `${TableName.Membership}.actorGroupId`)
+        .join(TableName.Membership, `${TableName.UserGroupMembership}.userId`, `${TableName.Membership}.actorUserId`)
         .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
         .where(`${TableName.Groups}.id`, groupId)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)

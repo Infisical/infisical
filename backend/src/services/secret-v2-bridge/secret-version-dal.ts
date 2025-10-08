@@ -221,7 +221,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         })
         .orWhere((qb) => {
           void qb.where(`${TableName.SecretVersionV2}.secretId`, secretId);
-          void qb.whereNull(`${TableName.Membership}.actorProjectId`);
+          void qb.whereNull(`${TableName.Membership}.scopeProjectId`);
           if (secretVersions?.length) void qb.whereIn(`${TableName.SecretVersionV2}.version`, secretVersions);
         })
         .select(

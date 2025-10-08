@@ -265,7 +265,7 @@ export const membershipGroupServiceFactory = ({
 
     if (existingMembership.actorGroupId === dto.permission.id)
       throw new BadRequestError({
-        message: "You can't delete you own membership"
+        message: "You can't delete your own membership"
       });
 
     const membershipDoc = await membershipGroupDAL.transaction(async (tx) => {

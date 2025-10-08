@@ -15,7 +15,6 @@ import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
 import { TRoleScopeFactory } from "../role-types";
 
-// TODO(simp): missing external group checking
 type TOrgRoleScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   externalGroupOrgRoleMappingDAL: Pick<TExternalGroupOrgRoleMappingDALFactory, "findOne">;

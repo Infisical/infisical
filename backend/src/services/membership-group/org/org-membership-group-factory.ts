@@ -40,7 +40,7 @@ export const newOrgMembershipGroupFactory = ({
 
   const onCreateMembershipGroupGuard: TMembershipGroupScopeFactory["onCreateMembershipGroupGuard"] = async () => {
     throw new BadRequestError({
-      message: "Organizatin membership cannot be created for groups"
+      message: "Organization membership cannot be created for groups"
     });
   };
 
@@ -84,7 +84,7 @@ export const newOrgMembershipGroupFactory = ({
 
   const onDeleteMembershipGroupGuard: TMembershipGroupScopeFactory["onDeleteMembershipGroupGuard"] = async () => {
     throw new BadRequestError({
-      message: "Organizatin membership cannot be created for organization scoped group"
+      message: "Organization membership cannot be created for organization scoped group"
     });
   };
 

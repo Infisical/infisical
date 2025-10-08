@@ -383,7 +383,6 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
     }
   });
 
-  // TODO(simp): look into how to handle projects
   server.route({
     method: "GET",
     url: "/identity-memberships/:identityMembershipId",

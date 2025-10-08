@@ -41,7 +41,7 @@ export const newOrgMembershipIdentityFactory = ({
   const onCreateMembershipIdentityGuard: TMembershipIdentityScopeFactory["onCreateMembershipIdentityGuard"] =
     async () => {
       throw new BadRequestError({
-        message: "Organizatin membership cannot be created for organization scoped identity"
+        message: "Organization membership cannot be created for organization scoped identity"
       });
     };
 
@@ -88,7 +88,7 @@ export const newOrgMembershipIdentityFactory = ({
   const onDeleteMembershipIdentityGuard: TMembershipIdentityScopeFactory["onDeleteMembershipIdentityGuard"] =
     async () => {
       throw new BadRequestError({
-        message: "Organizatin membership cannot be created for organization scoped identity"
+        message: "Organization membership cannot be created for organization scoped identity"
       });
     };
 

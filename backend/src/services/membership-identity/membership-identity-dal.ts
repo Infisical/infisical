@@ -41,7 +41,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
           void queryBuilder
-            .on(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityMetadata}.userId`)
+            .on(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`)
             .andOn(`${TableName.Membership}.scopeOrgId`, `${TableName.IdentityMetadata}.orgId`);
         })
         .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)

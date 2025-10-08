@@ -762,7 +762,7 @@ export const orgServiceFactory = ({
       throw new NotFoundError({ message: `Organization membership with ID ${membershipId} not found` });
     if (foundMembership.scopeOrgId !== orgId)
       throw new UnauthorizedError({ message: "Updated org member doesn't belong to the organization" });
-    if (foundMembership.scopeOrgId === userId)
+    if (foundMembership.actorUserId === userId)
       throw new UnauthorizedError({ message: "Cannot update own organization membership" });
 
     const isCustomRole = !Object.values(OrgMembershipRole).includes(role as OrgMembershipRole);

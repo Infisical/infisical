@@ -5,7 +5,7 @@ import { TDbClient } from "@app/db";
 import {
   AccessScope,
   AccessScopeData,
-  IdentityProjectMembershipRoleSchema,
+  MembershipRolesSchema,
   MembershipsSchema,
   TableName,
   TMemberships,
@@ -95,7 +95,6 @@ export interface TPermissionDALFactory {
         updatedAt: Date;
         isTemporary: boolean;
         role: string;
-        projectMembershipId: string;
         temporaryRange?: string | null | undefined;
         permissions?: unknown;
         customRoleId?: string | null | undefined;
@@ -382,7 +381,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           }
         })
         .select(
-          db.ref("id").withSchema(TableName.GroupProjectMembership).as("membershipId"),
+          db.ref("id").withSchema(TableName.Membership).as("membershipId"),
           db.ref("id").withSchema(TableName.Groups).as("groupId"),
           db.ref("name").withSchema(TableName.Groups).as("groupName"),
           db.ref("slug").withSchema("groupCustomRoles").as("groupProjectMembershipRoleCustomRoleSlug"),
@@ -474,6 +473,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
       const docs = await db
         .replicaNode()(TableName.Users)
         .where("isGhost", "=", false)
+        .join(TableName.Membership, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.AdditionalPrivilege, (qb) => {
@@ -661,12 +661,14 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             `${TableName.AdditionalPrivilege}.orgId`
           );
         })
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
           void queryBuilder
             .on(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`)
             .andOn(`${TableName.Membership}.scopeOrgId`, `${TableName.IdentityMetadata}.orgId`);
         })
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
         .select(selectAllTableCols(TableName.MembershipRole))
@@ -715,7 +717,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
             key: "id",
             label: "roles" as const,
             mapper: (data) =>
-              IdentityProjectMembershipRoleSchema.extend({
+              MembershipRolesSchema.extend({
                 permissions: z.unknown(),
                 customRoleSlug: z.string().optional().nullable()
               }).parse(data)
