@@ -4,10 +4,12 @@ import { NotFoundError } from "@app/lib/errors";
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TProjectDALFactory } from "../project/project-dal";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 
 type TConvertorServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
+  groupDAL: Pick<TGroupDALFactory, "findOne">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "findOne">;
 };
 
@@ -16,7 +18,8 @@ export type TConvertorServiceFactory = ReturnType<typeof convertorServiceFactory
 export const convertorServiceFactory = ({
   projectDAL,
   membershipDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  groupDAL
 }: TConvertorServiceFactoryDep) => {
   const projectSlugToId = async (dto: { slug: string; orgId: string }) => {
     const project = await projectDAL.findOne({
@@ -108,6 +111,12 @@ export const convertorServiceFactory = ({
     return { privilegeId: privilege.id, privilege };
   };
 
+  const getGroupIdFromName = async (name: string, orgId: string) => {
+    const group = await groupDAL.findOne({ orgId, name });
+    if (!group) throw new NotFoundError({ message: `Failed to find group with name ${name}` });
+    return { groupId: group.id, group };
+  };
+
   return {
     projectSlugToId,
     userMembershipIdToUserId,
@@ -115,6 +124,7 @@ export const convertorServiceFactory = ({
     identityMembershipIdToIdentityId,
     additionalPrivilegeIdToDoc,
     additionalPrivilegeNameToDoc,
-    identityIdToMembershipId
+    identityIdToMembershipId,
+    getGroupIdFromName
   };
 };

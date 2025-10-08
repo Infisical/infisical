@@ -1728,7 +1728,8 @@ export const registerRoutes = async (
   const convertorService = convertorServiceFactory({
     additionalPrivilegeDAL,
     membershipDAL,
-    projectDAL
+    projectDAL,
+    groupDAL
   });
 
   const dynamicSecretProviders = buildDynamicSecretProviders({

@@ -15,6 +15,7 @@ import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { isUuidV4 } from "@app/lib/validator";
 
 export const registerGroupProjectRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -74,10 +75,16 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       }
     },
     handler: async (req) => {
+      let groupId = req.params.groupIdOrName;
+      if (!isUuidV4(req.params.groupIdOrName)) {
+        const groupDetails = await server.services.convertor.getGroupIdFromName(groupId, req.permission.orgId);
+        groupId = groupDetails.groupId;
+      }
+
       const { membership: groupMembership } = await server.services.membershipGroup.createMembership({
         permission: req.permission,
         data: {
-          groupId: req.params.groupIdOrName,
+          groupId,
           roles: req.body.roles || [{ role: req.body.role, isTemporary: false }]
         },
         scopeData: {
