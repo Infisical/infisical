@@ -108,13 +108,23 @@ export const initAuditLogDbConnection = ({
   dbConnectionUri: string;
   dbRootCert?: string;
 }) => {
+  // Parse out ?sslmode=... from the connection URI if its not equal to "disable" and dbRootCert is defined
+  let modifiedDbConnectionUri = dbConnectionUri;
+  if (dbRootCert) {
+    const url = new URL(dbConnectionUri);
+    if (url.searchParams.has("sslmode") && url.searchParams.get("sslmode") !== "disable") {
+      url.searchParams.delete("sslmode");
+      modifiedDbConnectionUri = url.toString();
+    }
+  }
+
   // akhilmhdh: the default Knex is knex.Knex<any, any[]>. but when assigned with knex({<config>}) the value is knex.Knex<any, unknown[]>
   // this was causing issue with files like `snapshot-dal` `findRecursivelySnapshots` this i am explicitly putting the any and unknown[]
   // eslint-disable-next-line
   const db: Knex<any, unknown[]> = knex({
     client: "pg",
     connection: {
-      connectionString: dbConnectionUri,
+      connectionString: modifiedDbConnectionUri,
       host: process.env.AUDIT_LOGS_DB_HOST,
       // @ts-expect-error I have no clue why only for the port there is a type error
       // eslint-disable-next-line
