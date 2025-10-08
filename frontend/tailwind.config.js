@@ -40,6 +40,7 @@ module.exports = {
 
         // generic
         foreground: "#FFFFFF",
+        "muted-foreground": "#FFFFFFA6",
         background: "#191919",
         accent: "#c9c9c9",
 
