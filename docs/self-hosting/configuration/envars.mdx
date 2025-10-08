@@ -853,6 +853,38 @@ If export type is set to `otlp`, you will have to configure a value for `OTEL_EX
   The password for authenticating with the telemetry collector.
 </ParamField>
 
+## DataDog Telemetry
+
+Configure DataDog integration for enhanced monitoring and error tracking via DogStatsD agent.
+
+<ParamField
+  query="DATADOG_ENABLED"
+  type="boolean"
+  default="false"
+>
+  Enable DataDog telemetry collection for custom metrics and error tracking.
+</ParamField>
+
+<ParamField query="DATADOG_AGENT_HOST" type="string" default="localhost" optional>
+  DataDog agent hostname or IP address. The agent must be running and accessible from Infisical.
+</ParamField>
+
+<ParamField query="DATADOG_AGENT_PORT" type="number" default="8125" optional>
+  DogStatsD port on the DataDog agent. Default is 8125 for UDP protocol.
+</ParamField>
+
+<ParamField query="DATADOG_SERVICE_NAME" type="string" default="infisical" optional>
+  Service name for DataDog metrics. Used for service identification and grouping.
+</ParamField>
+
+<ParamField query="DATADOG_SERVICE_VERSION" type="string" default="1.0.0" optional>
+  Service version for DataDog metrics. Useful for tracking deployments and changes.
+</ParamField>
+
+<ParamField query="DATADOG_TELEMETRY_ENV" type="string" default="development" optional>
+  Environment tag for DataDog metrics (e.g., "production", "staging", "development").
+</ParamField>
+
 ## Identity Auth Method
 
 <ParamField

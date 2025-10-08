@@ -336,6 +336,14 @@ const envSchema = z
     DATADOG_SERVICE: zpStr(z.string().optional().default("infisical-core")),
     DATADOG_HOSTNAME: zpStr(z.string().optional()),
 
+    // datadog telemetry
+    DATADOG_ENABLED: zodStrBool.default("false"),
+    DATADOG_AGENT_HOST: zpStr(z.string().optional().default("localhost")),
+    DATADOG_AGENT_PORT: z.coerce.number().optional().default(8125),
+    DATADOG_SERVICE_NAME: zpStr(z.string().optional().default("infisical")),
+    DATADOG_SERVICE_VERSION: zpStr(z.string().optional().default("1.0.0")),
+    DATADOG_TELEMETRY_ENV: zpStr(z.string().optional().default("development")),
+
     // PIT
     PIT_CHECKPOINT_WINDOW: zpStr(z.string().optional().default("100")),
     PIT_TREE_CHECKPOINT_WINDOW: zpStr(z.string().optional().default("200")),
