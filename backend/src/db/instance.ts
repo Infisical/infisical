@@ -35,17 +35,10 @@ export const initDbConnection = ({
   // Parse out ?sslmode=... from the connection URI if its not equal to "disable" and dbRootCert is defined
   let modifiedDbConnectionUri = dbConnectionUri;
   if (dbRootCert) {
-    const parts = dbConnectionUri.split("?");
-    const baseUrl = parts[0];
-    const queryString = parts.length > 1 ? parts[1] : "";
-
-    if (queryString) {
-      const params = new URLSearchParams(queryString);
-      if (params.has("sslmode") && params.get("sslmode") !== "disable") {
-        params.delete("sslmode");
-        const newQueryString = params.toString();
-        modifiedDbConnectionUri = baseUrl + (newQueryString ? `?${newQueryString}` : "");
-      }
+    const url = new URL(dbConnectionUri);
+    if (url.searchParams.has("sslmode") && url.searchParams.get("sslmode") !== "disable") {
+      url.searchParams.delete("sslmode");
+      modifiedDbConnectionUri = url.toString();
     }
   }
 
@@ -76,10 +69,21 @@ export const initDbConnection = ({
 
   readReplicaDbs = readReplicas.map((el) => {
     const replicaDbCertificate = el.dbRootCert || dbRootCert;
+
+    // Parse out ?sslmode=... from the connection URI if its not equal to "disable" and dbRootCert is defined
+    let modifiedReadReplicaDbConnectionUri = el.dbConnectionUri;
+    if (replicaDbCertificate) {
+      const url = new URL(el.dbConnectionUri);
+      if (url.searchParams.has("sslmode") && url.searchParams.get("sslmode") !== "disable") {
+        url.searchParams.delete("sslmode");
+        modifiedReadReplicaDbConnectionUri = url.toString();
+      }
+    }
+
     return knex({
       client: "pg",
       connection: {
-        connectionString: el.dbConnectionUri,
+        connectionString: modifiedReadReplicaDbConnectionUri,
         ssl: replicaDbCertificate
           ? {
               rejectUnauthorized: true,
