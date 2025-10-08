@@ -6,13 +6,15 @@ import { paginateGraphql } from "@octokit/plugin-paginate-graphql";
 import { Octokit as OctokitRest } from "@octokit/rest";
 import RE2 from "re2";
 
-import { OrgMembershipRole } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { retryWithBackoff } from "@app/lib/retry";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 
 import { TGroupDALFactory } from "../group/group-dal";
@@ -77,6 +79,8 @@ type TGithubOrgSyncServiceFactoryDep = {
     "findGroupMembershipsByUserIdInOrg" | "findGroupMembershipsByGroupIdInOrg" | "insertMany" | "delete"
   >;
   groupDAL: Pick<TGroupDALFactory, "insertMany" | "transaction" | "find">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
 };
@@ -90,7 +94,9 @@ export const githubOrgSyncServiceFactory = ({
   userGroupMembershipDAL,
   groupDAL,
   licenseService,
-  orgMembershipDAL
+  orgMembershipDAL,
+  membershipRoleDAL,
+  membershipGroupDAL
 }: TGithubOrgSyncServiceFactoryDep) => {
   const createGithubOrgSync = async ({
     githubOrgName,
@@ -365,6 +371,25 @@ export const githubOrgSyncServiceFactory = ({
             })),
             tx
           );
+          const memberships = await membershipGroupDAL.insertMany(
+            newGroups.map(
+              (el) => ({
+                actorGroupId: el.id,
+                scope: AccessScope.Organization,
+                scopeOrgId: orgId
+              }),
+              tx
+            )
+          );
+
+          await membershipRoleDAL.insertMany(
+            memberships.map((el) => ({
+              membershipId: el.id,
+              role: OrgMembershipRole.Member
+            })),
+            tx
+          );
+
           await userGroupMembershipDAL.insertMany(
             newGroups.map((el) => ({
               groupId: el.id,
@@ -687,6 +712,25 @@ export const githubOrgSyncServiceFactory = ({
             role: OrgMembershipRole.Member,
             slug: teamName,
             orgId: orgPermission.orgId
+          })),
+          tx
+        );
+
+        const memberships = await membershipGroupDAL.insertMany(
+          newGroups.map(
+            (el) => ({
+              actorGroupId: el.id,
+              scope: AccessScope.Organization,
+              scopeOrgId: orgPermission.orgId
+            }),
+            tx
+          )
+        );
+
+        await membershipRoleDAL.insertMany(
+          memberships.map((el) => ({
+            membershipId: el.id,
+            role: OrgMembershipRole.Member
           })),
           tx
         );

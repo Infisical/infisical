@@ -646,7 +646,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.Membership)
         .where({ actorIdentityId: identityId })
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
         .select(db.ref("id").withSchema(TableName.Organization).as("id"))

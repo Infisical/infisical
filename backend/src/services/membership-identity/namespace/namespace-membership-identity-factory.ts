@@ -24,31 +24,31 @@ export const newNamespaceMembershipIdentityFactory = (
   };
 
   const isCustomRole: TMembershipIdentityScopeFactory["isCustomRole"] = () => {
-    throw new InternalServerError({ message: "Namespace membership user isCustomRole not implemented" });
+    throw new InternalServerError({ message: "Namespace membership identity isCustomRole not implemented" });
   };
 
   const onCreateMembershipIdentityGuard: TMembershipIdentityScopeFactory["onCreateMembershipIdentityGuard"] =
     async () => {
-      throw new InternalServerError({ message: "Namespace membership user create not implemented" });
+      throw new InternalServerError({ message: "Namespace membership identity create not implemented" });
     };
 
   const onUpdateMembershipIdentityGuard: TMembershipIdentityScopeFactory["onUpdateMembershipIdentityGuard"] =
     async () => {
-      throw new InternalServerError({ message: "Namespace membership user update not implemented" });
+      throw new InternalServerError({ message: "Namespace membership identity update not implemented" });
     };
 
   const onDeleteMembershipIdentityGuard: TMembershipIdentityScopeFactory["onDeleteMembershipIdentityGuard"] =
     async () => {
-      throw new InternalServerError({ message: "Namespace membership user delete not implemented" });
+      throw new InternalServerError({ message: "Namespace membership identity delete not implemented" });
     };
 
   const onListMembershipIdentityGuard: TMembershipIdentityScopeFactory["onListMembershipIdentityGuard"] = async () => {
-    throw new InternalServerError({ message: "Namespace membership user list not implemented" });
+    throw new InternalServerError({ message: "Namespace membership identity list not implemented" });
   };
 
   const onGetMembershipIdentityByIdentityIdGuard: TMembershipIdentityScopeFactory["onGetMembershipIdentityByIdentityIdGuard"] =
     async () => {
-      throw new InternalServerError({ message: "Namespace membership user get by user id not implemented" });
+      throw new InternalServerError({ message: "Namespace membership identity get by identity id not implemented" });
     };
 
   return {

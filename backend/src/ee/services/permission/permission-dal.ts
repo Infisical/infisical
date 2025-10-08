@@ -18,6 +18,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 interface TPermissionDataReturn extends TMemberships {
   orgAuthEnforced?: boolean | null;
   orgGoogleSsoAuthEnforced?: boolean | null;
+  shouldUseNewPrivilegeSystem?: boolean | null;
   bypassOrgAuthEnabled?: boolean | null;
   roles: {
     id: string;
@@ -223,8 +224,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           } else if (scopeData.scope === AccessScope.Namespace) {
             void qb
               .where(`${TableName.Membership}.scope`, AccessScope.Namespace)
-              .where(`${TableName.Membership}.scopeNamespaceId`, scopeData.namespaceId)
-              .whereNull(`${TableName.Membership}.scopeNamespaceId`);
+              .where(`${TableName.Membership}.scopeNamespaceId`, scopeData.namespaceId);
           } else if (scopeData.scope === AccessScope.Project) {
             void qb
               .where(`${TableName.Membership}.scope`, AccessScope.Project)
@@ -282,6 +282,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         parentMapper: (el) =>
           MembershipsSchema.extend({
             orgAuthEnforced: z.boolean().optional().nullable(),
+            shouldUseNewPrivilegeSystem: z.boolean().optional().nullable(),
             orgGoogleSsoAuthEnforced: z.boolean(),
             bypassOrgAuthEnabled: z.boolean()
           }).parse(el),

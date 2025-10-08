@@ -131,13 +131,13 @@ export const membershipUserServiceFactory = ({
 
           existingUsers.push(inviteeUser);
           const inviteeUserId = inviteeUser?.id;
-          const existingEncrytionKey = await userDAL.findUserEncKeyByUserId(inviteeUserId, tx);
+          const existingEncryptionKey = await userDAL.findUserEncKeyByUserId(inviteeUserId, tx);
 
           // when user is missing the encrytion keys
           // this could happen either if user doesn't exist or user didn't find step 3 of generating the encryption keys of srp
           // So what we do is we generate a random secure password and then encrypt it with a random pub-private key
           // Then when user sign in (as login is not possible as isAccepted is false) we rencrypt the private key with the user password
-          if (!inviteeUser || (inviteeUser && !inviteeUser?.isAccepted && !existingEncrytionKey)) {
+          if (!inviteeUser || (inviteeUser && !inviteeUser?.isAccepted && !existingEncryptionKey)) {
             await userDAL.createUserEncryption(
               {
                 userId: inviteeUserId,
@@ -159,7 +159,7 @@ export const membershipUserServiceFactory = ({
     const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
     if (hasNoPermanentRole) {
       throw new BadRequestError({
-        message: "User must have atleast one permanent role"
+        message: "User must have at least one permanent role"
       });
     }
     const isInvalidTemporaryRole = data.roles.some((el) => {
@@ -284,7 +284,7 @@ export const membershipUserServiceFactory = ({
     const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
     if (hasNoPermanentRole) {
       throw new BadRequestError({
-        message: "User must have atleast one permanent role"
+        message: "User must have at least one permanent role"
       });
     }
     const isInvalidTemporaryRole = data.roles.some((el) => {

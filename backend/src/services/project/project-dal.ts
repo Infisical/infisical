@@ -31,7 +31,6 @@ export const projectDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.actorIdentityId`, identityId)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
-        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .andWhere((qb) => {
           if (projectType) {
             void qb.where(`${TableName.Project}.type`, projectType);

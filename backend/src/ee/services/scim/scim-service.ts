@@ -354,11 +354,14 @@ export const scimServiceFactory = ({
             },
             tx
           );
-          await membershipRoleDAL.create({
-            membershipId: orgMembership.id,
-            role,
-            customRoleId: roleId
-          });
+          await membershipRoleDAL.create(
+            {
+              membershipId: orgMembership.id,
+              role,
+              customRoleId: roleId
+            },
+            tx
+          );
         } else if (orgMembership.status === OrgMembershipStatus.Invited && user.isAccepted) {
           orgMembership = await membershipUserDAL.updateById(
             orgMembership.id,

@@ -1,10 +1,10 @@
 import { AccessScope } from "@app/db/schemas";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { NotFoundError } from "@app/lib/errors";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TProjectDALFactory } from "../project/project-dal";
-import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 
 type TConvertorServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne">;
@@ -105,7 +105,7 @@ export const convertorServiceFactory = ({
       projectId
     });
     if (!privilege) {
-      throw new NotFoundError({ message: `Privilege with slug ${privilegeName} not found` });
+      throw new NotFoundError({ message: `Privilege with name ${privilegeName} not found` });
     }
 
     return { privilegeId: privilege.id, privilege };

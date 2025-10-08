@@ -63,7 +63,7 @@ export const membershipIdentityServiceFactory = ({
     const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
     if (hasNoPermanentRole) {
       throw new BadRequestError({
-        message: "Identity must have atleast one permanent role"
+        message: "Identity must have at least one permanent role"
       });
     }
     const isInvalidTemporaryRole = data.roles.some((el) => {
@@ -157,7 +157,7 @@ export const membershipIdentityServiceFactory = ({
     const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
     if (hasNoPermanentRole) {
       throw new BadRequestError({
-        message: "Identity must have atleast one permanent role"
+        message: "Identity must have at least one permanent role"
       });
     }
     const isInvalidTemporaryRole = data.roles.some((el) => {

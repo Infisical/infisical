@@ -63,7 +63,7 @@ export const additionalPrivilegeServiceFactory = ({
       [dbActorField]: data.actorId,
       [scope.key]: scope.value
     });
-    if (existingSlug) throw new BadRequestError({ message: `Additional privilege with name ${data.name} exist` });
+    if (existingSlug) throw new BadRequestError({ message: `Additional privilege with name ${data.name} exists` });
 
     validateHandlebarTemplate("Additional Privilege Create", JSON.stringify(data.permissions || []), {
       allowedExpressions: (val) => val.includes("identity.")
@@ -115,12 +115,12 @@ export const additionalPrivilegeServiceFactory = ({
     const dbActorField = dto.selector.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
 
     const existingPrivilege = await additionalPrivilegeDAL.findOne({
-      id: dto.selector.id,
       [dbActorField]: dto.selector.actorId,
+      id: dto.selector.id,
       [scope.key]: scope.value
     });
     if (!existingPrivilege)
-      throw new NotFoundError({ message: `Additional privilege with name ${data.name} doesn't exist` });
+      throw new NotFoundError({ message: `Additional privilege with id ${dto.selector.id} doesn't exist` });
 
     validateHandlebarTemplate("Additional Privilege Create", JSON.stringify(data.permissions || []), {
       allowedExpressions: (val) => val.includes("identity.")

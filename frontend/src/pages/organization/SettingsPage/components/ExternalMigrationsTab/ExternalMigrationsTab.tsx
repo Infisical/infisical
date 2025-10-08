@@ -41,7 +41,7 @@ export const ExternalMigrationsTab = () => {
           onClick={() => {
             handlePopUpOpen("selectImportPlatform");
           }}
-          isDisabled={hasOrgRole(OrgMembershipRole.Admin)}
+          isDisabled={!hasOrgRole(OrgMembershipRole.Admin)}
           leftIcon={<FontAwesomeIcon icon={faPlus} />}
         >
           Import

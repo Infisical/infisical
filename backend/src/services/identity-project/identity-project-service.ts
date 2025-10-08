@@ -15,7 +15,7 @@ import {
 
 type TIdentityProjectServiceFactoryDep = {
   identityProjectDAL: TIdentityProjectDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
 };
 

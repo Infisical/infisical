@@ -139,6 +139,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           membership: OrgMembershipsSchema.extend({
+            customRoleSlug: z.string().nullish(),
             metadata: z
               .object({
                 key: z.string().trim().min(1),
@@ -224,7 +225,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       return {
         membership: {
           ...membership,
-          role: "",
+          role: req.body.role || "",
           orgId: req.params.organizationId,
           status: membership.status || OrgMembershipStatus.Accepted
         }

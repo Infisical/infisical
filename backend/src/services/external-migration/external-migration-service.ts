@@ -54,7 +54,7 @@ export const externalMigrationServiceFactory = ({
       actorAuthMethod,
       actorOrgId
     );
-    if (hasRole(OrgMembershipRole.Admin)) {
+    if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can import data" });
     }
 
@@ -102,7 +102,7 @@ export const externalMigrationServiceFactory = ({
       actorOrgId
     );
 
-    if (hasRole(OrgMembershipRole.Admin)) {
+    if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can import data" });
     }
 
@@ -158,7 +158,7 @@ export const externalMigrationServiceFactory = ({
       actorOrgId
     );
 
-    if (hasRole(OrgMembershipRole.Admin)) {
+    if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can check custom migration status" });
     }
 

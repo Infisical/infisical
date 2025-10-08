@@ -71,7 +71,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
       const groups: string[] = await (tx || db.replicaNode())(TableName.Membership)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
         .whereNot(`${TableName.Membership}.actorGroupId`, groupId)
-        .pluck(`${TableName.Membership}.groupId`);
+        .pluck(`${TableName.Membership}.actorGroupId`);
 
       // main query
       const members = await (tx || db.replicaNode())(TableName.UserGroupMembership)

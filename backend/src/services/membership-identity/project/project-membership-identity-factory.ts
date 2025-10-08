@@ -129,7 +129,7 @@ export const newProjectMembershipIdentityFactory = ({
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
           message: constructPermissionErrorMessage(
-            "Failed to create identity project membership",
+            "Failed to update identity project membership",
             shouldUseNewPrivilegeSystem,
             ProjectPermissionIdentityActions.GrantPrivileges,
             ProjectPermissionSub.Identity

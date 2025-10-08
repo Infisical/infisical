@@ -258,10 +258,6 @@ export const permissionServiceFactory = ({
 
     if (!serviceTokenProject) throw new BadRequestError({ message: "Service token not linked to a project" });
 
-    if (serviceTokenProject.orgId !== actorOrgId) {
-      throw new ForbiddenRequestError({ message: "Service token not a part of the specified organization" });
-    }
-
     if (serviceToken.projectId !== projectId) {
       throw new ForbiddenRequestError({
         name: `Service token not a part of the specified project with ID ${projectId}`

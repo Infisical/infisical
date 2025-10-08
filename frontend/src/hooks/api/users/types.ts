@@ -64,6 +64,7 @@ export type OrgUser = {
   inviteEmail: string;
   organization: string;
   role: "owner" | "admin" | "member" | "no-access" | "custom";
+  customRoleSlug?: string;
   status: "invited" | "accepted" | "verified" | "completed";
   deniedPermissions: any[];
   roleId: string;

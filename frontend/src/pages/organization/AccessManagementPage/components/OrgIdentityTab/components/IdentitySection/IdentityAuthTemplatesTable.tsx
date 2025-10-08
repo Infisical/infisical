@@ -272,7 +272,7 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
           />
         )}
         {!subscription.machineIdentityAuthTemplates && (
-          <EmptyState title="This feature is not been activated for your license." icon={faBan} />
+          <EmptyState title="This feature has not been activated for your license." icon={faBan} />
         )}
         {!isPending && templates.length === 0 && (
           <EmptyState

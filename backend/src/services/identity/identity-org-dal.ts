@@ -404,7 +404,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .orderBy(
           orderBy === OrgIdentityOrderBy.Role
-            ? `${TableName.Membership}.${orderBy}`
+            ? `${TableName.MembershipRole}.${orderBy}`
             : `${TableName.Identity}.${orderBy}`,
           orderDirection
         )

@@ -72,7 +72,7 @@ export const roleServiceFactory = ({
       slug: data.slug,
       [scope.key]: scope.value
     });
-    if (existingRole) throw new NotFoundError({ message: `Role with ${data.slug} exist` });
+    if (existingRole) throw new NotFoundError({ message: `Role with ${data.slug} exists` });
 
     validateHandlebarTemplate("Role Creation", JSON.stringify(data.permissions || []), {
       allowedExpressions: (val) => val.includes("identity.")
@@ -108,7 +108,7 @@ export const roleServiceFactory = ({
         [scope.key]: scope.value
       });
       if (existingSlug && existingRole.id !== existingSlug.id)
-        throw new BadRequestError({ message: `Role with ${data.slug} not found` });
+        throw new BadRequestError({ message: `Role with ${data.slug} already exists` });
     }
 
     validateHandlebarTemplate("Role Update", JSON.stringify(data.permissions || []), {

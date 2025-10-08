@@ -57,7 +57,7 @@ export const membershipGroupServiceFactory = ({
     const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
     if (hasNoPermanentRole) {
       throw new BadRequestError({
-        message: "Group must have atleast one permanent role"
+        message: "Group must have at least one permanent role"
       });
     }
     const isInvalidTemporaryRole = data.roles.some((el) => {
@@ -151,7 +151,7 @@ export const membershipGroupServiceFactory = ({
     const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
     if (hasNoPermanentRole) {
       throw new BadRequestError({
-        message: "Group must have atleast one permanent role"
+        message: "Group must have at least one permanent role"
       });
     }
     const isInvalidTemporaryRole = data.roles.some((el) => {

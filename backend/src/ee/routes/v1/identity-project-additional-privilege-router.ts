@@ -281,7 +281,6 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         },
         data: {
           ...req.body,
-          isTemporary: true,
           ...updatedInfo,
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore-error this is valid ts

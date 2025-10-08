@@ -84,7 +84,7 @@ export const newOrgMembershipGroupFactory = ({
 
   const onDeleteMembershipGroupGuard: TMembershipGroupScopeFactory["onDeleteMembershipGroupGuard"] = async () => {
     throw new BadRequestError({
-      message: "Organization membership cannot be created for organization scoped group"
+      message: "Organization membership cannot be deleted for organization scoped group"
     });
   };
 

@@ -15,6 +15,7 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+        .leftJoin(TableName.Role, `${TableName.Role}.id`, `${TableName.MembershipRole}.customRoleId`)
         .leftJoin<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,
@@ -31,6 +32,7 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
           db.ref("scopeOrgId").withSchema(TableName.Membership).as("orgId"),
           db.ref("role").withSchema(TableName.MembershipRole),
           db.ref("customRoleId").withSchema(TableName.MembershipRole).as("roleId"),
+          db.ref("slug").withSchema(TableName.Role).as("customRoleSlug"),
           db.ref("status").withSchema(TableName.Membership),
           db.ref("isActive").withSchema(TableName.Membership),
           db.ref("lastLoginAuthMethod").withSchema(TableName.Membership),
@@ -56,6 +58,7 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
         parentMapper: ({
           email,
           isEmailVerified,
+          customRoleSlug,
           username,
           firstName,
           lastName,
@@ -75,6 +78,7 @@ export const orgMembershipDALFactory = (db: TDbClient) => {
           orgId,
           id,
           role,
+          customRoleSlug,
           status,
           isActive,
           inviteEmail,

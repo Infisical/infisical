@@ -29,7 +29,6 @@ export const groupProjectDALFactory = (db: TDbClient) => {
           db.ref("id").as("groupId").withSchema(TableName.Groups),
           db.ref("name").as("groupName").withSchema(TableName.Groups),
           db.ref("slug").as("groupSlug").withSchema(TableName.Groups),
-          db.ref("id").withSchema(TableName.Membership),
           db.ref("role").withSchema(TableName.MembershipRole),
           db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
           db.ref("customRoleId").withSchema(TableName.MembershipRole),

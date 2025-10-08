@@ -42,12 +42,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
                 .select("role")
                 .from(TableName.MembershipRole)
                 .leftJoin(TableName.Role, `${TableName.Role}.id`, `${TableName.MembershipRole}.customRoleId`)
-                .whereRaw("??.?? = ??.??", [
-                  TableName.MembershipRole,
-                  "projectMembershipId",
-                  TableName.Membership,
-                  "id"
-                ])
+                .whereRaw("??.?? = ??.??", [TableName.MembershipRole, "membershipId", TableName.Membership, "id"])
                 .where((subQb) => {
                   void subQb
                     .whereIn(`${TableName.MembershipRole}.role`, filter.roles as string[])

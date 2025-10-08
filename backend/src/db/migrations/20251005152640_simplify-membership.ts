@@ -665,7 +665,7 @@ export async function up(knex: Knex): Promise<void> {
     await createAdditionalPrivilegeTable(knex);
   }
 
-  // no mean this has been created before
+  // this means these tables have been created before
   if (hasToMigrateMembershipTable) {
     await migrateMembershipData(knex);
   }
@@ -784,7 +784,6 @@ const rollbackMembershipRoleData = async (knex: Knex) => {
       knex(TableName.MembershipRole)
         .join(TableName.Membership, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .join(TableName.Groups, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorGroupId`)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .select(

@@ -66,7 +66,12 @@ export type TPermissionServiceFactory = {
     actorOrgId: string | undefined
   ) => Promise<{
     permission: MongoAbility<OrgPermissionSet, MongoQuery>;
-    memberships: Array<TMemberships & { roles: { role: string; customRoleSlug?: string | null }[] }>;
+    memberships: Array<
+      TMemberships & {
+        roles: { role: string; customRoleSlug?: string | null }[];
+        shouldUseNewPrivilegeSystem?: boolean | null;
+      }
+    >;
     hasRole: (role: string) => boolean;
   }>;
   getProjectPermission: (arg: TGetProjectPermissionArg) => Promise<{

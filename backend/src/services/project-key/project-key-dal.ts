@@ -35,11 +35,11 @@ export const projectKeyDALFactory = (db: TDbClient) => {
   const findAllProjectUserPubKeys = async (projectId: string, tx?: Knex) => {
     try {
       const pubKeys = await (tx || db.replicaNode())(TableName.Membership)
-        .where(`${TableName.Membership}.scopeProjectId` as "projectId", projectId)
+        .where(`${TableName.Membership}.scopeProjectId` as "scopeProjectId", projectId)
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .join(TableName.UserEncryptionKey, `${TableName.Users}.id`, `${TableName.UserEncryptionKey}.userId`)
-        .select("userId", "publicKey");
+        .select(db.ref("userId").withSchema(TableName.Users), "publicKey");
       return pubKeys;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all workspace pub keys" });

@@ -120,7 +120,7 @@ export const newProjectMembershipGroupFactory = ({
         if (!permissionBoundary.isValid)
           throw new PermissionBoundaryError({
             message: constructPermissionErrorMessage(
-              "Failed to create group project membership",
+              "Failed to update group project membership",
               shouldUseNewPrivilegeSystem,
               ProjectPermissionGroupActions.GrantPrivileges,
               ProjectPermissionSub.Groups

@@ -20,7 +20,6 @@ import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identit
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
-import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityTlsCertAuthDALFactory } from "./identity-tls-cert-auth-dal";
 import { TIdentityTlsCertAuthServiceFactory } from "./identity-tls-cert-auth-types";
@@ -35,7 +34,6 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 const parseSubjectDetails = (data: string) => {
@@ -53,8 +51,7 @@ export const identityTlsCertAuthServiceFactory = ({
   membershipIdentityDAL,
   licenseService,
   permissionService,
-  kmsService,
-  orgDAL
+  kmsService
 }: TIdentityTlsCertAuthServiceFactoryDep): TIdentityTlsCertAuthServiceFactory => {
   const login: TIdentityTlsCertAuthServiceFactory["login"] = async ({ identityId, clientCertificate }) => {
     const identityTlsCertAuth = await identityTlsCertAuthDAL.findOne({ identityId });
@@ -411,7 +408,7 @@ export const identityTlsCertAuthServiceFactory = ({
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
+    const { permission: rolePermission, memberships } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
       identityMembershipOrg.identity.id,
       identityMembershipOrg.scopeOrgId,
@@ -419,7 +416,7 @@ export const identityTlsCertAuthServiceFactory = ({
       actorOrgId
     );
 
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
+    const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
     const permissionBoundary = validatePrivilegeChangeOperation(
       shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,

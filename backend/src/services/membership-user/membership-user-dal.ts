@@ -51,8 +51,7 @@ export const membershipUserDALFactory = (db: TDbClient) => {
           } else if (scopeData.scope === AccessScope.Namespace) {
             void qb
               .where(`${TableName.Membership}.scope`, AccessScope.Namespace)
-              .where(`${TableName.Membership}.scopeNamespaceId`, scopeData.namespaceId)
-              .whereNull(`${TableName.Membership}.scopeNamespaceId`);
+              .where(`${TableName.Membership}.scopeNamespaceId`, scopeData.namespaceId);
           } else if (scopeData.scope === AccessScope.Project) {
             void qb
               .where(`${TableName.Membership}.scope`, AccessScope.Project)
@@ -168,8 +167,7 @@ export const membershipUserDALFactory = (db: TDbClient) => {
           } else if (scopeData.scope === AccessScope.Namespace) {
             void qb
               .where(`${TableName.Membership}.scope`, AccessScope.Namespace)
-              .where(`${TableName.Membership}.scopeNamespaceId`, scopeData.namespaceId)
-              .whereNull(`${TableName.Membership}.scopeNamespaceId`);
+              .where(`${TableName.Membership}.scopeNamespaceId`, scopeData.namespaceId);
           } else if (scopeData.scope === AccessScope.Project) {
             void qb
               .where(`${TableName.Membership}.scope`, AccessScope.Project)
@@ -192,7 +190,7 @@ export const membershipUserDALFactory = (db: TDbClient) => {
               case "role":
                 return [`${TableName.Role}.slug`, `${TableName.MembershipRole}.role`];
               case "username":
-                return `${TableName.Users}.name`;
+                return `${TableName.Users}.username`;
               default:
                 throw new BadRequestError({ message: `Invalid ${String(attr)} provided` });
             }

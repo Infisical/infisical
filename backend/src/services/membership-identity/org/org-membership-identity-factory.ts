@@ -74,7 +74,7 @@ export const newOrgMembershipIdentityFactory = ({
         if (!permissionBoundary.isValid)
           throw new PermissionBoundaryError({
             message: constructPermissionErrorMessage(
-              "Failed to create identity org membership",
+              "Failed to update identity org membership",
               shouldUseNewPrivilegeSystem,
               OrgPermissionIdentityActions.GrantPrivileges,
               OrgPermissionSubjects.Identity
@@ -88,7 +88,7 @@ export const newOrgMembershipIdentityFactory = ({
   const onDeleteMembershipIdentityGuard: TMembershipIdentityScopeFactory["onDeleteMembershipIdentityGuard"] =
     async () => {
       throw new BadRequestError({
-        message: "Organization membership cannot be created for organization scoped identity"
+        message: "Organization membership cannot be deleted for organization scoped identity"
       });
     };
 

@@ -597,7 +597,7 @@ export const superAdminServiceFactory = ({
         {
           actorIdentityId: newIdentity.id,
           scopeOrgId: organization.id,
-          scope: AccessScope.Project
+          scope: AccessScope.Organization
         },
         tx
       );
@@ -947,6 +947,9 @@ export const superAdminServiceFactory = ({
     }
 
     const membershipRole = await membershipRoleDAL.findOne({ membershipId });
+    if (!membershipRole) {
+      throw new NotFoundError({ name: "Membership Role", message: "Membership role not found" });
+    }
     const [organizationMembership] = await membershipUserDAL.delete({
       scopeOrgId: organizationId,
       scope: AccessScope.Organization,

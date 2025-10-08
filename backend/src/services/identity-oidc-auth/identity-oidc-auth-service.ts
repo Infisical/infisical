@@ -257,7 +257,7 @@ export const identityOidcAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) {
-      if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+      throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     }
     if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OIDC_AUTH)) {
       throw new BadRequestError({

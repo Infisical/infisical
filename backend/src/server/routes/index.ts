@@ -778,7 +778,9 @@ export const registerRoutes = async (
     permissionService,
     groupDAL,
     userGroupMembershipDAL,
-    orgMembershipDAL
+    orgMembershipDAL,
+    membershipRoleDAL,
+    membershipGroupDAL
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -1643,7 +1645,6 @@ export const registerRoutes = async (
 
   const identityTlsCertAuthService = identityTlsCertAuthServiceFactory({
     identityAccessTokenDAL,
-    orgDAL,
     identityTlsCertAuthDAL,
     licenseService,
     permissionService,

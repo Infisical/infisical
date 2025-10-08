@@ -429,7 +429,7 @@ export const identityProjectDALFactory = (db: TDbClient) => {
         .join(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
         .where((qb) => {
           if (filter.identityId) {
-            void qb.where("identityId", filter.identityId);
+            void qb.where(`${TableName.Membership}.actorIdentityId`, filter.identityId);
           }
 
           if (filter.search) {

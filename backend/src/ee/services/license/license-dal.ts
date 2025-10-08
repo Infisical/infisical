@@ -36,7 +36,7 @@ export const licenseDALFactory = (db: TDbClient) => {
             void bd.where(`${TableName.Membership}.scopeOrgId`, orgId);
           }
         })
-        .join(TableName.Users, `${TableName.Membership}.userId`, `${TableName.Users}.id`)
+        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .where(`${TableName.Users}.isGhost`, false)
         .count();
 
