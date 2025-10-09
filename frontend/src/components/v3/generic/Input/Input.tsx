@@ -76,8 +76,10 @@ const inputParentContainerVariants = cva(
   }
 );
 
+type InputVariantProps = VariantProps<typeof inputParentContainerVariants>;
+
 type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size" | "disabled" | "readOnly"> &
-  VariantProps<typeof inputParentContainerVariants> &
+  InputVariantProps &
   Props;
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
