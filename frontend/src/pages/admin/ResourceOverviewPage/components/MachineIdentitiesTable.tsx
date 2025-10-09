@@ -37,7 +37,6 @@ import {
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useAdminRemoveIdentitySuperAdminAccess } from "@app/hooks/api/admin";
 import { useAdminGetIdentities } from "@app/hooks/api/admin/queries";
-import { AdminIdentitiesOrderBy } from "@app/hooks/api/admin/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const IdentityPanelTable = ({
@@ -54,14 +53,13 @@ const IdentityPanelTable = ({
   const [searchIdentityFilter, setSearchIdentityFilter] = useState("");
   const [debouncedSearchTerm] = useDebounce(searchIdentityFilter, 500);
 
-  const { offset, limit, setPage, perPage, page, setPerPage } =
-    usePagination<AdminIdentitiesOrderBy>(AdminIdentitiesOrderBy.Name, {
-      initPerPage: getUserTablePreference(
-        "ResourceOverviewIdentitiesTable",
-        PreferenceKey.PerPage,
-        10
-      )
-    });
+  const { offset, limit, setPage, perPage, page, setPerPage } = usePagination("", {
+    initPerPage: getUserTablePreference(
+      "ResourceOverviewIdentitiesTable",
+      PreferenceKey.PerPage,
+      10
+    )
+  });
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);

@@ -55,7 +55,6 @@ import {
   useAdminGrantServerAdminAccess,
   useRemoveUserServerAdminAccess
 } from "@app/hooks/api";
-import { AdminUsersOrderBy } from "@app/hooks/api/admin/types";
 import { User } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -346,12 +345,9 @@ export const UserIdentitiesTable = () => {
   const [adminsOnly, setAdminsOnly] = useState(false);
   const [debouncedSearchTerm] = useDebounce(searchUserFilter, 500);
 
-  const { offset, limit, setPage, perPage, page, setPerPage } = usePagination<AdminUsersOrderBy>(
-    AdminUsersOrderBy.Username,
-    {
-      initPerPage: getUserTablePreference("ResourceOverviewUsersTable", PreferenceKey.PerPage, 20)
-    }
-  );
+  const { offset, limit, setPage, perPage, page, setPerPage } = usePagination("", {
+    initPerPage: getUserTablePreference("ResourceOverviewUsersTable", PreferenceKey.PerPage, 20)
+  });
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);

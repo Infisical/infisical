@@ -51,7 +51,6 @@ import {
   useAdminGetUsers,
   useRemoveUserServerAdminAccess
 } from "@app/hooks/api";
-import { AdminUsersOrderBy } from "@app/hooks/api/admin/types";
 import { User } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { AddServerAdminModal } from "@app/pages/admin/AccessManagementPage/components/AddServerAdminModal";
@@ -283,12 +282,9 @@ export const ServerAdminsTable = () => {
   const [searchUserFilter, setSearchUserFilter] = useState("");
   const [debouncedSearchTerm] = useDebounce(searchUserFilter, 500);
 
-  const { offset, limit, setPage, perPage, page, setPerPage } = usePagination<AdminUsersOrderBy>(
-    AdminUsersOrderBy.Username,
-    {
-      initPerPage: getUserTablePreference("ServerAdminUsersTable", PreferenceKey.PerPage, 20)
-    }
-  );
+  const { offset, limit, setPage, perPage, page, setPerPage } = usePagination("", {
+    initPerPage: getUserTablePreference("ServerAdminUsersTable", PreferenceKey.PerPage, 20)
+  });
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);

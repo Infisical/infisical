@@ -181,15 +181,3 @@ export type TResendOrgInviteDTO = {
   organizationId: string;
   membershipId: string;
 };
-
-export enum AdminOrganizationsOrderBy {
-  Name = "name"
-}
-
-export enum AdminIdentitiesOrderBy {
-  Name = "name"
-}
-
-export enum AdminUsersOrderBy {
-  Username = "username"
-}
