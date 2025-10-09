@@ -355,6 +355,19 @@ export enum EventType {
   CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "create-certificate-template-est-config",
   UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "update-certificate-template-est-config",
   GET_CERTIFICATE_TEMPLATE_EST_CONFIG = "get-certificate-template-est-config",
+  CREATE_CERTIFICATE_TEMPLATE_V2 = "create-certificate-template-v2",
+  UPDATE_CERTIFICATE_TEMPLATE_V2 = "update-certificate-template-v2",
+  DELETE_CERTIFICATE_TEMPLATE_V2 = "delete-certificate-template-v2",
+  GET_CERTIFICATE_TEMPLATE_V2 = "get-certificate-template-v2",
+  LIST_CERTIFICATE_TEMPLATES_V2 = "list-certificate-templates-v2",
+  CREATE_CERTIFICATE_PROFILE = "create-certificate-profile",
+  UPDATE_CERTIFICATE_PROFILE = "update-certificate-profile",
+  DELETE_CERTIFICATE_PROFILE = "delete-certificate-profile",
+  GET_CERTIFICATE_PROFILE = "get-certificate-profile",
+  LIST_CERTIFICATE_PROFILES = "list-certificate-profiles",
+  ISSUE_CERTIFICATE_FROM_PROFILE = "issue-certificate-from-profile",
+  SIGN_CERTIFICATE_FROM_PROFILE = "sign-certificate-from-profile",
+  ORDER_CERTIFICATE_FROM_PROFILE = "order-certificate-from-profile",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
   ATTEMPT_REINSTALL_SLACK_INTEGRATION = "attempt-reinstall-slack-integration",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
@@ -2598,6 +2611,109 @@ interface GetCertificateTemplateEstConfig {
   };
 }
 
+interface CreateCertificateTemplateV2 {
+  type: EventType.CREATE_CERTIFICATE_TEMPLATE_V2;
+  metadata: {
+    certificateTemplateId: string;
+    name: string;
+    projectId: string;
+  };
+}
+
+interface UpdateCertificateTemplateV2 {
+  type: EventType.UPDATE_CERTIFICATE_TEMPLATE_V2;
+  metadata: {
+    certificateTemplateId: string;
+    name: string;
+  };
+}
+
+interface DeleteCertificateTemplateV2 {
+  type: EventType.DELETE_CERTIFICATE_TEMPLATE_V2;
+  metadata: {
+    certificateTemplateId: string;
+  };
+}
+
+interface GetCertificateTemplateV2 {
+  type: EventType.GET_CERTIFICATE_TEMPLATE_V2;
+  metadata: {
+    certificateTemplateId: string;
+  };
+}
+
+interface ListCertificateTemplatesV2 {
+  type: EventType.LIST_CERTIFICATE_TEMPLATES_V2;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface CreateCertificateProfile {
+  type: EventType.CREATE_CERTIFICATE_PROFILE;
+  metadata: {
+    certificateProfileId: string;
+    name: string;
+    projectId: string;
+    enrollmentType: string;
+  };
+}
+
+interface UpdateCertificateProfile {
+  type: EventType.UPDATE_CERTIFICATE_PROFILE;
+  metadata: {
+    certificateProfileId: string;
+    name: string;
+  };
+}
+
+interface DeleteCertificateProfile {
+  type: EventType.DELETE_CERTIFICATE_PROFILE;
+  metadata: {
+    certificateProfileId: string;
+  };
+}
+
+interface GetCertificateProfile {
+  type: EventType.GET_CERTIFICATE_PROFILE;
+  metadata: {
+    certificateProfileId: string;
+  };
+}
+
+interface ListCertificateProfiles {
+  type: EventType.LIST_CERTIFICATE_PROFILES;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface IssueCertificateFromProfile {
+  type: EventType.ISSUE_CERTIFICATE_FROM_PROFILE;
+  metadata: {
+    certificateProfileId: string;
+    certificateId: string;
+    commonName: string;
+  };
+}
+
+interface SignCertificateFromProfile {
+  type: EventType.SIGN_CERTIFICATE_FROM_PROFILE;
+  metadata: {
+    certificateProfileId: string;
+    certificateId: string;
+  };
+}
+
+interface OrderCertificateFromProfile {
+  type: EventType.ORDER_CERTIFICATE_FROM_PROFILE;
+  metadata: {
+    certificateProfileId: string;
+    orderId: string;
+    identifiers: string[];
+  };
+}
+
 interface AttemptCreateSlackIntegration {
   type: EventType.ATTEMPT_CREATE_SLACK_INTEGRATION;
   metadata: {
@@ -4058,6 +4174,19 @@ export type Event =
   | CreateCertificateTemplateEstConfig
   | UpdateCertificateTemplateEstConfig
   | GetCertificateTemplateEstConfig
+  | CreateCertificateTemplateV2
+  | UpdateCertificateTemplateV2
+  | DeleteCertificateTemplateV2
+  | GetCertificateTemplateV2
+  | ListCertificateTemplatesV2
+  | CreateCertificateProfile
+  | UpdateCertificateProfile
+  | DeleteCertificateProfile
+  | GetCertificateProfile
+  | ListCertificateProfiles
+  | IssueCertificateFromProfile
+  | SignCertificateFromProfile
+  | OrderCertificateFromProfile
   | GetAzureAdCsTemplatesEvent
   | AttemptCreateSlackIntegration
   | AttemptReinstallSlackIntegration

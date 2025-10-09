@@ -17,6 +17,9 @@ import {
   TAccessApprovalRequestsReviewersInsert,
   TAccessApprovalRequestsReviewersUpdate,
   TAccessApprovalRequestsUpdate,
+  TApiEnrollmentConfigs,
+  TApiEnrollmentConfigsInsert,
+  TApiEnrollmentConfigsUpdate,
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
@@ -53,6 +56,9 @@ import {
   TCertificateBodies,
   TCertificateBodiesInsert,
   TCertificateBodiesUpdate,
+  TCertificateProfiles,
+  TCertificateProfilesInsert,
+  TCertificateProfilesUpdate,
   TCertificates,
   TCertificateSecrets,
   TCertificateSecretsInsert,
@@ -65,12 +71,18 @@ import {
   TCertificateTemplates,
   TCertificateTemplatesInsert,
   TCertificateTemplatesUpdate,
+  TCertificateTemplatesV2,
+  TCertificateTemplatesV2Insert,
+  TCertificateTemplatesV2Update,
   TDynamicSecretLeases,
   TDynamicSecretLeasesInsert,
   TDynamicSecretLeasesUpdate,
   TDynamicSecrets,
   TDynamicSecretsInsert,
   TDynamicSecretsUpdate,
+  TEstEnrollmentConfigs,
+  TEstEnrollmentConfigsInsert,
+  TEstEnrollmentConfigsUpdate,
   TExternalCertificateAuthorities,
   TExternalCertificateAuthoritiesInsert,
   TExternalCertificateAuthoritiesUpdate,
@@ -655,6 +667,26 @@ declare module "knex/types/tables" {
       TCertificateTemplates,
       TCertificateTemplatesInsert,
       TCertificateTemplatesUpdate
+    >;
+    [TableName.CertificateTemplateV2]: KnexOriginal.CompositeTableType<
+      TCertificateTemplatesV2,
+      TCertificateTemplatesV2Insert,
+      TCertificateTemplatesV2Update
+    >;
+    [TableName.CertificateProfile]: KnexOriginal.CompositeTableType<
+      TCertificateProfiles,
+      TCertificateProfilesInsert,
+      TCertificateProfilesUpdate
+    >;
+    [TableName.EstEnrollmentConfig]: KnexOriginal.CompositeTableType<
+      TEstEnrollmentConfigs,
+      TEstEnrollmentConfigsInsert,
+      TEstEnrollmentConfigsUpdate
+    >;
+    [TableName.ApiEnrollmentConfig]: KnexOriginal.CompositeTableType<
+      TApiEnrollmentConfigs,
+      TApiEnrollmentConfigsInsert,
+      TApiEnrollmentConfigsUpdate
     >;
     [TableName.CertificateTemplateEstConfig]: KnexOriginal.CompositeTableType<
       TCertificateTemplateEstConfigs,

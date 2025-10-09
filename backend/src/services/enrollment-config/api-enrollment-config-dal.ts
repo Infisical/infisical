@@ -1,0 +1,103 @@
+import { Knex } from "knex";
+
+import { TDbClient } from "@app/db";
+import { TableName } from "@app/db/schemas";
+import { DatabaseError } from "@app/lib/errors";
+import { ormify } from "@app/lib/knex";
+
+import { TApiEnrollmentConfigInsert, TApiEnrollmentConfigUpdate } from "./enrollment-config-types";
+
+export type TApiEnrollmentConfigDALFactory = ReturnType<typeof apiEnrollmentConfigDALFactory>;
+
+export const apiEnrollmentConfigDALFactory = (db: TDbClient) => {
+  const apiEnrollmentConfigOrm = ormify(db, TableName.ApiEnrollmentConfig);
+
+  const create = async (data: TApiEnrollmentConfigInsert, tx?: Knex) => {
+    try {
+      const [apiConfig] = await (tx || db)(TableName.ApiEnrollmentConfig).insert(data).returning("*");
+
+      return apiConfig;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Create API enrollment config" });
+    }
+  };
+
+  const updateById = async (id: string, data: TApiEnrollmentConfigUpdate, tx?: Knex) => {
+    try {
+      const [apiConfig] = await (tx || db)(TableName.ApiEnrollmentConfig).where({ id }).update(data).returning("*");
+
+      return apiConfig;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Update API enrollment config" });
+    }
+  };
+
+  const deleteById = async (id: string, tx?: Knex) => {
+    try {
+      const [apiConfig] = await (tx || db)(TableName.ApiEnrollmentConfig).where({ id }).del().returning("*");
+
+      return apiConfig;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete API enrollment config" });
+    }
+  };
+
+  const findById = async (id: string, tx?: Knex) => {
+    try {
+      const apiConfig = await (tx || db)(TableName.ApiEnrollmentConfig).where({ id }).first();
+
+      return apiConfig;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find API enrollment config by id" });
+    }
+  };
+
+  const findProfilesForAutoRenewal = async (renewalThresholdDays: number = 30, tx?: Knex) => {
+    try {
+      const now = new Date();
+      const renewalDate = new Date();
+      renewalDate.setDate(now.getDate() + renewalThresholdDays);
+
+      const profiles = await (tx || db)(TableName.CertificateProfile)
+        .join(
+          TableName.ApiEnrollmentConfig,
+          `${TableName.CertificateProfile}.apiConfigId`,
+          `${TableName.ApiEnrollmentConfig}.id`
+        )
+        .where(`${TableName.ApiEnrollmentConfig}.autoRenew`, true)
+        .where((query) => {
+          void query
+            .whereNull(`${TableName.ApiEnrollmentConfig}.autoRenewDays`)
+            .orWhere(`${TableName.ApiEnrollmentConfig}.autoRenewDays`, "<=", renewalThresholdDays);
+        })
+        .select((tx || db).ref("id").withSchema(TableName.CertificateProfile))
+        .select((tx || db).ref("name").withSchema(TableName.CertificateProfile))
+        .select((tx || db).ref("projectId").withSchema(TableName.CertificateProfile))
+        .select((tx || db).ref("autoRenewDays").withSchema(TableName.CertificateProfile));
+
+      return profiles;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find profiles for auto renewal" });
+    }
+  };
+
+  const isConfigInUse = async (configId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db)(TableName.CertificateProfile).where({ apiConfigId: configId }).count("*").first();
+
+      return parseInt(doc || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Check if API enrollment config is in use" });
+    }
+  };
+
+  return {
+    ...apiEnrollmentConfigOrm,
+    create,
+    updateById,
+    deleteById,
+    findById,
+    findProfilesForAutoRenewal,
+    isConfigInUse
+  };
+};

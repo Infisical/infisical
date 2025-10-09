@@ -48,7 +48,8 @@ import {
   getCaCertChains,
   getCaCredentials,
   keyAlgorithmToAlgCfg,
-  parseDistinguishedName
+  parseDistinguishedName,
+  signatureAlgorithmToAlgCfg
 } from "../certificate-authority-fns";
 import { TCertificateAuthorityQueueFactory } from "../certificate-authority-queue";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority-secret-dal";
@@ -1174,7 +1175,9 @@ export const internalCertificateAuthorityServiceFactory = ({
     actor,
     actorOrgId,
     keyUsages,
-    extendedKeyUsages
+    extendedKeyUsages,
+    signatureAlgorithm,
+    keyAlgorithm
   }: TIssueCertFromCaDTO) => {
     let ca: TCertificateAuthorityWithAssociatedCa | undefined;
     let certificateTemplate: TCertificateTemplates | undefined;
@@ -1277,13 +1280,21 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
     }
 
-    const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
-    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    // Use provided keyAlgorithm if available, otherwise fall back to CA's algorithm
+    const effectiveKeyAlgorithm =
+      (keyAlgorithm as CertKeyAlgorithm) || (ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
+    const keyGenAlg = keyAlgorithmToAlgCfg(effectiveKeyAlgorithm);
+    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(keyGenAlg, true, ["sign", "verify"]);
+
+    // Determine signing algorithm for certificate signing
+    const signingAlg = signatureAlgorithm
+      ? signatureAlgorithmToAlgCfg(signatureAlgorithm, effectiveKeyAlgorithm)
+      : keyGenAlg;
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
       name: `CN=${commonName}`,
       keys: leafKeys,
-      signingAlgorithm: alg,
+      signingAlgorithm: keyGenAlg,
       extensions: [
         // eslint-disable-next-line no-bitwise
         new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment)
@@ -1405,7 +1416,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       notAfter: notAfterDate,
       signingKey: caPrivateKey,
       publicKey: csrObj.publicKey,
-      signingAlgorithm: alg,
+      signingAlgorithm: signingAlg,
       extensions
     });
 

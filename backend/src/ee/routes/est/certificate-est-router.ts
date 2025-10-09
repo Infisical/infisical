@@ -8,6 +8,25 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 export const registerCertificateEstRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
 
+  const getIdentifierType = async (identifier: string): Promise<"template" | "profile" | null> => {
+    try {
+      await server.services.certificateProfile.getEstConfigurationByProfile({
+        profileId: identifier
+      });
+      return "profile";
+    } catch {
+      try {
+        await server.services.certificateTemplate.getEstConfiguration({
+          isInternal: true,
+          certificateTemplateId: identifier
+        });
+        return "template";
+      } catch {
+        return null;
+      }
+    }
+  };
+
   // add support for CSR bodies
   server.addContentTypeParser("application/pkcs10", { parseAs: "string" }, (_, body, done) => {
     try {
@@ -59,11 +78,28 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       return;
     }
 
-    const certificateTemplateId = urlFragments.slice(-2)[0];
-    const estConfig = await server.services.certificateTemplate.getEstConfiguration({
-      isInternal: true,
-      certificateTemplateId
-    });
+    const identifier = urlFragments.slice(-2)[0];
+
+    const identifierType = await getIdentifierType(identifier);
+    if (!identifierType) {
+      res.raw.statusCode = 404;
+      res.raw.setHeader("Content-Type", "text/plain");
+      res.raw.write("Certificate template or profile not found");
+      res.raw.flushHeaders();
+      return;
+    }
+
+    let estConfig;
+    if (identifierType === "profile") {
+      estConfig = await server.services.certificateProfile.getEstConfigurationByProfile({
+        profileId: identifier
+      });
+    } else {
+      estConfig = await server.services.certificateTemplate.getEstConfiguration({
+        isInternal: true,
+        certificateTemplateId: identifier
+      });
+    }
 
     if (!estConfig.isEnabled) {
       throw new BadRequestError({
@@ -95,14 +131,14 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
 
   server.route({
     method: "POST",
-    url: "/:certificateTemplateId/simpleenroll",
+    url: "/:identifier/simpleenroll",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       body: z.string().min(1),
       params: z.object({
-        certificateTemplateId: z.string().min(1)
+        identifier: z.string().min(1)
       }),
       response: {
         200: z.string()
@@ -112,9 +148,23 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       void res.header("Content-Type", "application/pkcs7-mime; smime-type=certs-only");
       void res.header("Content-Transfer-Encoding", "base64");
 
+      const { identifier } = req.params;
+      const identifierType = await getIdentifierType(identifier);
+
+      if (!identifierType) {
+        throw new BadRequestError({ message: "Certificate template or profile not found" });
+      }
+
+      if (identifierType === "profile") {
+        return server.services.certificateEstV3.simpleEnrollByProfile({
+          csr: req.body,
+          profileId: identifier,
+          sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string
+        });
+      }
       return server.services.certificateEst.simpleEnroll({
         csr: req.body,
-        certificateTemplateId: req.params.certificateTemplateId,
+        certificateTemplateId: identifier,
         sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string
       });
     }
@@ -122,14 +172,14 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
 
   server.route({
     method: "POST",
-    url: "/:certificateTemplateId/simplereenroll",
+    url: "/:identifier/simplereenroll",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       body: z.string().min(1),
       params: z.object({
-        certificateTemplateId: z.string().min(1)
+        identifier: z.string().min(1)
       }),
       response: {
         200: z.string()
@@ -139,9 +189,23 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       void res.header("Content-Type", "application/pkcs7-mime; smime-type=certs-only");
       void res.header("Content-Transfer-Encoding", "base64");
 
+      const { identifier } = req.params;
+      const identifierType = await getIdentifierType(identifier);
+
+      if (!identifierType) {
+        throw new BadRequestError({ message: "Certificate template or profile not found" });
+      }
+
+      if (identifierType === "profile") {
+        return server.services.certificateEstV3.simpleReenrollByProfile({
+          csr: req.body,
+          profileId: identifier,
+          sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string
+        });
+      }
       return server.services.certificateEst.simpleReenroll({
         csr: req.body,
-        certificateTemplateId: req.params.certificateTemplateId,
+        certificateTemplateId: identifier,
         sslClientCert: req.headers[appCfg.SSL_CLIENT_CERTIFICATE_HEADER_KEY] as string
       });
     }
@@ -149,13 +213,13 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
 
   server.route({
     method: "GET",
-    url: "/:certificateTemplateId/cacerts",
+    url: "/:identifier/cacerts",
     config: {
       rateLimit: readLimit
     },
     schema: {
       params: z.object({
-        certificateTemplateId: z.string().min(1)
+        identifier: z.string().min(1)
       }),
       response: {
         200: z.string()
@@ -165,8 +229,20 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       void res.header("Content-Type", "application/pkcs7-mime; smime-type=certs-only");
       void res.header("Content-Transfer-Encoding", "base64");
 
+      const { identifier } = req.params;
+      const identifierType = await getIdentifierType(identifier);
+
+      if (!identifierType) {
+        throw new BadRequestError({ message: "Certificate template or profile not found" });
+      }
+
+      if (identifierType === "profile") {
+        return server.services.certificateEstV3.getCaCertsByProfile({
+          profileId: identifier
+        });
+      }
       return server.services.certificateEst.getCaCerts({
-        certificateTemplateId: req.params.certificateTemplateId
+        certificateTemplateId: identifier
       });
     }
   });

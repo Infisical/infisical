@@ -5,6 +5,7 @@ import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionCmekActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
@@ -72,8 +73,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionPkiTemplateActions.Edit,
       ProjectPermissionPkiTemplateActions.Create,
       ProjectPermissionPkiTemplateActions.Delete,
-      ProjectPermissionPkiTemplateActions.IssueCert,
-      ProjectPermissionPkiTemplateActions.ListCerts
+      ProjectPermissionPkiTemplateActions.IssueCert, // deprecated
+      ProjectPermissionPkiTemplateActions.ListCerts // deprecated
     ],
     ProjectPermissionSub.CertificateTemplates
   );
@@ -97,6 +98,17 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCertificateActions.ReadPrivateKey
     ],
     ProjectPermissionSub.Certificates
+  );
+
+  can(
+    [
+      ProjectPermissionCertificateProfileActions.Read,
+      ProjectPermissionCertificateProfileActions.Edit,
+      ProjectPermissionCertificateProfileActions.Create,
+      ProjectPermissionCertificateProfileActions.Delete,
+      ProjectPermissionCertificateProfileActions.IssueCert
+    ],
+    ProjectPermissionSub.CertificateProfiles
   );
 
   can(
@@ -454,7 +466,15 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.Certificates
   );
 
-  can([ProjectPermissionPkiTemplateActions.Read], ProjectPermissionSub.CertificateTemplates);
+  can(
+    [
+      ProjectPermissionCertificateProfileActions.Read,
+      ProjectPermissionCertificateProfileActions.Edit,
+      ProjectPermissionCertificateProfileActions.Create,
+      ProjectPermissionCertificateProfileActions.Delete
+    ],
+    ProjectPermissionSub.CertificateProfiles
+  );
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiAlerts);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.PkiCollections);

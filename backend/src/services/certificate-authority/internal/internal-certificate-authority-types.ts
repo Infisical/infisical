@@ -131,6 +131,8 @@ export type TIssueCertFromCaDTO = {
   notAfter?: string;
   keyUsages?: CertKeyUsage[];
   extendedKeyUsages?: CertExtendedKeyUsage[];
+  signatureAlgorithm?: string;
+  keyAlgorithm?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TSignCertFromCaDTO =

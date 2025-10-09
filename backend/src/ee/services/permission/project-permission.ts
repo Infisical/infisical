@@ -110,6 +110,14 @@ export enum ProjectPermissionPkiSubscriberActions {
   ListCerts = "list-certs"
 }
 
+export enum ProjectPermissionCertificateProfileActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueCert = "issue-cert"
+}
+
 export enum ProjectPermissionSecretSyncActions {
   Read = "read",
   Create = "create",
@@ -245,7 +253,8 @@ export enum ProjectPermissionSub {
   PamFolders = "pam-folders",
   PamResources = "pam-resources",
   PamAccounts = "pam-accounts",
-  PamSessions = "pam-sessions"
+  PamSessions = "pam-sessions",
+  CertificateProfiles = "certificate-profiles"
 }
 
 export type SecretSubjectFields = {
@@ -434,7 +443,8 @@ export type ProjectPermissionSet =
       ProjectPermissionPamAccountActions,
       ProjectPermissionSub.PamAccounts | (ForcedSubject<ProjectPermissionSub.PamAccounts> & PamAccountSubjectFields)
     ]
-  | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions];
+  | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
+  | [ProjectPermissionCertificateProfileActions, ProjectPermissionSub.CertificateProfiles];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
 const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([

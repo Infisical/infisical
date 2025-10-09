@@ -12,6 +12,7 @@ import { registerProjectBotRouter } from "./bot-router";
 import { registerCaRouter } from "./certificate-authority-router";
 import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
 import { registerCertRouter } from "./certificate-router";
+import { registerCertificateProfilesRouter } from "./certificate-profiles-router";
 import { registerCertificateTemplateRouter } from "./certificate-template-router";
 import { registerDeprecatedProjectEnvRouter } from "./deprecated-project-env-router";
 import { registerDeprecatedProjectMembershipRouter } from "./deprecated-project-membership-router";
@@ -146,6 +147,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       );
       await pkiRouter.register(registerCertRouter, { prefix: "/certificates" });
       await pkiRouter.register(registerCertificateTemplateRouter, { prefix: "/certificate-templates" });
+      await pkiRouter.register(registerCertificateProfilesRouter, { prefix: "/certificate-profiles" });
       await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
       await pkiRouter.register(registerPkiCollectionRouter, { prefix: "/collections" });
       await pkiRouter.register(registerPkiSubscriberRouter, { prefix: "/subscribers" });
