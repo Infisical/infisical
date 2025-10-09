@@ -32,11 +32,12 @@ export const initDbConnection = ({
     return selectedReplica;
   });
 
-  // Parse out ?sslmode=... from the connection URI if its not equal to "disable" and dbRootCert is defined
+  // Parse out ?sslmode=... from the connection URI if its equal to "verify-ca", "verify-full", or "require" and dbRootCert is defined
   let modifiedDbConnectionUri = dbConnectionUri;
   if (dbRootCert) {
     const url = new URL(dbConnectionUri);
-    if (url.searchParams.has("sslmode") && url.searchParams.get("sslmode") !== "disable") {
+    const sslMode = url.searchParams.get("sslmode");
+    if (url.searchParams.has("sslmode") && sslMode && ["verify-ca", "verify-full", "require"].includes(sslMode)) {
       url.searchParams.delete("sslmode");
       modifiedDbConnectionUri = url.toString();
     }
@@ -70,11 +71,12 @@ export const initDbConnection = ({
   readReplicaDbs = readReplicas.map((el) => {
     const replicaDbCertificate = el.dbRootCert || dbRootCert;
 
-    // Parse out ?sslmode=... from the connection URI if its not equal to "disable" and dbRootCert is defined
+    // Parse out ?sslmode=... from the connection URI if its equal to "verify-ca", "verify-full", or "require" and dbRootCert is defined
     let modifiedReadReplicaDbConnectionUri = el.dbConnectionUri;
     if (replicaDbCertificate) {
       const url = new URL(el.dbConnectionUri);
-      if (url.searchParams.has("sslmode") && url.searchParams.get("sslmode") !== "disable") {
+      const sslMode = url.searchParams.get("sslmode");
+      if (url.searchParams.has("sslmode") && sslMode && ["verify-ca", "verify-full", "require"].includes(sslMode)) {
         url.searchParams.delete("sslmode");
         modifiedReadReplicaDbConnectionUri = url.toString();
       }
@@ -108,11 +110,12 @@ export const initAuditLogDbConnection = ({
   dbConnectionUri: string;
   dbRootCert?: string;
 }) => {
-  // Parse out ?sslmode=... from the connection URI if its not equal to "disable" and dbRootCert is defined
+  // Parse out ?sslmode=... from the connection URI if its equal to "verify-ca", "verify-full", or "require" and dbRootCert is defined
   let modifiedDbConnectionUri = dbConnectionUri;
   if (dbRootCert) {
     const url = new URL(dbConnectionUri);
-    if (url.searchParams.has("sslmode") && url.searchParams.get("sslmode") !== "disable") {
+    const sslMode = url.searchParams.get("sslmode");
+    if (url.searchParams.has("sslmode") && sslMode && ["verify-ca", "verify-full", "require"].includes(sslMode)) {
       url.searchParams.delete("sslmode");
       modifiedDbConnectionUri = url.toString();
     }
