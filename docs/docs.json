@@ -248,6 +248,7 @@
                       "documentation/platform/scim/okta",
                       "documentation/platform/scim/azure",
                       "documentation/platform/scim/jumpcloud",
+                      "documentation/platform/scim/pingone",
                       "documentation/platform/scim/group-mappings"
                     ]
                   }
