@@ -19,3 +19,5 @@ export * from "./Empty";
 export * from "./Alert";
 export * from "./Item";
 export * from "./RadioGroup";
+export * from "./PageHeader";
+export * from "./Description";
