@@ -1209,8 +1209,6 @@ export const relayServiceFactory = ({
   };
 
   const $healthcheckNotify = async () => {
-    const oneHourAgo = new Date();
-    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
     const unhealthyRelays = await relayDAL.find({
       isHeartbeatStale: true
     });
@@ -1221,8 +1219,6 @@ export const relayServiceFactory = ({
       { relayIds: unhealthyRelays.map((g) => g.id) },
       "Found relays with last heartbeat over an hour ago. Sending notifications."
     );
-
-    await Promise.all(unhealthyRelays.map((r) => relayDAL.updateById(r.id, { healthAlertedAt: new Date() })));
 
     const relaysByOrg = unhealthyRelays.reduce<Record<string, TRelays[]>>((acc, r) => {
       const key = r.orgId ?? "instance";
@@ -1285,6 +1281,8 @@ export const relayServiceFactory = ({
             template: SmtpTemplates.HealthAlert
           });
         }
+
+        await Promise.all(relays.map((r) => relayDAL.updateById(r.id, { healthAlertedAt: new Date() })));
       } catch (error) {
         logger.error(error, `Failed to send relay health notifications for organization [orgId=${orgId}]`);
       }

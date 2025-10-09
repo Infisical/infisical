@@ -20,8 +20,7 @@ export const relayDalFactory = (db: TDbClient) => {
         .where(buildFindFilter(regularFilter, TableName.Relay));
 
       if (isHeartbeatStale) {
-        const oneHourAgo = new Date();
-        oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
         void query.where(`${TableName.Relay}.heartbeat`, "<", oneHourAgo);
         void query.where((v) => {
           void v

@@ -902,8 +902,6 @@ export const gatewayV2ServiceFactory = ({
       "Found gateways with last heartbeat over an hour ago. Sending notifications."
     );
 
-    await Promise.all(unhealthyGateways.map((gw) => gatewayV2DAL.updateById(gw.id, { healthAlertedAt: new Date() })));
-
     const gatewaysByOrg = unhealthyGateways.reduce<Record<string, (typeof unhealthyGateways)[number][]>>((acc, gw) => {
       if (!acc[gw.orgId]) {
         acc[gw.orgId] = [];
@@ -944,6 +942,8 @@ export const gatewayV2ServiceFactory = ({
           },
           template: SmtpTemplates.HealthAlert
         });
+
+        await Promise.all(gateways.map((gw) => gatewayV2DAL.updateById(gw.id, { healthAlertedAt: new Date() })));
       } catch (error) {
         logger.error(error, `Failed to send gateway health notifications for organization [orgId=${orgId}]`);
       }

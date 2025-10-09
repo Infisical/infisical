@@ -166,14 +166,24 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     onRequest: (req, _, next) => {
       const authHeader = req.headers.authorization;
 
-      if (appCfg.RELAY_AUTH_SECRET && authHeader) {
-        const expectedHeader = `Bearer ${appCfg.RELAY_AUTH_SECRET}`;
-        if (
-          authHeader.length === expectedHeader.length &&
-          crypto.nativeCrypto.timingSafeEqual(Buffer.from(authHeader), Buffer.from(expectedHeader))
-        ) {
-          return next();
-        }
+      if (!appCfg.RELAY_AUTH_SECRET) {
+        throw new UnauthorizedError({
+          message: "Relay authentication not configured"
+        });
+      }
+
+      if (!authHeader) {
+        throw new UnauthorizedError({
+          message: "Missing authorization header"
+        });
+      }
+
+      const expectedHeader = `Bearer ${appCfg.RELAY_AUTH_SECRET}`;
+      if (
+        authHeader.length === expectedHeader.length &&
+        crypto.nativeCrypto.timingSafeEqual(Buffer.from(authHeader), Buffer.from(expectedHeader))
+      ) {
+        return next();
       }
 
       throw new UnauthorizedError({

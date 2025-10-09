@@ -30,8 +30,7 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
         .select(db.ref("name").withSchema(TableName.Identity).as("identityName"));
 
       if (isHeartbeatStale) {
-        const oneHourAgo = new Date();
-        oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
         void query.where(`${TableName.GatewayV2}.heartbeat`, "<", oneHourAgo);
         void query.where((v) => {
           void v
