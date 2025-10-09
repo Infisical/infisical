@@ -1,6 +1,7 @@
 import { CronJob } from "cron";
 
 import {
+  AccessScope,
   IdentityAuthMethod,
   OrgMembershipRole,
   OrgMembershipStatus,
@@ -29,7 +30,6 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
-import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TIdentityTokenAuthDALFactory } from "../identity-token-auth/identity-token-auth-dal";
@@ -37,10 +37,12 @@ import { KMS_ROOT_CONFIG_UUID } from "../kms/kms-fns";
 import { TKmsRootConfigDALFactory } from "../kms/kms-root-config-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { RootKeyEncryptionStrategy } from "../kms/kms-types";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TMicrosoftTeamsServiceFactory } from "../microsoft-teams/microsoft-teams-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
-import { TOrgMembershipDALFactory } from "../org-membership/org-membership-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
@@ -64,16 +66,17 @@ type TSuperAdminServiceFactoryDep = {
   identityDAL: TIdentityDALFactory;
   identityTokenAuthDAL: TIdentityTokenAuthDALFactory;
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
-  identityOrgMembershipDAL: TIdentityOrgDALFactory;
   orgDAL: TOrgDALFactory;
-  orgMembershipDAL: TOrgMembershipDALFactory;
   serverCfgDAL: TSuperAdminDALFactory;
   userDAL: TUserDALFactory;
+  membershipUserDAL: TMembershipUserDALFactory;
+  membershipIdentityDAL: TMembershipIdentityDALFactory;
+  membershipRoleDAL: TMembershipRoleDALFactory;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
-  orgService: Pick<TOrgServiceFactory, "createOrganization" | "inviteUserToOrganization">;
+  orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
   licenseService: Pick<TLicenseServiceFactory, "onPremFeatures" | "updateSubscriptionOrgMemberCount">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
@@ -127,7 +130,6 @@ export const superAdminServiceFactory = ({
   userDAL,
   identityDAL,
   orgDAL,
-  orgMembershipDAL,
   userAliasDAL,
   authService,
   orgService,
@@ -137,11 +139,13 @@ export const superAdminServiceFactory = ({
   licenseService,
   identityAccessTokenDAL,
   identityTokenAuthDAL,
-  identityOrgMembershipDAL,
   microsoftTeamsService,
   invalidateCacheQueue,
   smtpService,
-  tokenService
+  tokenService,
+  membershipIdentityDAL,
+  membershipUserDAL,
+  membershipRoleDAL
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
@@ -589,10 +593,17 @@ export const superAdminServiceFactory = ({
 
     const { identity, credentials } = await identityDAL.transaction(async (tx) => {
       const newIdentity = await identityDAL.create({ name: "Instance Admin Identity" }, tx);
-      await identityOrgMembershipDAL.create(
+      const membership = await membershipIdentityDAL.create(
         {
-          identityId: newIdentity.id,
-          orgId: organization.id,
+          actorIdentityId: newIdentity.id,
+          scopeOrgId: organization.id,
+          scope: AccessScope.Organization
+        },
+        tx
+      );
+      await membershipRoleDAL.create(
+        {
+          membershipId: membership.id,
           role: OrgMembershipRole.Admin
         },
         tx
@@ -834,14 +845,22 @@ export const superAdminServiceFactory = ({
           });
         }
 
-        await orgDAL.createMembership(
+        const membership = await orgDAL.createMembership(
           {
-            userId: inviteeUser.id,
+            actorUserId: inviteeUser.id,
+            scope: AccessScope.Organization,
             inviteEmail: inviteeEmail,
-            orgId: org.id,
-            role: OrgMembershipRole.Admin,
+            scopeOrgId: org.id,
             status: inviteeUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited,
             isActive: true
+          },
+          tx
+        );
+
+        await membershipRoleDAL.create(
+          {
+            membershipId: membership.id,
+            role: OrgMembershipRole.Admin
           },
           tx
         );
@@ -914,23 +933,32 @@ export const superAdminServiceFactory = ({
     actorType: ActorType
   ) => {
     if (actorType === ActorType.USER) {
-      const orgMembership = await orgMembershipDAL.findById(membershipId);
+      const orgMembership = await membershipUserDAL.findOne({
+        scope: AccessScope.Organization,
+        id: membershipId,
+        scopeOrgId: organizationId
+      });
       if (!orgMembership) {
         throw new NotFoundError({ name: "Organization Membership", message: "Organization membership not found" });
       }
 
-      if (orgMembership.userId === actorId) {
+      if (orgMembership.actorUserId === actorId) {
         throw new BadRequestError({
           message: "You cannot remove yourself from the organization from the instance management panel."
         });
       }
     }
 
-    const [organizationMembership] = await orgMembershipDAL.delete({
-      orgId: organizationId,
+    const membershipRole = await membershipRoleDAL.findOne({ membershipId });
+    if (!membershipRole) {
+      throw new NotFoundError({ name: "Membership Role", message: "Membership role not found" });
+    }
+    const [organizationMembership] = await membershipUserDAL.delete({
+      scopeOrgId: organizationId,
+      scope: AccessScope.Organization,
       id: membershipId
     });
-    return organizationMembership;
+    return { ...organizationMembership, role: membershipRole.role, orgId: organizationId };
   };
 
   const joinOrganization = async (orgId: string, actor: OrgServiceActor) => {
@@ -946,25 +974,46 @@ export const superAdminServiceFactory = ({
       throw new NotFoundError({ message: `Could not organization with ID "${orgId}"` });
     }
 
-    const existingOrgMembership = await orgMembershipDAL.findOne({ userId: serverAdmin.id, orgId });
+    const existingOrgMembership = await membershipUserDAL.findOne({
+      actorUserId: serverAdmin.id,
+      scopeOrgId: org.id,
+      scope: AccessScope.Organization
+    });
 
     if (existingOrgMembership) {
       throw new BadRequestError({ message: `You are already a part of the organization with ID ${orgId}` });
     }
 
-    const orgMembership = await orgDAL.createMembership({
-      userId: serverAdmin.id,
-      orgId: org.id,
-      role: OrgMembershipRole.Admin,
-      status: OrgMembershipStatus.Accepted,
-      isActive: true
+    const orgMembership = await orgDAL.transaction(async (tx) => {
+      const membership = await orgDAL.createMembership(
+        {
+          actorUserId: serverAdmin.id,
+          scopeOrgId: org.id,
+          status: OrgMembershipStatus.Accepted,
+          isActive: true,
+          scope: AccessScope.Organization
+        },
+        tx
+      );
+      const membershipRole = await membershipRoleDAL.create(
+        {
+          membershipId: membership.id,
+          role: OrgMembershipRole.Admin
+        },
+        tx
+      );
+      return { ...membership, role: membershipRole.role, orgId: org.id };
     });
 
     return orgMembership;
   };
 
   const resendOrgInvite = async ({ organizationId, membershipId }: TResendOrgInviteDTO, actor: OrgServiceActor) => {
-    const orgMembership = await orgMembershipDAL.findOne({ id: membershipId, orgId: organizationId });
+    const orgMembership = await membershipUserDAL.findOne({
+      id: membershipId,
+      scopeOrgId: organizationId,
+      scope: AccessScope.Organization
+    });
 
     if (!orgMembership) {
       throw new NotFoundError({ name: "Organization Membership", message: "Organization membership not found" });
@@ -976,7 +1025,7 @@ export const superAdminServiceFactory = ({
       });
     }
 
-    if (!orgMembership.userId) {
+    if (!orgMembership.actorUserId) {
       throw new NotFoundError({ message: "Cannot find user associated with Org Membership." });
     }
 
@@ -984,15 +1033,15 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "No invite email associated with user." });
     }
 
-    const org = await orgDAL.findOrgById(orgMembership.orgId);
+    const org = await orgDAL.findOrgById(orgMembership.scopeOrgId);
 
     const appCfg = getConfig();
     const serverAdmin = await userDAL.findById(actor.id);
 
     const token = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
-      userId: orgMembership.userId,
-      orgId: orgMembership.orgId
+      userId: orgMembership.actorUserId,
+      orgId: orgMembership.scopeOrgId
     });
 
     await smtpService.sendMail({
@@ -1004,13 +1053,13 @@ export const superAdminServiceFactory = ({
         inviterUsername: serverAdmin?.email,
         organizationName: org?.name,
         email: orgMembership.inviteEmail,
-        organizationId: orgMembership.orgId,
+        organizationId: orgMembership.scopeOrgId,
         token,
         callback_url: `${appCfg.SITE_URL}/signupinvite`
       }
     });
 
-    return orgMembership;
+    return { ...orgMembership, orgId: organizationId, role: "" };
   };
 
   const getIdentities = async ({ offset, limit, searchTerm }: TAdminGetIdentitiesDTO) => {

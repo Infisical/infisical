@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TGroups } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TGenericPermission } from "@app/lib/types";
-import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
+import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
@@ -63,7 +63,7 @@ export type TAddUsersToGroup = {
   group: TGroups;
   userDAL: Pick<TUserDALFactory, "findUserEncKeyByUserIdsBatch">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "transaction" | "insertMany">;
-  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany">;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
@@ -76,7 +76,7 @@ export type TAddUsersToGroupByUserIds = {
   userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "transaction" | "insertMany">;
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
-  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany">;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
@@ -88,7 +88,7 @@ export type TRemoveUsersFromGroupByUserIds = {
   userIds: string[];
   userDAL: Pick<TUserDALFactory, "find" | "transaction">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "filterProjectsByUserMembership" | "delete">;
-  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "delete">;
   tx?: Knex;
 };
@@ -100,7 +100,7 @@ export type TConvertPendingGroupAdditionsToGroupMemberships = {
     TUserGroupMembershipDALFactory,
     "find" | "transaction" | "insertMany" | "deletePendingUserGroupMembershipsByUserIds"
   >;
-  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany">;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;

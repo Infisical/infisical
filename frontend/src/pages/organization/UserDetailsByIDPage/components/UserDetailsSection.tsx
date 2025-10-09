@@ -76,7 +76,9 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
     return m.status === "invited" ? "Invited" : "Active";
   };
 
-  const roleName = roles?.find((r) => r.slug === membership?.role)?.name;
+  const roleName = roles?.find(
+    (r) => r.slug === membership?.role || r.slug === membership?.customRoleSlug
+  )?.name;
 
   return membership ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">

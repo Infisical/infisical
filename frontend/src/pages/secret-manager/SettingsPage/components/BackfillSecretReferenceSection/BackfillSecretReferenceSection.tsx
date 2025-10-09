@@ -6,7 +6,7 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 export const BackfillSecretReferenceSecretion = () => {
   const { currentProject } = useProject();
-  const { membership } = useProjectPermission();
+  const { hasProjectRole } = useProjectPermission();
   const backfillSecretReferences = useBackfillSecretReference();
 
   if (!currentProject) return null;
@@ -21,7 +21,7 @@ export const BackfillSecretReferenceSecretion = () => {
     }
   };
 
-  const isAdmin = membership.roles.includes(ProjectMembershipRole.Admin);
+  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex w-full items-center justify-between">

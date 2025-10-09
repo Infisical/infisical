@@ -6,15 +6,15 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { OrgServiceActor } from "@app/lib/types";
 import { constructGroupOrgMembershipRoleMappings } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-fns";
 import { TSyncExternalGroupOrgMembershipRoleMappingsDTO } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-types";
-import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
 
+import { TRoleDALFactory } from "../role/role-dal";
 import { TExternalGroupOrgRoleMappingDALFactory } from "./external-group-org-role-mapping-dal";
 
 type TExternalGroupOrgRoleMappingServiceFactoryDep = {
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   permissionService: TPermissionServiceFactory;
   licenseService: TLicenseServiceFactory;
-  orgRoleDAL: TOrgRoleDALFactory;
+  roleDAL: TRoleDALFactory;
 };
 
 export type TExternalGroupOrgRoleMappingServiceFactory = ReturnType<typeof externalGroupOrgRoleMappingServiceFactory>;
@@ -23,7 +23,7 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
   externalGroupOrgRoleMappingDAL,
   licenseService,
   permissionService,
-  orgRoleDAL
+  roleDAL
 }: TExternalGroupOrgRoleMappingServiceFactoryDep) => {
   const listExternalGroupOrgRoleMappings = async (actor: OrgServiceActor) => {
     const { permission } = await permissionService.getOrgPermission(
@@ -61,7 +61,7 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
 
     const mappings = await constructGroupOrgMembershipRoleMappings({
       mappingsDTO: dto.mappings,
-      orgRoleDAL,
+      roleDAL,
       licenseService,
       orgId: actor.orgId
     });

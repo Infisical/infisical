@@ -19,6 +19,7 @@ import { useOrganization } from "@app/context";
 import { findOrgMembershipRole } from "@app/helpers/roles";
 import {
   useAddUsersToOrg,
+  useAddUserToWsNonE2EE,
   useFetchServerStatus,
   useGetOrgRoles,
   useGetUserProjects
@@ -76,6 +77,7 @@ export const AddOrgMemberModal = ({
   const { data: organizationRoles } = useGetOrgRoles(currentOrg?.id ?? "");
   const { data: serverDetails } = useFetchServerStatus();
   const { mutateAsync: addUsersMutateAsync } = useAddUsersToOrg();
+  const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
   const { data: projects, isPending: isProjectsLoading } = useGetUserProjects({
     includeRoles: true
   });
@@ -140,12 +142,23 @@ export const AddOrgMemberModal = ({
         return;
       }
 
+      const usernames = emails.split(",").map((email) => email.trim());
       const { data } = await addUsersMutateAsync({
         organizationId: currentOrg?.id,
-        inviteeEmails: emails.split(",").map((email) => email.trim()),
-        organizationRoleSlug: organizationRole.slug,
-        projects: selectedProjects.map(({ id }) => ({ id, projectRoleSlug: [projectRoleSlug] }))
+        inviteeEmails: usernames,
+        organizationRoleSlug: organizationRole.slug
       });
+
+      await Promise.allSettled(
+        selectedProjects.map((el) =>
+          addUserToProject({
+            orgId: currentOrg.id,
+            projectId: el.id,
+            roleSlugs: [projectRoleSlug],
+            usernames
+          })
+        )
+      );
 
       setCompleteInviteLinks(data?.completeInviteLinks ?? null);
 

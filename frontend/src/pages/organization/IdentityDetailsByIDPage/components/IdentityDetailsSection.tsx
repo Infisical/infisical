@@ -77,7 +77,8 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
                       name: data.identity.name,
                       hasDeleteProtection: data.identity.hasDeleteProtection,
                       role: data.role,
-                      customRole: data.customRole
+                      customRole: data.customRole,
+                      metadata: data.metadata
                     });
                   }}
                   disabled={!isAllowed}

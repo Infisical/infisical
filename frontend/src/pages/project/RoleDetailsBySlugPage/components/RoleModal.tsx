@@ -90,6 +90,15 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
 
         handlePopUpToggle("role", false);
+        if (slug) {
+          navigate({
+            to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug` as const,
+            params: {
+              roleSlug: slug,
+              projectId
+            }
+          });
+        }
       } else {
         // create
         const newRole = await createProjectRole({

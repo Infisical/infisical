@@ -1,7 +1,8 @@
 import { OrgMembershipRole } from "@app/db/schemas";
 import { TFeatureSet } from "@app/ee/services/license/license-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
+
+import { TRoleDALFactory } from "../role/role-dal";
 
 const RESERVED_ORG_ROLE_SLUGS = Object.values(OrgMembershipRole).filter((role) => role !== "custom");
 
@@ -10,13 +11,13 @@ export const isCustomOrgRole = (roleSlug: string) => !RESERVED_ORG_ROLE_SLUGS.fi
 // this is only for updating an org
 export const getDefaultOrgMembershipRoleForUpdateOrg = async ({
   membershipRoleSlug,
-  orgRoleDAL,
+  roleDAL,
   plan,
   orgId
 }: {
   orgId: string;
   membershipRoleSlug: string;
-  orgRoleDAL: TOrgRoleDALFactory;
+  roleDAL: TRoleDALFactory;
   plan: TFeatureSet;
 }) => {
   if (isCustomOrgRole(membershipRoleSlug)) {
@@ -26,7 +27,7 @@ export const getDefaultOrgMembershipRoleForUpdateOrg = async ({
           "Failed to set custom default role due to plan RBAC restriction. Upgrade plan to set custom default org membership role."
       });
 
-    const customRole = await orgRoleDAL.findOne({ slug: membershipRoleSlug, orgId });
+    const customRole = await roleDAL.findOne({ slug: membershipRoleSlug, orgId });
     if (!customRole) {
       throw new NotFoundError({
         name: "UpdateOrg",
