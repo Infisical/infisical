@@ -43,8 +43,6 @@ export const orgDALFactory = (db: TDbClient) => {
     sortBy?: keyof TOrganizations;
   }) => {
     try {
-      const query = db.replicaNode()(TableName.Organization);
-
       // Build the subquery for limited organization IDs
       const orgSubquery = db.replicaNode().select("id").from(TableName.Organization);
 
@@ -54,37 +52,45 @@ export const orgDALFactory = (db: TDbClient) => {
         });
       }
 
+      const countQuery = orgSubquery.clone();
+
       if (sortBy) {
         void orgSubquery.orderBy(sortBy);
       }
-
       void orgSubquery.limit(limit).offset(offset);
 
-      // Main query with joins, limited to the subquery results
-      const docs = await query
-        .whereIn(`${TableName.Organization}.id`, orgSubquery)
-        .leftJoin(TableName.Project, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)
-        .leftJoin(TableName.OrgMembership, `${TableName.Organization}.id`, `${TableName.OrgMembership}.orgId`)
-        .leftJoin(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
-        .leftJoin(TableName.OrgRoles, `${TableName.OrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
-        .where((qb) => {
-          void qb.where(`${TableName.Users}.isGhost`, false).orWhereNull(`${TableName.Users}.id`);
-        })
-        .select(selectAllTableCols(TableName.Organization))
-        .select(db.ref("name").withSchema(TableName.Project).as("projectName"))
-        .select(db.ref("id").withSchema(TableName.Project).as("projectId"))
-        .select(db.ref("slug").withSchema(TableName.Project).as("projectSlug"))
-        .select(db.ref("createdAt").withSchema(TableName.Project).as("projectCreatedAt"))
-        .select(db.ref("email").withSchema(TableName.Users).as("userEmail"))
-        .select(db.ref("username").withSchema(TableName.Users).as("username"))
-        .select(db.ref("firstName").withSchema(TableName.Users).as("firstName"))
-        .select(db.ref("lastName").withSchema(TableName.Users).as("lastName"))
-        .select(db.ref("id").withSchema(TableName.Users).as("userId"))
-        .select(db.ref("id").withSchema(TableName.OrgMembership).as("orgMembershipId"))
-        .select(db.ref("role").withSchema(TableName.OrgMembership).as("orgMembershipRole"))
-        .select(db.ref("roleId").withSchema(TableName.OrgMembership).as("orgMembershipRoleId"))
-        .select(db.ref("status").withSchema(TableName.OrgMembership).as("orgMembershipStatus"))
-        .select(db.ref("name").withSchema(TableName.OrgRoles).as("orgMembershipRoleName"));
+      const buildBaseQuery = (orgIdSubquery: Knex.QueryBuilder) => {
+        return db
+          .replicaNode()(TableName.Organization)
+          .whereIn(`${TableName.Organization}.id`, orgIdSubquery)
+          .leftJoin(TableName.Project, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)
+          .leftJoin(TableName.OrgMembership, `${TableName.Organization}.id`, `${TableName.OrgMembership}.orgId`)
+          .leftJoin(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+          .leftJoin(TableName.OrgRoles, `${TableName.OrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
+          .where((qb) => {
+            void qb.where(`${TableName.Users}.isGhost`, false).orWhereNull(`${TableName.Users}.id`);
+          });
+      };
+
+      const [docs, totalResult] = await Promise.all([
+        buildBaseQuery(orgSubquery)
+          .select(selectAllTableCols(TableName.Organization))
+          .select(db.ref("name").withSchema(TableName.Project).as("projectName"))
+          .select(db.ref("id").withSchema(TableName.Project).as("projectId"))
+          .select(db.ref("slug").withSchema(TableName.Project).as("projectSlug"))
+          .select(db.ref("createdAt").withSchema(TableName.Project).as("projectCreatedAt"))
+          .select(db.ref("email").withSchema(TableName.Users).as("userEmail"))
+          .select(db.ref("username").withSchema(TableName.Users).as("username"))
+          .select(db.ref("firstName").withSchema(TableName.Users).as("firstName"))
+          .select(db.ref("lastName").withSchema(TableName.Users).as("lastName"))
+          .select(db.ref("id").withSchema(TableName.Users).as("userId"))
+          .select(db.ref("id").withSchema(TableName.OrgMembership).as("orgMembershipId"))
+          .select(db.ref("role").withSchema(TableName.OrgMembership).as("orgMembershipRole"))
+          .select(db.ref("roleId").withSchema(TableName.OrgMembership).as("orgMembershipRoleId"))
+          .select(db.ref("status").withSchema(TableName.OrgMembership).as("orgMembershipStatus"))
+          .select(db.ref("name").withSchema(TableName.OrgRoles).as("orgMembershipRoleName")),
+        buildBaseQuery(countQuery).countDistinct(`${TableName.Organization}.id`, { as: "count" }).first()
+      ]);
 
       const formattedDocs = sqlNestRelationships({
         data: docs,
@@ -132,30 +138,14 @@ export const orgDALFactory = (db: TDbClient) => {
         ]
       });
 
-      return formattedDocs;
+      const total = Number(totalResult?.count || 0);
+
+      return {
+        organizations: formattedDocs,
+        total
+      };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find organizations by filter" });
-    }
-  };
-
-  const countOrganizationsByFilter = async ({ searchTerm }: { searchTerm: string }) => {
-    interface CountResult {
-      count: string;
-    }
-    try {
-      const count = await db
-        .replicaNode()(TableName.Organization)
-        .where((qb) => {
-          if (searchTerm) {
-            void qb.whereILike(`${TableName.Organization}.name`, `%${searchTerm}%`);
-          }
-        })
-        .count("*")
-        .first();
-
-      return parseInt((count as unknown as CountResult).count || "0", 10);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Count organizations by filter" });
     }
   };
 
@@ -691,7 +681,6 @@ export const orgDALFactory = (db: TDbClient) => {
     findOrgBySlug,
     findAllOrgsByUserId,
     findOrganizationsByFilter,
-    countOrganizationsByFilter,
     ghostUserExists,
     findOrgMembersByUsername,
     findOrgMembersByRole,

@@ -173,9 +173,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             id: true,
             superAdmin: true
           }).array(),
-          meta: z.object({
-            total: z.number()
-          })
+          total: z.number()
         })
       }
     },
@@ -185,21 +183,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const users = await server.services.superAdmin.getUsers({
+      const result = await server.services.superAdmin.getUsers({
         ...req.query
       });
 
-      const count = await server.services.superAdmin.countUsers({
-        searchTerm: req.query.searchTerm,
-        adminsOnly: req.query.adminsOnly
-      });
-
-      return {
-        users,
-        meta: {
-          total: count
-        }
-      };
+      return result;
     }
   });
 
@@ -242,9 +230,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
               })
               .array()
           }).array(),
-          meta: z.object({
-            total: z.number()
-          })
+          total: z.number()
         })
       }
     },
@@ -254,19 +240,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const organizations = await server.services.superAdmin.getOrganizations({
+      const result = await server.services.superAdmin.getOrganizations({
         ...req.query
       });
-      const count = await server.services.superAdmin.countOrganizations({
-        searchTerm: req.query.searchTerm
-      });
 
-      return {
-        organizations,
-        meta: {
-          total: count
-        }
-      };
+      return result;
     }
   });
 
@@ -358,9 +336,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
               isInstanceAdmin: z.boolean()
             })
             .array(),
-          meta: z.object({
-            total: z.number()
-          })
+          total: z.number()
         })
       }
     },
@@ -370,20 +346,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const identities = await server.services.superAdmin.getIdentities({
+      const result = await server.services.superAdmin.getIdentities({
         ...req.query
       });
 
-      const count = await server.services.superAdmin.countIdentities({
-        searchTerm: req.query.searchTerm
-      });
-
-      return {
-        identities,
-        meta: {
-          total: count
-        }
-      };
+      return result;
     }
   });
 

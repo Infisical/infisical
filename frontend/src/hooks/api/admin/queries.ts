@@ -54,7 +54,7 @@ export const useAdminGetOrganizations = (filters: AdminGetOrganizationsFilters) 
         }
       );
 
-      return { organizations: data.organizations, totalCount: data.meta.total };
+      return { organizations: data.organizations, totalCount: data.total };
     },
     placeholderData: (previousData) => previousData
   });
@@ -93,7 +93,7 @@ export const useAdminGetUsers = (filters: AdminGetUsersFilters) => {
         }
       );
 
-      return { users: data.users, totalCount: data.meta.total };
+      return { users: data.users, totalCount: data.total };
     },
     placeholderData: (previousData) => previousData
   });
@@ -112,7 +112,7 @@ export const useAdminGetIdentities = (filters: AdminGetIdentitiesFilters) => {
         }
       );
 
-      return { identities: data.identities, totalCount: data.meta.total };
+      return { identities: data.identities, totalCount: data.total };
     },
     placeholderData: (previousData) => previousData
   });

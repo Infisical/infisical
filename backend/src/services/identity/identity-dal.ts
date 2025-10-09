@@ -50,11 +50,23 @@ export const identityDALFactory = (db: TDbClient) => {
         });
       }
 
+      const countQuery = query.clone();
+
       if (sortBy) {
         query = query.orderBy(sortBy);
       }
 
-      return await query.limit(limit).offset(offset).select(selectAllTableCols(TableName.Identity));
+      const [identities, totalResult] = await Promise.all([
+        query.limit(limit).offset(offset).select(selectAllTableCols(TableName.Identity)),
+        countQuery.countDistinct(`${TableName.Identity}.id`, { as: "count" }).first()
+      ]);
+
+      const total = Number(totalResult?.count || 0);
+
+      return {
+        identities,
+        total
+      };
     } catch (error) {
       throw new DatabaseError({ error, name: "Get identities by filter" });
     }

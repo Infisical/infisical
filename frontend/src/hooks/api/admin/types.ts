@@ -35,23 +35,19 @@ export type OrganizationWithProjects = Organization & {
   }[];
 };
 
-type PaginatedDataMeta = {
-  total: number;
-};
-
 export type TGetOrganizationsResponse = {
   organizations: OrganizationWithProjects[];
-  meta: PaginatedDataMeta;
+  total: number;
 };
 
 export type TGetIdentitiesResponse = {
   identities: Identity[];
-  meta: PaginatedDataMeta;
+  total: number;
 };
 
 export type TGetUsersResponse = {
   users: User[];
-  meta: PaginatedDataMeta;
+  total: number;
 };
 
 export type TServerConfig = {

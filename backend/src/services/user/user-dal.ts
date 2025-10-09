@@ -60,42 +60,22 @@ export const userDALFactory = (db: TDbClient) => {
         query = query.where("superAdmin", true);
       }
 
+      const countQuery = query.clone();
+
       if (sortBy) {
         query = query.orderBy(sortBy);
       }
 
-      return await query.limit(limit).offset(offset).select(selectAllTableCols(TableName.Users));
+      const [users, totalResult] = await Promise.all([
+        query.limit(limit).offset(offset).select(selectAllTableCols(TableName.Users)),
+        countQuery.count("*", { as: "count" }).first()
+      ]);
+
+      const total = Number(totalResult?.count || 0);
+
+      return { users, total };
     } catch (error) {
       throw new DatabaseError({ error, name: "Get users by filter" });
-    }
-  };
-
-  const countUsersByFilter = async ({ searchTerm, adminsOnly }: { searchTerm: string; adminsOnly: boolean }) => {
-    interface CountResult {
-      count: string;
-    }
-    try {
-      const count = await db
-        .replicaNode()(TableName.Users)
-        .where("isGhost", "=", false)
-        .where((qb) => {
-          if (searchTerm) {
-            void qb
-              .whereILike("email", `%${searchTerm}%`)
-              .orWhereILike("firstName", `%${searchTerm}%`)
-              .orWhereILike("lastName", `%${searchTerm}%`)
-              .orWhereRaw('lower("username") like ?', `%${searchTerm}%`);
-          }
-          if (adminsOnly) {
-            void qb.where("superAdmin", true);
-          }
-        })
-        .count("*")
-        .first();
-
-      return parseInt((count as unknown as CountResult).count || "0", 10);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Count Users by filter" });
     }
   };
 
@@ -272,7 +252,6 @@ export const userDALFactory = (db: TDbClient) => {
     findOneUserAction,
     createUserAction,
     getUsersByFilter,
-    countUsersByFilter,
     findAllMyAccounts,
     findUserByEmail
   };

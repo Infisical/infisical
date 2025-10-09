@@ -34,19 +34,6 @@ export type TGetOrganizationsDTO = {
   searchTerm: string;
 };
 
-export type TCountOrganizationsDTO = {
-  searchTerm: string;
-};
-
-export type TCountIdentitiesDTO = {
-  searchTerm: string;
-};
-
-export type TCountUsersDTO = {
-  searchTerm: string;
-  adminsOnly: boolean;
-};
-
 export type TCreateOrganizationDTO = {
   name: string;
   inviteAdminEmails: string[];

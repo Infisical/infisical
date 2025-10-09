@@ -55,9 +55,6 @@ import {
   TAdminGetUsersDTO,
   TAdminIntegrationConfig,
   TAdminSignUpDTO,
-  TCountIdentitiesDTO,
-  TCountOrganizationsDTO,
-  TCountUsersDTO,
   TCreateOrganizationDTO,
   TGetOrganizationsDTO,
   TResendOrgInviteDTO
@@ -671,15 +668,6 @@ export const superAdminServiceFactory = ({
     });
   };
 
-  const countUsers = async ({ searchTerm, adminsOnly }: TCountUsersDTO) => {
-    const count = await userDAL.countUsersByFilter({
-      searchTerm,
-      adminsOnly
-    });
-
-    return count;
-  };
-
   const deleteUser = async (userId: string) => {
     const superAdmins = await userDAL.find({
       superAdmin: true
@@ -753,20 +741,12 @@ export const superAdminServiceFactory = ({
   };
 
   const getOrganizations = async ({ offset, limit, searchTerm }: TGetOrganizationsDTO) => {
-    const organizations = await orgDAL.findOrganizationsByFilter({
+    return orgDAL.findOrganizationsByFilter({
       offset,
       searchTerm,
       sortBy: "name",
       limit
     });
-    return organizations;
-  };
-
-  const countOrganizations = async ({ searchTerm }: TCountOrganizationsDTO) => {
-    const count = await orgDAL.countOrganizationsByFilter({
-      searchTerm
-    });
-    return count;
   };
 
   const createOrganization = async (
@@ -1034,7 +1014,7 @@ export const superAdminServiceFactory = ({
   };
 
   const getIdentities = async ({ offset, limit, searchTerm }: TAdminGetIdentitiesDTO) => {
-    const identities = await identityDAL.getIdentitiesByFilter({
+    const result = await identityDAL.getIdentitiesByFilter({
       limit,
       offset,
       searchTerm,
@@ -1042,17 +1022,13 @@ export const superAdminServiceFactory = ({
     });
     const serverCfg = await getServerCfg();
 
-    return identities.map((identity) => ({
-      ...identity,
-      isInstanceAdmin: Boolean(serverCfg?.adminIdentityIds?.includes(identity.id))
-    }));
-  };
-
-  const countIdentities = async ({ searchTerm }: TCountIdentitiesDTO) => {
-    const count = await identityDAL.countIdentitiesByFilter({
-      searchTerm
-    });
-    return count;
+    return {
+      identities: result.identities.map((identity) => ({
+        ...identity,
+        isInstanceAdmin: Boolean(serverCfg?.adminIdentityIds?.includes(identity.id))
+      })),
+      total: result.total
+    };
   };
 
   const grantServerAdminAccessToUser = async (userId: string) => {
@@ -1161,10 +1137,8 @@ export const superAdminServiceFactory = ({
     adminSignUp,
     bootstrapInstance,
     getUsers,
-    countUsers,
     deleteUser,
     getIdentities,
-    countIdentities,
     getAdminIntegrationsConfig,
     updateRootEncryptionStrategy,
     getConfiguredEncryptionStrategies,
@@ -1174,7 +1148,6 @@ export const superAdminServiceFactory = ({
     invalidateCache,
     checkIfInvalidatingCache,
     getOrganizations,
-    countOrganizations,
     deleteOrganization,
     deleteOrganizationMembership,
     initializeAdminIntegrationConfigSync,
