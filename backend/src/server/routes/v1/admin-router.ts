@@ -172,7 +172,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             email: true,
             id: true,
             superAdmin: true
-          }).array()
+          }).array(),
+          total: z.number()
         })
       }
     },
@@ -182,13 +183,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const users = await server.services.superAdmin.getUsers({
+      const result = await server.services.superAdmin.getUsers({
         ...req.query
       });
 
-      return {
-        users
-      };
+      return result;
     }
   });
 
@@ -230,7 +229,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
                 createdAt: z.date()
               })
               .array()
-          }).array()
+          }).array(),
+          total: z.number()
         })
       }
     },
@@ -240,13 +240,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const organizations = await server.services.superAdmin.getOrganizations({
+      const result = await server.services.superAdmin.getOrganizations({
         ...req.query
       });
 
-      return {
-        organizations
-      };
+      return result;
     }
   });
 
@@ -337,7 +335,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             .extend({
               isInstanceAdmin: z.boolean()
             })
-            .array()
+            .array(),
+          total: z.number()
         })
       }
     },
@@ -347,13 +346,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const identities = await server.services.superAdmin.getIdentities({
+      const result = await server.services.superAdmin.getIdentities({
         ...req.query
       });
 
-      return {
-        identities
-      };
+      return result;
     }
   });
 

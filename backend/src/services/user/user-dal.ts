@@ -60,11 +60,20 @@ export const userDALFactory = (db: TDbClient) => {
         query = query.where("superAdmin", true);
       }
 
+      const countQuery = query.clone();
+
       if (sortBy) {
         query = query.orderBy(sortBy);
       }
 
-      return await query.limit(limit).offset(offset).select(selectAllTableCols(TableName.Users));
+      const [users, totalResult] = await Promise.all([
+        query.limit(limit).offset(offset).select(selectAllTableCols(TableName.Users)),
+        countQuery.count("*", { as: "count" }).first()
+      ]);
+
+      const total = Number(totalResult?.count || 0);
+
+      return { users, total };
     } catch (error) {
       throw new DatabaseError({ error, name: "Get users by filter" });
     }

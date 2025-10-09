@@ -741,13 +741,12 @@ export const superAdminServiceFactory = ({
   };
 
   const getOrganizations = async ({ offset, limit, searchTerm }: TGetOrganizationsDTO) => {
-    const organizations = await orgDAL.findOrganizationsByFilter({
+    return orgDAL.findOrganizationsByFilter({
       offset,
       searchTerm,
       sortBy: "name",
       limit
     });
-    return organizations;
   };
 
   const createOrganization = async (
@@ -1015,7 +1014,7 @@ export const superAdminServiceFactory = ({
   };
 
   const getIdentities = async ({ offset, limit, searchTerm }: TAdminGetIdentitiesDTO) => {
-    const identities = await identityDAL.getIdentitiesByFilter({
+    const result = await identityDAL.getIdentitiesByFilter({
       limit,
       offset,
       searchTerm,
@@ -1023,10 +1022,13 @@ export const superAdminServiceFactory = ({
     });
     const serverCfg = await getServerCfg();
 
-    return identities.map((identity) => ({
-      ...identity,
-      isInstanceAdmin: Boolean(serverCfg?.adminIdentityIds?.includes(identity.id))
-    }));
+    return {
+      identities: result.identities.map((identity) => ({
+        ...identity,
+        isInstanceAdmin: Boolean(serverCfg?.adminIdentityIds?.includes(identity.id))
+      })),
+      total: result.total
+    };
   };
 
   const grantServerAdminAccessToUser = async (userId: string) => {
