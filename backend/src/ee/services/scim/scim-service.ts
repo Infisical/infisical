@@ -791,7 +791,7 @@ export const scimServiceFactory = ({
     await membershipRoleDAL.update(
       {
         $in: {
-          id: newOrgMemberships.map((membership) => membership.id)
+          membershipId: newOrgMemberships.map((membership) => membership.id)
         }
       },
       {
