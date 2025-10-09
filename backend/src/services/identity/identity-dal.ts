@@ -72,26 +72,5 @@ export const identityDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countIdentitiesByFilter = async ({ searchTerm }: { searchTerm: string }) => {
-    interface CountResult {
-      count: string;
-    }
-    try {
-      const count = await db
-        .replicaNode()(TableName.Identity)
-        .where((qb) => {
-          if (searchTerm) {
-            void qb.whereILike(`name`, `%${searchTerm}%`);
-          }
-        })
-        .count("*")
-        .first();
-
-      return parseInt((count as unknown as CountResult).count || "0", 10);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Count identities by filter" });
-    }
-  };
-
-  return { ...identityOrm, getTrustedIpsByAuthMethod, getIdentitiesByFilter, countIdentitiesByFilter };
+  return { ...identityOrm, getTrustedIpsByAuthMethod, getIdentitiesByFilter };
 };
