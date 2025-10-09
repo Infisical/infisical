@@ -857,10 +857,13 @@ export const superAdminServiceFactory = ({
           tx
         );
 
-        await membershipRoleDAL.create({
-          membershipId: membership.id,
-          role: OrgMembershipRole.Admin
-        });
+        await membershipRoleDAL.create(
+          {
+            membershipId: membership.id,
+            role: OrgMembershipRole.Admin
+          },
+          tx
+        );
 
         users.push(inviteeUser);
       }
