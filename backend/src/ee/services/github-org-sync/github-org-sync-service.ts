@@ -372,14 +372,12 @@ export const githubOrgSyncServiceFactory = ({
             tx
           );
           const memberships = await membershipGroupDAL.insertMany(
-            newGroups.map(
-              (el) => ({
-                actorGroupId: el.id,
-                scope: AccessScope.Organization,
-                scopeOrgId: orgId
-              }),
-              tx
-            )
+            newGroups.map((el) => ({
+              actorGroupId: el.id,
+              scope: AccessScope.Organization,
+              scopeOrgId: orgId
+            })),
+            tx
           );
 
           await membershipRoleDAL.insertMany(
@@ -717,14 +715,12 @@ export const githubOrgSyncServiceFactory = ({
         );
 
         const memberships = await membershipGroupDAL.insertMany(
-          newGroups.map(
-            (el) => ({
-              actorGroupId: el.id,
-              scope: AccessScope.Organization,
-              scopeOrgId: orgPermission.orgId
-            }),
-            tx
-          )
+          newGroups.map((el) => ({
+            actorGroupId: el.id,
+            scope: AccessScope.Organization,
+            scopeOrgId: orgPermission.orgId
+          })),
+          tx
         );
 
         await membershipRoleDAL.insertMany(

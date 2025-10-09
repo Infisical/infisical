@@ -467,7 +467,7 @@ export const ldapConfigServiceFactory = ({
 
         const [orgMembership] = await orgDAL.findMembership(
           {
-            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
+            [`${TableName.Membership}.actorUserId` as "actorUserId"]: newUserAlias.userId,
             [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
             [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
           },

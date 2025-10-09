@@ -52,10 +52,14 @@ export const newProjectAdditionalPrivilegesFactory = ({
     async (dto) => {
       const scope = getScopeField(dto.scopeData);
 
-      const { permission } = await $getPermission(dto.permission, scope.value);
-      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
-
       const { actorType } = dto.data;
+      const { permission } = await $getPermission(dto.permission, scope.value);
+      const permissionSet =
+        actorType === ActorType.USER
+          ? ([ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member] as const)
+          : ([ProjectPermissionIdentityActions.Edit, ProjectPermissionSub.Identity] as const);
+      ForbiddenError.from(permission).throwUnlessCan(...permissionSet);
+
       const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
       const { permission: targetUserPermission, memberships } = await $getPermission(
         { ...dto.permission, type: actorType, id: dto.data.actorId },
@@ -98,7 +102,11 @@ export const newProjectAdditionalPrivilegesFactory = ({
       const { actorType } = dto.selector;
 
       const { permission } = await $getPermission(dto.permission, scope.value);
-      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
+      const permissionSet =
+        actorType === ActorType.USER
+          ? ([ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member] as const)
+          : ([ProjectPermissionIdentityActions.Edit, ProjectPermissionSub.Identity] as const);
+      ForbiddenError.from(permission).throwUnlessCan(...permissionSet);
 
       const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
       const { permission: targetUserPermission, memberships } = await $getPermission(
@@ -142,7 +150,11 @@ export const newProjectAdditionalPrivilegesFactory = ({
       const { actorType } = dto.selector;
 
       const { permission } = await $getPermission(dto.permission, scope.value);
-      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
+      const permissionSet =
+        actorType === ActorType.USER
+          ? ([ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member] as const)
+          : ([ProjectPermissionIdentityActions.Edit, ProjectPermissionSub.Identity] as const);
+      ForbiddenError.from(permission).throwUnlessCan(...permissionSet);
 
       const membership = await membershipDAL.findOne({
         scopeOrgId: dto.permission.orgId,
