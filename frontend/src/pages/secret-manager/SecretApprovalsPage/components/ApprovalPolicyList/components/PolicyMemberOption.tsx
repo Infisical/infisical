@@ -26,7 +26,7 @@ export const PolicyMemberOption = ({
           {children}
         </p>
         {!props.data.isOrgMembershipActive && (
-          <Badge className="pointer-events-none ml-1 mr-auto flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+          <Badge className="pointer-events-none mr-auto ml-1 flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
             <FontAwesomeIcon icon={faBan} />
             Inactive
           </Badge>

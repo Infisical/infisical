@@ -56,9 +56,9 @@ export const PointInTimeVersionLimitSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex w-full items-center justify-between">
-        <p className="text-xl font-semibold">Version Retention</p>
+        <p className="text-xl font-medium">Version Retention</p>
       </div>
-      <p className="mb-4 mt-2 max-w-2xl text-sm text-gray-400">
+      <p className="mt-2 mb-4 max-w-2xl text-sm text-gray-400">
         This defines the maximum number of recent secret versions to keep per folder. Excess
         versions will be removed at midnight (UTC) each day.
       </p>

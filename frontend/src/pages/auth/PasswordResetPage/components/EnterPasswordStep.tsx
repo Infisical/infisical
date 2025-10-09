@@ -171,7 +171,7 @@ export const EnterPasswordStep = ({
       onSubmit={handleSubmit(resetPasswordHandler)}
       className="mx-auto flex w-full flex-col items-center justify-center"
     >
-      <h1 className="mb-2 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
+      <h1 className="mb-2 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
         Enter new password
       </h1>
       <p className="w-max justify-center text-center text-sm text-gray-400">
@@ -222,7 +222,7 @@ export const EnterPasswordStep = ({
       passwordErrorEscapeChar ||
       passwordErrorLowEntropy ||
       passwordErrorBreached ? (
-        <div className="mt-4 rounded border border-mineshaft-600 bg-mineshaft-800 p-4 drop-shadow">
+        <div className="mt-4 rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-4 drop-shadow-sm">
           <div className="mb-1 ml-2 text-sm text-gray-300">Password should contain:</div>
           <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorTooShort ? (

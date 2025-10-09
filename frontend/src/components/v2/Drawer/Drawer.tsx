@@ -17,14 +17,14 @@ export type DrawerContentProps = DialogPrimitive.DialogContentProps & {
 } & VariantProps<typeof drawerContentVariation>;
 
 const drawerContentVariation = cva(
-  "fixed ease-in-out duration-300 z-[90] border border-mineshaft-600 drop-shadow-2xl",
+  "fixed ease-in-out duration-300 z-90 border border-mineshaft-600 drop-shadow-2xl",
   {
     variants: {
       direction: {
         right: [
           "right-0 top-0",
           "h-full w-96",
-          "data-[state=open]:animate-drawerRightIn data-[state=closed]:animate-drawerRightOut"
+          "data-[state=open]:animate-drawer-right-in data-[state=closed]:animate-drawer-right-out"
         ]
       }
     }
@@ -64,7 +64,7 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
           )}
           <CardBody
             className={twMerge(
-              "flex-grow overflow-y-auto overflow-x-hidden px-4 pt-4 dark:[color-scheme:dark]",
+              "grow overflow-x-hidden overflow-y-auto px-4 pt-4 dark:scheme-dark",
               cardBodyClassName
             )}
           >
@@ -75,7 +75,7 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
             <IconButton
               variant="plain"
               ariaLabel="close"
-              className="absolute right-6 top-4 rounded text-bunker-400 hover:text-bunker-50"
+              className="absolute top-4 right-6 rounded-sm text-bunker-400 hover:text-bunker-50"
             >
               <FontAwesomeIcon icon={faTimes} size="lg" className="cursor-pointer" />
             </IconButton>

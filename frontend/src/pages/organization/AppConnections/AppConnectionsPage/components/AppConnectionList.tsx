@@ -60,7 +60,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
         placeholder="Search options..."
         className="bg-mineshaft-800 placeholder:text-mineshaft-400"
       />
-      <div className="grid h-[29.5rem] grid-cols-4 content-start gap-2">
+      <div className="grid h-118 grid-cols-4 content-start gap-2">
         {filteredOptions.slice(offset, perPage * page)?.map((option) => {
           const {
             image,
@@ -91,7 +91,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
                 />
                 {icon && (
                   <FontAwesomeIcon
-                    className="absolute -bottom-1.5 -right-1.5 text-primary-700"
+                    className="absolute -right-1.5 -bottom-1.5 text-primary-700"
                     size="xl"
                     icon={icon}
                   />

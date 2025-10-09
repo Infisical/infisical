@@ -200,7 +200,7 @@ export const BitbucketConfigurePage = () => {
     >
       <Card className="max-w-md rounded-md p-8 pt-4">
         <CardTitle className="text-center">
-          <SiBitbucket size="1.2rem" className="mb-1 mr-2 inline-block" />
+          <SiBitbucket size="1.2rem" className="mr-2 mb-1 inline-block" />
           Bitbucket Integration
         </CardTitle>
         <Controller

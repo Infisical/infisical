@@ -152,7 +152,7 @@ export const EditDynamicSecretLdapForm = ({
     <div>
       <form onSubmit={handleSubmit(handleUpdateDynamicSecret)} autoComplete="off">
         <div className="flex items-center space-x-2">
-          <div className="flex-grow">
+          <div className="grow">
             <Controller
               control={control}
               name="newName"

@@ -81,7 +81,7 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
                     "w-[3.82rem] rounded-none px-3 py-2 font-normal first:rounded-l-md",
                     filter.type === AuditLogDateFilterType.Relative &&
                       filter.relativeModeValue === el &&
-                      "border-primary/40 bg-primary/[0.1]"
+                      "border-primary/40 bg-primary/10"
                   )}
                   key={`${el}-relative`}
                   onClick={() =>
@@ -122,9 +122,9 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
             <Button
               variant="outline_bg"
               className={twMerge(
-                "w-[8rem] rounded-none rounded-r-md px-3 py-2 font-normal",
+                "w-32 rounded-none rounded-r-md px-3 py-2 font-normal",
                 (filter.type === AuditLogDateFilterType.Absolute || isCustomRelative) &&
-                  "border-primary/40 bg-primary/[0.1]"
+                  "border-primary/40 bg-primary/10"
               )}
             >
               <span>Custom</span> <FontAwesomeIcon className="ml-1" icon={faCalendar} />
@@ -135,7 +135,7 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
           </DropdownMenuTrigger>
         </div>
         <DropdownMenuContent
-          className="!min-w-[434px] bg-mineshaft-800 p-4"
+          className="min-w-[434px]! bg-mineshaft-800 p-4"
           align="end"
           sideOffset={8}
         >
@@ -151,7 +151,7 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
                     className={twMerge(
                       "h-8 rounded-r-none font-normal",
                       field.value === AuditLogDateFilterType.Absolute &&
-                        "border-primary/40 bg-primary/[0.1]"
+                        "border-primary/40 bg-primary/10"
                     )}
                   >
                     Absolute
@@ -162,7 +162,7 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
                     className={twMerge(
                       "h-8 rounded-l-none font-normal",
                       field.value === AuditLogDateFilterType.Relative &&
-                        "border-primary/40 bg-primary/[0.1]"
+                        "border-primary/40 bg-primary/10"
                     )}
                   >
                     Relative
@@ -191,7 +191,7 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
                                 onClick={() => field.onChange(value)}
                                 className={twMerge(
                                   "h-8 w-12",
-                                  field.value === value && "border-primary/40 bg-primary/[0.1]"
+                                  field.value === value && "border-primary/40 bg-primary/10"
                                 )}
                               >
                                 {v}
@@ -234,7 +234,7 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
                           </FormControl>
                         </div>
                         {error && (
-                          <span className="text-xs text-red-600 text-opacity-90">
+                          <span className="text-opacity-90 text-xs text-red-600">
                             {error.message}
                           </span>
                         )}
@@ -324,7 +324,7 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
       <Select
         value={timezone}
         onValueChange={(val) => setTimezone(val as Timezone)}
-        className="w-[10.6rem] border !border-mineshaft-500 !bg-mineshaft-600 capitalize"
+        className="w-[10.6rem] border border-mineshaft-500! bg-mineshaft-600! capitalize"
         dropdownContainerClassName="max-w-none"
         position="popper"
         dropdownContainerStyle={{

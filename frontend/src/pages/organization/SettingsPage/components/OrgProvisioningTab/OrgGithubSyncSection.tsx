@@ -98,7 +98,7 @@ export const OrgGithubSyncSection = () => {
 
   return (
     <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-      <p className="text-xl font-semibold text-gray-200">
+      <p className="text-xl font-medium text-gray-200">
         Sync user groups from your GitHub Organization
       </p>
       <div className="py-4">

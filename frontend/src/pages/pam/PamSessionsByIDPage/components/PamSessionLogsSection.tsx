@@ -26,7 +26,7 @@ export const PamSessionLogsSection = ({ session }: Props) => {
   return (
     <div className="flex h-full w-full flex-col gap-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-semibold text-mineshaft-100">Session Logs</h3>
+        <h3 className="text-lg font-medium text-mineshaft-100">Session Logs</h3>
       </div>
       <div className="flex flex-col gap-2 overflow-y-auto text-xs">
         {session.commandLogs.length > 0 ? (
@@ -36,13 +36,13 @@ export const PamSessionLogsSection = ({ session }: Props) => {
               <button
                 type="button"
                 key={log.timestamp}
-                className={`flex w-full flex-col rounded-md border border-mineshaft-700 p-3 text-left focus:outline-none focus:ring-2 focus:ring-mineshaft-400 ${
+                className={`flex w-full flex-col rounded-md border border-mineshaft-700 p-3 text-left focus:ring-2 focus:ring-mineshaft-400 focus:outline-hidden ${
                   isExpanded ? "bg-mineshaft-700" : "bg-mineshaft-800 hover:bg-mineshaft-700"
                 }`}
                 onClick={() => toggleExpand(log.timestamp)}
               >
                 <div className="flex items-center justify-between text-bunker-400">
-                  <div className="flex select-none items-center gap-2">
+                  <div className="flex items-center gap-2 select-none">
                     <FontAwesomeIcon
                       icon={isExpanded ? faChevronDown : faChevronRight}
                       className="size-3 transition-transform duration-200"
@@ -53,14 +53,14 @@ export const PamSessionLogsSection = ({ session }: Props) => {
 
                 <div
                   className={`mt-2 font-mono ${
-                    isExpanded ? "whitespace-pre-wrap break-all" : "truncate"
+                    isExpanded ? "break-all whitespace-pre-wrap" : "truncate"
                   }`}
                 >
                   {log.input}
                 </div>
 
                 {isExpanded && log.output && (
-                  <div className="mt-2 whitespace-pre-wrap break-all border-t border-mineshaft-700 pt-2 font-mono text-bunker-300">
+                  <div className="mt-2 border-t border-mineshaft-700 pt-2 font-mono break-all whitespace-pre-wrap text-bunker-300">
                     {log.output}
                   </div>
                 )}

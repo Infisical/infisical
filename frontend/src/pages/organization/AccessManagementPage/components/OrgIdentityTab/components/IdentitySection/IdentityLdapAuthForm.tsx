@@ -632,7 +632,7 @@ export const IdentityLdapAuthForm = ({
 
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       label={isFirstField ? "Required Attributes" : undefined}
                       icon={
                         isFirstField ? (
@@ -689,7 +689,7 @@ export const IdentityLdapAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       isError={Boolean(error)}
                       errorText={error?.message}
                     >
@@ -817,7 +817,7 @@ export const IdentityLdapAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       label={index === 0 ? "Access Token Trusted IPs" : undefined}
                       isError={Boolean(error)}
                       errorText={error?.message}

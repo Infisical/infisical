@@ -20,7 +20,7 @@ export const LicensesSection = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <h2 className="mb-8 flex-1 text-xl font-semibold text-white">Enterprise licenses</h2>
+      <h2 className="mb-8 flex-1 text-xl font-medium text-white">Enterprise licenses</h2>
       <TableContainer className="mt-4">
         <Table>
           <THead>

@@ -135,7 +135,7 @@ export const ProjectSelect = () => {
           className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
           style={{ minWidth: "220px" }}
         >
-          <div className="px-2 py-1 text-xs capitalize text-mineshaft-400">Projects</div>
+          <div className="px-2 py-1 text-xs text-mineshaft-400 capitalize">Projects</div>
           <div className="mb-1 border-b border-b-mineshaft-600 py-1 pb-1">
             <Input
               value={searchProject}
@@ -146,7 +146,7 @@ export const ProjectSelect = () => {
               placeholder="Search projects"
             />
           </div>
-          <div className="thin-scrollbar max-h-80 overflow-auto">
+          <div className="max-h-80 thin-scrollbar overflow-auto">
             {projectsSortedByFav
               ?.filter((el) => el.name?.toLowerCase().includes(searchProject.toLowerCase()))
               ?.map((workspace) => {
@@ -174,7 +174,7 @@ export const ProjectSelect = () => {
                     <div className="flex items-center">
                       <div className="flex flex-1 items-center justify-between overflow-hidden">
                         <Tooltip side="right" className="break-words" content={workspace.name}>
-                          <div className="max-w-40 overflow-hidden truncate whitespace-nowrap">
+                          <div className="max-w-40 truncate overflow-hidden whitespace-nowrap">
                             {workspace.name}
                           </div>
                         </Tooltip>

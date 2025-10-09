@@ -63,7 +63,7 @@ export const SecretOverviewSecretRotationRow = ({
     <>
       <Tr isHoverable isSelectable onClick={setIsExpanded.toggle} className="group">
         <Td className="sticky left-0 z-10 border-0 bg-mineshaft-800 bg-clip-padding p-0 group-hover:bg-mineshaft-700">
-          <div className="flex w-full items-center space-x-5 border-r border-mineshaft-600 py-2.5 pl-5 pr-2">
+          <div className="flex w-full items-center space-x-5 border-r border-mineshaft-600 py-2.5 pr-2 pl-5">
             <div className="text-mineshaft-400">
               <FontAwesomeIcon icon={faRotate} />
             </div>
@@ -123,11 +123,11 @@ export const SecretOverviewSecretRotationRow = ({
                 <div style={getExpandedRowStyle(scrollOffset)} className="ml-2 p-2">
                   <TableContainer>
                     <table className="secret-table">
-                      <thead className="!border-b">
+                      <thead className="border-b!">
                         <tr className="h-10">
                           <th
                             style={{ padding: "0.5rem 1rem" }}
-                            className="min-table-row min-w-[30vw] !border-r-0"
+                            className="min-table-row min-w-[30vw] border-r-0!"
                           >
                             <div className="flex w-full flex-wrap items-center">
                               <span>{envName}</span>
@@ -151,7 +151,7 @@ export const SecretOverviewSecretRotationRow = ({
                               )}
                             </div>
                           </th>
-                          <div className="absolute right-1 top-0.5 ml-auto mr-1 mt-1 w-min">
+                          <div className="absolute top-0.5 right-1 mt-1 mr-1 ml-auto w-min">
                             <div className="flex items-center gap-2">
                               <SecretRotationV2StatusBadge secretRotation={secretRotation} />
                               <Tooltip content={isSecretVisible ? "Hide Values" : "Reveal Values"}>

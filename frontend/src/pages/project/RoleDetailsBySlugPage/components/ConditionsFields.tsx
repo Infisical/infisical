@@ -144,7 +144,7 @@ export const ConditionsFields = ({
                       <FormControl
                         isError={Boolean(error?.message)}
                         errorText={error?.message}
-                        className="mb-0 flex-grow"
+                        className="mb-0 grow"
                       >
                         <Select
                           position="popper"
@@ -170,7 +170,7 @@ export const ConditionsFields = ({
                     </Tooltip>
                   </div>
                 </div>
-                <div className="flex-grow">
+                <div className="grow">
                   <Controller
                     control={control}
                     name={`permissions.${subject}.${position}.conditions.${index}.rhs` as const}
@@ -178,7 +178,7 @@ export const ConditionsFields = ({
                       <FormControl
                         isError={Boolean(error?.message)}
                         errorText={error?.message}
-                        className="mb-0 flex-grow"
+                        className="mb-0 grow"
                       >
                         <Input {...field} />
                       </FormControl>

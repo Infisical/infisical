@@ -48,7 +48,7 @@ export const PamFolderRow = ({ folder, onClick, onDelete, onUpdate, search }: Pr
                 <IconButton
                   ariaLabel="Options"
                   colorSchema="secondary"
-                  className="hidden w-6 group-hover:flex data-[state=open]:!flex"
+                  className="hidden w-6 group-hover:flex data-[state=open]:flex!"
                   variant="plain"
                 >
                   <FontAwesomeIcon icon={faEllipsisV} />

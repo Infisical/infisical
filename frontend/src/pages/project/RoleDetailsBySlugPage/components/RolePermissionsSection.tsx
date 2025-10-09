@@ -164,7 +164,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
         <FormProvider {...form}>
           <div className="mx-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
             <div>
-              <h3 className="text-lg font-semibold text-mineshaft-100">Policies</h3>
+              <h3 className="text-lg font-medium text-mineshaft-100">Policies</h3>
               <p className="text-sm leading-3 text-mineshaft-400">
                 Configure granular access policies
               </p>
@@ -198,7 +198,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
               </div>
             )}
           </div>
-          <div className="flex flex-1 flex-col overflow-hidden pl-4 pr-1">
+          <div className="flex flex-1 flex-col overflow-hidden pr-1 pl-4">
             <div className="thin-scrollbar flex-1 overflow-y-scroll py-4">
               {!isPending && <PermissionEmptyState />}
               {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])

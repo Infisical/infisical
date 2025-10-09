@@ -70,10 +70,10 @@ export const ViewIdentityLdapAuthContent = ({
         <Tooltip
           side="right"
           className="max-w-xl p-2"
-          content={<p className="break-words rounded bg-mineshaft-600 p-2">{data.bindPass}</p>}
+          content={<p className="rounded-sm bg-mineshaft-600 p-2 break-words">{data.bindPass}</p>}
         >
           <div className="w-min">
-            <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+            <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
               <FontAwesomeIcon icon={faEye} />
               <span>Reveal</span>
             </Badge>
@@ -90,11 +90,13 @@ export const ViewIdentityLdapAuthContent = ({
             side="right"
             className="max-w-xl p-2"
             content={
-              <p className="break-words rounded bg-mineshaft-600 p-2">{data.ldapCaCertificate}</p>
+              <p className="rounded-sm bg-mineshaft-600 p-2 break-words">
+                {data.ldapCaCertificate}
+              </p>
             }
           >
             <div className="w-min">
-              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
                 <FontAwesomeIcon icon={faEye} />
                 <span>Reveal</span>
               </Badge>

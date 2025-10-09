@@ -45,9 +45,9 @@ export const OrgSidebar = ({ isHidden }: Props) => {
             animate={{ opacity: 1, translateX: 0 }}
             exit={{ opacity: 0, translateX: -240 }}
             layout
-            className="dark z-10 w-60 border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-800 to-mineshaft-900"
+            className="dark z-10 w-60 border-r border-mineshaft-600 bg-linear-to-tr from-mineshaft-800 to-mineshaft-900"
           >
-            <nav className="items-between flex h-full flex-col overflow-y-auto dark:[color-scheme:dark]">
+            <nav className="items-between flex h-full flex-col overflow-y-auto dark:scheme-dark">
               <Menu>
                 <MenuGroup title="Overview">
                   <Link to="/organization/projects">
@@ -138,7 +138,7 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                   </Link>
                 </MenuGroup>
               </Menu>
-              <div className="flex-grow" />
+              <div className="grow" />
               <Menu>
                 {subscription &&
                   subscription.slug === "starter" &&

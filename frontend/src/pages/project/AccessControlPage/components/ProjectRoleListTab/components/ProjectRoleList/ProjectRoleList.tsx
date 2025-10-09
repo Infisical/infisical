@@ -167,7 +167,7 @@ export const ProjectRoleList = () => {
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-xl font-semibold text-mineshaft-100">Project Roles</p>
+        <p className="text-xl font-medium text-mineshaft-100">Project Roles</p>
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Role}>
           {(isAllowed) => (
             <Button
@@ -261,7 +261,7 @@ export const ProjectRoleList = () => {
                   <Td>{name}</Td>
                   <Td>{slug}</Td>
                   <Td>
-                    <Badge className="w-min whitespace-nowrap bg-mineshaft-400/50 text-bunker-200">
+                    <Badge className="w-min bg-mineshaft-400/50 whitespace-nowrap text-bunker-200">
                       {isCustomProjectRole(slug) ? "Custom" : "Default"}
                     </Badge>
                   </Td>
@@ -278,7 +278,7 @@ export const ProjectRoleList = () => {
                             <FontAwesomeIcon icon={faEllipsisV} />
                           </IconButton>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="min-w-[12rem]" sideOffset={2} align="end">
+                        <DropdownMenuContent className="min-w-48" sideOffset={2} align="end">
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Edit}
                             a={ProjectPermissionSub.Role}
@@ -335,7 +335,7 @@ export const ProjectRoleList = () => {
                                   icon={<FontAwesomeIcon icon={faTrash} />}
                                   className={twMerge(
                                     isAllowed
-                                      ? "hover:!bg-red-500 hover:!text-white"
+                                      ? "hover:bg-red-500! hover:text-white!"
                                       : "pointer-events-none cursor-not-allowed opacity-50",
                                     "transition-colors duration-100"
                                   )}

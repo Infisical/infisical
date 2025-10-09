@@ -36,11 +36,11 @@ export const SSOStep = ({ setStep, type }: Props) => {
 
   return (
     <div className="mx-auto w-full max-w-md md:px-6">
-      <p className="mx-auto mb-8 flex w-max justify-center bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
+      <p className="mx-auto mb-8 flex w-max justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
         What&apos;s your organization slug?
       </p>
       <form onSubmit={handleSubmission}>
-        <div className="relative mx-auto flex max-h-24 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 md:min-w-[22rem] lg:w-1/6">
+        <div className="relative mx-auto flex max-h-24 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 md:min-w-88 lg:w-1/6">
           <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
             <Input
               value={ssoIdentifier}
@@ -54,7 +54,7 @@ export const SSOStep = ({ setStep, type }: Props) => {
             />
           </div>
         </div>
-        <div className="mx-auto mt-4 flex w-full min-w-[20rem] items-center justify-center rounded-md text-center md:min-w-[22rem] lg:w-1/6">
+        <div className="mx-auto mt-4 flex w-full min-w-[20rem] items-center justify-center rounded-md text-center md:min-w-88 lg:w-1/6">
           <Button
             type="submit"
             colorSchema="primary"

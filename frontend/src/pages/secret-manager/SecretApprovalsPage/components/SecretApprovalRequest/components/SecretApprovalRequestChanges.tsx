@@ -228,7 +228,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
   return (
     <div className="flex flex-col space-x-6 lg:flex-row">
       <div className="flex-1 lg:max-w-[calc(100%-17rem)]">
-        <div className="sticky -top-8 z-20 flex items-center space-x-4 bg-bunker-800 pb-6 pt-2">
+        <div className="sticky -top-8 z-20 flex items-center space-x-4 bg-bunker-800 pt-2 pb-6">
           <IconButton variant="outline_bg" ariaLabel="go-back" onClick={onGoBack}>
             <FontAwesomeIcon icon={faArrowLeft} />
           </IconButton>
@@ -245,7 +245,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                 : secretApprovalRequestDetails.status}
             </span>
           </div>
-          <div className="-mt-0.5 w-[calc(100%-20rem)] flex-grow flex-col">
+          <div className="-mt-0.5 w-[calc(100%-20rem)] grow flex-col">
             <div className="text-xl">
               {generateCommitText(
                 secretApprovalRequestDetails.commits,
@@ -389,12 +389,12 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
               <div className="text-sm text-bunker-300">
                 A secret import in
                 <p
-                  className="mx-1 inline rounded bg-mineshaft-600/80 text-mineshaft-300"
+                  className="mx-1 inline rounded-sm bg-mineshaft-600/80 text-mineshaft-300"
                   style={{ padding: "2px 4px" }}
                 >
                   {secretApprovalRequestDetails?.environment}
                 </p>
-                <div className="mr-1 inline-flex w-min items-center rounded border border-mineshaft-500 pl-1.5 pr-2">
+                <div className="mr-1 inline-flex w-min items-center rounded-sm border border-mineshaft-500 pr-2 pl-1.5">
                   <p className="cursor-default border-r border-mineshaft-500 pr-1.5">
                     <FontAwesomeIcon icon={faFolder} className="text-yellow" size="sm" />
                   </p>
@@ -409,12 +409,12 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                 </div>
                 has pending changes to be accepted from its source at{" "}
                 <p
-                  className="mx-1 inline rounded bg-mineshaft-600/80 text-mineshaft-300"
+                  className="mx-1 inline rounded-sm bg-mineshaft-600/80 text-mineshaft-300"
                   style={{ padding: "2px 4px" }}
                 >
                   {replicatedImport?.importEnv?.slug}
                 </p>
-                <div className="mr-1 inline-flex w-min items-center rounded border border-mineshaft-500 pl-1.5 pr-2">
+                <div className="mr-1 inline-flex w-min items-center rounded-sm border border-mineshaft-500 pr-2 pl-1.5">
                   <p className="cursor-default border-r border-mineshaft-500 pr-1.5">
                     <FontAwesomeIcon icon={faFolder} className="text-yellow" size="sm" />
                   </p>
@@ -433,12 +433,12 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
               <div className="text-sm text-bunker-300">
                 <p className="inline">Secret(s) in</p>
                 <p
-                  className="mx-1 inline rounded bg-mineshaft-600/80 text-mineshaft-300"
+                  className="mx-1 inline rounded-sm bg-mineshaft-600/80 text-mineshaft-300"
                   style={{ padding: "2px 4px" }}
                 >
                   {secretApprovalRequestDetails?.environment}
                 </p>
-                <div className="mr-1 inline-flex w-min items-center rounded border border-mineshaft-500 pl-1.5 pr-2">
+                <div className="mr-1 inline-flex w-min items-center rounded-sm border border-mineshaft-500 pr-2 pl-1.5">
                   <p className="cursor-default border-r border-mineshaft-500 pr-1.5">
                     <FontAwesomeIcon icon={faFolder} className="text-yellow" size="sm" />
                   </p>
@@ -524,7 +524,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
           />
         </div>
       </div>
-      <div className="sticky top-0 z-[51] w-1/5 cursor-default pt-2" style={{ minWidth: "240px" }}>
+      <div className="sticky top-0 z-51 w-1/5 cursor-default pt-2" style={{ minWidth: "240px" }}>
         <div className="text-sm text-bunker-300">Reviewers</div>
         <div className="mt-2 flex flex-col space-y-2 text-sm">
           {secretApprovalRequestDetails?.policy?.approvers
@@ -538,7 +538,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
 
               return (
                 <div
-                  className="flex flex-nowrap items-center justify-between space-x-2 rounded border border-mineshaft-600 bg-mineshaft-800 px-2 py-1"
+                  className="flex flex-nowrap items-center justify-between space-x-2 rounded-sm border border-mineshaft-600 bg-mineshaft-800 px-2 py-1"
                   key={`required-approver-${requiredApprover.userId}`}
                 >
                   <div
@@ -583,7 +583,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                     )}
                     <div className="flex gap-2">
                       <Tooltip
-                        className="relative !z-[500]"
+                        className="relative z-500!"
                         content={
                           <span className="text-sm">
                             Status:{" "}
@@ -612,7 +612,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
               const { isOrgMembershipActive } = reviewer;
               return (
                 <div
-                  className="flex flex-nowrap items-center justify-between space-x-2 rounded bg-mineshaft-800 px-2 py-1"
+                  className="flex flex-nowrap items-center justify-between space-x-2 rounded-sm bg-mineshaft-800 px-2 py-1"
                   key={`required-approver-${reviewer.userId}`}
                 >
                   <div
@@ -622,7 +622,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                     )}
                   >
                     <Tooltip
-                      className="relative !z-[500]"
+                      className="relative z-500!"
                       content={
                         !isOrgMembershipActive
                           ? "This user has been deactivated and no longer has an active organization membership."
@@ -644,7 +644,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
 
                   <div>
                     {reviewer.comment && (
-                      <Tooltip className="relative !z-[500]" content={reviewer.comment}>
+                      <Tooltip className="relative z-500!" content={reviewer.comment}>
                         <FontAwesomeIcon
                           icon={faComment}
                           size="xs"
@@ -653,7 +653,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                       </Tooltip>
                     )}
                     <Tooltip
-                      className="relative !z-[500]"
+                      className="relative z-500!"
                       content={
                         <span className="text-sm">
                           Status:{" "}

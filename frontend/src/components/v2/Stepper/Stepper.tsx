@@ -23,13 +23,8 @@ export const Stepper = ({ activeStep, children, direction, className }: StepperP
         const isActive = index === activeStep;
         const isNotLast = index + 1 !== (children as Array<ReactNode>).length;
         return (
-          <div
-            className={twMerge(
-              "flex flex-shrink-0 items-center space-x-3",
-              isNotLast && "flex-grow"
-            )}
-          >
-            <div className="flex flex-shrink-0 items-center space-x-2">
+          <div className={twMerge("flex shrink-0 items-center space-x-3", isNotLast && "grow")}>
+            <div className="flex shrink-0 items-center space-x-2">
               <div
                 className={twMerge(
                   "flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium text-mineshaft-800 transition-all",
@@ -49,7 +44,7 @@ export const Stepper = ({ activeStep, children, direction, className }: StepperP
             {isNotLast && (
               <div
                 style={{ height: "1px" }}
-                className={twMerge("flex-grow bg-bunker-300/30", isCompleted && "bg-primary")}
+                className={twMerge("grow bg-bunker-300/30", isCompleted && "bg-primary")}
               />
             )}
           </div>

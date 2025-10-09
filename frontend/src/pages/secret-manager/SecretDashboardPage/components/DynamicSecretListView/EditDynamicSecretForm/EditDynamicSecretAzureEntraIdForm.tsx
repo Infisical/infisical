@@ -109,7 +109,7 @@ export const EditDynamicSecretAzureEntraIdForm = ({
       <form onSubmit={handleSubmit(handleUpdateDynamicSecret)} autoComplete="off">
         <div>
           <div className="flex items-center space-x-2">
-            <div className="flex-grow">
+            <div className="grow">
               <Controller
                 control={control}
                 defaultValue=""
@@ -160,7 +160,7 @@ export const EditDynamicSecretAzureEntraIdForm = ({
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <div className="flex-grow">
+          <div className="grow">
             <Controller
               control={control}
               defaultValue=""
@@ -175,7 +175,7 @@ export const EditDynamicSecretAzureEntraIdForm = ({
               )}
             />
           </div>
-          <div className="flex-grow">
+          <div className="grow">
             <Controller
               control={control}
               defaultValue=""
@@ -193,7 +193,7 @@ export const EditDynamicSecretAzureEntraIdForm = ({
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <div className="flex-grow">
+          <div className="grow">
             <Controller
               control={control}
               defaultValue=""
@@ -209,7 +209,7 @@ export const EditDynamicSecretAzureEntraIdForm = ({
               )}
             />
           </div>
-          <div className="flex-grow">
+          <div className="grow">
             <Controller
               control={control}
               defaultValue=""
@@ -230,7 +230,7 @@ export const EditDynamicSecretAzureEntraIdForm = ({
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <div className="flex-grow">
+          <div className="grow">
             <Controller
               control={control}
               defaultValue=""

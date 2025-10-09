@@ -21,9 +21,9 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
 
   // eslint-disable-next-line no-nested-ternary
   return subscription?.auditLogs ? (
-    <div className="h-full w-full min-w-[51rem] rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="h-full w-full min-w-204 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <p className="text-lg font-semibold text-gray-200">Integration Logs</p>
+        <p className="text-lg font-medium text-gray-200">Integration Logs</p>
         <p className="text-xs text-gray-400">
           Displaying audit logs from the last {Math.min(auditLogsRetentionDays, 60)} days
         </p>
@@ -42,9 +42,9 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
       />
     </div>
   ) : (
-    <div className="h-full w-full min-w-[51rem] rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4 opacity-60">
+    <div className="h-full w-full min-w-204 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4 opacity-60">
       <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <p className="text-lg font-semibold text-gray-200">Integration Logs</p>
+        <p className="text-lg font-medium text-gray-200">Integration Logs</p>
       </div>
       <EmptyState
         className="rounded-lg"

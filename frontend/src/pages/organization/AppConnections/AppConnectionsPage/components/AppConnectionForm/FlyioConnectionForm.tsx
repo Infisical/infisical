@@ -106,7 +106,7 @@ export const FlyioConnectionForm = ({ appConnection, onSubmit }: Props) => {
               label="Access Token"
             >
               <SecretInput
-                containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />

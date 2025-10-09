@@ -236,7 +236,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
                             <FontAwesomeIcon icon={faEllipsisV} />
                           </IconButton>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="min-w-[12rem]" sideOffset={2} align="end">
+                        <DropdownMenuContent className="min-w-48" sideOffset={2} align="end">
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Delete}
                             a={ProjectPermissionSub.ServiceTokens}

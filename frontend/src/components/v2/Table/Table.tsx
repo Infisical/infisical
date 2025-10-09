@@ -48,7 +48,7 @@ export type THeadProps = {
 
 export const THead = ({ children, className, style }: THeadProps): JSX.Element => (
   <thead
-    className={twMerge("bg-mineshaft-800 text-xs uppercase text-bunker-300", className)}
+    className={twMerge("bg-mineshaft-800 text-xs text-bunker-300 uppercase", className)}
     style={style}
   >
     {children}
@@ -61,7 +61,7 @@ export type TFootProps = {
 };
 
 export const TFoot = ({ children, className }: TFootProps): JSX.Element => (
-  <tfoot className={twMerge("bg-mineshaft-800 text-xs uppercase text-bunker-300", className)}>
+  <tfoot className={twMerge("bg-mineshaft-800 text-xs text-bunker-300 uppercase", className)}>
     {children}
   </tfoot>
 );
@@ -104,7 +104,7 @@ export type ThProps = {
 export const Th = ({ children, className, style }: ThProps): JSX.Element => (
   <th
     className={twMerge(
-      "border-b-2 border-mineshaft-600 bg-mineshaft-800 px-5 pb-3.5 pt-4 font-semibold",
+      "border-b-2 border-mineshaft-600 bg-mineshaft-800 px-5 pt-4 pb-3.5 font-medium",
       className
     )}
     style={style}

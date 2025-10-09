@@ -23,7 +23,7 @@ export const ViewRotationGeneratedCredentialsDisplay = ({
         <p className="text-sm text-mineshaft-300">
           The active credential set currently mapped to the rotation secrets.
         </p>
-        <div className="flex flex-col gap-x-8 gap-y-2 rounded border border-mineshaft-600 bg-mineshaft-700 p-2">
+        <div className="flex flex-col gap-x-8 gap-y-2 rounded-sm border border-mineshaft-600 bg-mineshaft-700 p-2">
           {activeCredentials}
         </div>
       </div>
@@ -38,7 +38,7 @@ export const ViewRotationGeneratedCredentialsDisplay = ({
           <p className="text-sm text-mineshaft-300">
             The retired credential set that will be revoked during the next rotation cycle.
           </p>
-          <div className="flex flex-col gap-x-8 gap-y-2 rounded border border-mineshaft-600 bg-mineshaft-700 p-2">
+          <div className="flex flex-col gap-x-8 gap-y-2 rounded-sm border border-mineshaft-600 bg-mineshaft-700 p-2">
             {inactiveCredentials}
           </div>
         </div>

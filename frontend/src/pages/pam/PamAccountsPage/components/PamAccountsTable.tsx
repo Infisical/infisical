@@ -303,7 +303,7 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
               <FontAwesomeIcon icon={faFilter} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="thin-scrollbar max-h-[70vh] overflow-y-auto" align="end">
+          <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
             <DropdownMenuLabel>Resource</DropdownMenuLabel>
             {uniqueResources.length ? (
               uniqueResources.map((resource) => {

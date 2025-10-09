@@ -122,7 +122,7 @@ export const RegionSelect = () => {
                 <span className="mr-2 inline-block w-4">{flag}</span>
                 {value.toUpperCase()} Region
               </p>
-              <ul className="ml-6 mt-2 flex flex-col gap-1">
+              <ul className="mt-2 ml-6 flex flex-col gap-1">
                 <li>
                   <FontAwesomeIcon size="xs" className="mr-0.5 text-green" icon={faCheck} /> Fastest
                   option if you are based in {value === Region.US ? "the" : ""} {label}

@@ -82,7 +82,7 @@ export const IntegrationSettingsSection = ({ integration }: Props) => {
   return (
     <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <p className="text-lg font-semibold text-gray-200">Integration Settings</p>
+        <p className="text-lg font-medium text-gray-200">Integration Settings</p>
       </div>
       <div className="grid grid-cols-2 gap-4">
         {integration.metadata &&

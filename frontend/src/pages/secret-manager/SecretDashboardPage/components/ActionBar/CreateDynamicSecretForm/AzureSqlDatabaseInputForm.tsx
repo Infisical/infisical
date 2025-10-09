@@ -201,7 +201,7 @@ export const AzureSqlDatabaseInputForm = ({
       <form onSubmit={handleSubmit(handleCreateDynamicSecret)} autoComplete="off">
         <div>
           <div className="flex items-center space-x-2">
-            <div className="flex-grow">
+            <div className="grow">
               <Controller
                 control={control}
                 defaultValue=""
@@ -253,7 +253,7 @@ export const AzureSqlDatabaseInputForm = ({
           </div>
           <MetadataForm control={control} />
           <div>
-            <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
               Configuration
             </div>
             <div>
@@ -316,7 +316,7 @@ export const AzureSqlDatabaseInputForm = ({
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="Host"
-                      className="flex-grow"
+                      className="grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
@@ -340,7 +340,7 @@ export const AzureSqlDatabaseInputForm = ({
                 />
               </div>
               <div className="flex items-center space-x-2">
-                <div className="flex-grow">
+                <div className="grow">
                   <Controller
                     control={control}
                     name="provider.username"
@@ -356,7 +356,7 @@ export const AzureSqlDatabaseInputForm = ({
                     )}
                   />
                 </div>
-                <div className="flex-grow">
+                <div className="grow">
                   <Controller
                     control={control}
                     name="provider.password"
@@ -371,7 +371,7 @@ export const AzureSqlDatabaseInputForm = ({
                     )}
                   />
                 </div>
-                <div className="flex-grow">
+                <div className="grow">
                   <Controller
                     control={control}
                     name="provider.database"
@@ -389,7 +389,7 @@ export const AzureSqlDatabaseInputForm = ({
                 </div>
               </div>
               <div>
-                <div className="mb-2 mt-2">
+                <div className="mt-2 mb-2">
                   <Controller
                     control={control}
                     name="provider.sslEnabled"
@@ -534,7 +534,7 @@ export const AzureSqlDatabaseInputForm = ({
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
-                <Accordion type="multiple" className="mb-2 mt-4 w-full bg-mineshaft-700">
+                <Accordion type="multiple" className="mt-4 mb-2 w-full bg-mineshaft-700">
                   <AccordionItem value="password-config">
                     <AccordionTrigger>Password Configuration (optional)</AccordionTrigger>
                     <AccordionContent>

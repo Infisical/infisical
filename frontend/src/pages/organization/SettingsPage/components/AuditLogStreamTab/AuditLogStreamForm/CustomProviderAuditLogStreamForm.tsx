@@ -92,7 +92,7 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
                 <FormControl
                   isError={Boolean(error?.message)}
                   errorText={error?.message}
-                  className="flex-grow"
+                  className="grow"
                 >
                   <Input
                     {...field}

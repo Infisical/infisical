@@ -83,7 +83,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
 
   if (!isFormInitialized) {
     return (
-      <div className="flex h-[25.25rem] w-full items-center justify-center">
+      <div className="flex h-101 w-full items-center justify-center">
         <Spinner size="lg" />
       </div>
     );

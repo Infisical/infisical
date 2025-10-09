@@ -66,9 +66,9 @@ export const SecretApprovalRequestChangeItem = ({
   const [isNewSecretValueVisible, setIsNewSecretValueVisible] = useState(false);
 
   return (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 pb-4 pt-2">
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 pt-2 pb-4">
       <div className="flex items-center px-1 py-1">
-        <div className="flex-grow">{generateItemTitle(op)}</div>
+        <div className="grow">{generateItemTitle(op)}</div>
         {!hasMerged && isStale && (
           <div className="flex items-center text-mineshaft-300">
             <FontAwesomeIcon icon={faInfoCircle} className="text-xs" />
@@ -85,19 +85,19 @@ export const SecretApprovalRequestChangeItem = ({
         )}
       </div>
       <div>
-        <div className="flex flex-col space-x-0 space-y-4 xl:flex-row xl:space-x-4 xl:space-y-0">
+        <div className="flex flex-col space-y-4 space-x-0 xl:flex-row xl:space-y-0 xl:space-x-4">
           {op === CommitType.UPDATE || op === CommitType.DELETE ? (
             <div className="flex w-full cursor-default flex-col rounded-md border border-red-600/60 bg-red-600/10 p-4 xl:w-1/2">
               <div className="mb-4 flex flex-row justify-between">
                 <span className="text-md font-medium">Previous Secret</span>
-                <div className="rounded-full bg-red px-2 pb-[0.14rem] pt-[0.2rem] text-xs font-medium">
+                <div className="rounded-full bg-red px-2 pt-[0.2rem] pb-[0.14rem] text-xs font-medium">
                   <FontAwesomeIcon icon={faCircleXmark} className="pr-1 text-white" />
                   Previous
                 </div>
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Key</div>
-                <p className="max-w-lg break-words text-sm">{secretVersion?.secretKey}</p>
+                <p className="max-w-lg text-sm break-words">{secretVersion?.secretKey}</p>
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Value</div>
@@ -109,7 +109,7 @@ export const SecretApprovalRequestChangeItem = ({
                   ) : (
                     <div className="relative">
                       {secretVersion?.secretValueHidden && (
-                        <div className="absolute left-1 top-1/2 z-50 -translate-y-1/2">
+                        <div className="absolute top-1/2 left-1 z-50 -translate-y-1/2">
                           <Tooltip
                             position="right"
                             content="You do not have access to view the old secret value."
@@ -129,12 +129,12 @@ export const SecretApprovalRequestChangeItem = ({
                         value={secretVersion?.secretValue}
                         containerClassName={twMerge(
                           "border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50",
-                          secretVersion?.secretValueHidden ? "pl-8 pr-2" : "px-2"
+                          secretVersion?.secretValueHidden ? "pr-2 pl-8" : "px-2"
                         )}
                       />
                       {!secretVersion?.secretValueHidden && (
                         <div
-                          className="absolute right-1 top-1"
+                          className="absolute top-1 right-1"
                           onClick={() => setIsOldSecretValueVisible(!isOldSecretValueVisible)}
                         >
                           <FontAwesomeIcon
@@ -149,7 +149,7 @@ export const SecretApprovalRequestChangeItem = ({
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Comment</div>
-                <div className="thin-scrollbar max-h-[5rem] max-w-[34rem] overflow-y-auto break-words text-sm xl:max-w-[28rem]">
+                <div className="max-h-20 thin-scrollbar max-w-136 overflow-y-auto text-sm break-words xl:max-w-md">
                   {secretVersion?.secretComment || (
                     <span className="text-sm text-mineshaft-300">-</span>
                   )}{" "}
@@ -189,7 +189,7 @@ export const SecretApprovalRequestChangeItem = ({
                           >
                             <FontAwesomeIcon icon={faKey} size="xs" className="mr-1" />
                             <Tooltip
-                              className="max-w-lg whitespace-normal break-words"
+                              className="max-w-lg break-words whitespace-normal"
                               content={el.key}
                             >
                               <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap">
@@ -202,7 +202,7 @@ export const SecretApprovalRequestChangeItem = ({
                             className="flex items-center rounded-l-none border border-mineshaft-500 bg-mineshaft-900 pl-1"
                           >
                             <Tooltip
-                              className="max-w-lg whitespace-normal break-words"
+                              className="max-w-lg break-words whitespace-normal"
                               content={el.value}
                             >
                               <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap">
@@ -236,14 +236,14 @@ export const SecretApprovalRequestChangeItem = ({
             <div className="flex w-full cursor-default flex-col rounded-md border border-green-600/60 bg-green-600/10 p-4 xl:w-1/2">
               <div className="mb-4 flex flex-row justify-between">
                 <span className="text-md font-medium">New Secret</span>
-                <div className="rounded-full bg-green-600 px-2 pb-[0.14rem] pt-[0.2rem] text-xs font-medium">
+                <div className="rounded-full bg-green-600 px-2 pt-[0.2rem] pb-[0.14rem] text-xs font-medium">
                   <FontAwesomeIcon icon={faCircleCheck} className="pr-1 text-white" />
                   New
                 </div>
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Key</div>
-                <div className="max-w-md break-words text-sm">{newVersion?.secretKey} </div>
+                <div className="max-w-md text-sm break-words">{newVersion?.secretKey} </div>
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Value</div>
@@ -255,7 +255,7 @@ export const SecretApprovalRequestChangeItem = ({
                   ) : (
                     <div className="relative">
                       {newVersion?.secretValueHidden && (
-                        <div className="absolute left-1 top-1/2 z-50 -translate-y-1/2">
+                        <div className="absolute top-1/2 left-1 z-50 -translate-y-1/2">
                           <Tooltip
                             position="right"
                             content="You do not have access to view the new secret value."
@@ -275,12 +275,12 @@ export const SecretApprovalRequestChangeItem = ({
                         value={newVersion?.secretValue ?? secretVersion?.secretValue}
                         containerClassName={twMerge(
                           "border border-mineshaft-600 bg-bunker-700 py-1.5 text-bunker-300 hover:border-primary-400/50",
-                          newVersion?.secretValueHidden ? "pl-8 pr-2" : "px-2"
+                          newVersion?.secretValueHidden ? "pr-2 pl-8" : "px-2"
                         )}
                       />
                       {!newVersion?.secretValueHidden && (
                         <div
-                          className="absolute right-1 top-1"
+                          className="absolute top-1 right-1"
                           onClick={() => setIsNewSecretValueVisible(!isNewSecretValueVisible)}
                         >
                           <FontAwesomeIcon
@@ -295,7 +295,7 @@ export const SecretApprovalRequestChangeItem = ({
               </div>
               <div className="mb-2">
                 <div className="text-sm font-medium text-mineshaft-300">Comment</div>
-                <div className="thin-scrollbar max-h-[5rem] max-w-[34rem] overflow-y-auto break-words text-sm xl:max-w-[28rem]">
+                <div className="max-h-20 thin-scrollbar max-w-136 overflow-y-auto text-sm break-words xl:max-w-md">
                   {(newVersion?.secretComment ?? secretVersion?.secretComment) || (
                     <span className="text-sm text-mineshaft-300">-</span>
                   )}{" "}
@@ -334,7 +334,7 @@ export const SecretApprovalRequestChangeItem = ({
                         >
                           <FontAwesomeIcon icon={faKey} size="xs" className="mr-1" />
                           <Tooltip
-                            className="max-w-lg whitespace-normal break-words"
+                            className="max-w-lg break-words whitespace-normal"
                             content={el.key}
                           >
                             <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap">
@@ -347,7 +347,7 @@ export const SecretApprovalRequestChangeItem = ({
                           className="flex items-center rounded-l-none border border-mineshaft-500 bg-mineshaft-900 pl-1"
                         >
                           <Tooltip
-                            className="max-w-lg whitespace-normal break-words"
+                            className="max-w-lg break-words whitespace-normal"
                             content={el.value}
                           >
                             <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap">

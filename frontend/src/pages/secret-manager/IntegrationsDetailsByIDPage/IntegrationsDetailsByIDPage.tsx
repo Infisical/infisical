@@ -127,7 +127,7 @@ export const IntegrationDetailsByIDPage = () => {
                       <DropdownMenuItem
                         className={twMerge(
                           isAllowed
-                            ? "hover:!bg-red-500 hover:!text-white"
+                            ? "hover:bg-red-500! hover:text-white!"
                             : "pointer-events-none cursor-not-allowed opacity-50"
                         )}
                         onClick={() => {
@@ -151,7 +151,7 @@ export const IntegrationDetailsByIDPage = () => {
                 <IntegrationDetailsSection integration={integration} />
                 <IntegrationConnectionSection integration={integration} />
               </div>
-              <div className="flex-grow space-y-4">
+              <div className="grow space-y-4">
                 <IntegrationSettingsSection integration={integration} />
                 <IntegrationAuditLogsSection integration={integration} />
               </div>

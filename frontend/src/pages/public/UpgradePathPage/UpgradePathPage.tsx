@@ -143,7 +143,7 @@ export const UpgradePathPage = () => {
         />
       </Helmet>
       <div className="dark h-full">
-        <div className="flex h-screen flex-col justify-between overflow-auto bg-mineshaft-900 text-bunker-200 dark:[color-scheme:dark]">
+        <div className="flex h-screen flex-col justify-between overflow-auto bg-mineshaft-900 text-bunker-200 dark:scheme-dark">
           <div />
           <div className="mx-auto w-full max-w-4xl px-4 py-4 md:px-0">
             {/* Header */}
@@ -159,14 +159,14 @@ export const UpgradePathPage = () => {
                   />
                 </a>
               </div>
-              <h1 className="bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-4xl font-medium text-transparent">
+              <h1 className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-4xl font-medium text-transparent">
                 Upgrade your Infisical Version
               </h1>
             </div>
 
             {/* Calculator Card */}
             <div className="mb-8 rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-6">
-              <h2 className="mb-6 text-xl font-semibold text-bunker-200">Calculate Upgrade Path</h2>
+              <h2 className="mb-6 text-xl font-medium text-bunker-200">Calculate Upgrade Path</h2>
               <div className="space-y-6">
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   {/* From Version Selector */}
@@ -262,7 +262,7 @@ export const UpgradePathPage = () => {
                       }`}
                     >
                       <div className="flex items-center space-x-3">
-                        <div className="flex-shrink-0">
+                        <div className="shrink-0">
                           {hasIssues ? (
                             <svg
                               className="h-5 w-5 text-yellow-400"
@@ -324,7 +324,7 @@ export const UpgradePathPage = () => {
                         d="M13 7l5 5m0 0l-5 5m5-5H6"
                       />
                     </svg>
-                    <h2 className="text-xl font-semibold text-bunker-200">Upgrade Steps</h2>
+                    <h2 className="text-xl font-medium text-bunker-200">Upgrade Steps</h2>
                   </div>
 
                   <div className="space-y-6">
@@ -417,7 +417,7 @@ export const UpgradePathPage = () => {
 
                             {/* Timeline Line */}
                             {!isLast && (
-                              <div className="-mb-4 -mt-4 h-full w-px flex-1 bg-mineshaft-500" />
+                              <div className="-mt-4 -mb-4 h-full w-px flex-1 bg-mineshaft-500" />
                             )}
                           </div>
 
@@ -427,12 +427,12 @@ export const UpgradePathPage = () => {
                             <div className="flex items-center space-x-3">
                               <h3 className="font-medium text-bunker-200">{step.version}</h3>
                               {isFirst && (
-                                <span className="rounded border border-primary/30 bg-primary/20 px-2 py-1 text-xs font-medium text-primary">
+                                <span className="rounded-sm border border-primary/30 bg-primary/20 px-2 py-1 text-xs font-medium text-primary">
                                   Starting Version
                                 </span>
                               )}
                               {isLast && (
-                                <span className="rounded border border-primary/30 bg-primary/20 px-2 py-1 text-xs font-medium text-primary">
+                                <span className="rounded-sm border border-primary/30 bg-primary/20 px-2 py-1 text-xs font-medium text-primary">
                                   Target Version
                                 </span>
                               )}
@@ -464,7 +464,7 @@ export const UpgradePathPage = () => {
                               if (!notes) return null;
 
                               return (
-                                <div className="mt-3 rounded border border-bunker-500/20 bg-bunker-700/20 p-3">
+                                <div className="mt-3 rounded-sm border border-bunker-500/20 bg-bunker-700/20 p-3">
                                   <div className="text-sm text-bunker-300">{notes}</div>
                                 </div>
                               );
@@ -472,7 +472,7 @@ export const UpgradePathPage = () => {
 
                             {/* Database Schema Changes */}
                             {hasDbMigration && (
-                              <div className="mt-3 rounded border border-yellow-500/20 bg-yellow-500/10 p-3">
+                              <div className="mt-3 rounded-sm border border-yellow-500/20 bg-yellow-500/10 p-3">
                                 <div className="mb-1 text-sm font-medium text-yellow-400">
                                   Database Schema Changes Required
                                 </div>
@@ -512,7 +512,7 @@ export const UpgradePathPage = () => {
                                 {versionChanges.changes.map((change) => (
                                   <div
                                     key={`${step.version}-${change.title}`}
-                                    className="rounded border border-red-500/20 bg-red-500/10 p-3"
+                                    className="rounded-sm border border-red-500/20 bg-red-500/10 p-3"
                                   >
                                     <div className="mb-1 text-sm font-medium text-red-400">
                                       {change.title}

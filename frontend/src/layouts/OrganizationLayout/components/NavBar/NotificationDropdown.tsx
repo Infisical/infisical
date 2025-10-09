@@ -37,7 +37,7 @@ export const NotificationDropdown = () => {
         <div className="relative border border-r-0 border-mineshaft-500 px-2.5 py-1 hover:bg-mineshaft-600">
           <FontAwesomeIcon icon={faBell} className="text-mineshaft-200" />
           {unreadCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-yellow-400 px-1 text-[10px] text-black">
+            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-yellow-400 px-1 text-[10px] text-black">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
@@ -46,11 +46,11 @@ export const NotificationDropdown = () => {
       <DropdownMenuContent
         align="end"
         side="bottom"
-        className="z-[999] mt-3 flex h-[550px] w-[400px] overflow-hidden rounded-lg"
+        className="z-999 mt-3 flex h-[550px] w-[400px] overflow-hidden rounded-lg"
       >
         <div className="flex w-full flex-col">
           <div className="flex items-center justify-between border-b border-mineshaft-500 px-3 py-2">
-            <span className="font-semibold text-white">Notifications</span>
+            <span className="font-medium text-white">Notifications</span>
             <button
               type="button"
               className="text-xs font-medium text-mineshaft-300 hover:text-primary-400 disabled:pointer-events-none disabled:opacity-50"

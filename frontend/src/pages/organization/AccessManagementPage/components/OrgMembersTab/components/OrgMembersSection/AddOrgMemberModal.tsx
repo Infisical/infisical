@@ -219,7 +219,7 @@ export const AddOrgMemberModal = ({
                 <FormControl label="Emails" isError={Boolean(error)} errorText={error?.message}>
                   <TextArea
                     {...field}
-                    className="mt-1 h-20 w-full min-w-[30rem] rounded-md border border-mineshaft-500 bg-mineshaft-900/70 px-2 py-1 text-sm text-bunker-300 outline-none ring-primary-800 ring-opacity-70 transition-all placeholder:text-bunker-400 focus:ring-2"
+                    className="ring-opacity-70 mt-1 h-20 w-full min-w-120 rounded-md border border-mineshaft-500 bg-mineshaft-900/70 px-2 py-1 text-sm text-bunker-300 ring-primary-800 outline-hidden transition-all placeholder:text-bunker-400 focus:ring-2"
                     placeholder="email@example.com, email2@example.com..."
                   />
                 </FormControl>

@@ -109,12 +109,12 @@ export const RundeckConfigurePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-xxs"
+                  className="text-xxs mb-[0.07rem] ml-1.5"
                 />
               </div>
             </a>
@@ -184,7 +184,7 @@ export const RundeckConfigurePage = () => {
             type="submit"
             color="mineshaft"
             variant="outline_bg"
-            className="mb-6 ml-auto mt-2"
+            className="mt-2 mb-6 ml-auto"
             isLoading={isSubmitting}
           >
             Create Integration

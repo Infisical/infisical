@@ -120,7 +120,7 @@ export const DatePicker = ({
               today: "text-primary border-primary",
               selected: " text-mineshaft-100 bg-mineshaft-500",
               root: `text-mineshaft-300  ${defaultClassNames}`,
-              [UI.DayButton]: "p-3 rounded hover:text-mineshaft-100",
+              [UI.DayButton]: "p-3 rounded-sm hover:text-mineshaft-100",
               [UI.Weekday]: "px-3 pt-3",
               [UI.Chevron]: "fill-mineshaft-300/70 hover:fill-mineshaft-300",
               disabled: "text-mineshaft-400 pointer-events-none"
@@ -133,7 +133,7 @@ export const DatePicker = ({
               type="time"
               value={displayUtc ? localTimeToUTC(timeValue) : timeValue}
               onChange={handleTimeChange}
-              className="bg-mineshaft-700 text-white [color-scheme:dark]"
+              className="bg-mineshaft-700 text-white scheme-dark"
             />
           </div>
         )}

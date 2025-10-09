@@ -14,7 +14,7 @@ export const RadioGroup = ({ className, children, ...props }: RadioGroupProps) =
   >
     <div className="flex items-center">
       <RadioGroupPrimitive.Item
-        className="h-[20px] w-[20px] cursor-default rounded-full border border-bunker-400/60 bg-bunker-400/20 outline-none duration-200 hover:bg-bunker-400/40"
+        className="h-[20px] w-[20px] cursor-default rounded-full border border-bunker-400/60 bg-bunker-400/20 outline-hidden duration-200 hover:bg-bunker-400/40"
         value="App"
         id="r1"
       >
@@ -26,7 +26,7 @@ export const RadioGroup = ({ className, children, ...props }: RadioGroupProps) =
     </div>
     <div className="flex items-center">
       <RadioGroupPrimitive.Item
-        className="h-[22px] w-[22px] cursor-default rounded-full border border-bunker-400/60 bg-bunker-400/20 outline-none duration-200 hover:bg-bunker-400/40"
+        className="h-[22px] w-[22px] cursor-default rounded-full border border-bunker-400/60 bg-bunker-400/20 outline-hidden duration-200 hover:bg-bunker-400/40"
         value="Pipeline"
         id="r2"
       >

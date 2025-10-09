@@ -378,7 +378,7 @@ export const SpecificPrivilegeSecretForm = ({
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
-                      <div className="pointer-events-none ml-1 flex select-none flex-col text-mineshaft-300">
+                      <div className="pointer-events-none ml-1 flex flex-col text-mineshaft-300 select-none">
                         <div className="flex flex-row items-center gap-1">
                           <FontAwesomeIcon
                             icon={faEye}
@@ -409,7 +409,7 @@ export const SpecificPrivilegeSecretForm = ({
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
-                      <div className="pointer-events-none ml-1 flex select-none flex-col text-mineshaft-300">
+                      <div className="pointer-events-none ml-1 flex flex-col text-mineshaft-300 select-none">
                         <div className="flex flex-row items-center gap-1">
                           <FontAwesomeIcon
                             icon={faPlus}
@@ -442,7 +442,7 @@ export const SpecificPrivilegeSecretForm = ({
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
-                      <div className="pointer-events-none ml-1 flex select-none flex-col text-mineshaft-300">
+                      <div className="pointer-events-none ml-1 flex flex-col text-mineshaft-300 select-none">
                         <div className="flex flex-row items-center gap-1">
                           <FontAwesomeIcon
                             icon={faPencil}
@@ -473,7 +473,7 @@ export const SpecificPrivilegeSecretForm = ({
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
-                      <div className="pointer-events-none ml-1 flex select-none flex-col text-mineshaft-300">
+                      <div className="pointer-events-none ml-1 flex flex-col text-mineshaft-300 select-none">
                         <div className="flex flex-row items-center gap-1">
                           <FontAwesomeIcon
                             icon={faTrashCan}
@@ -504,7 +504,7 @@ export const SpecificPrivilegeSecretForm = ({
                         rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-4" />}
                         isDisabled={isMemberEditDisabled}
                         className={twMerge(
-                          "w-full border-mineshaft-600 bg-mineshaft-900 py-2.5 text-sm capitalize text-mineshaft-300 hover:border-mineshaft-600 hover:bg-mineshaft-800",
+                          "w-full border-mineshaft-600 bg-mineshaft-900 py-2.5 text-sm text-mineshaft-300 capitalize hover:border-mineshaft-600 hover:bg-mineshaft-800",
                           isExpired && "text-red-600"
                         )}
                       >

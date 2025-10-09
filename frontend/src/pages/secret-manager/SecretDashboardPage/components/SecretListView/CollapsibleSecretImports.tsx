@@ -194,11 +194,11 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
     <div className="mb-4 w-full">
       <div className={`mb-4 rounded-md border ${alertColors.border} ${alertColors.bg}`}>
         <div className="flex items-start gap-3 p-4">
-          <div className={`mt-0.5 flex-shrink-0 ${alertColors.text}`}>
+          <div className={`mt-0.5 shrink-0 ${alertColors.text}`}>
             <FontAwesomeIcon icon={faWarning} className="h-5 w-5" aria-hidden="true" />
           </div>
           <div className="w-full">
-            <p className={`text-sm font-semibold ${alertColors.text}`}>
+            <p className={`text-sm font-medium ${alertColors.text}`}>
               The following resources will be affected by this change
             </p>
           </div>

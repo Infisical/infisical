@@ -234,7 +234,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
             render={({ field: { onChange, value }, fieldState: { error } }) => (
               <FormControl errorText={error?.message} isError={Boolean(error)}>
                 <Switch
-                  className="ml-0 mr-2 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                  className="mr-2 ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
                   containerClassName="flex-row-reverse w-fit"
                   id="delete-protection-enabled"
                   thumbClassName="bg-mineshaft-800"
@@ -252,7 +252,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
           <div className="mb-3 flex flex-col space-y-2">
             {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
               <div key={metadataFieldId} className="flex items-end space-x-2">
-                <div className="flex-grow">
+                <div className="grow">
                   {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
                   <Controller
                     control={control}
@@ -268,7 +268,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
                     )}
                   />
                 </div>
-                <div className="flex-grow">
+                <div className="grow">
                   {i === 0 && (
                     <FormLabel label="Value" className="text-xs text-mineshaft-400" isOptional />
                   )}

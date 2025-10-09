@@ -129,7 +129,7 @@ export const DeleteProjectSection = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <p className="mb-4 text-xl font-semibold text-mineshaft-100">Danger Zone</p>
+      <p className="mb-4 text-xl font-medium text-mineshaft-100">Danger Zone</p>
       <div className="space-x-4">
         <ProjectPermissionCan I={ProjectPermissionActions.Delete} a={ProjectPermissionSub.Project}>
           {(isAllowed) => (

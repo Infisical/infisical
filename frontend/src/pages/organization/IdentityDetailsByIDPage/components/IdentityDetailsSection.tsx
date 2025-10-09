@@ -43,7 +43,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
   return data ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-semibold text-mineshaft-100">Identity Details</h3>
+        <h3 className="text-lg font-medium text-mineshaft-100">Identity Details</h3>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -94,7 +94,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
                 <DropdownMenuItem
                   className={twMerge(
                     isAllowed
-                      ? "hover:!bg-red-500 hover:!text-white"
+                      ? "hover:bg-red-500! hover:text-white!"
                       : "pointer-events-none cursor-not-allowed opacity-50"
                   )}
                   onClick={async () => {
@@ -115,7 +115,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
       </div>
       <div className="pt-4">
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Identity ID</p>
+          <p className="text-sm font-medium text-mineshaft-300">Identity ID</p>
           <div className="group flex align-top">
             <p className="text-sm text-mineshaft-300">{data.identity.id}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
@@ -136,33 +136,33 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Name</p>
+          <p className="text-sm font-medium text-mineshaft-300">Name</p>
           <p className="text-sm text-mineshaft-300">{data.identity.name}</p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Last Login Auth Method</p>
+          <p className="text-sm font-medium text-mineshaft-300">Last Login Auth Method</p>
           <p className="text-sm text-mineshaft-300">
             {data.lastLoginAuthMethod ? identityAuthToNameMap[data.lastLoginAuthMethod] : "-"}
           </p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Last Login Time</p>
+          <p className="text-sm font-medium text-mineshaft-300">Last Login Time</p>
           <p className="text-sm text-mineshaft-300">
             {data.lastLoginTime ? format(data.lastLoginTime, "PPpp") : "-"}
           </p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Delete Protection</p>
+          <p className="text-sm font-medium text-mineshaft-300">Delete Protection</p>
           <p className="text-sm text-mineshaft-300">
             {data.identity.hasDeleteProtection ? "On" : "Off"}
           </p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Organization Role</p>
+          <p className="text-sm font-medium text-mineshaft-300">Organization Role</p>
           <p className="text-sm text-mineshaft-300">{data.role}</p>
         </div>
         <div>
-          <p className="text-sm font-semibold text-mineshaft-300">Metadata</p>
+          <p className="text-sm font-medium text-mineshaft-300">Metadata</p>
           {data?.metadata?.length ? (
             <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
               {data.metadata?.map((el) => (
