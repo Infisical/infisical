@@ -79,7 +79,7 @@ type Props = {
   isSelected?: boolean;
   onToggleSecretSelect: (secret: SecretV3RawSanitized) => void;
   tags: WsTag[];
-  onCreateTag: () => void;
+  onCreateTag: (secret?: SecretV3RawSanitized) => void;
   environment: string;
   secretPath: string;
   onShareSecret: (sec: SecretV3RawSanitized) => void;
@@ -734,7 +734,7 @@ export const SecretItem = memo(
                               className="h-3 w-3"
                             />
                           }
-                          onClick={onCreateTag}
+                          onClick={() => onCreateTag(secret)}
                         >
                           Create a tag
                         </Button>
@@ -927,7 +927,7 @@ export const SecretItem = memo(
                               className="h-3 w-3"
                             />
                           }
-                          onClick={onCreateTag}
+                          onClick={() => onCreateTag(secret)}
                         >
                           Create a tag
                         </Button>
