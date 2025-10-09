@@ -76,7 +76,7 @@ type TScimServiceFactoryDep = {
     | "updateById"
     | "update"
   >;
-  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "create">;
   membershipRoleDAL: TMembershipRoleDALFactory;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
@@ -844,6 +844,23 @@ export const scimServiceFactory = ({
           name: displayName,
           slug: slugify(`${displayName}-${alphaNumericNanoId(4)}`),
           orgId,
+          role: OrgMembershipRole.NoAccess
+        },
+        tx
+      );
+
+      const groupMembership = await membershipGroupDAL.create(
+        {
+          scope: AccessScope.Organization,
+          actorGroupId: group.id,
+          scopeOrgId: orgId
+        },
+        tx
+      );
+
+      await membershipRoleDAL.create(
+        {
+          membershipId: groupMembership.id,
           role: OrgMembershipRole.NoAccess
         },
         tx
