@@ -221,6 +221,7 @@
                             ]
                           },
                           "documentation/platform/sso/auth0-oidc",
+                          "documentation/platform/sso/pingone-oidc",
                           {
                             "group": "General OIDC",
                             "pages": [
