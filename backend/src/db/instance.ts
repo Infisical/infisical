@@ -1,5 +1,27 @@
 import knex, { Knex } from "knex";
 
+const parseSslConfig = (dbConnectionUri: string, dbRootCert?: string) => {
+  let modifiedDbConnectionUri = dbConnectionUri;
+  let sslConfig: { rejectUnauthorized: boolean; ca: string } | boolean = false;
+
+  if (dbRootCert) {
+    const url = new URL(dbConnectionUri);
+    const sslMode = url.searchParams.get("sslmode");
+
+    if (sslMode && sslMode !== "disable") {
+      url.searchParams.delete("sslmode");
+      modifiedDbConnectionUri = url.toString();
+
+      sslConfig = {
+        rejectUnauthorized: ["verify-ca", "verify-full"].includes(sslMode),
+        ca: Buffer.from(dbRootCert, "base64").toString("ascii")
+      };
+    }
+  }
+
+  return { modifiedDbConnectionUri, sslConfig };
+};
+
 export type TDbClient = Knex;
 export const initDbConnection = ({
   dbConnectionUri,
@@ -32,34 +54,18 @@ export const initDbConnection = ({
     return selectedReplica;
   });
 
-  // Parse out ?sslmode=... from the connection URI if its equal to "verify-ca", "verify-full", or "require" and dbRootCert is defined
-  let modifiedDbConnectionUri = dbConnectionUri;
-  if (dbRootCert) {
-    const url = new URL(dbConnectionUri);
-    const sslMode = url.searchParams.get("sslmode");
-    if (url.searchParams.has("sslmode") && sslMode && ["verify-ca", "verify-full", "require"].includes(sslMode)) {
-      url.searchParams.delete("sslmode");
-      modifiedDbConnectionUri = url.toString();
-    }
-  }
+  const { modifiedDbConnectionUri, sslConfig } = parseSslConfig(dbConnectionUri, dbRootCert);
 
   db = knex({
     client: "pg",
     connection: {
       connectionString: modifiedDbConnectionUri,
       host: process.env.DB_HOST,
-      // @ts-expect-error I have no clue why only for the port there is a type error
-      // eslint-disable-next-line
-      port: process.env.DB_PORT,
+      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : undefined,
       user: process.env.DB_USER,
       database: process.env.DB_NAME,
       password: process.env.DB_PASSWORD,
-      ssl: dbRootCert
-        ? {
-            rejectUnauthorized: true,
-            ca: Buffer.from(dbRootCert, "base64").toString("ascii")
-          }
-        : false
+      ssl: sslConfig
     },
     // https://knexjs.org/guide/#pool
     pool: { min: 0, max: 10 },
@@ -70,28 +76,16 @@ export const initDbConnection = ({
 
   readReplicaDbs = readReplicas.map((el) => {
     const replicaDbCertificate = el.dbRootCert || dbRootCert;
-
-    // Parse out ?sslmode=... from the connection URI if its equal to "verify-ca", "verify-full", or "require" and dbRootCert is defined
-    let modifiedReadReplicaDbConnectionUri = el.dbConnectionUri;
-    if (replicaDbCertificate) {
-      const url = new URL(el.dbConnectionUri);
-      const sslMode = url.searchParams.get("sslmode");
-      if (url.searchParams.has("sslmode") && sslMode && ["verify-ca", "verify-full", "require"].includes(sslMode)) {
-        url.searchParams.delete("sslmode");
-        modifiedReadReplicaDbConnectionUri = url.toString();
-      }
-    }
+    const { modifiedDbConnectionUri: replicaUri, sslConfig: replicaSslConfig } = parseSslConfig(
+      el.dbConnectionUri,
+      replicaDbCertificate
+    );
 
     return knex({
       client: "pg",
       connection: {
-        connectionString: modifiedReadReplicaDbConnectionUri,
-        ssl: replicaDbCertificate
-          ? {
-              rejectUnauthorized: true,
-              ca: Buffer.from(replicaDbCertificate, "base64").toString("ascii")
-            }
-          : false
+        connectionString: replicaUri,
+        ssl: replicaSslConfig
       },
       migrations: {
         tableName: "infisical_migrations"
@@ -110,16 +104,7 @@ export const initAuditLogDbConnection = ({
   dbConnectionUri: string;
   dbRootCert?: string;
 }) => {
-  // Parse out ?sslmode=... from the connection URI if its equal to "verify-ca", "verify-full", or "require" and dbRootCert is defined
-  let modifiedDbConnectionUri = dbConnectionUri;
-  if (dbRootCert) {
-    const url = new URL(dbConnectionUri);
-    const sslMode = url.searchParams.get("sslmode");
-    if (url.searchParams.has("sslmode") && sslMode && ["verify-ca", "verify-full", "require"].includes(sslMode)) {
-      url.searchParams.delete("sslmode");
-      modifiedDbConnectionUri = url.toString();
-    }
-  }
+  const { modifiedDbConnectionUri, sslConfig } = parseSslConfig(dbConnectionUri, dbRootCert);
 
   // akhilmhdh: the default Knex is knex.Knex<any, any[]>. but when assigned with knex({<config>}) the value is knex.Knex<any, unknown[]>
   // this was causing issue with files like `snapshot-dal` `findRecursivelySnapshots` this i am explicitly putting the any and unknown[]
@@ -129,18 +114,11 @@ export const initAuditLogDbConnection = ({
     connection: {
       connectionString: modifiedDbConnectionUri,
       host: process.env.AUDIT_LOGS_DB_HOST,
-      // @ts-expect-error I have no clue why only for the port there is a type error
-      // eslint-disable-next-line
-      port: process.env.AUDIT_LOGS_DB_PORT,
+      port: process.env.AUDIT_LOGS_DB_PORT ? parseInt(process.env.AUDIT_LOGS_DB_PORT, 10) : undefined,
       user: process.env.AUDIT_LOGS_DB_USER,
       database: process.env.AUDIT_LOGS_DB_NAME,
       password: process.env.AUDIT_LOGS_DB_PASSWORD,
-      ssl: dbRootCert
-        ? {
-            rejectUnauthorized: true,
-            ca: Buffer.from(dbRootCert, "base64").toString("ascii")
-          }
-        : false
+      ssl: sslConfig
     },
     migrations: {
       tableName: "infisical_migrations"
