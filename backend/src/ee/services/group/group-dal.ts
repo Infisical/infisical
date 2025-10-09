@@ -20,7 +20,7 @@ export const groupDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.Groups));
 
       if (limit) void query.limit(limit);
-      if (offset) void query.limit(offset);
+      if (offset && offset > 0) void query.offset(offset);
       if (sort) {
         void query.orderBy(sort.map(([column, order, nulls]) => ({ column: column as string, order, nulls })));
       }
