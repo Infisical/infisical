@@ -1121,7 +1121,11 @@ export const registerRoutes = async (
     relayDAL,
     kmsService,
     licenseService,
-    permissionService
+    permissionService,
+    orgDAL,
+    notificationService,
+    smtpService,
+    userDAL
   });
 
   const gatewayV2Service = gatewayV2ServiceFactory({
@@ -1131,7 +1135,10 @@ export const registerRoutes = async (
     orgGatewayConfigV2DAL,
     gatewayV2DAL,
     relayDAL,
-    permissionService
+    permissionService,
+    orgDAL,
+    notificationService,
+    smtpService
   });
 
   const secretSyncQueue = secretSyncQueueFactory({
@@ -2328,6 +2335,16 @@ export const registerRoutes = async (
   const configSyncJob = await superAdminService.initializeEnvConfigSync();
   if (configSyncJob) {
     cronJobs.push(configSyncJob);
+  }
+
+  const gatewayHealthcheckNotifyJob = await gatewayV2Service.initializeHealthcheckNotify();
+  if (gatewayHealthcheckNotifyJob) {
+    cronJobs.push(gatewayHealthcheckNotifyJob);
+  }
+
+  const relayHealthcheckNotifyJob = await relayService.initializeHealthcheckNotify();
+  if (relayHealthcheckNotifyJob) {
+    cronJobs.push(relayHealthcheckNotifyJob);
   }
 
   const oauthConfigSyncJob = await initializeOauthConfigSync();

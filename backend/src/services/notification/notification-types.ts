@@ -15,7 +15,9 @@ export enum NotificationType {
   DIRECT_PROJECT_ACCESS_ISSUED_TO_ADMIN = "direct-project-access-issued-to-admin",
   PROJECT_ACCESS_REQUEST = "project-access-request",
   PROJECT_INVITATION = "project-invitation",
-  SECRET_SYNC_FAILED = "secret-sync-failed"
+  SECRET_SYNC_FAILED = "secret-sync-failed",
+  GATEWAY_HEALTH_ALERT = "gateway-health-alert",
+  RELAY_HEALTH_ALERT = "relay-health-alert"
 }
 
 export interface TCreateUserNotificationDTO {

@@ -2,14 +2,16 @@ import net from "node:net";
 
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
+import { CronJob } from "cron";
 
-import { TRelays } from "@app/db/schemas";
+import { OrgMembershipRole, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
@@ -20,6 +22,10 @@ import {
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { NotificationType } from "@app/services/notification/notification-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { PamResource } from "../pam-resource/pam-resource-enums";
@@ -39,6 +45,9 @@ type TGatewayV2ServiceFactoryDep = {
   gatewayV2DAL: TGatewayV2DALFactory;
   relayDAL: TRelayDALFactory;
   permissionService: TPermissionServiceFactory;
+  orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export type TGatewayV2ServiceFactory = ReturnType<typeof gatewayV2ServiceFactory>;
@@ -50,7 +59,10 @@ export const gatewayV2ServiceFactory = ({
   relayService,
   gatewayV2DAL,
   relayDAL,
-  permissionService
+  permissionService,
+  orgDAL,
+  notificationService,
+  smtpService
 }: TGatewayV2ServiceFactoryDep) => {
   const $validateIdentityAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
     const orgLicensePlan = await licenseService.getPlan(orgId);
@@ -878,6 +890,78 @@ export const gatewayV2ServiceFactory = ({
     });
   };
 
+  const $healthcheckNotify = async () => {
+    const unhealthyGateways = await gatewayV2DAL.find({
+      isHeartbeatStale: true
+    });
+
+    if (unhealthyGateways.length === 0) return;
+
+    logger.warn(
+      { gatewayIds: unhealthyGateways.map((g) => g.id) },
+      "Found gateways with last heartbeat over an hour ago. Sending notifications."
+    );
+
+    await Promise.all(unhealthyGateways.map((gw) => gatewayV2DAL.updateById(gw.id, { healthAlertedAt: new Date() })));
+
+    const gatewaysByOrg = unhealthyGateways.reduce<Record<string, (typeof unhealthyGateways)[number][]>>((acc, gw) => {
+      if (!acc[gw.orgId]) {
+        acc[gw.orgId] = [];
+      }
+      acc[gw.orgId].push(gw);
+      return acc;
+    }, {});
+
+    for await (const [orgId, gateways] of Object.entries(gatewaysByOrg)) {
+      try {
+        const admins = await orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin);
+        if (admins.length === 0) {
+          logger.warn({ orgId }, "Organization has no admins to notify about unhealthy gateway.");
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        const gatewayNames = gateways.map((g) => `"${g.name}"`).join(", ");
+        const body = `The following gateway(s) in your organization may be offline as they haven't reported a heartbeat in over an hour: ${gatewayNames}. Please check their status.`;
+
+        await notificationService.createUserNotifications(
+          admins.map((admin) => ({
+            userId: admin.user.id,
+            orgId,
+            type: NotificationType.GATEWAY_HEALTH_ALERT,
+            title: "Gateway Health Alert",
+            body,
+            link: "/organization/networking"
+          }))
+        );
+
+        await smtpService.sendMail({
+          recipients: admins.map((admin) => admin.user.email).filter((v): v is string => !!v),
+          subjectLine: "Gateway Health Alert",
+          substitutions: {
+            type: "gateway",
+            names: gatewayNames
+          },
+          template: SmtpTemplates.HealthAlert
+        });
+      } catch (error) {
+        logger.error(error, `Failed to send gateway health notifications for organization [orgId=${orgId}]`);
+      }
+    }
+  };
+
+  const initializeHealthcheckNotify = async () => {
+    logger.info("Setting up background notification process for gateway v2 health-checks");
+
+    await $healthcheckNotify();
+
+    // run every 5 minutes
+    const job = new CronJob("*/5 * * * *", $healthcheckNotify);
+    job.start();
+
+    return job;
+  };
+
   return {
     listGateways,
     registerGateway,
@@ -885,6 +969,7 @@ export const gatewayV2ServiceFactory = ({
     getPAMConnectionDetails,
     deleteGatewayById,
     heartbeat,
-    getPamSessionKey
+    getPamSessionKey,
+    initializeHealthcheckNotify
   };
 };
