@@ -142,7 +142,7 @@ Prerequisites:
 
 <AccordionGroup>
 <Accordion title="Why do SCIM-provisioned users have to finish setting up their account?">
-    Infisical's SCIM implmentation accounts for retaining the end-to-end encrypted architecture of Infisical because we decouple the **authentication** and **decryption** steps in the platform. 
+    Infisical's SCIM implementation accounts for retaining the end-to-end encrypted architecture of Infisical because we decouple the **authentication** and **decryption** steps in the platform.
     
     For this reason, SCIM-provisioned users are initialized but must finish setting up their account when logging in the first time by creating a master encryption/decryption key. With this implementation, IdPs and SCIM providers cannot and will not have access to the decryption key needed to decrypt your secrets.
 </Accordion>
