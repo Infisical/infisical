@@ -18,3 +18,4 @@ export * from "./Separator";
 export * from "./Empty";
 export * from "./Alert";
 export * from "./Item";
+export * from "./RadioGroup";
