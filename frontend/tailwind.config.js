@@ -5,7 +5,6 @@ const round = (num) =>
     .replace(/\.0$/, "");
 const em = (px, base) => `${round(px / base)}em`;
 
-
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: "class",
@@ -38,6 +37,7 @@ module.exports = {
 
         // generic
         foreground: "#FFFFFF",
+        muted: "oklch(0.269 0 0)",
         "muted-foreground": "#FFFFFFA6",
         background: "#191919",
         accent: "#c9c9c9",
@@ -594,7 +594,5 @@ module.exports = {
       }
     })
   },
-  plugins: [
-    require("@tailwindcss/typography")
-  ]
+  plugins: [require("@tailwindcss/typography")]
 };
