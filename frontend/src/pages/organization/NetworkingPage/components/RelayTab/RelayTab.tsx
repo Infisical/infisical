@@ -5,6 +5,7 @@ import {
   faCopy,
   faDoorClosed,
   faEllipsisV,
+  faInfoCircle,
   faMagnifyingGlass,
   faSearch,
   faTrash
@@ -40,6 +41,25 @@ import {
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useDeleteRelayById, useGetRelays } from "@app/hooks/api/relays";
+
+const RelayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
+  const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
+  const now = new Date();
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+  const isHealthy = !heartbeatDate || heartbeatDate >= oneHourAgo;
+  const tooltipContent = heartbeatDate
+    ? `Last heartbeat: ${heartbeatDate.toLocaleString()}`
+    : "No heartbeat data available";
+
+  return (
+    <Tooltip content={tooltipContent}>
+      <span className={`cursor-default ${isHealthy ? "text-green-400" : "text-red-400"}`}>
+        {isHealthy ? "Healthy" : "Unreachable"}
+      </span>
+    </Tooltip>
+  );
+};
 
 export const RelayTab = withPermission(
   () => {
@@ -106,6 +126,16 @@ export const RelayTab = withPermission(
                   <Th className="w-1/3">Name</Th>
                   <Th>Host</Th>
                   <Th>Created</Th>
+                  <Th>
+                    Health Check
+                    <Tooltip
+                      asChild={false}
+                      className="normal-case"
+                      content="The last known healthcheck. Triggers every 1 hour."
+                    >
+                      <FontAwesomeIcon icon={faInfoCircle} className="ml-2" />
+                    </Tooltip>
+                  </Th>
                   <Th className="w-5" />
                 </Tr>
               </THead>
@@ -129,6 +159,9 @@ export const RelayTab = withPermission(
                     </Td>
                     <Td>{el.host}</Td>
                     <Td>{formatRelative(new Date(el.createdAt), new Date())}</Td>
+                    <Td>
+                      <RelayHealthStatus heartbeat={el.heartbeat} />
+                    </Td>
                     <Td className="w-5">
                       <Tooltip className="max-w-sm text-center" content="Options">
                         <DropdownMenu>

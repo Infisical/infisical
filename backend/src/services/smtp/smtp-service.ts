@@ -15,6 +15,7 @@ import {
   ExternalImportFailedTemplate,
   ExternalImportStartedTemplate,
   ExternalImportSucceededTemplate,
+  HealthAlertTemplate,
   IntegrationSyncFailedTemplate,
   NewDeviceLoginTemplate,
   OAuthPasswordResetTemplate,
@@ -85,7 +86,8 @@ export enum SmtpTemplates {
   ServiceTokenExpired = "serviceTokenExpired",
   SecretScanningV2ScanFailed = "secretScanningV2ScanFailed",
   SecretScanningV2SecretsDetected = "secretScanningV2SecretsDetected",
-  AccountDeletionConfirmation = "accountDeletionConfirmation"
+  AccountDeletionConfirmation = "accountDeletionConfirmation",
+  HealthAlert = "healthAlert"
 }
 
 export enum SmtpHost {
@@ -131,7 +133,8 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.PkiExpirationAlert]: PkiExpirationAlertTemplate,
   [SmtpTemplates.SecretScanningV2ScanFailed]: SecretScanningScanFailedTemplate,
   [SmtpTemplates.SecretScanningV2SecretsDetected]: SecretScanningSecretsDetectedTemplate,
-  [SmtpTemplates.AccountDeletionConfirmation]: AccountDeletionConfirmationTemplate
+  [SmtpTemplates.AccountDeletionConfirmation]: AccountDeletionConfirmationTemplate,
+  [SmtpTemplates.HealthAlert]: HealthAlertTemplate
 };
 
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {
