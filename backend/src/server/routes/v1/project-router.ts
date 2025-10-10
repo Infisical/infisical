@@ -1154,7 +1154,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         status: z.enum([CaStatus.ACTIVE, CaStatus.PENDING_CERTIFICATE]).optional().describe(PROJECTS.LIST_CAS.status),
         friendlyName: z.string().optional().describe(PROJECTS.LIST_CAS.friendlyName),
         commonName: z.string().optional().describe(PROJECTS.LIST_CAS.commonName),
-        offset: z.coerce.number().min(0).max(100).default(0).describe(PROJECTS.LIST_CAS.offset),
+        offset: z.coerce.number().min(0).default(0).describe(PROJECTS.LIST_CAS.offset),
         limit: z.coerce.number().min(1).max(100).default(25).describe(PROJECTS.LIST_CAS.limit)
       }),
       response: {
