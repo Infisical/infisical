@@ -141,6 +141,86 @@ describe("CertificateV3Service", () => {
       expect(result).toHaveProperty("certificateId", "cert-123");
     });
 
+    it("should correctly map camelCase key usages to snake_case before validation", async () => {
+      const profileId = "profile-123";
+      const mockProfile = {
+        id: profileId,
+        projectId: "project-123",
+        enrollmentType: EnrollmentType.API,
+        caId: "ca-123",
+        certificateTemplateId: "template-123"
+      };
+
+      const mockCA = {
+        id: "ca-123",
+        externalCa: null
+      };
+
+      const mockTemplate = {
+        id: "template-123",
+        signatureAlgorithm: { defaultAlgorithm: "RSA-SHA256" },
+        keyAlgorithm: { defaultKeyType: "RSA_2048" },
+        attributes: []
+      };
+
+      const mockCertificateResult = {
+        certificate: Buffer.from("cert"),
+        certificateChain: Buffer.from("chain"),
+        privateKey: Buffer.from("key"),
+        serialNumber: "123456"
+      };
+
+      const mockCertRecord = {
+        id: "cert-123",
+        serialNumber: "123456"
+      };
+
+      const camelCaseRequest = {
+        commonName: "test.example.com",
+        keyUsages: [
+          CertKeyUsage.DIGITAL_SIGNATURE,
+          CertKeyUsage.NON_REPUDIATION,
+          CertKeyUsage.KEY_AGREEMENT,
+          CertKeyUsage.CRL_SIGN,
+          CertKeyUsage.DECIPHER_ONLY
+        ],
+        extendedKeyUsages: [
+          CertExtendedKeyUsage.CLIENT_AUTH,
+          CertExtendedKeyUsage.CODE_SIGNING,
+          CertExtendedKeyUsage.OCSP_SIGNING,
+          CertExtendedKeyUsage.SERVER_AUTH
+        ],
+        validity: { ttl: "10d" }
+      };
+
+      mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue(mockProfile);
+      mockCertificateTemplateV2Service.validateCertificateRequest.mockResolvedValue({
+        isValid: true,
+        errors: [],
+        warnings: []
+      });
+      mockCertificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue(mockCA);
+      mockCertificateTemplateV2Service.getTemplateV2ById.mockResolvedValue(mockTemplate);
+      mockInternalCaService.issueCertFromCa.mockResolvedValue(mockCertificateResult);
+      mockCertificateDAL.findOne.mockResolvedValue(mockCertRecord);
+      mockCertificateDAL.updateById.mockResolvedValue({});
+
+      await service.issueCertificateFromProfile({
+        profileId,
+        certificateRequest: camelCaseRequest,
+        ...mockActor
+      });
+
+      // Verify that the template validation service was called with mapped snake_case values
+      expect(mockCertificateTemplateV2Service.validateCertificateRequest).toHaveBeenCalledWith(
+        "template-123",
+        expect.objectContaining({
+          keyUsages: ["digital_signature", "non_repudiation", "key_agreement", "crl_sign", "decipher_only"],
+          extendedKeyUsages: ["client_auth", "code_signing", "ocsp_signing", "server_auth"]
+        })
+      );
+    });
+
     it("should throw ForbiddenRequestError when profile is not configured for API enrollment", async () => {
       const profileId = "profile-123";
       const mockProfile = {

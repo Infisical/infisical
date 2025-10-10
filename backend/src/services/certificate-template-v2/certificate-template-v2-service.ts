@@ -120,6 +120,7 @@ export const certificateTemplateV2ServiceFactory = ({
     request: TCertificateRequest
   ): TTemplateValidationResult => {
     const errors: string[] = [];
+
     const warnings: string[] = [];
 
     template.attributes?.forEach((attrPolicy) => {

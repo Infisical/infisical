@@ -1,7 +1,6 @@
 interface CertificateRequestInput {
   keyUsages?: string[];
   extendedKeyUsages?: string[];
-  [key: string]: unknown;
 }
 
 export const mapEnumsForValidation = <T extends CertificateRequestInput>(request: T): T => {
@@ -12,7 +11,7 @@ export const mapEnumsForValidation = <T extends CertificateRequestInput>(request
     dataEncipherment: "data_encipherment",
     keyAgreement: "key_agreement",
     keyCertSign: "key_cert_sign",
-    crlSign: "crl_sign",
+    cRLSign: "crl_sign",
     encipherOnly: "encipher_only",
     decipherOnly: "decipher_only"
   };

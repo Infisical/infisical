@@ -608,6 +608,31 @@ describe("CertificateTemplateV2Service", () => {
       expect(result.isValid).toBe(true);
     });
 
+    it("should handle camelCase key usage mapping correctly", async () => {
+      const templateWithOptionalUsages = {
+        ...sampleTemplate,
+        keyUsages: {
+          requiredUsages: { all: ["digital_signature", "non_repudiation", "key_agreement"] },
+          optionalUsages: { all: ["crl_sign", "decipher_only"] }
+        },
+        extendedKeyUsages: {
+          requiredUsages: { all: ["client_auth", "code_signing"] },
+          optionalUsages: { all: ["server_auth", "ocsp_signing"] }
+        }
+      };
+      mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithOptionalUsages);
+
+      const requestWithCamelCaseUsages = {
+        ...validRequest,
+        keyUsages: ["digital_signature", "non_repudiation", "key_agreement", "crl_sign", "decipher_only"],
+        extendedKeyUsages: ["client_auth", "code_signing"]
+      };
+
+      const result = await service.validateCertificateRequest("template-123", requestWithCamelCaseUsages);
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
     it("should validate wildcard patterns in optional attributes", async () => {
       const wildcardTemplate = {
         ...sampleTemplate,

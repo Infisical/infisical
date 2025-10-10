@@ -12,6 +12,7 @@ import {
   validateAndMapAltNameType,
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
+import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 
 export const registerCertificatesRouter = async (server: FastifyZodProvider) => {
@@ -49,44 +50,48 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const rawCertificateRequest = {
+        commonName: req.body.commonName,
+        keyUsages: req.body.keyUsages,
+        extendedKeyUsages: req.body.extendedKeyUsages,
+        subjectAlternativeNames: req.body.altNames
+          ? req.body.altNames
+              .split(", ")
+              .map((name) => name.trim())
+              .map((name) => {
+                const mappedType = validateAndMapAltNameType(name);
+                if (!mappedType) return null;
+                const typeMapping = {
+                  dns: "dns_name",
+                  ip: "ip_address",
+                  email: "email",
+                  url: "uri"
+                } as const;
+                return {
+                  type: typeMapping[mappedType.type] as "dns_name" | "ip_address" | "email" | "uri",
+                  value: mappedType.value
+                };
+              })
+              .filter((item): item is NonNullable<typeof item> => item !== null)
+          : undefined,
+        validity: {
+          ttl: req.body.ttl
+        },
+        notBefore: req.body.notBefore ? new Date(req.body.notBefore) : undefined,
+        notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined,
+        signatureAlgorithm: req.body.signatureAlgorithm,
+        keyAlgorithm: req.body.keyAlgorithm
+      };
+
+      const mappedCertificateRequest = mapEnumsForValidation(rawCertificateRequest);
+
       const data = await server.services.certificateV3.issueCertificateFromProfile({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         profileId: req.body.profileId,
-        certificateRequest: {
-          commonName: req.body.commonName,
-          keyUsages: req.body.keyUsages,
-          extendedKeyUsages: req.body.extendedKeyUsages,
-          subjectAlternativeNames: req.body.altNames
-            ? req.body.altNames
-                .split(", ")
-                .map((name) => name.trim())
-                .map((name) => {
-                  const mappedType = validateAndMapAltNameType(name);
-                  if (!mappedType) return null;
-                  const typeMapping = {
-                    dns: "dns_name",
-                    ip: "ip_address",
-                    email: "email",
-                    url: "uri"
-                  } as const;
-                  return {
-                    type: typeMapping[mappedType.type] as "dns_name" | "ip_address" | "email" | "uri",
-                    value: mappedType.value
-                  };
-                })
-                .filter((item): item is NonNullable<typeof item> => item !== null)
-            : undefined,
-          validity: {
-            ttl: req.body.ttl
-          },
-          notBefore: req.body.notBefore ? new Date(req.body.notBefore) : undefined,
-          notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined,
-          signatureAlgorithm: req.body.signatureAlgorithm,
-          keyAlgorithm: req.body.keyAlgorithm
-        }
+        certificateRequest: mappedCertificateRequest
       });
 
       const profile = await server.services.certificateProfile.getProfileById({
