@@ -392,7 +392,7 @@ export const kmsServiceFactory = ({
   };
 
   const importKeyMaterial = async (
-    { key, algorithm, name, isReserved, projectId, orgId, keyUsage }: TImportKeyMaterialDTO,
+    { key, algorithm, name, isReserved, projectId, orgId, keyUsage, kmipMetadata }: TImportKeyMaterialDTO,
     tx?: Knex
   ) => {
     // daniel: currently we only support imports for encrypt/decrypt keys
@@ -416,7 +416,8 @@ export const kmsServiceFactory = ({
           keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
           orgId,
           isReserved,
-          projectId
+          projectId,
+          kmipMetadata
         },
         db
       );
