@@ -1,4 +1,5 @@
-import knex, { Knex } from "knex";
+import knex from "knex";
+import mysql, { Connection } from "mysql2/promise";
 import tls, { PeerCertificate } from "tls";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
@@ -20,30 +21,134 @@ const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
 const TEST_CONNECTION_USERNAME = "infisical-gateway-connection-test";
 const TEST_CONNECTION_PASSWORD = "infisical-gateway-connection-test-password";
+const SIMPLE_QUERY = "select 1";
 
-const SQL_CONNECTION_CLIENT_MAP = {
-  [PamResource.Postgres]: "pg"
-};
+export interface SqlResourceConnection {
+  /**
+   * Check and see if the connection is good or not.
+   *
+   * @param connectOnly when true, if we only want to know that making the connection is possible or not,
+   *                    we don't care about authentication failures
+   * @returns Promise to be resolved when the connection is good, otherwise an error will be errbacked
+   */
+  validate: (connectOnly: boolean) => Promise<void>;
 
-const getConnectionConfig = (
-  resourceType: PamResource,
-  { host, sslEnabled, sslRejectUnauthorized, sslCertificate }: TSqlResourceConnectionDetails
-) => {
-  switch (resourceType) {
+  /**
+   * Close the connection.
+   *
+   * @returns Promise for closing the connection
+   */
+  close: () => Promise<void>;
+}
+
+const makeSqlConnection = (
+  proxyPort: number,
+  config: {
+    connectionDetails: TSqlResourceConnectionDetails;
+    resourceType: PamResource;
+    username?: string;
+    password?: string;
+  }
+): SqlResourceConnection => {
+  const { connectionDetails, resourceType, username, password } = config;
+  const { host, sslEnabled, sslRejectUnauthorized, sslCertificate } = connectionDetails;
+  const actualUsername = username ?? TEST_CONNECTION_USERNAME; // Use provided username or fallback
+  const actualPassword = password ?? TEST_CONNECTION_PASSWORD; // Use provided password or fallback
+  switch (config.resourceType) {
     case PamResource.Postgres: {
+      const client = knex({
+        client: "pg",
+        connection: {
+          host: "localhost",
+          port: proxyPort,
+          user: actualUsername,
+          password: actualPassword,
+          database: connectionDetails.database,
+          connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
+          ssl: sslEnabled
+            ? {
+                rejectUnauthorized: sslRejectUnauthorized,
+                ca: sslCertificate,
+                servername: host,
+                // When using proxy, we need to bypass hostname validation since we connect to localhost
+                // but validate the certificate against the actual hostname
+                checkServerIdentity: (hostname: string, cert: PeerCertificate) => {
+                  return tls.checkServerIdentity(host, cert);
+                }
+              }
+            : false
+        }
+      });
       return {
-        ssl: sslEnabled
-          ? {
-              rejectUnauthorized: sslRejectUnauthorized,
-              ca: sslCertificate,
-              servername: host,
-              // When using proxy, we need to bypass hostname validation since we connect to localhost
-              // but validate the certificate against the actual hostname
-              checkServerIdentity: (hostname: string, cert: PeerCertificate) => {
-                return tls.checkServerIdentity(host, cert);
+        validate: async (connectOnly) => {
+          try {
+            await client.raw(SIMPLE_QUERY);
+          } catch (error) {
+            if (error instanceof BadRequestError) {
+              // Hacky way to know if we successfully hit the database.
+              // TODO: potentially two approaches to solve the problem.
+              //       1. change the work flow, add account first then resource
+              //       2. modify relay to add a new endpoint for returning if the target host is healthy or not
+              //          (like being able to do an auth handshake regardless pass or not)
+              if (
+                connectOnly &&
+                (error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"` ||
+                  error.message.includes("no pg_hba.conf entry for host"))
+              ) {
+                return;
               }
             }
-          : false
+            throw new BadRequestError({
+              message: `Unable to validate connection to ${resourceType}: ${(error as Error).message || String(error)}`
+            });
+          }
+        },
+        close: () => client.destroy()
+      };
+    }
+    case PamResource.MySQL: {
+      return {
+        validate: async (connectOnly) => {
+          let client: Connection | null = null;
+          try {
+            // Notice: the reason we are not using Knex for mysql2 is because we don't need any fancy feature from Knex.
+            //         mysql2 doesn't provide custom ssl verification function pass in.
+            //         ref: https://github.com/sidorares/node-mysql2/blob/2543272a2ada8d8a07f74582549d7dd3fe948e2d/lib/base/connection.js#L358-L362
+            //         and then even I tried to workaround it with Knex's pool afterCreate hook, but then encounter a bug:
+            //         ref: https://github.com/knex/knex/issues/5352
+            //         It appears that using Knex causing more troubles than not, we are just checking the connections,
+            //         so it's much easier to create raw connection with the driver lib directly
+            client = await mysql.createConnection({
+              host: "localhost",
+              port: proxyPort,
+              user: actualUsername, // Use provided username or fallback
+              password: actualPassword, // Use provided password or fallback
+              database: connectionDetails.database,
+              ssl: sslEnabled
+                ? {
+                    rejectUnauthorized: sslRejectUnauthorized,
+                    ca: sslCertificate
+                  }
+                : undefined
+            });
+            await client.query(SIMPLE_QUERY);
+          } catch (error) {
+            if (connectOnly) {
+              // Hacky way to know if we successfully hit the database.
+              if (
+                error instanceof Error &&
+                error.message.startsWith(`Access denied for user '${TEST_CONNECTION_USERNAME}'@`)
+              ) {
+                return;
+              }
+            }
+            // TODO: handle other errors, and throw standardlized errors providing user-friendly msg
+            throw error;
+          } finally {
+            await client?.end();
+          }
+        },
+        close: async () => {}
       };
     }
     default:
@@ -62,10 +167,9 @@ export const executeWithGateway = async <T>(
     password?: string;
   },
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  operation: (client: Knex) => Promise<T>
+  operation: (connection: SqlResourceConnection) => Promise<T>
 ): Promise<T> => {
-  const { connectionDetails, resourceType, gatewayId, username, password } = config;
-
+  const { connectionDetails, gatewayId } = config;
   const [targetHost] = await verifyHostInputValidity(connectionDetails.host, true);
   const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
     gatewayId,
@@ -79,22 +183,11 @@ export const executeWithGateway = async <T>(
 
   return withGatewayV2Proxy(
     async (proxyPort) => {
-      const client = knex({
-        client: SQL_CONNECTION_CLIENT_MAP[resourceType],
-        connection: {
-          database: connectionDetails.database,
-          port: proxyPort,
-          host: "localhost",
-          user: username ?? TEST_CONNECTION_USERNAME, // Use provided username or fallback
-          password: password ?? TEST_CONNECTION_PASSWORD, // Use provided password or fallback
-          connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
-          ...getConnectionConfig(resourceType, connectionDetails)
-        }
-      });
+      const connection = makeSqlConnection(proxyPort, config);
       try {
-        return await operation(client);
+        return await operation(connection);
       } finally {
-        await client.destroy();
+        await connection.close();
       }
     },
     {
@@ -115,25 +208,14 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
   const validateConnection = async () => {
     try {
       await executeWithGateway({ connectionDetails, gatewayId, resourceType }, gatewayV2Service, async (client) => {
-        await client.raw("Select 1");
+        await client.validate(true);
       });
       return connectionDetails;
     } catch (error) {
-      // Hacky way to know if we successfully hit the database
-      if (error instanceof BadRequestError) {
-        if (error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"`) {
-          return connectionDetails;
-        }
-
-        if (error.message.includes("no pg_hba.conf entry for host")) {
-          return connectionDetails;
-        }
-
-        if (error.message === "Connection terminated unexpectedly") {
-          throw new BadRequestError({
-            message: "Connection terminated unexpectedly. Verify that host and port are correct"
-          });
-        }
+      if (error instanceof BadRequestError && error.message === "Connection terminated unexpectedly") {
+        throw new BadRequestError({
+          message: "Connection terminated unexpectedly. Verify that host and port are correct"
+        });
       }
 
       throw new BadRequestError({
@@ -156,11 +238,12 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
         },
         gatewayV2Service,
         async (client) => {
-          await client.raw("Select 1");
+          await client.validate(false);
         }
       );
       return credentials;
     } catch (error) {
+      // TODO: extract these logic into each SQL connection
       if (error instanceof BadRequestError) {
         if (error.message === `password authentication failed for user "${credentials.username}"`) {
           throw new BadRequestError({
