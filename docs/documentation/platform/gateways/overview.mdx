@@ -6,8 +6,8 @@ description: "How to access private network resources from Infisical"
 
 ![Architecture Overview](../../../images/platform/gateways/gateway-highlevel-diagram.png)
 
-The Infisical Gateway provides secure access to private resources within your network without needing direct inbound connections to your environment. 
-This is particularly useful when Infisical isn't hosted within the same network as the resources it needs to reach. 
+The Infisical Gateway provides secure access to private resources within your network without needing direct inbound connections to your environment.
+This is particularly useful when Infisical isn't hosted within the same network as the resources it needs to reach.
 This method keeps your resources fully protected from external access while enabling Infisical to securely interact with resources like databases.
 
 <Info>
@@ -25,7 +25,7 @@ The Gateway system consists of two primary components working together to enable
   <Tab title="Gateway" icon="server">
   A Gateway is a lightweight service that you deploy within your own network infrastructure to provide secure access to your private resources. Think of it as a secure bridge between Infisical and your internal systems.
 
-  Gateways must be deployed within the same network where your target resources are located, with direct network connectivity to the private resources you want Infisical to access. 
+  Gateways must be deployed within the same network where your target resources are located, with direct network connectivity to the private resources you want Infisical to access.
   For different networks, regions, or isolated environments, you'll need to deploy separate gateways.
 
   **Core Functions:**
@@ -40,7 +40,7 @@ The Gateway system consists of two primary components working together to enable
 
   **Core Functions:**
   - **Traffic Routing**: Routes encrypted traffic between the Infisical platform and your gateways without storing or inspecting the data
-  - **Network Isolation**: Enables secure communication without requiring direct network connections between Infisical and your private infrastructure  
+  - **Network Isolation**: Enables secure communication without requiring direct network connections between Infisical and your private infrastructure
   - **Authentication Management**: Validates SSH certificates and manages secure routing between authenticated gateways
 
   **Deployment Options:**
@@ -58,6 +58,12 @@ The Gateway system uses SSH reverse tunnels for secure, firewall-friendly connec
 2. **Persistent Connection**: The gateway maintains an open TCP connection with the relay server, creating a secure channel for incoming requests
 3. **Request Routing**: When Infisical needs to access your resources, requests are routed through the relay server to the already-established gateway connection
 4. **Resource Access**: The gateway receives the routed requests and connects to your private resources on behalf of Infisical
+
+## Health Check
+
+To monitor their operational status, both gateways and relays transmit hourly heartbeats. A component is considered unhealthy if a heartbeat is not received for over an hour.
+
+Infisical automatically notifies all organization admins of unhealthy gateway or relay statuses through email and in-app notifications.
 
 ## Getting Started
 
