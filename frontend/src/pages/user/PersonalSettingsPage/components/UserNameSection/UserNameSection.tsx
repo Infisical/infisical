@@ -31,7 +31,7 @@ export const UserNameSection = (): JSX.Element => {
       if (!user?.id) return;
       if (name.trim() === "") return;
 
-      await mutateAsync({ newName: name });
+      await mutateAsync({ newName: name.trim() });
       createNotification({
         text: "Successfully renamed user",
         type: "success"
