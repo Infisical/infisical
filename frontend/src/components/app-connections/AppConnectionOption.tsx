@@ -17,7 +17,7 @@ export const AppConnectionOption = ({
     <components.Option isSelected={isSelected} {...props}>
       <div className="flex flex-row items-center justify-between">
         {isCreateOption ? (
-          <div className="flex items-center gap-x-1 text-mineshaft-400">
+          <div className="text-mineshaft-400 flex items-center gap-x-1">
             <FontAwesomeIcon icon={faPlus} size="sm" />
             <span className="mr-auto">Create New Connection</span>
           </div>
@@ -26,8 +26,8 @@ export const AppConnectionOption = ({
             <p className="truncate">{children}</p>
             {!props.data.projectId && (
               <Tooltip content="This connection belongs to your organization.">
-                <div className="mr-auto ml-2">
-                  <Badge className="flex h-5 w-min items-center gap-1 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300 hover:text-bunker-300">
+                <div className="ml-2 mr-auto">
+                  <Badge className="bg-mineshaft-400/50 text-bunker-300 hover:text-bunker-300 flex h-5 w-min items-center gap-1 whitespace-nowrap">
                     <FontAwesomeIcon icon={faBuilding} size="sm" />
                     Organization
                   </Badge>
@@ -35,7 +35,7 @@ export const AppConnectionOption = ({
               </Tooltip>
             )}
             {isSelected && (
-              <FontAwesomeIcon className="ml-2 text-primary" icon={faCheckCircle} size="sm" />
+              <FontAwesomeIcon className="text-primary ml-2" icon={faCheckCircle} size="sm" />
             )}
           </>
         )}

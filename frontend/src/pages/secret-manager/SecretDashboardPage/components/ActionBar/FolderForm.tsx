@@ -114,7 +114,7 @@ export const FolderForm = ({
               rows={3}
               ref={descriptionRef}
               onInput={handleInput}
-              className="thin-scrollbar w-full resize-none! bg-mineshaft-900"
+              className="thin-scrollbar resize-none! bg-mineshaft-900 w-full"
               maxLength={255}
             />
           </FormControl>

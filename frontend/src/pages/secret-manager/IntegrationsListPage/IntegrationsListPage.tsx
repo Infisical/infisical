@@ -45,7 +45,7 @@ export const IntegrationsListPage = () => {
         <meta property="og:title" content="Manage your .env files in seconds" />
         <meta name="og:description" content={t("integrations.description") as string} />
       </Helmet>
-      <div className="relative container mx-auto max-w-7xl pb-12 text-white">
+      <div className="container relative mx-auto max-w-7xl pb-12 text-white">
         <div className="mb-8">
           <PageHeader
             title="Integrations"

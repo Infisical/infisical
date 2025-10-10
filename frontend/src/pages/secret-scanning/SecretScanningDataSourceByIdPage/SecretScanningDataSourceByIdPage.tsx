@@ -55,7 +55,7 @@ const PageContent = () => {
   }
 
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 font-inter text-white">
+    <div className="bg-bunker-800 font-inter container mx-auto flex flex-col justify-between text-white">
       <div className="mx-auto mb-6 w-full max-w-7xl">
         <Button
           variant="link"
@@ -76,11 +76,11 @@ const PageContent = () => {
           <img
             alt={`${details.name} data source`}
             src={`/images/integrations/${details.image}`}
-            className="mt-3 ml-1 w-14"
+            className="ml-1 mt-3 w-14"
           />
           <div>
             <p className="text-3xl font-medium text-white">{dataSource.name}</p>
-            <p className="leading-3 text-bunker-300">{details.name} Data Source</p>
+            <p className="text-bunker-300 leading-3">{details.name} Data Source</p>
           </div>
         </div>
         <div className="flex justify-center">

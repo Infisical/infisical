@@ -62,7 +62,7 @@ export const LoginLdapPage = () => {
   };
 
   return (
-    <div className="flex h-screen flex-col justify-center bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28">
+    <div className="bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 flex h-screen flex-col justify-center px-6 pb-28">
       <Helmet>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -71,7 +71,7 @@ export const LoginLdapPage = () => {
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Helmet>
       <Link to="/">
-        <div className="mt-20 mb-4 flex justify-center">
+        <div className="mb-4 mt-20 flex justify-center">
           <img
             src="/images/gradientLogo.svg"
             style={{
@@ -83,12 +83,12 @@ export const LoginLdapPage = () => {
         </div>
       </Link>
       <div className="mx-auto w-full max-w-md md:px-6">
-        <p className="mx-auto mb-8 flex w-max justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
+        <p className="bg-linear-to-b to-bunker-200 mx-auto mb-8 flex w-max justify-center from-white bg-clip-text text-center text-xl font-medium text-transparent">
           What&apos;s your LDAP Login?
         </p>
         <form onSubmit={handleSubmission}>
           {!config.defaultAuthOrgSlug && !passedOrgSlug && (
-            <div className="relative mx-auto flex max-h-24 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 md:min-w-88 lg:w-1/6">
+            <div className="md:min-w-88 relative mx-auto flex max-h-24 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 lg:w-1/6">
               <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
                 <Input
                   value={organizationSlug}
@@ -103,7 +103,7 @@ export const LoginLdapPage = () => {
               </div>
             </div>
           )}
-          <div className="relative mx-auto mt-2 flex max-h-24 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 md:min-w-88 lg:w-1/6">
+          <div className="md:min-w-88 relative mx-auto mt-2 flex max-h-24 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 lg:w-1/6">
             <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
               <Input
                 value={username}
@@ -118,7 +118,7 @@ export const LoginLdapPage = () => {
               />
             </div>
           </div>
-          <div className="relative mx-auto mt-2 flex max-h-24 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 md:min-w-88 lg:w-1/6">
+          <div className="md:min-w-88 relative mx-auto mt-2 flex max-h-24 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 lg:w-1/6">
             <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
               <Input
                 value={password}
@@ -132,7 +132,7 @@ export const LoginLdapPage = () => {
               />
             </div>
           </div>
-          <div className="mx-auto mt-4 flex w-full min-w-[20rem] items-center justify-center rounded-md text-center md:min-w-88 lg:w-1/6">
+          <div className="md:min-w-88 mx-auto mt-4 flex w-full min-w-[20rem] items-center justify-center rounded-md text-center lg:w-1/6">
             <Button
               type="submit"
               colorSchema="primary"
@@ -150,7 +150,7 @@ export const LoginLdapPage = () => {
               navigate({ to: "/login" });
             }}
             type="button"
-            className="mt-2 cursor-pointer text-sm text-bunker-300 duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4"
+            className="text-bunker-300 hover:text-bunker-200 hover:decoration-primary-700 mt-2 cursor-pointer text-sm duration-200 hover:underline hover:underline-offset-4"
           >
             {t("login.other-option")}
           </button>

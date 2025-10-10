@@ -110,9 +110,9 @@ export const PreviewSection = () => {
         subscription?.slug !== "pro" &&
         subscription?.slug !== "pro-annual" && (
           <div className="flex flex-row space-x-6">
-            <div className="mb-6 flex flex-1 items-center rounded-lg border border-primary/40 bg-primary/10 p-4">
+            <div className="border-primary/40 bg-primary/10 mb-6 flex flex-1 items-center rounded-lg border p-4">
               <div className="flex-1">
-                <h2 className="text-xl font-medium text-mineshaft-100">
+                <h2 className="text-mineshaft-100 text-xl font-medium">
                   Unleash the full power of{" "}
                   <span className="bg-linear-to-r from-primary-500 to-yellow bg-clip-text font-medium text-transparent">
                     Infisical
@@ -137,8 +137,8 @@ export const PreviewSection = () => {
                 )}
               </OrgPermissionCan>
             </div>
-            <div className="mb-6 flex w-full max-w-48 flex-col items-center rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
-              <div className="mb-4 flex w-full justify-center font-medium text-mineshaft-200">
+            <div className="border-mineshaft-600 bg-mineshaft-800 mb-6 flex w-full max-w-48 flex-col items-center rounded-lg border p-4">
+              <div className="text-mineshaft-200 mb-4 flex w-full justify-center font-medium">
                 Want to learn more?{" "}
               </div>
               <div className="flex w-full justify-center">
@@ -147,7 +147,7 @@ export const PreviewSection = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <span className="cursor-pointer rounded-full border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 duration-200 hover:border-primary/40 hover:bg-primary/10">
+                  <span className="border-mineshaft-500 bg-mineshaft-600 hover:border-primary/40 hover:bg-primary/10 cursor-pointer rounded-full border px-4 py-2 duration-200">
                     Book a demo{" "}
                     <FontAwesomeIcon
                       icon={faArrowUpRightFromSquare}
@@ -161,9 +161,9 @@ export const PreviewSection = () => {
         )}
       {!isPending && subscription && data && (
         <div className="mb-6 flex">
-          <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+          <div className="border-mineshaft-600 bg-mineshaft-900 mr-4 flex-1 rounded-lg border p-4">
             <p className="mb-2 text-gray-400">Current plan</p>
-            <p className="mb-8 text-2xl font-medium text-mineshaft-50">
+            <p className="text-mineshaft-50 mb-8 text-2xl font-medium">
               {`${formatPlanSlug(subscription.slug)} ${
                 subscription.status === "trialing" ? "(Trial)" : ""
               }`}
@@ -190,17 +190,17 @@ export const PreviewSection = () => {
               </OrgPermissionCan>
             )}
           </div>
-          <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+          <div className="border-mineshaft-600 bg-mineshaft-900 mr-4 flex-1 rounded-lg border p-4">
             <p className="mb-2 text-gray-400">Price</p>
-            <p className="mb-8 text-2xl font-medium text-mineshaft-50">
+            <p className="text-mineshaft-50 mb-8 text-2xl font-medium">
               {subscription.status === "trialing"
                 ? "$0.00 / month"
                 : `${formatAmount(data.amount)} / ${data.interval}`}
             </p>
           </div>
-          <div className="flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+          <div className="border-mineshaft-600 bg-mineshaft-900 flex-1 rounded-lg border p-4">
             <p className="mb-2 text-gray-400">Subscription renews on</p>
-            <p className="mb-8 text-2xl font-medium text-mineshaft-50">
+            <p className="text-mineshaft-50 mb-8 text-2xl font-medium">
               {data.currentPeriodEnd ? formatDate(data.currentPeriodEnd) : "-"}
             </p>
           </div>

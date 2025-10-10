@@ -115,16 +115,16 @@ export const QuickSearchSecretItem = ({
 
   return (
     <Tr
-      className="hover cursor-pointer bg-mineshaft-700 hover:bg-mineshaft-600"
+      className="hover bg-mineshaft-700 hover:bg-mineshaft-600 cursor-pointer"
       onClick={handleNavigate}
     >
       <Td className="w-full">
         <div className="inline-flex max-w-[20rem] flex-col">
           <span className="truncate">
-            <FontAwesomeIcon className="mr-2 self-center text-bunker-300" icon={faKey} />
+            <FontAwesomeIcon className="text-bunker-300 mr-2 self-center" icon={faKey} />
             {groupSecret.key}
           </span>
-          <span className="text-xs text-mineshaft-400">
+          <span className="text-mineshaft-400 text-xs">
             <FontAwesomeIcon size="xs" className="mr-0.5 text-yellow-700" icon={faFolder} />{" "}
             <Tooltip className="max-w-7xl" content={groupSecret.path}>
               <span>{reverseTruncate(groupSecret.path ?? "")}</span>
@@ -241,7 +241,7 @@ export const QuickSearchSecretItem = ({
                   <Tooltip side="left" sideOffset={18} content="Click to copy to clipboard">
                     <div>
                       {!isSingleEnv && (
-                        <span className="text-xs text-mineshaft-400">
+                        <span className="text-mineshaft-400 text-xs">
                           {envSlugMap.get(secret.env)?.name}
                         </span>
                       )}

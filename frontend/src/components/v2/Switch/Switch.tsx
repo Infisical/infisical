@@ -23,10 +23,10 @@ export const Switch = ({
   thumbClassName,
   ...props
 }: SwitchProps): JSX.Element => (
-  <div className={twMerge("flex items-center font-inter text-bunker-300", containerClassName)}>
+  <div className={twMerge("font-inter text-bunker-300 flex items-center", containerClassName)}>
     <label className="text-sm" htmlFor={id}>
       {children}
-      {isRequired && <span className="pl-1 text-red">*</span>}
+      {isRequired && <span className="text-red pl-1">*</span>}
     </label>
     <SwitchPrimitive.Root
       {...props}
@@ -34,7 +34,7 @@ export const Switch = ({
       checked={isChecked}
       disabled={isDisabled}
       className={twMerge(
-        "ml-3 h-5 w-9 rounded-full bg-bunker-300 transition-all data-[state=checked]:bg-primary",
+        "bg-bunker-300 data-[state=checked]:bg-primary ml-3 h-5 w-9 rounded-full transition-all",
         isDisabled && "bg-bunker-400 hover:bg-bunker-400",
         className
       )}

@@ -221,7 +221,7 @@ export const EditDynamicSecretAwsIamForm = ({
           </div>
         </div>
         <div>
-          <div className="mb-4 border-b border-b-mineshaft-600 pb-2">Configuration</div>
+          <div className="border-b-mineshaft-600 mb-4 border-b pb-2">Configuration</div>
           <div className="flex flex-col">
             <Controller
               name="inputs.method"
@@ -235,7 +235,7 @@ export const EditDynamicSecretAwsIamForm = ({
                   <Select
                     value={value}
                     onValueChange={(val) => onChange(val)}
-                    className="w-full border border-mineshaft-500"
+                    className="border-mineshaft-500 w-full border"
                     position="popper"
                     dropdownContainerClassName="max-w-none"
                   >
@@ -263,7 +263,7 @@ export const EditDynamicSecretAwsIamForm = ({
                     <Select
                       value={value}
                       onValueChange={(val) => onChange(val)}
-                      className="w-full border border-mineshaft-500"
+                      className="border-mineshaft-500 w-full border"
                       position="popper"
                       dropdownContainerClassName="max-w-none"
                     >
@@ -274,7 +274,7 @@ export const EditDynamicSecretAwsIamForm = ({
                         Temporary Credentials
                       </SelectItem>
                     </Select>
-                    <div className="mt-1 text-xs text-mineshaft-300">
+                    <div className="text-mineshaft-300 mt-1 text-xs">
                       {value === DynamicSecretAwsIamCredentialType.IamUser
                         ? "Creates temporary IAM users with access keys"
                         : "Uses STS to generate temporary credentials from your connection. Duration is controlled by the Default TTL setting above."}

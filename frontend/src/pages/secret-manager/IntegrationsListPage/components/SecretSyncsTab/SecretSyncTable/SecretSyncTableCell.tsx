@@ -23,7 +23,7 @@ export const SecretSyncTableCell = ({
   secondaryClassName
 }: SecretSyncTableCellProps) => {
   return (
-    <Td className="max-w-0 min-w-32!">
+    <Td className="min-w-32! max-w-0">
       <Tooltip
         side="left"
         className="max-w-2xl break-words"
@@ -31,7 +31,7 @@ export const SecretSyncTableCell = ({
           <>
             <p className="text-sm">{primaryText}</p>
             {secondaryText && (
-              <p className={twMerge("text-xs leading-3 text-bunker-300", secondaryClassName)}>
+              <p className={twMerge("text-bunker-300 text-xs leading-3", secondaryClassName)}>
                 {secondaryText}
               </p>
             )}
@@ -46,20 +46,20 @@ export const SecretSyncTableCell = ({
               <FontAwesomeIcon
                 size="xs"
                 icon={faInfoCircle}
-                className="ml-1 inline-block text-bunker-300"
+                className="text-bunker-300 ml-1 inline-block"
               />
             )}
           </p>
           {secondaryText && (
             <p
-              className={twMerge("truncate text-xs leading-4 text-bunker-300", secondaryClassName)}
+              className={twMerge("text-bunker-300 truncate text-xs leading-4", secondaryClassName)}
             >
               {secondaryText}
               {infoBadge === "secondary" && (
                 <FontAwesomeIcon
                   size="xs"
                   icon={faInfoCircle}
-                  className="ml-1 inline-block text-bunker-300"
+                  className="text-bunker-300 ml-1 inline-block"
                 />
               )}
             </p>

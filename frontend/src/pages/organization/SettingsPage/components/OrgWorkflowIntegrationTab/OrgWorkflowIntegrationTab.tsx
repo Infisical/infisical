@@ -130,9 +130,9 @@ export const OrgWorkflowIntegrationTab = withPermission(
     };
 
     return (
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
         <div className="flex justify-between">
-          <p className="text-xl font-medium text-mineshaft-100">Workflow Integrations</p>
+          <p className="text-mineshaft-100 text-xl font-medium">Workflow Integrations</p>
           <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Settings}>
             {(isAllowed) => (
               <Button
@@ -194,7 +194,7 @@ export const OrgWorkflowIntegrationTab = withPermission(
                   <Td>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild className="rounded-lg">
-                        <div className="flex justify-end hover:text-primary-400 data-[state=open]:text-primary-400">
+                        <div className="hover:text-primary-400 data-[state=open]:text-primary-400 flex justify-end">
                           <FontAwesomeIcon size="sm" icon={faEllipsis} />
                         </div>
                       </DropdownMenuTrigger>

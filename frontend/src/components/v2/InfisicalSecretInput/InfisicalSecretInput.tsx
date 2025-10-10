@@ -334,7 +334,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         <Popover.Content
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
-          className="relative top-2 z-100 max-h-64 overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
+          className="z-100 border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 relative top-2 max-h-64 overflow-auto rounded-md border shadow-md"
           style={{
             width: "var(--radix-popover-trigger-width)"
           }}
@@ -366,15 +366,15 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                 <div
                   role="status"
                   aria-label="no-match-message"
-                  className="flex w-full items-center justify-between border-mineshaft-600 text-left"
+                  className="border-mineshaft-600 flex w-full items-center justify-between text-left"
                   key={`secret-reference-secret-${i + 1}`}
                 >
-                  <div className="text-md relative flex w-full cursor-default items-center justify-between px-2 py-2 opacity-75 outline-hidden transition-all select-none">
+                  <div className="text-md outline-hidden relative flex w-full cursor-default select-none items-center justify-between px-2 py-2 opacity-75 transition-all">
                     <div className="flex w-full items-start gap-2">
                       <div className="mt-1 flex items-center">{entryIcon}</div>
                       <div className="text-md w-10/12 truncate text-left">
                         <span className="text-gray-400">{item.label}</span>
-                        <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
+                        <div className="text-bunker-400 mb-[0.1rem] text-xs leading-3">
                           {subText}
                         </div>
                       </div>
@@ -395,19 +395,19 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                     handleSuggestionSelect(i);
                   }}
                   onMouseEnter={() => setHighlightedIndex(i)}
-                  className="flex w-full items-center justify-between border-none border-mineshaft-600 bg-transparent p-0 text-left"
+                  className="border-mineshaft-600 flex w-full items-center justify-between border-none bg-transparent p-0 text-left"
                   key={`secret-reference-secret-${i + 1}`}
                 >
                   <div
                     className={`${
                       highlightedIndex === i ? "bg-mineshaft-500" : ""
-                    } text-md relative flex w-full cursor-pointer items-center justify-between px-2 py-2 outline-hidden transition-all select-none hover:bg-mineshaft-700 data-highlighted:bg-mineshaft-700`}
+                    } text-md outline-hidden hover:bg-mineshaft-700 data-highlighted:bg-mineshaft-700 relative flex w-full cursor-pointer select-none items-center justify-between px-2 py-2 transition-all`}
                   >
                     <div className="flex w-full items-start gap-2">
                       <div className="mt-1 flex items-center">{entryIcon}</div>
                       <div className="text-md w-10/12 truncate text-left">
                         <span>{item.label}</span>
-                        <div className="mb-[0.1rem] text-xs leading-3 text-bunker-400">
+                        <div className="text-bunker-400 mb-[0.1rem] text-xs leading-3">
                           {subText}
                         </div>
                       </div>

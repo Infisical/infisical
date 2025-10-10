@@ -352,7 +352,7 @@ export const SecretDetailSidebar = ({
       >
         <DrawerContent
           title={`Secret – ${secret?.key}`}
-          className="h-full thin-scrollbar"
+          className="thin-scrollbar h-full"
           cardBodyClassName="pb-0"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
@@ -360,7 +360,7 @@ export const SecretDetailSidebar = ({
             onSubmit={handleSubmit(handleFormSubmit)}
             className="flex h-full flex-1 flex-col gap-y-4"
           >
-            <span className="text-sm text-bunker-300">
+            <span className="text-bunker-300 text-sm">
               Changes will automatically be applied for commit
             </span>
             <ProjectPermissionCan
@@ -454,7 +454,7 @@ export const SecretDetailSidebar = ({
                 />
               )}
             </ProjectPermissionCan>
-            <div className="rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4">
+            <div className="border-mineshaft-600 bg-mineshaft-900 rounded-md border p-4">
               <Controller
                 control={control}
                 name="skipMultilineEncoding"
@@ -470,7 +470,7 @@ export const SecretDetailSidebar = ({
                   >
                     {(isAllowed) => (
                       <div className="flex items-center justify-between">
-                        <span className="w-max text-sm text-mineshaft-300">
+                        <span className="text-mineshaft-300 w-max text-sm">
                           Multi-line encoding
                           <Tooltip
                             content="When enabled, multiline secrets will be handled by escaping newlines and enclosing the entire value in double quotes."
@@ -493,12 +493,12 @@ export const SecretDetailSidebar = ({
                 )}
               />
             </div>
-            <div className="flex flex-col rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 px-0 pb-0">
+            <div className="border-mineshaft-600 bg-mineshaft-900 flex flex-col rounded-md border p-4 px-0 pb-0">
               <div
-                className={`flex justify-between px-4 text-mineshaft-100 ${tagFields.fields.length > 0 ? "flex-col" : "flex-row"}`}
+                className={`text-mineshaft-100 flex justify-between px-4 ${tagFields.fields.length > 0 ? "flex-col" : "flex-row"}`}
               >
                 <div
-                  className={`text-sm text-mineshaft-300 ${tagFields.fields.length > 0 ? "mb-2" : "mt-0.5"}`}
+                  className={`text-mineshaft-300 text-sm ${tagFields.fields.length > 0 ? "mb-2" : "mt-0.5"}`}
                 >
                   Tags
                 </div>
@@ -604,13 +604,13 @@ export const SecretDetailSidebar = ({
                 </div>
               </div>
               <div
-                className={`mb-4 w-full border-t border-mineshaft-600 ${tagFields.fields.length > 0 || metadataFormFields.fields.length > 0 ? "block" : "hidden"}`}
+                className={`border-mineshaft-600 mb-4 w-full border-t ${tagFields.fields.length > 0 || metadataFormFields.fields.length > 0 ? "block" : "hidden"}`}
               />
               <div
-                className={`flex justify-between px-4 text-mineshaft-100 ${metadataFormFields.fields.length > 0 ? "flex-col" : "flex-row"}`}
+                className={`text-mineshaft-100 flex justify-between px-4 ${metadataFormFields.fields.length > 0 ? "flex-col" : "flex-row"}`}
               >
                 <div
-                  className={`text-sm text-mineshaft-300 ${metadataFormFields.fields.length > 0 ? "mb-2" : "mt-0.5"}`}
+                  className={`text-mineshaft-300 text-sm ${metadataFormFields.fields.length > 0 ? "mb-2" : "mt-0.5"}`}
                 >
                   Metadata
                 </div>
@@ -619,7 +619,7 @@ export const SecretDetailSidebar = ({
                     {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
                       <div key={metadataFieldId} className="flex items-end space-x-2">
                         <div className="grow">
-                          {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
+                          {i === 0 && <span className="text-mineshaft-400 text-xs">Key</span>}
                           <Controller
                             control={control}
                             name={`secretMetadata.${i}.key`}
@@ -638,7 +638,7 @@ export const SecretDetailSidebar = ({
                           {i === 0 && (
                             <FormLabel
                               label="Value"
-                              className="text-xs text-mineshaft-400"
+                              className="text-mineshaft-400 text-xs"
                               isOptional
                             />
                           )}
@@ -692,7 +692,7 @@ export const SecretDetailSidebar = ({
                   className="mb-0 h-[125px] pb-0"
                 >
                   <TextArea
-                    className="mb-0 resize-none! border border-mineshaft-600 bg-mineshaft-900 text-sm"
+                    className="resize-none! border-mineshaft-600 bg-mineshaft-900 mb-0 border text-sm"
                     readOnly={isReadOnly}
                     placeholder="add a comment or note to this secret..."
                     rows={4}
@@ -701,9 +701,9 @@ export const SecretDetailSidebar = ({
                 </FormControl>
               )}
             />
-            <div className="dark flex max-h-96 flex-1 cursor-default flex-col text-sm text-bunker-300">
-              <div className="mb-0.5 text-mineshaft-400">Version History</div>
-              <div className="flex thin-scrollbar flex-1 flex-col space-y-2 overflow-x-hidden overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:scheme-dark">
+            <div className="text-bunker-300 dark flex max-h-96 flex-1 cursor-default flex-col text-sm">
+              <div className="text-mineshaft-400 mb-0.5">Version History</div>
+              <div className="thin-scrollbar border-mineshaft-600 bg-mineshaft-900 dark:scheme-dark flex flex-1 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border p-4">
                 {secretVersion?.map((version) => (
                   <SecretVersionItem
                     canReadValue={!cannotReadSecretValue}
@@ -721,8 +721,8 @@ export const SecretDetailSidebar = ({
                 ))}
               </div>
             </div>
-            <div className="dark flex flex-col text-sm text-bunker-300">
-              <div className="mb-0.5 text-mineshaft-400">
+            <div className="text-bunker-300 dark flex flex-col text-sm">
+              <div className="text-mineshaft-400 mb-0.5">
                 Access List
                 <Tooltip
                   content="Lists all users, machine identities, and groups that have been granted any permission level (read, create, edit, or delete) for this secret."
@@ -732,13 +732,13 @@ export const SecretDetailSidebar = ({
                 </Tooltip>
               </div>
               {secretAccessList ? (
-                <div className="flex flex-col space-y-2 overflow-x-hidden overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:scheme-dark">
+                <div className="border-mineshaft-600 bg-mineshaft-900 dark:scheme-dark flex flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border p-4">
                   {secretAccessList.users.length > 0 && (
                     <div className="pb-3">
                       <div className="mb-2 font-bold">Users</div>
                       <div className="flex flex-wrap gap-2">
                         {secretAccessList.users.map((user) => (
-                          <div className="rounded-md bg-bunker-500">
+                          <div className="bg-bunker-500 rounded-md">
                             <Tooltip
                               side="left"
                               content={user.allowedActions
@@ -746,7 +746,7 @@ export const SecretDetailSidebar = ({
                                 .join(", ")}
                               className="z-100 capitalize"
                             >
-                              <div className="text-secondary/80 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 py-0.5 text-sm hover:text-mineshaft-100">
+                              <div className="text-secondary/80 border-mineshaft-600 bg-mineshaft-700 hover:text-mineshaft-100 rounded-md border px-1 py-0.5 text-sm">
                                 {user.name}
                               </div>
                             </Tooltip>
@@ -760,7 +760,7 @@ export const SecretDetailSidebar = ({
                       <div className="mb-2 font-bold">Identities</div>
                       <div className="flex flex-wrap gap-2">
                         {secretAccessList.identities.map((identity) => (
-                          <div className="rounded-md bg-bunker-500">
+                          <div className="bg-bunker-500 rounded-md">
                             <Tooltip
                               side="left"
                               content={identity.allowedActions
@@ -779,7 +779,7 @@ export const SecretDetailSidebar = ({
                                   projectId: currentProject.id,
                                   identityId: identity.id
                                 }}
-                                className="text-secondary/80 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 py-0.5 text-sm hover:text-mineshaft-100"
+                                className="text-secondary/80 border-mineshaft-600 bg-mineshaft-700 hover:text-mineshaft-100 rounded-md border px-1 py-0.5 text-sm"
                               >
                                 {identity.name}
                               </Link>
@@ -794,7 +794,7 @@ export const SecretDetailSidebar = ({
                       <div className="mb-2 font-bold">Groups</div>
                       <div className="flex flex-wrap gap-2">
                         {secretAccessList.groups.map((group) => (
-                          <div className="rounded-md bg-bunker-500">
+                          <div className="bg-bunker-500 rounded-md">
                             <Tooltip
                               side="left"
                               content={group.allowedActions
@@ -810,7 +810,7 @@ export const SecretDetailSidebar = ({
                                 params={{
                                   groupId: group.id
                                 }}
-                                className="text-secondary/80 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 py-0.5 text-sm hover:text-mineshaft-100"
+                                className="text-secondary/80 border-mineshaft-600 bg-mineshaft-700 hover:text-mineshaft-100 rounded-md border px-1 py-0.5 text-sm"
                               >
                                 {group.name}
                               </Link>
@@ -876,7 +876,7 @@ export const SecretDetailSidebar = ({
                       colorSchema="danger"
                       variant="outline_bg"
                       ariaLabel="Delete Secret"
-                      className="h-min border border-mineshaft-600 bg-mineshaft-700 hover:border-red-500/70 hover:bg-red-600/20"
+                      className="border-mineshaft-600 bg-mineshaft-700 h-min border hover:border-red-500/70 hover:bg-red-600/20"
                       isDisabled={!isAllowed}
                       onClick={onDeleteSecret}
                     >

@@ -40,7 +40,7 @@ export const PamResourceRow = ({ resource, onUpdate, onDelete, search }: Props) 
           <span>
             <HighlightText text={name} highlight={search} />
           </span>
-          <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
+          <Badge className="bg-mineshaft-400/50 text-bunker-300 flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
             <span>
               <HighlightText text={resourceTypeName} highlight={search} />
             </span>

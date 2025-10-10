@@ -29,16 +29,16 @@ export const FormLabel = ({
 }: FormLabelProps) => (
   <Label.Root
     className={twMerge(
-      "mb-0.5 flex items-center text-sm font-normal text-mineshaft-400",
+      "text-mineshaft-400 mb-0.5 flex items-center text-sm font-normal",
       className
     )}
     htmlFor={id}
   >
     {label}
-    {isRequired && <span className="ml-1 text-red">*</span>}
-    {isOptional && <span className="ml-1 text-xs text-gray-500 italic">- Optional</span>}
+    {isRequired && <span className="text-red ml-1">*</span>}
+    {isOptional && <span className="ml-1 text-xs italic text-gray-500">- Optional</span>}
     {icon && !tooltipText && (
-      <span className="ml-2 cursor-default text-mineshaft-300 hover:text-mineshaft-200">
+      <span className="text-mineshaft-300 hover:text-mineshaft-200 ml-2 cursor-default">
         {icon}
       </span>
     )}
@@ -58,7 +58,7 @@ export type FormHelperTextProps = {
 export const FormHelperText = ({ isError, text }: FormHelperTextProps) => (
   <div
     className={twMerge(
-      "text-opacity-90 mt-2 flex items-center font-inter text-xs text-mineshaft-300",
+      "font-inter text-mineshaft-300 mt-2 flex items-center text-xs text-opacity-90",
       isError && "text-red-600"
     )}
   >

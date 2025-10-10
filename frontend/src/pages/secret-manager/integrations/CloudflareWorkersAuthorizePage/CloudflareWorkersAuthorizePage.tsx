@@ -56,7 +56,7 @@ export const CloudflareWorkersAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
+      <Card className="border-mineshaft-600 mb-12 max-w-lg rounded-md border">
         <CardTitle
           className="px-6 text-left"
           subTitle="After adding your API-key, you will be prompted to set up an integration for a particular Infisical project and environment."
@@ -89,7 +89,7 @@ export const CloudflareWorkersAuthorizePage = () => {
           onClick={handleButtonClick}
           color="mineshaft"
           variant="outline_bg"
-          className="mt-2 mr-6 mb-6 ml-auto w-min"
+          className="mb-6 ml-auto mr-6 mt-2 w-min"
           isFullWidth={false}
           isLoading={isLoading}
         >

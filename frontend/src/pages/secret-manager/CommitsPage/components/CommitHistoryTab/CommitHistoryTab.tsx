@@ -34,21 +34,21 @@ const CommitItem = ({
         e.stopPropagation();
         onSelectCommit(commit.id, "tab-commit-details");
       }}
-      className="w-full border border-b-0 border-mineshaft-600 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md last:border-b"
+      className="border-mineshaft-600 bg-mineshaft-800 w-full border border-b-0 first:rounded-t-md last:rounded-b-md last:border-b"
     >
       <div className="flex gap-2 px-4 py-3 transition-colors duration-200 hover:bg-zinc-800">
         <div className="flex min-w-0 flex-1 flex-col items-start">
-          <p className="block w-full truncate text-left text-sm text-mineshaft-100">
+          <p className="text-mineshaft-100 block w-full truncate text-left text-sm">
             {commit.message}
           </p>
-          <p className="text-left text-xs text-mineshaft-300">
+          <p className="text-mineshaft-300 text-left text-xs">
             {commit.actorMetadata?.email || commit.actorMetadata?.name || commit.actorType}{" "}
             committed <time dateTime={commit.createdAt}>{formatTimeAgo(commit.createdAt)}</time>
           </p>
         </div>
 
         <div className="flex items-center space-x-2">
-          <code className="mt-0.5 font-mono text-xs text-mineshaft-400">
+          <code className="text-mineshaft-400 mt-0.5 font-mono text-xs">
             {commit.id?.substring(0, 11)}
           </code>
           <CopyButton
@@ -81,10 +81,10 @@ const DateGroup = ({
     <div className="mt-4 first:mt-0">
       <div className="mb-4 ml-[0.15rem] flex items-center">
         <FontAwesomeIcon icon={faCodeCommit} className="text-mineshaft-400" />
-        <h2 className="ml-4 text-sm text-mineshaft-400">Commits on {date}</h2>
+        <h2 className="text-mineshaft-400 ml-4 text-sm">Commits on {date}</h2>
       </div>
       <div className="relative">
-        <div className="absolute top-0 bottom-0 left-3 w-[0.1rem] bg-mineshaft-500" />
+        <div className="bg-mineshaft-500 absolute bottom-0 left-3 top-0 w-[0.1rem]" />
         <div className="ml-10">
           {commits.map((commit) => (
             <CommitItem key={commit.id} commit={commit} onSelectCommit={onSelectCommit} />
@@ -153,8 +153,8 @@ export const CommitHistoryTab = ({
   }, []);
 
   return (
-    <div className="mt-4 w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <p className="mb-4 text-xl font-medium text-mineshaft-100">Commit History</p>
+    <div className="border-mineshaft-600 bg-mineshaft-900 mt-4 w-full rounded-lg border p-4">
+      <p className="text-mineshaft-100 mb-4 text-xl font-medium">Commit History</p>
       <div className="mb-4 flex flex-col sm:flex-row sm:justify-end">
         <div className="flex w-full flex-wrap items-center gap-2">
           <div className="relative grow">
@@ -203,7 +203,7 @@ export const CommitHistoryTab = ({
               <Button
                 variant="outline_bg"
                 size="sm"
-                className="mt-4 ml-10 w-full"
+                className="ml-10 mt-4 w-full"
                 onClick={() => fetchNextPage()}
                 disabled={isFetchingNextPage}
                 isLoading={isFetchingNextPage}

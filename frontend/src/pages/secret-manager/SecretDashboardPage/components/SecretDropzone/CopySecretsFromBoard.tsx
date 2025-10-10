@@ -190,7 +190,7 @@ export const CopySecretsFromBoard = ({
               )}
             />
           </div>
-          <div className="border-t border-mineshaft-600 pt-4">
+          <div className="border-mineshaft-600 border-t pt-4">
             <div className="mb-4 flex items-center justify-between">
               <div>Secrets</div>
             </div>

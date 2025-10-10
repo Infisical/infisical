@@ -247,14 +247,14 @@ export const SelectOrganizationSection = () => {
     ((isInitialOrgCheckLoading || defaultSelectedOrg) && !shouldShowMfa)
   ) {
     return (
-      <div className="h-screen w-screen bg-bunker-800">
+      <div className="bg-bunker-800 h-screen w-screen">
         <ContentLoader />
       </div>
     );
   }
 
   return (
-    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+    <div className="bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto">
       <Helmet>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -269,7 +269,7 @@ export const SelectOrganizationSection = () => {
           method={requiredMfaMethod}
         />
       ) : (
-        <div className="mx-auto mt-20 w-fit rounded-lg border-2 border-mineshaft-500 p-10 shadow-lg">
+        <div className="border-mineshaft-500 mx-auto mt-20 w-fit rounded-lg border-2 p-10 shadow-lg">
           <Link to="/">
             <div className="mb-4 flex justify-center">
               <img
@@ -284,7 +284,7 @@ export const SelectOrganizationSection = () => {
           </Link>
           <form className="mx-auto flex w-full flex-col items-center justify-center">
             <div className="mb-8 space-y-2">
-              <h1 className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-2xl font-medium text-transparent">
+              <h1 className="bg-linear-to-b to-bunker-200 from-white bg-clip-text text-center text-2xl font-medium text-transparent">
                 Choose your organization
               </h1>
               <div className="space-y-1">
@@ -308,13 +308,13 @@ export const SelectOrganizationSection = () => {
                   <div
                     onClick={() => handleSelectOrganization(org)}
                     key={org.id}
-                    className="group flex cursor-pointer items-center justify-between rounded-md bg-mineshaft-700 px-4 py-3 text-gray-200 capitalize shadow-md transition-colors hover:bg-mineshaft-600"
+                    className="bg-mineshaft-700 hover:bg-mineshaft-600 group flex cursor-pointer items-center justify-between rounded-md px-4 py-3 capitalize text-gray-200 shadow-md transition-colors"
                   >
                     <p className="truncate transition-colors">{org.name}</p>
 
                     <FontAwesomeIcon
                       icon={faArrowRight}
-                      className="text-gray-400 transition-all group-hover:translate-x-2 group-hover:text-primary-500"
+                      className="group-hover:text-primary-500 text-gray-400 transition-all group-hover:translate-x-2"
                     />
                   </div>
                 ))

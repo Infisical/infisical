@@ -31,7 +31,7 @@ export const SecretSharingAllowShareToAnyone = () => {
   };
 
   return (
-    <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+    <div className="border-mineshaft-600 bg-mineshaft-900 mb-4 rounded-lg border p-6">
       <div className="py-4">
         <div className="mb-2 flex justify-between">
           <h3 className="text-md text-mineshaft-100">
@@ -48,7 +48,7 @@ export const SecretSharingAllowShareToAnyone = () => {
             )}
           </OrgPermissionCan>
         </div>
-        <p className="text-sm text-mineshaft-300">
+        <p className="text-mineshaft-300 text-sm">
           If enabled, team members will be able to share secrets to members outside of this
           organization
         </p>

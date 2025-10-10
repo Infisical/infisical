@@ -26,7 +26,7 @@ export const AdminLayout = () => {
     <>
       <Banner />
       <div
-        className={`dark hidden ${containerHeight} w-full flex-col overflow-x-hidden bg-bunker-800 transition-all md:flex`}
+        className={`dark hidden ${containerHeight} bg-bunker-800 w-full flex-col overflow-x-hidden transition-all md:flex`}
       >
         <Navbar />
         {!isLoading && !serverDetails?.redisConfigured && <RedisBanner />}
@@ -35,12 +35,12 @@ export const AdminLayout = () => {
         {!window.isSecureContext && <InsecureConnectionBanner />}
         <div className="flex grow flex-col overflow-y-hidden md:flex-row">
           <AdminSidebar />
-          <div className="flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 px-4 pt-8 pb-4 dark:scheme-dark">
+          <div className="bg-bunker-800 dark:scheme-dark flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-8">
             <Outlet />
           </div>
         </div>
       </div>
-      <div className="z-200 flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
+      <div className="z-200 bg-bunker-800 flex h-screen w-screen flex-col items-center justify-center md:hidden">
         <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
         <p className="max-w-sm px-6 text-center text-lg text-gray-200">
           {` ${t("common.no-mobile")} `}

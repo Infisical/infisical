@@ -59,14 +59,14 @@ const Alert = forwardRef<
           <>{icon} </>
         ) : (
           <FontAwesomeIcon
-            className="text-lg text-primary"
+            className="text-primary text-lg"
             icon={variantIconMap[variant ?? "default"]}
           />
         )}
       </div>
       <div className="flex flex-col gap-y-1">
         {hideTitle ? null : (
-          <h5 className="leading-6 font-medium tracking-tight" {...props}>
+          <h5 className="font-medium leading-6 tracking-tight" {...props}>
             {defaultTitle}
           </h5>
         )}

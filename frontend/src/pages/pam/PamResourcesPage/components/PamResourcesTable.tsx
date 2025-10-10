@@ -178,14 +178,14 @@ export const PamResourcesTable = ({ projectId, resources }: Props) => {
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                "border-mineshaft-600 bg-mineshaft-800 hover:border-primary/60 hover:bg-primary/10 flex h-10 w-11 items-center justify-center overflow-hidden border p-0 transition-all",
                 isTableFiltered && "border-primary/50 text-primary"
               )}
             >
               <FontAwesomeIcon icon={faFilter} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
+          <DropdownMenuContent className="thin-scrollbar max-h-[70vh] overflow-y-auto" align="end">
             <DropdownMenuLabel>Resource Type</DropdownMenuLabel>
             {resources.length ? (
               [...new Set(resources.map(({ resourceType }) => resourceType))].map((type) => {

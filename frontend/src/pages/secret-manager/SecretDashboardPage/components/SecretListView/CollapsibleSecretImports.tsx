@@ -205,9 +205,9 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
         </div>
       </div>
 
-      <div className="max-h-64 overflow-y-auto rounded-md border border-mineshaft-700">
+      <div className="border-mineshaft-700 max-h-64 overflow-y-auto rounded-md border">
         <Table>
-          <THead className="sticky -top-1 bg-bunker-800">
+          <THead className="bg-bunker-800 sticky -top-1">
             <Th className="px-4">Type</Th>
             <Th className="px-4">Environment</Th>
             <Th className="truncate px-4">Path</Th>
@@ -218,7 +218,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
               <Tr
                 key={item.id}
                 onClick={() => handlePathClick(item)}
-                className="cursor-pointer hover:bg-mineshaft-700"
+                className="hover:bg-mineshaft-700 cursor-pointer"
                 title={
                   item.type === ItemType.SecretSync
                     ? "Navigate to Secret Sync"

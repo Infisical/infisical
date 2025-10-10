@@ -58,7 +58,7 @@ export const DeleteSecretScanningDataSourceModal = ({
       deleteKey={name}
       onDeleteApproved={handleDeleteDataSource}
     >
-      <p className="mt-1 font-inter text-sm text-mineshaft-400">
+      <p className="font-inter text-mineshaft-400 mt-1 text-sm">
         Findings associated with this data source will be preserved.
       </p>
     </DeleteActionModal>

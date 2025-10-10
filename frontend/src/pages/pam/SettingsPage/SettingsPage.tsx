@@ -8,7 +8,7 @@ export const SettingsPage = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
+    <div className="bg-bunker-800 flex h-full w-full justify-center text-white">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
       </Helmet>

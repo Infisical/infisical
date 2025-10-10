@@ -19,15 +19,15 @@ export const PamResourceOption = ({
     <components.Option isSelected={isSelected} {...props}>
       <div className="flex flex-row items-center justify-between">
         {isCreateOption ? (
-          <div className="flex items-center gap-x-1 text-mineshaft-400">
+          <div className="text-mineshaft-400 flex items-center gap-x-1">
             <FontAwesomeIcon icon={faPlus} size="sm" />
             <span className="mr-auto">Create New Resource</span>
           </div>
         ) : (
           <>
             <p className="truncate">{children}</p>
-            <div className="mr-auto ml-2">
-              <Badge className="flex h-5 items-center gap-1 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
+            <div className="ml-2 mr-auto">
+              <Badge className="bg-mineshaft-400/50 text-bunker-300 flex h-5 items-center gap-1 whitespace-nowrap">
                 <img
                   alt={`${name} logo`}
                   src={`/images/integrations/${image}`}
@@ -37,7 +37,7 @@ export const PamResourceOption = ({
               </Badge>
             </div>
             {isSelected && (
-              <FontAwesomeIcon className="ml-2 text-primary" icon={faCheckCircle} size="sm" />
+              <FontAwesomeIcon className="text-primary ml-2" icon={faCheckCircle} size="sm" />
             )}
           </>
         )}

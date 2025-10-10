@@ -86,14 +86,14 @@ export const PamAccountRow = ({
             <span>
               <HighlightText text={name} highlight={search} />
             </span>
-            <Badge className="flex h-5 w-min items-center gap-1.5 bg-bunker-300/20 whitespace-nowrap text-bunker-300">
+            <Badge className="bg-bunker-300/20 text-bunker-300 flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
               <FontAwesomeIcon icon={faBoxOpen} />
               <span>
                 <HighlightText text={account.resource.name} highlight={search} />
               </span>
             </Badge>
             {isFlatView && accountPath && (
-              <Badge className="flex h-5 w-min items-center gap-1.5 bg-bunker-300/20 whitespace-nowrap text-bunker-300">
+              <Badge className="bg-bunker-300/20 text-bunker-300 flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
                 <FontAwesomeIcon icon={faFolder} />
                 <span>
                   <HighlightText text={accountPath} highlight={search} />

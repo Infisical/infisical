@@ -77,16 +77,16 @@ export const EncryptionPageForm = () => {
   return (
     <>
       <form
-        className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+        className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4"
         onSubmit={handleSubmit(onSubmit)}
       >
         <div className="flex flex-col justify-start">
           <div className="flex w-full justify-between">
-            <div className="mb-2 text-xl font-medium text-mineshaft-100">
+            <div className="text-mineshaft-100 mb-2 text-xl font-medium">
               KMS Encryption Strategy
             </div>
           </div>
-          <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
+          <div className="text-mineshaft-400 mb-4 max-w-sm text-sm">
             Select which type of encryption strategy you want to use for your KMS root key. HSM is
             supported on Enterprise plans.
           </div>
@@ -102,7 +102,7 @@ export const EncryptionPageForm = () => {
                   isError={Boolean(error)}
                 >
                   <Select
-                    className="w-full bg-mineshaft-700"
+                    className="bg-mineshaft-700 w-full"
                     dropdownContainerClassName="bg-mineshaft-800"
                     defaultValue={field.value}
                     onValueChange={(e) => onChange(e)}

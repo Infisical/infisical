@@ -38,9 +38,9 @@ export const CaDetailsSection = ({ caName, handlePopUpOpen }: Props) => {
   const ca = data as TInternalCertificateAuthority;
 
   return ca ? (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">CA Details</h3>
+    <div className="border-mineshaft-600 bg-mineshaft-900 rounded-lg border p-4">
+      <div className="border-mineshaft-400 flex items-center justify-between border-b pb-4">
+        <h3 className="text-mineshaft-100 text-lg font-medium">CA Details</h3>
         <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Identity}>
           {(isAllowed) => {
             return (
@@ -66,13 +66,13 @@ export const CaDetailsSection = ({ caName, handlePopUpOpen }: Props) => {
       </div>
       <div className="pt-4">
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">CA Type</p>
-          <p className="text-sm text-mineshaft-300">{caTypeToNameMap[ca.configuration.type]}</p>
+          <p className="text-mineshaft-300 text-sm font-medium">CA Type</p>
+          <p className="text-mineshaft-300 text-sm">{caTypeToNameMap[ca.configuration.type]}</p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">CA ID</p>
+          <p className="text-mineshaft-300 text-sm font-medium">CA ID</p>
           <div className="group flex align-top">
-            <p className="text-sm text-mineshaft-300">{ca.id}</p>
+            <p className="text-mineshaft-300 text-sm">{ca.id}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
               <Tooltip content={copyTextId}>
                 <IconButton
@@ -93,9 +93,9 @@ export const CaDetailsSection = ({ caName, handlePopUpOpen }: Props) => {
         {ca.configuration.type === InternalCaType.INTERMEDIATE &&
           ca.status !== CaStatus.PENDING_CERTIFICATE && (
             <div className="mb-4">
-              <p className="text-sm font-medium text-mineshaft-300">Parent CA ID</p>
+              <p className="text-mineshaft-300 text-sm font-medium">Parent CA ID</p>
               <div className="group flex align-top">
-                <p className="text-sm text-mineshaft-300">
+                <p className="text-mineshaft-300 text-sm">
                   {ca.configuration.parentCaId
                     ? ca.configuration.parentCaId
                     : "N/A - External Parent CA"}
@@ -121,42 +121,42 @@ export const CaDetailsSection = ({ caName, handlePopUpOpen }: Props) => {
             </div>
           )}
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Name</p>
-          <p className="text-sm text-mineshaft-300">{ca.name}</p>
+          <p className="text-mineshaft-300 text-sm font-medium">Name</p>
+          <p className="text-mineshaft-300 text-sm">{ca.name}</p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Status</p>
-          <p className="text-sm text-mineshaft-300">{caStatusToNameMap[ca.status]}</p>
+          <p className="text-mineshaft-300 text-sm font-medium">Status</p>
+          <p className="text-mineshaft-300 text-sm">{caStatusToNameMap[ca.status]}</p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Key Algorithm</p>
-          <p className="text-sm text-mineshaft-300">
+          <p className="text-mineshaft-300 text-sm font-medium">Key Algorithm</p>
+          <p className="text-mineshaft-300 text-sm">
             {certKeyAlgorithmToNameMap[ca.configuration.keyAlgorithm]}
           </p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Max Path Length</p>
-          <p className="text-sm text-mineshaft-300">{ca.configuration.maxPathLength ?? "-"}</p>
+          <p className="text-mineshaft-300 text-sm font-medium">Max Path Length</p>
+          <p className="text-mineshaft-300 text-sm">{ca.configuration.maxPathLength ?? "-"}</p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Not Before</p>
-          <p className="text-sm text-mineshaft-300">
+          <p className="text-mineshaft-300 text-sm font-medium">Not Before</p>
+          <p className="text-mineshaft-300 text-sm">
             {ca.configuration.notBefore
               ? format(new Date(ca.configuration.notBefore), "yyyy-MM-dd")
               : "-"}
           </p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Not After</p>
-          <p className="text-sm text-mineshaft-300">
+          <p className="text-mineshaft-300 text-sm font-medium">Not After</p>
+          <p className="text-mineshaft-300 text-sm">
             {ca.configuration.notAfter
               ? format(new Date(ca.configuration.notAfter), "yyyy-MM-dd")
               : "-"}
           </p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Enable Direct Issuance</p>
-          <p className="text-sm text-mineshaft-300">{ca.enableDirectIssuance ? "True" : "False"}</p>
+          <p className="text-mineshaft-300 text-sm font-medium">Enable Direct Issuance</p>
+          <p className="text-mineshaft-300 text-sm">{ca.enableDirectIssuance ? "True" : "False"}</p>
         </div>
         {ca.status === CaStatus.ACTIVE && (
           <ProjectPermissionCan

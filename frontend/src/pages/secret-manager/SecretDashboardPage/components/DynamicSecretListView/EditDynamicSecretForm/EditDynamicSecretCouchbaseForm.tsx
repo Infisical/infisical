@@ -53,7 +53,7 @@ const BucketScopesConfiguration = ({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-mineshaft-300">Scopes</label>
+        <label className="text-mineshaft-300 text-sm font-medium">Scopes</label>
         <Button
           type="button"
           variant="outline_bg"
@@ -68,10 +68,10 @@ const BucketScopesConfiguration = ({
       {scopeFields.map((_scope: any, scopeIndex: number) => (
         <div
           key={`scope-${scopeIndex + 1}`}
-          className="space-y-3 rounded-sm border border-mineshaft-600 bg-mineshaft-700 p-3"
+          className="border-mineshaft-600 bg-mineshaft-700 space-y-3 rounded-sm border p-3"
         >
           <div className="flex items-center justify-between">
-            <h5 className="text-xs font-medium text-mineshaft-200">Scope {scopeIndex + 1}</h5>
+            <h5 className="text-mineshaft-200 text-xs font-medium">Scope {scopeIndex + 1}</h5>
             <IconButton
               type="button"
               variant="plain"
@@ -95,7 +95,7 @@ const BucketScopesConfiguration = ({
 
           <div className="space-y-2 pl-4">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-mineshaft-300">Collections</label>
+              <label className="text-mineshaft-300 text-xs font-medium">Collections</label>
               <Button
                 type="button"
                 variant="outline_bg"
@@ -145,7 +145,7 @@ const BucketScopesConfiguration = ({
 
             {(!scopeFields[scopeIndex]?.collections ||
               scopeFields[scopeIndex].collections.length === 0) && (
-              <div className="text-xs text-mineshaft-400 italic">
+              <div className="text-mineshaft-400 text-xs italic">
                 No collections specified (access to all collections in scope)
               </div>
             )}
@@ -154,8 +154,8 @@ const BucketScopesConfiguration = ({
       ))}
 
       {scopeFields.length === 0 && (
-        <div className="rounded-sm border border-dashed border-mineshaft-600 bg-mineshaft-700 p-4 text-center">
-          <p className="mb-2 text-xs text-mineshaft-400">
+        <div className="border-mineshaft-600 bg-mineshaft-700 rounded-sm border border-dashed p-4 text-center">
+          <p className="text-mineshaft-400 mb-2 text-xs">
             No scopes configured (access to all scopes in bucket)
           </p>
           <Button
@@ -474,7 +474,7 @@ export const EditDynamicSecretCouchbaseForm = ({
           </div>
           <MetadataForm control={control} />
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="border-mineshaft-500 text-mineshaft-200 mb-4 mt-4 border-b pb-2 pl-1 font-medium">
               Configuration
             </div>
             <div className="flex flex-col space-y-4">
@@ -622,10 +622,10 @@ export const EditDynamicSecretCouchbaseForm = ({
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-sm font-medium text-mineshaft-200">
+                      <div className="text-mineshaft-200 text-sm font-medium">
                         Advanced Bucket Configuration
                       </div>
-                      <div className="text-sm text-mineshaft-400">
+                      <div className="text-mineshaft-400 text-sm">
                         Configure specific buckets with their scopes and collections. Leave scopes
                         empty for access to all scopes in a bucket.
                       </div>
@@ -646,10 +646,10 @@ export const EditDynamicSecretCouchbaseForm = ({
                       (bucketsValue as any[]).map((_, bucketIndex) => (
                         <div
                           key={`bucket-${bucketIndex + 1}`}
-                          className="space-y-4 rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-4"
+                          className="border-mineshaft-600 bg-mineshaft-800 space-y-4 rounded-sm border p-4"
                         >
                           <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-medium text-mineshaft-200">
+                            <h4 className="text-mineshaft-200 text-sm font-medium">
                               Bucket {bucketIndex + 1}
                             </h4>
                             <IconButton
@@ -690,8 +690,8 @@ export const EditDynamicSecretCouchbaseForm = ({
                       ))}
 
                     {(!Array.isArray(bucketsValue) || bucketsValue.length === 0) && (
-                      <div className="rounded-sm border border-dashed border-mineshaft-600 p-8 text-center">
-                        <p className="mb-2 text-sm text-mineshaft-400">No buckets configured</p>
+                      <div className="border-mineshaft-600 rounded-sm border border-dashed p-8 text-center">
+                        <p className="text-mineshaft-400 mb-2 text-sm">No buckets configured</p>
                         <Button
                           type="button"
                           variant="outline_bg"
@@ -745,23 +745,23 @@ export const EditDynamicSecretCouchbaseForm = ({
                   </FormControl>
                 )}
               />
-              <Accordion type="multiple" className="mt-4 mb-2 w-full bg-mineshaft-700">
+              <Accordion type="multiple" className="bg-mineshaft-700 mb-2 mt-4 w-full">
                 <AccordionItem value="password-config">
                   <AccordionTrigger>
                     <div className="flex items-center space-x-2">
                       <span>Password Configuration (optional)</span>
                       <Tooltip content="Couchbase password requirements: minimum 8 characters, at least 1 uppercase, 1 lowercase, 1 digit, 1 special character. Cannot contain: < > ; . * & | �">
-                        <div className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-mineshaft-600 text-xs text-mineshaft-300">
+                        <div className="bg-mineshaft-600 text-mineshaft-300 flex h-4 w-4 cursor-help items-center justify-center rounded-full text-xs">
                           ?
                         </div>
                       </Tooltip>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
-                    <div className="mb-4 text-sm text-mineshaft-300">
+                    <div className="text-mineshaft-300 mb-4 text-sm">
                       Set constraints on the generated Couchbase user password (8-128 characters)
                       <br />
-                      <span className="text-xs text-mineshaft-400">
+                      <span className="text-mineshaft-400 text-xs">
                         Forbidden characters: &lt; &gt; ; . * &amp; | �
                       </span>
                     </div>

@@ -115,7 +115,7 @@ export const Page = () => {
   }
 
   return (
-    <div className="container mx-auto flex max-w-7xl flex-col justify-between bg-bunker-800 text-white">
+    <div className="bg-bunker-800 container mx-auto flex max-w-7xl flex-col justify-between text-white">
       {membershipDetails ? (
         <>
           <PageHeader

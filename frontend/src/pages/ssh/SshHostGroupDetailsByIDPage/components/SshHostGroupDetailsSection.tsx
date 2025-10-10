@@ -21,9 +21,9 @@ export const SshHostGroupDetailsSection = ({ sshHostGroupId, handlePopUpOpen }: 
   const { data: sshHostGroup } = useGetSshHostGroupById(sshHostGroupId);
 
   return sshHostGroup ? (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">SSH Host Group Details</h3>
+    <div className="border-mineshaft-600 bg-mineshaft-900 rounded-lg border p-4">
+      <div className="border-mineshaft-400 flex items-center justify-between border-b pb-4">
+        <h3 className="text-mineshaft-100 text-lg font-medium">SSH Host Group Details</h3>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Edit}
           a={ProjectPermissionSub.SshHostGroups}
@@ -52,9 +52,9 @@ export const SshHostGroupDetailsSection = ({ sshHostGroupId, handlePopUpOpen }: 
       </div>
       <div className="pt-4">
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">SSH Host Group ID</p>
+          <p className="text-mineshaft-300 text-sm font-medium">SSH Host Group ID</p>
           <div className="group flex align-top">
-            <p className="text-sm text-mineshaft-300">{sshHostGroup.id}</p>
+            <p className="text-mineshaft-300 text-sm">{sshHostGroup.id}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
               <Tooltip content={copyTextId}>
                 <IconButton
@@ -73,8 +73,8 @@ export const SshHostGroupDetailsSection = ({ sshHostGroupId, handlePopUpOpen }: 
           </div>
         </div>
         <div>
-          <p className="text-sm font-medium text-mineshaft-300">Name</p>
-          <p className="text-sm text-mineshaft-300">{sshHostGroup.name}</p>
+          <p className="text-mineshaft-300 text-sm font-medium">Name</p>
+          <p className="text-mineshaft-300 text-sm">{sshHostGroup.name}</p>
         </div>
       </div>
     </div>

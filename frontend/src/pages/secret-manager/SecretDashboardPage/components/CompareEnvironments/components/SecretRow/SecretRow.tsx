@@ -79,7 +79,7 @@ export const SecretRow = ({
         isHoverable
         isSelectable
         onClick={() => setIsFormExpanded.toggle()}
-        className="group border-mineshaft-500"
+        className="border-mineshaft-500 group"
       >
         <ResourceNameCell
           colWidth={colWidth}
@@ -131,7 +131,7 @@ export const SecretRow = ({
               <TableContainer className="rounded-none border-0">
                 <table className="secret-table bg-mineshaft-900">
                   <thead>
-                    <tr className="h-10 border-b-2 border-mineshaft-600 bg-mineshaft-800">
+                    <tr className="border-mineshaft-600 bg-mineshaft-800 h-10 border-b-2">
                       <th
                         style={{
                           width: colWidth
@@ -143,7 +143,7 @@ export const SecretRow = ({
                       <th style={{ padding: "0.5rem 1rem" }} className="border-none">
                         Value
                       </th>
-                      <div className="absolute top-[4px] right-3 mt-1 mr-1 ml-auto w-min">
+                      <div className="absolute right-3 top-[4px] ml-auto mr-1 mt-1 w-min">
                         <Tooltip
                           side="left"
                           content={isSecretVisible ? "Hide Values" : "Reveal Values"}
@@ -160,7 +160,7 @@ export const SecretRow = ({
                       </div>
                     </tr>
                   </thead>
-                  <tbody className="border-t-2 border-mineshaft-600">
+                  <tbody className="border-mineshaft-600 border-t-2">
                     {environments.map(({ name, slug }) => {
                       const secret = getSecretByKey(slug, secretKey);
 
@@ -170,10 +170,10 @@ export const SecretRow = ({
                       return (
                         <tr
                           key={`secret-expanded-${slug}-${secretKey}`}
-                          className="h-full hover:bg-mineshaft-700/70"
+                          className="hover:bg-mineshaft-700/70 h-full"
                         >
                           <td
-                            className="h-px border-none p-0!"
+                            className="p-0! h-px border-none"
                             style={{
                               width: colWidth
                             }}
@@ -183,7 +183,7 @@ export const SecretRow = ({
                               style={{
                                 width: colWidth
                               }}
-                              className="flex h-full min-h-[40px] w-32 items-center space-x-2 border-r border-mineshaft-500 px-4"
+                              className="border-mineshaft-500 flex h-full min-h-[40px] w-32 items-center space-x-2 border-r px-4"
                             >
                               <span className="truncate">{name}</span>
                               {isImportedSecret && (

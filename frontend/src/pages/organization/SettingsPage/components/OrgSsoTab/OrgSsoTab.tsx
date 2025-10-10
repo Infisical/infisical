@@ -71,10 +71,10 @@ export const OrgSsoTab = withPermission(
       shouldDisplaySection(LoginMethod.OIDC) ||
       shouldDisplaySection(LoginMethod.LDAP) ? (
         <>
-          <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+          <div className="border-mineshaft-600 bg-mineshaft-900 mb-4 space-y-6 rounded-lg border p-6">
             <div>
               <p className="text-xl font-medium text-gray-200">Connect an Identity Provider</p>
-              <p className="mt-1 mb-2 text-gray-400">
+              <p className="mb-2 mt-1 text-gray-400">
                 Connect your identity provider to simplify user management with options like SAML,
                 OIDC, and LDAP.
               </p>
@@ -85,7 +85,7 @@ export const OrgSsoTab = withPermission(
                   "mt-4 flex items-center justify-between",
                   (shouldDisplaySection(LoginMethod.OIDC) ||
                     shouldDisplaySection(LoginMethod.LDAP)) &&
-                    "border-b border-mineshaft-500 pb-4"
+                    "border-mineshaft-500 border-b pb-4"
                 )}
               >
                 <p className="text-lg text-gray-200">SAML</p>
@@ -108,7 +108,7 @@ export const OrgSsoTab = withPermission(
               <div
                 className={twMerge(
                   "mt-4 flex items-center justify-between",
-                  shouldDisplaySection(LoginMethod.LDAP) && "border-b border-mineshaft-500 pb-4"
+                  shouldDisplaySection(LoginMethod.LDAP) && "border-mineshaft-500 border-b pb-4"
                 )}
               >
                 <p className="text-lg text-gray-200">OIDC</p>
@@ -166,7 +166,7 @@ export const OrgSsoTab = withPermission(
           />
         </>
       ) : (
-        <EmptyState title="" iconSize="2x" className="pt-14 pb-10!">
+        <EmptyState title="" iconSize="2x" className="pb-10! pt-14">
           <p className="text-center text-lg">Single Sign-On (SSO) has been disabled</p>
           <p className="text-center">Contact your server administrator</p>
         </EmptyState>
@@ -193,7 +193,7 @@ export const OrgSsoTab = withPermission(
           {shouldShowCreateIdentityProviderView ? (
             createIdentityProviderView
           ) : (
-            <div className="mb-4 space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+            <div className="border-mineshaft-600 bg-mineshaft-900 mb-4 space-y-6 rounded-lg border p-6">
               <div>
                 {isSamlConfigured && shouldDisplaySection(LoginMethod.SAML) && <OrgSSOSection />}
                 {isOidcConfigured && shouldDisplaySection(LoginMethod.OIDC) && <OrgOIDCSection />}

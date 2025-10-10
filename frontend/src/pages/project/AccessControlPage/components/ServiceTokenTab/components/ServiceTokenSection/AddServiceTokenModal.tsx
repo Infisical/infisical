@@ -314,7 +314,7 @@ const ServiceTokenForm = () => {
       </div>
     </form>
   ) : (
-    <div className="mt-2 mr-2 mb-3 flex items-center justify-end rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+    <div className="mb-3 mr-2 mt-2 flex items-center justify-end rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
       <p className="mr-4 break-all">{newToken}</p>
       <IconButton
         ariaLabel="copy icon"
@@ -323,7 +323,7 @@ const ServiceTokenForm = () => {
         onClick={copyTokenToClipboard}
       >
         <FontAwesomeIcon icon={isTokenCopied ? faCheck : faCopy} />
-        <span className="group-hover:animate-fade-in absolute -top-20 -left-8 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex">
+        <span className="group-hover:animate-fade-in bg-bunker-800 absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex">
           {t("common.click-to-copy")}
         </span>
       </IconButton>

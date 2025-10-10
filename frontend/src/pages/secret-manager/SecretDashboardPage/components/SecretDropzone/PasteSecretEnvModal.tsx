@@ -72,7 +72,7 @@ const PasteEnvForm = ({ onParsedEnv }: Pick<Props, "onParsedEnv">) => {
         tooltipText={
           <div className="flex flex-col gap-2">
             <p>Example Formats:</p>
-            <pre className="rounded-md bg-mineshaft-900 p-3 text-xs">
+            <pre className="bg-mineshaft-900 rounded-md p-3 text-xs">
               {/* eslint-disable-next-line react/jsx-no-comment-textnodes */}
               <p className="text-mineshaft-400">// .json</p>
               {JSON.stringify(
@@ -85,13 +85,13 @@ const PasteEnvForm = ({ onParsedEnv }: Pick<Props, "onParsedEnv">) => {
                 2
               )}
             </pre>
-            <pre className="rounded-md bg-mineshaft-900 p-3 text-xs">
+            <pre className="bg-mineshaft-900 rounded-md p-3 text-xs">
               <p className="text-mineshaft-400"># .env</p>
               <p>APP_NAME=&quot;example-service&quot;</p>
               <p>APP_VERSION=&quot;1.2.3&quot;</p>
               <p>NODE_ENV=&quot;production&quot;</p>
             </pre>
-            <pre className="rounded-md bg-mineshaft-900 p-3 text-xs">
+            <pre className="bg-mineshaft-900 rounded-md p-3 text-xs">
               <p className="text-mineshaft-400"># .yml</p>
               <p>APP_NAME: example-service</p>
               <p>APP_VERSION: 1.2.3</p>
@@ -103,7 +103,7 @@ const PasteEnvForm = ({ onParsedEnv }: Pick<Props, "onParsedEnv">) => {
         <TextArea
           {...register("value")}
           placeholder="Paste secrets in .json, .yml or .env format..."
-          className="h-[60vh] resize-none!"
+          className="resize-none! h-[60vh]"
         />
       </FormControl>
       <Button isDisabled={!isDirty} type="submit">

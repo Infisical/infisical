@@ -51,11 +51,11 @@ const Content = ({ pkiSync, onComplete }: ContentProps) => {
         handleTriggerImportCertificates();
       }}
     >
-      <p className="mb-8 text-sm text-mineshaft-200">
+      <p className="text-mineshaft-200 mb-8 text-sm">
         Are you sure you want to import certificates from this {destinationName} destination into
         Infisical?
       </p>
-      <p className="mb-6 text-xs text-bunker-300">
+      <p className="text-bunker-300 mb-6 text-xs">
         This operation will retrieve certificates from {destinationName} and make them available in
         your PKI subscriber. Only certificates that are not already imported will be processed.
       </p>

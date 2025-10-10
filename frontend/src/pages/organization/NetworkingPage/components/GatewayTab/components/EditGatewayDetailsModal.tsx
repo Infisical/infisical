@@ -55,7 +55,7 @@ export const EditGatewayDetailsModal = ({ gatewayDetails, onClose }: Props) => {
   return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
       <NoticeBannerV2 className="mx-auto mb-4" title="Project Linking">
-        <p className="mt-1 text-xs text-mineshaft-300">
+        <p className="text-mineshaft-300 mt-1 text-xs">
           Since the 15th May 2025, all gateways are automatically available for use in all projects
           and you no longer need to link them.
           <br />

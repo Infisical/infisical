@@ -103,12 +103,12 @@ export const GeneralPageForm = () => {
 
   return (
     <form
-      className="space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+      className="border-mineshaft-600 bg-mineshaft-900 space-y-6 rounded-lg border p-4"
       onSubmit={handleSubmit(onFormSubmit)}
     >
       <div className="flex flex-col justify-start">
-        <div className="mb-2 text-xl font-medium text-mineshaft-100">Allow user signups</div>
-        <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
+        <div className="text-mineshaft-100 mb-2 text-xl font-medium">Allow user signups</div>
+        <div className="text-mineshaft-400 mb-4 max-w-sm text-sm">
           Select if you want users to be able to signup freely into your Infisical instance.
         </div>
         <Controller
@@ -117,7 +117,7 @@ export const GeneralPageForm = () => {
           render={({ field: { onChange, ...field }, fieldState: { error } }) => (
             <FormControl className="max-w-sm" errorText={error?.message} isError={Boolean(error)}>
               <Select
-                className="w-full bg-mineshaft-700"
+                className="bg-mineshaft-700 w-full"
                 dropdownContainerClassName="bg-mineshaft-800"
                 defaultValue={field.value}
                 onValueChange={(e) => onChange(e)}
@@ -132,7 +132,7 @@ export const GeneralPageForm = () => {
       </div>
       {signUpMode === "anyone" && (
         <div className="flex flex-col justify-start">
-          <div className="mb-4 text-xl font-medium text-mineshaft-100">
+          <div className="text-mineshaft-100 mb-4 text-xl font-medium">
             Restrict signup by email domain(s)
           </div>
           <Controller
@@ -159,8 +159,8 @@ export const GeneralPageForm = () => {
       )}
 
       <div className="flex flex-col justify-start">
-        <div className="mb-2 text-xl font-medium text-mineshaft-100">Default organization</div>
-        <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
+        <div className="text-mineshaft-100 mb-2 text-xl font-medium">Default organization</div>
+        <div className="text-mineshaft-400 mb-4 max-w-sm text-sm">
           Select the default organization you want to set for SAML/LDAP/OIDC/Github logins. When
           selected, user logins will be automatically scoped to the selected organization.
         </div>
@@ -171,7 +171,7 @@ export const GeneralPageForm = () => {
             <FormControl className="max-w-sm" errorText={error?.message} isError={Boolean(error)}>
               <Select
                 placeholder="Allow all organizations"
-                className="w-full bg-mineshaft-700"
+                className="bg-mineshaft-700 w-full"
                 dropdownContainerClassName="bg-mineshaft-800"
                 defaultValue={field.value ?? " "}
                 onValueChange={(e) => onChange(e)}
@@ -197,8 +197,8 @@ export const GeneralPageForm = () => {
       </div>
 
       <div className="flex flex-col justify-start">
-        <div className="mb-2 text-xl font-medium text-mineshaft-100">Trust emails</div>
-        <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
+        <div className="text-mineshaft-100 mb-2 text-xl font-medium">Trust emails</div>
+        <div className="text-mineshaft-400 mb-4 max-w-sm text-sm">
           Select if you want Infisical to trust external emails from SAML/LDAP/OIDC identity
           providers. If set to false, then Infisical will prompt SAML/LDAP/OIDC provisioned users to
           verify their email upon their first login.
@@ -257,8 +257,8 @@ export const GeneralPageForm = () => {
       </div>
 
       <div className="flex flex-col justify-start">
-        <div className="mb-2 text-xl font-medium text-mineshaft-100">Notices</div>
-        <div className="mb-4 max-w-lg text-sm text-mineshaft-400">
+        <div className="text-mineshaft-100 mb-2 text-xl font-medium">Notices</div>
+        <div className="text-mineshaft-400 mb-4 max-w-lg text-sm">
           Configure system-wide notification banners and security messages. These settings control
           the text displayed to users during authentication and throughout their session
         </div>
@@ -274,7 +274,7 @@ export const GeneralPageForm = () => {
                 placeholder="**Auth Consent Message**"
                 {...field}
                 rows={3}
-                className="h-48 thin-scrollbar max-w-lg resize-none! bg-mineshaft-800"
+                className="thin-scrollbar resize-none! bg-mineshaft-800 h-48 max-w-lg"
               />
             </FormControl>
           )}
@@ -293,7 +293,7 @@ export const GeneralPageForm = () => {
                 placeholder='<div style="background-color: red">TOP SECRET</div>'
                 {...field}
                 rows={3}
-                className="h-48 thin-scrollbar max-w-lg resize-none! bg-mineshaft-800"
+                className="thin-scrollbar resize-none! bg-mineshaft-800 h-48 max-w-lg"
               />
             </FormControl>
           )}

@@ -123,7 +123,7 @@ export const OracleDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
                           isDisabled={!isAllowed}
                           value={value as string}
                           onValueChange={onChange}
-                          className="w-full border border-mineshaft-500"
+                          className="border-mineshaft-500 w-full border"
                           dropdownContainerClassName="max-w-none"
                           isLoading={isGatewaysLoading}
                           placeholder="Default: Internet Gateway"
@@ -165,7 +165,7 @@ export const OracleDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 isDisabled={isUpdate}
                 value={value}
                 onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
+                className="border-mineshaft-500 w-full border"
                 position="popper"
                 dropdownContainerClassName="max-w-none"
               >

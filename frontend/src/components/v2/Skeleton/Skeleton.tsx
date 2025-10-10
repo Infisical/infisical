@@ -8,5 +8,5 @@ export type Props = {
 // Can be used with cards
 // Tables etc
 export const Skeleton = ({ className }: Props) => (
-  <div className={twMerge("h-6 w-full animate-pulse rounded-md bg-mineshaft-800", className)} />
+  <div className={twMerge("bg-mineshaft-800 h-6 w-full animate-pulse rounded-md", className)} />
 );

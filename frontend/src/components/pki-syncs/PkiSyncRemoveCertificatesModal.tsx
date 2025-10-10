@@ -51,7 +51,7 @@ const Content = ({ pkiSync, onComplete }: ContentProps) => {
         handleTriggerRemoveCertificates();
       }}
     >
-      <p className="mb-8 text-sm text-mineshaft-200">
+      <p className="text-mineshaft-200 mb-8 text-sm">
         Are you sure you want to remove certificates synced by Infisical from this {destinationName}{" "}
         destination?
       </p>

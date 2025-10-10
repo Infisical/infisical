@@ -25,7 +25,7 @@ export const AwsSecretsManagerSyncDestinationCol = ({ secretSync }: Props) => {
       infoBadge: "secondary",
       additionalTooltipContent: (
         <div className="mt-4">
-          <span className="text-xs text-bunker-300">Secret Name:</span>
+          <span className="text-bunker-300 text-xs">Secret Name:</span>
           <p className="text-sm">{destinationConfig.secretName}</p>
         </div>
       )

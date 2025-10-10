@@ -155,17 +155,17 @@ export const SecretApprovalRequest = () => {
           exit={{ opacity: 0, translateX: 30 }}
           className="rounded-md text-gray-300"
         >
-          <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+          <div className="border-mineshaft-600 bg-mineshaft-900 w-full rounded-lg border p-4">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <div className="flex items-start gap-1">
-                  <p className="text-xl font-medium text-mineshaft-100">Change Requests</p>
+                  <p className="text-mineshaft-100 text-xl font-medium">Change Requests</p>
                   <a
                     href="https://infisical.com/docs/documentation/platform/pr-workflows"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                    <div className="bg-yellow/20 text-yellow ml-1 mt-[0.32rem] inline-block rounded-md px-1.5 text-sm opacity-80 hover:opacity-100">
                       <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                       <span>Docs</span>
                       <FontAwesomeIcon
@@ -175,7 +175,7 @@ export const SecretApprovalRequest = () => {
                     </div>
                   </a>
                 </div>
-                <p className="text-sm text-bunker-300">Review pending and closed change requests</p>
+                <p className="text-bunker-300 text-sm">Review pending and closed change requests</p>
               </div>
             </div>
             <Input
@@ -186,7 +186,7 @@ export const SecretApprovalRequest = () => {
               className="flex-1"
               containerClassName="mb-4"
             />
-            <div className="flex items-center space-x-8 rounded-t-md border-x border-t border-mineshaft-600 bg-mineshaft-800 px-8 py-3 text-sm">
+            <div className="border-mineshaft-600 bg-mineshaft-800 flex items-center space-x-8 rounded-t-md border-x border-t px-8 py-3 text-sm">
               <div
                 role="button"
                 tabIndex={0}
@@ -234,9 +234,9 @@ export const SecretApprovalRequest = () => {
                   <DropdownMenuContent
                     align="end"
                     sideOffset={1}
-                    className="max-h-80 thin-scrollbar overflow-y-auto"
+                    className="thin-scrollbar max-h-80 overflow-y-auto"
                   >
-                    <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
+                    <DropdownMenuLabel className="bg-mineshaft-900 sticky top-0">
                       Select an Environment
                     </DropdownMenuLabel>
                     {currentProject?.environments.map(({ slug, name }) => (
@@ -271,9 +271,9 @@ export const SecretApprovalRequest = () => {
                     <DropdownMenuContent
                       align="end"
                       sideOffset={1}
-                      className="max-h-80 thin-scrollbar overflow-y-auto"
+                      className="thin-scrollbar max-h-80 overflow-y-auto"
                     >
-                      <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
+                      <DropdownMenuLabel className="bg-mineshaft-900 sticky top-0">
                         Select an Author
                       </DropdownMenuLabel>
                       {members?.map(({ user, id }) => (
@@ -295,7 +295,7 @@ export const SecretApprovalRequest = () => {
                 )}
               </div>
             </div>
-            <div className="flex flex-col rounded-b-md border-x border-t border-b border-mineshaft-600 bg-mineshaft-800">
+            <div className="border-mineshaft-600 bg-mineshaft-800 flex flex-col rounded-b-md border-x border-b border-t">
               {isRequestListEmpty && !isFiltered && (
                 <div className="py-12">
                   <EmptyState
@@ -321,7 +321,7 @@ export const SecretApprovalRequest = () => {
                 return (
                   <div
                     key={reqId}
-                    className="flex border-b border-mineshaft-600 px-8 py-3 last:border-b-0 hover:bg-mineshaft-700"
+                    className="border-mineshaft-600 hover:bg-mineshaft-700 flex border-b px-8 py-3 last:border-b-0"
                     role="button"
                     tabIndex={0}
                     onClick={() => setSelectedApprovalId(secretApproval.id)}
@@ -334,12 +334,12 @@ export const SecretApprovalRequest = () => {
                         <FontAwesomeIcon
                           icon={faCodeBranch}
                           size="sm"
-                          className="mr-1.5 text-mineshaft-300"
+                          className="text-mineshaft-300 mr-1.5"
                         />
                         {secretApproval.isReplicated
                           ? `${commits.length} secret pending import`
                           : generateCommitText(commits)}
-                        <span className="text-xs text-bunker-300"> #{secretApproval.slug}</span>
+                        <span className="text-bunker-300 text-xs"> #{secretApproval.slug}</span>
                       </div>
                       <span className="text-xs leading-3 text-gray-500">
                         Opened {formatDistance(new Date(createdAt), new Date())} ago by{" "}
@@ -394,13 +394,13 @@ export const SecretApprovalRequest = () => {
                   {Array.apply(0, Array(3)).map((_x, index) => (
                     <div
                       key={`approval-request-loading-${index + 1}`}
-                      className="flex flex-col px-8 py-4 hover:bg-mineshaft-700"
+                      className="hover:bg-mineshaft-700 flex flex-col px-8 py-4"
                     >
                       <div className="mb-2 flex items-center">
                         <FontAwesomeIcon icon={faCodeBranch} className="mr-2" />
-                        <Skeleton className="w-1/4 bg-mineshaft-600" />
+                        <Skeleton className="bg-mineshaft-600 w-1/4" />
                       </div>
-                      <Skeleton className="w-1/2 bg-mineshaft-600" />
+                      <Skeleton className="bg-mineshaft-600 w-1/2" />
                     </div>
                   ))}
                 </div>

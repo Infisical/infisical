@@ -135,16 +135,16 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
           <AccordionItem
             key={id}
             value={id}
-            className="m-0 border border-mineshaft-600 first:rounded-t last:rounded-b data-[state=open]:border-primary/40 data-[state=open]:bg-mineshaft-600/30"
+            className="border-mineshaft-600 data-[state=open]:border-primary/40 data-[state=open]:bg-mineshaft-600/30 m-0 border first:rounded-t last:rounded-b"
           >
-            <AccordionTrigger className="w-full justify-start p-4 py-8 text-mineshaft-100 hover:bg-mineshaft-700 hover:text-mineshaft-100 data-[state=open]:bg-primary/3 data-[state=open]:text-mineshaft-100">
+            <AccordionTrigger className="text-mineshaft-100 hover:bg-mineshaft-700 hover:text-mineshaft-100 data-[state=open]:bg-primary/3 data-[state=open]:text-mineshaft-100 w-full justify-start p-4 py-8">
               <div className="mr-auto flex flex-col py-2 text-left">
                 <span>{name}</span>
-                <span className="text-sm leading-3 text-mineshaft-400">{description}</span>
+                <span className="text-mineshaft-400 text-sm leading-3">{description}</span>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="border-t border-mineshaft-600">
-              <div className="max-h-80 thin-scrollbar overflow-y-auto">
+            <AccordionContent className="border-mineshaft-600 border-t">
+              <div className="thin-scrollbar max-h-80 overflow-y-auto">
                 <span className="text-mineshaft-300">Grants the following permissions:</span>
                 <div className="grid grid-cols-2 gap-4 py-2">
                   {permissions

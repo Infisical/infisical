@@ -300,7 +300,7 @@ export const SecretEditRow = ({
           <FontAwesomeIcon className="pl-2" size="sm" icon={faEyeSlash} />
         </Tooltip>
       )}
-      <div className="grow border-r border-r-mineshaft-600 pr-2 pl-1">
+      <div className="border-r-mineshaft-600 grow border-r pl-1 pr-2">
         <Controller
           control={control}
           name="value"

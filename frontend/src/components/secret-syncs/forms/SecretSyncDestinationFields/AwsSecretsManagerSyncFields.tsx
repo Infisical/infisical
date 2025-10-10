@@ -40,13 +40,13 @@ export const AwsSecretsManagerSyncFields = () => {
                 <ul className="flex list-disc flex-col gap-3 pl-4">
                   <li>
                     <p className="text-mineshaft-300">
-                      <span className="font-medium text-bunker-200">One-To-One</span>: Each
+                      <span className="text-bunker-200 font-medium">One-To-One</span>: Each
                       Infisical secret will be mapped to a separate AWS Secrets Manager secret.
                     </p>
                   </li>
                   <li>
                     <p className="text-mineshaft-300">
-                      <span className="font-medium text-bunker-200">Many-To-One</span>: All
+                      <span className="text-bunker-200 font-medium">Many-To-One</span>: All
                       Infisical secrets will be mapped to a single AWS Secrets Manager secret.
                     </p>
                   </li>
@@ -63,7 +63,7 @@ export const AwsSecretsManagerSyncFields = () => {
                 onChange(val);
                 setValue("syncOptions.syncSecretMetadataAsTags", false);
               }}
-              className="w-full border border-mineshaft-500 capitalize"
+              className="border-mineshaft-500 w-full border capitalize"
               position="popper"
               placeholder="Select an option..."
               dropdownContainerClassName="max-w-none"

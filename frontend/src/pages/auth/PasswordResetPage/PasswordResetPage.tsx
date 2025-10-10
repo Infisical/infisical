@@ -36,9 +36,9 @@ export const PasswordResetPage = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="flex min-h-screen flex-col justify-center bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28">
+    <div className="bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 flex min-h-screen flex-col justify-center px-6 pb-28">
       <Link to="/">
-        <div className="mt-20 mb-4 flex justify-center">
+        <div className="mb-4 mt-20 flex justify-center">
           <img src="/images/gradientLogo.svg" className="h-[90px] w-[120px]" alt="Infisical Logo" />
         </div>
       </Link>

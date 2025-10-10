@@ -89,7 +89,7 @@ const DecryptForm = ({ cmek }: FormProps) => {
       {plaintext ? (
         <FormControl label="Decrypted Data (plaintext)">
           <TextArea
-            className="max-h-80 min-h-40 max-w-full min-w-full"
+            className="max-h-80 min-h-40 min-w-full max-w-full"
             isDisabled
             value={plaintext}
           />
@@ -102,7 +102,7 @@ const DecryptForm = ({ cmek }: FormProps) => {
         >
           <TextArea
             {...register("ciphertext")}
-            className="max-h-80 min-h-40 max-w-full min-w-full"
+            className="max-h-80 min-h-40 min-w-full max-w-full"
           />
         </FormControl>
       )}

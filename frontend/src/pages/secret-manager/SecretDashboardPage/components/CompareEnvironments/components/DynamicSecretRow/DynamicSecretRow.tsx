@@ -18,7 +18,7 @@ export const DynamicSecretRow = ({
   colWidth
 }: Props) => {
   return (
-    <Tr isHoverable className="group border-mineshaft-500">
+    <Tr isHoverable className="border-mineshaft-500 group">
       <ResourceNameCell
         label={dynamicSecretName}
         icon={faFingerprint}

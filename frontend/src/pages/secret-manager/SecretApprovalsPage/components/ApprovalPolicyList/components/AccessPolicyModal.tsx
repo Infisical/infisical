@@ -438,7 +438,7 @@ const Form = ({
                     onChange(val as PolicyType);
                     resetField("secretPath");
                   }}
-                  className="w-full border border-mineshaft-500"
+                  className="border-mineshaft-500 w-full border"
                 >
                   {Object.values(PolicyType).map((policyType) => {
                     return (
@@ -555,17 +555,17 @@ const Form = ({
         </div>
         <div className="mb-2">
           <p>Approvers</p>
-          <p className="font-inter text-xs text-mineshaft-300 opacity-90">
+          <p className="font-inter text-mineshaft-300 text-xs opacity-90">
             Select members or groups that are allowed to approve requests from this policy.
           </p>
         </div>
         {isAccessPolicyType ? (
           <>
-            <div className="max-h-64 thin-scrollbar space-y-2 overflow-y-auto rounded-sm border border-mineshaft-600 bg-mineshaft-900 p-2">
+            <div className="thin-scrollbar border-mineshaft-600 bg-mineshaft-900 max-h-64 space-y-2 overflow-y-auto rounded-sm border p-2">
               {sequenceApproversFieldArray.fields.map((el, index) => (
                 <div
                   className={twMerge(
-                    "rounded-sm border border-mineshaft-500 bg-mineshaft-700 p-3 pb-0 shadow-inner",
+                    "border-mineshaft-500 bg-mineshaft-700 rounded-sm border p-3 pb-0 shadow-inner",
                     dragOverItem === index ? "border-2 border-blue-400" : "",
                     draggedItem === index ? "opacity-50" : ""
                   )}
@@ -576,8 +576,8 @@ const Form = ({
                   <div className="mb-3 flex items-center justify-between">
                     <Tag>Step {index + 1}</Tag>
                     <div className="flex items-center gap-3">
-                      <div className="inline text-xs text-mineshaft-400">Min. Approvals</div>
-                      <div className="mr-2 w-20 border-r border-mineshaft-400 pr-3">
+                      <div className="text-mineshaft-400 inline text-xs">Min. Approvals</div>
+                      <div className="border-mineshaft-400 mr-2 w-20 border-r pr-3">
                         <Controller
                           control={control}
                           name={`sequenceApprovers.${index}.approvals` as const}
@@ -853,7 +853,7 @@ const Form = ({
             </div>
 
             {bypasserCount <= 0 && (
-              <div className="mt-1 flex rounded-r border-l-2 border-l-red-500 bg-mineshaft-300/5 px-4 py-2.5 text-sm text-bunker-300">
+              <div className="bg-mineshaft-300/5 text-bunker-300 mt-1 flex rounded-r border-l-2 border-l-red-500 px-4 py-2.5 text-sm">
                 Not selecting specific users or groups will allow anyone to bypass this policy.
               </div>
             )}

@@ -97,7 +97,7 @@ export const OrgGithubSyncSection = () => {
   };
 
   return (
-    <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
+    <div className="border-mineshaft-600 bg-mineshaft-900 mt-4 rounded-lg border p-6">
       <p className="text-xl font-medium text-gray-200">
         Sync user groups from your GitHub Organization
       </p>
@@ -123,7 +123,7 @@ export const OrgGithubSyncSection = () => {
             </OrgPermissionCan>
           </div>
         </div>
-        <p className="text-sm text-mineshaft-300">
+        <p className="text-mineshaft-300 text-sm">
           {isPending ? <Skeleton /> : null}
           {data ? data?.githubOrgName : "Not configured"}
         </p>
@@ -149,7 +149,7 @@ export const OrgGithubSyncSection = () => {
               )}
             </OrgPermissionCan>
           </div>
-          <p className="text-sm text-mineshaft-300">
+          <p className="text-mineshaft-300 text-sm">
             Allow group provisioning/deprovisioning with GitHub
           </p>
         </div>
@@ -175,7 +175,7 @@ export const OrgGithubSyncSection = () => {
               )}
             </OrgPermissionCan>
           </div>
-          <p className="text-sm text-mineshaft-300">
+          <p className="text-mineshaft-300 text-sm">
             Manually sync GitHub teams for all organization members. This will update team
             memberships for users who have previously logged in with GitHub.
           </p>

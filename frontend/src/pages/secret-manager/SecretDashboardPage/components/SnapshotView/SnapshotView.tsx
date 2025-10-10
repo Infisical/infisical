@@ -160,13 +160,13 @@ export const SnapshotView = ({
         <Tag colorSchema="green">{new Date(snapshotData?.createdAt || "").toLocaleString()}</Tag>
       </div>
       <NoticeBannerV2 title="Snapshots are being deprecated" className="my-2">
-        <p className="my-1 text-sm text-mineshaft-300">
+        <p className="text-mineshaft-300 my-1 text-sm">
           Snapshots will be replaced by{" "}
           <a
             target="_blank"
             href="https://infisical.com/docs/documentation/platform/pit-recovery"
             rel="noopener noreferrer"
-            className="underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
+            className="decoration-primary hover:text-mineshaft-200 underline underline-offset-2"
           >
             Commits
           </a>{" "}
@@ -176,7 +176,7 @@ export const SnapshotView = ({
       <div className="mt-4 flex items-center space-x-2">
         <div className="w-2/5">
           <Input
-            className="bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
+            className="bg-mineshaft-800 placeholder-mineshaft-50 focus:bg-mineshaft-700/80 duration-200"
             placeholder="Search by folder name, key name ..."
             leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
             value={search}
@@ -227,9 +227,9 @@ export const SnapshotView = ({
           </ProjectPermissionCan>
         </div>
       </div>
-      <div className="mt-4 rounded-md bg-mineshaft-800 text-left text-sm text-bunker-300">
+      <div className="bg-mineshaft-800 text-bunker-300 mt-4 rounded-md text-left text-sm">
         <div className="flex flex-col">
-          <div className="flex border-b border-mineshaft-600 font-medium">
+          <div className="border-mineshaft-600 flex border-b font-medium">
             <div className="w-12 shrink-0" />
             <div className="w-12 shrink-0" />
             <div className="flex grow items-center px-4 py-2">Changes</div>
@@ -239,7 +239,7 @@ export const SnapshotView = ({
             .filter((a) => a.post.name.toLowerCase().includes(search.toLowerCase()))
             .map(({ mode, pre, post }, index) => (
               <div
-                className="group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700"
+                className="border-mineshaft-600 hover:bg-mineshaft-700 group flex cursor-pointer border-b"
                 key={`folder-${mode}-${index + 1}`}
               >
                 <div className="w-12 shrink-0 px-4 py-3">

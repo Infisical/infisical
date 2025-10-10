@@ -211,7 +211,7 @@ export const ShareSecretForm = ({
               <textarea
                 placeholder="Enter sensitive data to share via an encrypted link..."
                 {...field}
-                className="h-40 min-h-[70px] w-full rounded-md border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5 text-bunker-300 outline-hidden transition-all group-hover:mr-2 placeholder:text-mineshaft-400 hover:border-primary-400/30 focus:border-primary-400/50"
+                className="border-mineshaft-600 bg-mineshaft-900 text-bunker-300 outline-hidden placeholder:text-mineshaft-400 hover:border-primary-400/30 focus:border-primary-400/50 h-40 min-h-[70px] w-full rounded-md border px-2 py-1.5 transition-all group-hover:mr-2"
                 disabled={value !== undefined}
               />
             </FormControl>
@@ -257,7 +257,7 @@ export const ShareSecretForm = ({
                 isError={Boolean(error)}
               >
                 <Switch
-                  className={`mr-2 ml-0 bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-primary ${!allowSecretSharingOutsideOrganization ? "opacity-50" : ""}`}
+                  className={`bg-mineshaft-400/50 data-[state=checked]:bg-primary ml-0 mr-2 shadow-inner ${!allowSecretSharingOutsideOrganization ? "opacity-50" : ""}`}
                   thumbClassName="bg-mineshaft-800"
                   containerClassName="flex-row-reverse w-fit"
                   isChecked={
@@ -436,7 +436,7 @@ export const ShareSecretForm = ({
           <span>Shared secret link has been emailed to select users.</span>
         </div>
         <Button
-          className="mt-6 w-full bg-mineshaft-700 py-3 text-bunker-200"
+          className="bg-mineshaft-700 text-bunker-200 mt-6 w-full py-3"
           colorSchema="primary"
           variant="outline_bg"
           size="sm"
@@ -465,7 +465,7 @@ export const ShareSecretForm = ({
         </IconButton>
       </div>
       <Button
-        className="mt-4 w-full bg-mineshaft-700 py-3 text-bunker-200"
+        className="bg-mineshaft-700 text-bunker-200 mt-4 w-full py-3"
         colorSchema="primary"
         variant="outline_bg"
         size="sm"

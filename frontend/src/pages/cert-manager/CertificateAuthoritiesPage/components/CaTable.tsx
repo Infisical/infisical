@@ -74,7 +74,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
               cas.map((ca) => {
                 return (
                   <Tr
-                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                    className="hover:bg-mineshaft-700 h-10 cursor-pointer transition-colors duration-100"
                     key={`ca-${ca.id}`}
                     onClick={() =>
                       navigate({

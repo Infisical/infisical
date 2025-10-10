@@ -185,7 +185,7 @@ export const EditDynamicSecretSapAseForm = ({
             </div>
           </div>
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="border-mineshaft-500 text-mineshaft-200 mb-4 mt-4 border-b pb-2 pl-1 font-medium">
               Configuration
             </div>
             <div className="flex flex-col">
@@ -280,7 +280,7 @@ export const EditDynamicSecretSapAseForm = ({
                     </FormControl>
                   )}
                 />
-                <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
+                <Accordion type="single" collapsible className="bg-mineshaft-700 mb-2 w-full">
                   <AccordionItem value="advance-statements">
                     <AccordionTrigger>Modify SQL Statements</AccordionTrigger>
                     <AccordionContent>

@@ -12,7 +12,7 @@ type Props = {
 
 export const ProjectListToggle = ({ value, onChange }: Props) => {
   return (
-    <div className="flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+    <div className="border-mineshaft-600 bg-mineshaft-800 flex gap-x-0.5 rounded-md border p-1">
       <Button
         variant="outline_bg"
         onClick={() => {
@@ -21,7 +21,7 @@ export const ProjectListToggle = ({ value, onChange }: Props) => {
         size="xs"
         className={`${
           value === ProjectListView.MyProjects ? "bg-mineshaft-500" : "bg-transparent"
-        } min-w-[2.4rem] rounded border-none hover:bg-mineshaft-600`}
+        } hover:bg-mineshaft-600 min-w-[2.4rem] rounded border-none`}
       >
         My Projects
       </Button>
@@ -33,7 +33,7 @@ export const ProjectListToggle = ({ value, onChange }: Props) => {
         size="xs"
         className={`${
           value === ProjectListView.AllProjects ? "bg-mineshaft-500" : "bg-transparent"
-        } min-w-[2.4rem] rounded border-none hover:bg-mineshaft-600`}
+        } hover:bg-mineshaft-600 min-w-[2.4rem] rounded border-none`}
       >
         All Projects
       </Button>

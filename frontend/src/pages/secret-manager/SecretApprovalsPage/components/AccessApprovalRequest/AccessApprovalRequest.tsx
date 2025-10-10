@@ -72,11 +72,11 @@ const generateRequestText = (request: TAccessApprovalRequest) => {
     <div className="flex items-center justify-between text-sm">
       <div>
         Requested {isTemporary ? "temporary" : "permanent"} access to{" "}
-        <code className="mx-1 rounded-sm bg-mineshaft-600 px-1.5 py-0.5 font-mono text-[13px] text-mineshaft-200">
+        <code className="bg-mineshaft-600 text-mineshaft-200 mx-1 rounded-sm px-1.5 py-0.5 font-mono text-[13px]">
           {request.policy.secretPath}
         </code>{" "}
         in{" "}
-        <code className="mx-1 rounded-sm bg-mineshaft-600 px-1.5 py-0.5 font-mono text-[13px] text-mineshaft-200">
+        <code className="bg-mineshaft-600 text-mineshaft-200 mx-1 rounded-sm px-1.5 py-0.5 font-mono text-[13px]">
           {request.environmentName}
         </code>
       </div>
@@ -307,17 +307,17 @@ export const AccessApprovalRequest = ({
         exit={{ opacity: 0, translateX: 30 }}
         className="rounded-md text-gray-300"
       >
-        <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+        <div className="border-mineshaft-600 bg-mineshaft-900 w-full rounded-lg border p-4">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <div className="flex items-start gap-1">
-                <p className="text-xl font-medium text-mineshaft-100">Access Requests</p>
+                <p className="text-mineshaft-100 text-xl font-medium">Access Requests</p>
                 <a
                   href="https://infisical.com/docs/documentation/platform/access-controls/access-requests"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                  <div className="bg-yellow/20 text-yellow ml-1 mt-[0.32rem] inline-block rounded-md px-1.5 text-sm opacity-80 hover:opacity-100">
                     <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                     <span>Docs</span>
                     <FontAwesomeIcon
@@ -327,7 +327,7 @@ export const AccessApprovalRequest = ({
                   </div>
                 </a>
               </div>
-              <p className="text-sm text-bunker-300">
+              <p className="text-bunker-300 text-sm">
                 Request and review access to secrets in sensitive environments and folders
               </p>
             </div>
@@ -359,7 +359,7 @@ export const AccessApprovalRequest = ({
             className="flex-1"
             containerClassName="mb-4"
           />
-          <div className="flex items-center space-x-8 rounded-t-md border-x border-t border-mineshaft-600 bg-mineshaft-800 px-8 py-3 text-sm">
+          <div className="border-mineshaft-600 bg-mineshaft-800 flex items-center space-x-8 rounded-t-md border-x border-t px-8 py-3 text-sm">
             <div
               role="button"
               tabIndex={0}
@@ -405,9 +405,9 @@ export const AccessApprovalRequest = ({
                 <DropdownMenuContent
                   align="end"
                   sideOffset={1}
-                  className="max-h-80 thin-scrollbar overflow-y-auto"
+                  className="thin-scrollbar max-h-80 overflow-y-auto"
                 >
-                  <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
+                  <DropdownMenuLabel className="bg-mineshaft-900 sticky top-0">
                     Select an Environment
                   </DropdownMenuLabel>
                   {currentProject?.environments.map(({ slug, name }) => (
@@ -442,9 +442,9 @@ export const AccessApprovalRequest = ({
                   <DropdownMenuContent
                     align="end"
                     sideOffset={1}
-                    className="max-h-80 thin-scrollbar overflow-y-auto"
+                    className="thin-scrollbar max-h-80 overflow-y-auto"
                   >
-                    <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
+                    <DropdownMenuLabel className="bg-mineshaft-900 sticky top-0">
                       Select Requesting User
                     </DropdownMenuLabel>
                     {members?.map(({ user: membershipUser, id }) => (
@@ -470,7 +470,7 @@ export const AccessApprovalRequest = ({
               )}
             </div>
           </div>
-          <div className="flex flex-col rounded-b-md border-x border-t border-b border-mineshaft-600 bg-mineshaft-800">
+          <div className="border-mineshaft-600 bg-mineshaft-800 flex flex-col rounded-b-md border-x border-b border-t">
             {filteredRequests?.length === 0 && !isFiltered && (
               <div className="py-12">
                 <EmptyState
@@ -490,7 +490,7 @@ export const AccessApprovalRequest = ({
                 return (
                   <div
                     key={request.id}
-                    className="flex w-full cursor-pointer border-b border-mineshaft-600 px-8 py-3 last:border-b-0 hover:bg-mineshaft-700 aria-disabled:opacity-80"
+                    className="border-mineshaft-600 hover:bg-mineshaft-700 flex w-full cursor-pointer border-b px-8 py-3 last:border-b-0 aria-disabled:opacity-80"
                     role="button"
                     tabIndex={0}
                     onClick={() => handleSelectRequest(request)}
@@ -506,7 +506,7 @@ export const AccessApprovalRequest = ({
                           <FontAwesomeIcon
                             icon={faLock}
                             size="xs"
-                            className="mr-1.5 text-mineshaft-300"
+                            className="text-mineshaft-300 mr-1.5"
                           />
                           {generateRequestText(request)}
                         </div>
@@ -526,7 +526,7 @@ export const AccessApprovalRequest = ({
                       </div>
                       <div className="flex items-center gap-3">
                         {request.requestedByUserId === user.id && (
-                          <div className="flex items-center gap-1.5 text-xs whitespace-nowrap text-bunker-300">
+                          <div className="text-bunker-300 flex items-center gap-1.5 whitespace-nowrap text-xs">
                             <FontAwesomeIcon icon={faUser} size="sm" />
                             <span>Requested By You</span>
                           </div>

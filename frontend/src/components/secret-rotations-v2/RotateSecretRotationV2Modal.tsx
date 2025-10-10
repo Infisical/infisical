@@ -48,7 +48,7 @@ const Content = ({ secretRotation, onComplete }: ContentProps) => {
 
   return (
     <div>
-      <p className="mb-8 text-sm text-mineshaft-200">
+      <p className="text-mineshaft-200 mb-8 text-sm">
         Are you sure you want to rotate the secrets for this {rotationType} Rotation?
       </p>
       <div className="mt-8 flex w-full items-center justify-between gap-2">

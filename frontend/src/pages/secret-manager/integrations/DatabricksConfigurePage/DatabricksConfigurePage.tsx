@@ -105,7 +105,7 @@ export const DatabricksConfigurePage = () => {
       <Helmet>
         <title>Set Up Databricks Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600">
+      <Card className="border-mineshaft-600 max-w-lg rounded-md border">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Choose which environment or folder in Infisical you want to sync to which Databricks secrets scope."
@@ -125,7 +125,7 @@ export const DatabricksConfigurePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="bg-yellow/20 text-yellow mb-1 ml-2 inline-block cursor-default rounded-md px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
@@ -141,7 +141,7 @@ export const DatabricksConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
+            className="border-mineshaft-500 w-full border"
           >
             {currentProject?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -168,7 +168,7 @@ export const DatabricksConfigurePage = () => {
               onValueChange={(val) => {
                 setTargetScope(val);
               }}
-              className="w-full border border-mineshaft-500"
+              className="border-mineshaft-500 w-full border"
               placeholder={
                 integrationAuthScopes.length === 0 ? "No scopes found." : "Select scope..."
               }
@@ -192,24 +192,24 @@ export const DatabricksConfigurePage = () => {
           onClick={handleButtonClick}
           colorSchema="primary"
           variant="outline_bg"
-          className="mt-2 mr-6 mb-6 ml-auto w-min"
+          className="mb-6 ml-auto mr-6 mt-2 w-min"
           isLoading={isPending}
           isDisabled={integrationAuthScopes.length === 0 || isPending}
         >
           Create Integration
         </Button>
       </Card>
-      <div className="mt-6 w-full max-w-md border-t border-mineshaft-800" />
-      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
+      <div className="border-mineshaft-800 mt-6 w-full max-w-md border-t" />
+      <div className="border-mineshaft-600 bg-mineshaft-800 mt-6 flex w-full max-w-lg flex-col rounded-md border p-4">
         <div className="flex flex-row items-center">
-          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-mineshaft-200" />{" "}
-          <span className="text-md ml-3 text-mineshaft-100">Pro Tip</span>
+          <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-200 text-xl" />{" "}
+          <span className="text-md text-mineshaft-100 ml-3">Pro Tip</span>
         </div>
-        <span className="mt-4 text-sm text-mineshaft-300">
+        <span className="text-mineshaft-300 mt-4 text-sm">
           When integrating with Databricks, Infisical is intended to be the source of truth for the
           secrets in the configured Databricks scope.
         </span>
-        <span className="mt-4 text-sm text-mineshaft-300">
+        <span className="text-mineshaft-300 mt-4 text-sm">
           Any secrets not present in Infisical will be removed from the specified scope. To prevent
           removal of secrets not managed by Infisical, Infisical recommends creating a designated
           secret scope for your integration.
@@ -229,12 +229,12 @@ export const DatabricksConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+        <div className="border-mineshaft-600 bg-mineshaft-800 text-mineshaft-200 flex h-max max-w-md flex-col rounded-md border p-6 text-center">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}
             <a
-              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              className="text-mineshaft-100 decoration-primary-500 inline cursor-pointer underline underline-offset-4 opacity-80 duration-200 hover:opacity-100"
               target="_blank"
               rel="noopener noreferrer"
               href="mailto:support@infisical.com"

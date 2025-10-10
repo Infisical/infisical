@@ -28,8 +28,8 @@ export const IdentityTokens = ({ identityId, handlePopUpOpen }: Props) => {
   return (
     <div>
       {tokens?.length ? (
-        <div className="flex items-center justify-between border-b border-bunker-400 pb-1">
-          <p className="text-sm font-medium text-bunker-300">{`Access Tokens (${tokens.length})`}</p>
+        <div className="border-bunker-400 flex items-center justify-between border-b pb-1">
+          <p className="text-bunker-300 text-sm font-medium">{`Access Tokens (${tokens.length})`}</p>
           <Button
             size="xs"
             className="underline"
@@ -54,16 +54,16 @@ export const IdentityTokens = ({ identityId, handlePopUpOpen }: Props) => {
         );
         return (
           <div
-            className="group flex items-center justify-between border-b border-mineshaft-500 px-2 py-2 last:pb-0"
+            className="border-mineshaft-500 group flex items-center justify-between border-b px-2 py-2 last:pb-0"
             key={`identity-token-${token.id}`}
           >
             <div className="flex items-center">
               <FontAwesomeIcon size="xs" className="text-mineshaft-400" icon={faKey} />
               <div className="ml-3">
-                <p className="text-sm font-medium text-mineshaft-300">
+                <p className="text-mineshaft-300 text-sm font-medium">
                   {token.name ? token.name : "-"}
                 </p>
-                <p className="text-xs text-mineshaft-400">
+                <p className="text-mineshaft-400 text-xs">
                   {token.isAccessTokenRevoked
                     ? "Revoked"
                     : `Expires on ${format(expiresAt, "yyyy-MM-dd")}`}
@@ -114,7 +114,7 @@ export const IdentityTokens = ({ identityId, handlePopUpOpen }: Props) => {
         );
       })}
       <Button
-        className="mt-4 mr-4 w-full"
+        className="mr-4 mt-4 w-full"
         colorSchema="secondary"
         type="submit"
         size="xs"

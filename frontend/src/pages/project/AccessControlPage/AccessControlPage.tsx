@@ -37,7 +37,7 @@ const Page = () => {
   const isSecretManager = currentProject.type === ProjectType.SecretManager;
 
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="bg-bunker-800 container mx-auto flex flex-col justify-between text-white">
       <div className="mx-auto mb-6 w-full max-w-7xl">
         <PageHeader
           title="Access Control"

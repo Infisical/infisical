@@ -66,7 +66,7 @@ export const RenderSyncFields = () => {
                     return (
                       <li key={name}>
                         <p className="text-mineshaft-300">
-                          <span className="font-medium text-bunker-200">{name}</span>: {description}
+                          <span className="text-bunker-200 font-medium">{name}</span>: {description}
                         </p>
                       </li>
                     );
@@ -78,7 +78,7 @@ export const RenderSyncFields = () => {
             <Select
               value={value}
               onValueChange={(val) => onChange(val)}
-              className="w-full border border-mineshaft-500 capitalize"
+              className="border-mineshaft-500 w-full border capitalize"
               position="popper"
               placeholder="Select a scope..."
               dropdownContainerClassName="max-w-none"

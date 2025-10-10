@@ -87,13 +87,13 @@ export const ProjectTemplateEditRoleForm = ({
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+      className="border-mineshaft-600 bg-mineshaft-900 w-full rounded-lg border p-4"
     >
       <FormProvider {...formMethods}>
-        <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
+        <div className="border-mineshaft-400 flex items-center justify-between border-b pb-2">
           <Button
             leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-            className="text-base font-medium text-mineshaft-200"
+            className="text-mineshaft-200 text-base font-medium"
             variant="link"
             onClick={onGoBack}
           >
@@ -103,7 +103,7 @@ export const ProjectTemplateEditRoleForm = ({
             <div className="flex items-center space-x-4">
               {isDirty && (
                 <Button
-                  className="mr-4 text-mineshaft-300"
+                  className="text-mineshaft-300 mr-4"
                   variant="link"
                   isDisabled={isSubmitting}
                   isLoading={isSubmitting}
@@ -117,7 +117,7 @@ export const ProjectTemplateEditRoleForm = ({
                   variant="outline_bg"
                   type="submit"
                   className={twMerge(
-                    "mr-4 h-10 border border-primary",
+                    "border-primary mr-4 h-10 border",
                     isDirty && "bg-primary text-black"
                   )}
                   isDisabled={isSubmitting || !isDirty || isDisabled}

@@ -77,7 +77,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
 
   return (
     <>
-      <p className="mb-4 text-sm text-bunker-300">Configure how secrets should be synced.</p>
+      <p className="text-bunker-300 mb-4 text-sm">Configure how secrets should be synced.</p>
       {!hideInitialSync && (
         <>
           <Controller
@@ -100,7 +100,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
                           return (
                             <li key={name}>
                               <p className="text-mineshaft-300">
-                                <span className="font-medium text-bunker-200">{name}</span>:{" "}
+                                <span className="text-bunker-200 font-medium">{name}</span>:{" "}
                                 {description}
                               </p>
                             </li>
@@ -118,7 +118,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
                   isDisabled={!syncOption?.canImportSecrets}
                   value={value}
                   onValueChange={(val) => onChange(val)}
-                  className="w-full border border-mineshaft-500"
+                  className="border-mineshaft-500 w-full border"
                   position="popper"
                   placeholder="Select an option..."
                   dropdownContainerClassName="max-w-none"
@@ -137,7 +137,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
             )}
           />
           {!syncOption?.canImportSecrets && (
-            <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
+            <p className="text-yellow -mt-2.5 mb-2.5 text-xs">
               <FontAwesomeIcon className="mr-1" size="xs" icon={faTriangleExclamation} />
               {destinationName} only supports overwriting destination secrets.{" "}
               {!currentSyncOption.disableSecretDeletion &&
@@ -218,7 +218,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
           return (
             <FormControl isError={Boolean(error)} errorText={error?.message}>
               <Switch
-                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                className="bg-mineshaft-400/80 data-[state=checked]:bg-green/80 shadow-inner"
                 id="auto-sync-enabled"
                 thumbClassName="bg-mineshaft-800"
                 onCheckedChange={onChange}

@@ -93,7 +93,7 @@ const SignForm = ({ cmek }: FormProps) => {
       {signature ? (
         <FormControl label="Data Signature">
           <TextArea
-            className="max-h-80 min-h-40 max-w-full min-w-full"
+            className="max-h-80 min-h-40 min-w-full max-w-full"
             isDisabled
             value={signature}
           />
@@ -105,7 +105,7 @@ const SignForm = ({ cmek }: FormProps) => {
             errorText={errors.data?.message}
             isError={Boolean(errors.data)}
           >
-            <TextArea {...register("data")} className="max-h-80 min-h-40 max-w-full min-w-full" />
+            <TextArea {...register("data")} className="max-h-80 min-h-40 min-w-full max-w-full" />
           </FormControl>
 
           <div className="mb-6 flex w-full items-center justify-between gap-2">

@@ -210,14 +210,14 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                "border-mineshaft-600 bg-mineshaft-800 hover:border-primary/60 hover:bg-primary/10 flex h-10 w-11 items-center justify-center overflow-hidden border p-0 transition-all",
                 isTableFiltered && "border-primary/50 text-primary"
               )}
             >
               <FontAwesomeIcon icon={faFilter} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
+          <DropdownMenuContent className="thin-scrollbar max-h-[70vh] overflow-y-auto" align="end">
             <DropdownMenuLabel>Status</DropdownMenuLabel>
             {Object.values(SecretScanningFindingStatus).map((status) => (
               <DropdownMenuItem
@@ -422,7 +422,7 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
         findings={popUp.updateFinding.data}
       />
       {selectedRows.length > 0 && (
-        <div className="mt-4 flex items-center justify-between rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-2 pl-4">
+        <div className="border-mineshaft-600 bg-mineshaft-800 mt-4 flex items-center justify-between rounded-lg border p-2 pl-4">
           <span>
             {selectedRows.length} finding{selectedRows.length === 1 ? "" : "s"} selected
           </span>

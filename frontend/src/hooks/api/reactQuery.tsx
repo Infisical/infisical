@@ -107,7 +107,7 @@ export const onRequestError = (error: unknown) => {
                           {el.subject.toString()} {hasConditions && "with conditions:"}
                         </div>
                         {hasConditions && (
-                          <ul className="flex list-disc flex-col gap-1 pt-2 pl-5 text-sm">
+                          <ul className="flex list-disc flex-col gap-1 pl-5 pt-2 text-sm">
                             {Object.keys(el.conditions || {}).flatMap((field, fieldIndex) => {
                               const operators = (
                                 el.conditions as Record<

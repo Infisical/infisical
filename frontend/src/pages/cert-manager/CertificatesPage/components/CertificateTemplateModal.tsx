@@ -399,7 +399,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
                         errorText={error?.message}
                         isError={Boolean(error)}
                       >
-                        <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
+                        <div className="mb-7 mt-2 grid grid-cols-2 gap-2">
                           {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
                             return (
                               <Checkbox
@@ -432,7 +432,7 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
                         errorText={error?.message}
                         isError={Boolean(error)}
                       >
-                        <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
+                        <div className="mb-7 mt-2 grid grid-cols-2 gap-2">
                           {EXTENDED_KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
                             return (
                               <Checkbox

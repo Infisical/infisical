@@ -46,7 +46,7 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
         <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="mt-4 text-sm text-mineshaft-400">Loading options...</p>
+        <p className="text-mineshaft-400 mt-4 text-sm">Loading options...</p>
       </div>
     );
   }
@@ -60,7 +60,7 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
         placeholder="Search options..."
         className="bg-mineshaft-800 placeholder:text-mineshaft-400"
       />
-      <div className="grid h-118 grid-cols-4 content-start gap-2">
+      <div className="h-118 grid grid-cols-4 content-start gap-2">
         {filteredOptions.slice(offset, perPage * page)?.map(({ destination, enterprise }) => {
           const { image, name } = PKI_SYNC_MAP[destination];
           return (
@@ -72,7 +72,7 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
                   ? handlePopUpOpen("upgradePlan")
                   : onSelect(destination)
               }
-              className="group relative flex h-28 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
+              className="border-mineshaft-600 bg-mineshaft-700 hover:bg-mineshaft-600 group relative flex h-28 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-md border p-4 duration-200"
             >
               <img
                 src={`/images/integrations/${image}`}
@@ -109,7 +109,7 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
             service you're looking for,`}{" "}
                     <a
                       target="_blank"
-                      className="underline hover:text-mineshaft-300"
+                      className="hover:text-mineshaft-300 underline"
                       href="https://infisical.com/slack"
                       rel="noopener noreferrer"
                     >
@@ -118,7 +118,7 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
                     or{" "}
                     <a
                       target="_blank"
-                      className="underline hover:text-mineshaft-300"
+                      className="hover:text-mineshaft-300 underline"
                       href="https://github.com/Infisical/infisical/discussions"
                       rel="noopener noreferrer"
                     >
@@ -129,7 +129,7 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
                 </>
               }
             >
-              <div className="-ml-3 flex items-center gap-1.5 text-mineshaft-400">
+              <div className="text-mineshaft-400 -ml-3 flex items-center gap-1.5">
                 <span className="text-xs">
                   Don&#39;t see the third-party service you&#39;re looking for?
                 </span>

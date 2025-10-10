@@ -12,7 +12,7 @@ export const PageHeader = ({ title, description, children, className }: Props) =
   <div className={twMerge("mb-4 w-full", className)}>
     <div className="flex w-full justify-between">
       <div className="w-full">
-        <h1 className="mr-4 text-3xl font-medium text-white capitalize">{title}</h1>
+        <h1 className="mr-4 text-3xl font-medium capitalize text-white">{title}</h1>
       </div>
       <div className="flex items-center gap-2">{children}</div>
     </div>

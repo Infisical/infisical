@@ -131,7 +131,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   isDisabled={isUpdate}
                   value={value}
                   onValueChange={(val) => onChange(val)}
-                  className="w-full border border-mineshaft-500"
+                  className="border-mineshaft-500 w-full border"
                   position="popper"
                   dropdownContainerClassName="max-w-none"
                 >
@@ -159,7 +159,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   isDisabled={isUpdate}
                   value={value}
                   onValueChange={(val) => onChange(val)}
-                  className="w-full border border-mineshaft-500 capitalize"
+                  className="border-mineshaft-500 w-full border capitalize"
                   position="popper"
                   dropdownContainerClassName="max-w-none"
                 >
@@ -177,13 +177,13 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
         </div>
         <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
           <Tab.List
-            className={`-pb-1 ${selectedTabIndex === 1 ? "mb-3" : "mb-6"} w-full border-b-2 border-mineshaft-600`}
+            className={`-pb-1 ${selectedTabIndex === 1 ? "mb-3" : "mb-6"} border-mineshaft-600 w-full border-b-2`}
           >
             <Tab
               className={({ selected }) =>
-                `-mb-[0.14rem] w-30 px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
+                `outline-hidden -mb-[0.14rem] whitespace-nowrap px-4 py-2 text-sm font-medium disabled:opacity-60 ${
                   selected
-                    ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
+                    ? "border-mineshaft-300 text-mineshaft-200 border-b-2"
                     : "text-bunker-300"
                 }`
               }
@@ -192,9 +192,9 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
             </Tab>
             <Tab
               className={({ selected }) =>
-                `-mb-[0.14rem] w-30 px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
+                `outline-hidden -mb-[0.14rem] whitespace-nowrap px-4 py-2 text-sm font-medium disabled:opacity-60 ${
                   selected
-                    ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
+                    ? "border-mineshaft-300 text-mineshaft-200 border-b-2"
                     : "text-bunker-300"
                 }`
               }
@@ -203,9 +203,9 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
             </Tab>
           </Tab.List>
           {selectedTabIndex === 1 && (
-            <div className="mb-2 text-xs text-mineshaft-300">Requires ldaps:// URL</div>
+            <div className="text-mineshaft-300 mb-2 text-xs">Requires ldaps:// URL</div>
           )}
-          <Tab.Panels className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
+          <Tab.Panels className="border-mineshaft-600 bg-mineshaft-700/70 mb-4 rounded-sm border p-3 pb-0">
             <Tab.Panel>
               <Controller
                 name="credentials.url"
@@ -266,7 +266,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     isOptional
                   >
                     <TextArea
-                      className="h-[3.6rem] resize-none!"
+                      className="resize-none! h-[3.6rem]"
                       {...field}
                       isDisabled={!sslEnabled}
                     />
@@ -283,7 +283,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     errorText={error?.message}
                   >
                     <Switch
-                      className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                      className="bg-mineshaft-400/50 data-[state=checked]:bg-green/80 shadow-inner"
                       id="ssl-reject-unauthorized"
                       thumbClassName="bg-mineshaft-800"
                       isChecked={sslEnabled ? value : false}

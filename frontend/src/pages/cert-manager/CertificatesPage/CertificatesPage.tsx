@@ -27,7 +27,7 @@ export const CertificatesPage = () => {
   );
 
   return (
-    <div className="container mx-auto flex h-full flex-col justify-between bg-bunker-800 text-white">
+    <div className="bg-bunker-800 container mx-auto flex h-full flex-col justify-between text-white">
       <Helmet>
         <title>{t("common.head-title", { title: "Certificates" })}</title>
       </Helmet>

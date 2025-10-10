@@ -145,7 +145,7 @@ const Page = () => {
   };
 
   return (
-    <div className="container mx-auto w-full max-w-7xl bg-bunker-800 text-white">
+    <div className="bg-bunker-800 container mx-auto w-full max-w-7xl text-white">
       <PageHeader
         title="Secret Rotation"
         description="Stop manually rotating secrets and automate credential rotation."
@@ -155,7 +155,7 @@ const Page = () => {
           rel="noopener noreferrer"
           href="https://infisical.com/docs/documentation/platform/secret-rotation/overview"
         >
-          <span className="flex w-max cursor-pointer items-center rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
+          <span className="border-mineshaft-500 bg-mineshaft-600 text-mineshaft-200 hover:border-primary/40 hover:bg-primary/10 flex w-max cursor-pointer items-center rounded-md border px-4 py-2 duration-200 hover:text-white">
             Documentation
             <FontAwesomeIcon
               icon={faArrowUpRightFromSquare}
@@ -165,13 +165,13 @@ const Page = () => {
         </a>
       </PageHeader>
       <NoticeBannerV2 title="Secret Rotations Update">
-        <p className="text-sm text-bunker-200">
+        <p className="text-bunker-200 text-sm">
           Infisical is revamping its Secret Rotation experience.
         </p>
-        <p className="mt-2 text-sm text-bunker-200">
+        <p className="text-bunker-200 mt-2 text-sm">
           PostgreSQL and Microsoft SQL Server Rotations can now be created from the{" "}
           <Link
-            className="text-mineshaft-100 underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
+            className="text-mineshaft-100 decoration-primary hover:text-mineshaft-200 underline underline-offset-2"
             to="/projects/secret-management/$projectId/overview"
             params={{ projectId: currentProject.id }}
           >
@@ -181,7 +181,7 @@ const Page = () => {
         </p>
       </NoticeBannerV2>
       <div className="mb-6">
-        <div className="mt-6 mb-2 text-xl font-medium text-gray-200">Rotated Secrets</div>
+        <div className="mb-2 mt-6 text-xl font-medium text-gray-200">Rotated Secrets</div>
         <div className="flex flex-col space-y-2">
           <TableContainer>
             <Table>
@@ -233,9 +233,9 @@ const Page = () => {
                             .toUpperCase()}
                         </Td>
                         <Td>
-                          <div className="flex w-min items-center rounded-sm border border-bunker-400 p-1 px-2">
+                          <div className="border-bunker-400 flex w-min items-center rounded-sm border p-1 px-2">
                             <div>{environment.slug}</div>
-                            <div className="ml-1 flex items-center border-l border-bunker-400 pl-1 text-xs">
+                            <div className="border-bunker-400 ml-1 flex items-center border-l pl-1 text-xs">
                               <FontAwesomeIcon icon={faFolder} className="mr-1" />
                               {secretPath}
                             </div>
@@ -250,7 +250,7 @@ const Page = () => {
                                 <FontAwesomeIcon
                                   icon={faExclamationTriangle}
                                   size="sm"
-                                  className="ml-2 text-red"
+                                  className="text-red ml-2"
                                 />
                               </Tooltip>
                             )}
@@ -318,7 +318,7 @@ const Page = () => {
           </TableContainer>
         </div>
       </div>
-      <div className="mt-12 mb-2 text-xl font-medium text-gray-200">
+      <div className="mb-2 mt-12 text-xl font-medium text-gray-200">
         Infisical Rotation Providers
       </div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-4">
@@ -329,7 +329,7 @@ const Page = () => {
         {!isRotationProviderLoading &&
           secretRotationProviders?.providers.map((provider) => (
             <div
-              className="group relative flex h-32 cursor-pointer flex-row items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 hover:border-primary/40 hover:bg-primary/10"
+              className="border-mineshaft-600 bg-mineshaft-800 hover:border-primary/40 hover:bg-primary/10 group relative flex h-32 cursor-pointer flex-row items-center justify-center rounded-md border p-4"
               key={`infisical-rotation-provider-${provider.name}`}
               tabIndex={0}
               role="button"
@@ -358,7 +358,7 @@ const Page = () => {
               <div className="ml-4 max-w-xs text-xl font-medium text-gray-300 duration-200 group-hover:text-gray-200">
                 {provider.title}
               </div>
-              <div className="absolute top-1 right-1.5 opacity-0 transition-all group-hover:opacity-100">
+              <div className="absolute right-1.5 top-1 opacity-0 transition-all group-hover:opacity-100">
                 <Tooltip content={provider.description} sideOffset={10}>
                   <FontAwesomeIcon icon={faInfoCircle} className="text-primary" />
                 </Tooltip>
@@ -370,8 +370,8 @@ const Page = () => {
           rel="noopener noreferrer"
           href="https://github.com/Infisical/infisical/issues"
         >
-          <div className="group relative flex h-32 cursor-pointer flex-row items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 hover:border-primary/40 hover:bg-primary/10">
-            <FontAwesomeIcon icon={faPlus} className="pr-2 pl-3 text-3xl text-gray-300" />
+          <div className="border-mineshaft-600 bg-mineshaft-800 hover:border-primary/40 hover:bg-primary/10 group relative flex h-32 cursor-pointer flex-row items-center rounded-md border p-4">
+            <FontAwesomeIcon icon={faPlus} className="pl-3 pr-2 text-3xl text-gray-300" />
             <div className="ml-4 max-w-xs text-xl font-medium text-gray-300 duration-200 group-hover:text-gray-200">
               Request or create your own template
             </div>
@@ -406,7 +406,7 @@ const Page = () => {
             <p className="text-mineshaft-200">
               Infisical is revamping its Secret Rotation experience. Navigate to the{" "}
               <Link
-                className="text-mineshaft-100 underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
+                className="text-mineshaft-100 decoration-primary hover:text-mineshaft-200 underline underline-offset-2"
                 to="/projects/secret-management/$projectId/overview"
                 params={{ projectId: currentProject.id }}
               >
@@ -414,7 +414,7 @@ const Page = () => {
               </Link>{" "}
               to create a {popUp.secretRotationV2.data} Rotation.
             </p>
-            <div className="overflow-clip rounded-sm border border-mineshaft-600">
+            <div className="border-mineshaft-600 overflow-clip rounded-sm border">
               <img
                 src="/images/secretRotation/secret-rotations-v2-location.png"
                 alt="Secret Rotation V2 location"

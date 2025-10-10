@@ -51,7 +51,7 @@ export const LockoutFields = ({
 
   return (
     <>
-      <div className="col-span-2 mt-3 flex justify-between border-b border-mineshaft-500 pb-2">
+      <div className="border-mineshaft-500 col-span-2 mt-3 flex justify-between border-b pb-2">
         <span className="text-bunker-300">Lockout Options</span>
         <OrgPermissionCan I={OrgPermissionIdentityActions.Edit} a={OrgPermissionSubjects.Identity}>
           {(isAllowed) => (

@@ -27,10 +27,10 @@ export const OrgInviteLink = ({ invite }: Props) => {
 
   return (
     <div key={`invite-${invite.email}`}>
-      <p className="text-sm text-mineshaft-400">
+      <p className="text-mineshaft-400 text-sm">
         Invite for <span className="font-medium">{invite.email}</span>
       </p>
-      <div className="flex flex-col gap-1 rounded-md bg-white/4 p-2 text-base text-gray-400">
+      <div className="bg-white/4 flex flex-col gap-1 rounded-md p-2 text-base text-gray-400">
         <p
           className={twMerge(
             "mr-4 line-clamp-1",

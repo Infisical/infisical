@@ -44,7 +44,7 @@ export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Ele
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent title="Unleash Infisical's Full Power">
-        <p className="mb-2 text-bunker-300">{text}</p>
+        <p className="text-bunker-300 mb-2">{text}</p>
         <p className="text-bunker-300">
           Upgrade and get access to this, as well as to other powerful enhancements.
         </p>

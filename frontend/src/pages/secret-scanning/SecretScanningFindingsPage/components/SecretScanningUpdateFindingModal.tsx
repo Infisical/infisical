@@ -102,7 +102,7 @@ const Content = ({ findings, onComplete }: ContentProps) => {
                 value={value}
                 placeholder="Select status..."
                 onValueChange={onChange}
-                className="w-full border border-mineshaft-500 capitalize"
+                className="border-mineshaft-500 w-full border capitalize"
                 position="popper"
                 dropdownContainerClassName="max-w-none"
                 icon={value ? SECRET_SCANNING_FINDING_STATUS_ICON_MAP[value].icon : undefined}
@@ -128,7 +128,7 @@ const Content = ({ findings, onComplete }: ContentProps) => {
         render={({ field, fieldState: { error } }) => {
           return (
             <FormControl label="Remarks" isError={Boolean(error)} errorText={error?.message}>
-              <TextArea className="h-40 resize-none!" {...field} />
+              <TextArea className="resize-none! h-40" {...field} />
             </FormControl>
           );
         }}

@@ -77,7 +77,7 @@ const Content = ({ secretSync, onComplete }: ContentProps) => {
 
   return (
     <form onSubmit={handleSubmit(handleTriggerImportSecrets)}>
-      <p className="mb-8 text-sm text-mineshaft-200">
+      <p className="text-mineshaft-200 mb-8 text-sm">
         Are you sure you want to import secrets from this {destinationName} destination into
         Infiscal?
       </p>
@@ -100,7 +100,7 @@ const Content = ({ secretSync, onComplete }: ContentProps) => {
                     return (
                       <li key={name}>
                         <p className="text-mineshaft-300">
-                          <span className="font-medium text-bunker-200">{name}</span>: {description}
+                          <span className="text-bunker-200 font-medium">{name}</span>: {description}
                         </p>
                       </li>
                     );
@@ -115,7 +115,7 @@ const Content = ({ secretSync, onComplete }: ContentProps) => {
             <Select
               value={value}
               onValueChange={(val) => onChange(val)}
-              className="w-full border border-mineshaft-500"
+              className="border-mineshaft-500 w-full border"
               position="popper"
               placeholder="Select an option..."
               dropdownContainerClassName="max-w-none"

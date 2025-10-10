@@ -49,7 +49,7 @@ const OutputDisplay = ({
           ariaLabel="Copy to clipboard"
           variant="plain"
           size="md"
-          className="absolute top-7 right-2"
+          className="absolute right-2 top-7"
           onClick={() => {
             navigator.clipboard.writeText(value as string);
             setCopyText("Copied");
@@ -167,7 +167,7 @@ const renderOutputForm = (
         <OutputDisplay label="AWS IAM Access Key" value={ACCESS_KEY} />
         <OutputDisplay label="AWS IAM Secret Key" value={SECRET_ACCESS_KEY} />
         {SESSION_TOKEN && <OutputDisplay label="AWS IAM Session Token" value={SESSION_TOKEN} />}
-        <div className="mt-2 text-xs text-mineshaft-300">
+        <div className="text-mineshaft-300 mt-2 text-xs">
           Important: Copy these credentials now. You will not be able to see them again after you
           close the modal.
         </div>
@@ -642,7 +642,7 @@ export const CreateDynamicSecretLease = ({
   const isOutputMode = Boolean(createDynamicSecretLease?.data);
 
   if (isPreloading) {
-    return <Spinner className="mx-auto h-40 text-mineshaft-700" />;
+    return <Spinner className="text-mineshaft-700 mx-auto h-40" />;
   }
 
   // Github tokens are fixed to 1 hour

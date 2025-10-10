@@ -308,7 +308,7 @@ export const SqlDatabaseInputForm = ({
           </div>
           <MetadataForm control={control} />
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="border-mineshaft-500 text-mineshaft-200 mb-4 mt-4 border-b pb-2 pl-1 font-medium">
               Configuration
             </div>
             <div>
@@ -336,7 +336,7 @@ export const SqlDatabaseInputForm = ({
                               isDisabled={!isAllowed}
                               value={value}
                               onValueChange={onChange}
-                              className="w-full border border-mineshaft-500"
+                              className="border-mineshaft-500 w-full border"
                               dropdownContainerClassName="max-w-none"
                               isLoading={isGatewaysLoading}
                               placeholder="Default: Internet Gateway"
@@ -363,7 +363,7 @@ export const SqlDatabaseInputForm = ({
               </OrgPermissionCan>
             </div>
             <div className="flex flex-col">
-              <div className="pb-0.5 pl-1 text-sm text-mineshaft-400">Service</div>
+              <div className="text-mineshaft-400 pb-0.5 pl-1 text-sm">Service</div>
               <Controller
                 control={control}
                 name="provider.client"
@@ -376,7 +376,7 @@ export const SqlDatabaseInputForm = ({
                         onChange(val);
                         handleDatabaseChange(val as SqlProviders);
                       }}
-                      className="w-full border border-mineshaft-500"
+                      className="border-mineshaft-500 w-full border"
                     >
                       <SelectItem value={SqlProviders.Postgres}>PostgreSQL</SelectItem>
                       <SelectItem value={SqlProviders.MySql}>MySQL</SelectItem>
@@ -462,14 +462,14 @@ export const SqlDatabaseInputForm = ({
               </div>
               <div>
                 {selectedClient === SqlProviders.MsSQL && (
-                  <div className="mt-2 mb-2">
+                  <div className="mb-2 mt-2">
                     <Controller
                       control={control}
                       name="provider.sslEnabled"
                       render={({ field: { value, onChange }, fieldState: { error } }) => (
                         <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
                           <Switch
-                            className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                            className="bg-mineshaft-400/50 data-[state=checked]:bg-green/80 shadow-inner"
                             id="sql-ds-ssl-enabled"
                             thumbClassName="bg-mineshaft-800"
                             isChecked={value}
@@ -499,7 +499,7 @@ export const SqlDatabaseInputForm = ({
                     </FormControl>
                   )}
                 />
-                <Accordion type="multiple" className="mb-2 w-full bg-mineshaft-700">
+                <Accordion type="multiple" className="bg-mineshaft-700 mb-2 w-full">
                   <AccordionItem value="advanced">
                     <AccordionTrigger>
                       Creation, Revocation & Renew Statements (optional)
@@ -524,7 +524,7 @@ export const SqlDatabaseInputForm = ({
                           </FormControl>
                         )}
                       />
-                      <div className="mb-4 text-sm text-mineshaft-300">
+                      <div className="text-mineshaft-300 mb-4 text-sm">
                         Customize SQL statements for managing database user lifecycle
                       </div>
                       <Controller
@@ -587,11 +587,11 @@ export const SqlDatabaseInputForm = ({
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
-                <Accordion type="multiple" className="mt-4 mb-2 w-full bg-mineshaft-700">
+                <Accordion type="multiple" className="bg-mineshaft-700 mb-2 mt-4 w-full">
                   <AccordionItem value="password-config">
                     <AccordionTrigger>Password Configuration (optional)</AccordionTrigger>
                     <AccordionContent>
-                      <div className="mb-4 text-sm text-mineshaft-300">
+                      <div className="text-mineshaft-300 mb-4 text-sm">
                         Set constraints on the generated database password
                       </div>
                       <div className="space-y-4">

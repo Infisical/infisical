@@ -49,7 +49,7 @@ export const ConditionsFields = ({
     (errors?.permissions as any)?.[subject]?.[position]?.conditions?.root?.message;
 
   return (
-    <div className="mt-6 border-t border-t-mineshaft-600 bg-mineshaft-800 pt-2">
+    <div className="border-t-mineshaft-600 bg-mineshaft-800 mt-6 border-t pt-2">
       <div className="flex w-full items-center justify-between">
         <div className="mt-2.5 flex items-center text-gray-300">
           <span>Conditions</span>
@@ -67,7 +67,7 @@ export const ConditionsFields = ({
               </>
             }
           >
-            <FontAwesomeIcon size="xs" className="ml-1 text-mineshaft-400" icon={faInfoCircle} />
+            <FontAwesomeIcon size="xs" className="text-mineshaft-400 ml-1" icon={faInfoCircle} />
           </Tooltip>
         </div>
         <Button
@@ -99,7 +99,7 @@ export const ConditionsFields = ({
             return (
               <div
                 key={el.id}
-                className="flex items-start gap-2 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md"
+                className="bg-mineshaft-800 flex items-start gap-2 first:rounded-t-md last:rounded-b-md"
               >
                 <div className="w-1/4">
                   <Controller

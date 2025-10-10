@@ -178,7 +178,7 @@ export const OctopusDeployConfigurePage = () => {
     >
       <Card className="max-w-4xl rounded-md p-8 pt-4">
         <CardTitle className="text-center">
-          <SiOctopusdeploy size="1.2rem" className="mr-2 mb-1 inline-block" />
+          <SiOctopusdeploy size="1.2rem" className="mb-1 mr-2 inline-block" />
           Octopus Deploy Integration
         </CardTitle>
         <div className="grid grid-cols-2 gap-4">
@@ -218,9 +218,9 @@ export const OctopusDeployConfigurePage = () => {
             )}
           />
           <div className="col-span-2 flex w-full flex-row items-center pb-2">
-            <div className="w-full border-t border-mineshaft-500" />
-            <span className="mx-2 text-xs whitespace-nowrap text-mineshaft-400">Sync To</span>
-            <div className="w-full border-t border-mineshaft-500" />
+            <div className="border-mineshaft-500 w-full border-t" />
+            <span className="text-mineshaft-400 mx-2 whitespace-nowrap text-xs">Sync To</span>
+            <div className="border-mineshaft-500 w-full border-t" />
           </div>
           <Controller
             control={control}

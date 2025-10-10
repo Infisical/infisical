@@ -139,13 +139,13 @@ const VerifyForm = ({ cmek }: FormProps) => {
           </div>
           <div className="mt-3">
             <span className="text-sm opacity-60">Signature:</span>{" "}
-            <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 p-2 text-sm break-words whitespace-pre-wrap">
+            <div className="border-mineshaft-700 bg-mineshaft-900 whitespace-pre-wrap break-words rounded-md border p-2 text-sm">
               {signature}
             </div>
           </div>
           <div>
             <span className="text-sm opacity-60">Data:</span>{" "}
-            <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 p-2 text-sm">
+            <div className="border-mineshaft-700 bg-mineshaft-900 rounded-md border p-2 text-sm">
               {isBase64Encoded ? decodeBase64(data).toString() : data}
             </div>
           </div>
@@ -157,7 +157,7 @@ const VerifyForm = ({ cmek }: FormProps) => {
             errorText={errors.data?.message}
             isError={Boolean(errors.data)}
           >
-            <TextArea {...register("data")} className="max-h-80 min-h-40 max-w-full min-w-full" />
+            <TextArea {...register("data")} className="max-h-80 min-h-40 min-w-full max-w-full" />
           </FormControl>
 
           <FormControl
@@ -168,7 +168,7 @@ const VerifyForm = ({ cmek }: FormProps) => {
           >
             <TextArea
               {...register("signature")}
-              className="max-h-80 min-h-40 max-w-full min-w-full"
+              className="max-h-80 min-h-40 min-w-full max-w-full"
             />
           </FormControl>
 

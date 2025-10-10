@@ -15,8 +15,8 @@ export const OrgAlertBanner = ({ text, link }: Props) => {
   if (isDismissed) return null;
 
   return (
-    <div className="flex w-full items-center border-b border-yellow/50 bg-yellow/30 px-4 py-2 text-sm text-yellow-200">
-      <FontAwesomeIcon icon={faWarning} className="mr-2.5 text-base text-yellow" />
+    <div className="border-yellow/50 bg-yellow/30 flex w-full items-center border-b px-4 py-2 text-sm text-yellow-200">
+      <FontAwesomeIcon icon={faWarning} className="text-yellow mr-2.5 text-base" />
       {text}{" "}
       {link && (
         <>
@@ -27,11 +27,11 @@ export const OrgAlertBanner = ({ text, link }: Props) => {
             target="_blank"
             className="group flex items-center"
           >
-            <span className="cursor-pointer pl-1 underline underline-offset-2 duration-100 group-hover:text-mineshaft-100 group-hover:decoration-mineshaft-100">
+            <span className="group-hover:text-mineshaft-100 group-hover:decoration-mineshaft-100 cursor-pointer pl-1 underline underline-offset-2 duration-100">
               here
             </span>
             <FontAwesomeIcon
-              className="mt-[0.12rem] ml-1 group-hover:text-mineshaft-100"
+              className="group-hover:text-mineshaft-100 ml-1 mt-[0.12rem]"
               icon={faArrowUpRightFromSquare}
               size="xs"
             />

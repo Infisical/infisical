@@ -38,15 +38,15 @@ export const AwsParameterStoreSyncFields = () => {
               <>
                 The path is required and will be prepended to the key schema. For example, if you
                 have a path of{" "}
-                <code className="rounded-sm bg-mineshaft-600 px-0.5 py-px text-sm text-mineshaft-300">
+                <code className="bg-mineshaft-600 text-mineshaft-300 rounded-sm px-0.5 py-px text-sm">
                   /demo/path/
                 </code>{" "}
                 and a key schema of{" "}
-                <code className="rounded-sm bg-mineshaft-600 px-0.5 py-px text-sm text-mineshaft-300">
+                <code className="bg-mineshaft-600 text-mineshaft-300 rounded-sm px-0.5 py-px text-sm">
                   INFISICAL_{"{{secretKey}}"}
                 </code>
                 , then the result will be{" "}
-                <code className="rounded-sm bg-mineshaft-600 px-0.5 py-px text-sm text-mineshaft-300">
+                <code className="bg-mineshaft-600 text-mineshaft-300 rounded-sm px-0.5 py-px text-sm">
                   /demo/path/INFISICAL_{"{{secretKey}}"}
                 </code>
               </>

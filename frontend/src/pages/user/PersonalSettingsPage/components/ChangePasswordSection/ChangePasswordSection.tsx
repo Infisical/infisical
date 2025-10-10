@@ -117,9 +117,9 @@ export const ChangePasswordSection = () => {
   return (
     <form
       onSubmit={handleSubmit(onFormSubmit)}
-      className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+      className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4"
     >
-      <h2 className="mb-8 flex-1 text-xl font-medium text-mineshaft-100">Change password</h2>
+      <h2 className="text-mineshaft-100 mb-8 flex-1 text-xl font-medium">Change password</h2>
       <div className="max-w-md">
         <Controller
           defaultValue=""
@@ -162,7 +162,7 @@ export const ChangePasswordSection = () => {
               return (
                 <div className="items-top ml-1 flex flex-row justify-start" key={key}>
                   <div>
-                    <FontAwesomeIcon icon={faXmark} className="text-md mr-2.5 ml-0.5 text-red" />
+                    <FontAwesomeIcon icon={faXmark} className="text-md text-red ml-0.5 mr-2.5" />
                   </div>
                   <p className="text-sm text-gray-400">{errors[key as keyof Errors]}</p>
                 </div>
@@ -176,12 +176,12 @@ export const ChangePasswordSection = () => {
       <Button type="submit" colorSchema="secondary" isLoading={isLoading} isDisabled={isLoading}>
         Save
       </Button>
-      <p className="mt-2 font-inter text-sm text-mineshaft-400">
+      <p className="font-inter text-mineshaft-400 mt-2 text-sm">
         Need to setup a password?{" "}
         <button
           onClick={onSetupPassword}
           type="button"
-          className="underline underline-offset-2 hover:text-mineshaft-200"
+          className="hover:text-mineshaft-200 underline underline-offset-2"
         >
           Click here
         </button>

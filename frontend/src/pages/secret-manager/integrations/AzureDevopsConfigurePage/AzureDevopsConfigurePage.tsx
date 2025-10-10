@@ -102,7 +102,7 @@ export const AzureDevopsConfigurePage = () => {
       <Helmet>
         <title>Set Up Azure DevOps Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600">
+      <Card className="border-mineshaft-600 max-w-lg rounded-md border">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Choose which environment in Infisical you want to sync to secrets in Azure DevOps."
@@ -122,7 +122,7 @@ export const AzureDevopsConfigurePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="bg-yellow/20 text-yellow mb-1 ml-2 inline-block cursor-default rounded-md px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
@@ -137,7 +137,7 @@ export const AzureDevopsConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
+            className="border-mineshaft-500 w-full border"
           >
             {workspace?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -160,7 +160,7 @@ export const AzureDevopsConfigurePage = () => {
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
-            className="w-full border border-mineshaft-500"
+            className="border-mineshaft-500 w-full border"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
@@ -183,7 +183,7 @@ export const AzureDevopsConfigurePage = () => {
           onClick={handleButtonClick}
           colorSchema="primary"
           variant="outline_bg"
-          className="mt-2 mr-6 mb-6 ml-auto w-min"
+          className="mb-6 ml-auto mr-6 mt-2 w-min"
           isLoading={isLoading}
         >
           Create Integration

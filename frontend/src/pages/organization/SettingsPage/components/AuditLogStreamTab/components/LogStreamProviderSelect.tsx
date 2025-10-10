@@ -54,14 +54,14 @@ export const LogStreamProviderSelect = ({ onSelect }: Props) => {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
         <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="mt-4 text-sm text-mineshaft-400">Loading options...</p>
+        <p className="text-mineshaft-400 mt-4 text-sm">Loading options...</p>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid h-118 grid-cols-4 content-start gap-2">
+      <div className="h-118 grid grid-cols-4 content-start gap-2">
         {filteredOptions.slice(offset, perPage * page)?.map((option) => {
           const { image, icon, name, size = 50 } = AUDIT_LOG_STREAM_PROVIDER_MAP[option.provider];
 
@@ -75,7 +75,7 @@ export const LogStreamProviderSelect = ({ onSelect }: Props) => {
                   onSelect(option.provider);
                 }
               }}
-              className={`group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 ${option.provider === LogProvider.Custom ? "bg-mineshaft-700/30 hover:bg-mineshaft-600/30" : "bg-mineshaft-700 hover:bg-mineshaft-600"} p-4 duration-200`}
+              className={`border-mineshaft-600 group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border ${option.provider === LogProvider.Custom ? "bg-mineshaft-700/30 hover:bg-mineshaft-600/30" : "bg-mineshaft-700 hover:bg-mineshaft-600"} p-4 duration-200`}
             >
               {image && (
                 <div className="relative">
@@ -90,7 +90,7 @@ export const LogStreamProviderSelect = ({ onSelect }: Props) => {
                 </div>
               )}
               {icon && (
-                <FontAwesomeIcon className="mt-auto size-10 text-mineshaft-300" icon={icon} />
+                <FontAwesomeIcon className="text-mineshaft-300 mt-auto size-10" icon={icon} />
               )}
               <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
                 {name}

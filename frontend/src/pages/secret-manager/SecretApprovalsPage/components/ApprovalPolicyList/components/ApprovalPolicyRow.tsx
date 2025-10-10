@@ -182,33 +182,33 @@ export const ApprovalPolicyRow = ({
       <Tr>
         <Td colSpan={6} className="border-none! p-0">
           <div
-            className={`w-full overflow-hidden bg-mineshaft-900/75 transition-all duration-500 ease-in-out ${
+            className={`bg-mineshaft-900/75 w-full overflow-hidden transition-all duration-500 ease-in-out ${
               isExpanded ? "max-h-104 thin-scrollbar overflow-y-auto! opacity-100" : "max-h-0"
             }`}
           >
             <div className="p-4">
-              <div className="border-b-2 border-mineshaft-500 pb-2">Approvers</div>
+              <div className="border-mineshaft-500 border-b-2 pb-2">Approvers</div>
               {labels?.map((el, index) => (
                 <div key={`approval-list-${index + 1}`} className="flex">
                   {labels.length > 1 && (
                     <div className="flex w-12 flex-col items-center gap-2 pr-4">
                       <div
-                        className={twMerge("grow border-mineshaft-600", index !== 0 && "border-r")}
+                        className={twMerge("border-mineshaft-600 grow", index !== 0 && "border-r")}
                       />
                       {labels.length > 1 && (
-                        <Badge className="my-auto flex h-5 w-min min-w-5 items-center justify-center gap-1.5 bg-mineshaft-400/50 text-center whitespace-nowrap text-bunker-200">
+                        <Badge className="bg-mineshaft-400/50 text-bunker-200 my-auto flex h-5 w-min min-w-5 items-center justify-center gap-1.5 whitespace-nowrap text-center">
                           <span>{index + 1}</span>
                         </Badge>
                       )}
                       <div
                         className={twMerge(
-                          "grow border-mineshaft-600",
+                          "border-mineshaft-600 grow",
                           index < labels.length - 1 && "border-r"
                         )}
                       />
                     </div>
                   )}
-                  <div className="grid flex-1 grid-cols-5 border-b border-mineshaft-600 p-4">
+                  <div className="border-mineshaft-600 grid flex-1 grid-cols-5 border-b p-4">
                     <GenericFieldLabel className="col-span-2" icon={faUser} label="Users">
                       {Boolean(el.users.length) && (
                         <div className="flex flex-row flex-wrap gap-2">
@@ -225,7 +225,7 @@ export const ApprovalPolicyRow = ({
                                   <span className="text-xs">
                                     <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
                                       <div>
-                                        <Badge className="pointer-events-none mr-auto ml-1 flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
+                                        <Badge className="bg-mineshaft-400/50 text-bunker-300 pointer-events-none ml-1 mr-auto flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
                                           <FontAwesomeIcon icon={faBan} />
                                           Inactive
                                         </Badge>

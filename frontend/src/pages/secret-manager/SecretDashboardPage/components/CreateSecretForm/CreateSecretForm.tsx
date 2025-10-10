@@ -187,7 +187,7 @@ export const CreateSecretForm = ({
                     Secret key contains whitespaces.
                     <br />
                     <br /> If this is the desired format, you need to provide it as{" "}
-                    <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
+                    <code className="bg-mineshaft-500 rounded-md px-1 py-0.5">
                       {encodeURIComponent(secretKey.trim())}
                     </code>{" "}
                     when making API requests.

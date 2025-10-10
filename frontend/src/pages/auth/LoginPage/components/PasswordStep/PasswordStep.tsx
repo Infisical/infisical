@@ -301,7 +301,7 @@ export const PasswordStep = ({
 
   if (shouldShowMfa) {
     return (
-      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+      <div className="bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto">
         <Mfa
           email={email}
           successCallback={mfaSuccessCallback}
@@ -326,7 +326,7 @@ export const PasswordStep = ({
 
   if (hasExchangedPrivateKey) {
     return (
-      <div className="fixed top-0 left-0 h-screen w-screen bg-bunker-800">
+      <div className="bg-bunker-800 fixed left-0 top-0 h-screen w-screen">
         <ContentLoader />
       </div>
     );
@@ -335,11 +335,11 @@ export const PasswordStep = ({
   return (
     <form onSubmit={handleLogin} className="mx-auto h-full w-full max-w-md px-6 pt-8">
       <div className="mb-8">
-        <p className="mx-auto mb-4 flex w-max justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
+        <p className="bg-linear-to-b to-bunker-200 mx-auto mb-4 flex w-max justify-center from-white bg-clip-text text-center text-xl font-medium text-transparent">
           What&apos;s your Infisical password?
         </p>
       </div>
-      <div className="relative mx-auto flex max-h-24 w-full min-w-88 items-center justify-center rounded-lg md:max-h-28 lg:w-1/6">
+      <div className="min-w-88 relative mx-auto flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28 lg:w-1/6">
         <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
           <Input
             value={password}
@@ -354,7 +354,7 @@ export const PasswordStep = ({
         </div>
       </div>
       {shouldShowCaptcha && envConfig.CAPTCHA_SITE_KEY && (
-        <div className="mx-auto mt-4 flex w-full min-w-88 items-center justify-center lg:w-1/6">
+        <div className="min-w-88 mx-auto mt-4 flex w-full items-center justify-center lg:w-1/6">
           <HCaptcha
             theme="dark"
             sitekey={envConfig.CAPTCHA_SITE_KEY}
@@ -363,7 +363,7 @@ export const PasswordStep = ({
           />
         </div>
       )}
-      <div className="mx-auto mt-4 flex w-full min-w-88 items-center justify-center rounded-md text-center lg:w-1/6">
+      <div className="min-w-88 mx-auto mt-4 flex w-full items-center justify-center rounded-md text-center lg:w-1/6">
         <Button
           disabled={shouldShowCaptcha && captchaToken === ""}
           type="submit"
@@ -376,13 +376,13 @@ export const PasswordStep = ({
           {t("login.login")}
         </Button>
       </div>
-      <div className="mx-auto mt-4 flex w-max flex-col items-center text-xs text-bunker-400">
+      <div className="text-bunker-400 mx-auto mt-4 flex w-max flex-col items-center text-xs">
         <span className="max-w-sm px-4 text-center duration-200">
           Infisical Master Password serves as a decryption mechanism so that even Google is not able
           to access your secrets.
         </span>
         <Link to="/verify-email">
-          <span className="mt-2 cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
+          <span className="hover:text-bunker-200 hover:decoration-primary-700 mt-2 cursor-pointer duration-200 hover:underline hover:underline-offset-4">
             {t("login.forgot-password")}
           </span>
         </Link>
@@ -393,7 +393,7 @@ export const PasswordStep = ({
             navigate({ to: "/login" });
           }}
           type="button"
-          className="mt-2 cursor-pointer text-xs text-bunker-400 duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4"
+          className="text-bunker-400 hover:text-bunker-200 hover:decoration-primary-700 mt-2 cursor-pointer text-xs duration-200 hover:underline hover:underline-offset-4"
         >
           {t("login.other-option")}
         </button>

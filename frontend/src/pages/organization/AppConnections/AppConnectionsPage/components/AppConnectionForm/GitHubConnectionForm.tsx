@@ -185,7 +185,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId }: Props) => {
                 isDisabled={isUpdate}
                 value={value}
                 onValueChange={(val) => onChange(val)}
-                className="w-full border border-mineshaft-500"
+                className="border-mineshaft-500 w-full border"
                 position="popper"
                 dropdownContainerClassName="max-w-none"
               >
@@ -220,7 +220,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId }: Props) => {
                           setValue("gatewayId", null);
                         }
                       }}
-                      className="w-full border border-mineshaft-500"
+                      className="border-mineshaft-500 w-full border"
                       dropdownContainerClassName="max-w-none"
                       placeholder="Enterprise Cloud"
                       position="popper"
@@ -272,7 +272,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId }: Props) => {
                                 isDisabled={!isAllowed}
                                 value={value || (null as unknown as string)}
                                 onValueChange={onChange}
-                                className="w-full border border-mineshaft-500"
+                                className="border-mineshaft-500 w-full border"
                                 dropdownContainerClassName="max-w-none"
                                 isLoading={isGatewaysLoading}
                                 placeholder="Default: Internet Gateway"

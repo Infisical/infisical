@@ -32,7 +32,7 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
 
   return (
     <Tr
-      className={twMerge("group h-12 transition-colors duration-100 hover:bg-mineshaft-700")}
+      className={twMerge("hover:bg-mineshaft-700 group h-12 transition-colors duration-100")}
       key={`log-stream-${id}`}
     >
       <Td>
@@ -48,7 +48,7 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
               providerDetails.icon && (
                 <FontAwesomeIcon
                   icon={providerDetails.icon}
-                  className="size-5 text-mineshaft-300"
+                  className="text-mineshaft-300 size-5"
                 />
               )
             )}
@@ -56,7 +56,7 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
           <span className="hidden lg:inline">{providerDetails.name}</span>
         </div>
       </Td>
-      <Td className="max-w-0 min-w-32!">
+      <Td className="min-w-32! max-w-0">
         <div className="flex w-full items-center">
           <p className="truncate">{url}</p>
         </div>

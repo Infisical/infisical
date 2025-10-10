@@ -116,7 +116,7 @@ const buttonVariants = cva(
         colorSchema: "danger",
         variant: "outline_bg",
         className:
-          "bg-mineshaft-600 border border-red-500 hover:bg-red/10 hover:border-red/40 text-red-500"
+          "bg-mineshaft-600 border border-red-500 hover:bg-red/15 bg-red/10 hover:border-red/40 text-red-500"
       },
       {
         colorSchema: "primary",
@@ -198,7 +198,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 : "infisical_loading"
             }
             isAutoPlay
-            className="absolute w-8 rounded-xl opacity-80 shadow-xs"
+            className="shadow-xs absolute w-8 rounded-xl opacity-80"
           />
         )}
         {leftIcon && (

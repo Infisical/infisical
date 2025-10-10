@@ -159,7 +159,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
         <div className="mb-6 text-center text-lg font-bold text-white">
           Your organization requires mobile authentication to be configured.
         </div>
-        <div className="mx-auto w-max pt-4 pb-4 md:mb-16 md:px-8">
+        <div className="mx-auto w-max pb-4 pt-4 md:mb-16 md:px-8">
           <TotpRegistration
             shouldCenterQr
             onComplete={async () => {
@@ -173,7 +173,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
   }
 
   return (
-    <div className="mx-auto w-max pt-6 pb-6 md:mb-16 md:px-8">
+    <div className="mx-auto w-max pb-6 pt-6 md:mb-16 md:px-8">
       {!hideLogo && (
         <Link to="/">
           <div className="mb-4 flex justify-center">
@@ -183,14 +183,14 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
       )}
       {method === MfaMethod.EMAIL && (
         <>
-          <p className="text-l flex justify-center text-bunker-300">{t("mfa.step2-message")}</p>
-          <p className="text-l my-1 flex justify-center font-medium text-bunker-300">{email}</p>
+          <p className="text-l text-bunker-300 flex justify-center">{t("mfa.step2-message")}</p>
+          <p className="text-l text-bunker-300 my-1 flex justify-center font-medium">{email}</p>
         </>
       )}
       {method === MfaMethod.TOTP && (
         <div className="mb-8 text-center">
-          <h2 className="mb-3 text-xl font-medium text-bunker-100">Two-Factor Authentication</h2>
-          <p className="mx-auto max-w-md text-sm leading-relaxed text-bunker-300">
+          <h2 className="text-bunker-100 mb-3 text-xl font-medium">Two-Factor Authentication</h2>
+          <p className="text-bunker-300 mx-auto max-w-md text-sm leading-relaxed">
             {showRecoveryCodeInput
               ? "Enter one of your backup recovery codes"
               : "Enter the verification code from your authenticator app"}
@@ -207,13 +207,13 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                 type="text"
                 fields={6}
                 onChange={setMfaCode}
-                className="mt-6 mb-2"
+                className="mb-2 mt-6"
                 {...codeInputProps}
               />
             </div>
           )}
           {method === MfaMethod.TOTP && (
-            <div className="mt-8 mb-6 flex justify-center">
+            <div className="mb-6 mt-8 flex justify-center">
               <ReactCodeInput
                 key={showRecoveryCodeInput ? "recovery" : "totp"}
                 name=""
@@ -236,13 +236,13 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                 type="text"
                 fields={6}
                 onChange={setMfaCode}
-                className="mt-2 mb-2"
+                className="mb-2 mt-2"
                 {...codeInputPropsPhone}
               />
             </div>
           )}
           {method === MfaMethod.TOTP && (
-            <div className="mt-4 mb-6 flex justify-center">
+            <div className="mb-6 mt-4 flex justify-center">
               <ReactCodeInput
                 key={showRecoveryCodeInput ? "recovery-mobile" : "totp-mobile"}
                 name=""
@@ -264,7 +264,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
             size="md"
             type="submit"
             isFullWidth
-            className="h-11 rounded-lg font-medium shadow-xs transition-all duration-200 hover:shadow-md"
+            className="shadow-xs h-11 rounded-lg font-medium transition-all duration-200 hover:shadow-md"
             colorSchema="primary"
             variant="outline_bg"
             isLoading={isLoading}
@@ -282,7 +282,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
               setShowRecoveryCodeInput(!showRecoveryCodeInput);
               setMfaCode("");
             }}
-            className="text-bunker-400 transition-colors duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4"
+            className="text-bunker-400 hover:text-bunker-200 hover:decoration-primary-700 transition-colors duration-200 hover:underline hover:underline-offset-4"
           >
             {showRecoveryCodeInput ? "Use authenticator code" : "Use a recovery code"}
           </button>
@@ -311,7 +311,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                 </div>
               }
             >
-              <span className="cursor-help text-bunker-400 transition-colors duration-200 hover:text-bunker-200">
+              <span className="text-bunker-400 hover:text-bunker-200 cursor-help transition-colors duration-200">
                 Lost your recovery codes?
               </span>
             </Tooltip>
@@ -322,9 +322,9 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
         <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
           <div className="flex flex-row items-baseline gap-1 text-sm">
             <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
-            <div className="text-md mt-2 flex flex-row text-bunker-400">
+            <div className="text-md text-bunker-400 mt-2 flex flex-row">
               <button disabled={isLoadingResend} onClick={handleResendMfaCode} type="button">
-                <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
+                <span className="hover:text-bunker-200 hover:decoration-primary-700 cursor-pointer duration-200 hover:underline hover:underline-offset-4">
                   {isLoadingResend
                     ? t("signup.step2-resend-progress")
                     : t("signup.step2-resend-submit")}
@@ -332,7 +332,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
               </button>
             </div>
           </div>
-          <p className="pb-2 text-sm text-bunker-400">{t("signup.step2-spam-alert")}</p>
+          <p className="text-bunker-400 pb-2 text-sm">{t("signup.step2-spam-alert")}</p>
         </div>
       )}
     </div>

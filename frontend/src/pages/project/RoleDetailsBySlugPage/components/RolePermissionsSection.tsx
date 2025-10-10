@@ -159,13 +159,13 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     <div className="w-full">
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="flex h-full w-full flex-1 flex-col rounded-lg border border-mineshaft-600 bg-mineshaft-900 py-4"
+        className="border-mineshaft-600 bg-mineshaft-900 flex h-full w-full flex-1 flex-col rounded-lg border py-4"
       >
         <FormProvider {...form}>
-          <div className="mx-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
+          <div className="border-mineshaft-400 mx-4 flex items-center justify-between border-b pb-4">
             <div>
-              <h3 className="text-lg font-medium text-mineshaft-100">Policies</h3>
-              <p className="text-sm leading-3 text-mineshaft-400">
+              <h3 className="text-mineshaft-100 text-lg font-medium">Policies</h3>
+              <p className="text-mineshaft-400 text-sm leading-3">
                 Configure granular access policies
               </p>
             </div>
@@ -173,7 +173,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
               <div className="flex items-center gap-2">
                 {isDirty && (
                   <Button
-                    className="mr-4 text-mineshaft-300"
+                    className="text-mineshaft-300 mr-4"
                     variant="link"
                     isDisabled={isSubmitting}
                     isLoading={isSubmitting}
@@ -192,13 +192,13 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                 >
                   Save
                 </Button>
-                <div className="ml-2 border-l border-mineshaft-500 pl-4">
+                <div className="border-mineshaft-500 ml-2 border-l pl-4">
                   <AddPoliciesButton isDisabled={isDisabled} projectType={currentProject.type} />
                 </div>
               </div>
             )}
           </div>
-          <div className="flex flex-1 flex-col overflow-hidden pr-1 pl-4">
+          <div className="flex flex-1 flex-col overflow-hidden pl-4 pr-1">
             <div className="thin-scrollbar flex-1 overflow-y-scroll py-4">
               {!isPending && <PermissionEmptyState />}
               {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])

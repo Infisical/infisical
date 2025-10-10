@@ -96,7 +96,7 @@ export const DeleteActionModal = ({
         >
           <FormControl
             label={
-              <div className="pb-2 text-sm break-words">
+              <div className="break-words pb-2 text-sm">
                 {deletionMessage || (
                   <>
                     Type <span className="font-bold">{deleteKey}</span> to perform this action

@@ -154,7 +154,7 @@ export const CircleCIConfigurePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="mb-1 ml-2 flex cursor-pointer flex-row items-center gap-0.5 rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="bg-yellow/20 text-yellow mb-1 ml-2 flex cursor-pointer flex-row items-center gap-0.5 rounded-md px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
@@ -241,7 +241,7 @@ export const CircleCIConfigurePage = () => {
                 onValueChange={(e) => {
                   onChange(e);
                 }}
-                className="w-full border border-mineshaft-500"
+                className="border-mineshaft-500 w-full border"
               >
                 <SelectItem value={CircleCiScope.Project}>Project</SelectItem>
                 <SelectItem value={CircleCiScope.Context}>Context</SelectItem>

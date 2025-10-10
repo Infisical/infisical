@@ -32,7 +32,7 @@ export const AwsCertificateManagerPkiSyncFields = () => {
             <Select
               value={field.value}
               onValueChange={field.onChange}
-              className="w-full border border-mineshaft-500 capitalize"
+              className="border-mineshaft-500 w-full border capitalize"
               position="popper"
               placeholder="Select an AWS region"
             >

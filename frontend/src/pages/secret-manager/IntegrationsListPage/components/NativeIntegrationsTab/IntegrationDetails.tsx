@@ -126,7 +126,7 @@ export const IntegrationDetails = ({ integration }: Props) => {
           </div>
         )}
       {integration.integration === "github" && integration.metadata?.githubVisibility ? (
-        <div className="mt-2 text-xs text-mineshaft-200">
+        <div className="text-mineshaft-200 mt-2 text-xs">
           {/* eslint-disable-next-line no-nested-ternary */}
           {integration.metadata?.githubVisibility === "selected"
             ? "* Syncing to selected repositories in the organization. "

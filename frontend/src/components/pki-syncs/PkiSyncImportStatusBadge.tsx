@@ -69,16 +69,16 @@ export const PkiSyncImportStatusBadge = ({ pkiSync, className, mini }: Props) =>
       label = "Failed to Import Certificates";
       icon = faTriangleExclamation;
       tooltipContent = (
-        <div className="flex flex-col gap-2 py-1 whitespace-normal">
+        <div className="flex flex-col gap-2 whitespace-normal py-1">
           {failureMessage && (
             <div>
-              <div className="mb-2 flex self-start text-red">
-                <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
+              <div className="text-red mb-2 flex self-start">
+                <FontAwesomeIcon icon={faXmark} className="ml-1 pr-1.5 pt-0.5 text-sm" />
                 <div className="text-xs">
                   {mini ? "Failed to Import Certificates" : "Failure Reason"}
                 </div>
               </div>
-              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs">{failureMessage}</div>
+              <div className="bg-mineshaft-600 rounded-sm p-2 text-xs">{failureMessage}</div>
             </div>
           )}
         </div>

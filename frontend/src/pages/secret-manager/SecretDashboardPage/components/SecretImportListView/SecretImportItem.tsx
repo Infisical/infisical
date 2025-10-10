@@ -59,7 +59,7 @@ export const EnvFolderIcon = ({
   <div className="inline-flex items-center space-x-2">
     <div style={{ minWidth: "96px" }}>{env || "-"}</div>
     {secretPath && (
-      <div className="inline-flex items-center space-x-2 border-l border-mineshaft-600 pl-2">
+      <div className="border-mineshaft-600 inline-flex items-center space-x-2 border-l pl-2">
         {/* {isReplication && <Tag size="xs">Replication Mode</Tag>} */}
         <FontAwesomeIcon icon={faFolder} className="text-md text-green-700" />
         <span>{secretPath}</span>
@@ -154,7 +154,7 @@ export const SecretImportItem = ({
     <>
       <div
         className={twMerge(
-          "group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700",
+          "border-mineshaft-600 hover:bg-mineshaft-700 group flex cursor-pointer border-b",
           isReserved && "hidden"
         )}
         role="button"
@@ -171,7 +171,7 @@ export const SecretImportItem = ({
         <div className="flex w-11 items-center py-2 pl-5 text-green-700">
           <FontAwesomeIcon icon={faFileImport} />
         </div>
-        <div className="flex grow items-center py-2 pr-2 pl-4">
+        <div className="flex grow items-center py-2 pl-4 pr-2">
           <EnvFolderIcon
             env={importEnv.slug || ""}
             secretPath={secretImport?.importPath || ""}
@@ -182,11 +182,11 @@ export const SecretImportItem = ({
           {lastReplicated && (
             <Tooltip
               position="left"
-              className="max-w-md break-words whitespace-normal"
+              className="max-w-md whitespace-normal break-words"
               content={
                 <div className="flex max-h-40 flex-col overflow-auto">
                   <div className="flex self-start">
-                    <FontAwesomeIcon icon={faCalendarCheck} className="pt-0.5 pr-2 text-sm" />
+                    <FontAwesomeIcon icon={faCalendarCheck} className="pr-2 pt-0.5 text-sm" />
                     <div className="text-sm">Last Replication</div>
                   </div>
                   <div className="pl-5 text-left text-xs">
@@ -197,7 +197,7 @@ export const SecretImportItem = ({
                   {!isReplicationSuccess && (
                     <>
                       <div className="mt-2 flex self-start">
-                        <FontAwesomeIcon icon={faXmark} className="pt-1 pr-2 text-sm" />
+                        <FontAwesomeIcon icon={faXmark} className="pr-2 pt-1 text-sm" />
                         <div className="text-sm">Fail reason</div>
                       </div>
                       <div className="pl-5 text-left text-xs">{replicationStatus}</div>
@@ -242,7 +242,7 @@ export const SecretImportItem = ({
             </ProjectPermissionCan>
           )}
         </div>
-        <div className="flex w-16 items-center justify-between border-l border-mineshaft-600 py-3.5 pr-3 pl-4">
+        <div className="border-mineshaft-600 flex w-16 items-center justify-between border-l py-3.5 pl-4 pr-3">
           <ProjectPermissionCan
             I={ProjectPermissionActions.Edit}
             a={subject(ProjectPermissionSub.SecretImports, {
@@ -295,9 +295,9 @@ export const SecretImportItem = ({
       {!isReplication && (isReplicationExpand || isExpanded) && !isDragging && (
         <td
           colSpan={3}
-          className={`bg-bunker-800 ${isExpanded && "border-b-2 border-mineshaft-500"}`}
+          className={`bg-bunker-800 ${isExpanded && "border-mineshaft-500 border-b-2"}`}
         >
-          <div className="rounded-md bg-bunker-700 p-1">
+          <div className="bg-bunker-700 rounded-md p-1">
             <TableContainer>
               <table className="secret-table">
                 <thead>

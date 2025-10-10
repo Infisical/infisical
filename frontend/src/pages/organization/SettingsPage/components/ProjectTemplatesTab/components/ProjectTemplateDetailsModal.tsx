@@ -140,7 +140,7 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
                 <div
                   key={el.value}
                   className={twMerge(
-                    "flex cursor-pointer flex-col items-center gap-2 rounded-sm border border-mineshaft-600 px-2 py-4 opacity-75 transition-all hover:border-primary-400 hover:bg-mineshaft-600",
+                    "border-mineshaft-600 hover:border-primary-400 hover:bg-mineshaft-600 flex cursor-pointer flex-col items-center gap-2 rounded-sm border px-2 py-4 opacity-75 transition-all",
                     field.value === el.value && "border-primary-400 bg-mineshaft-600 opacity-100"
                   )}
                   onClick={() => field.onChange(el.value)}
@@ -166,7 +166,7 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
         isError={Boolean(errors.description?.message)}
       >
         <TextArea
-          className="max-h-80 min-h-40 max-w-full min-w-full"
+          className="max-h-80 min-h-40 min-w-full max-w-full"
           {...register("description")}
         />
       </FormControl>

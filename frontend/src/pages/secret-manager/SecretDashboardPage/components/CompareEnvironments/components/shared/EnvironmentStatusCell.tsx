@@ -51,7 +51,7 @@ export const EnvironmentStatusCell = ({ isLast, status }: Props) => {
   return (
     <Td
       className={twMerge(
-        "border-b border-mineshaft-500 bg-clip-padding p-0 group-hover:bg-mineshaft-600",
+        "border-mineshaft-500 group-hover:bg-mineshaft-600 border-b bg-clip-padding p-0",
         (status === "present" || status === "imported") && "text-green-600",
         status === "empty" && "text-yellow",
         status === "missing" && "text-red-600",
@@ -60,7 +60,7 @@ export const EnvironmentStatusCell = ({ isLast, status }: Props) => {
     >
       <div
         className={twMerge(
-          "flex h-10 items-center justify-center border-mineshaft-500 px-0 py-3",
+          "border-mineshaft-500 flex h-10 items-center justify-center px-0 py-3",
           !isLast && "border-r"
         )}
       >

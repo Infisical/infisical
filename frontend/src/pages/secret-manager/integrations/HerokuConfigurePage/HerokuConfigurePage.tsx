@@ -116,7 +116,7 @@ export const HerokuConfigurePage = () => {
       <Helmet>
         <title>Set Up Heroku Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-mineshaft-600 p-0">
+      <Card className="border-mineshaft-600 max-w-lg rounded-md border p-0">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Select which environment or folder in Infisical you want to sync to Heroku's environment variables."
@@ -131,7 +131,7 @@ export const HerokuConfigurePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="bg-yellow/20 text-yellow mb-1 ml-2 inline-block cursor-default rounded-md px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
@@ -241,7 +241,7 @@ export const HerokuConfigurePage = () => {
           <Button
             colorSchema="primary"
             variant="outline_bg"
-            className="mt-2 mb-6 ml-auto"
+            className="mb-6 ml-auto mt-2"
             size="sm"
             type="submit"
             isLoading={isLoading}
@@ -277,12 +277,12 @@ export const HerokuConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+        <div className="border-mineshaft-600 bg-mineshaft-800 text-mineshaft-200 flex h-max max-w-md flex-col rounded-md border p-6 text-center">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}
             <a
-              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              className="text-mineshaft-100 decoration-primary-500 inline cursor-pointer underline underline-offset-4 opacity-80 duration-200 hover:opacity-100"
               target="_blank"
               rel="noopener noreferrer"
               href="mailto:support@infisical.com"

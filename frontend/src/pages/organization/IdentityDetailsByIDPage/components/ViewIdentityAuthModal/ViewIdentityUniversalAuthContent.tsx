@@ -103,7 +103,7 @@ export const ViewIdentityUniversalAuthContent = ({
         />
       )}
       <div className="col-span-2 my-3">
-        <div className="mb-3 border-b border-mineshaft-500 pb-2">
+        <div className="border-mineshaft-500 mb-3 border-b pb-2">
           <span className="text-bunker-300">Client ID</span>
         </div>
         <div className="flex items-center gap-2">

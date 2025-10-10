@@ -26,7 +26,7 @@ export const AwsParameterStoreSyncOptionsReviewFields = () => {
             content={
               <Table>
                 <THead>
-                  <Th className="p-2 whitespace-nowrap">Key</Th>
+                  <Th className="whitespace-nowrap p-2">Key</Th>
                   <Th className="p-2">Value</Th>
                 </THead>
                 <TBody>
@@ -41,7 +41,7 @@ export const AwsParameterStoreSyncOptionsReviewFields = () => {
             }
           >
             <div className="w-min">
-              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
+              <Badge className="bg-mineshaft-400/50 text-bunker-300 flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
                 <FontAwesomeIcon icon={faEye} />
                 <span>
                   {tags.length} Tag{tags.length > 1 ? "s" : ""}

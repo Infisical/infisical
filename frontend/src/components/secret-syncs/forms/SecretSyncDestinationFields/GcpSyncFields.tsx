@@ -119,7 +119,7 @@ export const GcpSyncFields = () => {
                     return (
                       <li key={name}>
                         <p className="text-mineshaft-300">
-                          <span className="font-medium text-bunker-200">{name}</span>: {description}
+                          <span className="text-bunker-200 font-medium">{name}</span>: {description}
                         </p>
                       </li>
                     );
@@ -133,7 +133,7 @@ export const GcpSyncFields = () => {
             <Select
               value={value}
               onValueChange={(val) => onChange(val)}
-              className="w-full border border-mineshaft-500 capitalize"
+              className="border-mineshaft-500 w-full border capitalize"
               position="popper"
               dropdownContainerClassName="max-w-none"
               isDisabled={!projectId}

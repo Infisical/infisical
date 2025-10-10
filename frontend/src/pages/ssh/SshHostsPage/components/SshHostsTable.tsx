@@ -155,7 +155,7 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                                 <div className="text-mineshaft-200">
                                   {loginUser}
                                   {source === LoginMappingSource.HOST_GROUP && (
-                                    <span className="ml-2 text-xs text-mineshaft-400">
+                                    <span className="text-mineshaft-400 ml-2 text-xs">
                                       (inherited from host group)
                                     </span>
                                   )}
@@ -171,7 +171,7 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                                     <div className="flex items-center gap-1.5">
                                       <FontAwesomeIcon
                                         icon={faUser}
-                                        className="text-xs text-yellow/80"
+                                        className="text-yellow/80 text-xs"
                                       />
                                       <span>{username}</span>
                                       <Badge variant="primary">user</Badge>
@@ -189,7 +189,7 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                                     <div className="flex items-center gap-1.5">
                                       <FontAwesomeIcon
                                         icon={faUsers}
-                                        className="text-xs text-green/80"
+                                        className="text-green/80 text-xs"
                                       />
                                       <span>{group}</span>
                                       <Badge variant="success">group</Badge>

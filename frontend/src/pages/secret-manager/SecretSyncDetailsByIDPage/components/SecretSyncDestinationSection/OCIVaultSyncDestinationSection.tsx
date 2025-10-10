@@ -13,7 +13,7 @@ export const OCIVaultSyncDestinationSection = ({ secretSync }: Props) => {
 
   return (
     <>
-      <Tooltip side="bottom" className="max-w-sm break-words select-text" content={compartmentOcid}>
+      <Tooltip side="bottom" className="max-w-sm select-text break-words" content={compartmentOcid}>
         <div>
           <GenericFieldLabel label="Compartment OCID">
             {compartmentOcid.substring(0, 21)}...
@@ -21,7 +21,7 @@ export const OCIVaultSyncDestinationSection = ({ secretSync }: Props) => {
           </GenericFieldLabel>
         </div>
       </Tooltip>
-      <Tooltip side="bottom" className="max-w-sm break-words select-text" content={compartmentOcid}>
+      <Tooltip side="bottom" className="max-w-sm select-text break-words" content={compartmentOcid}>
         <div>
           <GenericFieldLabel label="Vault OCID">
             {vaultOcid.substring(0, 15)}...
@@ -29,7 +29,7 @@ export const OCIVaultSyncDestinationSection = ({ secretSync }: Props) => {
           </GenericFieldLabel>
         </div>
       </Tooltip>
-      <Tooltip side="bottom" className="max-w-sm break-words select-text" content={compartmentOcid}>
+      <Tooltip side="bottom" className="max-w-sm select-text break-words" content={compartmentOcid}>
         <div>
           <GenericFieldLabel label="Key OCID">
             {keyOcid.substring(0, 13)}...

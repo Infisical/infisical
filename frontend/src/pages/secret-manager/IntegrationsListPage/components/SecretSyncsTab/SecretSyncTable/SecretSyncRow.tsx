@@ -139,7 +139,7 @@ export const SecretSyncRow = ({
         })
       }
       className={twMerge(
-        "group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700",
+        "hover:bg-mineshaft-700 group h-10 cursor-pointer transition-colors duration-100",
         syncStatus === SecretSyncStatus.Failed && "bg-red/5 hover:bg-red/10"
       )}
       key={`sync-${id}`}
@@ -151,7 +151,7 @@ export const SecretSyncRow = ({
           className="min-w-7"
         />
       </Td>
-      <Td className="max-w-0 min-w-32!">
+      <Td className="min-w-32! max-w-0">
         <div>
           <div className="flex w-full items-center">
             <p className="truncate">{name}</p>
@@ -160,12 +160,12 @@ export const SecretSyncRow = ({
                 <FontAwesomeIcon
                   icon={faInfoCircle}
                   size="xs"
-                  className="ml-1 text-mineshaft-400"
+                  className="text-mineshaft-400 ml-1"
                 />
               </Tooltip>
             )}
           </div>
-          <p className="truncate text-xs leading-4 text-bunker-300">{destinationDetails.name}</p>
+          <p className="text-bunker-300 truncate text-xs leading-4">{destinationDetails.name}</p>
         </div>
       </Td>
       {folder && environment ? (
@@ -194,7 +194,7 @@ export const SecretSyncRow = ({
               className="max-w-sm"
               content={
                 [SecretSyncStatus.Succeeded, SecretSyncStatus.Failed].includes(syncStatus) ? (
-                  <div className="flex flex-col gap-2 py-1 whitespace-normal">
+                  <div className="flex flex-col gap-2 whitespace-normal py-1">
                     {lastSyncedAt && (
                       <div>
                         <div
@@ -202,22 +202,22 @@ export const SecretSyncRow = ({
                         >
                           <FontAwesomeIcon
                             icon={faCalendarCheck}
-                            className="ml-1 pt-0.5 pr-1.5 text-sm"
+                            className="ml-1 pr-1.5 pt-0.5 text-sm"
                           />
                           <div className="text-xs">Last Synced</div>
                         </div>
-                        <div className="rounded-sm bg-mineshaft-600 p-2 text-xs">
+                        <div className="bg-mineshaft-600 rounded-sm p-2 text-xs">
                           {format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}
                         </div>
                       </div>
                     )}
                     {failureMessage && (
                       <div>
-                        <div className="mb-2 flex self-start text-red">
-                          <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
+                        <div className="text-red mb-2 flex self-start">
+                          <FontAwesomeIcon icon={faXmark} className="ml-1 pr-1.5 pt-0.5 text-sm" />
                           <div className="text-xs">Failure Reason</div>
                         </div>
-                        <div className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
+                        <div className="bg-mineshaft-600 break-words rounded-sm p-2 text-xs">
                           {failureMessage}
                         </div>
                       </div>
@@ -237,7 +237,7 @@ export const SecretSyncRow = ({
               content="Auto-Sync is disabled. Changes to the source location will not be automatically synced to the destination."
             >
               <div>
-                <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
+                <Badge className="bg-mineshaft-400/50 text-bunker-300 flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
                   <FontAwesomeIcon icon={faBan} />
                   {!syncStatus && "Auto-Sync Disabled"}
                 </Badge>

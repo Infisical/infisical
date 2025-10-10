@@ -108,7 +108,7 @@ export const RegionSelect = () => {
       </Select>
       <Modal>
         <ModalTrigger asChild>
-          <button type="button" className="mt-1 text-right text-xs text-mineshaft-400 underline">
+          <button type="button" className="text-mineshaft-400 mt-1 text-right text-xs underline">
             Help me pick a data region
           </button>
         </ModalTrigger>
@@ -122,17 +122,17 @@ export const RegionSelect = () => {
                 <span className="mr-2 inline-block w-4">{flag}</span>
                 {value.toUpperCase()} Region
               </p>
-              <ul className="mt-2 ml-6 flex flex-col gap-1">
+              <ul className="ml-6 mt-2 flex flex-col gap-1">
                 <li>
-                  <FontAwesomeIcon size="xs" className="mr-0.5 text-green" icon={faCheck} /> Fastest
+                  <FontAwesomeIcon size="xs" className="text-green mr-0.5" icon={faCheck} /> Fastest
                   option if you are based in {value === Region.US ? "the" : ""} {label}
                 </li>
                 <li>
-                  <FontAwesomeIcon size="xs" className="mr-0.5 text-green" icon={faCheck} /> Data
+                  <FontAwesomeIcon size="xs" className="text-green mr-0.5" icon={faCheck} /> Data
                   storage compliance for this region
                 </li>
                 <li>
-                  <FontAwesomeIcon size="xs" className="mr-0.5 text-green" icon={faCheck} /> Hosted
+                  <FontAwesomeIcon size="xs" className="text-green mr-0.5" icon={faCheck} /> Hosted
                   in {regionLocation}
                 </li>
               </ul>

@@ -58,7 +58,7 @@ export const ZabbixSyncFields = () => {
                     return (
                       <li key={name}>
                         <p className="text-mineshaft-300">
-                          <span className="font-medium text-bunker-200">{name}</span>: {description}
+                          <span className="text-bunker-200 font-medium">{name}</span>: {description}
                         </p>
                       </li>
                     );
@@ -74,7 +74,7 @@ export const ZabbixSyncFields = () => {
                 setValue("destinationConfig.hostId", "");
                 setValue("destinationConfig.hostName", "");
               }}
-              className="w-full border border-mineshaft-500 capitalize"
+              className="border-mineshaft-500 w-full border capitalize"
               position="popper"
               placeholder="Select a scope..."
               dropdownContainerClassName="max-w-none"
@@ -127,7 +127,7 @@ export const ZabbixSyncFields = () => {
             <Select
               value={String(value)}
               onValueChange={(val) => onChange(parseInt(val, 10))}
-              className="w-full border border-mineshaft-500 capitalize"
+              className="border-mineshaft-500 w-full border capitalize"
               position="popper"
               placeholder="Select a macro type..."
               dropdownContainerClassName="max-w-none"

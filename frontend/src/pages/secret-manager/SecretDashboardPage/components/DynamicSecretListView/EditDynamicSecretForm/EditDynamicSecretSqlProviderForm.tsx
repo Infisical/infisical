@@ -253,7 +253,7 @@ export const EditDynamicSecretSqlProviderForm = ({
         </div>
         <MetadataForm control={control} />
         <div>
-          <div className="mb-4 border-b border-b-mineshaft-600 pb-2">Configuration</div>
+          <div className="border-b-mineshaft-600 mb-4 border-b pb-2">Configuration</div>
           <div>
             <OrgPermissionCan
               I={OrgGatewayPermissionActions.AttachGateways}
@@ -284,7 +284,7 @@ export const EditDynamicSecretSqlProviderForm = ({
                             isDisabled={!isAllowed}
                             value={value || undefined}
                             onValueChange={onChange}
-                            className="w-full border border-mineshaft-500"
+                            className="border-mineshaft-500 w-full border"
                             dropdownContainerClassName="max-w-none"
                             isLoading={isGatewaysLoading}
                             placeholder="Default: Internet Gateway"
@@ -321,7 +321,7 @@ export const EditDynamicSecretSqlProviderForm = ({
                     isDisabled
                     value={value}
                     onValueChange={(val) => onChange(val)}
-                    className="w-full border border-mineshaft-500"
+                    className="border-mineshaft-500 w-full border"
                   >
                     <SelectItem value={SqlProviders.Postgres}>PostgreSQL</SelectItem>
                     <SelectItem value={SqlProviders.MySql}>MySQL</SelectItem>
@@ -411,14 +411,14 @@ export const EditDynamicSecretSqlProviderForm = ({
             </div>
             <div>
               {selectedClient === SqlProviders.MsSQL && (
-                <div className="mt-2 mb-2">
+                <div className="mb-2 mt-2">
                   <Controller
                     control={control}
                     name="inputs.sslEnabled"
                     render={({ field: { value, onChange }, fieldState: { error } }) => (
                       <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
                         <Switch
-                          className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                          className="bg-mineshaft-400/50 data-[state=checked]:bg-green/80 shadow-inner"
                           id="sql-ds-ssl-enabled"
                           thumbClassName="bg-mineshaft-800"
                           isChecked={Boolean(value)}
@@ -448,7 +448,7 @@ export const EditDynamicSecretSqlProviderForm = ({
                   </FormControl>
                 )}
               />
-              <Accordion type="multiple" className="mt-4 mb-2 w-full bg-mineshaft-700">
+              <Accordion type="multiple" className="bg-mineshaft-700 mb-2 mt-4 w-full">
                 <AccordionItem value="advanced">
                   <AccordionTrigger>
                     Creation, Revocation & Renew Statements (optional)
@@ -472,7 +472,7 @@ export const EditDynamicSecretSqlProviderForm = ({
                         </FormControl>
                       )}
                     />
-                    <div className="mb-4 text-sm text-mineshaft-300">
+                    <div className="text-mineshaft-300 mb-4 text-sm">
                       Customize SQL statements for managing database user lifecycle
                     </div>
                     <Controller
@@ -542,11 +542,11 @@ export const EditDynamicSecretSqlProviderForm = ({
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
-              <Accordion type="multiple" className="mt-4 mb-2 w-full bg-mineshaft-700">
+              <Accordion type="multiple" className="bg-mineshaft-700 mb-2 mt-4 w-full">
                 <AccordionItem value="password-config">
                   <AccordionTrigger>Password Configuration (optional)</AccordionTrigger>
                   <AccordionContent>
-                    <div className="mb-4 text-sm text-mineshaft-300">
+                    <div className="text-mineshaft-300 mb-4 text-sm">
                       Set constraints on the generated database password
                     </div>
                     <div className="space-y-4">

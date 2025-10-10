@@ -115,7 +115,7 @@ export const EditDynamicSecretGithubForm = ({
                         <FontAwesomeIcon
                           icon={faQuestionCircle}
                           size="sm"
-                          className="relative right-1 bottom-px"
+                          className="relative bottom-px right-1"
                         />
                       </Tooltip>
                     }
@@ -127,7 +127,7 @@ export const EditDynamicSecretGithubForm = ({
             </div>
           </div>
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="border-mineshaft-500 text-mineshaft-200 mb-4 mt-4 border-b pb-2 pl-1 font-medium">
               Configuration
             </div>
 

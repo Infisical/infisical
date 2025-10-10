@@ -51,7 +51,7 @@ export const SecretTagsSection = (): JSX.Element => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
       <div className="mb-8 flex justify-between">
         <p className="mb-3 text-xl font-medium">Secret Tags</p>
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Tags}>

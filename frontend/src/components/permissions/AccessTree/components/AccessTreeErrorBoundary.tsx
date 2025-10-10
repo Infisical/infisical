@@ -39,12 +39,12 @@ const ErrorDisplay = ({
 
   return (
     <div className="flex h-full w-full flex-col gap-2">
-      <div className="flex items-center gap-2 text-mineshaft-100">
+      <div className="text-mineshaft-100 flex items-center gap-2">
         <FontAwesomeIcon icon={faExclamationTriangle} className="text-red" />
         <p>
           Error displaying access tree. Please contact{" "}
           <a
-            className="inline cursor-pointer text-mineshaft-200 underline decoration-primary-500 underline-offset-4 duration-200 hover:text-mineshaft-100"
+            className="text-mineshaft-200 decoration-primary-500 hover:text-mineshaft-100 inline cursor-pointer underline underline-offset-4 duration-200"
             target="_blank"
             rel="noopener noreferrer"
             href="mailto:support@infisical.com"
@@ -55,13 +55,13 @@ const ErrorDisplay = ({
         </p>
       </div>
       <div className="relative flex flex-1 flex-col overflow-hidden">
-        <pre className="thin-scrollbar w-full flex-1 overflow-y-auto rounded-sm bg-mineshaft-700 p-2 text-xs whitespace-pre-wrap text-mineshaft-100">
+        <pre className="thin-scrollbar bg-mineshaft-700 text-mineshaft-100 w-full flex-1 overflow-y-auto whitespace-pre-wrap rounded-sm p-2 text-xs">
           {display}
         </pre>
         <IconButton
           variant="plain"
           colorSchema="secondary"
-          className="absolute top-2 right-4"
+          className="absolute right-4 top-2"
           ariaLabel="Copy secret value"
           onClick={copyToClipboard}
         >

@@ -198,7 +198,7 @@ export const MongoDBDatabaseInputForm = ({
             </div>
           </div>
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="border-mineshaft-500 text-mineshaft-200 mb-4 mt-4 border-b pb-2 pl-1 font-medium">
               Configuration
             </div>
             <div className="flex flex-col">
@@ -283,7 +283,7 @@ export const MongoDBDatabaseInputForm = ({
                 tooltipText={`Human-readable label that identifies a group of privileges assigned to a database user. This value can either be a built-in role or a custom role.
 														Built-in: atlasAdmin, backup, clusterMonitor, dbAdmin, dbAdminAnyDatabase, enableSharding, read, readAnyDatabase, readWrite, readWriteAnyDatabase.`}
               />
-              <div className="mt-1 mb-3 flex flex-col space-y-2">
+              <div className="mb-3 mt-1 flex flex-col space-y-2">
                 {roleFields.fields.map(({ id: roleFieldId }, i) => (
                   <div key={roleFieldId} className="flex items-end space-x-2">
                     <div className="grow">

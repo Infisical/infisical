@@ -16,7 +16,7 @@ export const PkiSyncSourceFields = () => {
 
   return (
     <>
-      <p className="mb-4 text-sm text-bunker-300">
+      <p className="text-bunker-300 mb-4 text-sm">
         Specify the PKI subscriber where you would like to sync certificates from.
       </p>
 

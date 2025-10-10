@@ -59,12 +59,12 @@ export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: -30 }}
             >
-              <div className="mb-4 text-mineshaft-300">Select a KMS Provider</div>
+              <div className="text-mineshaft-300 mb-4">Select a KMS Provider</div>
               <div className="flex items-center space-x-4">
                 {EXTERNAL_KMS_LIST.map(({ icon, provider, title }) => (
                   <div
                     key={`kms-${provider}`}
-                    className="flex h-28 w-32 cursor-pointer flex-col items-center space-y-4 rounded-sm border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
+                    className="border-mineshaft-500 bg-bunker-600 hover:border-primary/70 hover:bg-primary/10 flex h-28 w-32 cursor-pointer flex-col items-center space-y-4 rounded-sm border p-6 transition-all hover:text-white"
                     role="button"
                     tabIndex={0}
                     onClick={() => {
@@ -79,7 +79,7 @@ export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
                     }}
                   >
                     <FontAwesomeIcon icon={icon} size="lg" />
-                    <div className="text-center text-sm whitespace-pre-wrap">{title}</div>
+                    <div className="whitespace-pre-wrap text-center text-sm">{title}</div>
                   </div>
                 ))}
               </div>

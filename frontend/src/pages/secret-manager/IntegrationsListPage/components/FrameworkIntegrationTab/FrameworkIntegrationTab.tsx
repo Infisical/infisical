@@ -22,7 +22,7 @@ export const FrameworkIntegrationTab = () => {
             href={framework.docsLink}
             rel="noopener noreferrer"
             target="_blank"
-            className="relative flex h-32 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 duration-200 hover:bg-mineshaft-700"
+            className="border-mineshaft-600 bg-mineshaft-800 hover:bg-mineshaft-700 relative flex h-32 cursor-pointer flex-col items-center justify-center rounded-md border p-4 duration-200"
           >
             {framework?.image && (
               <img
@@ -44,7 +44,7 @@ export const FrameworkIntegrationTab = () => {
           href="https://infisical.com/docs/cli/commands/run"
           rel="noopener noreferrer"
           target="_blank"
-          className="relative flex h-32 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 duration-200 hover:bg-mineshaft-700"
+          className="border-mineshaft-600 bg-mineshaft-800 hover:bg-mineshaft-700 relative flex h-32 cursor-pointer flex-col items-center justify-center rounded-md border p-4 duration-200"
         >
           <FontAwesomeIcon className="mt-auto text-5xl text-white/90" icon={faKeyboard} />
           <div className="mt-auto max-w-xs text-center text-sm font-medium text-gray-300 duration-200 group-hover:text-gray-200">
@@ -55,7 +55,7 @@ export const FrameworkIntegrationTab = () => {
           href="https://infisical.com/docs/sdks/overview"
           rel="noopener noreferrer"
           target="_blank"
-          className="relative flex h-32 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 duration-200 hover:bg-mineshaft-700"
+          className="border-mineshaft-600 bg-mineshaft-800 hover:bg-mineshaft-700 relative flex h-32 cursor-pointer flex-col items-center justify-center rounded-md border p-4 duration-200"
         >
           <FontAwesomeIcon className="mt-auto text-5xl text-white/90" icon={faComputer} />
           <div className="mt-auto max-w-xs text-center text-sm font-medium text-gray-300 duration-200 group-hover:text-gray-200">

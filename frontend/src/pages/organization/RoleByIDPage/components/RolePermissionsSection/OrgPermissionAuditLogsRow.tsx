@@ -84,7 +84,7 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
   return (
     <>
       <Tr
-        className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+        className="hover:bg-mineshaft-700 h-10 cursor-pointer transition-colors duration-100"
         onClick={() => setIsRowExpanded.toggle()}
       >
         <Td className="w-4">
@@ -94,7 +94,7 @@ export const OrgPermissionAuditLogsRow = ({ isEditable, control, setValue }: Pro
         <Td>
           <Select
             value={selectedPermissionCategory}
-            className="h-8 w-40 bg-mineshaft-700"
+            className="bg-mineshaft-700 h-8 w-40"
             dropdownContainerClassName="border text-left border-mineshaft-600 bg-mineshaft-800"
             onValueChange={handlePermissionChange}
             isDisabled={!isEditable}

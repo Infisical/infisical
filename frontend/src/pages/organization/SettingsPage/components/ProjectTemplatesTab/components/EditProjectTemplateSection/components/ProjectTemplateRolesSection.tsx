@@ -103,11 +103,11 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
             exit={{ opacity: 0, translateX: -30 }}
             className="absolute w-full"
           >
-            <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-              <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
+            <div className="border-mineshaft-600 bg-mineshaft-900 w-full rounded-lg border p-4">
+              <div className="border-mineshaft-400 flex items-center justify-between border-b pb-4">
                 <div>
                   <h2 className="text-lg font-medium">Project Roles</h2>
-                  <p className="text-sm text-mineshaft-400">
+                  <p className="text-mineshaft-400 text-sm">
                     {isInfisicalTemplate
                       ? "Click a role to view the associated permissions"
                       : "Add, edit and remove roles for this project template"}
@@ -151,7 +151,7 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
                           return (
                             <Tr
                               key={role.slug}
-                              className="group w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                              className="hover:bg-mineshaft-700 group w-full cursor-pointer transition-colors duration-100"
                               role="button"
                               tabIndex={0}
                               onKeyDown={(evt) => {

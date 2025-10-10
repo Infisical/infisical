@@ -35,7 +35,7 @@ export const QuickSearchDynamicSecretItem = ({
 
   return (
     <Tr
-      className="hover cursor-pointer bg-mineshaft-700 hover:bg-mineshaft-600"
+      className="hover bg-mineshaft-700 hover:bg-mineshaft-600 cursor-pointer"
       onClick={handleNavigate}
     >
       <Td className="w-full">
@@ -44,7 +44,7 @@ export const QuickSearchDynamicSecretItem = ({
             <FontAwesomeIcon className="mr-2 self-center text-yellow-700" icon={faFingerprint} />
             {groupDynamicSecret.name}
           </span>
-          <span className="text-xs text-mineshaft-400">
+          <span className="text-mineshaft-400 text-xs">
             <FontAwesomeIcon size="xs" className="mr-0.5 text-yellow-700" icon={faFolder} />{" "}
             <Tooltip className="max-w-7xl" content={groupDynamicSecret.path}>
               <span>{reverseTruncate(groupDynamicSecret.path)}</span>

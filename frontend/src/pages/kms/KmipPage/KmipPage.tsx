@@ -11,11 +11,11 @@ export const KmipPage = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="h-full bg-bunker-800">
+    <div className="bg-bunker-800 h-full">
       <Helmet>
         <title>{t("common.head-title", { title: "KMS" })}</title>
       </Helmet>
-      <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+      <div className="bg-bunker-800 container mx-auto flex flex-col justify-between text-white">
         <div className="mx-auto mb-6 w-full max-w-7xl">
           <PageHeader
             title="KMIP"

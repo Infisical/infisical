@@ -277,7 +277,7 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
       </div>
       {selectedMicrosoftTeamsIntegrationId && (
         <>
-          <h2 className="mb-2 flex-1 text-sm text-mineshaft-400">Configure Events</h2>
+          <h2 className="text-mineshaft-400 mb-2 flex-1 text-sm">Configure Events</h2>
           <Controller
             control={control}
             name="isSecretRequestNotificationEnabled"
@@ -286,7 +286,7 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
                 <FormControl
                   isError={Boolean(error)}
                   errorText={error?.message}
-                  className="mt-3 mb-2"
+                  className="mb-2 mt-3"
                 >
                   <Switch
                     id="secret-approval-notification"

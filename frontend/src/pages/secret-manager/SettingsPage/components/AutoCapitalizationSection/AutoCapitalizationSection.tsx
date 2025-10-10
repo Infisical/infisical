@@ -36,7 +36,7 @@ export const AutoCapitalizationSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
       <p className="mb-3 text-xl font-medium">{t("settings.project.enforce-capitalization")}</p>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
         {(isAllowed) => (

@@ -120,7 +120,7 @@ export const TeamCitySyncFields = () => {
         )}
       />
 
-      <span className="text-sm text-bunker-300">
+      <span className="text-bunker-300 text-sm">
         Not selecting a Build Configuration will sync your secrets to the entire project.
       </span>
     </>

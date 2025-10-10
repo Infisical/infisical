@@ -43,7 +43,7 @@ export const SecretSyncSourceFields = () => {
 
   return (
     <>
-      <p className="mb-4 text-sm text-bunker-300">
+      <p className="text-bunker-300 mb-4 text-sm">
         Specify the environment and path where you would like to sync secrets from.
       </p>
 

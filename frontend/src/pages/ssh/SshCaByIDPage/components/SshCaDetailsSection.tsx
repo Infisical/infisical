@@ -32,9 +32,9 @@ export const SshCaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
   };
 
   return ca ? (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">SSH CA Details</h3>
+    <div className="border-mineshaft-600 bg-mineshaft-900 rounded-lg border p-4">
+      <div className="border-mineshaft-400 flex items-center justify-between border-b pb-4">
+        <h3 className="text-mineshaft-100 text-lg font-medium">SSH CA Details</h3>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Edit}
           a={ProjectPermissionSub.SshCertificateAuthorities}
@@ -63,9 +63,9 @@ export const SshCaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
       </div>
       <div className="pt-4">
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">SSH CA ID</p>
+          <p className="text-mineshaft-300 text-sm font-medium">SSH CA ID</p>
           <div className="group flex align-top">
-            <p className="text-sm text-mineshaft-300">{ca.id}</p>
+            <p className="text-mineshaft-300 text-sm">{ca.id}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
               <Tooltip content={copyTextId}>
                 <IconButton
@@ -84,23 +84,23 @@ export const SshCaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Friendly Name</p>
-          <p className="text-sm text-mineshaft-300">{ca.friendlyName}</p>
+          <p className="text-mineshaft-300 text-sm font-medium">Friendly Name</p>
+          <p className="text-mineshaft-300 text-sm">{ca.friendlyName}</p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Status</p>
-          <p className="text-sm text-mineshaft-300">{caStatusToNameMap[ca.status]}</p>
+          <p className="text-mineshaft-300 text-sm font-medium">Status</p>
+          <p className="text-mineshaft-300 text-sm">{caStatusToNameMap[ca.status]}</p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Key Algorithm</p>
-          <p className="text-sm text-mineshaft-300">
+          <p className="text-mineshaft-300 text-sm font-medium">Key Algorithm</p>
+          <p className="text-mineshaft-300 text-sm">
             {sshCertKeyAlgorithmToNameMap[ca.keyAlgorithm]}
           </p>
         </div>
         <div>
-          <p className="text-sm font-medium text-mineshaft-300">Public Key</p>
+          <p className="text-mineshaft-300 text-sm font-medium">Public Key</p>
           <div className="group flex align-top">
-            <p className="flex-1 text-sm text-mineshaft-300">{ca.publicKey.substring(0, 20)}...</p>
+            <p className="text-mineshaft-300 flex-1 text-sm">{ca.publicKey.substring(0, 20)}...</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
               <Tooltip content={downloadText}>
                 <IconButton

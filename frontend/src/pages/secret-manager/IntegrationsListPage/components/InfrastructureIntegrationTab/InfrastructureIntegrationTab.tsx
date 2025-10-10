@@ -23,7 +23,7 @@ export const InfrastructureIntegrationTab = () => {
               onKeyDown={() => null}
               role="button"
               tabIndex={0}
-              className="group relative flex h-32 w-full cursor-pointer flex-row items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 duration-200 hover:bg-mineshaft-700"
+              className="border-mineshaft-600 bg-mineshaft-800 hover:bg-mineshaft-700 group relative flex h-32 w-full cursor-pointer flex-row items-center rounded-md border p-4 duration-200"
               key={integration?.name}
             >
               <img

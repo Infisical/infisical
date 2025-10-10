@@ -50,10 +50,10 @@ export const DeleteAppConnectionModal = ({ isOpen, onOpenChange, appConnection }
     >
       {appConnection.isPlatformManagedCredentials && (
         <NoticeBannerV2 className="mt-3" title="Platform Managed Credentials">
-          <p className="text-sm text-bunker-300">
+          <p className="text-bunker-300 text-sm">
             This App Connection&#39;s credentials are managed by Infisical.
           </p>
-          <p className="mt-3 text-sm text-bunker-300">
+          <p className="text-bunker-300 mt-3 text-sm">
             By deleting this connection you may lose permanent access to the associated resource.
           </p>
         </NoticeBannerV2>

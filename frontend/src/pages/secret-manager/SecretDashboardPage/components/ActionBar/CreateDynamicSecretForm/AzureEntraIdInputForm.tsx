@@ -199,7 +199,7 @@ export const AzureEntraIdInputForm = ({
             </div>
           </div>
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="border-mineshaft-500 text-mineshaft-200 mb-4 mt-4 border-b pb-2 pl-1 font-medium">
               Configuration
             </div>
             <div className="flex flex-col">
@@ -267,10 +267,10 @@ export const AzureEntraIdInputForm = ({
             </div>
           </div>
           <div>
-            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="border-mineshaft-500 text-mineshaft-200 mb-4 mt-4 border-b pb-2 pl-1 font-medium">
               Select Users
             </div>
-            <div className="mb-4 flex items-center text-sm font-normal text-mineshaft-400">
+            <div className="text-mineshaft-400 mb-4 flex items-center text-sm font-normal">
               &nbsp; We create a unique dynamic secret for each user in Entra Id.
             </div>
             <div className="flex flex-col">
@@ -300,7 +300,7 @@ export const AzureEntraIdInputForm = ({
                                   }
                                   return icon;
                                 })()}
-                                <span className="ml-4 cursor-default text-mineshaft-300 hover:text-mineshaft-200">
+                                <span className="text-mineshaft-300 hover:text-mineshaft-200 ml-4 cursor-default">
                                   {(() => {
                                     let message;
                                     if (loading) {

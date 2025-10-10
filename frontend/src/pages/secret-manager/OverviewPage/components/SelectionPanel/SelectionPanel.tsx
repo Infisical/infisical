@@ -231,17 +231,17 @@ export const SelectionPanel = ({
           isMultiSelectActive && "h-16"
         )}
       >
-        <div className="mt-3.5 flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
+        <div className="border-mineshaft-600 bg-mineshaft-800 text-bunker-300 mt-3.5 flex items-center rounded-md border px-4 py-2">
           <div className="mr-2 text-sm">{selectedCount} Selected</div>
           <button
             type="button"
-            className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
+            className="text-mineshaft-400 hover:text-mineshaft-200 mr-auto text-xs underline-offset-2 hover:underline"
             onClick={resetSelectedEntries}
           >
             Unselect All
           </button>
           {isRotatedSecretSelected && (
-            <span className="text-sm text-mineshaft-400">
+            <span className="text-mineshaft-400 text-sm">
               Rotated Secrets will not be affected by action.
             </span>
           )}

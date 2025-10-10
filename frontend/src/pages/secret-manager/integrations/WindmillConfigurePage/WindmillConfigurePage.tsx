@@ -95,7 +95,7 @@ export const WindmillConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
+            className="border-mineshaft-500 w-full border"
           >
             {currentProject?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -118,7 +118,7 @@ export const WindmillConfigurePage = () => {
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
-            className="w-full border border-mineshaft-500"
+            className="border-mineshaft-500 w-full border"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (

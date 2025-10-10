@@ -44,7 +44,7 @@ export const SecretRequestContainer = ({ onSuccess, secretRequestId }: Props) =>
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
+        <div className="border-mineshaft-600 bg-mineshaft-800 rounded-lg border p-4">
           <div className="flex items-center justify-between rounded-md bg-white/5 p-2 text-base text-gray-400">
             <div className="w-full">
               <Controller

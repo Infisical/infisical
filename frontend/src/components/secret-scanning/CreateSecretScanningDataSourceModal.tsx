@@ -108,7 +108,7 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
           selectedDataSource ? (
             <SecretScanningDataSourceModalHeader isConfigured={false} type={selectedDataSource} />
           ) : (
-            <div className="flex items-center text-mineshaft-300">
+            <div className="text-mineshaft-300 flex items-center">
               Add Data Source
               <a
                 target="_blank"
@@ -116,8 +116,8 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
                 className="mb-1 ml-1"
                 rel="noopener noreferrer"
               >
-                <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-[0.03rem] text-[12px]" />
+                <div className="bg-yellow/20 text-yellow inline-block rounded-md px-1.5 text-sm opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mb-[0.03rem] mr-1 text-[12px]" />
                   <span>Docs</span>
                   <FontAwesomeIcon
                     icon={faArrowUpRightFromSquare}

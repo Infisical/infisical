@@ -92,7 +92,7 @@ export const DynamicSecretListView = ({
             onOpenChange={(state) => handlePopUpToggle("dynamicSecretLeases", state)}
           >
             <div
-              className="group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700"
+              className="border-mineshaft-600 hover:bg-mineshaft-700 group flex cursor-pointer border-b"
               role="button"
               tabIndex={0}
               onKeyDown={(evt) => {
@@ -182,7 +182,7 @@ export const DynamicSecretListView = ({
                   </Tooltip>
                 )}
               </div>
-              <div className="flex w-16 items-center justify-between border-l border-mineshaft-600 px-3 py-3">
+              <div className="border-mineshaft-600 flex w-16 items-center justify-between border-l px-3 py-3">
                 <ProjectPermissionCan
                   I={ProjectPermissionDynamicSecretActions.EditRootCredential}
                   a={subject(ProjectPermissionSub.DynamicSecrets, {

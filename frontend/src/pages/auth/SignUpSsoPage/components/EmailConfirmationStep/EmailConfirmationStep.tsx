@@ -138,7 +138,7 @@ export const EmailConfirmationStep = ({
 
   return (
     <div className="mx-auto h-full w-full pb-4 md:px-8">
-      <p className="text-md flex justify-center text-bunker-200">
+      <p className="text-md text-bunker-200 flex justify-center">
         We&apos;ve sent a verification code to {email}
       </p>
       <div className="mx-auto hidden w-max min-w-[20rem] md:block">
@@ -149,7 +149,7 @@ export const EmailConfirmationStep = ({
           fields={6}
           onChange={setCode}
           {...props}
-          className="mt-6 mb-2"
+          className="mb-2 mt-6"
         />
       </div>
       <div className="mx-auto mt-4 block w-max md:hidden">
@@ -160,11 +160,11 @@ export const EmailConfirmationStep = ({
           fields={6}
           onChange={setCode}
           {...propsPhone}
-          className="mt-2 mb-2"
+          className="mb-2 mt-2"
         />
       </div>
       {codeError && <Error text="Oops. Your code is wrong. Please try again." />}
-      <div className="mx-auto mt-2 flex w-1/4 max-w-xs min-w-[20rem] flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
+      <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
         <div className="text-l w-full py-1 text-lg">
           <Button
             type="submit"
@@ -184,15 +184,15 @@ export const EmailConfirmationStep = ({
       <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
         <div className="flex flex-row items-baseline gap-1 text-sm">
           <span className="text-bunker-400">Don&apos;t see the code?</span>
-          <div className="text-md mt-2 flex flex-row text-bunker-400">
+          <div className="text-md text-bunker-400 mt-2 flex flex-row">
             <button disabled={isLoading} onClick={resendCode} type="button">
-              <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
+              <span className="hover:text-bunker-200 hover:decoration-primary-700 cursor-pointer duration-200 hover:underline hover:underline-offset-4">
                 {isResendingVerificationEmail ? "Resending..." : "Resend"}
               </span>
             </button>
           </div>
         </div>
-        <p className="pb-2 text-sm text-bunker-400">Make sure to check your spam inbox.</p>
+        <p className="text-bunker-400 pb-2 text-sm">Make sure to check your spam inbox.</p>
       </div>
     </div>
   );

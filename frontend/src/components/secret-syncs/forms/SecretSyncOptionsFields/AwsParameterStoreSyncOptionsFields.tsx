@@ -33,12 +33,12 @@ const AwsTagsSection = () => {
   });
 
   return (
-    <div className="mt-2 mb-4 flex flex-col pl-2">
+    <div className="mb-4 mt-2 flex flex-col pl-2">
       <div className="grid max-h-[20vh] grid-cols-12 items-end gap-2 overflow-y-auto">
         {tagFields.fields.map(({ id: tagFieldId }, i) => (
           <Fragment key={tagFieldId}>
             <div className="col-span-5">
-              {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
+              {i === 0 && <span className="text-mineshaft-400 text-xs">Key</span>}
               <Controller
                 control={control}
                 name={`syncOptions.tags.${i}.key`}
@@ -55,7 +55,7 @@ const AwsTagsSection = () => {
             </div>
             <div className="col-span-6">
               {i === 0 && (
-                <FormLabel label="Value" className="text-xs text-mineshaft-400" isOptional />
+                <FormLabel label="Value" className="text-mineshaft-400 text-xs" isOptional />
               )}
               <Controller
                 control={control}
@@ -143,19 +143,19 @@ export const AwsParameterStoreSyncOptionsFields = () => {
                   <p>
                     To configure a KMS key, ensure the following permissions are present on the
                     selected IAM role:{" "}
-                    <span className="rounded-sm bg-mineshaft-600 text-mineshaft-300">
+                    <span className="bg-mineshaft-600 text-mineshaft-300 rounded-sm">
                       &#34;kms:ListAliases&#34;
                     </span>
                     ,{" "}
-                    <span className="rounded-sm bg-mineshaft-600 text-mineshaft-300">
+                    <span className="bg-mineshaft-600 text-mineshaft-300 rounded-sm">
                       &#34;kms:DescribeKey&#34;
                     </span>
                     ,{" "}
-                    <span className="rounded-sm bg-mineshaft-600 text-mineshaft-300">
+                    <span className="bg-mineshaft-600 text-mineshaft-300 rounded-sm">
                       &#34;kms:Encrypt&#34;
                     </span>
                     ,{" "}
-                    <span className="rounded-sm bg-mineshaft-600 text-mineshaft-300">
+                    <span className="bg-mineshaft-600 text-mineshaft-300 rounded-sm">
                       &#34;kms:Decrypt&#34;
                     </span>
                     .
@@ -173,7 +173,7 @@ export const AwsParameterStoreSyncOptionsFields = () => {
         )}
       />
       <Switch
-        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+        className="bg-mineshaft-400/50 data-[state=checked]:bg-green/80 shadow-inner"
         id="overwrite-tags"
         thumbClassName="bg-mineshaft-800"
         isChecked={Array.isArray(watchedTags)}
@@ -212,7 +212,7 @@ export const AwsParameterStoreSyncOptionsFields = () => {
             errorText={error?.message}
           >
             <Switch
-              className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+              className="bg-mineshaft-400/50 data-[state=checked]:bg-green/80 shadow-inner"
               id="overwrite-existing-secrets"
               thumbClassName="bg-mineshaft-800"
               isChecked={value}

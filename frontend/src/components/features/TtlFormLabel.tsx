@@ -29,7 +29,7 @@ export const TtlFormLabel = ({ label }: { label: string }) => (
           <FontAwesomeIcon
             icon={faQuestionCircle}
             size="sm"
-            className="relative right-1 mt-0.5 text-mineshaft-300"
+            className="text-mineshaft-300 relative right-1 mt-0.5"
           />
         </Tooltip>
       }

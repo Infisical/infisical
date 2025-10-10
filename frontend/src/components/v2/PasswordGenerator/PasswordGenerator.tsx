@@ -106,24 +106,24 @@ const PasswordGeneratorModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div
         ref={modalRef}
-        className="w-full max-w-lg rounded-lg border border-mineshaft-600 bg-mineshaft-800 shadow-xl"
+        className="border-mineshaft-600 bg-mineshaft-800 w-full max-w-lg rounded-lg border shadow-xl"
       >
         <div className="p-6">
-          <h2 className="mb-1 text-xl font-medium text-bunker-200">Generate Random Value</h2>
-          <p className="mb-6 text-sm text-bunker-400">Generate strong unique values</p>
-          <div className="relative mb-4 rounded-md bg-mineshaft-900 p-4">
+          <h2 className="text-bunker-200 mb-1 text-xl font-medium">Generate Random Value</h2>
+          <p className="text-bunker-400 mb-6 text-sm">Generate strong unique values</p>
+          <div className="bg-mineshaft-900 relative mb-4 rounded-md p-4">
             <div className="flex items-center justify-between">
-              <div className="w-4/5 pr-2 font-mono text-lg break-all select-all">{password}</div>
+              <div className="w-4/5 select-all break-all pr-2 font-mono text-lg">{password}</div>
               <div className="flex flex-col gap-1">
                 <Button
                   size="xs"
                   colorSchema="secondary"
                   variant="outline_bg"
                   onClick={() => setRefresh((prev) => !prev)}
-                  className="w-full text-bunker-300 hover:text-bunker-100"
+                  className="text-bunker-300 hover:text-bunker-100 w-full"
                 >
                   <FontAwesomeIcon icon={faRefresh} className="mr-1 h-3 w-3" />
                   Refresh
@@ -134,7 +134,7 @@ const PasswordGeneratorModal = ({
                   colorSchema="secondary"
                   variant="outline_bg"
                   onClick={copyToClipboard}
-                  className="w-full text-bunker-300 hover:text-bunker-100"
+                  className="text-bunker-300 hover:text-bunker-100 w-full"
                 >
                   <FontAwesomeIcon icon={isCopying ? faCheck : faCopy} className="mr-1 h-3 w-3" />
                   {copyText}
@@ -145,7 +145,7 @@ const PasswordGeneratorModal = ({
 
           <div className="mb-6">
             <div className="mb-1 flex items-center justify-between">
-              <label htmlFor="value-length" className="text-sm text-bunker-300">
+              <label htmlFor="value-length" className="text-bunker-300 text-sm">
                 Length: {passwordOptions.length}
               </label>
             </div>

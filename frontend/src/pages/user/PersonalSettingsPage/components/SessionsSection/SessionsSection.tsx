@@ -19,9 +19,9 @@ export const SessionsSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
       <div className="mb-8 flex justify-between">
-        <h2 className="flex-1 text-xl font-medium text-mineshaft-100">Sessions</h2>
+        <h2 className="text-mineshaft-100 flex-1 text-xl font-medium">Sessions</h2>
         <Button
           colorSchema="secondary"
           type="submit"

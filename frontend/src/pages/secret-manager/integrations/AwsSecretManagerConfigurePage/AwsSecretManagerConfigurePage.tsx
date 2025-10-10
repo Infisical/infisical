@@ -223,7 +223,7 @@ export const AwsSecretManagerConfigurePage = () => {
         <title>Set Up AWS Secrets Manager Integration</title>
       </Helmet>
       <form onSubmit={handleSubmit(handleButtonClick)}>
-        <Card className="max-w-lg rounded-md border border-mineshaft-600">
+        <Card className="border-mineshaft-600 max-w-lg rounded-md border">
           <CardTitle
             className="px-6 text-left text-xl"
             subTitle="Choose which environment in Infisical you want to sync to secerts in AWS Secrets Manager."
@@ -243,7 +243,7 @@ export const AwsSecretManagerConfigurePage = () => {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                <div className="bg-yellow/20 text-yellow mb-1 ml-2 inline-block cursor-default rounded-md px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm opacity-80 hover:opacity-100">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   Docs
                   <FontAwesomeIcon
@@ -256,7 +256,7 @@ export const AwsSecretManagerConfigurePage = () => {
           </CardTitle>
           <Tabs defaultValue={TabSections.Connection} className="px-6">
             <TabList>
-              <div className="flex w-full flex-row border-b border-mineshaft-600">
+              <div className="border-mineshaft-600 flex w-full flex-row border-b">
                 <Tab value={TabSections.Connection}>Connection</Tab>
                 <Tab value={TabSections.Options}>Options</Tab>
               </div>
@@ -279,7 +279,7 @@ export const AwsSecretManagerConfigurePage = () => {
                       isError={Boolean(error)}
                     >
                       <Select
-                        className="w-full border border-mineshaft-500"
+                        className="border-mineshaft-500 w-full border"
                         dropdownContainerClassName="max-w-full"
                         value={field.value}
                         onValueChange={(val) => {
@@ -323,7 +323,7 @@ export const AwsSecretManagerConfigurePage = () => {
                       <Select
                         defaultValue={field.value}
                         onValueChange={(e) => onChange(e)}
-                        className="w-full border border-mineshaft-500"
+                        className="border-mineshaft-500 w-full border"
                         dropdownContainerClassName="max-w-full"
                       >
                         {awsRegions.map((awsRegion) => (
@@ -356,7 +356,7 @@ export const AwsSecretManagerConfigurePage = () => {
                           }
                           onChange(e);
                         }}
-                        className="w-full border border-mineshaft-500"
+                        className="border-mineshaft-500 w-full border"
                         dropdownContainerClassName="max-w-full"
                       >
                         {mappingBehaviors.map((option) => (
@@ -402,7 +402,7 @@ export const AwsSecretManagerConfigurePage = () => {
                 animate={{ opacity: 1, translateX: 0 }}
                 exit={{ opacity: 0, translateX: 30 }}
               >
-                <div className="mt-2 mb-3 ml-1">
+                <div className="mb-3 ml-1 mt-2">
                   <Controller
                     control={control}
                     name="shouldTag"
@@ -445,7 +445,7 @@ export const AwsSecretManagerConfigurePage = () => {
                               setValue("tags", []);
                               onChange(e);
                             }}
-                            className="w-full border border-mineshaft-500"
+                            className="border-mineshaft-500 w-full border"
                             dropdownContainerClassName="max-w-full"
                           >
                             <SelectItem
@@ -525,7 +525,7 @@ export const AwsSecretManagerConfigurePage = () => {
                       <Select
                         defaultValue={field.value}
                         onValueChange={(e) => onChange(e)}
-                        className="w-full border border-mineshaft-500"
+                        className="border-mineshaft-500 w-full border"
                         dropdownContainerClassName="max-w-full"
                       >
                         {integrationAuthAwsKmsKeys?.length ? (
@@ -556,19 +556,19 @@ export const AwsSecretManagerConfigurePage = () => {
             color="mineshaft"
             variant="outline_bg"
             type="submit"
-            className="mt-2 mr-6 mb-6 ml-auto"
+            className="mb-6 ml-auto mr-6 mt-2"
             isLoading={isSubmitting}
           >
             Create Integration
           </Button>
         </Card>
-        <div className="mt-6 w-full max-w-md border-t border-mineshaft-800" />
-        <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
+        <div className="border-mineshaft-800 mt-6 w-full max-w-md border-t" />
+        <div className="border-mineshaft-600 bg-mineshaft-800 mt-6 flex w-full max-w-lg flex-col rounded-md border p-4">
           <div className="flex flex-row items-center">
-            <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-mineshaft-200" />{" "}
-            <span className="text-md ml-3 text-mineshaft-100">Pro Tip</span>
+            <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-200 text-xl" />{" "}
+            <span className="text-md text-mineshaft-100 ml-3">Pro Tip</span>
           </div>
-          <span className="mt-4 text-sm text-mineshaft-300">
+          <span className="text-mineshaft-300 mt-4 text-sm">
             After creating an integration, your secrets will start syncing immediately. This might
             cause an unexpected override of current secrets in AWS Secrets Manager with secrets from
             Infisical.
@@ -589,12 +589,12 @@ export const AwsSecretManagerConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+        <div className="border-mineshaft-600 bg-mineshaft-800 text-mineshaft-200 flex h-max max-w-md flex-col rounded-md border p-6 text-center">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}
             <a
-              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              className="text-mineshaft-100 decoration-primary-500 inline cursor-pointer underline underline-offset-4 opacity-80 duration-200 hover:opacity-100"
               target="_blank"
               rel="noopener noreferrer"
               href="mailto:support@infisical.com"

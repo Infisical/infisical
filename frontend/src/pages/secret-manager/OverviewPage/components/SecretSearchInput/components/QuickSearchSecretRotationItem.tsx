@@ -31,16 +31,16 @@ export const QuickSearchSecretRotationItem = ({ secretRotationGroup, onClose }: 
 
   return (
     <Tr
-      className="hover cursor-pointer bg-mineshaft-700 hover:bg-mineshaft-600"
+      className="hover bg-mineshaft-700 hover:bg-mineshaft-600 cursor-pointer"
       onClick={handleNavigate}
     >
       <Td className="w-full">
         <div className="inline-flex max-w-[20rem] flex-col">
           <span className="truncate">
-            <FontAwesomeIcon className="mr-2 self-center text-mineshaft-400" icon={faRotate} />
+            <FontAwesomeIcon className="text-mineshaft-400 mr-2 self-center" icon={faRotate} />
             {groupSecretRotation.name}
           </span>
-          <span className="text-xs text-mineshaft-400">
+          <span className="text-mineshaft-400 text-xs">
             <FontAwesomeIcon size="xs" className="mr-0.5 text-yellow-700" icon={faFolder} />{" "}
             <Tooltip className="max-w-7xl" content={groupSecretRotation.folder.path}>
               <span>{reverseTruncate(groupSecretRotation.folder.path)}</span>

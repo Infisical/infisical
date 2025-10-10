@@ -196,9 +196,9 @@ export const RollbackPreviewTab = (): JSX.Element => {
 
   const renderSidebar = (): JSX.Element => {
     return (
-      <div className="h-[70vh] w-72 overflow-y-auto bg-mineshaft-900">
+      <div className="bg-mineshaft-900 h-[70vh] w-72 overflow-y-auto">
         <div
-          className={`cursor-pointer border-b border-mineshaft-600 ${
+          className={`border-mineshaft-600 cursor-pointer border-b ${
             selectedFolderId === currentFolderChanges.folderId ? "bg-mineshaft-700" : ""
           }`}
           onClick={() => setSelectedFolderId(currentFolderChanges.folderId)}
@@ -211,7 +211,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
               </span>
             </div>
             {currentFolderChanges.changes.length > 0 && (
-              <span className="ml-2 rounded-full bg-mineshaft-600 px-2 py-0.5 text-xs text-gray-300">
+              <span className="bg-mineshaft-600 ml-2 rounded-full px-2 py-0.5 text-xs text-gray-300">
                 {currentFolderChanges.changes.length}
               </span>
             )}
@@ -220,13 +220,13 @@ export const RollbackPreviewTab = (): JSX.Element => {
 
         {deepRollback && nestedFolderChanges.length > 0 && (
           <>
-            <div className="border-b border-mineshaft-600 bg-mineshaft-800 px-4 py-2">
+            <div className="border-mineshaft-600 bg-mineshaft-800 border-b px-4 py-2">
               <span className="text-sm font-medium text-white">Child folders to be restored</span>
             </div>
             {nestedFolderChanges.map((folder) => (
               <div
                 key={folder.folderId}
-                className={`cursor-pointer border-b border-mineshaft-600 ${
+                className={`border-mineshaft-600 cursor-pointer border-b ${
                   selectedFolderId === folder.folderId ? "bg-mineshaft-700" : ""
                 }`}
                 onClick={() => setSelectedFolderId(folder.folderId)}
@@ -239,7 +239,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
                     </span>
                   </div>
                   {folder.changes.length > 0 && (
-                    <span className="rounded-full bg-mineshaft-600 px-2 py-0.5 text-xs text-gray-300">
+                    <span className="bg-mineshaft-600 rounded-full px-2 py-0.5 text-xs text-gray-300">
                       {folder.changes.length}
                     </span>
                   )}
@@ -265,14 +265,14 @@ export const RollbackPreviewTab = (): JSX.Element => {
 
     if (!selectedFolder || selectedFolderChanges.length === 0) {
       return (
-        <div className="flex h-[70vh] w-full items-center justify-center border border-mineshaft-600">
+        <div className="border-mineshaft-600 flex h-[70vh] w-full items-center justify-center border">
           <p className="text-gray-400">No changes in selected folder</p>
         </div>
       );
     }
 
     return (
-      <div className="h-[70vh] w-full overflow-y-auto border-l border-mineshaft-600">
+      <div className="border-mineshaft-600 h-[70vh] w-full overflow-y-auto border-l">
         <div className="space-y-4 p-4">
           {selectedFolderChanges.map((change) => (
             <div key={change.id} className="mb-4">
@@ -297,7 +297,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl justify-center bg-bunker-800 pt-2 pb-4 text-white">
+    <div className="bg-bunker-800 mx-auto flex w-full max-w-7xl justify-center pb-4 pt-2 text-white">
       <ProjectPermissionCan
         renderGuardBanner
         I={ProjectPermissionCommitsActions.PerformRollback}
@@ -311,19 +311,19 @@ export const RollbackPreviewTab = (): JSX.Element => {
                 description={`Will return all changes in this folder to how they appeared at the point of commit ${selectedCommitId.substring(0, 8)}. Any modifications made after this commit will be undone.`}
               />
 
-              <div className="flex w-full border border-mineshaft-600">
+              <div className="border-mineshaft-600 flex w-full border">
                 {renderSidebar()}
                 {renderMainContent()}
               </div>
 
-              <div className="border-x border-mineshaft-600 bg-mineshaft-800 px-6 py-3">
+              <div className="border-mineshaft-600 bg-mineshaft-800 border-x px-6 py-3">
                 <div className="flex items-center justify-end">
                   <div className="flex items-center">
                     <Tooltip content="Will rollback all nested folders to their state at the time of this commit">
-                      <FontAwesomeIcon icon={faInfoCircle} className="mr-2 text-mineshaft-400" />
+                      <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400 mr-2" />
                     </Tooltip>
                     <Switch
-                      className="ml-2 bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/50"
+                      className="bg-mineshaft-400/50 data-[state=checked]:bg-green/50 ml-2 shadow-inner"
                       thumbClassName="bg-mineshaft-800"
                       isChecked={deepRollback}
                       onCheckedChange={setDeepRollback}
@@ -335,13 +335,13 @@ export const RollbackPreviewTab = (): JSX.Element => {
                 </div>
               </div>
 
-              <div className="border-t border-mineshaft-600 py-4">
+              <div className="border-mineshaft-600 border-t py-4">
                 <div className="flex w-full items-center justify-between gap-2">
                   <Input
                     placeholder="Restore Message"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    className="w-full border-mineshaft-500 bg-mineshaft-700 py-2 text-sm"
+                    className="border-mineshaft-500 bg-mineshaft-700 w-full py-2 text-sm"
                     maxLength={256}
                   />
                   <Button

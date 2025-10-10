@@ -11,11 +11,11 @@ export const SecretScanningScanSection = ({ dataSource }: Props) => {
   const resourceDetails = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
 
   return (
-    <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="border-mineshaft-600 bg-mineshaft-900 w-full rounded-lg border p-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xl font-medium text-mineshaft-100">Scan History</p>
-          <p className="text-sm text-bunker-300">
+          <p className="text-mineshaft-100 text-xl font-medium">Scan History</p>
+          <p className="text-bunker-300 text-sm">
             Detailed history of when {resourceDetails.singularNoun} scans occurred and their
             findings
           </p>

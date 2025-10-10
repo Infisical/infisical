@@ -31,18 +31,18 @@ export const SecretRotationV2StatusBadge = ({ secretRotation, className }: Props
         position="left"
         className="max-w-sm select-text"
         content={
-          <div className="flex flex-col gap-2 py-1 whitespace-normal">
+          <div className="flex flex-col gap-2 whitespace-normal py-1">
             <div>
-              <div className="mb-2 flex self-start text-red">
-                <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
+              <div className="text-red mb-2 flex self-start">
+                <FontAwesomeIcon icon={faXmark} className="ml-1 pr-1.5 pt-0.5 text-sm" />
                 <div className="text-xs">Failure Reason</div>
               </div>
-              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
+              <div className="bg-mineshaft-600 break-words rounded-sm p-2 text-xs">
                 {errorMessage}
               </div>
             </div>
             {nextRotationAt && (
-              <span className="text-xs text-mineshaft-300">
+              <span className="text-mineshaft-300 text-xs">
                 Next rotation attempt on {format(nextRotationAt, "MM/dd/yyyy")} at{" "}
                 {format(nextRotationAt, "h:mm aa")}.
               </span>
@@ -67,7 +67,7 @@ export const SecretRotationV2StatusBadge = ({ secretRotation, className }: Props
     return (
       <Badge
         className={twMerge(
-          "flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300",
+          "bg-mineshaft-400/50 text-bunker-300 flex h-5 w-min items-center gap-1.5 whitespace-nowrap",
           className
         )}
       >

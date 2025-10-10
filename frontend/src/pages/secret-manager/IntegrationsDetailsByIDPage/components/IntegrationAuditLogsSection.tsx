@@ -21,8 +21,8 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
 
   // eslint-disable-next-line no-nested-ternary
   return subscription?.auditLogs ? (
-    <div className="h-full w-full min-w-204 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
+    <div className="min-w-204 border-mineshaft-600 bg-mineshaft-900 h-full w-full rounded-lg border p-4">
+      <div className="border-mineshaft-400 mb-4 flex items-center justify-between border-b pb-4">
         <p className="text-lg font-medium text-gray-200">Integration Logs</p>
         <p className="text-xs text-gray-400">
           Displaying audit logs from the last {Math.min(auditLogsRetentionDays, 60)} days
@@ -42,8 +42,8 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
       />
     </div>
   ) : (
-    <div className="h-full w-full min-w-204 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4 opacity-60">
-      <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
+    <div className="min-w-204 border-mineshaft-600 bg-mineshaft-900 h-full w-full rounded-lg border p-4 opacity-60">
+      <div className="border-mineshaft-400 mb-4 flex items-center justify-between border-b pb-4">
         <p className="text-lg font-medium text-gray-200">Integration Logs</p>
       </div>
       <EmptyState
@@ -55,7 +55,7 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
               {subscription && subscription.slug !== null ? (
                 <Link to="/organization/billing" target="_blank" rel="noopener noreferrer">
                   <a
-                    className="cursor-pointer font-medium text-primary-500 transition-all hover:text-primary-600"
+                    className="text-primary-500 hover:text-primary-600 cursor-pointer font-medium transition-all"
                     target="_blank"
                   >
                     upgrade your subscription
@@ -68,7 +68,7 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
                   rel="noopener noreferrer"
                 >
                   <a
-                    className="cursor-pointer font-medium text-primary-500 transition-all hover:text-primary-600"
+                    className="text-primary-500 hover:text-primary-600 cursor-pointer font-medium transition-all"
                     target="_blank"
                   >
                     upgrade your subscription

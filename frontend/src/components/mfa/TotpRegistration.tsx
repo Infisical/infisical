@@ -73,7 +73,7 @@ const TotpRegistration = ({ onComplete, shouldCenterQr }: Props) => {
 
   return (
     <>
-      <div className="flex max-w-lg flex-col text-bunker-200">
+      <div className="text-bunker-200 flex max-w-lg flex-col">
         <div className="mb-8">
           1. Download a two-step verification app (Duo, Google Authenticator, etc.) and scan the QR
           code.

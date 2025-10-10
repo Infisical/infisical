@@ -222,7 +222,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
           </div>
         </div>
         <div>
-          <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+          <div className="border-mineshaft-500 text-mineshaft-200 mb-4 mt-4 border-b pb-2 pl-1 font-medium">
             Configuration
           </div>
           <div className="flex flex-col">
@@ -278,7 +278,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
               {roleFields.fields.map(({ id: roleFieldId }, i) => (
                 <div key={roleFieldId} className="flex items-end space-x-2">
                   <div className="grow">
-                    {i === 0 && <span className="text-xs text-mineshaft-400">Database Name</span>}
+                    {i === 0 && <span className="text-mineshaft-400 text-xs">Database Name</span>}
                     <Controller
                       control={control}
                       name={`inputs.roles.${i}.databaseName`}
@@ -297,7 +297,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
                     {i === 0 && (
                       <FormLabel
                         label="Collection Name"
-                        className="text-xs text-mineshaft-400"
+                        className="text-mineshaft-400 text-xs"
                         isOptional
                       />
                     )}
@@ -319,7 +319,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
                     {i === 0 && (
                       <FormLabel
                         label="Role"
-                        className="text-xs text-mineshaft-400"
+                        className="text-mineshaft-400 text-xs"
                         tooltipClassName="max-w-md whitespace-pre-line"
                         tooltipText={`Human-readable label that identifies a group of privileges assigned to a database user. This value can either be a built-in role or a custom role.
 														Built-in: atlasAdmin, backup, clusterMonitor, dbAdmin, dbAdminAnyDatabase, enableSharding, read, readAnyDatabase, readWrite, readWriteAnyDatabase.`}
@@ -367,7 +367,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
                 </Button>
               </div>
             </div>
-            <Accordion type="single" collapsible className="mb-2 w-full bg-mineshaft-700">
+            <Accordion type="single" collapsible className="bg-mineshaft-700 mb-2 w-full">
               <AccordionItem value="advance-section">
                 <AccordionTrigger>Advanced</AccordionTrigger>
                 <AccordionContent>
@@ -403,7 +403,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
                           {i === 0 && (
                             <FormLabel
                               label="Label"
-                              className="text-xs text-mineshaft-400"
+                              className="text-mineshaft-400 text-xs"
                               tooltipClassName="max-w-md whitespace-pre-line"
                               tooltipText="Human-readable label that identifies the cluster or MongoDB Atlas Data Lake that this database user can access."
                             />
@@ -423,7 +423,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
                           />
                         </div>
                         <div className="grow">
-                          {i === 0 && <span className="text-xs text-mineshaft-400">Type</span>}
+                          {i === 0 && <span className="text-mineshaft-400 text-xs">Type</span>}
                           <Controller
                             control={control}
                             name={`inputs.scopes.${i}.type`}

@@ -175,7 +175,7 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
     }, [isDragging, handleChangeComplete]);
 
     const ValueDisplay = showValue ? (
-      <div className="text-xs text-bunker-300">{currentValue}</div>
+      <div className="text-bunker-300 text-xs">{currentValue}</div>
     ) : null;
 
     return (
@@ -226,7 +226,7 @@ export const Slider = forwardRef<HTMLInputElement, SliderProps>(
           />
 
           {showValue && valuePosition === "right" && (
-            <div className="ml-2 text-xs text-bunker-300">{currentValue}</div>
+            <div className="text-bunker-300 ml-2 text-xs">{currentValue}</div>
           )}
         </div>
       </div>

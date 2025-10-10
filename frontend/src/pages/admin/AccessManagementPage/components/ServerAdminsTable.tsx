@@ -215,7 +215,7 @@ const ServerAdminsPanelTable = ({
                                   <div className="relative">
                                     <FontAwesomeIcon icon={faShieldHalved} />
                                     <FontAwesomeIcon
-                                      className="absolute -right-1 -bottom-[0.01rem]"
+                                      className="absolute -bottom-[0.01rem] -right-1"
                                       size="2xs"
                                       icon={faXmark}
                                     />
@@ -365,11 +365,11 @@ export const ServerAdminsTable = () => {
           selectedUsers.length > 0 && "h-16"
         )}
       >
-        <div className="flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
+        <div className="border-mineshaft-600 bg-mineshaft-800 text-bunker-300 flex items-center rounded-md border px-4 py-2">
           <div className="mr-2 text-sm">{selectedUsers.length} Selected</div>
           <button
             type="button"
-            className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
+            className="text-mineshaft-400 hover:text-mineshaft-200 mr-auto text-xs underline-offset-2 hover:underline"
             onClick={() => setSelectedUsers([])}
           >
             Unselect All
@@ -390,7 +390,7 @@ export const ServerAdminsTable = () => {
           </Button>
         </div>
       </div>
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
         <ServerAdminsPanelTable
           handlePopUpOpen={handlePopUpOpen}
           users={users}
@@ -442,10 +442,10 @@ export const ServerAdminsTable = () => {
           onDeleteApproved={() => handleRemoveUsers()}
           buttonText="Remove"
         >
-          <div className="mt-4 text-sm text-mineshaft-400">
+          <div className="text-mineshaft-400 mt-4 text-sm">
             The following users will be deleted:
           </div>
-          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
+          <div className="border-mineshaft-600 bg-red/10 mt-2 max-h-80 overflow-y-auto rounded-sm border p-4 pl-8 text-sm text-red-200">
             <ul className="list-disc">
               {selectedUsers?.map((user) => {
                 const email = user.email ?? user.username;
@@ -467,7 +467,7 @@ export const ServerAdminsTable = () => {
                           <div className="inline-block">
                             <Badge
                               variant="primary"
-                              className="mt-[0.05rem] ml-1 inline-flex w-min items-center gap-1.5 whitespace-nowrap"
+                              className="ml-1 mt-[0.05rem] inline-flex w-min items-center gap-1.5 whitespace-nowrap"
                             >
                               <FontAwesomeIcon icon={faWarning} />
                               <span>Deleting Yourself</span>

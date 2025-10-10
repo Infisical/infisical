@@ -122,11 +122,11 @@ export const OrgSecretShareLimitSection = () => {
   ];
 
   return (
-    <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="border-mineshaft-600 bg-mineshaft-900 mb-4 rounded-lg border p-4">
       <div className="flex w-full items-center justify-between">
         <p className="text-xl font-medium">Secret Share Limits</p>
       </div>
-      <p className="mt-2 mb-4 text-sm text-gray-400">
+      <p className="mb-4 mt-2 text-sm text-gray-400">
         These settings establish the maximum limits for all Shared Secret parameters within this
         organization. Shared secrets cannot be created with values exceeding these limits.
       </p>
@@ -180,7 +180,7 @@ export const OrgSecretShareLimitSection = () => {
                         <SelectItem
                           key={value}
                           value={value}
-                          className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
+                          className="hover:bg-mineshaft-700 relative py-2 pl-6 pr-8 text-sm"
                         >
                           <div className="ml-3 font-medium">{label}</div>
                         </SelectItem>

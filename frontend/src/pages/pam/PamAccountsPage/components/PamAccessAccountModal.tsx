@@ -71,7 +71,7 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
         <a
           href="https://infisical.com/docs/cli/overview"
           target="_blank"
-          className="mt-2 flex h-4 w-fit items-center gap-2 border-b border-mineshaft-400 text-sm text-mineshaft-400 transition-colors duration-100 hover:border-yellow-400 hover:text-yellow-400"
+          className="border-mineshaft-400 text-mineshaft-400 mt-2 flex h-4 w-fit items-center gap-2 border-b text-sm transition-colors duration-100 hover:border-yellow-400 hover:text-yellow-400"
           rel="noreferrer"
         >
           <span>Install the Infisical CLI</span>

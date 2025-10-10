@@ -24,7 +24,7 @@ export const ResourceNameCell = ({
 }: Props) => {
   return (
     <Td
-      className="sticky left-0 z-10 border-b border-mineshaft-500 bg-mineshaft-700 bg-clip-padding p-0 group-hover:bg-mineshaft-600"
+      className="border-mineshaft-500 bg-mineshaft-700 group-hover:bg-mineshaft-600 sticky left-0 z-10 border-b bg-clip-padding p-0"
       style={{
         width: colWidth
       }}
@@ -34,7 +34,7 @@ export const ResourceNameCell = ({
           style={{
             width: colWidth
           }}
-          className="flex h-10 items-center space-x-5 border-r border-mineshaft-600 px-4 py-2.5"
+          className="border-mineshaft-600 flex h-10 items-center space-x-5 border-r px-4 py-2.5"
         >
           <div className="w-5 min-w-5">
             <FontAwesomeIcon className={iconClassName} icon={isRowExpanded ? faAngleDown : icon} />

@@ -92,7 +92,7 @@ export const CertificateContent = ({
         </div>
       </div>
       <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
-        <p className="mr-4 break-all whitespace-pre-wrap">{certificate}</p>
+        <p className="mr-4 whitespace-pre-wrap break-all">{certificate}</p>
       </div>
       {certificateChain && (
         <>
@@ -127,7 +127,7 @@ export const CertificateContent = ({
             </div>
           </div>
           <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
-            <p className="mr-4 break-all whitespace-pre-wrap">{certificateChain}</p>
+            <p className="mr-4 whitespace-pre-wrap break-all">{certificateChain}</p>
           </div>
         </>
       )}
@@ -164,7 +164,7 @@ export const CertificateContent = ({
             </div>
           </div>
           <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
-            <p className="mr-4 break-all whitespace-pre-wrap">{privateKey}</p>
+            <p className="mr-4 whitespace-pre-wrap break-all">{privateKey}</p>
           </div>
         </>
       )}

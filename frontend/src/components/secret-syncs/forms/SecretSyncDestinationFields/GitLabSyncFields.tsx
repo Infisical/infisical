@@ -41,7 +41,7 @@ const SecretProtectionOption = ({
 }) => {
   return (
     <Switch
-      className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+      className="bg-mineshaft-400/80 data-[state=checked]:bg-green/80 shadow-inner"
       id={id}
       thumbClassName="bg-mineshaft-800"
       onCheckedChange={onChange}
@@ -108,7 +108,7 @@ export const GitLabSyncFields = () => {
                 setValue("destinationConfig.groupId", "");
                 setValue("destinationConfig.groupName", "");
               }}
-              className="w-full border border-mineshaft-500 capitalize"
+              className="border-mineshaft-500 w-full border capitalize"
               position="popper"
               placeholder="Select a scope..."
               dropdownContainerClassName="max-w-none"

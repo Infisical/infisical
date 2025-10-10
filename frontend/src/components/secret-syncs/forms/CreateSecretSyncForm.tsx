@@ -138,12 +138,12 @@ export const CreateSecretSyncForm = ({
   if (showConfirmation)
     return (
       <>
-        <div className="flex flex-col rounded-xs border border-l-2 border-mineshaft-600 border-l-primary bg-mineshaft-700/80 px-4 py-3">
+        <div className="rounded-xs border-mineshaft-600 border-l-primary bg-mineshaft-700/80 flex flex-col border border-l-2 px-4 py-3">
           <div className="mb-1 flex items-center text-sm">
-            <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
+            <FontAwesomeIcon icon={faInfoCircle} size="sm" className="text-primary mr-1.5" />
             Secret Sync Behavior
           </div>
-          <p className="mt-1 text-sm text-bunker-200">
+          <p className="text-bunker-200 mt-1 text-sm">
             Secret Syncs are the source of truth for connected third-party services. Any secret,
             including associated data, not present or imported in Infisical before syncing will be
             overwritten, and changes made directly in the connected service outside of infisical may
@@ -176,7 +176,7 @@ export const CreateSecretSyncForm = ({
     <form className={twMerge(isFinalStep && "max-h-[70vh] overflow-y-auto")}>
       <FormProvider {...formMethods}>
         <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-          <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
+          <Tab.List className="-pb-1 border-mineshaft-600 mb-6 w-full border-b-2">
             {FORM_TABS.map((tab, index) => (
               <Tab
                 onClick={async (e) => {
@@ -185,9 +185,9 @@ export const CreateSecretSyncForm = ({
                   setSelectedTabIndex((prev) => (isEnabled ? index : prev));
                 }}
                 className={({ selected }) =>
-                  `-mb-[0.14rem] w-30 ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
+                  `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} outline-hidden px-4 py-2 text-sm font-medium disabled:opacity-60 ${
                     selected
-                      ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
+                      ? "border-mineshaft-300 text-mineshaft-200 border-b-2"
                       : "text-bunker-300"
                   }`
                 }
@@ -221,7 +221,7 @@ export const CreateSecretSyncForm = ({
                       errorText={error?.message}
                     >
                       <Switch
-                        className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                        className="bg-mineshaft-400/80 data-[state=checked]:bg-green/80 shadow-inner"
                         id="auto-sync-enabled"
                         thumbClassName="bg-mineshaft-800"
                         onCheckedChange={onChange}

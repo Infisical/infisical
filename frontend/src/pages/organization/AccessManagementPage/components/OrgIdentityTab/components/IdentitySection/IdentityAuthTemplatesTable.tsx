@@ -182,7 +182,7 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
             {!isPending &&
               templates?.map((template) => (
                 <Tr
-                  className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                  className="hover:bg-mineshaft-700 h-10 cursor-pointer transition-colors duration-100"
                   key={`template-${template.id}`}
                 >
                   <Td>{template.name}</Td>
@@ -192,7 +192,7 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
                     </div>
                   </Td>
                   <Td>
-                    <span className="text-sm text-mineshaft-400">
+                    <span className="text-mineshaft-400 text-sm">
                       {template.templateFields.url}
                     </span>
                   </Td>

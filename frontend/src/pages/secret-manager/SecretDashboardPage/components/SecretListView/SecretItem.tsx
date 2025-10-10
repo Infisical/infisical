@@ -426,7 +426,7 @@ export const SecretItem = memo(
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <div
           className={twMerge(
-            "border-b border-mineshaft-600 bg-mineshaft-800 shadow-none hover:bg-mineshaft-700",
+            "border-mineshaft-600 bg-mineshaft-800 hover:bg-mineshaft-700 border-b shadow-none",
             isDirty && "border-primary-400/50",
             isRotatedSecret && "bg-mineshaft-700/60",
             isPending && "bg-mineshaft-700/60",
@@ -438,7 +438,7 @@ export const SecretItem = memo(
           <div className="group flex">
             <div
               className={twMerge(
-                "flex h-11 w-11 items-center justify-center px-4 py-3 text-mineshaft-300",
+                "text-mineshaft-300 flex h-11 w-11 items-center justify-center px-4 py-3",
                 isDirty && "text-primary",
                 isPending && "ml-[-2px]"
               )}
@@ -449,7 +449,7 @@ export const SecretItem = memo(
                   <FontAwesomeIcon
                     icon={faRotate}
                     size="xs"
-                    className="absolute -right-[0.2rem] -bottom-[0.05rem] text-mineshaft-400"
+                    className="text-mineshaft-400 absolute -bottom-[0.05rem] -right-[0.2rem]"
                   />
                 </div>
               ) : (
@@ -494,7 +494,7 @@ export const SecretItem = memo(
                               Secret key contains whitespaces.
                               <br />
                               <br /> If this is the desired format, you need to provide it as{" "}
-                              <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
+                              <code className="bg-mineshaft-500 rounded-md px-1 py-0.5">
                                 {encodeURIComponent(field.value.trim())}
                               </code>{" "}
                               when making API requests.
@@ -509,13 +509,13 @@ export const SecretItem = memo(
                       ) : undefined
                     }
                     {...field}
-                    className="w-full px-0 placeholder:text-red-500 focus:text-bunker-100 focus:ring-transparent"
+                    className="focus:text-bunker-100 w-full px-0 placeholder:text-red-500 focus:ring-transparent"
                   />
                 )}
               />
             </div>
             <div
-              className="flex w-80 grow items-center border-x border-mineshaft-600 py-1 pr-2 pl-4"
+              className="border-mineshaft-600 flex w-80 grow items-center border-x py-1 pl-4 pr-2"
               tabIndex={0}
               role="button"
             >
@@ -617,7 +617,7 @@ export const SecretItem = memo(
                       <IconButton
                         className={twMerge(
                           "w-0 overflow-hidden p-0 group-hover:w-5",
-                          secret.reminder && "w-5 text-primary"
+                          secret.reminder && "text-primary w-5"
                         )}
                         onClick={() => handlePopUpOpen("reminder")}
                         variant="plain"
@@ -675,7 +675,7 @@ export const SecretItem = memo(
                             size="sm"
                             className={twMerge(
                               "w-0 overflow-hidden p-0 group-hover:w-5 data-[state=open]:w-5",
-                              hasTagsApplied && "w-5 text-primary"
+                              hasTagsApplied && "text-primary w-5"
                             )}
                             isDisabled={!isAllowed || isOverridden}
                           >
@@ -756,7 +756,7 @@ export const SecretItem = memo(
                         onClick={handleOverrideClick}
                         className={twMerge(
                           "w-0 overflow-hidden p-0 group-hover:w-5",
-                          isOverridden && "w-5 text-primary"
+                          isOverridden && "text-primary w-5"
                         )}
                       >
                         <Tooltip content={`${isOverridden ? "Remove" : "Add"} Override`}>
@@ -783,7 +783,7 @@ export const SecretItem = memo(
                           <IconButton
                             className={twMerge(
                               "w-0 overflow-hidden p-0 group-hover:w-5",
-                              hasComment && "w-5 text-primary"
+                              hasComment && "text-primary w-5"
                             )}
                             variant="plain"
                             size="md"
@@ -830,12 +830,12 @@ export const SecretItem = memo(
                       </Tooltip>
                     </IconButton>
                     <PopoverContent
-                      className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-2 drop-shadow-2xl"
+                      className="border-mineshaft-600 bg-mineshaft-800 w-auto border p-2 drop-shadow-2xl"
                       sticky="always"
                     >
                       <FormControl label="Comment" className="mb-0">
                         <TextArea
-                          className="border border-mineshaft-600 text-sm"
+                          className="border-mineshaft-600 border text-sm"
                           rows={8}
                           cols={30}
                           {...register("comment")}
@@ -868,7 +868,7 @@ export const SecretItem = memo(
                             size="sm"
                             className={twMerge(
                               "w-0 overflow-hidden p-0 group-hover:w-5 data-[state=open]:w-5",
-                              hasTagsApplied && "w-5 text-primary"
+                              hasTagsApplied && "text-primary w-5"
                             )}
                             isDisabled={!isAllowed}
                           >
@@ -1068,7 +1068,7 @@ export const SecretItem = memo(
                       type="submit"
                       size="md"
                       className={twMerge(
-                        "p-0 text-primary opacity-0 group-hover:opacity-100",
+                        "text-primary p-0 opacity-0 group-hover:opacity-100",
                         isDirty && "opacity-100"
                       )}
                       isDisabled={isSubmitting || Boolean(errors.key)}
@@ -1079,7 +1079,7 @@ export const SecretItem = memo(
                         <FontAwesomeSymbol
                           symbolName={FontAwesomeSpriteName.Check}
                           className={twMerge(
-                            "h-4 w-4 text-primary",
+                            "text-primary h-4 w-4",
                             Boolean(Object.keys(errors || {}).length) && "text-red"
                           )}
                         />
@@ -1100,7 +1100,7 @@ export const SecretItem = memo(
                     >
                       <FontAwesomeSymbol
                         symbolName={FontAwesomeSpriteName.Close}
-                        className="h-4 w-4 text-primary"
+                        className="text-primary h-4 w-4"
                       />
                     </IconButton>
                   </Tooltip>

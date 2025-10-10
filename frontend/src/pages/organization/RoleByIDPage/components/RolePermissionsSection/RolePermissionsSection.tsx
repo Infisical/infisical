@@ -115,18 +115,18 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+      className="border-mineshaft-600 bg-mineshaft-900 w-full rounded-lg border p-4"
     >
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
+      <div className="border-mineshaft-400 flex items-center justify-between border-b pb-4">
         <div>
-          <h3 className="text-lg font-medium text-mineshaft-100">Policies</h3>
-          <p className="text-sm leading-3 text-mineshaft-400">Configure granular access policies</p>
+          <h3 className="text-mineshaft-100 text-lg font-medium">Policies</h3>
+          <p className="text-mineshaft-400 text-sm leading-3">Configure granular access policies</p>
         </div>
         {isCustomRole && (
           <div className="flex items-center">
             {isDirty && (
               <Button
-                className="mr-4 text-mineshaft-300"
+                className="text-mineshaft-300 mr-4"
                 variant="link"
                 isDisabled={isSubmitting || !isDirty}
                 isLoading={isSubmitting}

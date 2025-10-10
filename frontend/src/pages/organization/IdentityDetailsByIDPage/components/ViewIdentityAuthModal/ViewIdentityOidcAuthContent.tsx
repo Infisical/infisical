@@ -71,10 +71,10 @@ export const ViewIdentityOidcAuthContent = ({
           <Tooltip
             side="right"
             className="max-w-xl p-2"
-            content={<p className="rounded-sm bg-mineshaft-600 p-2 break-words">{data.caCert}</p>}
+            content={<p className="bg-mineshaft-600 break-words rounded-sm p-2">{data.caCert}</p>}
           >
             <div className="w-min">
-              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
+              <Badge className="bg-mineshaft-400/50 text-bunker-300 flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
                 <FontAwesomeIcon icon={faEye} />
                 <span>Reveal</span>
               </Badge>
@@ -97,13 +97,13 @@ export const ViewIdentityOidcAuthContent = ({
             side="right"
             className="max-w-xl p-2"
             content={
-              <pre className="rounded-sm bg-mineshaft-600 p-2 whitespace-pre-wrap">
+              <pre className="bg-mineshaft-600 whitespace-pre-wrap rounded-sm p-2">
                 {JSON.stringify(data.boundClaims, null, 2)}
               </pre>
             }
           >
             <div className="w-min">
-              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
+              <Badge className="bg-mineshaft-400/50 text-bunker-300 flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
                 <FontAwesomeIcon icon={faEye} />
                 <span>Reveal</span>
               </Badge>
@@ -117,13 +117,13 @@ export const ViewIdentityOidcAuthContent = ({
             side="right"
             className="max-w-xl p-2"
             content={
-              <pre className="rounded-sm bg-mineshaft-600 p-2 whitespace-pre-wrap">
+              <pre className="bg-mineshaft-600 whitespace-pre-wrap rounded-sm p-2">
                 {JSON.stringify(data.claimMetadataMapping, null, 2)}
               </pre>
             }
           >
             <div className="w-min">
-              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
+              <Badge className="bg-mineshaft-400/50 text-bunker-300 flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
                 <FontAwesomeIcon icon={faEye} />
                 <span>Reveal</span>
               </Badge>

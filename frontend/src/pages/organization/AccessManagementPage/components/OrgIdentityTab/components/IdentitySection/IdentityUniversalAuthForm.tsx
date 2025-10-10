@@ -312,7 +312,7 @@ export const IdentityUniversalAuthForm = ({
         </TabList>
         <TabPanel value={IdentityFormTab.Configuration}>
           {accessTokenPeriodValue > 0 ? (
-            <div className="mb-4 text-xs text-bunker-400">
+            <div className="text-bunker-400 mb-4 text-xs">
               When Access Token Period is set, TTL and Max TTL are ignored.
             </div>
           ) : (

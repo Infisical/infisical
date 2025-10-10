@@ -89,7 +89,7 @@ const MatrixImportModalTableRow = ({
               [mapKey]: v ? parseInt(v, 10) : null
             }))
           }
-          className="w-full border border-mineshaft-500"
+          className="border-mineshaft-500 w-full border"
           position="popper"
           placeholder="Select an option..."
           dropdownContainerClassName="max-w-none"
@@ -104,14 +104,14 @@ const MatrixImportModalTableRow = ({
           })}
         </Select>
       </td>
-      <td className="pr-5 pl-5 whitespace-nowrap">
+      <td className="whitespace-nowrap pl-5 pr-5">
         <div className="flex items-center justify-center">
           <FontAwesomeIcon className="text-mineshaft-400" icon={faArrowRight} />
         </div>
       </td>
       <td className="whitespace-nowrap">
         <div className="flex h-full items-start justify-center">
-          <Badge className="pointer-events-none flex h-[36px] w-full items-center justify-center gap-1.5 border border-mineshaft-600 bg-mineshaft-600 whitespace-nowrap text-bunker-200">
+          <Badge className="border-mineshaft-600 bg-mineshaft-600 text-bunker-200 pointer-events-none flex h-[36px] w-full items-center justify-center gap-1.5 whitespace-nowrap border">
             {mapKey === "key" && (
               <>
                 <FontAwesomeIcon icon={faKey} />
@@ -400,7 +400,7 @@ export const SecretDropzone = ({
         onDragOver={handleDrag}
         onDrop={handleDrop}
         className={twMerge(
-          "relative mx-0.5 mt-4 mb-4 flex cursor-pointer items-center justify-center rounded-md bg-mineshaft-900 px-2 py-4 text-sm text-mineshaft-200 opacity-60 outline-2 outline-chicago-600 duration-200 outline-dashed hover:opacity-100",
+          "bg-mineshaft-900 text-mineshaft-200 outline-chicago-600 relative mx-0.5 mb-4 mt-4 flex cursor-pointer items-center justify-center rounded-md px-2 py-4 text-sm opacity-60 outline-dashed outline-2 duration-200 hover:opacity-100",
           isDragActive && "opacity-100",
           !isSmaller && "mx-auto mt-40 w-full max-w-3xl flex-col space-y-4 py-20",
           isLoading && "bg-bunker-800"
@@ -444,9 +444,9 @@ export const SecretDropzone = ({
                 isSmaller && "py-1"
               )}
             >
-              <div className="w-1/5 border-t border-mineshaft-700" />
-              <p className="mx-4 text-xs text-mineshaft-400">OR</p>
-              <div className="w-1/5 border-t border-mineshaft-700" />
+              <div className="border-mineshaft-700 w-1/5 border-t" />
+              <p className="text-mineshaft-400 mx-4 text-xs">OR</p>
+              <div className="border-mineshaft-700 w-1/5 border-t" />
             </div>
             <div className="flex flex-col items-center justify-center gap-4 lg:flex-row">
               <PasteSecretEnvModal

@@ -73,15 +73,15 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
       <ModalContent title="Privilege Management System Upgrade" className="max-w-2xl">
         {step === "info" ? (
           <div className="mb-4">
-            <p className="mb-4 text-sm text-mineshaft-300">
+            <p className="text-mineshaft-300 mb-4 text-sm">
               We&apos;ve developed an improved privilege management system that enhances how access
               controls work in your organization.
             </p>
 
-            <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
+            <div className="border-mineshaft-600 bg-mineshaft-800 mb-4 rounded-lg border p-4">
               <div className="mb-3">
                 <div className="mb-3">
-                  <p className="mb-3 text-sm text-mineshaft-300">
+                  <p className="text-mineshaft-300 mb-3 text-sm">
                     <strong>Current system: </strong>
                     Users with higher privilege levels can modify access for anyone below them. This
                     rigid hierarchy makes it difficult to implement precise access control policies,
@@ -89,7 +89,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                     specialized roles (like team leads) need to manage their team&apos;s access
                     without receiving broader administrative powers.
                   </p>
-                  <p className="text-sm text-mineshaft-300">
+                  <p className="text-mineshaft-300 text-sm">
                     <strong>New system:</strong> Users need explicit permission to modify specific
                     access levels, providing targeted control. After upgrading, you&apos;ll need to
                     grant the new &apos;Grant Privileges&apos; permission. At the organization
@@ -98,7 +98,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                       href="https://infisical.com/docs/internals/permissions/organization-permissions#subject%3A-groups"
                       target="_blank"
                       rel="noreferrer"
-                      className="underline hover:text-bunker-200 hover:decoration-primary-700"
+                      className="hover:text-bunker-200 hover:decoration-primary-700 underline"
                     >
                       Group
                     </a>{" "}
@@ -107,7 +107,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                       href="https://infisical.com/docs/internals/permissions/organization-permissions#subject%3A-identity"
                       target="_blank"
                       rel="noreferrer"
-                      className="underline hover:text-bunker-200 hover:decoration-primary-700"
+                      className="hover:text-bunker-200 hover:decoration-primary-700 underline"
                     >
                       Identity
                     </a>{" "}
@@ -116,7 +116,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                       href="https://infisical.com/docs/internals/permissions/project-permissions#subject%3A-member"
                       target="_blank"
                       rel="noreferrer"
-                      className="underline hover:text-bunker-200 hover:decoration-primary-700"
+                      className="hover:text-bunker-200 hover:decoration-primary-700 underline"
                     >
                       Member,
                     </a>{" "}
@@ -124,7 +124,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                       href="https://infisical.com/docs/internals/permissions/project-permissions#subject%3A-groups"
                       target="_blank"
                       rel="noreferrer"
-                      className="underline hover:text-bunker-200 hover:decoration-primary-700"
+                      className="hover:text-bunker-200 hover:decoration-primary-700 underline"
                     >
                       Group,
                     </a>{" "}
@@ -133,7 +133,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                       href="https://infisical.com/docs/internals/permissions/project-permissions#subject%3A-identity"
                       target="_blank"
                       rel="noreferrer"
-                      className="underline hover:text-bunker-200 hover:decoration-primary-700"
+                      className="hover:text-bunker-200 hover:decoration-primary-700 underline"
                     >
                       Identity
                     </a>{" "}
@@ -149,7 +149,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                 variant="solid"
                 colorSchema="primary"
                 size="md"
-                className="w-[120px] bg-primary hover:bg-primary-600"
+                className="bg-primary hover:bg-primary-600 w-[120px]"
               >
                 Continue
               </Button>
@@ -157,19 +157,19 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
           </div>
         ) : (
           <div className="mb-4">
-            <p className="mb-4 text-sm text-mineshaft-300">
+            <p className="text-mineshaft-300 mb-4 text-sm">
               Your existing access control workflows will continue to function. However, actions
               that involve modifying privileges or permissions will now use the new permission-based
               system, requiring users to have explicit permission to modify given resource.
             </p>
 
-            <p className="mb-4 text-sm text-mineshaft-300">
+            <p className="text-mineshaft-300 mb-4 text-sm">
               This upgrade affects operations like updating roles, managing group memberships, and
               modifying privileges across your organization and projects.
             </p>
 
-            <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
-              <p className="mb-4 text-sm text-mineshaft-300">
+            <div className="border-mineshaft-600 bg-mineshaft-800 mb-4 rounded-lg border p-4">
+              <p className="text-mineshaft-300 mb-4 text-sm">
                 Once upgraded, your organization <span className="font-bold">cannot</span> revert to
                 the legacy privilege system. Please ensure you&apos;ve completed all preparations
                 before proceeding.
@@ -268,7 +268,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                 <button
                   type="button"
                   onClick={() => setStep("info")}
-                  className="w-[120px] text-sm text-mineshaft-300 hover:text-mineshaft-200"
+                  className="text-mineshaft-300 hover:text-mineshaft-200 w-[120px] text-sm"
                 >
                   Cancel
                 </button>
@@ -285,7 +285,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                       variant="solid"
                       colorSchema="primary"
                       size="md"
-                      className="w-[120px] bg-primary hover:bg-primary-600"
+                      className="bg-primary hover:bg-primary-600 w-[120px]"
                       isDisabled={!isAllChecksCompleted || !isAdmin}
                       isLoading={isSubmitting}
                     >

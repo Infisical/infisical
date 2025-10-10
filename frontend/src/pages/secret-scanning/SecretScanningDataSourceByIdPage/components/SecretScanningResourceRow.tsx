@@ -128,12 +128,12 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
   return (
     <Tr
       className={twMerge(
-        "group h-10 transition-colors duration-100 hover:bg-mineshaft-700",
+        "hover:bg-mineshaft-700 group h-10 transition-colors duration-100",
         lastScanStatus === SecretScanningScanStatus.Failed && "bg-red/5 hover:bg-red/10"
       )}
       key={`resource-${id}`}
     >
-      <Td className="max-w-0 min-w-32!">
+      <Td className="min-w-32! max-w-0">
         <div className="flex w-full items-center">
           <p className="truncate">{name}</p>
         </div>
@@ -143,7 +143,7 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
         {lastScanStatus?.match(/queued|scanning/) ? (
           <Badge
             variant="primary"
-            className="flex h-5 w-min animate-pulse items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300"
+            className="bg-mineshaft-400/50 text-bunker-300 flex h-5 w-min animate-pulse items-center gap-1.5 whitespace-nowrap"
           >
             <FontAwesomeIcon icon={faSearch} />
             <span>Scanning For Leaks</span>
@@ -210,7 +210,7 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
               content={`This ${resourceDetails.singularNoun} will not be scanned due to exclusion in Data Source configuration.`}
             >
               <div className="ml-auto">
-                <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
+                <Badge className="bg-mineshaft-400/50 text-bunker-300 flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
                   <FontAwesomeIcon icon={faBan} />
                   <span>Inactive</span>
                 </Badge>

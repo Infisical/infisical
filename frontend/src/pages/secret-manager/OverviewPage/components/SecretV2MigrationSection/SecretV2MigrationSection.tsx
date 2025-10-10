@@ -83,9 +83,9 @@ export const SecretV2MigrationSection = () => {
 
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   return (
-    <div className="mt-4 flex max-w-2xl flex-col rounded-lg border border-primary/50 bg-primary/10 px-6 py-5">
+    <div className="border-primary/50 bg-primary/10 mt-4 flex max-w-2xl flex-col rounded-lg border px-6 py-5">
       {isUpgrading && (
-        <div className="bg-opacity-80 absolute top-0 left-0 z-50 flex h-screen w-screen items-center justify-center bg-bunker-500">
+        <div className="bg-bunker-500 absolute left-0 top-0 z-50 flex h-screen w-screen items-center justify-center bg-opacity-80">
           <Spinner size="lg" className="text-primary" />
           <div className="ml-4 flex flex-col space-y-1">
             <div className="text-3xl font-medium">Please wait</div>
@@ -94,18 +94,18 @@ export const SecretV2MigrationSection = () => {
         </div>
       )}
       <div className="mb-4 flex items-start gap-2">
-        <FontAwesomeIcon icon={faWarning} size="xl" className="mt-1 text-primary" />
+        <FontAwesomeIcon icon={faWarning} size="xl" className="text-primary mt-1" />
         <p className="text-xl font-medium">Upgrade secrets engine version</p>
       </div>
-      <p className="mx-1 mb-4 leading-7 text-mineshaft-100">
+      <p className="text-mineshaft-100 mx-1 mb-4 leading-7">
         Your existing workflows to fetch secrets will continue to work. However, viewing secrets on
         the UI requires you to upgrade your project&apos;s secrets engine version.
       </p>
-      <p className="mx-1 mb-4 leading-7 text-mineshaft-100">
+      <p className="text-mineshaft-100 mx-1 mb-4 leading-7">
         Upgrading is free and enables the use of Infisical&apos;s new secrets engine, which is 10x
         faster and allows you to encrypt secrets with your own KMS provider.
       </p>
-      <p className="mx-1 mb-6 leading-7 text-mineshaft-100">
+      <p className="text-mineshaft-100 mx-1 mb-6 leading-7">
         The upgrade takes only 1-2 minutes and will not cause any downtime.
       </p>
       <Button

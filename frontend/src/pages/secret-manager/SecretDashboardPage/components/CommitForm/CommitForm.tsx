@@ -323,33 +323,33 @@ export const CommitForm: React.FC<CommitFormProps> = ({
               animate={{ opacity: 1, translateY: 0 }}
               exit={{ opacity: 0, translateY: -30 }}
             >
-              <div className="rounded-lg border border-yellow/30 bg-mineshaft-800 shadow-2xl">
+              <div className="border-yellow/30 bg-mineshaft-800 rounded-lg border shadow-2xl">
                 <div className="flex items-center justify-between p-4">
                   {/* Left Content */}
                   <div className="flex-1">
                     {/* Header */}
                     <div className="flex items-center gap-2">
                       <div className="h-2 w-2 rounded-full bg-yellow-500" />
-                      <span className="font-medium text-mineshaft-100">Pending Changes</span>
+                      <span className="text-mineshaft-100 font-medium">Pending Changes</span>
                       <Badge variant="primary" className="text-xs">
                         {totalChangesCount} Change{totalChangesCount !== 1 ? "s" : ""}
                       </Badge>
                     </div>
 
                     {/* Description */}
-                    <p className="text-sm leading-5 text-mineshaft-400">
+                    <p className="text-mineshaft-400 text-sm leading-5">
                       Review pending changes and commit them to apply the updates.
                     </p>
                   </div>
 
                   {/* Right Buttons */}
-                  <div className="mt-0.5 ml-6 flex items-center gap-3">
+                  <div className="ml-6 mt-0.5 flex items-center gap-3">
                     <Button
                       size="sm"
                       onClick={() => clearAllPendingChanges({ projectId, environment, secretPath })}
                       isDisabled={totalChangesCount === 0}
                       variant="outline_bg"
-                      className="px-4 hover:border-red/40 hover:bg-red/10"
+                      className="hover:border-red/40 hover:bg-red/10 px-4"
                     >
                       Discard
                     </Button>
@@ -392,7 +392,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 {/* Folder Changes */}
                 {pendingChanges.folders.length > 0 && (
                   <div>
-                    <h4 className="mb-4 flex items-center gap-2 border-b border-mineshaft-700 pb-2 text-sm font-medium text-mineshaft-200">
+                    <h4 className="border-mineshaft-700 text-mineshaft-200 mb-4 flex items-center gap-2 border-b pb-2 text-sm font-medium">
                       <FontAwesomeIcon icon={faFolder} className="text-mineshaft-300" />
                       Folders ({pendingChanges.folders.length})
                     </h4>
@@ -413,8 +413,8 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 {/* Secret Changes */}
                 {pendingChanges.secrets.length > 0 && (
                   <div>
-                    <h4 className="mb-4 flex items-center gap-2 border-b border-mineshaft-700 pb-2 text-sm font-medium text-mineshaft-200">
-                      <FontAwesomeIcon icon={faKey} className="mr-1 text-mineshaft-300" />
+                    <h4 className="border-mineshaft-700 text-mineshaft-200 mb-4 flex items-center gap-2 border-b pb-2 text-sm font-medium">
+                      <FontAwesomeIcon icon={faKey} className="text-mineshaft-300 mr-1" />
                       Secrets ({pendingChanges.secrets.length})
                     </h4>
                     <div>
@@ -435,7 +435,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
 
             {/* Commit Message */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-mineshaft-200">
+              <label className="text-mineshaft-200 mb-2 block text-sm font-medium">
                 Commit Message <span className="text-red-400">*</span>
               </label>
               <Input

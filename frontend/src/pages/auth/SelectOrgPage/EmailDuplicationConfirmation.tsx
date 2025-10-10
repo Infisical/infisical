@@ -37,7 +37,7 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
   }, [logout, navigate]);
 
   return (
-    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+    <div className="bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto">
       <Helmet>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -45,7 +45,7 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
         <meta property="og:title" content={t("login.og-title") ?? ""} />
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Helmet>
-      <div className="mx-auto mt-20 w-fit max-w-2xl rounded-lg border-2 border-mineshaft-500 p-10 shadow-lg">
+      <div className="border-mineshaft-500 mx-auto mt-20 w-fit max-w-2xl rounded-lg border-2 p-10 shadow-lg">
         <Link to="/">
           <div className="mb-4 flex justify-center">
             <img
@@ -60,29 +60,29 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
         </Link>
         <form className="mx-auto flex w-full flex-col items-center justify-center">
           <div className="mb-6">
-            <h1 className="mb-2 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-2xl font-medium text-transparent">
+            <h1 className="bg-linear-to-b to-bunker-200 mb-2 from-white bg-clip-text text-center text-2xl font-medium text-transparent">
               Multiple Accounts Detected
             </h1>
             <p className="text-md mb-4 text-center text-white">
               <span className="text-slate-300">You&apos;re currently logged in as</span>{" "}
               <b>{duplicateAccounts?.data?.myAccount?.username}</b>.
             </p>
-            <div className="mt-4 mb-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
-              <p className="mt-1 mb-2 text-sm text-bunker-300">
+            <div className="border-l-primary bg-mineshaft-300/5 mb-4 mt-4 flex flex-col rounded-r border-l-2 px-4 py-2.5">
+              <p className="text-bunker-300 mb-2 mt-1 text-sm">
                 We&apos;ve detected multiple accounts using variations of the same email address.
               </p>
             </div>
           </div>
-          <div className="mb-4 w-full border-b border-mineshaft-400 pb-1 text-sm text-mineshaft-200">
+          <div className="border-mineshaft-400 text-mineshaft-200 mb-4 w-full border-b pb-1 text-sm">
             Your other accounts
           </div>
-          <div className="flex h-full max-h-60 thin-scrollbar w-full flex-col items-stretch gap-2 overflow-auto rounded-md">
+          <div className="thin-scrollbar flex h-full max-h-60 w-full flex-col items-stretch gap-2 overflow-auto rounded-md">
             {duplicateAccounts?.data?.duplicateAccounts?.map((el) => {
               const lastSession = el.devices?.at(-1);
               return (
                 <div
                   key={el.id}
-                  className="flex items-center gap-8 rounded-md bg-mineshaft-700 px-4 py-3 text-gray-200"
+                  className="bg-mineshaft-700 flex items-center gap-8 rounded-md px-4 py-3 text-gray-200"
                 >
                   <div className="group flex grow flex-col">
                     <div className="truncate text-sm transition-colors">{el.username}</div>

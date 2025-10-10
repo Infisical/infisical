@@ -139,7 +139,7 @@ const IdentityPanelTable = ({
                                   <div className="relative">
                                     <FontAwesomeIcon icon={faShieldHalved} />
                                     <FontAwesomeIcon
-                                      className="absolute -right-1 -bottom-[0.01rem]"
+                                      className="absolute -bottom-[0.01rem] -right-1"
                                       size="2xs"
                                       icon={faXmark}
                                     />
@@ -200,11 +200,11 @@ export const MachineIdentitiesTable = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xl font-medium text-mineshaft-100">Machine Identities</p>
-          <p className="text-sm text-bunker-300">Manage machine identities across your instance.</p>
+          <p className="text-mineshaft-100 text-xl font-medium">Machine Identities</p>
+          <p className="text-bunker-300 text-sm">Manage machine identities across your instance.</p>
         </div>
       </div>
       <IdentityPanelTable handlePopUpOpen={handlePopUpOpen} />

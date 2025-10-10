@@ -25,8 +25,8 @@ export const SecretScanningDataSourceReviewFields = () => {
     <div className="mb-4 flex flex-col gap-6">
       <Component />
       <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Details</span>
+        <div className="border-mineshaft-600 w-full border-b">
+          <span className="text-mineshaft-300 text-sm">Details</span>
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
           <GenericFieldLabel label="Name">{name}</GenericFieldLabel>

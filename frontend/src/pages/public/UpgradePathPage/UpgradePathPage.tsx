@@ -22,7 +22,7 @@ type VersionOption = {
 const formatVersionOption = (option: VersionOption) => (
   <div className="flex items-center justify-between">
     <span>{option.label}</span>
-    {option.isLatest && <span className="text-xs text-primary">(Latest)</span>}
+    {option.isLatest && <span className="text-primary text-xs">(Latest)</span>}
   </div>
 );
 interface UpgradeResult {
@@ -143,7 +143,7 @@ export const UpgradePathPage = () => {
         />
       </Helmet>
       <div className="dark h-full">
-        <div className="flex h-screen flex-col justify-between overflow-auto bg-mineshaft-900 text-bunker-200 dark:scheme-dark">
+        <div className="bg-mineshaft-900 text-bunker-200 dark:scheme-dark flex h-screen flex-col justify-between overflow-auto">
           <div />
           <div className="mx-auto w-full max-w-4xl px-4 py-4 md:px-0">
             {/* Header */}
@@ -159,14 +159,14 @@ export const UpgradePathPage = () => {
                   />
                 </a>
               </div>
-              <h1 className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-4xl font-medium text-transparent">
+              <h1 className="bg-linear-to-b to-bunker-200 from-white bg-clip-text text-center text-4xl font-medium text-transparent">
                 Upgrade your Infisical Version
               </h1>
             </div>
 
             {/* Calculator Card */}
-            <div className="mb-8 rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-6">
-              <h2 className="mb-6 text-xl font-medium text-bunker-200">Calculate Upgrade Path</h2>
+            <div className="border-mineshaft-600 bg-mineshaft-800 mb-8 rounded-lg border p-6">
+              <h2 className="text-bunker-200 mb-6 text-xl font-medium">Calculate Upgrade Path</h2>
               <div className="space-y-6">
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   {/* From Version Selector */}
@@ -205,7 +205,7 @@ export const UpgradePathPage = () => {
                 <Button
                   onClick={handleCalculate}
                   isLoading={calculateMutation.isPending}
-                  className="w-full bg-primary font-medium text-black hover:bg-primary/80"
+                  className="bg-primary hover:bg-primary/80 w-full font-medium text-black"
                 >
                   {calculateMutation.isPending ? "Calculating..." : "Calculate Upgrade Path"}
                 </Button>
@@ -297,7 +297,7 @@ export const UpgradePathPage = () => {
                           >
                             {hasIssues ? "Action Required:" : "Ready to Upgrade:"}
                           </h3>
-                          <p className="mt-1 text-sm text-bunker-300">
+                          <p className="text-bunker-300 mt-1 text-sm">
                             {hasIssues
                               ? `Your upgrade path contains conflicts in the following versions: ${allConflictVersions.join(", ")}. Please review and resolve each item before proceeding to the next version.`
                               : "Your upgrade path is clear with no breaking changes or conflicts. You can proceed with the upgrade."}
@@ -309,10 +309,10 @@ export const UpgradePathPage = () => {
                 })()}
 
                 {/* Upgrade Steps */}
-                <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-6">
+                <div className="border-mineshaft-600 bg-mineshaft-800 rounded-lg border p-6">
                   <div className="mb-6 flex items-center space-x-2">
                     <svg
-                      className="h-5 w-5 text-bunker-300"
+                      className="text-bunker-300 h-5 w-5"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -324,7 +324,7 @@ export const UpgradePathPage = () => {
                         d="M13 7l5 5m0 0l-5 5m5-5H6"
                       />
                     </svg>
-                    <h2 className="text-xl font-medium text-bunker-200">Upgrade Steps</h2>
+                    <h2 className="text-bunker-200 text-xl font-medium">Upgrade Steps</h2>
                   </div>
 
                   <div className="space-y-6">
@@ -411,13 +411,13 @@ export const UpgradePathPage = () => {
                         <div key={step.version} className="relative flex">
                           {/* Timeline Column */}
                           <div className="mr-4 flex flex-col items-center">
-                            <div className="z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-primary text-black">
+                            <div className="border-primary bg-primary z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-black">
                               <span className="text-xs font-bold">{index + 1}</span>
                             </div>
 
                             {/* Timeline Line */}
                             {!isLast && (
-                              <div className="-mt-4 -mb-4 h-full w-px flex-1 bg-mineshaft-500" />
+                              <div className="bg-mineshaft-500 -mb-4 -mt-4 h-full w-px flex-1" />
                             )}
                           </div>
 
@@ -425,14 +425,14 @@ export const UpgradePathPage = () => {
                           <div className="flex-1 pb-6">
                             {/* Version Header */}
                             <div className="flex items-center space-x-3">
-                              <h3 className="font-medium text-bunker-200">{step.version}</h3>
+                              <h3 className="text-bunker-200 font-medium">{step.version}</h3>
                               {isFirst && (
-                                <span className="rounded-sm border border-primary/30 bg-primary/20 px-2 py-1 text-xs font-medium text-primary">
+                                <span className="border-primary/30 bg-primary/20 text-primary rounded-sm border px-2 py-1 text-xs font-medium">
                                   Starting Version
                                 </span>
                               )}
                               {isLast && (
-                                <span className="rounded-sm border border-primary/30 bg-primary/20 px-2 py-1 text-xs font-medium text-primary">
+                                <span className="border-primary/30 bg-primary/20 text-primary rounded-sm border px-2 py-1 text-xs font-medium">
                                   Target Version
                                 </span>
                               )}
@@ -441,13 +441,13 @@ export const UpgradePathPage = () => {
                                   href={`https://github.com/Infisical/infisical/releases/tag/${step.version}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center space-x-1 text-xs text-primary transition-colors hover:text-primary/80"
+                                  className="text-primary hover:text-primary/80 inline-flex items-center space-x-1 text-xs transition-colors"
                                 >
                                   <FontAwesomeIcon icon={faExternalLink} className="h-3 w-3" />
                                   <span>View Changelog</span>
                                 </a>
                               ) : (
-                                <span className="inline-flex items-center space-x-1 text-xs text-bunker-400">
+                                <span className="text-bunker-400 inline-flex items-center space-x-1 text-xs">
                                   <span>No GitHub Release</span>
                                 </span>
                               )}
@@ -464,8 +464,8 @@ export const UpgradePathPage = () => {
                               if (!notes) return null;
 
                               return (
-                                <div className="mt-3 rounded-sm border border-bunker-500/20 bg-bunker-700/20 p-3">
-                                  <div className="text-sm text-bunker-300">{notes}</div>
+                                <div className="border-bunker-500/20 bg-bunker-700/20 mt-3 rounded-sm border p-3">
+                                  <div className="text-bunker-300 text-sm">{notes}</div>
                                 </div>
                               );
                             })()}
@@ -476,7 +476,7 @@ export const UpgradePathPage = () => {
                                 <div className="mb-1 text-sm font-medium text-yellow-400">
                                   Database Schema Changes Required
                                 </div>
-                                <div className="mb-2 text-xs text-bunker-300">
+                                <div className="text-bunker-300 mb-2 text-xs">
                                   {typeof dbMigrationDescription === "string"
                                     ? dbMigrationDescription
                                     : "This version includes database schema changes that require migrations."}
@@ -517,7 +517,7 @@ export const UpgradePathPage = () => {
                                     <div className="mb-1 text-sm font-medium text-red-400">
                                       {change.title}
                                     </div>
-                                    <div className="mb-2 text-xs text-bunker-300">
+                                    <div className="text-bunker-300 mb-2 text-xs">
                                       {change.description}
                                     </div>
                                     <div className="text-xs font-medium text-red-400">
@@ -537,8 +537,8 @@ export const UpgradePathPage = () => {
               </div>
             )}
           </div>
-          <div className="w-full bg-mineshaft-800 p-2">
-            <p className="text-center text-sm text-bunker-400">
+          <div className="bg-mineshaft-800 w-full p-2">
+            <p className="text-bunker-400 text-center text-sm">
               Made with ❤️ by{" "}
               <a className="text-primary hover:text-primary/80" href="https://infisical.com">
                 Infisical

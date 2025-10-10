@@ -98,7 +98,7 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
               ))}
             </>
           ) : (
-            <div className="flex w-[19.1rem] items-center justify-between rounded-l-md border border-transparent bg-mineshaft-600 px-5 py-2 text-sm text-bunker-200">
+            <div className="bg-mineshaft-600 text-bunker-200 flex w-[19.1rem] items-center justify-between rounded-l-md border border-transparent px-5 py-2 text-sm">
               <div>
                 {formatDateTime({
                   timezone,
@@ -234,7 +234,7 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
                           </FormControl>
                         </div>
                         {error && (
-                          <span className="text-opacity-90 text-xs text-red-600">
+                          <span className="text-xs text-red-600 text-opacity-90">
                             {error.message}
                           </span>
                         )}
@@ -276,7 +276,7 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
                 <FontAwesomeIcon
                   icon={faChevronRight}
                   size="xs"
-                  className="mt-6 text-mineshaft-400"
+                  className="text-mineshaft-400 mt-6"
                 />
                 <Controller
                   name="endDate"
@@ -324,7 +324,7 @@ export const LogsDateFilter = ({ setFilter, filter, timezone, setTimezone }: Pro
       <Select
         value={timezone}
         onValueChange={(val) => setTimezone(val as Timezone)}
-        className="w-[10.6rem] border border-mineshaft-500! bg-mineshaft-600! capitalize"
+        className="border-mineshaft-500! bg-mineshaft-600! w-[10.6rem] border capitalize"
         dropdownContainerClassName="max-w-none"
         position="popper"
         dropdownContainerStyle={{

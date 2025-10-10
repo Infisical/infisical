@@ -24,12 +24,12 @@ export const GenericFieldLabel = ({
     <div className={twMerge("min-w-0", className)}>
       <div className="flex items-center gap-1.5">
         {icon && <FontAwesomeIcon icon={icon} className="text-mineshaft-400" size="sm" />}
-        <p className={twMerge("text-xs font-medium text-mineshaft-400", labelClassName)}>{label}</p>
+        <p className={twMerge("text-mineshaft-400 text-xs font-medium", labelClassName)}>{label}</p>
       </div>
       {children ? (
-        <p className={twMerge("text-sm text-mineshaft-100", truncate && "truncate")}>{children}</p>
+        <p className={twMerge("text-mineshaft-100 text-sm", truncate && "truncate")}>{children}</p>
       ) : (
-        <p className="text-sm text-mineshaft-400/50 italic">None</p>
+        <p className="text-mineshaft-400/50 text-sm italic">None</p>
       )}
     </div>
   );

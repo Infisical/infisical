@@ -177,7 +177,7 @@ export const GcpSecretManagerConfigurePage = () => {
       })}
       className="flex h-full w-full flex-col items-center justify-center"
     >
-      <Card className="max-w-lg rounded-md border border-mineshaft-600">
+      <Card className="border-mineshaft-600 max-w-lg rounded-md border">
         <Helmet>
           <title>Set Up GCP Secret Manager Integration</title>
         </Helmet>
@@ -200,7 +200,7 @@ export const GcpSecretManagerConfigurePage = () => {
               rel="noopener noreferrer"
               href="https://infisical.com/docs/integrations/cloud/gcp-secret-manager"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="bg-yellow/20 text-yellow mb-1 ml-2 inline-block cursor-default rounded-md px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
@@ -213,7 +213,7 @@ export const GcpSecretManagerConfigurePage = () => {
         </CardTitle>
         <Tabs defaultValue={TabSections.Connection} className="px-6">
           <TabList>
-            <div className="flex w-full flex-row border-b border-mineshaft-600">
+            <div className="border-mineshaft-600 flex w-full flex-row border-b">
               <Tab value={TabSections.Connection}>Connection</Tab>
               <Tab value={TabSections.Options}>Options</Tab>
             </div>
@@ -344,7 +344,7 @@ export const GcpSecretManagerConfigurePage = () => {
                   </FormControl>
                 )}
               />
-              <div className="mt-8 mb-[2.36rem]">
+              <div className="mb-[2.36rem] mt-8">
                 <Controller
                   control={control}
                   name="shouldLabel"
@@ -395,7 +395,7 @@ export const GcpSecretManagerConfigurePage = () => {
         <Button
           colorSchema="primary"
           variant="outline_bg"
-          className="mr-6 mb-8 ml-auto w-min"
+          className="mb-8 ml-auto mr-6 w-min"
           size="sm"
           type="submit"
           isLoading={isLoading}
@@ -458,12 +458,12 @@ export const GcpSecretManagerConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
+        <div className="border-mineshaft-600 bg-mineshaft-800 text-mineshaft-200 flex h-max max-w-md flex-col rounded-md border p-6 text-center">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}
             <a
-              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              className="text-mineshaft-100 decoration-primary-500 inline cursor-pointer underline underline-offset-4 opacity-80 duration-200 hover:opacity-100"
               target="_blank"
               rel="noopener noreferrer"
               href="mailto:support@infisical.com"

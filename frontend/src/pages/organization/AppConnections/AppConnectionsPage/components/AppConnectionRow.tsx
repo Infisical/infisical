@@ -78,7 +78,7 @@ export const AppConnectionRow = ({
 
   return (
     <Tr
-      className={twMerge("group h-12 transition-colors duration-100 hover:bg-mineshaft-700")}
+      className={twMerge("hover:bg-mineshaft-700 group h-12 transition-colors duration-100")}
       key={`app-connection-${id}`}
     >
       <Td>
@@ -93,35 +93,35 @@ export const AppConnectionRow = ({
               <FontAwesomeIcon
                 icon={connectionDetails.icon}
                 size="xs"
-                className="absolute -right-0.5 -bottom-0.5 text-primary-700"
+                className="text-primary-700 absolute -bottom-0.5 -right-0.5"
               />
             )}
           </div>
           <span className="hidden lg:inline">{connectionDetails.name}</span>
         </div>
       </Td>
-      <Td className="max-w-0 min-w-32!">
+      <Td className="min-w-32! max-w-0">
         <div className="flex w-full items-center">
           <p className="truncate">{name}</p>
           {description && (
             <Tooltip content={description}>
-              <FontAwesomeIcon icon={faInfoCircle} className="ml-1 text-mineshaft-400" />
+              <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400 ml-1" />
             </Tooltip>
           )}
         </div>
       </Td>
-      <Td className="max-w-0 min-w-32!">
+      <Td className="min-w-32! max-w-0">
         <p className="truncate">
           <FontAwesomeIcon
             size="sm"
-            className="mr-1.5 text-mineshaft-300/75"
+            className="text-mineshaft-300/75 mr-1.5"
             icon={methodDetails.icon}
           />
           {methodDetails.name}
         </p>
       </Td>
       {!isProjectView && (
-        <Td className="max-w-0 min-w-32!">
+        <Td className="min-w-32! max-w-0">
           {project ? (
             <Link
               // @ts-expect-error app-connections aren't in kms/ssh
@@ -134,7 +134,7 @@ export const AppConnectionRow = ({
               <p className="truncate">
                 <FontAwesomeIcon
                   size="sm"
-                  className="mr-1.5 text-mineshaft-300/75"
+                  className="text-mineshaft-300/75 mr-1.5"
                   icon={faTable}
                 />
                 {project.name}
@@ -144,7 +144,7 @@ export const AppConnectionRow = ({
             <p className="truncate">
               <FontAwesomeIcon
                 size="sm"
-                className="mr-1.5 text-mineshaft-300/75"
+                className="text-mineshaft-300/75 mr-1.5"
                 icon={faBuilding}
               />
               Organization

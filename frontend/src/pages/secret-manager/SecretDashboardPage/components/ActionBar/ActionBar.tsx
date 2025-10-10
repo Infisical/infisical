@@ -779,8 +779,8 @@ export const ActionBar = ({
                       {Boolean(filteredTags) && <Badge>{filteredTags} Applied</Badge>}
                     </div>
                   </DropdownSubMenuTrigger>
-                  <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
-                    <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
+                  <DropdownSubMenuContent className="thin-scrollbar max-h-80 overflow-y-auto rounded-l-none">
+                    <DropdownMenuLabel className="bg-mineshaft-900 sticky top-0">
                       <div className="flex w-full items-center justify-between">
                         <span>Filter by Secret Tags</span>
                         <Tooltip content="Matches secrets with one or more of the applied tags">
@@ -921,7 +921,7 @@ export const ActionBar = ({
               <IconButton
                 ariaLabel="add-folder-or-import"
                 variant="outline_bg"
-                className="rounded-l-none bg-mineshaft-600 p-3"
+                className="bg-mineshaft-600 rounded-l-none p-3"
               >
                 <FontAwesomeIcon icon={faAngleDown} />
               </IconButton>
@@ -1065,11 +1065,11 @@ export const ActionBar = ({
           isMultiSelectActive && "h-16"
         )}
       >
-        <div className="mt-3.5 flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
+        <div className="border-mineshaft-600 bg-mineshaft-800 text-bunker-300 mt-3.5 flex items-center rounded-md border px-4 py-2">
           <div className="mr-2 text-sm">{Object.keys(selectedSecrets).length} Selected</div>
           <button
             type="button"
-            className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
+            className="text-mineshaft-400 hover:text-mineshaft-200 mr-auto text-xs underline-offset-2 hover:underline"
             onClick={resetSelectedSecret}
           >
             Unselect All
@@ -1256,7 +1256,7 @@ export const ActionBar = ({
         onOpenChange={(open) => handlePopUpToggle("requestAccess", open)}
       >
         <ModalContent title="Access Restricted">
-          <p className="mb-2 text-bunker-300">You do not have permission to perform this action.</p>
+          <p className="text-bunker-300 mb-2">You do not have permission to perform this action.</p>
           <p className="text-bunker-300">Request access to perform this action in this folder.</p>
           <div className="mt-8 flex items-center gap-4">
             <ModalClose asChild>

@@ -81,7 +81,7 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
         <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="mt-4 text-sm text-mineshaft-400">Loading options...</p>
+        <p className="text-mineshaft-400 mt-4 text-sm">Loading options...</p>
       </div>
     );
   }
@@ -95,7 +95,7 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
         placeholder="Search options..."
         className="bg-mineshaft-800 placeholder:text-mineshaft-400"
       />
-      <div className="grid h-118 grid-cols-4 content-start gap-2">
+      <div className="h-118 grid grid-cols-4 content-start gap-2">
         {filteredOptions.slice(offset, perPage * page)?.map((option) => {
           const { image, name, size = 50 } = PAM_RESOURCE_TYPE_MAP[option.resource];
 
@@ -103,7 +103,7 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
             <button
               type="button"
               onClick={() => handleResourceSelect(option.resource)}
-              className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
+              className="border-mineshaft-600 bg-mineshaft-700 hover:bg-mineshaft-600 group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border p-4 duration-200"
             >
               <div className="relative">
                 <img
@@ -142,7 +142,7 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
                     {"If you don't see the resource you're looking for,"}{" "}
                     <a
                       target="_blank"
-                      className="underline hover:text-mineshaft-300"
+                      className="hover:text-mineshaft-300 underline"
                       href="https://infisical.com/slack"
                       rel="noopener noreferrer"
                     >
@@ -151,7 +151,7 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
                     or{" "}
                     <a
                       target="_blank"
-                      className="underline hover:text-mineshaft-300"
+                      className="hover:text-mineshaft-300 underline"
                       href="https://github.com/Infisical/infisical/discussions"
                       rel="noopener noreferrer"
                     >
@@ -162,7 +162,7 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
                 </>
               }
             >
-              <div className="-ml-3 flex items-center gap-1.5 text-mineshaft-400">
+              <div className="text-mineshaft-400 -ml-3 flex items-center gap-1.5">
                 <span className="text-xs">Don&#39;t see the resource you&#39;re looking for?</span>
                 <FontAwesomeIcon size="xs" icon={faInfoCircle} />
               </div>

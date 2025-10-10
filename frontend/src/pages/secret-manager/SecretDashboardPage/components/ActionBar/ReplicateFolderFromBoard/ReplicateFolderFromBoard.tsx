@@ -261,7 +261,7 @@ export const ReplicateFolderFromBoard = ({
               )}
             />
           </div>
-          <div className="border-t border-mineshaft-600 pt-4">
+          <div className="border-mineshaft-600 border-t pt-4">
             <Controller
               control={control}
               name="secrets"

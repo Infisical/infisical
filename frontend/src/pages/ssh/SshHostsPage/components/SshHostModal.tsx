@@ -326,12 +326,12 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
             {loginMappingsFormFields.fields.map(({ id: metadataFieldId }, i) => (
               <div
                 key={metadataFieldId}
-                className="flex flex-col space-y-2 rounded-md border border-mineshaft-600 p-4"
+                className="border-mineshaft-600 flex flex-col space-y-2 rounded-md border p-4"
               >
                 <div className="mb-2 flex items-center justify-between">
                   <button
                     type="button"
-                    className="flex cursor-pointer items-center py-1 text-sm text-mineshaft-200"
+                    className="text-mineshaft-200 flex cursor-pointer items-center py-1 text-sm"
                     onClick={() => toggleMapping(i)}
                   >
                     <FontAwesomeIcon
@@ -343,11 +343,11 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                       control={control}
                       name={`loginMappings.${i}.loginUser`}
                       render={({ field }) => (
-                        <span className="text-sm leading-tight font-medium">
+                        <span className="text-sm font-medium leading-tight">
                           {field.value || "New Login Mapping"}
                           {loginMappingsFormFields.fields[i].source ===
                             LoginMappingSource.HOST_GROUP && (
-                            <span className="ml-2 text-xs text-mineshaft-400">
+                            <span className="text-mineshaft-400 ml-2 text-xs">
                               (inherited from host group)
                             </span>
                           )}
@@ -370,7 +370,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                 {expandedMappings[i] && (
                   <>
                     <div>
-                      <span className="text-xs text-mineshaft-400">Login User</span>
+                      <span className="text-mineshaft-400 text-xs">Login User</span>
                       <Controller
                         control={control}
                         name={`loginMappings.${i}.loginUser`}
@@ -419,10 +419,10 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                       />
                     </div>
                     <div className="flex flex-col space-y-2">
-                      <div className="mt-4 mb-2 flex items-center justify-between">
+                      <div className="mb-2 mt-4 flex items-center justify-between">
                         <FormLabel
                           label="Allowed Principals"
-                          className="text-xs text-mineshaft-400"
+                          className="text-mineshaft-400 text-xs"
                         />
                         {loginMappingsFormFields.fields[i].source === LoginMappingSource.HOST && (
                           <Button

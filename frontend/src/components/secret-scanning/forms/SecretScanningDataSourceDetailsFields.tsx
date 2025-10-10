@@ -9,7 +9,7 @@ export const SecretScanningDataSourceDetailsFields = () => {
 
   return (
     <>
-      <p className="mb-4 text-sm text-bunker-300">
+      <p className="text-bunker-300 mb-4 text-sm">
         Provide a name and description for this Data Source.
       </p>
       <Controller

@@ -139,7 +139,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
 
   return (
     <>
-      <div className="mt-4 ml-auto flex flex-wrap items-center justify-end gap-2">
+      <div className="ml-auto mt-4 flex flex-wrap items-center justify-end gap-2">
         <SecretSyncImportStatusBadge secretSync={secretSync} />
         <SecretSyncRemoveStatusBadge secretSync={secretSync} />
         {secretSync.isAutoSyncEnabled ? (
@@ -156,7 +156,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
             content="Auto-Sync is disabled. Changes to the source location will not be automatically synced to the destination."
           >
             <div>
-              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
+              <Badge className="bg-mineshaft-400/50 text-bunker-300 flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
                 <FontAwesomeIcon icon={faBan} />
                 <span>Auto-Sync Disabled</span>
               </Badge>
@@ -173,7 +173,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
                 variant="outline_bg"
                 leftIcon={<FontAwesomeIcon icon={faRotate} />}
                 onClick={handleTriggerSync}
-                className="h-9 rounded-r-none bg-mineshaft-500"
+                className="bg-mineshaft-500 h-9 rounded-r-none"
                 isDisabled={!isAllowed}
               >
                 Trigger Sync
@@ -185,7 +185,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
               <IconButton
                 ariaLabel="add-folder-or-import"
                 variant="outline_bg"
-                className="h-9 w-10 rounded-l-none border-l-2 border-mineshaft border-l-mineshaft-700 bg-mineshaft-500"
+                className="border-mineshaft border-l-mineshaft-700 bg-mineshaft-500 h-9 w-10 rounded-l-none border-l-2"
               >
                 <FontAwesomeIcon icon={faEllipsisV} />
               </IconButton>

@@ -135,12 +135,12 @@ export const DuplicateOrgRoleModal = ({ isOpen, onOpenChange, roleId }: Props) =
         {isPending ? (
           <div className="flex h-full flex-col items-center justify-center py-2.5">
             <Spinner size="lg" className="text-mineshaft-500" />
-            <p className="mt-4 text-sm text-mineshaft-400">Loading Role...</p>
+            <p className="text-mineshaft-400 mt-4 text-sm">Loading Role...</p>
           </div>
         ) : role ? (
           <Content role={role!} onClose={() => onOpenChange(false)} />
         ) : (
-          <p className="w-full text-center text-red">
+          <p className="text-red w-full text-center">
             Error: could not find role with slug &#34;{roleId}&#34;
           </p>
         )}

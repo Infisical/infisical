@@ -209,17 +209,17 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
     handlePopUpOpen("editDetails", appConnection);
 
   return (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="border-mineshaft-600 bg-mineshaft-900 rounded-lg border p-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-1">
-            <p className="text-xl font-medium text-mineshaft-100">App Connections</p>
+            <p className="text-mineshaft-100 text-xl font-medium">App Connections</p>
             <a
               href="https://infisical.com/docs/integrations/app-connections/overview"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="mt-[0.12rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="bg-yellow/20 text-yellow ml-1 mt-[0.12rem] inline-block rounded-md px-1.5 text-sm opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 <span>Docs</span>
                 <FontAwesomeIcon
@@ -229,7 +229,7 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
               </div>
             </a>
           </div>
-          <p className="text-sm text-bunker-300">
+          <p className="text-bunker-300 text-sm">
             Create and configure connections with third-party apps for re-use across your project
             {isProjectView ? "" : "s"}.
           </p>
@@ -261,7 +261,7 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
       </div>
       <div className="flex gap-2">
         {!isProjectView && (
-          <div className="flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+          <div className="border-mineshaft-600 bg-mineshaft-800 flex gap-x-0.5 rounded-md border p-1">
             <Button
               variant="outline_bg"
               onClick={() => {
@@ -271,7 +271,7 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
               size="xs"
               className={`${
                 view === View.Scope ? "bg-mineshaft-500" : "bg-transparent"
-              } min-w-20 rounded border-none hover:bg-mineshaft-600`}
+              } hover:bg-mineshaft-600 min-w-20 rounded border-none`}
             >
               Organization
             </Button>
@@ -284,7 +284,7 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
               size="xs"
               className={`${
                 view === View.All ? "bg-mineshaft-500" : "bg-transparent"
-              } min-w-20 rounded border-none hover:bg-mineshaft-600`}
+              } hover:bg-mineshaft-600 min-w-20 rounded border-none`}
             >
               All
             </Button>
@@ -304,7 +304,7 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                "border-mineshaft-600 bg-mineshaft-800 hover:border-primary/60 hover:bg-primary/10 flex h-10 w-11 items-center justify-center overflow-hidden border p-0 transition-all",
                 isTableFiltered && "border-primary/50 text-primary"
               )}
             >
@@ -313,7 +313,7 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             sideOffset={2}
-            className="max-h-[70vh] thin-scrollbar overflow-y-auto"
+            className="thin-scrollbar max-h-[70vh] overflow-y-auto"
             align="end"
           >
             <DropdownMenuLabel>Filter by Apps</DropdownMenuLabel>

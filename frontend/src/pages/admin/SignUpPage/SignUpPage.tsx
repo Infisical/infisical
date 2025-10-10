@@ -74,7 +74,7 @@ export const SignUpPage = () => {
   if (config?.initialized) return <ContentLoader text="Redirecting to admin page..." />;
 
   return (
-    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6">
+    <div className="bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto px-6">
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -95,7 +95,7 @@ export const SignUpPage = () => {
             <div className="flex flex-col items-center space-y-2 text-center">
               <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
               <div className="pt-4 text-4xl">Welcome to Infisical</div>
-              <div className="pb-4 text-bunker-300">Create your first Super Admin Account</div>
+              <div className="text-bunker-300 pb-4">Create your first Super Admin Account</div>
             </div>
             <form onSubmit={handleSubmit(handleFormSubmit)}>
               <div className="mt-8">

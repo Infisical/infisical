@@ -77,10 +77,10 @@ const Page = () => {
     handlePopUpClose("deleteGroup");
   };
 
-  if (isPending) return <Spinner size="sm" className="mt-2 ml-2" />;
+  if (isPending) return <Spinner size="sm" className="ml-2 mt-2" />;
 
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="bg-bunker-800 container mx-auto flex flex-col justify-between text-white">
       {data && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
           <PageHeader title={data.group.name}>

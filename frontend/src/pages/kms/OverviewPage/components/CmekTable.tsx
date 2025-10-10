@@ -214,16 +214,16 @@ export const CmekTable = () => {
       animate={{ opacity: 1, translateX: 0 }}
       exit={{ opacity: 0, translateX: 30 }}
     >
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-xl font-medium whitespace-nowrap text-mineshaft-100">Keys</p>
+          <p className="text-mineshaft-100 whitespace-nowrap text-xl font-medium">Keys</p>
           <div className="flex w-full justify-end pr-4">
             <a
               target="_blank"
               rel="noopener noreferrer"
               href="https://infisical.com/docs/documentation/platform/kms"
             >
-              <span className="flex w-max cursor-pointer items-center rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
+              <span className="border-mineshaft-500 bg-mineshaft-600 text-mineshaft-200 hover:border-primary/40 hover:bg-primary/10 flex w-max cursor-pointer items-center rounded-md border px-4 py-2 duration-200 hover:text-white">
                 Documentation{" "}
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
@@ -298,7 +298,7 @@ export const CmekTable = () => {
 
                   return (
                     <Tr
-                      className="group h-10 hover:bg-mineshaft-700"
+                      className="hover:bg-mineshaft-700 group h-10"
                       key={`st-v3-${id}`}
                       onMouseLeave={() => {
                         setCopyCipherText("");
@@ -351,7 +351,7 @@ export const CmekTable = () => {
                               <IconButton
                                 variant="plain"
                                 colorSchema="primary"
-                                className="ml-4 p-0 data-[state=open]:text-primary-400"
+                                className="data-[state=open]:text-primary-400 ml-4 p-0"
                                 ariaLabel="More options"
                               >
                                 <FontAwesomeIcon size="lg" icon={faEllipsis} />

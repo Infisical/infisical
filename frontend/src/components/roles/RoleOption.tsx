@@ -13,15 +13,15 @@ export const RoleOption = ({
         <div>
           <p className="truncate">{children}</p>
           {props.data.description ? (
-            <p className="truncate text-xs leading-4 text-mineshaft-400">
+            <p className="text-mineshaft-400 truncate text-xs leading-4">
               {props.data.description}
             </p>
           ) : (
-            <p className="text-xs leading-4 text-mineshaft-400/50">No Description</p>
+            <p className="text-mineshaft-400/50 text-xs leading-4">No Description</p>
           )}
         </div>
         {isSelected && (
-          <FontAwesomeIcon className="ml-2 text-primary" icon={faCheckCircle} size="sm" />
+          <FontAwesomeIcon className="text-primary ml-2" icon={faCheckCircle} size="sm" />
         )}
       </div>
     </components.Option>

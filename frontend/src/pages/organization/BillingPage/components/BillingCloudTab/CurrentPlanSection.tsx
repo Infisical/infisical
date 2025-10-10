@@ -38,7 +38,7 @@ export const CurrentPlanSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
       <h2 className="mb-8 flex-1 text-xl font-medium text-white">Current usage</h2>
       <TableContainer className="mt-4">
         <Table>
@@ -63,16 +63,14 @@ export const CurrentPlanSection = () => {
                 return (
                   <Tr key={`current-plan-row-${name}`} className="h-12">
                     <Td>
-                      {name}
-                      {toolTipText && (
-                        <Tooltip content={toolTipText}>
-                          <FontAwesomeIcon
-                            icon={faInfoCircle}
-                            className="relative bottom-2 left-2"
-                            size="xs"
-                          />
-                        </Tooltip>
-                      )}
+                      <div className="flex items-center">
+                        {name}
+                        {toolTipText && (
+                          <Tooltip content={toolTipText}>
+                            <FontAwesomeIcon icon={faInfoCircle} className="ml-2" size="xs" />
+                          </Tooltip>
+                        )}
+                      </div>
                     </Td>
                     <Td>{displayCell(allowed)}</Td>
                     <Td>{used}</Td>

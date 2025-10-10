@@ -116,7 +116,7 @@ const Content = ({
     <div className="min-h-[14.6rem]">
       <div className="flex gap-2">
         <Input
-          className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
+          className="bg-mineshaft-800 placeholder-mineshaft-50 focus:bg-mineshaft-700/80 h-[2.3rem] duration-200"
           placeholder="Search by secret, folder or tag name..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -205,7 +205,7 @@ const Content = ({
                 </DropdownSubMenuTrigger>
                 <DropdownSubMenuContent
                   collisionPadding={{ right: Infinity }} // forces dropdown to left
-                  className="max-h-80 thin-scrollbar overflow-y-auto rounded-r-none"
+                  className="thin-scrollbar max-h-80 overflow-y-auto rounded-r-none"
                 >
                   <DropdownMenuLabel>Filter Secrets by Tag(s)</DropdownMenuLabel>
                   {tags.map(({ id, slug, color }) => (
@@ -234,12 +234,12 @@ const Content = ({
         </DropdownMenu>
       </div>
 
-      <div className="mt-4 max-h-76 min-h-76 overflow-auto">
+      <div className="max-h-76 min-h-76 mt-4 overflow-auto">
         {/* eslint-disable-next-line no-nested-ternary */}
         {isEnabled ? (
           // eslint-disable-next-line no-nested-ternary
           isPending ? (
-            <Spinner size="lg" className="mx-auto mt-24 text-mineshaft-900" />
+            <Spinner size="lg" className="text-mineshaft-900 mx-auto mt-24" />
           ) : isEmpty ? (
             <EmptyState
               className="mt-24"
@@ -247,7 +247,7 @@ const Content = ({
               icon={faMagnifyingGlass}
             />
           ) : (
-            <TableContainer className="h-full thin-scrollbar overflow-y-auto">
+            <TableContainer className="thin-scrollbar h-full overflow-y-auto">
               <Table>
                 {showFilter[RowType.Folder] &&
                   Object.entries(folders).map(([key, folderGroup]) => (

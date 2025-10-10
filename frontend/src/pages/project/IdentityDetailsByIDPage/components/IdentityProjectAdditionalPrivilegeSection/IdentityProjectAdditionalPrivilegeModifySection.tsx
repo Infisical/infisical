@@ -187,13 +187,13 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+      className="border-mineshaft-600 bg-mineshaft-900 w-full rounded-lg border p-4"
     >
       <FormProvider {...form}>
-        <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
+        <div className="border-mineshaft-400 flex items-center justify-between border-b pb-2">
           <Button
             leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-            className="text-lg font-medium text-mineshaft-100"
+            className="text-mineshaft-100 text-lg font-medium"
             variant="link"
             onClick={onGoBack}
           >
@@ -202,7 +202,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
           <div className="flex items-center space-x-4">
             {isDirty && (
               <Button
-                className="mr-4 text-mineshaft-300"
+                className="text-mineshaft-300 mr-4"
                 variant="link"
                 isDisabled={isSubmitting}
                 isLoading={isSubmitting}
@@ -216,7 +216,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                 variant="outline_bg"
                 type="submit"
                 className={twMerge(
-                  "mr-4 h-10 border border-primary",
+                  "border-primary mr-4 h-10 border",
                   isDirty && "bg-primary text-black"
                 )}
                 isDisabled={isSubmitting || !isDirty || isDisabled}
@@ -231,7 +231,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
         </div>
         <div className="mt-2 border-b border-gray-800 p-4 pt-2 first:rounded-t-md last:rounded-b-md">
           <div className="text-lg">Overview</div>
-          <p className="mb-4 text-sm text-mineshaft-300">
+          <p className="text-mineshaft-300 mb-4 text-sm">
             Additional privileges take precedence over roles when permissions conflict
           </p>
           <div className="flex items-end space-x-6">
@@ -258,7 +258,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                         rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
                         isDisabled={isIdentityEditDisabled}
                         className={twMerge(
-                          "w-full border-none bg-mineshaft-600 py-2.5 text-xs capitalize hover:bg-mineshaft-500",
+                          "bg-mineshaft-600 hover:bg-mineshaft-500 w-full border-none py-2.5 text-xs capitalize",
                           isTemporary && "text-primary",
                           isExpired && "text-red-600"
                         )}
@@ -276,7 +276,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                   className="border border-gray-600 pt-4"
                 >
                   <div className="flex flex-col space-y-4">
-                    <div className="border-b border-b-gray-700 pb-2 text-sm text-mineshaft-300">
+                    <div className="text-mineshaft-300 border-b border-b-gray-700 pb-2 text-sm">
                       Configure Timed Access
                     </div>
                     {isExpired && <Tag colorSchema="red">Expired</Tag>}

@@ -240,7 +240,7 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
                     setValue("credentials.code", "custom");
                   }
                 }}
-                className="w-full border border-mineshaft-500"
+                className="border-mineshaft-500 w-full border"
                 position="popper"
                 dropdownContainerClassName="max-w-none"
               >
@@ -277,7 +277,7 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
                         setValue("credentials.code", "custom");
                       }
                     }}
-                    className="w-full border border-mineshaft-500"
+                    className="border-mineshaft-500 w-full border"
                     position="popper"
                     dropdownContainerClassName="max-w-none"
                   >

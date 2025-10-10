@@ -66,7 +66,7 @@ export const IdentityUniversalAuthClientSecretsTable = ({ clientSecrets, identit
 
   return (
     <div className="col-span-2">
-      <div className="flex items-end justify-between border-b border-mineshaft-500 pb-2">
+      <div className="border-mineshaft-500 flex items-end justify-between border-b pb-2">
         <span className="text-bunker-300">Client Secrets</span>
         <OrgPermissionCan I={OrgPermissionIdentityActions.Edit} a={OrgPermissionSubjects.Identity}>
           {(isAllowed) => (
@@ -93,7 +93,7 @@ export const IdentityUniversalAuthClientSecretsTable = ({ clientSecrets, identit
               <Tr className="text-xs font-medium">
                 <Th className="py-1 font-normal">Secret</Th>
                 <Th className="py-1 font-normal">Description</Th>
-                <Th className="py-1 font-normal whitespace-nowrap">Number of Uses</Th>
+                <Th className="whitespace-nowrap py-1 font-normal">Number of Uses</Th>
                 <Th className="py-1 font-normal">Expires</Th>
                 <Th className="w-5 py-1 font-normal" />
               </Tr>
@@ -118,7 +118,7 @@ export const IdentityUniversalAuthClientSecretsTable = ({ clientSecrets, identit
                   }
 
                   return (
-                    <Tr className="text-xs hover:bg-mineshaft-700" key={id}>
+                    <Tr className="hover:bg-mineshaft-700 text-xs" key={id}>
                       <Td>{clientSecretPrefix}***</Td>
                       <Td>{description || "-"}</Td>
                       <Td>

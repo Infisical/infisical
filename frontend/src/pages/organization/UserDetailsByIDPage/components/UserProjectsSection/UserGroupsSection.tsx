@@ -43,9 +43,9 @@ export const UserGroupsSection = ({ orgMembership }: Props) => {
 
   return (
     <>
-      <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
-          <h3 className="text-lg font-medium text-mineshaft-100">Groups</h3>
+      <div className="border-mineshaft-600 bg-mineshaft-900 w-full rounded-lg border p-4">
+        <div className="border-mineshaft-400 mb-4 flex items-center justify-between border-b pb-4">
+          <h3 className="text-mineshaft-100 text-lg font-medium">Groups</h3>
         </div>
 
         <UserGroupsTable orgMembership={orgMembership} handlePopUpOpen={handlePopUpOpen} />

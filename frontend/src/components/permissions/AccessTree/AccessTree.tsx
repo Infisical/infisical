@@ -107,20 +107,20 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
         "mt-4 w-full",
         viewMode === ViewMode.Modal && "fixed inset-0 z-50 p-10",
         viewMode === ViewMode.Undocked &&
-          "fixed bottom-4 left-20 z-50 h-[40%] w-[38%] min-w-lg lg:w-[34%]"
+          "min-w-lg fixed bottom-4 left-20 z-50 h-[40%] w-[38%] lg:w-[34%]"
       )}
     >
       <div
         className={twMerge(
-          "mb-4 h-full w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 transition-transform duration-500",
+          "border-mineshaft-600 bg-mineshaft-900 mb-4 h-full w-full rounded-lg border transition-transform duration-500",
           viewMode === ViewMode.Docked ? "relative p-4" : "relative p-0"
         )}
       >
         {viewMode === ViewMode.Docked && (
-          <div className="mb-4 flex items-start justify-between border-b border-mineshaft-400 pb-4">
+          <div className="border-mineshaft-400 mb-4 flex items-start justify-between border-b pb-4">
             <div>
-              <h3 className="text-lg font-medium text-mineshaft-100">Access Tree</h3>
-              <p className="text-sm leading-3 text-mineshaft-400">
+              <h3 className="text-mineshaft-100 text-lg font-medium">Access Tree</h3>
+              <p className="text-mineshaft-400 text-sm leading-3">
                 Visual access policies for the configured role.
               </p>
             </div>
@@ -129,7 +129,7 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
                 variant="outline_bg"
                 colorSchema="secondary"
                 type="submit"
-                className="h-10 rounded-r-none bg-mineshaft-700"
+                className="bg-mineshaft-700 h-10 rounded-r-none"
                 leftIcon={<FontAwesomeIcon icon={faWindowRestore} />}
                 onClick={handleToggleView}
               >
@@ -139,7 +139,7 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
                 variant="outline_bg"
                 colorSchema="secondary"
                 type="submit"
-                className="h-10 rounded-l-none bg-mineshaft-600"
+                className="bg-mineshaft-600 h-10 rounded-l-none"
                 leftIcon={<FontAwesomeIcon icon={faUpRightAndDownLeftFromCenter} />}
                 onClick={handleToggleModalView}
               >
@@ -156,7 +156,7 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
         >
           <div className="h-full w-full">
             <ReactFlow
-              className="rounded-md border border-mineshaft"
+              className="border-mineshaft rounded-md border"
               nodes={nodes}
               edges={edges}
               edgeTypes={EdgeTypes}
@@ -191,7 +191,7 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
                       <SelectItem
                         key={env.slug}
                         value={env.slug}
-                        className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
+                        className="hover:bg-mineshaft-700 relative py-2 pl-6 pr-8 text-sm"
                       >
                         <div className="ml-3 truncate font-medium">{env.name}</div>
                       </SelectItem>

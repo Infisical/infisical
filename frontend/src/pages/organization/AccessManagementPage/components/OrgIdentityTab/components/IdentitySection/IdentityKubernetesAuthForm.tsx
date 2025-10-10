@@ -343,7 +343,7 @@ export const IdentityKubernetesAuthForm = ({
                                   );
                                 }
                               }}
-                              className="w-full border border-mineshaft-500"
+                              className="border-mineshaft-500 w-full border"
                               dropdownContainerClassName="max-w-none"
                               isLoading={isGatewayLoading}
                               placeholder="Default: Internet Gateway"

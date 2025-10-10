@@ -111,12 +111,12 @@ export const AuthenticationPageForm = () => {
 
   return (
     <form
-      className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+      className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4"
       onSubmit={handleSubmit(onAuthFormSubmit)}
     >
       <div className="flex flex-col justify-start">
-        <div className="mb-2 text-xl font-medium text-mineshaft-100">Login Methods</div>
-        <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
+        <div className="text-mineshaft-100 mb-2 text-xl font-medium">Login Methods</div>
+        <div className="text-mineshaft-400 mb-4 max-w-sm text-sm">
           Select the login methods you wish to allow for all users of this instance.
         </div>
         <Controller

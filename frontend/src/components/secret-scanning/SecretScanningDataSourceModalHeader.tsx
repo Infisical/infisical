@@ -17,10 +17,10 @@ export const SecretScanningDataSourceModalHeader = ({ type, isConfigured }: Prop
       <img
         alt={`${dataSourceDetails.name} logo`}
         src={`/images/integrations/${dataSourceDetails.image}`}
-        className="h-12 rounded-md bg-bunker-500 p-2"
+        className="bg-bunker-500 h-12 rounded-md p-2"
       />
       <div>
-        <div className="flex items-center text-mineshaft-300">
+        <div className="text-mineshaft-300 flex items-center">
           {dataSourceDetails.name} Data Source
           <a
             target="_blank"
@@ -28,8 +28,8 @@ export const SecretScanningDataSourceModalHeader = ({ type, isConfigured }: Prop
             className="mb-1 ml-1"
             rel="noopener noreferrer"
           >
-            <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-              <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-[0.03rem] text-[12px]" />
+            <div className="bg-yellow/20 text-yellow inline-block rounded-md px-1.5 text-sm opacity-80 hover:opacity-100">
+              <FontAwesomeIcon icon={faBookOpen} className="mb-[0.03rem] mr-1 text-[12px]" />
               <span>Docs</span>
               <FontAwesomeIcon
                 icon={faArrowUpRightFromSquare}
@@ -38,7 +38,7 @@ export const SecretScanningDataSourceModalHeader = ({ type, isConfigured }: Prop
             </div>
           </a>
         </div>
-        <p className="text-sm leading-4 text-mineshaft-400">
+        <p className="text-mineshaft-400 text-sm leading-4">
           {isConfigured ? "Edit" : "Connect a"} {dataSourceDetails.name} Data Source
         </p>
       </div>

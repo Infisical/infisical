@@ -7,14 +7,14 @@ export const PersonalSettingsPage = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="h-full bg-bunker-800 text-white">
+    <div className="bg-bunker-800 h-full text-white">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.personal.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="flex w-full justify-center bg-bunker-800 px-6 text-white">
+      <div className="bg-bunker-800 flex w-full justify-center px-6 text-white">
         <div className="w-full max-w-6xl">
-          <div className="mt-6 mb-6">
+          <div className="mb-6 mt-6">
             <p className="text-3xl font-medium text-gray-200">{t("settings.personal.title")}</p>
           </div>
           <PersonalTabGroup />
