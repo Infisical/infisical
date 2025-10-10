@@ -264,7 +264,7 @@ export const EncryptionTab = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex justify-between">
-        <h2 className="mb-2 flex-1 text-xl font-semibold text-mineshaft-100">Key Management</h2>
+        <h2 className="mb-2 flex-1 text-xl font-medium text-mineshaft-100">Key Management</h2>
         {kmsKeyId !== INTERNAL_KMS_KEY_ID && (
           <div className="space-x-2">
             <Button colorSchema="secondary" onClick={() => handlePopUpOpen("loadBackup")}>

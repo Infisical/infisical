@@ -253,13 +253,13 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <div className="flex items-start gap-1">
-                <p className="text-xl font-semibold text-mineshaft-100">Policies</p>
+                <p className="text-xl font-medium text-mineshaft-100">Policies</p>
                 <a
                   href="https://infisical.com/docs/documentation/platform/pr-workflows"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <div className="ml-1 mt-[0.32rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                  <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                     <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                     <span>Docs</span>
                     <FontAwesomeIcon
@@ -318,7 +318,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                 </IconButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="thin-scrollbar max-h-[70vh] overflow-y-auto"
+                className="max-h-[70vh] thin-scrollbar overflow-y-auto"
                 align="end"
               >
                 <DropdownMenuLabel>Policy Type</DropdownMenuLabel>

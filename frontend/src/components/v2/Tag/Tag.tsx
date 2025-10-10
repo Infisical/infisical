@@ -11,7 +11,7 @@ type Props = {
 } & VariantProps<typeof tagVariants>;
 
 const tagVariants = cva(
-  "inline-flex items-center whitespace-nowrap text-sm rounded mr-1.5 text-bunker-200 text-gray-400 ",
+  "inline-flex items-center whitespace-nowrap text-sm rounded-sm mr-1.5 text-bunker-200 text-gray-400 ",
   {
     variants: {
       colorSchema: {

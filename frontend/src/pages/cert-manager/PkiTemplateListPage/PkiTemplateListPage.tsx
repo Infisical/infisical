@@ -112,7 +112,7 @@ export const PkiTemplateListPage = () => {
           </div>
           <div className="container mx-auto mb-6 max-w-7xl rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
             <div className="mb-4 flex justify-between">
-              <p className="text-xl font-semibold text-mineshaft-100">Templates</p>
+              <p className="text-xl font-medium text-mineshaft-100">Templates</p>
               <div className="flex w-full justify-end">
                 <ProjectPermissionCan
                   I={ProjectPermissionPkiTemplateActions.Create}

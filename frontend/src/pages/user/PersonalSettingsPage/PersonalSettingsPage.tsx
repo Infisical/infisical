@@ -14,8 +14,8 @@ export const PersonalSettingsPage = () => {
       </Helmet>
       <div className="flex w-full justify-center bg-bunker-800 px-6 text-white">
         <div className="w-full max-w-6xl">
-          <div className="mb-6 mt-6">
-            <p className="text-3xl font-semibold text-gray-200">{t("settings.personal.title")}</p>
+          <div className="mt-6 mb-6">
+            <p className="text-3xl font-medium text-gray-200">{t("settings.personal.title")}</p>
           </div>
           <PersonalTabGroup />
         </div>

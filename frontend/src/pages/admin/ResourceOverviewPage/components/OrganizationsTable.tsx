@@ -296,7 +296,7 @@ const ViewMembersModalContent = ({
                     </div>
                   </Td>
                   <Td className="max-w-0">
-                    <Badge className="flex w-fit max-w-full items-center gap-x-1 whitespace-nowrap bg-mineshaft-400/50 text-bunker-200">
+                    <Badge className="flex w-fit max-w-full items-center gap-x-1 bg-mineshaft-400/50 whitespace-nowrap text-bunker-200">
                       <p className="truncate capitalize">{member.role.replace("-", " ")}</p>
                       {Boolean(member.roleId) && (
                         <Tooltip content="This member has a custom role assigned.">
@@ -714,7 +714,7 @@ export const OrganizationsTable = () => {
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xl font-semibold text-mineshaft-100">Organizations</p>
+          <p className="text-xl font-medium text-mineshaft-100">Organizations</p>
           <p className="text-sm text-bunker-300">
             Manage, join and view organizations across your instance.
           </p>

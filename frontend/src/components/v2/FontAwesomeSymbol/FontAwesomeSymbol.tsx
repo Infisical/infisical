@@ -8,7 +8,7 @@ export const FontAwesomeSymbol = forwardRef<HTMLDivElement, Props>(
   ({ symbolName, ...props }, ref) => {
     return (
       <div ref={ref} {...props}>
-        <svg className="w-inherit h-inherit">
+        <svg className="h-inherit w-inherit">
           <use href={`#${symbolName}`} />
         </svg>
       </div>

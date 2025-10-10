@@ -215,7 +215,7 @@ const ServerAdminsPanelTable = ({
                                   <div className="relative">
                                     <FontAwesomeIcon icon={faShieldHalved} />
                                     <FontAwesomeIcon
-                                      className="absolute -bottom-[0.01rem] -right-1"
+                                      className="absolute -right-1 -bottom-[0.01rem]"
                                       size="2xs"
                                       icon={faXmark}
                                     />
@@ -361,7 +361,7 @@ export const ServerAdminsTable = () => {
     <>
       <div
         className={twMerge(
-          "h-0 flex-shrink-0 overflow-hidden transition-all",
+          "h-0 shrink-0 overflow-hidden transition-all",
           selectedUsers.length > 0 && "h-16"
         )}
       >
@@ -445,7 +445,7 @@ export const ServerAdminsTable = () => {
           <div className="mt-4 text-sm text-mineshaft-400">
             The following users will be deleted:
           </div>
-          <div className="mt-2 max-h-[20rem] overflow-y-auto rounded border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
+          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
             <ul className="list-disc">
               {selectedUsers?.map((user) => {
                 const email = user.email ?? user.username;
@@ -467,7 +467,7 @@ export const ServerAdminsTable = () => {
                           <div className="inline-block">
                             <Badge
                               variant="primary"
-                              className="ml-1 mt-[0.05rem] inline-flex w-min items-center gap-1.5 whitespace-nowrap"
+                              className="mt-[0.05rem] ml-1 inline-flex w-min items-center gap-1.5 whitespace-nowrap"
                             >
                               <FontAwesomeIcon icon={faWarning} />
                               <span>Deleting Yourself</span>

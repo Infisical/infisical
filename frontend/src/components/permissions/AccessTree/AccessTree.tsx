@@ -107,7 +107,7 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
         "mt-4 w-full",
         viewMode === ViewMode.Modal && "fixed inset-0 z-50 p-10",
         viewMode === ViewMode.Undocked &&
-          "fixed bottom-4 left-20 z-50 h-[40%] w-[38%] min-w-[32rem] lg:w-[34%]"
+          "fixed bottom-4 left-20 z-50 h-[40%] w-[38%] min-w-lg lg:w-[34%]"
       )}
     >
       <div
@@ -119,7 +119,7 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
         {viewMode === ViewMode.Docked && (
           <div className="mb-4 flex items-start justify-between border-b border-mineshaft-400 pb-4">
             <div>
-              <h3 className="text-lg font-semibold text-mineshaft-100">Access Tree</h3>
+              <h3 className="text-lg font-medium text-mineshaft-100">Access Tree</h3>
               <p className="text-sm leading-3 text-mineshaft-400">
                 Visual access policies for the configured role.
               </p>
@@ -191,7 +191,7 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
                       <SelectItem
                         key={env.slug}
                         value={env.slug}
-                        className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
+                        className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
                       >
                         <div className="ml-3 truncate font-medium">{env.name}</div>
                       </SelectItem>
@@ -209,7 +209,7 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
                 <Panel position="top-right" className="flex gap-2">
                   <Tooltip position="bottom" align="center" content={expandButtonLabel}>
                     <IconButton
-                      className="rounded p-2"
+                      className="rounded-sm p-2"
                       colorSchema="secondary"
                       variant="plain"
                       onClick={handleToggleView}
@@ -226,7 +226,7 @@ const AccessTreeContent = ({ permissions, subject, onClose }: AccessTreeProps) =
                   </Tooltip>
                   <Tooltip align="end" position="bottom" content={hideButtonLabel}>
                     <IconButton
-                      className="rounded p-2"
+                      className="rounded-sm p-2"
                       colorSchema="secondary"
                       variant="plain"
                       onClick={onClose}

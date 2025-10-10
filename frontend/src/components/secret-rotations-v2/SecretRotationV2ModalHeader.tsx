@@ -29,7 +29,7 @@ export const SecretRotationV2ModalHeader = ({ type, isConfigured }: Props) => {
             rel="noopener noreferrer"
           >
             <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-              <FontAwesomeIcon icon={faBookOpen} className="mb-[0.03rem] mr-1 text-[12px]" />
+              <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-[0.03rem] text-[12px]" />
               <span>Docs</span>
               <FontAwesomeIcon
                 icon={faArrowUpRightFromSquare}

@@ -128,7 +128,7 @@ const Content = ({ findings, onComplete }: ContentProps) => {
         render={({ field, fieldState: { error } }) => {
           return (
             <FormControl label="Remarks" isError={Boolean(error)} errorText={error?.message}>
-              <TextArea className="h-40 !resize-none" {...field} />
+              <TextArea className="h-40 resize-none!" {...field} />
             </FormControl>
           );
         }}

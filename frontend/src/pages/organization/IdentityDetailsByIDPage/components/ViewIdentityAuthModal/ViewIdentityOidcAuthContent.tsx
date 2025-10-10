@@ -71,10 +71,10 @@ export const ViewIdentityOidcAuthContent = ({
           <Tooltip
             side="right"
             className="max-w-xl p-2"
-            content={<p className="break-words rounded bg-mineshaft-600 p-2">{data.caCert}</p>}
+            content={<p className="rounded-sm bg-mineshaft-600 p-2 break-words">{data.caCert}</p>}
           >
             <div className="w-min">
-              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
                 <FontAwesomeIcon icon={faEye} />
                 <span>Reveal</span>
               </Badge>
@@ -97,13 +97,13 @@ export const ViewIdentityOidcAuthContent = ({
             side="right"
             className="max-w-xl p-2"
             content={
-              <pre className="whitespace-pre-wrap rounded bg-mineshaft-600 p-2">
+              <pre className="rounded-sm bg-mineshaft-600 p-2 whitespace-pre-wrap">
                 {JSON.stringify(data.boundClaims, null, 2)}
               </pre>
             }
           >
             <div className="w-min">
-              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
                 <FontAwesomeIcon icon={faEye} />
                 <span>Reveal</span>
               </Badge>
@@ -117,13 +117,13 @@ export const ViewIdentityOidcAuthContent = ({
             side="right"
             className="max-w-xl p-2"
             content={
-              <pre className="whitespace-pre-wrap rounded bg-mineshaft-600 p-2">
+              <pre className="rounded-sm bg-mineshaft-600 p-2 whitespace-pre-wrap">
                 {JSON.stringify(data.claimMetadataMapping, null, 2)}
               </pre>
             }
           >
             <div className="w-min">
-              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
                 <FontAwesomeIcon icon={faEye} />
                 <span>Reveal</span>
               </Badge>

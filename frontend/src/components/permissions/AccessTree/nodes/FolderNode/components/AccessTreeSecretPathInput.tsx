@@ -61,7 +61,7 @@ export const AccessTreeSecretPathInput = ({
     <div ref={wrapperRef} className="relative">
       <div
         className={twMerge(
-          "flex items-center overflow-hidden rounded transition-all duration-300 ease-in-out",
+          "flex items-center overflow-hidden rounded-sm transition-all duration-300 ease-in-out",
           isFocused ? "bg-mineshaft-800 shadow-md" : "bg-mineshaft-700",
           isExpanded ? "w-64" : "h-10 w-10"
         )}

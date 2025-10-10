@@ -61,7 +61,7 @@ export const LogStreamProviderSelect = ({ onSelect }: Props) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid h-[29.5rem] grid-cols-4 content-start gap-2">
+      <div className="grid h-118 grid-cols-4 content-start gap-2">
         {filteredOptions.slice(offset, perPage * page)?.map((option) => {
           const { image, icon, name, size = 50 } = AUDIT_LOG_STREAM_PROVIDER_MAP[option.provider];
 

@@ -171,7 +171,7 @@ export const SecretImportItem = ({
         <div className="flex w-11 items-center py-2 pl-5 text-green-700">
           <FontAwesomeIcon icon={faFileImport} />
         </div>
-        <div className="flex flex-grow items-center py-2 pl-4 pr-2">
+        <div className="flex grow items-center py-2 pr-2 pl-4">
           <EnvFolderIcon
             env={importEnv.slug || ""}
             secretPath={secretImport?.importPath || ""}
@@ -182,11 +182,11 @@ export const SecretImportItem = ({
           {lastReplicated && (
             <Tooltip
               position="left"
-              className="max-w-md whitespace-normal break-words"
+              className="max-w-md break-words whitespace-normal"
               content={
-                <div className="flex max-h-[10rem] flex-col overflow-auto">
+                <div className="flex max-h-40 flex-col overflow-auto">
                   <div className="flex self-start">
-                    <FontAwesomeIcon icon={faCalendarCheck} className="pr-2 pt-0.5 text-sm" />
+                    <FontAwesomeIcon icon={faCalendarCheck} className="pt-0.5 pr-2 text-sm" />
                     <div className="text-sm">Last Replication</div>
                   </div>
                   <div className="pl-5 text-left text-xs">
@@ -197,7 +197,7 @@ export const SecretImportItem = ({
                   {!isReplicationSuccess && (
                     <>
                       <div className="mt-2 flex self-start">
-                        <FontAwesomeIcon icon={faXmark} className="pr-2 pt-1 text-sm" />
+                        <FontAwesomeIcon icon={faXmark} className="pt-1 pr-2 text-sm" />
                         <div className="text-sm">Fail reason</div>
                       </div>
                       <div className="pl-5 text-left text-xs">{replicationStatus}</div>
@@ -242,7 +242,7 @@ export const SecretImportItem = ({
             </ProjectPermissionCan>
           )}
         </div>
-        <div className="flex w-16 items-center justify-between border-l border-mineshaft-600 py-3.5 pl-4 pr-3">
+        <div className="flex w-16 items-center justify-between border-l border-mineshaft-600 py-3.5 pr-3 pl-4">
           <ProjectPermissionCan
             I={ProjectPermissionActions.Edit}
             a={subject(ProjectPermissionSub.SecretImports, {

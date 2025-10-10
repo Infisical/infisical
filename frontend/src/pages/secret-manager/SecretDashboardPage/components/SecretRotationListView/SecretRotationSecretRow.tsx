@@ -48,14 +48,14 @@ export const SecretRotationSecretRow = ({
       className="max-w-sm"
       content={secret ? undefined : "You do not have permission to view this secret."}
     >
-      <tr className="h-full last:!border-b-0 hover:bg-mineshaft-700">
+      <tr className="h-full last:border-b-0! hover:bg-mineshaft-700">
         <td className="flex h-full items-center" style={{ padding: "0.5rem 1rem" }}>
-          <span className={twMerge(!secret && "blur")}>{secret?.key ?? "********"}</span>
+          <span className={twMerge(!secret && "blur-sm")}>{secret?.key ?? "********"}</span>
         </td>
         <td className="col-span-2 h-full w-full" style={{ padding: "0.5rem 1rem" }}>
           {/* eslint-disable-next-line no-nested-ternary */}
           {!secret ? (
-            <div className="h-full pl-4 blur">********</div>
+            <div className="h-full pl-4 blur-sm">********</div>
           ) : secret.secretValueHidden ? (
             <Blur
               className="py-0"

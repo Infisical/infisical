@@ -40,7 +40,7 @@ export const MenuItem = <T extends ElementType = "button">({
       type="button"
       role="menuitem"
       className={twMerge(
-        "duration-50 group relative mt-0.5 flex w-full cursor-pointer items-center rounded px-2 py-2 font-inter text-sm text-bunker-100 transition-all hover:bg-mineshaft-700",
+        "group relative mt-0.5 flex w-full cursor-pointer items-center rounded-sm px-2 py-2 font-inter text-sm text-bunker-100 transition-all duration-50 hover:bg-mineshaft-700",
         isSelected && "bg-mineshaft-600 hover:bg-mineshaft-600",
         isDisabled && "cursor-not-allowed hover:bg-transparent",
         className
@@ -49,7 +49,7 @@ export const MenuItem = <T extends ElementType = "button">({
       {...props}
     >
       {leftIcon}
-      {children && <span className="flex-grow whitespace-nowrap text-left">{children}</span>}
+      {children && <span className="grow text-left whitespace-nowrap">{children}</span>}
       {description && <span className="mt-2 text-xs">{description}</span>}
     </Item>
   );
@@ -65,7 +65,7 @@ export type MenuGroupProps = {
 
 export const MenuGroup = ({ children, title, className }: MenuGroupProps): JSX.Element => (
   <>
-    <li className={twMerge("px-2 pt-3 text-xs font-medium uppercase text-gray-400", className)}>
+    <li className={twMerge("px-2 pt-3 text-xs font-medium text-gray-400 uppercase", className)}>
       {title}
     </li>
     {children}

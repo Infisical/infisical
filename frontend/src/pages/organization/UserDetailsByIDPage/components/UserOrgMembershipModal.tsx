@@ -169,7 +169,7 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
           <div className="mb-3 flex flex-col space-y-2">
             {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
               <div key={metadataFieldId} className="flex items-end space-x-2">
-                <div className="flex-grow">
+                <div className="grow">
                   {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
                   <Controller
                     control={control}
@@ -185,7 +185,7 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
                     )}
                   />
                 </div>
-                <div className="flex-grow">
+                <div className="grow">
                   {i === 0 && (
                     <FormLabel label="Value" className="text-xs text-mineshaft-400" isOptional />
                   )}

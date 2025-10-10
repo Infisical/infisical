@@ -54,7 +54,7 @@ export const CliRedirectPage = () => {
         {cliToken ? (
           <>
             <div className="pb-4">
-              <p className="bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-3xl font-medium text-transparent">
+              <p className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-3xl font-medium text-transparent">
                 Unable to reach CLI
               </p>
               <p className="text-light mb-1 text-center text-lg text-mineshaft-400">
@@ -73,7 +73,7 @@ export const CliRedirectPage = () => {
                   colorSchema="primary"
                   ariaLabel="copy to clipboard"
                   onClick={copyUrlToClipboard}
-                  className="flex items-center rounded py-2"
+                  className="flex items-center rounded-sm py-2"
                 >
                   <FontAwesomeIcon className="pr-2" icon={isUrlCopied ? faCheck : faCopy} /> Copy to
                   clipboard
@@ -83,7 +83,7 @@ export const CliRedirectPage = () => {
           </>
         ) : (
           <>
-            <p className="bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-3xl font-medium text-transparent">
+            <p className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-3xl font-medium text-transparent">
               Head back to your terminal
             </p>
             <p className="text-light mb-1 text-lg text-mineshaft-400">

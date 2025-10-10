@@ -87,9 +87,9 @@ export const AuditLogsRetentionSection = () => {
     <>
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="flex w-full items-center justify-between">
-          <p className="text-xl font-semibold">Audit Logs Retention</p>
+          <p className="text-xl font-medium">Audit Logs Retention</p>
         </div>
-        <p className="mb-4 mt-2 max-w-2xl text-sm text-gray-400">
+        <p className="mt-2 mb-4 max-w-2xl text-sm text-gray-400">
           Set the number of days to keep your project audit logs.
         </p>
         <form onSubmit={handleSubmit(handleAuditLogsRetentionSubmit)} autoComplete="off">

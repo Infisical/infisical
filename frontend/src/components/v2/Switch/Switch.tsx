@@ -42,7 +42,7 @@ export const Switch = ({
     >
       <SwitchPrimitive.Thumb
         className={twMerge(
-          "block h-4 w-4 translate-x-0.5 rounded-full border-none bg-black shadow transition-all will-change-transform data-[state=checked]:translate-x-[18px]",
+          "block h-4 w-4 translate-x-0.5 rounded-full border-none bg-black shadow-sm transition-all will-change-transform data-[state=checked]:translate-x-[18px]",
           thumbClassName
         )}
       />

@@ -86,12 +86,12 @@ export const AccessManagementPage = () => {
           description="Manage fine-grained access for users, groups, roles, and identities within your organization resources."
         />
         {!currentOrg.shouldUseNewPrivilegeSystem && (
-          <div className="mb-4 mt-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
+          <div className="mt-4 mb-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
             <div className="mb-1 flex items-center text-sm">
               <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
               Your organization is using legacy privilege management
             </div>
-            <p className="mb-2 mt-1 text-sm text-bunker-300">
+            <p className="mt-1 mb-2 text-sm text-bunker-300">
               We&apos;ve developed an improved privilege management system to better serve your
               security needs. Upgrade to our new permission-based approach that allows you to
               explicitly designate who can modify specific access levels, rather than relying on

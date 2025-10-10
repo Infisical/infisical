@@ -48,7 +48,7 @@ export const SecretRotationItem = ({
         <div className="text- flex w-11 items-center py-2 pl-5 text-mineshaft-400">
           <FontAwesomeIcon icon={faRotate} />
         </div>
-        <div className="flex flex-grow items-center py-2 pl-4 pr-2">
+        <div className="flex grow items-center py-2 pr-2 pl-4">
           <div className="flex w-full flex-wrap items-center">
             <span>{name}</span>
             <Tag className="mx-2.5 flex items-center gap-1 px-1.5 py-0 text-xs normal-case">
@@ -70,7 +70,7 @@ export const SecretRotationItem = ({
           <SecretRotationV2StatusBadge className="mx-2" secretRotation={secretRotation} />
           <div
             key="actions"
-            className="flex h-full flex-shrink-0 self-start transition-all group-hover:gap-x-2"
+            className="flex h-full shrink-0 self-start transition-all group-hover:gap-x-2"
           >
             <Tooltip content="View Rotation Secrets">
               <IconButton

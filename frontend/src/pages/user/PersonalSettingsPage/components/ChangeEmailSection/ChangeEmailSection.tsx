@@ -167,7 +167,7 @@ export const ChangeEmailSection = () => {
   return (
     <>
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <h2 className="mb-8 flex-1 text-xl font-semibold text-mineshaft-100">Change email</h2>
+        <h2 className="mb-8 flex-1 text-xl font-medium text-mineshaft-100">Change email</h2>
 
         <form onSubmit={emailForm.handleSubmit(handleEmailSubmit)}>
           <div className="max-w-md">

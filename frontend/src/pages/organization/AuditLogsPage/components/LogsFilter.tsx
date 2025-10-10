@@ -124,7 +124,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
         <Button variant="outline_bg" colorSchema="primary" className="relative">
           <FontAwesomeIcon icon={faFilterCircleXmark} />
           {activeFilterCount > 0 && (
-            <Badge className="absolute bottom-0 right-0" variant="primary">
+            <Badge className="absolute right-0 bottom-0" variant="primary">
               {activeFilterCount}
             </Badge>
           )}
@@ -175,7 +175,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                     <FormControl>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <div className="thin-scrollbar inline-flex w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-md border border-mineshaft-500 bg-mineshaft-700 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                          <div className="inline-flex thin-scrollbar w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-500 bg-mineshaft-700 px-3 py-2 font-inter text-sm font-normal whitespace-nowrap text-bunker-200 outline-hidden data-placeholder:text-mineshaft-200">
                             {selectedEventTypes?.length === 1
                               ? filteredEventTypes.find(
                                   (eventType) => eventType.value === selectedEventTypes[0]
@@ -189,7 +189,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                         <DropdownMenuContent
                           align="end"
                           sideOffset={2}
-                          className="thin-scrollbar z-[100] max-h-80 overflow-hidden"
+                          className="z-100 max-h-80 thin-scrollbar overflow-hidden"
                         >
                           <div className="max-h-80 overflow-y-auto">
                             {filteredEventTypes.length > 0 ? (
@@ -337,9 +337,9 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <div className="mb-3 mt-2">
+                    <div className="mt-2 mb-3">
                       <p className="text-xs opacity-60">Secrets</p>
-                      <div className="h-[1px] w-full rounded-full bg-mineshaft-500" />
+                      <div className="h-px w-full rounded-full bg-mineshaft-500" />
                     </div>
                     <LogFilterItem
                       label="Environment"

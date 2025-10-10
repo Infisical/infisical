@@ -284,7 +284,7 @@ export const MFASection = () => {
         }}
         className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
       >
-        <h2 className="mb-6 text-xl font-semibold text-mineshaft-100">Two-factor Authentication</h2>
+        <h2 className="mb-6 text-xl font-medium text-mineshaft-100">Two-factor Authentication</h2>
 
         {user && (
           <div className="space-y-4">
@@ -332,7 +332,7 @@ export const MFASection = () => {
 
             {showMobileAuthSetup && !totpConfiguration?.isVerified && (
               <div className="space-y-6">
-                <h3 className="mb-6 text-lg font-semibold text-mineshaft-100">
+                <h3 className="mb-6 text-lg font-medium text-mineshaft-100">
                   Setup Mobile Authenticator
                 </h3>
 
@@ -366,7 +366,7 @@ export const MFASection = () => {
                           <div>
                             <p className="mb-2 text-xs text-mineshaft-400">
                               Can&apos;t scan? Enter this code manually:{" "}
-                              <code className="rounded bg-mineshaft-700 px-3 py-1 font-mono text-sm text-mineshaft-100">
+                              <code className="rounded-sm bg-mineshaft-700 px-3 py-1 font-mono text-sm text-mineshaft-100">
                                 {totpRegistration.otpUrl.split("secret=")[1]?.split("&")[0] ||
                                   "Loading..."}
                               </code>
@@ -446,7 +446,7 @@ export const MFASection = () => {
 
             {user?.isMfaEnabled && totpConfiguration?.isVerified && (
               <div className="mt-8 border-t border-mineshaft-600 pt-6">
-                <h3 className="mb-4 text-lg font-semibold text-mineshaft-100">
+                <h3 className="mb-4 text-lg font-medium text-mineshaft-100">
                   Mobile Authenticator Management
                 </h3>
 

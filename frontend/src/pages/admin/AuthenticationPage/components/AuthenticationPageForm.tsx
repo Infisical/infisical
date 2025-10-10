@@ -115,7 +115,7 @@ export const AuthenticationPageForm = () => {
       onSubmit={handleSubmit(onAuthFormSubmit)}
     >
       <div className="flex flex-col justify-start">
-        <div className="mb-2 text-xl font-semibold text-mineshaft-100">Login Methods</div>
+        <div className="mb-2 text-xl font-medium text-mineshaft-100">Login Methods</div>
         <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
           Select the login methods you wish to allow for all users of this instance.
         </div>

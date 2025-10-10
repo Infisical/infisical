@@ -12,7 +12,7 @@ export const SecretRequestSuccessContainer = ({ requesterUsername }: Props) => {
         <div className="mx-auto w-min rounded-md border border-mineshaft-800 bg-mineshaft-600 p-3">
           <FontAwesomeIcon icon={faCheck} size="2x" className="text-primary-500" />
         </div>
-        <p className="text-md mt-2 font-semibold">Secret Shared</p>
+        <p className="text-md mt-2 font-medium">Secret Shared</p>
         <p className="mt-2 text-sm text-mineshaft-300">
           <strong>{requesterUsername}</strong> has now been notified of your shared secret, and will
           be able to access it shortly.

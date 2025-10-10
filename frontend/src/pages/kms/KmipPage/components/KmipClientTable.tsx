@@ -143,7 +143,7 @@ export const KmipClientTable = () => {
     >
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
-          <p className="whitespace-nowrap text-xl font-semibold text-mineshaft-100">KMIP Clients</p>
+          <p className="text-xl font-medium whitespace-nowrap text-mineshaft-100">KMIP Clients</p>
           <div className="flex w-full justify-end pr-4">
             <a
               target="_blank"

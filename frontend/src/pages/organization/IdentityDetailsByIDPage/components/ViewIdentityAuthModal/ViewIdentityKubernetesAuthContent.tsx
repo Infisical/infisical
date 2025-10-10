@@ -84,20 +84,20 @@ export const ViewIdentityKubernetesAuthContent = ({
             side="right"
             className="max-w-xl p-2"
             content={
-              <p className="break-words rounded bg-mineshaft-600 p-2">
+              <p className="rounded-sm bg-mineshaft-600 p-2 break-words">
                 {data.tokenReviewerJwt || "Not provided"}
               </p>
             }
           >
             <div className="w-min">
-              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
                 <FontAwesomeIcon icon={faEye} />
                 <span>Reveal</span>
               </Badge>
             </div>
           </Tooltip>
         ) : (
-          <p className="text-base italic leading-4 text-bunker-400">Not set</p>
+          <p className="text-base leading-4 text-bunker-400 italic">Not set</p>
         )}
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay className="col-span-2" label="Allowed Service Account Names">
@@ -120,10 +120,10 @@ export const ViewIdentityKubernetesAuthContent = ({
           <Tooltip
             side="right"
             className="max-w-xl p-2"
-            content={<p className="break-words rounded bg-mineshaft-600 p-2">{data.caCert}</p>}
+            content={<p className="rounded-sm bg-mineshaft-600 p-2 break-words">{data.caCert}</p>}
           >
             <div className="w-min">
-              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
                 <FontAwesomeIcon icon={faEye} />
                 <span>Reveal</span>
               </Badge>

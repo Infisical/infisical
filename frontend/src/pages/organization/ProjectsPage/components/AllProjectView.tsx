@@ -288,12 +288,12 @@ export const AllProjectView = ({
               }}
               key={workspace.id}
               className={twMerge(
-                "group flex min-w-72 items-center justify-center border-l border-r border-t border-mineshaft-600 bg-mineshaft-800 px-6 py-3 first:rounded-t-md",
+                "group flex min-w-72 items-center justify-center border-t border-r border-l border-mineshaft-600 bg-mineshaft-800 px-6 py-3 first:rounded-t-md",
                 workspace.isMember ? "cursor-pointer hover:bg-mineshaft-700" : "cursor-default"
               )}
             >
               <div className="mr-3 flex min-w-0 flex-1 items-center gap-3">
-                <div className="rounded border border-mineshaft-500 bg-mineshaft-600 p-1 shadow-inner">
+                <div className="rounded-sm border border-mineshaft-500 bg-mineshaft-600 p-1 shadow-inner">
                   <Lottie
                     className="h-[1.35rem] w-[1.35rem] shrink-0"
                     icon={getProjectLottieIcon(workspace.type)}
@@ -364,7 +364,7 @@ export const AllProjectView = ({
         <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
           <FontAwesomeIcon
             icon={faFolderOpen}
-            className="mb-4 mt-2 w-full text-center text-5xl text-mineshaft-400"
+            className="mt-2 mb-4 w-full text-center text-5xl text-mineshaft-400"
           />
           <div className="text-center font-light">No Projects Found</div>
         </div>

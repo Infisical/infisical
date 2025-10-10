@@ -26,8 +26,8 @@ export const AppConnectionOption = ({
             <p className="truncate">{children}</p>
             {!props.data.projectId && (
               <Tooltip content="This connection belongs to your organization.">
-                <div className="ml-2 mr-auto">
-                  <Badge className="flex h-5 w-min items-center gap-1 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300 hover:text-bunker-300">
+                <div className="mr-auto ml-2">
+                  <Badge className="flex h-5 w-min items-center gap-1 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300 hover:text-bunker-300">
                     <FontAwesomeIcon icon={faBuilding} size="sm" />
                     Organization
                   </Badge>

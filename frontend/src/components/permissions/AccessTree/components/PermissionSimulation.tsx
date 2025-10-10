@@ -46,7 +46,7 @@ export const PermissionSimulation = ({
       <Panel position="top-left">
         <Button
           size="xs"
-          className="mr-1 rounded"
+          className="mr-1 rounded-sm"
           colorSchema="secondary"
           onClick={handlePermissionSimulation}
           rightIcon={
@@ -65,9 +65,9 @@ export const PermissionSimulation = ({
     <Panel
       onClick={handlePermissionSimulation}
       position="top-left"
-      className={`group flex flex-col gap-2 pb-4 pr-4 ${expand ? "" : "cursor-pointer"}`}
+      className={`group flex flex-col gap-2 pr-4 pb-4 ${expand ? "" : "cursor-pointer"}`}
     >
-      <div className="flex w-[20rem] flex-col gap-1.5 rounded border border-mineshaft-600 bg-mineshaft-800 p-2 font-inter text-gray-200">
+      <div className="flex w-[20rem] flex-col gap-1.5 rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-2 font-inter text-gray-200">
         <div>
           <div className="flex w-full items-center justify-between">
             <span className="text-sm">Permission Simulation</span>
@@ -83,7 +83,7 @@ export const PermissionSimulation = ({
             </IconButton>
           </div>
           {expand && (
-            <p className="mb-2 mt-1 text-xs text-mineshaft-400">
+            <p className="mt-1 mb-2 text-xs text-mineshaft-400">
               Evaluate conditional policies to see what permissions will be granted given a secret
               name or tags
             </p>
@@ -121,7 +121,7 @@ export const PermissionSimulation = ({
                 onValueChange={setEnvironment}
                 className="w-full border border-mineshaft-500 capitalize"
                 position="popper"
-                dropdownContainerClassName="max-w-[19rem]"
+                dropdownContainerClassName="max-w-76"
               >
                 {environments.map(({ name, slug }) => {
                   return (

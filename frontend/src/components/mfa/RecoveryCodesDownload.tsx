@@ -58,7 +58,7 @@ export const RecoveryCodesDownload = ({
     <Modal isOpen={isOpen} onOpenChange={hasDownloaded ? handleClose : () => {}}>
       <ModalContent title="Recovery Codes" className="max-w-md">
         <div className="space-y-4">
-          <div className="rounded border border-yellow bg-yellow/10 p-2 px-3 text-xs text-yellow">
+          <div className="rounded-sm border border-yellow bg-yellow/10 p-2 px-3 text-xs text-yellow">
             Save these codes securely. Each can only be used once.
           </div>
 

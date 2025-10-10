@@ -211,7 +211,7 @@ export const ShareSecretForm = ({
               <textarea
                 placeholder="Enter sensitive data to share via an encrypted link..."
                 {...field}
-                className="h-40 min-h-[70px] w-full rounded-md border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5 text-bunker-300 outline-none transition-all placeholder:text-mineshaft-400 hover:border-primary-400/30 focus:border-primary-400/50 group-hover:mr-2"
+                className="h-40 min-h-[70px] w-full rounded-md border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5 text-bunker-300 outline-hidden transition-all group-hover:mr-2 placeholder:text-mineshaft-400 hover:border-primary-400/30 focus:border-primary-400/50"
                 disabled={value !== undefined}
               />
             </FormControl>
@@ -257,7 +257,7 @@ export const ShareSecretForm = ({
                 isError={Boolean(error)}
               >
                 <Switch
-                  className={`ml-0 mr-2 bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-primary ${!allowSecretSharingOutsideOrganization ? "opacity-50" : ""}`}
+                  className={`mr-2 ml-0 bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-primary ${!allowSecretSharingOutsideOrganization ? "opacity-50" : ""}`}
                   thumbClassName="bg-mineshaft-800"
                   containerClassName="flex-row-reverse w-fit"
                   isChecked={
@@ -450,7 +450,7 @@ export const ShareSecretForm = ({
 
   return (
     <>
-      <div className="mr-2 flex items-center justify-end rounded-md bg-white/[0.05] p-2 text-base text-gray-400">
+      <div className="mr-2 flex items-center justify-end rounded-md bg-white/5 p-2 text-base text-gray-400">
         <p className="mr-4 break-all">{secretLink}</p>
         <IconButton
           ariaLabel="copy icon"
