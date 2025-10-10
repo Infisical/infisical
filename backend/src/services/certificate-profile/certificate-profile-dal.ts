@@ -127,11 +127,21 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       search?: string;
       enrollmentType?: EnrollmentType;
       caId?: string;
+      includeMetrics?: boolean;
+      expiringDays?: number;
     } = {},
     tx?: Knex
   ) => {
     try {
-      const { offset = 0, limit = 20, search, enrollmentType, caId } = options;
+      const {
+        offset = 0,
+        limit = 20,
+        search,
+        enrollmentType,
+        caId,
+        includeMetrics = false,
+        expiringDays = 7
+      } = options;
 
       let query = (tx || db)(TableName.CertificateProfile).where(
         `${TableName.CertificateProfile}.projectId`,
@@ -153,6 +163,38 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
 
       if (caId) {
         query = query.where(`${TableName.CertificateProfile}.caId`, caId);
+      }
+
+      if (includeMetrics) {
+        const now = new Date();
+        const expiringDate = new Date();
+        expiringDate.setDate(now.getDate() + expiringDays);
+
+        const certificateProfiles = await query
+          .leftJoin(TableName.Certificate, `${TableName.CertificateProfile}.id`, `${TableName.Certificate}.profileId`)
+          .select(
+            selectAllTableCols(TableName.CertificateProfile),
+            db.raw("COUNT(certificates.id) as total_certificates"),
+            db.raw(
+              'COUNT(CASE WHEN certificates."revokedAt" IS NULL AND certificates."notAfter" > ? THEN 1 END) as active_certificates',
+              [expiringDate]
+            ),
+            db.raw(
+              'COUNT(CASE WHEN certificates."revokedAt" IS NULL AND certificates."notAfter" <= ? THEN 1 END) as expired_certificates',
+              [now]
+            ),
+            db.raw(
+              'COUNT(CASE WHEN certificates."revokedAt" IS NULL AND certificates."notAfter" > ? AND certificates."notAfter" <= ? THEN 1 END) as expiring_certificates',
+              [now, expiringDate]
+            ),
+            db.raw('COUNT(CASE WHEN certificates."revokedAt" IS NOT NULL THEN 1 END) as revoked_certificates')
+          )
+          .groupBy(`${TableName.CertificateProfile}.id`)
+          .orderBy(`${TableName.CertificateProfile}.createdAt`, "desc")
+          .offset(offset)
+          .limit(limit);
+
+        return certificateProfiles;
       }
 
       const certificateProfiles = await query
@@ -239,13 +281,13 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       if (status) {
         switch (status) {
           case "active":
-            query = query.where("notAfter", ">", now).where("isRevoked", false);
+            query = query.where("notAfter", ">", now).whereNull("revokedAt");
             break;
           case "expired":
-            query = query.where("notAfter", "<=", now).where("isRevoked", false);
+            query = query.where("notAfter", "<=", now).whereNull("revokedAt");
             break;
           case "revoked":
-            query = query.where("isRevoked", true);
+            query = query.whereNotNull("revokedAt");
             break;
           default:
             break;
@@ -259,7 +301,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         .select((tx || db).ref("status").withSchema(TableName.Certificate))
         .select((tx || db).ref("notBefore").withSchema(TableName.Certificate))
         .select((tx || db).ref("notAfter").withSchema(TableName.Certificate))
-        .select((tx || db).ref("isRevoked").withSchema(TableName.Certificate))
+        .select((tx || db).ref("revokedAt").withSchema(TableName.Certificate))
         .select((tx || db).ref("createdAt").withSchema(TableName.Certificate))
         .orderBy("createdAt", "desc")
         .offset(offset)
@@ -273,7 +315,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
 
   const getProfileMetrics = async (
     profileId: string,
-    expiringDays: number = 30,
+    expiringDays: number = 7,
     tx?: Knex
   ): Promise<TCertificateProfileMetrics> => {
     try {
@@ -285,13 +327,15 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         .where("profileId", profileId)
         .select(
           db.raw("COUNT(*) as total_certificates"),
-          db.raw("COUNT(CASE WHEN NOT is_revoked AND not_after > ? THEN 1 END) as active_certificates", [now]),
-          db.raw("COUNT(CASE WHEN NOT is_revoked AND not_after <= ? THEN 1 END) as expired_certificates", [now]),
+          db.raw('COUNT(CASE WHEN "revokedAt" IS NULL AND "notAfter" > ? THEN 1 END) as active_certificates', [
+            expiringDate
+          ]),
+          db.raw('COUNT(CASE WHEN "revokedAt" IS NULL AND "notAfter" <= ? THEN 1 END) as expired_certificates', [now]),
           db.raw(
-            "COUNT(CASE WHEN NOT is_revoked AND not_after > ? AND not_after <= ? THEN 1 END) as expiring_certificates",
+            'COUNT(CASE WHEN "revokedAt" IS NULL AND "notAfter" > ? AND "notAfter" <= ? THEN 1 END) as expiring_certificates',
             [now, expiringDate]
           ),
-          db.raw("COUNT(CASE WHEN is_revoked THEN 1 END) as revoked_certificates")
+          db.raw('COUNT(CASE WHEN "revokedAt" IS NOT NULL THEN 1 END) as revoked_certificates')
         )
         .first();
 

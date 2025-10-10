@@ -19,6 +19,8 @@ import { PkiSubscribersTable } from "./PkiSubscribersTable";
 export const PkiSubscriberSection = () => {
   const { currentProject } = useProject();
   const projectId = currentProject.id;
+
+  const allowNewSubscriberCreation = false;
   const { mutateAsync: deletePkiSubscriber } = useDeletePkiSubscriber();
   const { mutateAsync: updatePkiSubscriber } = useUpdatePkiSubscriber();
 
@@ -100,23 +102,25 @@ export const PkiSubscriberSection = () => {
               />
             </span>
           </a>
-          <ProjectPermissionCan
-            I={ProjectPermissionPkiSubscriberActions.Create}
-            a={ProjectPermissionSub.PkiSubscribers}
-          >
-            {(isAllowed) => (
-              <Button
-                colorSchema="primary"
-                type="submit"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("pkiSubscriber")}
-                isDisabled={!isAllowed}
-                className="ml-4"
-              >
-                Add Subscriber
-              </Button>
-            )}
-          </ProjectPermissionCan>
+          {allowNewSubscriberCreation && (
+            <ProjectPermissionCan
+              I={ProjectPermissionPkiSubscriberActions.Create}
+              a={ProjectPermissionSub.PkiSubscribers}
+            >
+              {(isAllowed) => (
+                <Button
+                  colorSchema="primary"
+                  type="submit"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={() => handlePopUpOpen("pkiSubscriber")}
+                  isDisabled={!isAllowed}
+                  className="ml-4"
+                >
+                  Add Subscriber
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          )}
         </div>
       </div>
       <PkiSubscribersTable handlePopUpOpen={handlePopUpOpen} />

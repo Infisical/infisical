@@ -23,7 +23,8 @@ import {
   TCertificateProfileInsert,
   TCertificateProfileMetrics,
   TCertificateProfileUpdate,
-  TCertificateProfileWithConfigs
+  TCertificateProfileWithConfigs,
+  TCertificateProfileWithRawMetrics
 } from "./certificate-profile-types";
 
 export type TCertificateProfileCreateData = Omit<TCertificateProfileInsert, "estConfigId" | "apiConfigId"> & {
@@ -46,10 +47,6 @@ const convertDalToService = (dalResult: Record<string, unknown>): TCertificatePr
     ...dalResult,
     enrollmentType: dalResult.enrollmentType as EnrollmentType
   } as TCertificateProfile;
-};
-
-const convertDalArrayToService = (dalResults: Record<string, unknown>[]): TCertificateProfile[] => {
-  return dalResults.map(convertDalToService);
 };
 
 const validateEnrollmentConfig = async (data: {
@@ -289,14 +286,18 @@ export const certificateProfileServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    profileId
+    profileId,
+    includeMetrics = false,
+    expiringDays = 30
   }: {
     actor: ActorType;
     actorId: string;
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
     profileId: string;
-  }): Promise<TCertificateProfile> => {
+    includeMetrics?: boolean;
+    expiringDays?: number;
+  }): Promise<TCertificateProfile & { metrics?: TCertificateProfileMetrics }> => {
     const profile = await certificateProfileDAL.findById(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
@@ -315,7 +316,17 @@ export const certificateProfileServiceFactory = ({
       ProjectPermissionSub.CertificateProfiles
     );
 
-    return convertDalToService(profile);
+    const converted = convertDalToService(profile);
+
+    if (includeMetrics) {
+      const metrics = await certificateProfileDAL.getProfileMetrics(profileId, expiringDays);
+      return {
+        ...converted,
+        metrics
+      };
+    }
+
+    return converted;
   };
 
   const getProfileByIdWithConfigs = async ({
@@ -401,7 +412,9 @@ export const certificateProfileServiceFactory = ({
     limit = 20,
     search,
     enrollmentType,
-    caId
+    caId,
+    includeMetrics = false,
+    expiringDays = 30
   }: {
     actor: ActorType;
     actorId: string;
@@ -413,8 +426,10 @@ export const certificateProfileServiceFactory = ({
     search?: string;
     enrollmentType?: EnrollmentType;
     caId?: string;
+    includeMetrics?: boolean;
+    expiringDays?: number;
   }): Promise<{
-    profiles: TCertificateProfile[];
+    profiles: (TCertificateProfile & { metrics?: TCertificateProfileMetrics })[];
     totalCount: number;
   }> => {
     const { permission } = await permissionService.getProjectPermission({
@@ -435,7 +450,9 @@ export const certificateProfileServiceFactory = ({
       limit,
       search,
       enrollmentType,
-      caId
+      caId,
+      includeMetrics,
+      expiringDays
     });
 
     const totalCount = await certificateProfileDAL.countByProjectId(projectId, {
@@ -444,8 +461,27 @@ export const certificateProfileServiceFactory = ({
       caId
     });
 
+    const convertedProfiles = profiles.map((profile) => {
+      const converted = convertDalToService(profile);
+      if (includeMetrics) {
+        const profileWithMetrics = profile as TCertificateProfileWithRawMetrics;
+        return {
+          ...converted,
+          metrics: {
+            profileId: converted.id,
+            totalCertificates: parseInt(String(profileWithMetrics.total_certificates || 0), 10),
+            activeCertificates: parseInt(String(profileWithMetrics.active_certificates || 0), 10),
+            expiredCertificates: parseInt(String(profileWithMetrics.expired_certificates || 0), 10),
+            expiringCertificates: parseInt(String(profileWithMetrics.expiring_certificates || 0), 10),
+            revokedCertificates: parseInt(String(profileWithMetrics.revoked_certificates || 0), 10)
+          }
+        };
+      }
+      return converted;
+    });
+
     return {
-      profiles: convertDalArrayToService(profiles),
+      profiles: convertedProfiles,
       totalCount
     };
   };

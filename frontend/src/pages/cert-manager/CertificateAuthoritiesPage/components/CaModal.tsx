@@ -145,7 +145,13 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           maxPathLength: ca.configuration.maxPathLength
             ? String(ca.configuration.maxPathLength)
             : "",
-          keyAlgorithm: ca.configuration.keyAlgorithm
+          keyAlgorithm:
+            ca.configuration.keyAlgorithm === CertKeyAlgorithm.RSA_2048 ||
+            ca.configuration.keyAlgorithm === CertKeyAlgorithm.RSA_4096 ||
+            ca.configuration.keyAlgorithm === CertKeyAlgorithm.ECDSA_P256 ||
+            ca.configuration.keyAlgorithm === CertKeyAlgorithm.ECDSA_P384
+              ? ca.configuration.keyAlgorithm
+              : CertKeyAlgorithm.RSA_2048
         }
       });
     } else {

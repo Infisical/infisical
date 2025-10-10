@@ -466,7 +466,9 @@ describe("CertificateProfileService", () => {
         limit: 20,
         search: undefined,
         enrollmentType: undefined,
-        caId: undefined
+        caId: undefined,
+        includeMetrics: false,
+        expiringDays: 30
       });
     });
 
@@ -486,7 +488,51 @@ describe("CertificateProfileService", () => {
         limit: 5,
         search: "test",
         enrollmentType: EnrollmentType.API,
-        caId: "ca-123"
+        caId: "ca-123",
+        includeMetrics: false,
+        expiringDays: 30
+      });
+    });
+
+    it("should list profiles with metrics when includeMetrics is true", async () => {
+      const mockProfilesWithMetrics = [
+        {
+          ...sampleProfile,
+          total_certificates: 10,
+          active_certificates: 8,
+          expired_certificates: 1,
+          expiring_certificates: 1,
+          revoked_certificates: 0
+        }
+      ];
+      (mockCertificateProfileDAL.findByProjectId as any).mockResolvedValue(mockProfilesWithMetrics);
+
+      const result = await service.listProfiles({
+        ...mockActor,
+        projectId: "project-123",
+        includeMetrics: true,
+        expiringDays: 15
+      });
+
+      expect(result.profiles).toHaveLength(1);
+      expect(result.profiles[0]).toHaveProperty("metrics");
+      expect(result.profiles[0].metrics).toEqual({
+        profileId: sampleProfile.id,
+        totalCertificates: 10,
+        activeCertificates: 8,
+        expiredCertificates: 1,
+        expiringCertificates: 1,
+        revokedCertificates: 0
+      });
+
+      expect(mockCertificateProfileDAL.findByProjectId).toHaveBeenCalledWith("project-123", {
+        offset: 0,
+        limit: 20,
+        search: undefined,
+        enrollmentType: undefined,
+        caId: undefined,
+        includeMetrics: true,
+        expiringDays: 15
       });
     });
   });

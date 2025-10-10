@@ -58,6 +58,7 @@ export const PkiTemplateListPage = () => {
   const { currentProject } = useProject();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
+
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "certificateTemplate",
     "deleteTemplate",

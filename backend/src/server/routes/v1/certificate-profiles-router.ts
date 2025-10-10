@@ -69,10 +69,24 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateProfiles],
-      querystring: listCertificateProfilesSchema,
+      querystring: listCertificateProfilesSchema.extend({
+        includeMetrics: z.coerce.boolean().optional().default(false),
+        expiringDays: z.coerce.number().min(1).max(365).optional().default(7)
+      }),
       response: {
         200: z.object({
-          certificateProfiles: CertificateProfilesSchema.array(),
+          certificateProfiles: CertificateProfilesSchema.extend({
+            metrics: z
+              .object({
+                profileId: z.string(),
+                totalCertificates: z.number(),
+                activeCertificates: z.number(),
+                expiredCertificates: z.number(),
+                expiringCertificates: z.number(),
+                revokedCertificates: z.number()
+              })
+              .optional()
+          }).array(),
           totalCount: z.number()
         })
       }
@@ -112,6 +126,10 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       hide: false,
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: getCertificateProfileByIdSchema,
+      querystring: z.object({
+        includeMetrics: z.coerce.boolean().optional().default(false),
+        expiringDays: z.coerce.number().min(1).max(365).optional().default(7)
+      }),
       response: {
         200: z.object({
           certificateProfile: CertificateProfilesSchema.extend({
@@ -145,6 +163,16 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
                 autoRenew: z.boolean(),
                 autoRenewDays: z.number().optional()
               })
+              .optional(),
+            metrics: z
+              .object({
+                profileId: z.string(),
+                totalCertificates: z.number(),
+                activeCertificates: z.number(),
+                expiredCertificates: z.number(),
+                expiringCertificates: z.number(),
+                revokedCertificates: z.number()
+              })
               .optional()
           })
         })
@@ -160,6 +188,20 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         profileId: req.params.id
       });
 
+      let result = certificateProfile;
+
+      if (req.query.includeMetrics) {
+        const metrics = await server.services.certificateProfile.getProfileMetrics({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          profileId: req.params.id,
+          expiringDays: req.query.expiringDays
+        });
+        result = { ...certificateProfile, metrics };
+      }
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: certificateProfile.projectId,
@@ -171,7 +213,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         }
       });
 
-      return { certificateProfile };
+      return { certificateProfile: result };
     }
   });
 
@@ -322,7 +364,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               status: z.string(),
               notBefore: z.date(),
               notAfter: z.date(),
-              isRevoked: z.boolean(),
+              revokedAt: z.date().nullable().optional(),
               createdAt: z.date()
             })
           )
@@ -341,47 +383,6 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       });
 
       return { certificates };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/:id/metrics",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      hide: false,
-      tags: [ApiDocsTags.PkiCertificateProfiles],
-      params: getCertificateProfileByIdSchema,
-      querystring: z.object({
-        expiringDays: z.number().min(1).max(365).default(30)
-      }),
-      response: {
-        200: z.object({
-          metrics: z.object({
-            profileId: z.string(),
-            totalCertificates: z.number(),
-            activeCertificates: z.number(),
-            expiredCertificates: z.number(),
-            expiringCertificates: z.number(),
-            revokedCertificates: z.number()
-          })
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const metrics = await server.services.certificateProfile.getProfileMetrics({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        profileId: req.params.id,
-        expiringDays: req.query.expiringDays
-      });
-
-      return { metrics };
     }
   });
 };

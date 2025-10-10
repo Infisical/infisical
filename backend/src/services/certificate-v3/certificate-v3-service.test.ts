@@ -76,7 +76,6 @@ describe("CertificateV3Service", () => {
   describe("issueCertificateFromProfile", () => {
     const mockCertificateRequest = {
       commonName: "test.example.com",
-      organization: "Test Org",
       keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE],
       extendedKeyUsages: [CertExtendedKeyUsage.SERVER_AUTH],
       validity: { ttl: "30d" },

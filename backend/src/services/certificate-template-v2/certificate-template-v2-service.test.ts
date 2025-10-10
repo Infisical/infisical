@@ -60,14 +60,6 @@ describe("CertificateTemplateV2Service", () => {
         type: "common_name",
         include: "mandatory",
         value: ["example.com"]
-      },
-      {
-        type: "organization_name",
-        include: "optional"
-      },
-      {
-        type: "country",
-        include: "prohibit"
       }
     ],
     keyUsages: {
@@ -416,7 +408,6 @@ describe("CertificateTemplateV2Service", () => {
   describe("validateCertificateRequest", () => {
     const validRequest: TCertificateRequest = {
       commonName: "example.com",
-      organization: "Example Corp",
       keyUsages: ["digital_signature", "key_encipherment"],
       extendedKeyUsages: ["server_auth"],
       subjectAlternativeNames: [
@@ -456,15 +447,6 @@ describe("CertificateTemplateV2Service", () => {
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain("common_name is mandatory but not provided in request");
-    });
-
-    it("should detect prohibited attributes", async () => {
-      const invalidRequest = { ...validRequest, country: "US" };
-
-      const result = await service.validateCertificateRequest("template-123", invalidRequest);
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("country is prohibited by template policy");
     });
 
     it("should validate attribute values against allowed list", async () => {
@@ -612,14 +594,6 @@ describe("CertificateTemplateV2Service", () => {
           expect(result.isValid).toBe(testCase.shouldBeValid);
         }
       }
-    });
-
-    it("should allow optional attributes when not provided", async () => {
-      const requestWithoutOrg = { ...validRequest, organization: undefined };
-
-      const result = await service.validateCertificateRequest("template-123", requestWithoutOrg);
-
-      expect(result.isValid).toBe(true);
     });
 
     it("should allow optional key usages and extended key usages", async () => {
@@ -805,21 +779,14 @@ describe("CertificateTemplateV2Service", () => {
         expect(result.isValid).toBe(true);
       });
 
-      it("should handle template with all fields prohibited", async () => {
+      it("should handle template with SAN fields prohibited", async () => {
         const prohibitTemplate = {
           ...sampleTemplate,
           attributes: [
             {
-              type: "organization_name",
-              include: "prohibit" as const
-            },
-            {
-              type: "locality",
-              include: "prohibit" as const
-            },
-            {
-              type: "country",
-              include: "prohibit" as const
+              type: "common_name",
+              include: "mandatory" as const,
+              value: ["example.com"]
             }
           ],
           keyUsages: {
@@ -845,9 +812,6 @@ describe("CertificateTemplateV2Service", () => {
 
         const requestWithProhibited = {
           commonName: "example.com",
-          organization: "Test Org",
-          locality: "Test City",
-          country: "US",
           keyUsages: ["digital_signature"],
           extendedKeyUsages: ["server_auth"],
           subjectAlternativeNames: [
@@ -859,9 +823,6 @@ describe("CertificateTemplateV2Service", () => {
 
         const result = await service.validateCertificateRequest("template-123", requestWithProhibited);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain("organization_name is prohibited by template policy");
-        expect(result.errors).toContain("locality is prohibited by template policy");
-        expect(result.errors).toContain("country is prohibited by template policy");
         expect(result.errors).toContain("email SAN is prohibited by template policy");
         expect(result.errors).toContain("uri SAN is prohibited by template policy");
       });
@@ -874,16 +835,6 @@ describe("CertificateTemplateV2Service", () => {
               type: "common_name",
               include: "mandatory" as const,
               value: ["example.com", "test.com"]
-            },
-            {
-              type: "organization_name",
-              include: "optional" as const,
-              value: ["Example Corp", "Test Corp"]
-            },
-            {
-              type: "country",
-              include: "mandatory" as const,
-              value: ["US", "CA"]
             }
           ],
           subjectAlternativeNames: [
@@ -898,8 +849,6 @@ describe("CertificateTemplateV2Service", () => {
 
         const validConstrainedRequest = {
           commonName: "example.com",
-          organization: "Example Corp",
-          country: "US",
           keyUsages: ["digital_signature", "key_encipherment"],
           extendedKeyUsages: ["server_auth"],
           validity: { ttl: "30d" }
@@ -910,8 +859,6 @@ describe("CertificateTemplateV2Service", () => {
 
         const invalidConstrainedRequest = {
           commonName: "forbidden.com",
-          organization: "Forbidden Corp",
-          country: "FR",
           keyUsages: ["digital_signature", "key_encipherment"],
           extendedKeyUsages: ["server_auth"],
           validity: { ttl: "30d" }
@@ -920,10 +867,6 @@ describe("CertificateTemplateV2Service", () => {
         const invalidResult = await service.validateCertificateRequest("template-123", invalidConstrainedRequest);
         expect(invalidResult.isValid).toBe(false);
         expect(invalidResult.errors).toContain("common_name value 'forbidden.com' is not in allowed values list");
-        expect(invalidResult.errors).toContain(
-          "organization_name value 'Forbidden Corp' does not match allowed patterns: Example Corp, Test Corp"
-        );
-        expect(invalidResult.errors).toContain("country value 'FR' is not in allowed values list");
       });
 
       it("should validate SAN value constraints with multiple types", async () => {

@@ -1,16 +1,6 @@
 import { z } from "zod";
 
-const attributeTypeSchema = z.enum([
-  "common_name",
-  "organization_name",
-  "organization_unit",
-  "locality",
-  "state",
-  "country",
-  "email",
-  "street_address",
-  "postal_code"
-]);
+const attributeTypeSchema = z.enum(["common_name"]);
 
 const includeTypeSchema = z.enum(["mandatory", "optional", "prohibit"]);
 
@@ -137,14 +127,6 @@ export const deleteCertificateTemplateV2Schema = z.object({
 
 export const certificateRequestSchema = z.object({
   commonName: z.string().optional(),
-  organization: z.string().optional(),
-  organizationUnit: z.string().optional(),
-  locality: z.string().optional(),
-  state: z.string().optional(),
-  country: z.string().length(2).optional(),
-  email: z.string().email().optional(),
-  streetAddress: z.string().optional(),
-  postalCode: z.string().optional(),
   keyUsages: z.array(z.string()).optional(),
   extendedKeyUsages: z.array(z.string()).optional(),
   subjectAlternativeNames: z

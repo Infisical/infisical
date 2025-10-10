@@ -6,14 +6,6 @@ export type TIssueCertificateFromProfileDTO = {
   profileId: string;
   certificateRequest: {
     commonName?: string;
-    organization?: string;
-    organizationUnit?: string;
-    locality?: string;
-    state?: string;
-    country?: string;
-    email?: string;
-    streetAddress?: string;
-    postalCode?: string;
     keyUsages?: CertKeyUsage[];
     extendedKeyUsages?: CertExtendedKeyUsage[];
     subjectAlternativeNames?: Array<{
@@ -51,14 +43,6 @@ export type TOrderCertificateFromProfileDTO = {
       ttl: string;
     };
     commonName?: string;
-    organization?: string;
-    organizationUnit?: string;
-    locality?: string;
-    state?: string;
-    country?: string;
-    email?: string;
-    streetAddress?: string;
-    postalCode?: string;
     keyUsages?: CertKeyUsage[];
     extendedKeyUsages?: CertExtendedKeyUsage[];
     notBefore?: Date;

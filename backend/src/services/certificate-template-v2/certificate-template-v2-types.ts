@@ -2,16 +2,7 @@ import { TCertificateTemplatesV2, TCertificateTemplatesV2Insert } from "@app/db/
 
 export interface TTemplateV2Policy {
   attributes: Array<{
-    type:
-      | "common_name"
-      | "organization_name"
-      | "organization_unit"
-      | "locality"
-      | "state"
-      | "country"
-      | "email"
-      | "street_address"
-      | "postal_code";
+    type: "common_name";
     include: "mandatory" | "optional" | "prohibit";
     value?: string[];
   }>;
@@ -97,14 +88,6 @@ export type TCertificateTemplateV2Update = Partial<
 
 export interface TCertificateRequest {
   commonName?: string;
-  organization?: string;
-  organizationUnit?: string;
-  locality?: string;
-  state?: string;
-  country?: string;
-  email?: string;
-  streetAddress?: string;
-  postalCode?: string;
   keyUsages?: string[];
   extendedKeyUsages?: string[];
   subjectAlternativeNames?: Array<{

@@ -45,6 +45,7 @@ export type TCertificateProfileWithConfigs = TCertificateProfile & {
     autoRenew: boolean;
     autoRenewDays?: number;
   };
+  metrics?: TCertificateProfileMetrics;
 };
 
 export interface TCertificateProfileMetrics {
@@ -63,6 +64,14 @@ export interface TCertificateProfileCertificate {
   status: string;
   notBefore: Date;
   notAfter: Date;
-  isRevoked: boolean;
+  revokedAt: Date | null | undefined;
   createdAt: Date;
 }
+
+export type TCertificateProfileWithRawMetrics = TCertificateProfile & {
+  total_certificates?: string;
+  active_certificates?: string;
+  expired_certificates?: string;
+  expiring_certificates?: string;
+  revoked_certificates?: string;
+};

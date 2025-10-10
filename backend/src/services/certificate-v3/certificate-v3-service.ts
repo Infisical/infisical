@@ -291,14 +291,6 @@ export const certificateV3ServiceFactory = ({
 
     const certificateRequest = {
       commonName: certificateOrder.commonName,
-      organization: certificateOrder.organization,
-      organizationUnit: certificateOrder.organizationUnit,
-      locality: certificateOrder.locality,
-      state: certificateOrder.state,
-      country: certificateOrder.country,
-      email: certificateOrder.email,
-      streetAddress: certificateOrder.streetAddress,
-      postalCode: certificateOrder.postalCode,
       keyUsages: certificateOrder.keyUsages,
       extendedKeyUsages: certificateOrder.extendedKeyUsages,
       subjectAlternativeNames: certificateOrder.identifiers.map((id) => ({

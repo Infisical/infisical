@@ -171,6 +171,32 @@ export type TCreateCertificateResponse = {
   serialNumber: string;
 };
 
+export type TCreateCertificateV3DTO = {
+  projectSlug: string;
+  profileId: string;
+  pkiCollectionId?: string;
+  friendlyName?: string;
+  commonName: string;
+  organization?: string;
+  organizationUnit?: string;
+  locality?: string;
+  state?: string;
+  country?: string;
+  email?: string;
+  streetAddress?: string;
+  postalCode?: string;
+  altNames: string;
+  ttl: string;
+  notBefore?: string;
+  notAfter?: string;
+  keyUsages: CertKeyUsage[];
+  extendedKeyUsages: CertExtendedKeyUsage[];
+  signatureAlgorithm?: string;
+  keyAlgorithm?: string;
+};
+
+export type TCreateCertificateV3Response = TCreateCertificateResponse;
+
 export type TRenewCaDTO = {
   projectSlug: string;
   caId: string;

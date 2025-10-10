@@ -72,22 +72,6 @@ export const certificateTemplateV2ServiceFactory = ({
     switch (attrType) {
       case "common_name":
         return request.commonName;
-      case "organization_name":
-        return request.organization;
-      case "organization_unit":
-        return request.organizationUnit;
-      case "locality":
-        return request.locality;
-      case "state":
-        return request.state;
-      case "country":
-        return request.country;
-      case "email":
-        return request.email;
-      case "street_address":
-        return request.streetAddress;
-      case "postal_code":
-        return request.postalCode;
       default:
         return undefined;
     }
@@ -145,8 +129,25 @@ export const certificateTemplateV2ServiceFactory = ({
         if (!requestValue) {
           errors.push(`${attrPolicy.type} is mandatory but not provided in request`);
         } else if (attrPolicy.value && attrPolicy.value.length > 0) {
-          if (!attrPolicy.value.includes(requestValue)) {
-            errors.push(`${attrPolicy.type} value '${requestValue}' is not in allowed values list`);
+          // Check if the request value matches any allowed pattern
+          const hasWildcards = attrPolicy.value.some((val) => val.includes("*"));
+          const isValidValue = attrPolicy.value.some((allowedValue) => {
+            if (allowedValue.includes("*")) {
+              // Handle wildcard patterns
+              const pattern = allowedValue.replace(/\./g, "\\.").replace(/\*/g, ".*");
+              const regex = new RE2(`^${pattern}$`);
+              return regex.test(requestValue);
+            }
+            return allowedValue === requestValue;
+          });
+          if (!isValidValue) {
+            if (hasWildcards) {
+              errors.push(
+                `${attrPolicy.type} value '${requestValue}' does not match allowed patterns: ${attrPolicy.value.join(", ")}`
+              );
+            } else {
+              errors.push(`${attrPolicy.type} value '${requestValue}' is not in allowed values list`);
+            }
           }
         }
       }
@@ -156,18 +157,24 @@ export const certificateTemplateV2ServiceFactory = ({
       }
 
       if (attrPolicy.include === "optional" && requestValue && attrPolicy.value && attrPolicy.value.length > 0) {
+        const hasWildcards = attrPolicy.value.some((val) => val.includes("*"));
         const isValidValue = attrPolicy.value.some((allowedValue) => {
           if (allowedValue.includes("*")) {
-            const pattern = allowedValue.replace(/\*/g, "[^.]*");
+            // Handle wildcard patterns - escape dots and replace * with .*
+            const pattern = allowedValue.replace(/\./g, "\\.").replace(/\*/g, ".*");
             const regex = new RE2(`^${pattern}$`);
             return regex.test(requestValue);
           }
           return allowedValue === requestValue;
         });
         if (!isValidValue) {
-          errors.push(
-            `${attrPolicy.type} value '${requestValue}' does not match allowed patterns: ${attrPolicy.value.join(", ")}`
-          );
+          if (hasWildcards) {
+            errors.push(
+              `${attrPolicy.type} value '${requestValue}' does not match allowed patterns: ${attrPolicy.value.join(", ")}`
+            );
+          } else {
+            errors.push(`${attrPolicy.type} value '${requestValue}' is not in allowed values list`);
+          }
         }
       }
     });
@@ -216,9 +223,25 @@ export const certificateTemplateV2ServiceFactory = ({
         if (requestSans.length === 0) {
           errors.push(`${sanPolicy.type} SAN is mandatory but not provided in request`);
         } else if (sanPolicy.value && sanPolicy.value.length > 0) {
+          const hasWildcards = sanPolicy.value.some((val) => val.includes("*"));
           requestSans.forEach((san) => {
-            if (!sanPolicy.value!.includes(san.value)) {
-              errors.push(`${sanPolicy.type} SAN value '${san.value}' is not in allowed values list`);
+            const isValidValue = sanPolicy.value!.some((allowedValue) => {
+              if (allowedValue.includes("*")) {
+                // Handle wildcard patterns - escape dots and replace * with .*
+                const pattern = allowedValue.replace(/\./g, "\\.").replace(/\*/g, ".*");
+                const regex = new RE2(`^${pattern}$`);
+                return regex.test(san.value);
+              }
+              return allowedValue === san.value;
+            });
+            if (!isValidValue) {
+              if (hasWildcards) {
+                errors.push(
+                  `${sanPolicy.type} SAN value '${san.value}' does not match allowed patterns: ${sanPolicy.value!.join(", ")}`
+                );
+              } else {
+                errors.push(`${sanPolicy.type} SAN value '${san.value}' is not in allowed values list`);
+              }
             }
           });
         }
@@ -229,19 +252,25 @@ export const certificateTemplateV2ServiceFactory = ({
       }
 
       if (sanPolicy.include === "optional" && sanPolicy.value && sanPolicy.value.length > 0) {
+        const hasWildcards = sanPolicy.value.some((val) => val.includes("*"));
         requestSans.forEach((san) => {
           const isValidValue = sanPolicy.value!.some((allowedValue) => {
             if (allowedValue.includes("*")) {
-              const pattern = allowedValue.replace(/\*/g, "[^.]*");
+              // Handle wildcard patterns - escape dots and replace * with .*
+              const pattern = allowedValue.replace(/\./g, "\\.").replace(/\*/g, ".*");
               const regex = new RE2(`^${pattern}$`);
               return regex.test(san.value);
             }
             return allowedValue === san.value;
           });
           if (!isValidValue) {
-            errors.push(
-              `${sanPolicy.type} SAN value '${san.value}' does not match allowed patterns: ${sanPolicy.value!.join(", ")}`
-            );
+            if (hasWildcards) {
+              errors.push(
+                `${sanPolicy.type} SAN value '${san.value}' does not match allowed patterns: ${sanPolicy.value!.join(", ")}`
+              );
+            } else {
+              errors.push(`${sanPolicy.type} SAN value '${san.value}' is not in allowed values list`);
+            }
           }
         });
       }

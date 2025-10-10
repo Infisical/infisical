@@ -19,6 +19,10 @@ import { motion } from "framer-motion";
 
 import { Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
 import { useProject, useProjectPermission } from "@app/context";
+import {
+  useListWorkspaceCertificateTemplates,
+  useListWorkspacePkiSubscribers
+} from "@app/hooks/api";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
@@ -26,6 +30,16 @@ export const PkiManagerLayout = () => {
   const { currentProject } = useProject();
   const { assumedPrivilegeDetails } = useProjectPermission();
   const { t } = useTranslation();
+
+  const { data: subscribers = [] } = useListWorkspacePkiSubscribers(currentProject?.id || "");
+  const { data: templatesData } = useListWorkspaceCertificateTemplates({
+    projectId: currentProject?.id || ""
+  });
+  const templates = templatesData?.certificateTemplates || [];
+
+  const hasExistingSubscribers = subscribers.length > 0;
+  const hasExistingTemplates = templates.length > 0;
+  const showLegacySection = hasExistingSubscribers || hasExistingTemplates;
 
   return (
     <>
@@ -48,24 +62,7 @@ export const PkiManagerLayout = () => {
                 <Menu>
                   <MenuGroup title="Resources">
                     <Link
-                      to="/projects/cert-management/$projectId/subscribers"
-                      params={{
-                        projectId: currentProject.id
-                      }}
-                    >
-                      {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
-                          <div className="mx-1 flex gap-2">
-                            <div className="w-6">
-                              <FontAwesomeIcon icon={faSitemap} />
-                            </div>
-                            Subscribers
-                          </div>
-                        </MenuItem>
-                      )}
-                    </Link>
-                    <Link
-                      to="/projects/cert-management/$projectId/certificate-templates"
+                      to="/projects/cert-management/$projectId/policies"
                       params={{
                         projectId: currentProject.id
                       }}
@@ -76,7 +73,7 @@ export const PkiManagerLayout = () => {
                             <div className="w-6">
                               <FontAwesomeIcon icon={faFileLines} />
                             </div>
-                            Certificate Templates
+                            Certificate Policies
                           </div>
                         </MenuItem>
                       )}
@@ -110,7 +107,7 @@ export const PkiManagerLayout = () => {
                             <div className="w-6">
                               <FontAwesomeIcon icon={faStamp} />
                             </div>
-                            Certificates Authority
+                            Certificates Authorities
                           </div>
                         </MenuItem>
                       )}
@@ -167,6 +164,48 @@ export const PkiManagerLayout = () => {
                       )}
                     </Link>
                   </MenuGroup>
+                  {showLegacySection && (
+                    <MenuGroup title="Legacy">
+                      {hasExistingSubscribers && (
+                        <Link
+                          to="/projects/cert-management/$projectId/subscribers"
+                          params={{
+                            projectId: currentProject.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <MenuItem isSelected={isActive}>
+                              <div className="mx-1 flex gap-2">
+                                <div className="w-6">
+                                  <FontAwesomeIcon icon={faSitemap} />
+                                </div>
+                                Subscribers
+                              </div>
+                            </MenuItem>
+                          )}
+                        </Link>
+                      )}
+                      {hasExistingTemplates && (
+                        <Link
+                          to="/projects/cert-management/$projectId/certificate-templates"
+                          params={{
+                            projectId: currentProject.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <MenuItem isSelected={isActive}>
+                              <div className="mx-1 flex gap-2">
+                                <div className="w-6">
+                                  <FontAwesomeIcon icon={faFileLines} />
+                                </div>
+                                Certificate Templates
+                              </div>
+                            </MenuItem>
+                          )}
+                        </Link>
+                      )}
+                    </MenuGroup>
+                  )}
                   <MenuGroup title="Others">
                     <Link
                       to="/projects/cert-management/$projectId/access-management"
