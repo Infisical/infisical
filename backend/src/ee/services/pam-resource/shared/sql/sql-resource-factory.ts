@@ -17,7 +17,8 @@ const TEST_CONNECTION_USERNAME = "infisical-gateway-connection-test";
 const TEST_CONNECTION_PASSWORD = "infisical-gateway-connection-test-password";
 
 const SQL_CONNECTION_CLIENT_MAP = {
-  [PamResource.Postgres]: "pg"
+  [PamResource.Postgres]: "pg",
+  [PamResource.MySQL]: "mysql",
 };
 
 const getConnectionConfig = (
