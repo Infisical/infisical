@@ -51,10 +51,10 @@ export const PkiManagerLayout = () => {
             animate={{ x: 0 }}
             exit={{ x: -150 }}
             transition={{ duration: 0.2 }}
-            className="dark w-full border-r border-mineshaft-600 bg-linear-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60"
+            className="border-mineshaft-600 bg-linear-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 dark w-full border-r md:w-60"
           >
-            <nav className="items-between flex h-full flex-col overflow-y-auto dark:scheme-dark">
-              <div className="flex items-center gap-3 border-b border-mineshaft-600 px-4 py-3.5 text-lg text-white">
+            <nav className="items-between dark:scheme-dark flex h-full flex-col overflow-y-auto">
+              <div className="border-mineshaft-600 flex items-center gap-3 border-b px-4 py-3.5 text-lg text-white">
                 <Lottie className="inline-block h-5 w-5 shrink-0" icon="note" />
                 PKI Manager
               </div>
@@ -265,7 +265,7 @@ export const PkiManagerLayout = () => {
                 <Menu>
                   <Link to="/organization/projects">
                     <MenuItem
-                      className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
+                      className="text-mineshaft-400 hover:text-mineshaft-300 relative flex items-center gap-2 overflow-hidden text-sm"
                       leftIcon={
                         <div className="w-6">
                           <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faHome} />
@@ -279,13 +279,13 @@ export const PkiManagerLayout = () => {
               </div>
             </nav>
           </motion.div>
-          <div className="flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 p-4 pt-8">
+          <div className="bg-bunker-800 flex-1 overflow-y-auto overflow-x-hidden p-4 pt-8">
             {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
             <Outlet />
           </div>
         </div>
       </div>
-      <div className="z-200 flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
+      <div className="z-200 bg-bunker-800 flex h-screen w-screen flex-col items-center justify-center md:hidden">
         <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
         <p className="max-w-sm px-6 text-center text-lg text-gray-200">
           {` ${t("common.no-mobile")} `}
