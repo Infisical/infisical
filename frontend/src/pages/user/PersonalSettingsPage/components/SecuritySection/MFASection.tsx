@@ -282,9 +282,9 @@ export const MFASection = () => {
           e.preventDefault();
           handleSaveChanges();
         }}
-        className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4"
+        className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
       >
-        <h2 className="text-mineshaft-100 mb-6 text-xl font-medium">Two-factor Authentication</h2>
+        <h2 className="mb-6 text-xl font-medium text-mineshaft-100">Two-factor Authentication</h2>
 
         {user && (
           <div className="space-y-4">
@@ -332,15 +332,15 @@ export const MFASection = () => {
 
             {showMobileAuthSetup && !totpConfiguration?.isVerified && (
               <div className="space-y-6">
-                <h3 className="text-mineshaft-100 mb-6 text-lg font-medium">
+                <h3 className="mb-6 text-lg font-medium text-mineshaft-100">
                   Setup Mobile Authenticator
                 </h3>
 
                 <div className="mb-8">
-                  <h4 className="text-mineshaft-200 mb-2 text-sm font-medium">
+                  <h4 className="mb-2 text-sm font-medium text-mineshaft-200">
                     Step 1: Scan QR Code
                   </h4>
-                  <p className="text-mineshaft-300 mb-4 text-sm">
+                  <p className="mb-4 text-sm text-mineshaft-300">
                     Download a two-factor authentication app (Google Authenticator, Authy, etc.) and
                     scan the QR code below
                   </p>
@@ -364,9 +364,9 @@ export const MFASection = () => {
                         </div>
                         {totpRegistration?.otpUrl && (
                           <div>
-                            <p className="text-mineshaft-400 mb-2 text-xs">
+                            <p className="mb-2 text-xs text-mineshaft-400">
                               Can&apos;t scan? Enter this code manually:{" "}
-                              <code className="bg-mineshaft-700 text-mineshaft-100 rounded-sm px-3 py-1 font-mono text-sm">
+                              <code className="rounded-sm bg-mineshaft-700 px-3 py-1 font-mono text-sm text-mineshaft-100">
                                 {totpRegistration.otpUrl.split("secret=")[1]?.split("&")[0] ||
                                   "Loading..."}
                               </code>
@@ -379,10 +379,10 @@ export const MFASection = () => {
                 </div>
 
                 <div>
-                  <h4 className="text-mineshaft-200 mb-2 text-sm font-medium">
+                  <h4 className="mb-2 text-sm font-medium text-mineshaft-200">
                     Step 2: Enter verification code
                   </h4>
-                  <p className="text-mineshaft-300 mb-4 text-sm">
+                  <p className="mb-4 text-sm text-mineshaft-300">
                     Enter the 6-digit code from your authenticator app to complete setup
                   </p>
 
@@ -445,8 +445,8 @@ export const MFASection = () => {
             )}
 
             {user?.isMfaEnabled && totpConfiguration?.isVerified && (
-              <div className="border-mineshaft-600 mt-8 border-t pt-6">
-                <h3 className="text-mineshaft-100 mb-4 text-lg font-medium">
+              <div className="mt-8 border-t border-mineshaft-600 pt-6">
+                <h3 className="mb-4 text-lg font-medium text-mineshaft-100">
                   Mobile Authenticator Management
                 </h3>
 
@@ -476,11 +476,11 @@ export const MFASection = () => {
                   </div>
 
                   {shouldShowRecoveryCodes && (
-                    <div className="border-mineshaft-600 bg-mineshaft-800 w-fit rounded-lg border p-4 pr-8">
+                    <div className="w-fit rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4 pr-8">
                       <div className="grid grid-cols-2 gap-x-6 gap-y-2 font-mono text-sm">
                         {totpConfiguration.recoveryCodes.map((code, index) => (
-                          <div key={code} className="text-mineshaft-200 flex items-center">
-                            <span className="text-mineshaft-400 w-8 text-right">{index + 1}.</span>
+                          <div key={code} className="flex items-center text-mineshaft-200">
+                            <span className="w-8 text-right text-mineshaft-400">{index + 1}.</span>
                             <span className="pl-2">{code}</span>
                           </div>
                         ))}

@@ -139,9 +139,9 @@ export const WebhooksTab = withProjectPermission(
     };
 
     return (
-      <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
+      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="flex justify-between">
-          <p className="text-mineshaft-100 text-xl font-medium">{t("settings.webhooks.title")}</p>
+          <p className="text-xl font-medium text-mineshaft-100">{t("settings.webhooks.title")}</p>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
             a={ProjectPermissionSub.Webhooks}
@@ -194,7 +194,7 @@ export const WebhooksTab = withProjectPermission(
                       <Tr key={id}>
                         <Td className="max-w-xs overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
                           {url}
-                          <p className="text-mineshaft-400 text-xs">{id}</p>
+                          <p className="text-xs text-mineshaft-400">{id}</p>
                         </Td>
                         <Td>{environment.slug}</Td>
                         <Td>{secretPath}</Td>
@@ -202,7 +202,7 @@ export const WebhooksTab = withProjectPermission(
                           {!lastStatus ? (
                             "-"
                           ) : (
-                            <div className="bg-mineshaft-600 inline-flex w-min items-center rounded-sm px-2 py-0.5 text-sm">
+                            <div className="inline-flex w-min items-center rounded-sm bg-mineshaft-600 px-2 py-0.5 text-sm">
                               {lastStatus}{" "}
                               <Tooltip
                                 content={
@@ -212,7 +212,7 @@ export const WebhooksTab = withProjectPermission(
                                       {format(new Date(updatedAt), "yyyy-MM-dd, hh:mm aaa")}
                                     </div>
                                     {lastRunErrorMessage && (
-                                      <div className="text-red mt-2">
+                                      <div className="mt-2 text-red">
                                         Error: {lastRunErrorMessage}
                                       </div>
                                     )}

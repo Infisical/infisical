@@ -90,8 +90,8 @@ export default function CodeInputStep({
 
   return (
     <div className="mx-auto h-full w-full pb-4 md:px-8">
-      <p className="text-md text-bunker-200 flex justify-center">{t("signup.step2-message")}</p>
-      <p className="text-md text-bunker-200 my-1 flex justify-center font-medium">{email} </p>
+      <p className="text-md flex justify-center text-bunker-200">{t("signup.step2-message")}</p>
+      <p className="text-md my-1 flex justify-center font-medium text-bunker-200">{email} </p>
       <div className="mx-auto hidden w-max min-w-[20rem] md:block">
         <ReactCodeInput
           name=""
@@ -100,7 +100,7 @@ export default function CodeInputStep({
           fields={6}
           onChange={setCode}
           {...props}
-          className="mb-2 mt-6"
+          className="mt-6 mb-2"
         />
       </div>
       <div className="mx-auto mt-4 block w-max md:hidden">
@@ -111,11 +111,11 @@ export default function CodeInputStep({
           fields={6}
           onChange={setCode}
           {...propsPhone}
-          className="mb-2 mt-2"
+          className="mt-2 mb-2"
         />
       </div>
       {codeError && <Error text={t("signup.step2-code-error")} />}
-      <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
+      <div className="mx-auto mt-2 flex w-1/4 max-w-xs min-w-[20rem] flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
         <div className="text-l w-full py-1 text-lg">
           <Button
             type="submit"
@@ -135,9 +135,9 @@ export default function CodeInputStep({
       <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
         <div className="flex flex-row items-baseline gap-1 text-sm">
           <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
-          <div className="text-md text-bunker-400 mt-2 flex flex-row">
+          <div className="text-md mt-2 flex flex-row text-bunker-400">
             <button disabled={isLoading} onClick={resendVerificationEmail} type="button">
-              <span className="hover:text-bunker-200 hover:decoration-primary-700 cursor-pointer duration-200 hover:underline hover:underline-offset-4">
+              <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
                 {isResendingVerificationEmail
                   ? t("signup.step2-resend-progress")
                   : t("signup.step2-resend-submit")}
@@ -145,7 +145,7 @@ export default function CodeInputStep({
             </button>
           </div>
         </div>
-        <p className="text-bunker-400 pb-2 text-sm">{t("signup.step2-spam-alert")}</p>
+        <p className="pb-2 text-sm text-bunker-400">{t("signup.step2-spam-alert")}</p>
       </div>
     </div>
   );

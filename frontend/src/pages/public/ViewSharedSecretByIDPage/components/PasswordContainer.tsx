@@ -32,7 +32,7 @@ export const PasswordContainer = ({
   };
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-800 rounded-lg border p-4">
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
       <form onSubmit={handleSubmit(onFormSubmit)}>
         <Controller
           control={control}
@@ -66,7 +66,7 @@ export const PasswordContainer = ({
         />
       </form>
       <Button
-        className="bg-mineshaft-700 text-bunker-200 w-full py-3"
+        className="w-full bg-mineshaft-700 py-3 text-bunker-200"
         colorSchema="primary"
         variant="outline_bg"
         size="sm"

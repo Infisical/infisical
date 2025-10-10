@@ -124,7 +124,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
   };
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-800 hover:bg-mineshaft-700 overflow-clip border first:rounded-t-md last:rounded-b-md">
+    <div className="overflow-clip border border-mineshaft-600 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md hover:bg-mineshaft-700">
       <div
         className="flex h-14 cursor-pointer items-center px-5 py-4 text-sm text-gray-300"
         role="button"
@@ -138,7 +138,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
       >
         <FontAwesomeIcon className="mr-6 w-4" icon={isOpen ? faChevronDown : faChevronRight} />
 
-        <div className="grow select-none text-base">{title}</div>
+        <div className="grow text-base select-none">{title}</div>
         {fields.length > 1 && (
           <div>
             <Tag size="xs" className="mr-2 px-2">
@@ -179,7 +179,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
         )}
       </div>
       {isOpen && (
-        <div key={`select-${subject}-type`} className="bg-bunker-700 flex flex-col space-y-3 p-3">
+        <div key={`select-${subject}-type`} className="flex flex-col space-y-3 bg-bunker-700 p-3">
           {fields.map((el, rootIndex) => {
             let isFullReadAccessEnabled = false;
 
@@ -193,9 +193,9 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
               <div
                 key={el.id}
                 className={twMerge(
-                  "bg-mineshaft-800 relative rounded-md border-l-[6px] px-5 py-4 transition-colors duration-300",
+                  "relative rounded-md border-l-[6px] bg-mineshaft-800 px-5 py-4 transition-colors duration-300",
                   isInverted ? "border-l-red-600/50" : "border-l-green-600/50",
-                  dragOverItem === rootIndex ? "border-primary/50 border-2" : "",
+                  dragOverItem === rootIndex ? "border-2 border-primary/50" : "",
                   draggedItem === rootIndex ? "opacity-50" : ""
                 )}
                 onDragOver={(e) => handleDragOver(e, rootIndex)}
@@ -237,7 +237,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                         <FontAwesomeIcon
                           icon={faInfoCircle}
                           size="sm"
-                          className="text-bunker-400 ml-2"
+                          className="ml-2 text-bunker-400"
                         />
                       </Tooltip>
                       {!isDisabled && (
@@ -247,7 +247,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                             colorSchema="danger"
                             variant="plain"
                             size="xs"
-                            className="ml-auto mr-3 rounded-sm"
+                            className="mr-3 ml-auto rounded-sm"
                             onClick={() => remove(rootIndex)}
                             isDisabled={isDisabled}
                           >
@@ -261,7 +261,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                             draggable
                             onDragStart={(e) => handleDragStart(e, rootIndex)}
                             onDragEnd={handleDragEnd}
-                            className="text-bunker-300 hover:text-bunker-200 cursor-move"
+                            className="cursor-move text-bunker-300 hover:text-bunker-200"
                           >
                             <FontAwesomeIcon icon={faGripVertical} />
                           </div>

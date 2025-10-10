@@ -18,7 +18,7 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
 
   return (
     <>
-      <p className="text-bunker-300 mb-4 text-sm">Configure how certificates should be synced.</p>
+      <p className="mb-4 text-sm text-bunker-300">Configure how certificates should be synced.</p>
       {/*
       TODO: Re-enable this when we have a way to import certificates
       <Controller
@@ -64,7 +64,7 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl isError={Boolean(error)} errorText={error?.message}>
             <Switch
-              className="bg-mineshaft-400/80 data-[state=checked]:bg-green/80 shadow-inner"
+              className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
               id="can-remove-certificates"
               thumbClassName="bg-mineshaft-800"
               onCheckedChange={onChange}
@@ -121,7 +121,7 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                     <span className="text-yellow">
                       Character restrictions for {syncOption.name}:
                     </span>
-                    <div className="text-bunker-300 text-xs">
+                    <div className="text-xs text-bunker-300">
                       The following characters are not allowed:{" "}
                       {syncOption.forbiddenCharacters.split("").join(" ")}
                     </div>

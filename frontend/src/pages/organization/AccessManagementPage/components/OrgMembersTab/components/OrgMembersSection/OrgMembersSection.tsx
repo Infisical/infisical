@@ -158,11 +158,11 @@ export const OrgMembersSection = () => {
           selectedMemberIds.length > 0 && "h-16"
         )}
       >
-        <div className="border-mineshaft-600 bg-mineshaft-800 text-bunker-300 flex items-center rounded-md border px-4 py-2">
+        <div className="flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
           <div className="mr-2 text-sm">{selectedMemberIds.length} Selected</div>
           <button
             type="button"
-            className="text-mineshaft-400 hover:text-mineshaft-200 mr-auto text-xs underline-offset-2 hover:underline"
+            className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
             onClick={() => setSelectedMemberIds([])}
           >
             Unselect All
@@ -201,9 +201,9 @@ export const OrgMembersSection = () => {
           </OrgPermissionCan>
         </div>
       </div>
-      <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
+      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-mineshaft-100 text-xl font-medium">Users</p>
+          <p className="text-xl font-medium text-mineshaft-100">Users</p>
           <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
             {(isAllowed) => (
               <Button
@@ -267,10 +267,10 @@ export const OrgMembersSection = () => {
           }
           buttonText="Remove"
         >
-          <div className="text-mineshaft-400 mt-4 text-sm">
+          <div className="mt-4 text-sm text-mineshaft-400">
             The following members will be removed:
           </div>
-          <div className="border-mineshaft-600 bg-red/10 mt-2 max-h-80 overflow-y-auto rounded-sm border p-4 pl-8 text-sm text-red-200">
+          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
             <ul className="list-disc">
               {(popUp.removeMembers.data?.selectedOrgMemberships as OrgUser[])?.map((member) => {
                 const email = member.user.email ?? member.user.username ?? member.inviteEmail;
@@ -292,7 +292,7 @@ export const OrgMembersSection = () => {
                           <div className="inline-block">
                             <Badge
                               variant="danger"
-                              className="ml-1 mt-[0.05rem] inline-flex w-min items-center gap-1.5 whitespace-nowrap"
+                              className="mt-[0.05rem] ml-1 inline-flex w-min items-center gap-1.5 whitespace-nowrap"
                             >
                               <FontAwesomeIcon icon={faBan} />
                               <span>Ignored</span>

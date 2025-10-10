@@ -162,14 +162,14 @@ export const OrgSSOSection = (): JSX.Element => {
             </OrgPermissionCan>
           )}
         </div>
-        <p className="text-mineshaft-300 text-sm">
+        <p className="text-sm text-mineshaft-300">
           Allow members to authenticate into Infisical with SAML
         </p>
       </div>
       {data && GROUP_SYNC_SUPPORTED_PROVIDERS.includes(data.authProvider) && (
         <div className="py-4">
           <div className="mb-2 flex justify-between">
-            <div className="text-md text-mineshaft-100 flex items-center">
+            <div className="text-md flex items-center text-mineshaft-100">
               <span>SAML Group Membership Mapping</span>
               <Tooltip
                 className="max-w-lg"
@@ -187,12 +187,12 @@ export const OrgSSOSection = (): JSX.Element => {
                     <a
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="hover:text-mineshaft-300 underline underline-offset-2"
+                      className="underline underline-offset-2 hover:text-mineshaft-300"
                       href="https://infisical.com/docs/documentation/platform/sso/overview"
                     >
                       See your SAML provider docs for details.
                     </a>
-                    <p className="text-yellow mt-4">
+                    <p className="mt-4 text-yellow">
                       <FontAwesomeIcon className="mr-1" icon={faWarning} />
                       Group membership changes in the SAML provider only sync with Infisical when a
                       user logs in via SAML. For example, if you remove a user from a group in the
@@ -206,7 +206,7 @@ export const OrgSSOSection = (): JSX.Element => {
                 <FontAwesomeIcon
                   icon={faInfoCircle}
                   size="sm"
-                  className="text-mineshaft-400 ml-1 mt-0.5 inline-block"
+                  className="mt-0.5 ml-1 inline-block text-mineshaft-400"
                 />
               </Tooltip>
             </div>
@@ -221,7 +221,7 @@ export const OrgSSOSection = (): JSX.Element => {
               )}
             </OrgPermissionCan>
           </div>
-          <p className="text-mineshaft-300 text-sm">
+          <p className="text-sm text-mineshaft-300">
             Infisical will manage user group memberships based on the SAML provider
           </p>
         </div>

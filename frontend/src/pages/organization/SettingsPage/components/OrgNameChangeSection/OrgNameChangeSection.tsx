@@ -83,7 +83,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
 
   if (!isFormInitialized) {
     return (
-      <div className="h-101 flex w-full items-center justify-center">
+      <div className="flex h-101 w-full items-center justify-center">
         <Spinner size="lg" />
       </div>
     );
@@ -92,7 +92,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="py-4">
       <div className="">
-        <h2 className="text-md text-mineshaft-100 mb-2">Organization Name</h2>
+        <h2 className="text-md mb-2 text-mineshaft-100">Organization Name</h2>
         <Controller
           defaultValue=""
           render={({ field, fieldState: { error } }) => (
@@ -105,13 +105,13 @@ export const OrgNameChangeSection = (): JSX.Element => {
         />
       </div>
       <div>
-        <h2 className="text-md text-mineshaft-100 mb-2">Organization ID</h2>
+        <h2 className="text-md mb-2 text-mineshaft-100">Organization ID</h2>
         <FormControl className="max-w-md">
           <Input isDisabled value={currentOrg.id} />
         </FormControl>
       </div>
       <div>
-        <h2 className="text-md text-mineshaft-100 mb-2">Organization Slug</h2>
+        <h2 className="text-md mb-2 text-mineshaft-100">Organization Slug</h2>
         <Controller
           defaultValue=""
           render={({ field, fieldState: { error } }) => (
@@ -125,7 +125,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
       </div>
       {canReadOrgRoles && (
         <div className="pb-4">
-          <h2 className="text-md text-mineshaft-100 mb-2">Default Organization Member Role</h2>
+          <h2 className="text-md mb-2 text-mineshaft-100">Default Organization Member Role</h2>
           <p className="text-mineshaft-400" />
           <Controller
             defaultValue=""

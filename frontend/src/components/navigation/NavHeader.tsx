@@ -66,33 +66,33 @@ export default function NavHeader({
 
   return (
     <div className="flex flex-row items-center pt-6">
-      <div className="bg-primary mr-2 flex h-5 w-5 min-w-5 items-center justify-center rounded-md text-sm text-black">
+      <div className="mr-2 flex h-5 w-5 min-w-5 items-center justify-center rounded-md bg-primary text-sm text-black">
         {currentOrg?.name?.charAt(0)}
       </div>
       <Link
         to="/organization/projects"
-        className="text-primary/80 hover:text-primary truncate pl-0.5 text-sm font-medium"
+        className="truncate pl-0.5 text-sm font-medium text-primary/80 hover:text-primary"
       >
         {currentOrg?.name}
       </Link>
       {isProjectRelated && (
         <>
-          <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-xs text-gray-400" />
-          <div className="text-bunker-300 truncate text-sm font-medium">{currentProject?.name}</div>
+          <FontAwesomeIcon icon={faAngleRight} className="mr-3 ml-3 text-xs text-gray-400" />
+          <div className="truncate text-sm font-medium text-bunker-300">{currentProject?.name}</div>
         </>
       )}
       {isOrganizationRelated && (
         <>
-          <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-xs text-gray-400" />
-          <div className="text-bunker-300 text-sm font-medium">Organization Settings</div>
+          <FontAwesomeIcon icon={faAngleRight} className="mr-3 ml-3 text-xs text-gray-400" />
+          <div className="text-sm font-medium text-bunker-300">Organization Settings</div>
         </>
       )}
-      <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-sm text-gray-400" />
+      <FontAwesomeIcon icon={faAngleRight} className="mr-3 ml-3 text-sm text-gray-400" />
       {pageName === "Secrets" ? (
         <Link
           to="/projects/secret-management/$projectId/overview"
           params={{ projectId: currentProject.id }}
-          className="text-primary/80 hover:text-primary text-sm font-medium"
+          className="text-sm font-medium text-primary/80 hover:text-primary"
         >
           {pageName}
         </Link>
@@ -101,15 +101,15 @@ export default function NavHeader({
       )}
       {currentEnv && secretPath === "/" && (
         <>
-          <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
-          <div className="hover:bg-bunker-100/10 rounded-md pl-3">
+          <FontAwesomeIcon icon={faAngleRight} className="mr-1.5 ml-3 text-xs text-gray-400" />
+          <div className="rounded-md pl-3 hover:bg-bunker-100/10">
             <Tooltip content="Select environment">
               <Select
                 value={currentEnv}
                 onValueChange={(value) => {
                   if (value && onEnvChange) onEnvChange(value);
                 }}
-                className="text-primary/80 hover:text-primary border-none bg-transparent pl-0 text-sm font-medium"
+                className="border-none bg-transparent pl-0 text-sm font-medium text-primary/80 hover:text-primary"
                 dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 drop-shadow-2xl"
               >
                 {userAvailableEnvs?.map(({ name, slug }) => (
@@ -124,11 +124,11 @@ export default function NavHeader({
       )}
       {isFolderMode && routerEnvSlug && Boolean(secretPathSegments.length) && (
         <div className="flex items-center space-x-3">
-          <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
+          <FontAwesomeIcon icon={faAngleRight} className="mr-1.5 ml-3 text-xs text-gray-400" />
           <Link
             to="/projects/secret-management/$projectId/secrets/$envSlug"
             params={{ projectId: currentProject.id, envSlug: routerEnvSlug }}
-            className="text-primary/80 hover:text-primary text-sm font-medium"
+            className="text-sm font-medium text-primary/80 hover:text-primary"
           >
             {userAvailableEnvs?.find(({ slug }) => slug === currentEnv)?.name}
           </Link>
@@ -143,7 +143,7 @@ export default function NavHeader({
               className="flex items-center space-x-3"
               key={`breadcrumb-secret-path-${folderName}`}
             >
-              <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
+              <FontAwesomeIcon icon={faAngleRight} className="mr-1.5 ml-3 text-xs text-gray-400" />
               {index + 1 === secretPathSegments?.length ? (
                 <div className="flex items-center space-x-2">
                   <span
@@ -195,7 +195,7 @@ export default function NavHeader({
                   }}
                   search={(query) => ({ ...query, secretPath: newSecretPath })}
                   className={twMerge(
-                    "hover:text-primary text-sm transition-all",
+                    "text-sm transition-all hover:text-primary",
                     isHoveringCopyButton ? "text-primary" : "text-primary/80"
                   )}
                 >
@@ -207,7 +207,7 @@ export default function NavHeader({
         })}
       {isProtectedBranch && (
         <Tooltip content={`Protected by policy ${protectionPolicyName}`}>
-          <FontAwesomeIcon icon={faLock} className="text-primary ml-2" />
+          <FontAwesomeIcon icon={faLock} className="ml-2 text-primary" />
         </Tooltip>
       )}
     </div>

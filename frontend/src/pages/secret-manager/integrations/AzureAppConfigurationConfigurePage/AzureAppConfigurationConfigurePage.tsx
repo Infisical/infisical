@@ -152,7 +152,7 @@ export const AzureAppConfigurationConfigurePage = () => {
       <Helmet>
         <title>Set Up Azure App Configuration Integration</title>
       </Helmet>
-      <Card className="border-mineshaft-600 max-w-lg rounded-md border">
+      <Card className="max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="text-left text-xl"
           subTitle="Choose which environment in Infisical you want to sync to your Azure App Configuration."
@@ -172,7 +172,7 @@ export const AzureAppConfigurationConfigurePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="bg-yellow/20 text-yellow mb-1 ml-2 inline-block cursor-default rounded-md px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
@@ -195,7 +195,7 @@ export const AzureAppConfigurationConfigurePage = () => {
                   isError={Boolean(error)}
                 >
                   <Select
-                    className="border-mineshaft-500 w-full border"
+                    className="w-full border border-mineshaft-500"
                     dropdownContainerClassName="max-w-full"
                     value={field.value}
                     onValueChange={(val) => {
@@ -294,7 +294,7 @@ export const AzureAppConfigurationConfigurePage = () => {
                 <Select
                   defaultValue={field.value}
                   onValueChange={(e) => onChange(e)}
-                  className="border-mineshaft-500 w-full border"
+                  className="w-full border border-mineshaft-500"
                   dropdownContainerClassName="max-w-full"
                 >
                   {initialSyncBehaviors.map((b) => {
@@ -316,7 +316,7 @@ export const AzureAppConfigurationConfigurePage = () => {
             type="submit"
             color="mineshaft"
             variant="outline_bg"
-            className="mb-6 ml-auto mt-4"
+            className="mt-4 mb-6 ml-auto"
             isLoading={isSubmitting}
           >
             Create Integration

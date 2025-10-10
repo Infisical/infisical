@@ -200,15 +200,15 @@ const ViewMembersModalContent = ({
       />
       <TableContainer
         className={twMerge(
-          "border-mineshaft-500 bg-mineshaft-700 mt-4 flex flex-1 flex-col border",
+          "mt-4 flex flex-1 flex-col border border-mineshaft-500 bg-mineshaft-700",
           Boolean(filteredMembers.length) && "rounded-b-none"
         )}
       >
-        <Table className="bg-mineshaft-700 overflow-y-auto">
+        <Table className="overflow-y-auto bg-mineshaft-700">
           <THead className="sticky top-0 z-50">
             <Tr>
-              <Th className="bg-mineshaft-700 w-1/3 border-none p-0">
-                <div className="border-mineshaft-500 flex h-12 w-full items-center border-b-2 px-3 py-2.5">
+              <Th className="w-1/3 border-none bg-mineshaft-700 p-0">
+                <div className="flex h-12 w-full items-center border-b-2 border-mineshaft-500 px-3 py-2.5">
                   Name
                   <IconButton
                     variant="plain"
@@ -226,8 +226,8 @@ const ViewMembersModalContent = ({
                   </IconButton>
                 </div>
               </Th>
-              <Th className="bg-mineshaft-700 w-1/3 border-none p-0">
-                <div className="border-mineshaft-500 flex h-12 w-full items-center border-b-2 px-3 py-2.5">
+              <Th className="w-1/3 border-none bg-mineshaft-700 p-0">
+                <div className="flex h-12 w-full items-center border-b-2 border-mineshaft-500 px-3 py-2.5">
                   Email
                   <IconButton
                     variant="plain"
@@ -245,13 +245,13 @@ const ViewMembersModalContent = ({
                   </IconButton>
                 </div>
               </Th>
-              <Th className="bg-mineshaft-700 w-1/4 border-none p-0">
-                <div className="border-mineshaft-500 flex h-12 w-full items-center border-b-2 px-3 py-2.5">
+              <Th className="w-1/4 border-none bg-mineshaft-700 p-0">
+                <div className="flex h-12 w-full items-center border-b-2 border-mineshaft-500 px-3 py-2.5">
                   Role
                 </div>
               </Th>
-              <Th className="bg-mineshaft-700 w-5 border-none p-0">
-                <div className="border-mineshaft-500 flex h-12 w-full items-center border-b-2 px-3 py-2.5" />
+              <Th className="w-5 border-none bg-mineshaft-700 p-0">
+                <div className="flex h-12 w-full items-center border-b-2 border-mineshaft-500 px-3 py-2.5" />
               </Th>
             </Tr>
           </THead>
@@ -277,7 +277,7 @@ const ViewMembersModalContent = ({
                         status !== OrgMembershipStatus.Accepted && (
                           <Button
                             isDisabled={resendOrgInvite.isPending}
-                            className="border-mineshaft-600 bg-mineshaft-800/50 ml-2 h-7 font-normal"
+                            className="ml-2 h-7 border-mineshaft-600 bg-mineshaft-800/50 font-normal"
                             colorSchema="primary"
                             variant="outline_bg"
                             size="xs"
@@ -296,7 +296,7 @@ const ViewMembersModalContent = ({
                     </div>
                   </Td>
                   <Td className="max-w-0">
-                    <Badge className="bg-mineshaft-400/50 text-bunker-200 flex w-fit max-w-full items-center gap-x-1 whitespace-nowrap">
+                    <Badge className="flex w-fit max-w-full items-center gap-x-1 bg-mineshaft-400/50 whitespace-nowrap text-bunker-200">
                       <p className="truncate capitalize">{member.role.replace("-", " ")}</p>
                       {Boolean(member.roleId) && (
                         <Tooltip content="This member has a custom role assigned.">
@@ -351,7 +351,7 @@ const ViewMembersModalContent = ({
         </Table>
         {!filteredMembers.length && (
           <EmptyState
-            className="bg-mineshaft-700 my-auto"
+            className="my-auto bg-mineshaft-700"
             title={
               members.length
                 ? "No organization members match search..."
@@ -363,7 +363,7 @@ const ViewMembersModalContent = ({
       </TableContainer>
       {Boolean(filteredMembers.length) && (
         <Pagination
-          className="bg-mineshaft-700 rounded-b-md border border-t-0"
+          className="rounded-b-md border border-t-0 bg-mineshaft-700"
           count={filteredMembers.length}
           page={page}
           perPage={perPage}
@@ -545,7 +545,7 @@ const OrganizationsPanelTable = ({
                           <Tooltip className="text-center" content="View Members">
                             <FontAwesomeIcon
                               icon={faEye}
-                              className="text-mineshaft-300 mr-1.5"
+                              className="mr-1.5 text-mineshaft-300"
                               size="sm"
                             />
                           </Tooltip>
@@ -711,11 +711,11 @@ export const OrganizationsTable = () => {
   };
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-mineshaft-100 text-xl font-medium">Organizations</p>
-          <p className="text-bunker-300 text-sm">
+          <p className="text-xl font-medium text-mineshaft-100">Organizations</p>
+          <p className="text-sm text-bunker-300">
             Manage, join and view organizations across your instance.
           </p>
         </div>

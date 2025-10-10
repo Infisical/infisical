@@ -754,20 +754,20 @@ const Page = () => {
 
   if (!(currentProject?.version === ProjectVersion.V3))
     return (
-      <div className="text-mineshaft-50 dark:scheme-dark flex h-full w-full flex-col items-center justify-center px-6">
+      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-mineshaft-50 dark:scheme-dark">
         <SecretV2MigrationSection />
       </div>
     );
 
   return (
-    <div className="text-mineshaft-50 dark:scheme-dark container mx-auto flex max-w-7xl flex-col">
+    <div className="container mx-auto flex max-w-7xl flex-col text-mineshaft-50 dark:scheme-dark">
       <PageHeader
         title="Secrets Management"
         description={
           <p className="text-md text-bunker-300">
             Inject your secrets using
             <a
-              className="text-mineshaft-300 decoration-primary-800 hover:text-mineshaft-100 hover:decoration-primary-600 ml-1 underline underline-offset-4 duration-200"
+              className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
               href="https://infisical.com/docs/cli/overview"
               target="_blank"
               rel="noopener noreferrer"
@@ -776,7 +776,7 @@ const Page = () => {
             </a>
             ,
             <a
-              className="text-mineshaft-300 decoration-primary-800 hover:text-mineshaft-100 hover:decoration-primary-600 ml-1 underline underline-offset-4 duration-200"
+              className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
               href="https://infisical.com/docs/documentation/getting-started/api"
               target="_blank"
               rel="noopener noreferrer"
@@ -785,7 +785,7 @@ const Page = () => {
             </a>
             ,
             <a
-              className="text-mineshaft-300 decoration-primary-800 hover:text-mineshaft-100 hover:decoration-primary-600 ml-1 underline underline-offset-4 duration-200"
+              className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
               href="https://infisical.com/docs/sdks/overview"
               target="_blank"
               rel="noopener noreferrer"
@@ -794,7 +794,7 @@ const Page = () => {
             </a>
             , and
             <a
-              className="text-mineshaft-300 decoration-primary-800 hover:text-mineshaft-100 hover:decoration-primary-600 ml-1 underline underline-offset-4 duration-200"
+              className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
               href="https://infisical.com/docs/documentation/getting-started/introduction"
               target="_blank"
               rel="noopener noreferrer"
@@ -847,7 +847,7 @@ const Page = () => {
           <div
             ref={tableRef}
             className={twMerge(
-              "thin-scrollbar bg-mineshaft-800 text-bunker-300 mt-3 overflow-y-auto overflow-x-hidden rounded-md text-left text-sm",
+              "mt-3 thin-scrollbar overflow-x-hidden overflow-y-auto rounded-md bg-mineshaft-800 text-left text-sm text-bunker-300",
               isNotEmpty && "rounded-b-none"
             )}
           >
@@ -855,7 +855,7 @@ const Page = () => {
               {isNotEmpty && (
                 <div
                   className={twMerge(
-                    "border-mineshaft-600 bg-mineshaft-800 sticky top-0 flex border-b font-medium"
+                    "sticky top-0 flex border-b border-mineshaft-600 bg-mineshaft-800 font-medium"
                   )}
                 >
                   <Tooltip
@@ -888,11 +888,11 @@ const Page = () => {
                       }`}
                       onMouseDown={handleMouseDown}
                     />
-                    <div className="pointer-events-none absolute -right-[0.04rem] top-2 z-30">
+                    <div className="pointer-events-none absolute top-2 -right-[0.04rem] z-30">
                       <div className="h-5 w-0.5 rounded-[1.5px] bg-gray-400 opacity-50" />
                     </div>
                     <div
-                      className="border-mineshaft-600 flex shrink-0 items-center border-r py-2 pl-4"
+                      className="flex shrink-0 items-center border-r border-mineshaft-600 py-2 pl-4"
                       style={{ width: colWidth }}
                       role="button"
                       tabIndex={0}
@@ -916,14 +916,14 @@ const Page = () => {
                 (!canReadSecret ? (
                   <div
                     className={twMerge(
-                      "border-l-primary bg-mineshaft-700 flex border-l-2 px-4 py-2",
-                      isNotEmpty ? "border-b-mineshaft-600 border-b" : ""
+                      "flex border-l-2 border-l-primary bg-mineshaft-700 px-4 py-2",
+                      isNotEmpty ? "border-b border-b-mineshaft-600" : ""
                     )}
                   >
                     <div className="flex items-center text-sm">
                       <FontAwesomeIcon
                         icon={faInfoCircle}
-                        className="text-primary ml-[0.15rem] mr-[1.65rem]"
+                        className="mr-[1.65rem] ml-[0.15rem] text-primary"
                       />
                       <span>You do not have permission to read secrets in this folder</span>
                     </div>
@@ -939,11 +939,11 @@ const Page = () => {
                     </Button>
                   </div>
                 ) : !canEditSecrets || !canDeleteSecrets ? (
-                  <div className="border-b-mineshaft-600 border-l-primary bg-mineshaft-700 flex border-b border-l-2 px-4 py-2">
+                  <div className="flex border-b border-l-2 border-b-mineshaft-600 border-l-primary bg-mineshaft-700 px-4 py-2">
                     <div className="flex items-center text-sm">
                       <FontAwesomeIcon
                         icon={faInfoCircle}
-                        className="text-primary ml-[0.15rem] mr-[1.65rem]"
+                        className="mr-[1.65rem] ml-[0.15rem] text-primary"
                       />
                       <span>
                         You do not have permission to {!canEditSecrets ? "edit" : ""}
@@ -1049,7 +1049,7 @@ const Page = () => {
                     secretRotationCount={totalSecretRotationCount}
                   />
                 }
-                className="border-t-mineshaft-600 rounded-b-md border-t border-solid"
+                className="rounded-b-md border-t border-solid border-t-mineshaft-600"
                 count={totalCount + pendingChanges.secrets.length + pendingChanges.folders.length}
                 page={page}
                 perPage={perPage}

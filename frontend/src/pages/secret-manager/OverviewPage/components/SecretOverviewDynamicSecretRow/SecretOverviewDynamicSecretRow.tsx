@@ -17,8 +17,8 @@ export const SecretOverviewDynamicSecretRow = ({
 }: Props) => {
   return (
     <Tr isHoverable isSelectable className="group">
-      <Td className="bg-mineshaft-800 group-hover:bg-mineshaft-700 sticky left-0 z-10 border-0 bg-clip-padding p-0">
-        <div className="border-mineshaft-600 flex items-center space-x-5 border-r px-5 py-2.5">
+      <Td className="sticky left-0 z-10 border-0 bg-mineshaft-800 bg-clip-padding p-0 group-hover:bg-mineshaft-700">
+        <div className="flex items-center space-x-5 border-r border-mineshaft-600 px-5 py-2.5">
           <div className="text-yellow-700">
             <FontAwesomeIcon icon={faFingerprint} />
           </div>
@@ -32,7 +32,7 @@ export const SecretOverviewDynamicSecretRow = ({
           <Td
             key={`sec-overview-${slug}-${i + 1}-folder`}
             className={twMerge(
-              "border-mineshaft-600 group-hover:bg-mineshaft-700 border-r py-3",
+              "border-r border-mineshaft-600 py-3 group-hover:bg-mineshaft-700",
               isPresent ? "text-green-600" : "text-red-600"
             )}
           >

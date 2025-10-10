@@ -44,9 +44,9 @@ export const SecretContainer = ({ secret, secretKey: key }: Props) => {
   const hiddenSecret = decryptedSecret ? "*".repeat(decryptedSecret.length) : "";
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-800 rounded-lg border p-4">
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
       <div className="flex items-center justify-between rounded-md bg-white/5 p-2 text-base text-gray-400">
-        <p className="whitespace-pre-wrap break-all">
+        <p className="break-all whitespace-pre-wrap">
           {isVisible ? decryptedSecret : hiddenSecret}
         </p>
         <div className="flex">
@@ -72,7 +72,7 @@ export const SecretContainer = ({ secret, secretKey: key }: Props) => {
         </div>
       </div>
       <Button
-        className="bg-mineshaft-700 text-bunker-200 mt-4 w-full py-3"
+        className="mt-4 w-full bg-mineshaft-700 py-3 text-bunker-200"
         colorSchema="primary"
         variant="outline_bg"
         size="sm"

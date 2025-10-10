@@ -63,7 +63,7 @@ export const WishForm = () => {
       open={isOpen}
     >
       <PopoverTrigger asChild>
-        <div className="text-md hover:text-mineshaft-200 mb-3 w-full pl-5 duration-200">
+        <div className="text-md mb-3 w-full pl-5 duration-200 hover:text-mineshaft-200">
           <FontAwesomeIcon icon={faRocketchat} className="mr-2" />
           Request a feature
         </div>
@@ -72,7 +72,7 @@ export const WishForm = () => {
         hideCloseBtn
         align="start"
         alignOffset={20}
-        className="border-mineshaft-600 bg-mineshaft-900 mb-1 w-auto border p-4 drop-shadow-2xl"
+        className="mb-1 w-auto border border-mineshaft-600 bg-mineshaft-900 p-4 drop-shadow-2xl"
         sticky="always"
       >
         <form onSubmit={handleSubmit(createWish)}>
@@ -82,7 +82,7 @@ export const WishForm = () => {
             errorText={errors?.text?.message}
           >
             <TextArea
-              className="border-mineshaft-600 border bg-black/10 text-sm focus:ring-0"
+              className="border border-mineshaft-600 bg-black/10 text-sm focus:ring-0"
               variant="outline"
               placeholder="Wish for anything! Help us improve the platform."
               reSize="none"

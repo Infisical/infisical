@@ -132,7 +132,7 @@ export const GitHubRadarConnectionForm = ({ appConnection, projectId }: Props) =
                 isDisabled={isUpdate}
                 value={value}
                 onValueChange={(val) => onChange(val)}
-                className="border-mineshaft-500 w-full border"
+                className="w-full border border-mineshaft-500"
                 position="popper"
                 dropdownContainerClassName="max-w-none"
               >

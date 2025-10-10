@@ -142,10 +142,10 @@ export const OrgGeneralAuthSection = ({
   };
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 rounded-lg border p-6">
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
       <div>
         <p className="text-xl font-medium text-gray-200">SSO Enforcement</p>
-        <p className="mb-2 mt-1 text-gray-400">
+        <p className="mt-1 mb-2 text-gray-400">
           Manage strict enforcement of specific authentication methods for your organization.
         </p>
       </div>
@@ -168,7 +168,7 @@ export const OrgGeneralAuthSection = ({
               )}
             </OrgPermissionCan>
           </div>
-          <p className="text-mineshaft-300 text-sm">
+          <p className="text-sm text-mineshaft-300">
             Enforce users to authenticate via SAML to access this organization.
             <br />
             When this is enabled your organization members will only be able to login with SAML.
@@ -193,7 +193,7 @@ export const OrgGeneralAuthSection = ({
               )}
             </OrgPermissionCan>
           </div>
-          <p className="text-mineshaft-300 text-sm">
+          <p className="text-sm text-mineshaft-300">
             Enforce users to authenticate via OIDC to access this organization.
             <br />
             When this is enabled your organization members will only be able to login with OIDC.
@@ -239,7 +239,7 @@ export const OrgGeneralAuthSection = ({
               )}
             </OrgPermissionCan>
           </div>
-          <p className="text-mineshaft-300 text-sm">
+          <p className="text-sm text-mineshaft-300">
             Enforce users to authenticate via Google OAuth to access this organization.
             <br />
             When this is enabled your organization members will only be able to login with Google
@@ -264,7 +264,7 @@ export const OrgGeneralAuthSection = ({
                       In case of a lockout, admins can use the{" "}
                       <a
                         target="_blank"
-                        className="hover:text-mineshaft-300 underline underline-offset-2"
+                        className="underline underline-offset-2 hover:text-mineshaft-300"
                         href="https://infisical.com/docs/documentation/platform/sso/overview#admin-login-portal"
                         rel="noreferrer"
                       >
@@ -274,7 +274,7 @@ export const OrgGeneralAuthSection = ({
                       <a
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="hover:text-mineshaft-300 underline underline-offset-2"
+                        className="underline underline-offset-2 hover:text-mineshaft-300"
                         href={`${window.location.origin}/login/admin`}
                       >
                         {window.location.origin}/login/admin
@@ -286,7 +286,7 @@ export const OrgGeneralAuthSection = ({
                 <FontAwesomeIcon
                   icon={faInfoCircle}
                   size="sm"
-                  className="text-mineshaft-400 mt-0.5 inline-block"
+                  className="mt-0.5 inline-block text-mineshaft-400"
                 />
               </Tooltip>
             </div>
@@ -301,7 +301,7 @@ export const OrgGeneralAuthSection = ({
               )}
             </OrgPermissionCan>
           </div>
-          <p className="text-mineshaft-300 text-sm">
+          <p className="text-sm text-mineshaft-300">
             <span>
               Allow organization admins to bypass SSO login enforcement when your SSO provider is
               unavailable, misconfigured, or inaccessible.

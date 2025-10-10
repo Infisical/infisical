@@ -201,7 +201,7 @@ export const RabbitMqInputForm = ({
             </div>
           </div>
           <div>
-            <div className="border-mineshaft-500 text-mineshaft-200 mb-4 mt-4 border-b pb-2 pl-1 font-medium">
+            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
               Configuration
             </div>
             <div className="flex flex-col">
@@ -349,7 +349,7 @@ export const RabbitMqInputForm = ({
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          <span className="text-primary-400 cursor-pointer">
+                          <span className="cursor-pointer text-primary-400">
                             Read more about management tags here
                           </span>
                         </a>

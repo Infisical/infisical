@@ -222,7 +222,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
             </div>
           </div>
           <div>
-            <div className="border-mineshaft-500 text-mineshaft-200 mb-4 mt-4 border-b pb-2 pl-1 font-medium">
+            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
               Configuration
             </div>
             <div>
@@ -250,7 +250,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
                               isDisabled={!isAllowed}
                               value={value}
                               onValueChange={onChange}
-                              className="border-mineshaft-500 w-full border"
+                              className="w-full border border-mineshaft-500"
                               dropdownContainerClassName="max-w-none"
                               isLoading={isGatewaysLoading}
                               placeholder="Default: Internet Gateway"
@@ -353,7 +353,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
                 />
               </div>
               <div>
-                <Accordion type="multiple" className="bg-mineshaft-700 mb-2 w-full">
+                <Accordion type="multiple" className="mb-2 w-full bg-mineshaft-700">
                   <AccordionItem value="advance-statements">
                     <AccordionTrigger>Modify SQL Statements</AccordionTrigger>
                     <AccordionContent>
@@ -415,11 +415,11 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
-                <Accordion type="multiple" className="bg-mineshaft-700 mb-2 mt-4 w-full">
+                <Accordion type="multiple" className="mt-4 mb-2 w-full bg-mineshaft-700">
                   <AccordionItem value="password-config">
                     <AccordionTrigger>Password Configuration (optional)</AccordionTrigger>
                     <AccordionContent>
-                      <div className="text-mineshaft-300 mb-4 text-sm">
+                      <div className="mb-4 text-sm text-mineshaft-300">
                         Set constraints on the generated database password
                       </div>
                       <div className="space-y-4">

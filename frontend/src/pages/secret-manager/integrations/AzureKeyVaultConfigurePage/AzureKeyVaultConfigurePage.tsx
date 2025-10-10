@@ -109,7 +109,7 @@ export const AzureKeyVaultConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="border-mineshaft-500 w-full border"
+            className="w-full border border-mineshaft-500"
           >
             {workspace?.environments.map((sourceEnvironment) => (
               <SelectItem

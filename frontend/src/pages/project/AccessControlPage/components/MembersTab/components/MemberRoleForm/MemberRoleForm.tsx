@@ -18,7 +18,7 @@ export const MemberRoleForm = ({ projectMember, onOpenUpgradeModal }: Props) => 
       <MemberRbacSection projectMember={projectMember} onOpenUpgradeModal={onOpenUpgradeModal} />
       <Alert
         title="Additional privileges have been moved and now offer full permission customization."
-        className="border-primary/50 bg-primary/10 mt-4"
+        className="mt-4 border-primary/50 bg-primary/10"
       >
         <AlertDescription>
           <Link
@@ -28,7 +28,7 @@ export const MemberRoleForm = ({ projectMember, onOpenUpgradeModal }: Props) => 
               membershipId: projectMember.id
             }}
           >
-            <span className="text-primary cursor-pointer underline underline-offset-2">
+            <span className="cursor-pointer text-primary underline underline-offset-2">
               Click here to access them now
             </span>
           </Link>

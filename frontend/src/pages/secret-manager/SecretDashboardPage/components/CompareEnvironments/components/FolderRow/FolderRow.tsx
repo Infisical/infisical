@@ -18,7 +18,7 @@ export const FolderRow = ({
   colWidth
 }: Props) => {
   return (
-    <Tr isHoverable className="border-mineshaft-500 group">
+    <Tr isHoverable className="group border-mineshaft-500">
       <ResourceNameCell
         label={folderName}
         icon={faFolder}

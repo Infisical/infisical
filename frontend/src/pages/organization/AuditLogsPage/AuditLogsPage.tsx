@@ -6,14 +6,14 @@ import { LogsSection } from "./components";
 
 export const AuditLogsPage = () => {
   return (
-    <div className="bg-bunker-800 h-full">
+    <div className="h-full bg-bunker-800">
       <Helmet>
         <title>Infisical | Audit Logs</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
 
-      <div className="bg-bunker-800 flex h-full w-full justify-center text-white">
+      <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
         <div className="w-full max-w-7xl">
           <PageHeader
             title="Audit logs"

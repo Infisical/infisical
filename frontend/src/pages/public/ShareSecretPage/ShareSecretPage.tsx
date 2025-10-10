@@ -15,7 +15,7 @@ export const ShareSecretPage = () => {
         <meta name="og:description" content="" />
       </Helmet>
       <div className="dark h-full">
-        <div className="bg-linear-to-tr from-mineshaft-700 to-bunker-800 dark:scheme-dark flex h-screen flex-col justify-between overflow-auto text-gray-200">
+        <div className="flex h-screen flex-col justify-between overflow-auto bg-linear-to-tr from-mineshaft-700 to-bunker-800 text-gray-200 dark:scheme-dark">
           <div />
           <div className="mx-auto w-full max-w-xl px-4 py-4 md:px-0">
             <div className="mb-8 text-center">
@@ -30,7 +30,7 @@ export const ShareSecretPage = () => {
                   />
                 </a>
               </div>
-              <h1 className="bg-linear-to-b to-bunker-200 from-white bg-clip-text text-center text-4xl font-medium text-transparent">
+              <h1 className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-4xl font-medium text-transparent">
                 Share a secret
               </h1>
               <p className="text-md">
@@ -39,22 +39,22 @@ export const ShareSecretPage = () => {
                   href="https://github.com/infisical/infisical"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-bold bg-linear-to-tr to-primary-500 from-yellow-500 bg-clip-text text-transparent"
+                  className="text-bold bg-linear-to-tr from-yellow-500 to-primary-500 bg-clip-text text-transparent"
                 >
                   Infisical &rarr;
                 </a>
               </p>
             </div>
-            <div className="border-mineshaft-600 bg-mineshaft-800 rounded-lg border p-4">
+            <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
               <ShareSecretForm isPublic />
             </div>
             <div className="m-auto my-8 flex w-full">
-              <div className="border-mineshaft-600 w-full border-t" />
+              <div className="w-full border-t border-mineshaft-600" />
             </div>
-            <div className="border-primary-500/30 bg-primary/5 m-auto flex w-full flex-col rounded-md border p-6 pt-5">
-              <p className="text-mineshaft-100 w-full pb-2 text-lg font-medium md:pb-3 md:text-xl">
+            <div className="m-auto flex w-full flex-col rounded-md border border-primary-500/30 bg-primary/5 p-6 pt-5">
+              <p className="w-full pb-2 text-lg font-medium text-mineshaft-100 md:pb-3 md:text-xl">
                 Open source{" "}
-                <span className="bg-linear-to-tr to-primary-500 from-yellow-500 bg-clip-text text-transparent">
+                <span className="bg-linear-to-tr from-yellow-500 to-primary-500 bg-clip-text text-transparent">
                   secret management
                 </span>{" "}
                 for developers
@@ -65,7 +65,7 @@ export const ShareSecretPage = () => {
                     href="https://github.com/infisical/infisical"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-bold bg-linear-to-tr to-primary-500 from-yellow-500 bg-clip-text text-transparent"
+                    className="text-bold bg-linear-to-tr from-yellow-500 to-primary-500 bg-clip-text text-transparent"
                   >
                     Infisical
                   </a>{" "}
@@ -74,7 +74,7 @@ export const ShareSecretPage = () => {
                 </p>
                 <div className="mt-4 cursor-pointer sm:mt-0">
                   <a target="_blank" rel="noopener noreferrer" href="https://infisical.com">
-                    <div className="border-mineshaft-400/40 bg-mineshaft-600 hover:border-primary/60 hover:bg-primary/20 flex items-center justify-between rounded-md border px-3 py-2 duration-200 hover:text-white">
+                    <div className="flex items-center justify-between rounded-md border border-mineshaft-400/40 bg-mineshaft-600 px-3 py-2 duration-200 hover:border-primary/60 hover:bg-primary/20 hover:text-white">
                       <p className="mr-4 whitespace-nowrap">Try Infisical</p>
                       <FontAwesomeIcon icon={faArrowRight} />
                     </div>
@@ -84,8 +84,8 @@ export const ShareSecretPage = () => {
             </div>
           </div>
 
-          <div className="bg-mineshaft-600 w-full p-2">
-            <p className="text-mineshaft-300 text-center text-sm">
+          <div className="w-full bg-mineshaft-600 p-2">
+            <p className="text-center text-sm text-mineshaft-300">
               Made with ❤️ by{" "}
               <a className="text-primary" href="https://infisical.com">
                 Infisical

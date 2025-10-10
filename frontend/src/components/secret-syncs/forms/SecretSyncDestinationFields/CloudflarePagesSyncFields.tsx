@@ -76,7 +76,7 @@ export const CloudflarePagesSyncFields = () => {
             <Select
               value={value}
               onValueChange={(val) => onChange(val)}
-              className="border-mineshaft-500 w-full border capitalize"
+              className="w-full border border-mineshaft-500 capitalize"
               position="popper"
               placeholder="Select an environment..."
               dropdownContainerClassName="max-w-none"

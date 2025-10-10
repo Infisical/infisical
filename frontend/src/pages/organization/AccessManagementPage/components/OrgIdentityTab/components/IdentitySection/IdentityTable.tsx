@@ -192,7 +192,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               variant="plain"
               size="sm"
               className={twMerge(
-                "h-9.5 border-mineshaft-600 bg-mineshaft-800 hover:border-primary/60 hover:bg-primary/10 flex w-[2.6rem] items-center justify-center overflow-hidden border p-0 transition-all",
+                "flex h-9.5 w-[2.6rem] items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
                 isTableFiltered && "border-primary/50 text-primary"
               )}
             >
@@ -208,8 +208,8 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               >
                 Roles
               </DropdownSubMenuTrigger>
-              <DropdownSubMenuContent className="thin-scrollbar max-h-80 overflow-y-auto rounded-l-none">
-                <DropdownMenuLabel className="bg-mineshaft-900 sticky top-0">
+              <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
+                <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
                   Apply Roles to Filter Identities
                 </DropdownMenuLabel>
                 {roles?.map(({ id, slug, name }) => (
@@ -302,7 +302,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                 }) => {
                   return (
                     <Tr
-                      className="hover:bg-mineshaft-700 h-10 cursor-pointer transition-colors duration-100"
+                      className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                       key={`identity-${id}`}
                       onClick={() =>
                         navigate({
@@ -317,7 +317,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                         {name}
                         {lastLoginAuthMethod && lastLoginTime && (
                           <Tooltip
-                            className="min-w-52 max-w-96 px-3"
+                            className="max-w-96 min-w-52 px-3"
                             content={
                               <LastLoginSection
                                 lastLoginAuthMethod={identityAuthToNameMap[lastLoginAuthMethod]}
@@ -327,7 +327,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                           >
                             <FontAwesomeIcon
                               icon={faInfoCircle}
-                              className="text-mineshaft-400 ml-2 opacity-0 transition-all group-hover:opacity-100"
+                              className="ml-2 text-mineshaft-400 opacity-0 transition-all group-hover:opacity-100"
                             />
                           </Tooltip>
                         )}
@@ -342,7 +342,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                               <Select
                                 value={role === "custom" ? (customRole?.slug as string) : role}
                                 isDisabled={!isAllowed}
-                                className="bg-mineshaft-700 h-8 w-48"
+                                className="h-8 w-48 bg-mineshaft-700"
                                 position="popper"
                                 dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
                                 onValueChange={(selectedRole) =>

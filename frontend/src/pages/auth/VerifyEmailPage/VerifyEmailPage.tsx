@@ -43,7 +43,7 @@ export const VerifyEmailPage = () => {
   };
 
   return (
-    <div className="bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 flex min-h-screen flex-col justify-center px-6 pb-28">
+    <div className="flex min-h-screen flex-col justify-center bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28">
       <Helmet>
         <title>Reset Password</title>
         <link rel="icon" href="/infisical.ico" />
@@ -55,7 +55,7 @@ export const VerifyEmailPage = () => {
         />
       </Helmet>
       <Link to="/">
-        <div className="mb-4 mt-20 flex justify-center">
+        <div className="mt-20 mb-4 flex justify-center">
           <img
             src="/images/gradientLogo.svg"
             style={{
@@ -71,7 +71,7 @@ export const VerifyEmailPage = () => {
           onSubmit={onSubmit}
           className="mx-auto flex w-full flex-col items-center justify-center"
         >
-          <h1 className="bg-linear-to-b to-bunker-200 mb-2 from-white bg-clip-text text-center text-xl font-medium text-transparent">
+          <h1 className="mb-2 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
             Forgot your password?
           </h1>
           <p className="w-max justify-center text-center text-sm text-gray-400">
@@ -102,9 +102,9 @@ export const VerifyEmailPage = () => {
               Continue
             </Button>
           </div>
-          <div className="text-bunker-400 mt-6 flex flex-row text-sm">
+          <div className="mt-6 flex flex-row text-sm text-bunker-400">
             <Link to="/login">
-              <span className="hover:text-bunker-200 hover:decoration-primary-700 cursor-pointer duration-200 hover:underline hover:underline-offset-4">
+              <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
                 Back to Login
               </span>
             </Link>
@@ -113,16 +113,16 @@ export const VerifyEmailPage = () => {
       )}
       {step === 2 && (
         <div className="mx-auto flex w-full flex-col items-center justify-center">
-          <h1 className="bg-linear-to-b to-bunker-200 mb-2 from-white bg-clip-text text-center text-xl font-medium text-transparent">
+          <h1 className="mb-2 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
             Look for an email in your inbox
           </h1>
           <p className="w-max max-w-lg justify-center text-center text-sm text-gray-400">
             If the email is in our system, you will receive an email at{" "}
             <span className="italic">{email}</span> with instructions on how to reset your password.
           </p>
-          <div className="text-bunker-400 mt-6 flex flex-row text-sm">
+          <div className="mt-6 flex flex-row text-sm text-bunker-400">
             <Link to="/login">
-              <span className="hover:text-bunker-200 hover:decoration-primary-700 cursor-pointer duration-200 hover:underline hover:underline-offset-4">
+              <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
                 Back to Login
               </span>
             </Link>

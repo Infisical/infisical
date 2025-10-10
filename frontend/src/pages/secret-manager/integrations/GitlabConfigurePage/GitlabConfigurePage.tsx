@@ -211,7 +211,7 @@ export const GitlabConfigurePage = () => {
       <Helmet>
         <title>Set Up GitLab Integration</title>
       </Helmet>
-      <Card className="border-mineshaft-600 max-w-lg rounded-md border">
+      <Card className="max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Select which environment or folder in Infisical you want to sync to GitLab's environment variables."
@@ -226,7 +226,7 @@ export const GitlabConfigurePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="bg-yellow/20 text-yellow mb-1 ml-2 inline-block cursor-default rounded-md px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
@@ -239,7 +239,7 @@ export const GitlabConfigurePage = () => {
         </CardTitle>
         <Tabs defaultValue={TabSections.Connection} className="px-6">
           <TabList>
-            <div className="border-mineshaft-600 flex w-full flex-row border-b">
+            <div className="flex w-full flex-row border-b border-mineshaft-600">
               <Tab value={TabSections.Connection}>Connection</Tab>
               <Tab value={TabSections.Options}>Options</Tab>
             </div>
@@ -411,7 +411,7 @@ export const GitlabConfigurePage = () => {
                     <Select
                       defaultValue={field.value}
                       onValueChange={(e) => onChange(e)}
-                      className="border-mineshaft-500 w-full border"
+                      className="w-full border border-mineshaft-500"
                       dropdownContainerClassName="max-w-full"
                     >
                       {initialSyncBehaviors.map((b) => {
@@ -457,7 +457,7 @@ export const GitlabConfigurePage = () => {
                   )}
                 />
               </div>
-              <div className="mb-5 ml-1 mt-4">
+              <div className="mt-4 mb-5 ml-1">
                 <Controller
                   control={control}
                   name="shouldProtectSecrets"
@@ -504,7 +504,7 @@ export const GitlabConfigurePage = () => {
         <Button
           colorSchema="primary"
           variant="outline_bg"
-          className="mb-8 ml-auto mr-6 w-min"
+          className="mr-6 mb-8 ml-auto w-min"
           size="sm"
           type="submit"
           isLoading={isLoading}
@@ -555,12 +555,12 @@ export const GitlabConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="border-mineshaft-600 bg-mineshaft-800 text-mineshaft-200 flex h-max max-w-md flex-col rounded-md border p-6 text-center">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}
             <a
-              className="text-mineshaft-100 decoration-primary-500 inline cursor-pointer underline underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
               target="_blank"
               rel="noopener noreferrer"
               href="mailto:support@infisical.com"

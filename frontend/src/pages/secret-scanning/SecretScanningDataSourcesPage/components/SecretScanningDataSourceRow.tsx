@@ -111,12 +111,12 @@ export const SecretScanningDataSourceRow = ({
         })
       }
       className={twMerge(
-        "hover:bg-mineshaft-700 group h-10 cursor-pointer transition-colors duration-100",
+        "group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700",
         lastScanStatus === SecretScanningScanStatus.Failed && "bg-red/5 hover:bg-red/10"
       )}
       key={`data-source-${id}`}
     >
-      <Td className="min-w-32! max-w-0">
+      <Td className="max-w-0 min-w-32!">
         <div className="flex w-full items-center">
           <img
             alt={`${sourceDetails.name} Data Source`}
@@ -126,12 +126,12 @@ export const SecretScanningDataSourceRow = ({
           <p className="ml-2 truncate">{sourceDetails.name}</p>
         </div>
       </Td>
-      <Td className="min-w-32! max-w-0">
+      <Td className="max-w-0 min-w-32!">
         <div className="flex w-full items-center">
           <p className="truncate">{name}</p>
           {description && (
             <Tooltip content={description}>
-              <FontAwesomeIcon icon={faInfoCircle} size="xs" className="text-mineshaft-400 ml-1" />
+              <FontAwesomeIcon icon={faInfoCircle} size="xs" className="ml-1 text-mineshaft-400" />
             </Tooltip>
           )}
         </div>
@@ -141,7 +141,7 @@ export const SecretScanningDataSourceRow = ({
         {lastScanStatus?.match(/queued|scanning/) ? (
           <Badge
             variant="primary"
-            className="bg-mineshaft-400/50 text-bunker-300 flex h-5 w-min animate-pulse items-center gap-1.5 whitespace-nowrap"
+            className="flex h-5 w-min animate-pulse items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300"
           >
             <FontAwesomeIcon icon={faSearch} />
             <span>Scanning For Leaks</span>
@@ -207,7 +207,7 @@ export const SecretScanningDataSourceRow = ({
               content={`Auto-Scan is disabled. Scans will not be automatically triggered when a ${autoScanDescription.verb} occurs to ${autoScanDescription.pluralNoun} associated with this data source`}
             >
               <div className="ml-auto">
-                <Badge className="bg-mineshaft-400/50 text-bunker-300 flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
+                <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
                   <FontAwesomeIcon icon={faBan} />
                   <span>Auto-Scan Disabled</span>
                 </Badge>

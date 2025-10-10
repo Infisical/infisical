@@ -59,9 +59,9 @@ export const CompanyNameSection = () => {
   return (
     <form
       onSubmit={handleSubmit(onFormSubmit)}
-      className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4"
+      className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
     >
-      <h2 className="text-mineshaft-100 mb-8 flex-1 text-xl font-medium">Business name</h2>
+      <h2 className="mb-8 flex-1 text-xl font-medium text-mineshaft-100">Business name</h2>
       <div className="max-w-md">
         <Controller
           defaultValue=""

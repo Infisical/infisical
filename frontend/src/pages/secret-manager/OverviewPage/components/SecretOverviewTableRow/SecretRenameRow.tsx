@@ -150,10 +150,10 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
   return (
     <form
       onSubmit={handleSubmit(handleFormSubmit)}
-      className="secret-table border-mineshaft-700 bg-mineshaft-800 font-inter relative mb-2 flex w-full flex-row items-center justify-between overflow-hidden rounded-lg border border-solid"
+      className="relative mb-2 flex secret-table w-full flex-row items-center justify-between overflow-hidden rounded-lg border border-solid border-mineshaft-700 bg-mineshaft-800 font-inter"
     >
       <div className="flex h-11 flex-1 shrink-0 items-center">
-        <span className="border-mineshaft-600 flex h-full min-w-44 items-center justify-between gap-2 border-r-2 px-4">
+        <span className="flex h-full min-w-44 items-center justify-between gap-2 border-r-2 border-mineshaft-600 px-4">
           Key
           {currentSecretValue?.trim()?.includes(" ") &&
             currentSecretValue?.trim() !== secretKey && (
@@ -164,7 +164,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
                     Secret key contains whitespaces.
                     <br />
                     <br /> If this is the desired format, you need to provide it as{" "}
-                    <code className="bg-mineshaft-500 rounded-md px-1 py-0.5">
+                    <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
                       {encodeURIComponent(secretKey.trim())}
                     </code>{" "}
                     when making API requests.
@@ -190,16 +190,16 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
               onKeyUp={() => trigger("key")}
               isError={Boolean(error)}
               {...field}
-              className="focus:text-bunker-100 w-full px-2 placeholder:text-red-500 focus:ring-transparent"
+              className="w-full px-2 placeholder:text-red-500 focus:text-bunker-100 focus:ring-transparent"
             />
           )}
         />
       </div>
 
       {isReadOnly || isOverriden ? (
-        <span className="bg-mineshaft-500 mr-5 rounded-md px-2">Read Only</span>
+        <span className="mr-5 rounded-md bg-mineshaft-500 px-2">Read Only</span>
       ) : (
-        <div className="border-mineshaft-500 group flex w-20 items-center justify-center border-l py-1">
+        <div className="group flex w-20 items-center justify-center border-l border-mineshaft-500 py-1">
           <AnimatePresence mode="wait">
             {!isDirty ? (
               <motion.div
@@ -239,7 +239,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
                       type="submit"
                       size="md"
                       className={twMerge(
-                        "text-primary p-0 opacity-0 group-hover:opacity-100",
+                        "p-0 text-primary opacity-0 group-hover:opacity-100",
                         isDirty && "opacity-100"
                       )}
                       isDisabled={isSubmitting || Boolean(errors.key)}

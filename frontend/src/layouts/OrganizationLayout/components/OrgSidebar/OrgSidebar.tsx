@@ -45,9 +45,9 @@ export const OrgSidebar = ({ isHidden }: Props) => {
             animate={{ opacity: 1, translateX: 0 }}
             exit={{ opacity: 0, translateX: -240 }}
             layout
-            className="border-mineshaft-600 bg-linear-to-tr from-mineshaft-800 to-mineshaft-900 dark z-10 w-60 border-r"
+            className="dark z-10 w-60 border-r border-mineshaft-600 bg-linear-to-tr from-mineshaft-800 to-mineshaft-900"
           >
-            <nav className="items-between dark:scheme-dark flex h-full flex-col overflow-y-auto">
+            <nav className="items-between flex h-full flex-col overflow-y-auto dark:scheme-dark">
               <Menu>
                 <MenuGroup title="Overview">
                   <Link to="/organization/projects">
@@ -145,7 +145,7 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                   !subscription.has_used_trial && (
                     <Tooltip content="Start Free Pro Trial">
                       <MenuItem
-                        className="text-mineshaft-400 hover:text-mineshaft-300 relative flex items-center gap-2 overflow-hidden text-sm"
+                        className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
                         leftIcon={
                           <FontAwesomeIcon
                             className="mx-1 inline-block shrink-0"
@@ -170,7 +170,7 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                   )}
                 <Link to="/organization/secret-sharing">
                   <MenuItem
-                    className="text-mineshaft-400 hover:text-mineshaft-300 relative flex items-center gap-2 overflow-hidden text-sm"
+                    className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
                     leftIcon={
                       <div className="w-6">
                         <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faShare} />
@@ -183,7 +183,7 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                 {user.superAdmin && (
                   <Link to="/admin">
                     <MenuItem
-                      className="text-mineshaft-400 hover:text-mineshaft-300 relative flex items-center gap-2 overflow-hidden text-sm"
+                      className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
                       leftIcon={
                         <div className="w-6">
                           <FontAwesomeIcon

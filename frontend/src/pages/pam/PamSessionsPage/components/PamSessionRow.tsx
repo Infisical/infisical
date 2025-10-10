@@ -60,7 +60,7 @@ export const PamSessionRow = ({ session, search, filteredCommandLogs }: Props) =
   return (
     <>
       <Tr
-        className={twMerge("hover:bg-bunker-400/20 group h-10 cursor-pointer")}
+        className={twMerge("group h-10 cursor-pointer hover:bg-bunker-400/20")}
         onClick={() => router.history.push(`/projects/pam/${projectId}/sessions/${id}`)}
       >
         <Td>
@@ -77,7 +77,7 @@ export const PamSessionRow = ({ session, search, filteredCommandLogs }: Props) =
                 <span>
                   <HighlightText text={accountName} highlight={search} />
                 </span>
-                <div className="text-bunker-300 flex items-center gap-1 text-xs">
+                <div className="flex items-center gap-1 text-xs text-bunker-300">
                   <FontAwesomeIcon icon={faBoxOpen} className="size-3" />
                   <span>
                     <HighlightText text={resourceName} highlight={search} />
@@ -92,7 +92,7 @@ export const PamSessionRow = ({ session, search, filteredCommandLogs }: Props) =
             <span>
               <HighlightText text={actorName} highlight={search} />
             </span>
-            <span className="text-bunker-300 text-xs">
+            <span className="text-xs text-bunker-300">
               <HighlightText text={actorEmail} highlight={search} />
             </span>
           </div>
@@ -100,7 +100,7 @@ export const PamSessionRow = ({ session, search, filteredCommandLogs }: Props) =
         <Td>
           <div className="flex flex-col">
             <span>{new Date(createdAt).toLocaleTimeString()}</span>
-            <span className="text-bunker-300 text-xs">
+            <span className="text-xs text-bunker-300">
               {new Date(createdAt).toLocaleDateString()}
             </span>
           </div>
@@ -109,7 +109,7 @@ export const PamSessionRow = ({ session, search, filteredCommandLogs }: Props) =
           {endedAt ? (
             <div className="flex flex-col">
               <span>{new Date(endedAt).toLocaleTimeString()}</span>
-              <span className="text-bunker-300 text-xs">
+              <span className="text-xs text-bunker-300">
                 {new Date(endedAt).toLocaleDateString()}
               </span>
             </div>
@@ -161,7 +161,7 @@ export const PamSessionRow = ({ session, search, filteredCommandLogs }: Props) =
           <Td colSpan={5} className="py-3 text-xs">
             {logsToShow.map((log) => (
               <div key={`${id}-log-${log.timestamp}`} className="mb-4 flex flex-col last:mb-0">
-                <div className="text-bunker-400 flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 text-bunker-400">
                   <FontAwesomeIcon icon={faTerminal} className="size-3" />
                   <span>{new Date(log.timestamp).toLocaleString()}</span>
                 </div>
@@ -169,7 +169,7 @@ export const PamSessionRow = ({ session, search, filteredCommandLogs }: Props) =
                 <div className="font-mono">
                   <HighlightText text={log.input.trim()} highlight={search} />
                 </div>
-                <div className="text-bunker-300 font-mono">
+                <div className="font-mono text-bunker-300">
                   <HighlightText text={log.output.trim()} highlight={search} />
                 </div>
               </div>
@@ -181,7 +181,7 @@ export const PamSessionRow = ({ session, search, filteredCommandLogs }: Props) =
                   size="xs"
                   leftIcon={<FontAwesomeIcon icon={showAllLogs ? faChevronUp : faChevronDown} />}
                   onClick={() => setShowAllLogs(!showAllLogs)}
-                  className="text-mineshaft-300 hover:text-primary p-0"
+                  className="p-0 text-mineshaft-300 hover:text-primary"
                 >
                   {showAllLogs
                     ? "Show less"

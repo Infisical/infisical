@@ -65,10 +65,10 @@ export const EnvironmentSection = () => {
   return (
     <div
       id="environments"
-      className="border-mineshaft-600 bg-mineshaft-900 mb-6 scroll-m-6 rounded-lg border p-4"
+      className="mb-6 scroll-m-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
     >
       <div className="mb-8 flex justify-between">
-        <p className="text-mineshaft-100 text-xl font-medium">Environments</p>
+        <p className="text-xl font-medium text-mineshaft-100">Environments</p>
         <div>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}

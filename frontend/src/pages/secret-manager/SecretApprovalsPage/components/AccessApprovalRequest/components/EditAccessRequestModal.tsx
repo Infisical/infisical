@@ -91,8 +91,8 @@ const Content = ({ accessRequest, onComplete, projectSlug }: ContentProps) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <div className="border-yellow/50 bg-yellow/30 mb-4 flex w-full items-start rounded-md border px-4 py-2 text-sm text-yellow-200">
-        <FontAwesomeIcon icon={faWarning} className="text-yellow mr-2.5 mt-1 text-base" />
+      <div className="mb-4 flex w-full items-start rounded-md border border-yellow/50 bg-yellow/30 px-4 py-2 text-sm text-yellow-200">
+        <FontAwesomeIcon icon={faWarning} className="mt-1 mr-2.5 text-base text-yellow" />
         Updating this access request will restart the review process and require all approvers to
         re-approve it.
       </div>

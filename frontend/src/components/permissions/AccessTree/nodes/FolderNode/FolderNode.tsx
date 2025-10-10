@@ -32,17 +32,17 @@ export const FolderNode = ({
     <>
       <Handle
         type="target"
-        className="cursor-pointer! pointer-events-none opacity-0"
+        className="pointer-events-none cursor-pointer! opacity-0"
         position={Position.Top}
       />
       <div
-        className={`flex ${hasMinimalAccess ? "" : "opacity-40"} border-mineshaft bg-mineshaft-800 font-inter h-full w-full flex-col items-center justify-center rounded-md border px-2 py-3 shadow-lg transition-opacity duration-500`}
+        className={`flex ${hasMinimalAccess ? "" : "opacity-40"} h-full w-full flex-col items-center justify-center rounded-md border border-mineshaft bg-mineshaft-800 px-2 py-3 font-inter shadow-lg transition-opacity duration-500`}
       >
-        <div className="text-mineshaft-100 flex items-center space-x-2 text-xs">
-          <FontAwesomeIcon className="text-yellow mb-0.5 font-medium" icon={faFolder} />
+        <div className="flex items-center space-x-2 text-xs text-mineshaft-100">
+          <FontAwesomeIcon className="mb-0.5 font-medium text-yellow" icon={faFolder} />
           <span>{parentId ? `/${name}` : "/"}</span>
         </div>
-        <div className="bg-mineshaft-600 mt-1.5 flex w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-sm px-2 py-1 text-xs">
+        <div className="mt-1.5 flex w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-sm bg-mineshaft-600 px-2 py-1 text-xs">
           {Object.entries(actions).map(([action, access]) => {
             const { className, icon } = AccessMap[access];
 
@@ -70,7 +70,7 @@ export const FolderNode = ({
       </div>
       <Handle
         type="source"
-        className="cursor-pointer! pointer-events-none opacity-0"
+        className="pointer-events-none cursor-pointer! opacity-0"
         position={Position.Bottom}
       />
     </>

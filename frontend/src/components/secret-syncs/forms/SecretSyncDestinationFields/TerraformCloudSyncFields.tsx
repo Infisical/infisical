@@ -90,7 +90,7 @@ export const TerraformCloudSyncFields = () => {
                 <ul className="flex list-disc flex-col gap-3 pl-4">
                   <li>
                     <p className="text-mineshaft-300">
-                      <span className="text-bunker-200 font-medium">
+                      <span className="font-medium text-bunker-200">
                         Environment variables configure Terraform&apos;s behavior (e.g.,
                         credentials).
                       </span>
@@ -98,7 +98,7 @@ export const TerraformCloudSyncFields = () => {
                   </li>
                   <li>
                     <p className="text-mineshaft-300">
-                      <span className="text-bunker-200 font-medium">
+                      <span className="font-medium text-bunker-200">
                         Terraform variables are used as input values in your configuration.
                       </span>
                     </p>
@@ -110,7 +110,7 @@ export const TerraformCloudSyncFields = () => {
             <Select
               value={value}
               onValueChange={onChange}
-              className="border-mineshaft-500 w-full border capitalize"
+              className="w-full border border-mineshaft-500 capitalize"
               position="popper"
               defaultValue={TerraformCloudSyncCategory.Environment}
               placeholder="Select category..."
@@ -146,7 +146,7 @@ export const TerraformCloudSyncFields = () => {
                     return (
                       <li key={name}>
                         <p className="text-mineshaft-300">
-                          <span className="text-bunker-200 font-medium">{name}</span>: {description}
+                          <span className="font-medium text-bunker-200">{name}</span>: {description}
                         </p>
                       </li>
                     );
@@ -164,7 +164,7 @@ export const TerraformCloudSyncFields = () => {
                 setValue("destinationConfig.variableSetName", "");
                 setValue("destinationConfig.workspaceName", "");
               }}
-              className="border-mineshaft-500 w-full border capitalize"
+              className="w-full border border-mineshaft-500 capitalize"
               position="popper"
               placeholder="Select a scope..."
               dropdownContainerClassName="max-w-none"

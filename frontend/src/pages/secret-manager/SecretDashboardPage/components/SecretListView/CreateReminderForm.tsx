@@ -320,7 +320,7 @@ export const CreateReminderForm = ({
                     onChange(val);
                     handleReminderTypeChange(val);
                   }}
-                  className="border-mineshaft-500 w-full border capitalize"
+                  className="w-full border border-mineshaft-500 capitalize"
                   position="popper"
                   placeholder="Select reminder recurrence"
                   dropdownContainerClassName="max-w-none"
@@ -365,7 +365,7 @@ export const CreateReminderForm = ({
                     {/* Interval description */}
                     <div
                       className={twMerge(
-                        "ml-1 mt-2 text-xs",
+                        "mt-2 ml-1 text-xs",
                         field.value ? "opacity-60" : "opacity-0"
                       )}
                     >
@@ -444,7 +444,7 @@ export const CreateReminderForm = ({
           <FormControl label="Note" className="mb-0">
             <TextArea
               placeholder="Remember to rotate the AWS secret every month."
-              className="border-mineshaft-600 border text-sm"
+              className="border border-mineshaft-600 text-sm"
               rows={DEFAULT_TEXTAREA_ROWS}
               reSize="none"
               cols={30}

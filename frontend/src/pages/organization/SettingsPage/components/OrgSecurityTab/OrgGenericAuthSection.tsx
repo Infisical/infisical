@@ -72,7 +72,7 @@ export const OrgGenericAuthSection = () => {
   };
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 mb-4 rounded-lg border p-6">
+    <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
       <div className="py-4">
         <div className="mb-2 flex justify-between">
           <h3 className="text-md text-mineshaft-100">Enforce Multi-factor Authentication</h3>
@@ -87,13 +87,13 @@ export const OrgGenericAuthSection = () => {
             )}
           </OrgPermissionCan>
         </div>
-        <p className="text-mineshaft-300 text-sm">
+        <p className="text-sm text-mineshaft-300">
           Enforce members to authenticate with MFA in order to access the organization
         </p>
         {currentOrg?.enforceMfa && (
           <FormControl label="Selected 2FA method" className="mt-3">
             <Select
-              className="border-mineshaft-500 min-w-[20rem] border"
+              className="min-w-[20rem] border border-mineshaft-500"
               onValueChange={handleUpdateSelectedMfa}
               defaultValue={currentOrg.selectedMfaMethod ?? MfaMethod.EMAIL}
             >

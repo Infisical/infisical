@@ -33,7 +33,7 @@ export const SecretRotationV2SecretsMappingFields = () => {
 
   return (
     <>
-      <p className="text-bunker-300 mb-4 text-sm">
+      <p className="mb-4 text-sm text-bunker-300">
         Map the rotated credentials to secrets in your Infisical project.
       </p>
       <Component />

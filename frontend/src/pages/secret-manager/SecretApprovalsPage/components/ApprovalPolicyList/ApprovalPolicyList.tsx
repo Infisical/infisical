@@ -249,17 +249,17 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
         exit={{ opacity: 0, translateX: 30 }}
         className="rounded-md text-gray-300"
       >
-        <div className="border-mineshaft-600 bg-mineshaft-900 w-full rounded-lg border p-4">
+        <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <div className="flex items-start gap-1">
-                <p className="text-mineshaft-100 text-xl font-medium">Policies</p>
+                <p className="text-xl font-medium text-mineshaft-100">Policies</p>
                 <a
                   href="https://infisical.com/docs/documentation/platform/pr-workflows"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <div className="bg-yellow/20 text-yellow ml-1 mt-[0.32rem] inline-block rounded-md px-1.5 text-sm opacity-80 hover:opacity-100">
+                  <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                     <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                     <span>Docs</span>
                     <FontAwesomeIcon
@@ -269,7 +269,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                   </div>
                 </a>
               </div>
-              <p className="text-bunker-300 text-sm">
+              <p className="text-sm text-bunker-300">
                 Implement granular policies for access requests and secrets management
               </p>
             </div>
@@ -310,7 +310,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                   variant="plain"
                   size="sm"
                   className={twMerge(
-                    "border-mineshaft-600 bg-mineshaft-800 hover:border-primary/60 hover:bg-primary/10 flex h-10 w-11 items-center justify-center overflow-hidden border p-0 transition-all",
+                    "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
                     isTableFiltered && "border-primary/50 text-primary"
                   )}
                 >
@@ -318,7 +318,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                 </IconButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="thin-scrollbar max-h-[70vh] overflow-y-auto"
+                className="max-h-[70vh] thin-scrollbar overflow-y-auto"
                 align="end"
               >
                 <DropdownMenuLabel>Policy Type</DropdownMenuLabel>

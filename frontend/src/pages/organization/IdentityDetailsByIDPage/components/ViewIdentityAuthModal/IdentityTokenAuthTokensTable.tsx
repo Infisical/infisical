@@ -77,7 +77,7 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
 
   return (
     <div className="col-span-2 mt-3">
-      <div className="border-mineshaft-500 flex items-end justify-between border-b pb-2">
+      <div className="flex items-end justify-between border-b border-mineshaft-500 pb-2">
         <span className="text-bunker-300">Access Tokens</span>
         <OrgPermissionCan I={OrgPermissionIdentityActions.Edit} a={OrgPermissionSubjects.Identity}>
           {(isAllowed) => (
@@ -103,7 +103,7 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
             <THead>
               <Tr className="text-xs font-medium">
                 <Th className="py-1 font-normal">Name</Th>
-                <Th className="whitespace-nowrap py-1 font-normal">Number of Uses</Th>
+                <Th className="py-1 font-normal whitespace-nowrap">Number of Uses</Th>
                 <Th className="py-1 font-normal">Expires</Th>
                 <Th className="w-5 py-1 font-normal" />
               </Tr>
@@ -128,7 +128,7 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
                   }
 
                   return (
-                    <Tr className="hover:bg-mineshaft-700 text-xs" key={id}>
+                    <Tr className="text-xs hover:bg-mineshaft-700" key={id}>
                       <Td>{name || "-"}</Td>
                       <Td>
                         {`${accessTokenNumUses}${accessTokenNumUsesLimit ? `/${accessTokenNumUsesLimit}` : ""}`}

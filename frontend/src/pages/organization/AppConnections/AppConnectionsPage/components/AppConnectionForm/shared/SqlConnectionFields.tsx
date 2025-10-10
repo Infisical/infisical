@@ -23,11 +23,11 @@ export const SqlConnectionFields = ({
   return (
     <>
       <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-        <Tab.List className="-pb-1 border-mineshaft-600 mb-6 w-full border-b-2">
+        <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
           <Tab
             className={({ selected }) =>
-              `outline-hidden -mb-[0.14rem] whitespace-nowrap px-4 py-2 text-sm font-medium disabled:opacity-60 ${
-                selected ? "border-mineshaft-300 text-mineshaft-200 border-b-2" : "text-bunker-300"
+              `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
+                selected ? "border-b-2 border-mineshaft-300 text-mineshaft-200" : "text-bunker-300"
               }`
             }
           >
@@ -35,15 +35,15 @@ export const SqlConnectionFields = ({
           </Tab>
           <Tab
             className={({ selected }) =>
-              `outline-hidden -mb-[0.14rem] whitespace-nowrap px-4 py-2 text-sm font-medium disabled:opacity-60 ${
-                selected ? "border-mineshaft-300 text-mineshaft-200 border-b-2" : "text-bunker-300"
+              `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
+                selected ? "border-b-2 border-mineshaft-300 text-mineshaft-200" : "text-bunker-300"
               }`
             }
           >
             SSL ({sslEnabled ? "Enabled" : "Disabled"})
           </Tab>
         </Tab.List>
-        <Tab.Panels className="border-mineshaft-600 bg-mineshaft-700/70 mb-4 rounded-sm border p-3 pb-0">
+        <Tab.Panels className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
           <Tab.Panel>
             <div className="mt-[0.675rem] flex items-start gap-2">
               <Controller
@@ -132,7 +132,7 @@ export const SqlConnectionFields = ({
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
                   <Switch
-                    className="bg-mineshaft-400/50 data-[state=checked]:bg-green/80 shadow-inner"
+                    className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
                     id="ssl-enabled"
                     thumbClassName="bg-mineshaft-800"
                     isChecked={value}
@@ -156,7 +156,7 @@ export const SqlConnectionFields = ({
                   isOptional
                 >
                   <TextArea
-                    className="resize-none! h-14"
+                    className="h-14 resize-none!"
                     {...field}
                     isDisabled={isPlatformManagedCredentials || !sslEnabled}
                   />
@@ -173,7 +173,7 @@ export const SqlConnectionFields = ({
                   errorText={error?.message}
                 >
                   <Switch
-                    className="bg-mineshaft-400/50 data-[state=checked]:bg-green/80 shadow-inner"
+                    className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
                     id="ssl-reject-unauthorized"
                     thumbClassName="bg-mineshaft-800"
                     isChecked={sslEnabled ? value : false}
@@ -208,7 +208,7 @@ export const SqlConnectionFields = ({
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
               <Switch
-                className="bg-mineshaft-400/50 data-[state=checked]:bg-green/80 shadow-inner"
+                className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
                 id="platform-managed"
                 thumbClassName="bg-mineshaft-800"
                 isChecked={value}

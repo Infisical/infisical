@@ -65,7 +65,7 @@ export const GitlabAuthorizePage = () => {
       <Helmet>
         <title>Authorize GitLab Integration</title>
       </Helmet>
-      <Card className="border-mineshaft-600 mb-12 max-w-lg rounded-md border">
+      <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Authorize this integration to sync secrets from Infisical to GitLab. If no self-hosted GitLab URL is specified, then Infisical will connect you to GitLab Cloud."
@@ -80,7 +80,7 @@ export const GitlabAuthorizePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="bg-yellow/20 text-yellow mb-1 ml-2 inline-block cursor-default rounded-md px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon

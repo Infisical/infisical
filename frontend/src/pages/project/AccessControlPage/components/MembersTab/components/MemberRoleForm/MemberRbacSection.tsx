@@ -150,7 +150,7 @@ export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) 
   return (
     <div>
       <div className="text-lg font-medium">Roles</div>
-      <p className="text-mineshaft-400 text-sm">Select one of the pre-defined or custom roles.</p>
+      <p className="text-sm text-mineshaft-400">Select one of the pre-defined or custom roles.</p>
       <div>
         <form onSubmit={roleForm.handleSubmit(handleRoleUpdate)}>
           <div className="mt-2 flex flex-col space-y-2">
@@ -172,7 +172,7 @@ export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) 
                         {...field}
                         isDisabled={isMemberEditDisabled}
                         onValueChange={(e) => onChange(e)}
-                        className="bg-mineshaft-600 hover:bg-mineshaft-500 w-full duration-200"
+                        className="w-full bg-mineshaft-600 duration-200 hover:bg-mineshaft-500"
                       >
                         {projectRoles?.map(({ name, slug, id: projectRoleId }) => (
                           <SelectItem value={slug} key={projectRoleId}>
@@ -203,7 +203,7 @@ export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) 
                             rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
                             isDisabled={isMemberEditDisabled}
                             className={twMerge(
-                              "bg-mineshaft-600 hover:bg-mineshaft-500 border-none py-2.5 text-xs capitalize",
+                              "border-none bg-mineshaft-600 py-2.5 text-xs capitalize hover:bg-mineshaft-500",
                               isTemporary && "text-primary",
                               isExpired && "text-red-600"
                             )}
@@ -228,7 +228,7 @@ export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) 
                       className="border border-gray-600 pt-4"
                     >
                       <div className="flex flex-col space-y-4">
-                        <div className="text-mineshaft-300 border-b border-b-gray-700 pb-2 text-sm">
+                        <div className="border-b border-b-gray-700 pb-2 text-sm text-mineshaft-300">
                           Configure timed access
                         </div>
                         {isExpired && <Tag colorSchema="red">Expired</Tag>}
@@ -298,7 +298,7 @@ export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) 
                   </Popover>
                   <IconButton
                     variant="outline_bg"
-                    className="border-mineshaft-500 bg-mineshaft-600 hover:border-red/70 hover:bg-red/20 border py-3"
+                    className="border border-mineshaft-500 bg-mineshaft-600 py-3 hover:border-red/70 hover:bg-red/20"
                     ariaLabel="delete-role"
                     isDisabled={isMemberEditDisabled || selectedRoleList.fields.length === 1}
                     onClick={() => {

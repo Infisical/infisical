@@ -15,7 +15,7 @@ export const AssumePrivilegeModeBanner = () => {
   if (!assumedPrivilegeDetails) return null;
 
   return (
-    <div className="border-mineshaft-600 bg-primary-400 text-mineshaft-800 z-10 -mx-4 flex items-center justify-center gap-2 rounded-sm border p-2 shadow-sm">
+    <div className="z-10 -mx-4 flex items-center justify-center gap-2 rounded-sm border border-mineshaft-600 bg-primary-400 p-2 text-mineshaft-800 shadow-sm">
       <div>
         <FontAwesomeIcon icon={faInfoCircle} className="mr-2" />
         You are currently viewing the project with privileges of{" "}

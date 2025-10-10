@@ -22,7 +22,7 @@ const Tag = ({ label, value }: TagProps) => {
 
   return (
     <div className="flex items-center space-x-1.5">
-      <div className="bg-mineshaft-600 rounded-sm p-0.5 pl-1 font-mono">{label}:</div>
+      <div className="rounded-sm bg-mineshaft-600 p-0.5 pl-1 font-mono">{label}:</div>
       <div>{value}</div>
     </div>
   );
@@ -34,7 +34,7 @@ export const LogsTableRow = ({ auditLog, rowNumber, timezone }: Props) => {
   return (
     <>
       <Tr
-        className="hover:bg-mineshaft-700 h-10 cursor-pointer border-x-0 border-b border-t-0"
+        className="h-10 cursor-pointer border-x-0 border-t-0 border-b hover:bg-mineshaft-700"
         role="button"
         tabIndex={0}
         onClick={() => setIsOpen.toggle()}
@@ -62,9 +62,9 @@ export const LogsTableRow = ({ auditLog, rowNumber, timezone }: Props) => {
         </Td>
       </Tr>
       {isOpen && (
-        <Tr className={`log-${auditLog.id} h-10 border-x-0 border-b border-t-0`}>
+        <Tr className={`log-${auditLog.id} h-10 border-x-0 border-t-0 border-b`}>
           <Td colSpan={3} className="px-3 py-2">
-            <div className="thin-scrollbar border-mineshaft-600 bg-bunker-800 my-1 max-h-96 overflow-auto whitespace-pre-wrap rounded-sm border p-2 font-mono leading-6">
+            <div className="my-1 max-h-96 thin-scrollbar overflow-auto rounded-sm border border-mineshaft-600 bg-bunker-800 p-2 font-mono leading-6 whitespace-pre-wrap">
               {JSON.stringify(auditLog, null, 4)}
             </div>
           </Td>

@@ -30,8 +30,8 @@ export const GenRandomNumber = ({ onGenerate }: Props) => {
       >
         {t("dashboard.sidebar.generate-random-hex")}
       </Button>
-      <div className="bg-mineshaft rounded-r-md p-2">
-        <div className="border-mineshaft-400 bg-bunker-800 flex rounded-md p-1 px-2">
+      <div className="rounded-r-md bg-mineshaft p-2">
+        <div className="flex rounded-md border-mineshaft-400 bg-bunker-800 p-1 px-2">
           <button type="button" onClick={() => setValue((val) => val - 1)}>
             <FontAwesomeIcon icon={faMinus} size="xs" />
           </button>

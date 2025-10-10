@@ -30,6 +30,6 @@ jobs:
       - name: 🏗️ Run Type check
         run: npm run type:check
         working-directory: frontend
-      - name: 🏗️ Run Link check
+      - name: 🏗️ Run Lint check
         run: npm run lint
         working-directory: frontend

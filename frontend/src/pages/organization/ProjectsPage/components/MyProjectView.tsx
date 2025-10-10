@@ -200,15 +200,15 @@ export const MyProjectView = ({
         });
       }}
       key={workspace.id}
-      className="border-mineshaft-600 border-l-mineshaft-400 bg-mineshaft-800 hover:border-l-primary hover:bg-mineshaft-700 cursor-pointer overflow-clip rounded-sm border border-l-4 p-4 transition-transform duration-100 hover:scale-[103%]"
+      className="cursor-pointer overflow-clip rounded-sm border border-l-4 border-mineshaft-600 border-l-mineshaft-400 bg-mineshaft-800 p-4 transition-transform duration-100 hover:scale-[103%] hover:border-l-primary hover:bg-mineshaft-700"
     >
       <div className="flex items-center gap-4">
-        <div className="border-mineshaft-500 bg-mineshaft-600 rounded-sm border p-1.5 shadow-inner">
+        <div className="rounded-sm border border-mineshaft-500 bg-mineshaft-600 p-1.5 shadow-inner">
           <Lottie className="h-7 w-7 shrink-0" icon={getProjectLottieIcon(workspace.type)} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-mineshaft-100 truncate text-lg font-medium">{workspace.name}</p>
-          <p className="text-mineshaft-300 truncate text-sm leading-4">
+          <p className="truncate text-lg font-medium text-mineshaft-100">{workspace.name}</p>
+          <p className="truncate text-sm leading-4 text-mineshaft-300">
             {getProjectTitle(workspace.type)}
           </p>
         </div>
@@ -216,7 +216,7 @@ export const MyProjectView = ({
           {isFavorite ? (
             <FontAwesomeIcon
               icon={faSolidStar}
-              className="hover:text-mineshaft-400 text-sm text-yellow-600"
+              className="text-sm text-yellow-600 hover:text-mineshaft-400"
               onClick={(e) => {
                 e.stopPropagation();
                 removeProjectFromFavorites(workspace.id);
@@ -225,7 +225,7 @@ export const MyProjectView = ({
           ) : (
             <FontAwesomeIcon
               icon={faStar}
-              className="text-mineshaft-400 hover:text-mineshaft-300 text-sm"
+              className="text-sm text-mineshaft-400 hover:text-mineshaft-300"
               onClick={(e) => {
                 e.stopPropagation();
                 addProjectToFavorites(workspace.id);
@@ -234,7 +234,7 @@ export const MyProjectView = ({
           )}
         </div>
       </div>
-      <p className="text-mineshaft-400 mt-4 truncate text-sm">
+      <p className="mt-4 truncate text-sm text-mineshaft-400">
         {workspace.description || "No description"}
       </p>
     </div>
@@ -251,20 +251,20 @@ export const MyProjectView = ({
         });
       }}
       key={workspace.id}
-      className={`border-mineshaft-600 bg-mineshaft-800 hover:bg-mineshaft-700 group flex min-w-72 cursor-pointer border-l border-r border-t px-6 py-3 ${
+      className={`group flex min-w-72 cursor-pointer border-t border-r border-l border-mineshaft-600 bg-mineshaft-800 px-6 py-3 hover:bg-mineshaft-700 ${
         index === 0 && "rounded-t-md"
       }`}
     >
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <div className="border-mineshaft-500 bg-mineshaft-600 rounded-sm border p-1 shadow-inner">
+        <div className="rounded-sm border border-mineshaft-500 bg-mineshaft-600 p-1 shadow-inner">
           <Lottie
             className="h-[1.35rem] w-[1.35rem] shrink-0"
             icon={getProjectLottieIcon(workspace.type)}
           />
         </div>
         <div className="-mt-0.5 flex min-w-0 flex-col">
-          <p className="text-mineshaft-100 truncate text-sm">{workspace.name}</p>
-          <p className="text-mineshaft-300 truncate text-xs leading-4">
+          <p className="truncate text-sm text-mineshaft-100">{workspace.name}</p>
+          <p className="truncate text-xs leading-4 text-mineshaft-300">
             {getProjectTitle(workspace.type)}{" "}
             {workspace.description ? `- ${workspace.description}` : ""}
           </p>
@@ -274,7 +274,7 @@ export const MyProjectView = ({
         {isFavorite ? (
           <FontAwesomeIcon
             icon={faSolidStar}
-            className="hover:text-mineshaft-400 ml-6 text-sm text-yellow-600"
+            className="ml-6 text-sm text-yellow-600 hover:text-mineshaft-400"
             onClick={(e) => {
               e.stopPropagation();
               removeProjectFromFavorites(workspace.id);
@@ -283,7 +283,7 @@ export const MyProjectView = ({
         ) : (
           <FontAwesomeIcon
             icon={faStar}
-            className="text-mineshaft-400 hover:text-mineshaft-300 ml-6 text-sm"
+            className="ml-6 text-sm text-mineshaft-400 hover:text-mineshaft-300"
             onClick={(e) => {
               e.stopPropagation();
               addProjectToFavorites(workspace.id);
@@ -304,16 +304,16 @@ export const MyProjectView = ({
               Array.apply(0, Array(3)).map((_x, i) => (
                 <div
                   key={`workspace-cards-loading-${i + 1}`}
-                  className="border-mineshaft-600 bg-mineshaft-800 flex h-40 min-w-72 flex-col justify-between rounded-md border p-4"
+                  className="flex h-40 min-w-72 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"
                 >
-                  <div className="text-mineshaft-100 mt-0 text-lg">
-                    <Skeleton className="bg-mineshaft-600 w-3/4" />
+                  <div className="mt-0 text-lg text-mineshaft-100">
+                    <Skeleton className="w-3/4 bg-mineshaft-600" />
                   </div>
-                  <div className="text-mineshaft-300 mt-0 pb-6 text-sm">
-                    <Skeleton className="bg-mineshaft-600 w-1/2" />
+                  <div className="mt-0 pb-6 text-sm text-mineshaft-300">
+                    <Skeleton className="w-1/2 bg-mineshaft-600" />
                   </div>
                   <div className="flex justify-end">
-                    <Skeleton className="bg-mineshaft-600 w-1/2" />
+                    <Skeleton className="w-1/2 bg-mineshaft-600" />
                   </div>
                 </div>
               ))}
@@ -336,11 +336,11 @@ export const MyProjectView = ({
               Array.apply(0, Array(3)).map((_x, i) => (
                 <div
                   key={`workspace-cards-loading-${i + 1}`}
-                  className={`border-mineshaft-600 bg-mineshaft-800 hover:bg-mineshaft-700 group flex h-12 min-w-72 cursor-pointer flex-row items-center justify-between border px-6 ${
+                  className={`group flex h-12 min-w-72 cursor-pointer flex-row items-center justify-between border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700 ${
                     i === 0 && "rounded-t-md"
                   } ${i === 2 && "rounded-b-md border-b"}`}
                 >
-                  <Skeleton className="bg-mineshaft-600 w-full" />
+                  <Skeleton className="w-full bg-mineshaft-600" />
                 </div>
               ))}
             {!isProjectViewLoading &&
@@ -353,20 +353,20 @@ export const MyProjectView = ({
     }
   } else if (workspaces.length && searchFilter) {
     projectsComponents = (
-      <div className="border-mineshaft-700 bg-mineshaft-800 text-mineshaft-300 mt-4 w-full rounded-md border px-4 py-6 text-base">
+      <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
         <FontAwesomeIcon
           icon={faSearch}
-          className="text-mineshaft-400 mb-4 mt-2 w-full text-center text-5xl"
+          className="mt-2 mb-4 w-full text-center text-5xl text-mineshaft-400"
         />
         <div className="text-center font-light">No projects match search...</div>
       </div>
     );
   } else if (filteredWorkspaces.length === 0 && isTableFilteredByType) {
     projectsComponents = (
-      <div className="border-mineshaft-700 bg-mineshaft-800 text-mineshaft-300 mt-4 w-full rounded-md border px-4 py-6 text-base">
+      <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
         <FontAwesomeIcon
           icon={faSearch}
-          className="text-mineshaft-400 mb-4 mt-2 w-full text-center text-5xl"
+          className="mt-2 mb-4 w-full text-center text-5xl text-mineshaft-400"
         />
         <div className="text-center font-light">No projects match filters...</div>
       </div>
@@ -378,17 +378,17 @@ export const MyProjectView = ({
       <div className="flex w-full flex-row">
         <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
         <Input
-          className="bg-mineshaft-800 placeholder-mineshaft-50 focus:bg-mineshaft-700/80 h-[2.3rem] text-sm duration-200"
+          className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
           containerClassName="w-full ml-2"
           placeholder="Search by project name..."
           value={searchFilter}
           onChange={(e) => setSearchFilter(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
         />
-        <div className="border-mineshaft-600 bg-mineshaft-800 ml-2 flex rounded-md border p-1">
+        <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
           <Tooltip content="Toggle Sort Direction">
             <IconButton
-              className="hover:bg-mineshaft-600 min-w-[2.4rem] border-none"
+              className="min-w-[2.4rem] border-none hover:bg-mineshaft-600"
               ariaLabel={`Sort ${
                 orderDirection === OrderByDirection.ASC ? "descending" : "ascending"
               }`}
@@ -407,7 +407,7 @@ export const MyProjectView = ({
           <DropdownMenuTrigger asChild>
             <div
               className={twMerge(
-                "border-mineshaft-600 bg-mineshaft-800 ml-2 flex rounded-md border p-1",
+                "ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1",
                 isTableFilteredByType && "border-primary-400 text-primary-400"
               )}
             >
@@ -415,7 +415,7 @@ export const MyProjectView = ({
                 <IconButton
                   ariaLabel="project-types"
                   className={twMerge(
-                    "hover:bg-mineshaft-600 min-w-[2.4rem] border-none",
+                    "min-w-[2.4rem] border-none hover:bg-mineshaft-600",
                     isTableFilteredByType && "text-primary-400"
                   )}
                   variant="plain"
@@ -446,7 +446,7 @@ export const MyProjectView = ({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <div className="border-mineshaft-600 bg-mineshaft-800 ml-2 flex gap-x-0.5 rounded-md border p-1">
+        <div className="ml-2 flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
           <IconButton
             variant="outline_bg"
             onClick={() => {
@@ -457,7 +457,7 @@ export const MyProjectView = ({
             size="xs"
             className={`${
               projectsViewMode === ProjectsViewMode.GRID ? "bg-mineshaft-500" : "bg-transparent"
-            } hover:bg-mineshaft-600 min-w-[2.4rem] border-none`}
+            } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
           >
             <FontAwesomeIcon icon={faBorderAll} />
           </IconButton>
@@ -471,7 +471,7 @@ export const MyProjectView = ({
             size="xs"
             className={`${
               projectsViewMode === ProjectsViewMode.LIST ? "bg-mineshaft-500" : "bg-transparent"
-            } hover:bg-mineshaft-600 min-w-[2.4rem] border-none`}
+            } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
           >
             <FontAwesomeIcon icon={faList} />
           </IconButton>
@@ -505,8 +505,8 @@ export const MyProjectView = ({
         <Pagination
           className={
             projectsViewMode === ProjectsViewMode.GRID
-              ? "justify-start! col-span-full border-transparent bg-transparent pl-2"
-              : "border-mineshaft-600 rounded-b-md border"
+              ? "col-span-full justify-start! border-transparent bg-transparent pl-2"
+              : "rounded-b-md border border-mineshaft-600"
           }
           perPage={perPage}
           perPageList={[12, 24, 48, 96]}
@@ -517,10 +517,10 @@ export const MyProjectView = ({
         />
       )}
       {isWorkspaceEmpty && !isTableFilteredByType && (
-        <div className="border-mineshaft-700 bg-mineshaft-800 text-mineshaft-300 mt-4 w-full rounded-md border px-4 py-6 text-base">
+        <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
           <FontAwesomeIcon
             icon={faFolderOpen}
-            className="text-mineshaft-400 mb-4 mt-2 w-full text-center text-5xl"
+            className="mt-2 mb-4 w-full text-center text-5xl text-mineshaft-400"
           />
           <div className="text-center font-light">
             You are not part of any projects in this organization yet. When you are, they will

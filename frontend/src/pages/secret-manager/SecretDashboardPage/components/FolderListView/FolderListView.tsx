@@ -207,7 +207,7 @@ export const FolderListView = ({
         <div
           key={id}
           className={twMerge(
-            "border-mineshaft-600 hover:bg-mineshaft-700 group flex cursor-pointer border-b",
+            "group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700",
             isPending && "bg-mineshaft-700/60",
             pendingAction === PendingAction.Delete && "border-l-2 border-l-red-600/75",
             pendingAction === PendingAction.Update && "border-l-2 border-l-yellow-600/75",
@@ -230,15 +230,15 @@ export const FolderListView = ({
             {description && (
               <Tooltip
                 position="right"
-                className="flex max-w-lg items-center space-x-4 whitespace-pre-wrap py-4"
+                className="flex max-w-lg items-center space-x-4 py-4 whitespace-pre-wrap"
                 content={description}
               >
-                <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400 ml-1" />
+                <FontAwesomeIcon icon={faInfoCircle} className="ml-1 text-mineshaft-400" />
               </Tooltip>
             )}
           </div>
           {isPending ? (
-            <div className="border-mineshaft-600 flex w-16 items-center justify-between border-l px-3 py-3">
+            <div className="flex w-16 items-center justify-between border-l border-mineshaft-600 px-3 py-3">
               <IconButton
                 ariaLabel="edit-folder"
                 variant="plain"
@@ -261,7 +261,7 @@ export const FolderListView = ({
               </IconButton>
             </div>
           ) : (
-            <div className="border-mineshaft-600 flex w-16 items-center justify-between border-l px-3 py-3">
+            <div className="flex w-16 items-center justify-between border-l border-mineshaft-600 px-3 py-3">
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
                 a={subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })}

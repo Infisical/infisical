@@ -171,7 +171,7 @@ export const EnterPasswordStep = ({
       onSubmit={handleSubmit(resetPasswordHandler)}
       className="mx-auto flex w-full flex-col items-center justify-center"
     >
-      <h1 className="bg-linear-to-b to-bunker-200 mb-2 from-white bg-clip-text text-center text-xl font-medium text-transparent">
+      <h1 className="mb-2 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
         Enter new password
       </h1>
       <p className="w-max justify-center text-center text-sm text-gray-400">
@@ -222,13 +222,13 @@ export const EnterPasswordStep = ({
       passwordErrorEscapeChar ||
       passwordErrorLowEntropy ||
       passwordErrorBreached ? (
-        <div className="border-mineshaft-600 bg-mineshaft-800 mt-4 rounded-sm border p-4 drop-shadow-sm">
+        <div className="mt-4 rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-4 drop-shadow-sm">
           <div className="mb-1 ml-2 text-sm text-gray-300">Password should contain:</div>
           <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorTooShort ? (
-              <FontAwesomeIcon icon={faXmark} className="text-red mr-2.5 text-lg" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md text-green mr-2" />
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
             )}
             <div className={`${passwordErrorTooShort ? "text-gray-400" : "text-gray-600"} text-sm`}>
               at least 14 characters
@@ -236,9 +236,9 @@ export const EnterPasswordStep = ({
           </div>
           <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorTooLong ? (
-              <FontAwesomeIcon icon={faXmark} className="text-red mr-2.5 text-lg" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md text-green mr-2" />
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
             )}
             <div className={`${passwordErrorTooLong ? "text-gray-400" : "text-gray-600"} text-sm`}>
               at most 100 characters
@@ -246,9 +246,9 @@ export const EnterPasswordStep = ({
           </div>
           <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorNoLetterChar ? (
-              <FontAwesomeIcon icon={faXmark} className="text-red mr-2.5 text-lg" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md text-green mr-2" />
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
             )}
             <div
               className={`${passwordErrorNoLetterChar ? "text-gray-400" : "text-gray-600"} text-sm`}
@@ -258,9 +258,9 @@ export const EnterPasswordStep = ({
           </div>
           <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorNoNumOrSpecialChar ? (
-              <FontAwesomeIcon icon={faXmark} className="text-red mr-2.5 text-lg" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md text-green mr-2" />
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
             )}
             <div
               className={`${
@@ -272,9 +272,9 @@ export const EnterPasswordStep = ({
           </div>
           <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorRepeatedChar ? (
-              <FontAwesomeIcon icon={faXmark} className="text-red mr-2.5 text-lg" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md text-green mr-2" />
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
             )}
             <div
               className={`${passwordErrorRepeatedChar ? "text-gray-400" : "text-gray-600"} text-sm`}
@@ -284,9 +284,9 @@ export const EnterPasswordStep = ({
           </div>
           <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorEscapeChar ? (
-              <FontAwesomeIcon icon={faXmark} className="text-red mr-2.5 text-lg" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md text-green mr-2" />
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
             )}
             <div
               className={`${passwordErrorEscapeChar ? "text-gray-400" : "text-gray-600"} text-sm`}
@@ -296,9 +296,9 @@ export const EnterPasswordStep = ({
           </div>
           <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorLowEntropy ? (
-              <FontAwesomeIcon icon={faXmark} className="text-red mr-2.5 text-lg" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md text-green mr-2" />
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
             )}
             <div
               className={`${passwordErrorLowEntropy ? "text-gray-400" : "text-gray-600"} text-sm`}
@@ -308,9 +308,9 @@ export const EnterPasswordStep = ({
           </div>
           <div className="ml-2 flex flex-row items-center justify-start">
             {passwordErrorBreached ? (
-              <FontAwesomeIcon icon={faXmark} className="text-red mr-2.5 text-lg" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md text-green mr-2" />
+              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
             )}
             <div className={`${passwordErrorBreached ? "text-gray-400" : "text-gray-600"} text-sm`}>
               Password was found in a data breach.

@@ -46,7 +46,7 @@ export const OrgDeleteSection = () => {
     <>
       <hr className="border-mineshaft-600" />
       <div className="py-4">
-        <p className="text-md text-mineshaft-100 mb-4">Danger Zone</p>
+        <p className="text-md mb-4 text-mineshaft-100">Danger Zone</p>
         <Button
           isLoading={isPending}
           colorSchema="danger"

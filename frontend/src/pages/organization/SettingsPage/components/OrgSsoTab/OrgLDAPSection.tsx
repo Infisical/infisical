@@ -146,7 +146,7 @@ export const OrgLDAPSection = (): JSX.Element => {
               )}
             </OrgPermissionCan>
           </div>
-          <p className="text-mineshaft-300 text-sm">
+          <p className="text-sm text-mineshaft-300">
             Allow members to authenticate into Infisical with LDAP
           </p>
         </div>
@@ -167,7 +167,7 @@ export const OrgLDAPSection = (): JSX.Element => {
             )}
           </OrgPermissionCan>
         </div>
-        <p className="text-mineshaft-300 text-sm">
+        <p className="text-sm text-mineshaft-300">
           Manage how LDAP groups are mapped to internal groups in Infisical
         </p>
       </div>

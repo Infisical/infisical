@@ -46,14 +46,14 @@ export const CommitsPage = () => {
   };
 
   return (
-    <div className="bg-bunker-800 mx-auto flex h-full w-full max-w-7xl justify-center py-4 text-white">
+    <div className="mx-auto flex h-full w-full max-w-7xl justify-center bg-bunker-800 py-4 text-white">
       <div className="w-full max-w-[75vw]">
         <PageHeader
           title="Commits"
           description="Track, inspect, and restore your secrets and folders with confidence. View the complete history of changes made to your environment, examine specific modifications at each commit point, and preview the exact impact before rolling back to previous states."
         />
         <NoticeBannerV2 title="Secret Snapshots Update" className="mb-2">
-          <p className="text-mineshaft-300 my-1 text-sm">
+          <p className="my-1 text-sm text-mineshaft-300">
             Secret Snapshots have been officially renamed to Commits. Going forward, all secret
             changes will be tracked as Commits. If you made changes before this update, you can
             still access your older Secret Snapshots by temporarily re-enabling the legacy feature

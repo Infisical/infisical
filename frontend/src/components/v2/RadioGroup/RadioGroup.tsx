@@ -14,25 +14,25 @@ export const RadioGroup = ({ className, children, ...props }: RadioGroupProps) =
   >
     <div className="flex items-center">
       <RadioGroupPrimitive.Item
-        className="border-bunker-400/60 bg-bunker-400/20 outline-hidden hover:bg-bunker-400/40 h-[20px] w-[20px] cursor-default rounded-full border duration-200"
+        className="h-[20px] w-[20px] cursor-default rounded-full border border-bunker-400/60 bg-bunker-400/20 outline-hidden duration-200 hover:bg-bunker-400/40"
         value="App"
         id="r1"
       >
-        <RadioGroupPrimitive.Indicator className="after:bg-primary relative flex h-full w-full items-center justify-center after:block after:h-[11px] after:w-[11px] after:rounded-[50%] after:content-['']" />
+        <RadioGroupPrimitive.Indicator className="relative flex h-full w-full items-center justify-center after:block after:h-[11px] after:w-[11px] after:rounded-[50%] after:bg-primary after:content-['']" />
       </RadioGroupPrimitive.Item>
-      <label className="text-bunker-200 pl-2 text-sm leading-none" htmlFor="r1">
+      <label className="pl-2 text-sm leading-none text-bunker-200" htmlFor="r1">
         App
       </label>
     </div>
     <div className="flex items-center">
       <RadioGroupPrimitive.Item
-        className="border-bunker-400/60 bg-bunker-400/20 outline-hidden hover:bg-bunker-400/40 h-[22px] w-[22px] cursor-default rounded-full border duration-200"
+        className="h-[22px] w-[22px] cursor-default rounded-full border border-bunker-400/60 bg-bunker-400/20 outline-hidden duration-200 hover:bg-bunker-400/40"
         value="Pipeline"
         id="r2"
       >
-        <RadioGroupPrimitive.Indicator className="after:bg-primary relative flex h-full w-full items-center justify-center after:block after:h-[13px] after:w-[13px] after:rounded-[50%] after:content-['']" />
+        <RadioGroupPrimitive.Indicator className="relative flex h-full w-full items-center justify-center after:block after:h-[13px] after:w-[13px] after:rounded-[50%] after:bg-primary after:content-['']" />
       </RadioGroupPrimitive.Item>
-      <label className="text-bunker-200 pl-2 text-sm leading-none" htmlFor="r2">
+      <label className="pl-2 text-sm leading-none text-bunker-200" htmlFor="r2">
         Pipeline
       </label>
     </div>

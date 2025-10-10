@@ -38,7 +38,7 @@ export const SecretApprovalsPage = () => {
         <meta property="og:title" content={String(t("approval.og-title"))} />
         <meta name="og:description" content={String(t("approval.og-description"))} />
       </Helmet>
-      <div className="bg-bunker-800 container mx-auto h-full w-full max-w-7xl text-white">
+      <div className="container mx-auto h-full w-full max-w-7xl bg-bunker-800 text-white">
         <PageHeader
           title="Approval Workflows"
           description="Create approval policies for any modifications to secrets in sensitive environments and folders."

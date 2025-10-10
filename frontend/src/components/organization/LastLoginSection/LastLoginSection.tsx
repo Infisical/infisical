@@ -9,11 +9,11 @@ type Props = {
 
 export const LastLoginSection = ({ lastLoginTime, lastLoginAuthMethod }: Props) => (
   <div>
-    <div className="border-mineshaft-600 mb-2 flex items-center gap-2 border-b pb-1">
+    <div className="mb-2 flex items-center gap-2 border-b border-mineshaft-600 pb-1">
       <div className="font-medium">Last Login</div>
     </div>
     <div className="mb-2 flex items-center gap-2 text-sm">
-      <div className="bg-mineshaft-700 flex items-center justify-center rounded-sm p-3">
+      <div className="flex items-center justify-center rounded-sm bg-mineshaft-700 p-3">
         <FontAwesomeIcon icon={faShield} className="h-4 w-4" />
       </div>
       <div className="flex flex-col">
@@ -22,7 +22,7 @@ export const LastLoginSection = ({ lastLoginTime, lastLoginAuthMethod }: Props) 
       </div>
     </div>
     <div className="flex items-center gap-2 text-sm">
-      <div className="bg-mineshaft-700 flex items-center justify-center rounded-sm p-3">
+      <div className="flex items-center justify-center rounded-sm bg-mineshaft-700 p-3">
         <FontAwesomeIcon icon={faClock} className="h-4 w-4" />
       </div>
       <div className="flex flex-col">

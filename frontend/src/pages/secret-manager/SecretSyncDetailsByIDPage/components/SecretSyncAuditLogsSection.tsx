@@ -24,11 +24,11 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
   const auditLogsRetentionDays = subscription?.auditLogsRetentionDays ?? 30;
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 flex max-h-full w-full flex-col gap-3 rounded-lg border px-4 py-3">
-      <div className="border-mineshaft-400 flex items-center justify-between border-b pb-2">
-        <h3 className="text-mineshaft-100 font-medium">Sync Logs</h3>
+    <div className="flex max-h-full w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
+        <h3 className="font-medium text-mineshaft-100">Sync Logs</h3>
         {subscription.auditLogs && (
-          <p className="text-bunker-300 text-xs">
+          <p className="text-xs text-bunker-300">
             Displaying audit logs from the last {Math.min(auditLogsRetentionDays, 60)} days
           </p>
         )}
@@ -47,7 +47,7 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
           }}
         />
       ) : (
-        <div className="bg-mineshaft-800 text-mineshaft-200 flex h-full items-center justify-center rounded-lg text-sm">
+        <div className="flex h-full items-center justify-center rounded-lg bg-mineshaft-800 text-sm text-mineshaft-200">
           <div className="flex flex-col items-center gap-4 py-20">
             <FontAwesomeIcon size="2x" icon={faFingerprint} />
             <p>

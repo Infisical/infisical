@@ -55,7 +55,7 @@ export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Pr
             <Select
               value={value}
               onValueChange={(val) => onChange(val)}
-              className="border-mineshaft-500 w-full border"
+              className="w-full border border-mineshaft-500"
               defaultValue={environments?.[0]?.slug}
               position="popper"
             >
@@ -96,9 +96,9 @@ export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Pr
           </FormControl>
         )}
       />
-      <div className="border-bunker-300/30 mb-2 mt-4 flex flex-col border-t pt-4">
+      <div className="mt-4 mb-2 flex flex-col border-t border-bunker-300/30 pt-4">
         <div>Mapping</div>
-        <div className="text-bunker-300 text-sm">Select keys for rotated value to get saved</div>
+        <div className="text-sm text-bunker-300">Select keys for rotated value to get saved</div>
       </div>
       {Object.keys(outputSchema).map((outputName) => (
         <Controller
@@ -110,7 +110,7 @@ export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Pr
               <Select
                 value={value}
                 onValueChange={(val) => onChange(val)}
-                className="border-mineshaft-500 w-full border"
+                className="w-full border border-mineshaft-500"
                 position="popper"
               >
                 {!isSecretsLoading &&

@@ -90,7 +90,7 @@ export const IntegrationDetailsByIDPage = () => {
         <meta property="og:title" content="Manage your .env files in seconds" />
         <meta name="og:description" content={t("integrations.description") as string} />
       </Helmet>
-      <div className="bg-bunker-800 mx-auto flex max-w-7xl flex-col justify-between text-white">
+      <div className="mx-auto flex max-w-7xl flex-col justify-between bg-bunker-800 text-white">
         {integration ? (
           <div className="mx-auto mb-6 w-full max-w-7xl">
             <PageHeader

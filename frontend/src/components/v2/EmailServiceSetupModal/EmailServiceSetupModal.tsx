@@ -9,7 +9,7 @@ type Props = {
 export const EmailServiceSetupModal = ({ isOpen, onOpenChange }: Props): JSX.Element => (
   <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
     <ModalContent title="Email service not configured">
-      <p className="text-bunker-300 mb-4">
+      <p className="mb-4 text-bunker-300">
         The administrators of this Infisical instance have not yet set up an email service provider
         required to perform this action
       </p>

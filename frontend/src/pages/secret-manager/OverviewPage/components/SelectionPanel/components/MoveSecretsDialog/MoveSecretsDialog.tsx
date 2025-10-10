@@ -250,7 +250,7 @@ const Content = ({
     return (
       <div className="w-full">
         <div className="mb-2">Results</div>
-        <div className="divide-mineshaft-600 bg-mineshaft-900 mb-4 flex flex-col divide-y rounded-sm px-3 py-2">
+        <div className="mb-4 flex flex-col divide-y divide-mineshaft-600 rounded-sm bg-mineshaft-900 px-3 py-2">
           {moveResults.map(({ id, name, status, message }) => {
             let className: string;
             let icon: IconDefinition;
@@ -291,7 +291,7 @@ const Content = ({
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
         <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="text-mineshaft-400 mt-4 text-sm">Moving secrets...</p>
+        <p className="mt-4 text-sm text-mineshaft-400">Moving secrets...</p>
       </div>
     );
   }
@@ -327,8 +327,8 @@ const Content = ({
         />
       </FormControl>
       {Boolean(environmentsToBeSkipped.length) && (
-        <div className="bg-mineshaft-900 rounded-sm px-3 py-2">
-          <span className="text-yellow text-sm">
+        <div className="rounded-sm bg-mineshaft-900 px-3 py-2">
+          <span className="text-sm text-yellow">
             <FontAwesomeIcon icon={faWarning} className="mr-0.5" /> The following environments will
             not be affected
           </span>
@@ -355,7 +355,7 @@ const Content = ({
         }
       >
         <Switch
-          className="bg-mineshaft-400/50 data-[state=checked]:bg-yellow/80 shadow-inner"
+          className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-yellow/80"
           id="overwrite-existing-secrets"
           thumbClassName="bg-mineshaft-800"
           onCheckedChange={setShouldOverwrite}

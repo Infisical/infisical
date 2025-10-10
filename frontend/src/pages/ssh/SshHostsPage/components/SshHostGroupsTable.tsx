@@ -63,7 +63,7 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
               data.map((group) => {
                 return (
                   <Tr
-                    className="hover:bg-mineshaft-700 h-10 cursor-pointer transition-colors duration-100"
+                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                     key={`ssh-host-group-${group.id}`}
                     onClick={() =>
                       navigate({
@@ -95,7 +95,7 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                                 <div className="flex items-center gap-1.5">
                                   <FontAwesomeIcon
                                     icon={faUser}
-                                    className="text-yellow/80 text-xs"
+                                    className="text-xs text-yellow/80"
                                   />
                                   <span>{username}</span>
                                   <Badge variant="primary">user</Badge>
@@ -113,7 +113,7 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                                 <div className="flex items-center gap-1.5">
                                   <FontAwesomeIcon
                                     icon={faUsers}
-                                    className="text-green/80 text-xs"
+                                    className="text-xs text-green/80"
                                   />
                                   <span>{allowedGroup}</span>
                                   <Badge variant="success">group</Badge>

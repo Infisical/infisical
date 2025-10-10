@@ -93,7 +93,7 @@ export const SshCertificateContent = ({
         </div>
       </div>
       <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
-        <p className="mr-4 whitespace-pre-wrap break-all">{signedKey}</p>
+        <p className="mr-4 break-all whitespace-pre-wrap">{signedKey}</p>
       </div>
       {privateKey && (
         <>
@@ -128,7 +128,7 @@ export const SshCertificateContent = ({
             </div>
           </div>
           <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
-            <p className="mr-4 whitespace-pre-wrap break-all">{privateKey}</p>
+            <p className="mr-4 break-all whitespace-pre-wrap">{privateKey}</p>
           </div>
         </>
       )}
@@ -165,7 +165,7 @@ export const SshCertificateContent = ({
             </div>
           </div>
           <div className="flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
-            <p className="mr-4 whitespace-pre-wrap break-all">{publicKey}</p>
+            <p className="mr-4 break-all whitespace-pre-wrap">{publicKey}</p>
           </div>
         </>
       )}

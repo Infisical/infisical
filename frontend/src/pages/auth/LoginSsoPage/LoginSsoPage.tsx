@@ -43,7 +43,7 @@ export const LoginSsoPage = () => {
   };
 
   return (
-    <div className="bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 flex h-screen flex-col justify-center px-6 pb-28">
+    <div className="flex h-screen flex-col justify-center bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28">
       <Helmet>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -52,7 +52,7 @@ export const LoginSsoPage = () => {
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Helmet>
       <Link to="/">
-        <div className="mb-4 mt-20 flex justify-center">
+        <div className="mt-20 mb-4 flex justify-center">
           <img
             src="/images/gradientLogo.svg"
             style={{ height: "90px", width: "120px" }}

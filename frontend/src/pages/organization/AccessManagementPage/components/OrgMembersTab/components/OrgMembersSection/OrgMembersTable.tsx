@@ -332,7 +332,7 @@ export const OrgMembersTable = ({
               variant="plain"
               size="sm"
               className={twMerge(
-                "h-9.5 border-mineshaft-600 bg-mineshaft-800 hover:border-primary/60 hover:bg-primary/10 flex w-[2.6rem] items-center justify-center overflow-hidden border p-0 transition-all",
+                "flex h-9.5 w-[2.6rem] items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
                 isTableFiltered && "border-primary/50 text-primary"
               )}
             >
@@ -348,8 +348,8 @@ export const OrgMembersTable = ({
               >
                 Roles
               </DropdownSubMenuTrigger>
-              <DropdownSubMenuContent className="thin-scrollbar max-h-80 overflow-y-auto rounded-l-none">
-                <DropdownMenuLabel className="bg-mineshaft-900 sticky top-0">
+              <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
+                <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
                   Apply Roles to Filter Users
                 </DropdownMenuLabel>
                 {roles?.map(({ id, slug, name }) => (
@@ -492,7 +492,7 @@ export const OrgMembersTable = ({
                   return (
                     <Tr
                       key={`org-membership-${orgMembershipId}`}
-                      className="hover:bg-mineshaft-700 h-10 w-full cursor-pointer transition-colors duration-100"
+                      className="h-10 w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                       onClick={() =>
                         navigate({
                           to: "/organization/members/$membershipId" as const,
@@ -533,7 +533,7 @@ export const OrgMembersTable = ({
                           )}
                           {lastLoginAuthMethod && lastLoginTime && (
                             <Tooltip
-                              className="min-w-52 max-w-96 px-3"
+                              className="max-w-96 min-w-52 px-3"
                               content={
                                 <LastLoginSection
                                   lastLoginAuthMethod={lastLoginAuthMethod}
@@ -543,7 +543,7 @@ export const OrgMembersTable = ({
                             >
                               <FontAwesomeIcon
                                 icon={faInfoCircle}
-                                className="text-mineshaft-400 ml-2 opacity-0 transition-all group-hover:opacity-100"
+                                className="ml-2 text-mineshaft-400 opacity-0 transition-all group-hover:opacity-100"
                               />
                             </Tooltip>
                           )}
@@ -561,7 +561,7 @@ export const OrgMembersTable = ({
                             <Select
                               value={role === "custom" ? findRoleFromId(roleId)?.slug : role}
                               isDisabled={userId === u?.id || !isAllowed}
-                              className="bg-mineshaft-700 h-8 w-48"
+                              className="h-8 w-48 bg-mineshaft-700"
                               position="popper"
                               dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
                               onValueChange={(selectedRole) =>
@@ -594,7 +594,7 @@ export const OrgMembersTable = ({
                                 {(isAllowed) => (
                                   <Button
                                     isDisabled={!isAllowed || isResendInvitePending}
-                                    className="border-mineshaft-600 bg-mineshaft-700 h-8 font-normal"
+                                    className="h-8 border-mineshaft-600 bg-mineshaft-700 font-normal"
                                     colorSchema="primary"
                                     variant="outline_bg"
                                     isLoading={

@@ -148,12 +148,12 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
                 </Tab>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="thin-scrollbar max-h-[70vh] overflow-y-auto"
+                className="max-h-[70vh] thin-scrollbar overflow-y-auto"
                 sideOffset={2}
                 align="center"
               >
                 <DropdownMenuLabel>Environments</DropdownMenuLabel>
-                <div className="thin-scrollbar max-h-[40vh] overflow-auto">
+                <div className="max-h-[40vh] thin-scrollbar overflow-auto">
                   {dropdownEnvironments.map((environment) => (
                     <DropdownMenuItem
                       key={environment.id}
@@ -166,7 +166,7 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
                     </DropdownMenuItem>
                   ))}
                 </div>
-                <div className="border-mineshaft-600 h-1 border-t" />
+                <div className="h-1 border-t border-mineshaft-600" />
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Create}
                   a={ProjectPermissionSub.Environments}
@@ -217,7 +217,7 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
         <ModalContent
           title="Compare Environments"
           subTitle="Compare secrets across multiple environments"
-          className="w-[95vw]! flex h-full max-w-none flex-col"
+          className="flex h-full w-[95vw]! max-w-none flex-col"
           bodyClassName="flex-1 flex flex-col overflow-hidden"
         >
           <CompareEnvironments secretPath={secretPath} />

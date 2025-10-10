@@ -104,7 +104,7 @@ export const DatePicker = ({
       <PopoverContent
         {...popUpContentProps}
         className={twMerge(
-          "border-mineshaft-600 bg-mineshaft-800 font-inter w-fit border p-2",
+          "w-fit border border-mineshaft-600 bg-mineshaft-800 p-2 font-inter",
           popUpContentProps.className
         )}
       >
@@ -133,7 +133,7 @@ export const DatePicker = ({
               type="time"
               value={displayUtc ? localTimeToUTC(timeValue) : timeValue}
               onChange={handleTimeChange}
-              className="bg-mineshaft-700 scheme-dark text-white"
+              className="bg-mineshaft-700 text-white scheme-dark"
             />
           </div>
         )}

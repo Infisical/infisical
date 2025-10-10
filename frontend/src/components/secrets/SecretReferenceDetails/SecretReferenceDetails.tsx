@@ -91,7 +91,7 @@ export const SecretReferenceNode = ({
           {hasChildren && (
             <FontAwesomeIcon
               icon={faChevronRight}
-              className="d text-mineshaft-400 mr-2 transition-transform duration-300 ease-linear"
+              className="d mr-2 text-mineshaft-400 transition-transform duration-300 ease-linear"
               aria-hidden
             />
           )}
@@ -103,7 +103,7 @@ export const SecretReferenceNode = ({
           <Tooltip className="max-w-md break-words" content={node.value}>
             <span
               className={twMerge(
-                "text-mineshaft-400 ml-1 px-1 text-xs",
+                "ml-1 px-1 text-xs text-mineshaft-400",
                 !node.value && "text-red-400"
               )}
             >
@@ -201,7 +201,7 @@ export const SecretReferenceTree = ({ secretPath, environment, secretKey }: Prop
         />
       </FormControl>
       <FormLabel className="mb-2" label="Reference Tree" />
-      <div className="thin-scrollbar border-mineshaft-600 bg-bunker-700 text-mineshaft-200 relative max-h-96 overflow-auto rounded-md border py-6 text-sm">
+      <div className="relative max-h-96 thin-scrollbar overflow-auto rounded-md border border-mineshaft-600 bg-bunker-700 py-6 text-sm text-mineshaft-200">
         {isError ? (
           <div className="flex items-center justify-center py-4">
             <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2 text-red-500" />
@@ -213,7 +213,7 @@ export const SecretReferenceTree = ({ secretPath, environment, secretKey }: Prop
           </ul>
         ) : null}
       </div>
-      <div className="text-mineshaft-400 mt-2 text-sm">
+      <div className="mt-2 text-sm text-mineshaft-400">
         Click a secret key to view its sub-references.
       </div>
     </div>

@@ -83,7 +83,7 @@ const BackupConfirmationModal = ({
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent title="Create KMS backup">
-        <p className="text-bunker-300 mb-6">
+        <p className="mb-6 text-bunker-300">
           In case of interruptions with your configured external KMS, you can load a backup to set
           the project&apos;s KMS back to the default Infisical KMS.
         </p>
@@ -176,7 +176,7 @@ const LoadBackupModal = ({
       }}
     >
       <ModalContent title="Load KMS backup">
-        <p className="text-bunker-300 mb-6">
+        <p className="mb-6 text-bunker-300">
           By loading a backup, the project&apos;s KMS will be switched to the default Infisical KMS.
         </p>
         <div className="flex justify-center">
@@ -262,9 +262,9 @@ export const EncryptionTab = () => {
   };
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex justify-between">
-        <h2 className="text-mineshaft-100 mb-2 flex-1 text-xl font-medium">Key Management</h2>
+        <h2 className="mb-2 flex-1 text-xl font-medium text-mineshaft-100">Key Management</h2>
         {kmsKeyId !== INTERNAL_KMS_KEY_ID && (
           <div className="space-x-2">
             <Button colorSchema="secondary" onClick={() => handlePopUpOpen("loadBackup")}>
@@ -297,7 +297,7 @@ export const EncryptionTab = () => {
                       isDisabled={!isAllowed || isUpdatingProjectKms}
                       onValueChange={onChange}
                       isLoading={isUpdatingProjectKms}
-                      className="bg-mineshaft-600 w-3/4"
+                      className="w-3/4 bg-mineshaft-600"
                     >
                       <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
                         Default Infisical KMS

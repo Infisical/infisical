@@ -95,7 +95,7 @@ export const RemoveApprovalPolicyModal = ({
       {isPending ? (
         <div className="mt-4 flex w-full items-center gap-2 p-2">
           <Spinner size="xs" className="text-mineshaft-600" />
-          <span className="text-mineshaft-400 text-sm">Checking for open requests...</span>
+          <span className="text-sm text-mineshaft-400">Checking for open requests...</span>
         </div>
       ) : (
         <div
@@ -114,7 +114,7 @@ export const RemoveApprovalPolicyModal = ({
                   This policy has {openCount} open request
                   {(openCount ?? 0) > 1 ? "s" : ""}
                 </span>
-                <p className="text-mineshaft-200 text-xs">
+                <p className="text-xs text-mineshaft-200">
                   Removing this policy will close all open requests.
                 </p>
               </div>
@@ -124,7 +124,7 @@ export const RemoveApprovalPolicyModal = ({
               <FontAwesomeIcon className="mt-1" icon={faCheck} />
               <div className="flex flex-col">
                 <span>This policy has no open requests</span>
-                <p className="text-mineshaft-200 text-xs">This policy is safe to remove.</p>
+                <p className="text-xs text-mineshaft-200">This policy is safe to remove.</p>
               </div>
             </>
           )}

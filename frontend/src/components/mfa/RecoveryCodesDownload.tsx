@@ -58,15 +58,15 @@ export const RecoveryCodesDownload = ({
     <Modal isOpen={isOpen} onOpenChange={hasDownloaded ? handleClose : () => {}}>
       <ModalContent title="Recovery Codes" className="max-w-md">
         <div className="space-y-4">
-          <div className="border-yellow bg-yellow/10 text-yellow rounded-sm border p-2 px-3 text-xs">
+          <div className="rounded-sm border border-yellow bg-yellow/10 p-2 px-3 text-xs text-yellow">
             Save these codes securely. Each can only be used once.
           </div>
 
-          <div className="border-mineshaft-600 bg-mineshaft-900 rounded-lg border p-4">
+          <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
             <div className="grid grid-cols-2 gap-x-6 gap-y-2 font-mono text-sm">
               {recoveryCodes.map((code, index) => (
-                <div key={code} className="text-mineshaft-200 flex items-center">
-                  <span className="text-mineshaft-400 w-8 text-right">{index + 1}.</span>
+                <div key={code} className="flex items-center text-mineshaft-200">
+                  <span className="w-8 text-right text-mineshaft-400">{index + 1}.</span>
                   <span className="pl-2">{code}</span>
                 </div>
               ))}
@@ -96,11 +96,11 @@ export const RecoveryCodesDownload = ({
           </div>
 
           {hasDownloaded ? (
-            <p className="text-mineshaft-400 text-center text-xs">
+            <p className="text-center text-xs text-mineshaft-400">
               Recovery codes downloaded. You can now close this modal.
             </p>
           ) : (
-            <p className="text-mineshaft-400 text-center text-xs">
+            <p className="text-center text-xs text-mineshaft-400">
               Download the recovery codes to continue.
             </p>
           )}

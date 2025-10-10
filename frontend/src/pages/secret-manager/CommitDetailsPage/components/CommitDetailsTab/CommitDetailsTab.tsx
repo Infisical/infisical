@@ -266,7 +266,7 @@ export const CommitDetailsTab = ({
             Commited by {actorDisplay} on{" "}
             {formatDisplayDate(parsedCommitDetails.changes?.createdAt || new Date().toISOString())}
             {parsedCommitDetails.changes?.isLatest && (
-              <span className="text-mineshaft-400 ml-1">(Latest)</span>
+              <span className="ml-1 text-mineshaft-400">(Latest)</span>
             )}
           </>
         }
@@ -291,10 +291,10 @@ export const CommitDetailsTab = ({
                   Restore Options
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-bunker-500 max-w-sm" sideOffset={2}>
+              <DropdownMenuContent align="end" className="max-w-sm bg-bunker-500" sideOffset={2}>
                 {!parsedCommitDetails.changes.isLatest && (
                   <DropdownMenuItem
-                    className="border-mineshaft-600 hover:bg-mineshaft-700 group cursor-pointer border-b px-3 py-3 transition-colors"
+                    className="group cursor-pointer border-b border-mineshaft-600 px-3 py-3 transition-colors hover:bg-mineshaft-700"
                     onClick={() => goToRollbackPreview()}
                   >
                     <div className="flex items-center space-x-3">
@@ -302,7 +302,7 @@ export const CommitDetailsTab = ({
                         <span className="text-sm font-medium text-white">
                           Roll back to this commit
                         </span>
-                        <span className="whitespace-normal break-words text-xs leading-snug text-gray-400">
+                        <span className="text-xs leading-snug break-words whitespace-normal text-gray-400">
                           Return this folder to its exact state at the time of this commit,
                           discarding all other changes made after it
                         </span>
@@ -311,13 +311,13 @@ export const CommitDetailsTab = ({
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
-                  className="hover:bg-mineshaft-700 group cursor-pointer px-3 py-3 transition-colors"
+                  className="group cursor-pointer px-3 py-3 transition-colors hover:bg-mineshaft-700"
                   onClick={() => handlePopUpOpen("revertChanges")}
                 >
                   <div className="flex items-center space-x-3">
                     <div className="flex flex-col">
                       <span className="text-sm font-medium text-white">Revert changes</span>
-                      <span className="whitespace-normal break-words text-xs leading-snug text-gray-400">
+                      <span className="text-xs leading-snug break-words whitespace-normal text-gray-400">
                         Will restore to the previous version of affected resources
                       </span>
                     </div>
@@ -328,9 +328,9 @@ export const CommitDetailsTab = ({
           )}
         </ProjectPermissionCan>
       </PageHeader>
-      <div className="border-mineshaft-600 bg-mineshaft-900 flex w-full flex-col rounded-lg border pt-4">
-        <div className="border-mineshaft-400 mx-4 flex items-center justify-between border-b pb-4">
-          <h3 className="text-mineshaft-100 text-lg font-medium">Commit Changes</h3>
+      <div className="flex w-full flex-col rounded-lg border border-mineshaft-600 bg-mineshaft-900 pt-4">
+        <div className="mx-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
+          <h3 className="text-lg font-medium text-mineshaft-100">Commit Changes</h3>
         </div>
         <div className="flex flex-col overflow-hidden px-4">
           <div className="thin-scrollbar overflow-y-auto py-4">
@@ -339,7 +339,7 @@ export const CommitDetailsTab = ({
             ) : (
               <EmptyState
                 title="No changes found."
-                className="h-full pb-0 pt-28"
+                className="h-full pt-28 pb-0"
                 icon={faCodeCommit}
               />
             )}

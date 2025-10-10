@@ -64,8 +64,8 @@ export const AdminSidebar = () => {
   const matchRoute = useMatchRoute();
 
   return (
-    <aside className="border-mineshaft-600 bg-linear-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 dark w-full border-r md:w-60">
-      <nav className="items-between dark:scheme-dark flex h-full flex-col justify-between overflow-y-auto">
+    <aside className="dark w-full border-r border-mineshaft-600 bg-linear-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
+      <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:scheme-dark">
         <div className="flex-1">
           <Menu>
             <MenuGroup title="Configuration">
@@ -107,7 +107,7 @@ export const AdminSidebar = () => {
         <Menu>
           <Link to="/organization/projects">
             <MenuItem
-              className="text-mineshaft-400 hover:text-mineshaft-300 relative flex items-center gap-2 overflow-hidden text-sm"
+              className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
               leftIcon={
                 <FontAwesomeIcon
                   className="mx-1 inline-block shrink-0"

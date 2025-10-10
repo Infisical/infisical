@@ -58,7 +58,7 @@ export const ProjectsPage = () => {
     : true;
 
   return (
-    <div className="bg-bunker-800 mx-auto flex max-w-7xl flex-col justify-start">
+    <div className="mx-auto flex max-w-7xl flex-col justify-start bg-bunker-800">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
         <link rel="icon" href="/infisical.ico" />

@@ -23,7 +23,7 @@ export default function InitialSignupStep({
 
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
-      <h1 className="bg-linear-to-b to-bunker-200 mb-8 from-white bg-clip-text text-center text-xl font-medium text-transparent">
+      <h1 className="mb-8 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
         {t("signup.initial-title")}
       </h1>
       <RegionSelect />
@@ -90,12 +90,12 @@ export default function InitialSignupStep({
           </Button>
         </div>
       )}
-      <div className="text-bunker-400 mt-6 w-1/4 min-w-[20rem] px-8 text-center text-xs lg:w-1/6">
+      <div className="mt-6 w-1/4 min-w-[20rem] px-8 text-center text-xs text-bunker-400 lg:w-1/6">
         {t("signup.create-policy")}
       </div>
-      <div className="text-bunker-400 mt-2 flex flex-row text-xs">
+      <div className="mt-2 flex flex-row text-xs text-bunker-400">
         <Link to="/login">
-          <span className="hover:text-bunker-200 hover:decoration-primary-700 cursor-pointer duration-200 hover:underline hover:underline-offset-4">
+          <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
             {t("signup.already-have-account")}
           </span>
         </Link>

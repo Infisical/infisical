@@ -211,7 +211,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
         isError={Boolean(errors.description?.message)}
       >
         <TextArea
-          className="max-h-80 min-h-40 min-w-full max-w-full"
+          className="max-h-80 min-h-40 max-w-full min-w-full"
           {...register("description")}
         />
       </FormControl>

@@ -65,7 +65,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
   return (
     <Tr
       className={twMerge(
-        "hover:bg-mineshaft-700 group h-10 transition-colors duration-100",
+        "group h-10 transition-colors duration-100 hover:bg-mineshaft-700",
         status === SecretScanningScanStatus.Failed && "bg-red/5 hover:bg-red/10"
       )}
       key={`scan-${id}`}
@@ -76,7 +76,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
           <span className="text-mineshaft-300">{format(createdAt, "h:mm aa")}</span>
         </p>
       </Td>
-      <Td className="min-w-32! max-w-0">
+      <Td className="max-w-0 min-w-32!">
         <div className="flex flex-col">
           <p className="truncate">{resourceName}</p>
         </div>

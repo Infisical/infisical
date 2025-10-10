@@ -24,7 +24,7 @@ export const SecretNoAccessListView = ({ count, isRotationView }: Props) => {
         >
           <div
             className={twMerge(
-              "border-mineshaft-600 hover:bg-mineshaft-700 flex border-b shadow-none",
+              "flex border-b border-mineshaft-600 shadow-none hover:bg-mineshaft-700",
               isRotationView ? "bg-mineshaft-700/60" : "bg-mineshaft-800"
             )}
           >
@@ -39,7 +39,7 @@ export const SecretNoAccessListView = ({ count, isRotationView }: Props) => {
                   <FontAwesomeIcon
                     icon={faRotate}
                     size="xs"
-                    className="text-mineshaft-400 absolute -bottom-[0.05rem] -right-[0.2rem]"
+                    className="absolute -right-[0.2rem] -bottom-[0.05rem] text-mineshaft-400"
                   />
                 </div>
               ) : (
@@ -49,14 +49,14 @@ export const SecretNoAccessListView = ({ count, isRotationView }: Props) => {
                 />
               )}
             </div>
-            <div className="border-mineshaft-600 ml-[0.05rem] flex h-11 w-80 shrink-0 items-center border-r px-4 py-2">
+            <div className="ml-[0.05rem] flex h-11 w-80 shrink-0 items-center border-r border-mineshaft-600 px-4 py-2">
               <Input
                 autoComplete="off"
                 isReadOnly
                 variant="plain"
                 value="NO ACCESS"
                 isDisabled
-                className="blur-xs focus:text-bunker-100 w-full px-0 placeholder:text-red-500 focus:ring-transparent"
+                className="w-full px-0 blur-xs placeholder:text-red-500 focus:text-bunker-100 focus:ring-transparent"
               />
             </div>
             <Blur className="pl-8" />

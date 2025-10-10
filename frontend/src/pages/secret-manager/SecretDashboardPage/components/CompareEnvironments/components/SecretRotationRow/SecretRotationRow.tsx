@@ -76,7 +76,7 @@ export const SecretRotationRow = ({
                   style={{ minWidth: tableWidth, maxWidth: tableWidth }}
                   className="sticky left-0 bg-clip-padding px-0 py-0"
                 >
-                  <div className="h-[40px]! bg-mineshaft-800 flex items-center justify-between gap-x-2 px-4">
+                  <div className="flex h-[40px]! items-center justify-between gap-x-2 bg-mineshaft-800 px-4">
                     <div className="w-full">
                       <div className="flex w-full flex-wrap items-center gap-x-2.5">
                         <span>{envName}</span>
@@ -110,8 +110,8 @@ export const SecretRotationRow = ({
                     </Tooltip>
                   </div>
                   <TableContainer className="rounded-none border-0">
-                    <table className="secret-table bg-mineshaft-900! w-full border-b-0">
-                      <tbody className="!last:border-b-0 border-mineshaft-600 w-full border-t-2">
+                    <table className="secret-table w-full border-b-0 bg-mineshaft-900!">
+                      <tbody className="!last:border-b-0 w-full border-t-2 border-mineshaft-600">
                         {secrets.map((secret, index) => {
                           return (
                             <Tooltip
@@ -129,10 +129,10 @@ export const SecretRotationRow = ({
                                   style={{
                                     width: colWidth
                                   }}
-                                  className="h-px! p-0! border-none"
+                                  className="h-px! border-none p-0!"
                                 >
                                   <div
-                                    className="border-mineshaft-500 flex h-full flex-1 items-center border-r px-4 py-1"
+                                    className="flex h-full flex-1 items-center border-r border-mineshaft-500 px-4 py-1"
                                     style={{
                                       width: colWidth
                                     }}

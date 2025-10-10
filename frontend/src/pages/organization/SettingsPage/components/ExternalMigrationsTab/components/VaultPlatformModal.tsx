@@ -168,7 +168,7 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
                               onChange(v);
                             }
                           }}
-                          className="border-mineshaft-500 w-full border"
+                          className="w-full border border-mineshaft-500"
                           dropdownContainerClassName="max-w-none"
                           isLoading={isGatewayLoading}
                           placeholder="Default: Internet Gateway"
@@ -255,9 +255,9 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
                   <div
                     key={el.value}
                     className={twMerge(
-                      "border-mineshaft-600 flex w-full cursor-pointer flex-col items-center gap-2 rounded-sm border p-4 opacity-75 transition-all",
+                      "flex w-full cursor-pointer flex-col items-center gap-2 rounded-sm border border-mineshaft-600 p-4 opacity-75 transition-all",
                       field.value === el.value
-                        ? "border-primary-700 bg-mineshaft-700 border-opacity-70 opacity-100"
+                        ? "border-opacity-70 border-primary-700 bg-mineshaft-700 opacity-100"
                         : "hover:border-primary-800/75 hover:bg-mineshaft-600",
                       el.isCustom && "col-span-2",
                       el.isCustom &&

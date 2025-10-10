@@ -36,11 +36,11 @@ export const SSOStep = ({ setStep, type }: Props) => {
 
   return (
     <div className="mx-auto w-full max-w-md md:px-6">
-      <p className="bg-linear-to-b to-bunker-200 mx-auto mb-8 flex w-max justify-center from-white bg-clip-text text-center text-xl font-medium text-transparent">
+      <p className="mx-auto mb-8 flex w-max justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
         What&apos;s your organization slug?
       </p>
       <form onSubmit={handleSubmission}>
-        <div className="md:min-w-88 relative mx-auto flex max-h-24 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 lg:w-1/6">
+        <div className="relative mx-auto flex max-h-24 w-full min-w-[20rem] items-center justify-center rounded-lg md:max-h-28 md:min-w-88 lg:w-1/6">
           <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
             <Input
               value={ssoIdentifier}
@@ -54,7 +54,7 @@ export const SSOStep = ({ setStep, type }: Props) => {
             />
           </div>
         </div>
-        <div className="md:min-w-88 mx-auto mt-4 flex w-full min-w-[20rem] items-center justify-center rounded-md text-center lg:w-1/6">
+        <div className="mx-auto mt-4 flex w-full min-w-[20rem] items-center justify-center rounded-md text-center md:min-w-88 lg:w-1/6">
           <Button
             type="submit"
             colorSchema="primary"
@@ -72,7 +72,7 @@ export const SSOStep = ({ setStep, type }: Props) => {
             setStep(0);
           }}
           type="button"
-          className="text-bunker-300 hover:text-bunker-200 hover:decoration-primary-700 mt-2 cursor-pointer text-sm duration-200 hover:underline hover:underline-offset-4"
+          className="mt-2 cursor-pointer text-sm text-bunker-300 duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4"
         >
           {t("login.other-option")}
         </button>

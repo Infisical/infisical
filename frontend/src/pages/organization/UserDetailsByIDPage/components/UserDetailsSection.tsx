@@ -81,9 +81,9 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
   )?.name;
 
   return membership ? (
-    <div className="border-mineshaft-600 bg-mineshaft-900 rounded-lg border p-4">
-      <div className="border-mineshaft-400 flex items-center justify-between border-b pb-4">
-        <h3 className="text-mineshaft-100 text-lg font-medium">User Details</h3>
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
+        <h3 className="text-lg font-medium text-mineshaft-100">User Details</h3>
         {userId !== membership.user.id && (
           <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Member}>
             {(isAllowed) => {
@@ -113,17 +113,17 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
       </div>
       <div className="pt-4">
         <div className="mb-4">
-          <p className="text-mineshaft-300 text-sm font-medium">Name</p>
-          <p className="text-mineshaft-300 text-sm">
+          <p className="text-sm font-medium text-mineshaft-300">Name</p>
+          <p className="text-sm text-mineshaft-300">
             {membership.user.firstName || membership.user.lastName
               ? `${membership.user.firstName} ${membership.user.lastName ?? ""}`.trim()
               : "-"}
           </p>
         </div>
         <div className="mb-4">
-          <p className="text-mineshaft-300 text-sm font-medium">Username</p>
+          <p className="text-sm font-medium text-mineshaft-300">Username</p>
           <div className="group flex align-top">
-            <p className="text-mineshaft-300 break-all text-sm">{membership.user.username}</p>
+            <p className="text-sm break-all text-mineshaft-300">{membership.user.username}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
               <Tooltip content={copyTextUsername}>
                 <IconButton
@@ -142,9 +142,9 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-mineshaft-300 text-sm font-medium">Email</p>
+          <p className="text-sm font-medium text-mineshaft-300">Email</p>
           <div className="flex items-center">
-            <p className="text-mineshaft-300 mr-2 break-all text-sm">
+            <p className="mr-2 text-sm break-all text-mineshaft-300">
               {membership.user.email ?? "-"}{" "}
               <Tooltip
                 content={
@@ -163,45 +163,45 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-mineshaft-300 text-sm font-medium">Last Login Auth Method</p>
+          <p className="text-sm font-medium text-mineshaft-300">Last Login Auth Method</p>
           <div className="group flex align-top">
-            <p className="text-mineshaft-300 break-all text-sm">
+            <p className="text-sm break-all text-mineshaft-300">
               {membership.lastLoginAuthMethod || "-"}
             </p>
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-mineshaft-300 text-sm font-medium">Last Login Time</p>
+          <p className="text-sm font-medium text-mineshaft-300">Last Login Time</p>
           <div className="group flex align-top">
-            <p className="text-mineshaft-300 break-all text-sm">
+            <p className="text-sm break-all text-mineshaft-300">
               {membership.lastLoginTime ? format(membership.lastLoginTime, "PPpp") : "-"}
             </p>
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-mineshaft-300 text-sm font-medium">Organization Role</p>
-          <p className="text-mineshaft-300 text-sm">{roleName ?? "-"}</p>
+          <p className="text-sm font-medium text-mineshaft-300">Organization Role</p>
+          <p className="text-sm text-mineshaft-300">{roleName ?? "-"}</p>
         </div>
         <div className="mb-4">
-          <p className="text-mineshaft-300 text-sm font-medium">Status</p>
-          <p className="text-mineshaft-300 text-sm">{getStatus(membership)}</p>
+          <p className="text-sm font-medium text-mineshaft-300">Status</p>
+          <p className="text-sm text-mineshaft-300">{getStatus(membership)}</p>
         </div>
         <div>
-          <p className="text-mineshaft-300 text-sm font-medium">Metadata</p>
+          <p className="text-sm font-medium text-mineshaft-300">Metadata</p>
           {membership?.metadata?.length ? (
-            <div className="text-mineshaft-300 mt-1 flex flex-wrap gap-2 text-sm">
+            <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
               {membership.metadata?.map((el) => (
                 <div key={el.id} className="flex items-center">
                   <Tag
                     size="xs"
-                    className="border-mineshaft-500 mr-0 flex items-center rounded-r-none border"
+                    className="mr-0 flex items-center rounded-r-none border border-mineshaft-500"
                   >
                     <FontAwesomeIcon icon={faKey} size="xs" className="mr-1" />
                     <div>{el.key}</div>
                   </Tag>
                   <Tag
                     size="xs"
-                    className="border-mineshaft-500 bg-mineshaft-900 flex items-center rounded-l-none border pl-1"
+                    className="flex items-center rounded-l-none border border-mineshaft-500 bg-mineshaft-900 pl-1"
                   >
                     <div className="max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap">
                       {el.value}
@@ -211,7 +211,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
               ))}
             </div>
           ) : (
-            <p className="text-mineshaft-300 text-sm">-</p>
+            <p className="text-sm text-mineshaft-300">-</p>
           )}
         </div>
         {membership.isActive &&

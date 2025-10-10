@@ -14,27 +14,27 @@ export const AuditLogStreamHeader = ({ provider, logStreamExists, onBack }: Prop
   const providerDetails = AUDIT_LOG_STREAM_PROVIDER_MAP[provider];
 
   return (
-    <div className="border-mineshaft-500 mb-4 flex w-full items-center gap-2 border-b pb-4">
+    <div className="mb-4 flex w-full items-center gap-2 border-b border-mineshaft-500 pb-4">
       <div className="relative">
         {providerDetails.image ? (
           <img
             alt={providerDetails.name}
             src={`/images/integrations/${providerDetails.image}`}
-            className="bg-bunker-500 size-12 rounded-md p-2"
+            className="size-12 rounded-md bg-bunker-500 p-2"
           />
         ) : (
           providerDetails.icon && (
-            <div className="bg-bunker-500 size-12 rounded-md p-2">
+            <div className="size-12 rounded-md bg-bunker-500 p-2">
               <FontAwesomeIcon
                 icon={providerDetails.icon}
-                className="text-mineshaft-300 h-full w-full"
+                className="h-full w-full text-mineshaft-300"
               />
             </div>
           )
         )}
       </div>
       <div>
-        <div className="text-mineshaft-300 mb-1 flex items-center">
+        <div className="mb-1 flex items-center text-mineshaft-300">
           {providerDetails.name}
           <a
             href="https://infisical.com/docs/documentation/platform/audit-log-streams/audit-log-streams#example-providers"
@@ -42,14 +42,14 @@ export const AuditLogStreamHeader = ({ provider, logStreamExists, onBack }: Prop
             className="ml-1"
             rel="noopener noreferrer"
           >
-            <div className="bg-yellow/20 text-yellow inline-block rounded-md px-1.5 text-sm opacity-80 hover:opacity-100">
-              <FontAwesomeIcon icon={faBookOpen} className="mb-px mr-1 text-xs" />
+            <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+              <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-px text-xs" />
               <span>Docs</span>
               <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="mb-px ml-1 text-[10px]" />
             </div>
           </a>
         </div>
-        <p className="text-mineshaft-400 text-sm leading-4">
+        <p className="text-sm leading-4 text-mineshaft-400">
           {logStreamExists
             ? `${providerDetails.name} Log Stream`
             : `Create a ${providerDetails.name} Log Stream`}
@@ -58,7 +58,7 @@ export const AuditLogStreamHeader = ({ provider, logStreamExists, onBack }: Prop
       {onBack && (
         <button
           type="button"
-          className="text-mineshaft-400 hover:text-mineshaft-300 ml-auto mt-1 text-xs underline underline-offset-2"
+          className="mt-1 ml-auto text-xs text-mineshaft-400 underline underline-offset-2 hover:text-mineshaft-300"
           onClick={onBack}
         >
           Select another provider

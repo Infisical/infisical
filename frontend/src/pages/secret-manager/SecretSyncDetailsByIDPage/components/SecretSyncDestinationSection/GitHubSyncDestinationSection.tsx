@@ -34,7 +34,7 @@ export const GitHubSyncDestinationSection = ({ secretSync }: Props) => {
                 side="bottom"
                 content={<GitHubSyncSelectedRepositoriesTooltipContent secretSync={secretSync} />}
               >
-                <FontAwesomeIcon size="xs" className="text-bunker-300 ml-1" icon={faInfoCircle} />
+                <FontAwesomeIcon size="xs" className="ml-1 text-bunker-300" icon={faInfoCircle} />
               </Tooltip>
             </GenericFieldLabel>
           )}

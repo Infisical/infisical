@@ -14,10 +14,10 @@ export const ExternalMigrationsTab = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["selectImportPlatform"] as const);
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 rounded-lg border p-4">
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex justify-between">
         <div className="flex items-center gap-2">
-          <p className="text-mineshaft-100 text-xl font-medium">Import from external source</p>
+          <p className="text-xl font-medium text-mineshaft-100">Import from external source</p>
 
           <div>
             <a
@@ -25,7 +25,7 @@ export const ExternalMigrationsTab = () => {
               rel="noopener noreferrer"
               href="https://infisical.com/docs/documentation/platform/external-migrations/overview"
             >
-              <div className="bg-yellow/20 text-yellow ml-2 inline-block rounded-md px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm opacity-80 hover:opacity-100">
+              <div className="ml-2 inline-block rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon

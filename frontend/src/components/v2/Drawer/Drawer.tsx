@@ -64,7 +64,7 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
           )}
           <CardBody
             className={twMerge(
-              "dark:scheme-dark grow overflow-y-auto overflow-x-hidden px-4 pt-4",
+              "grow overflow-x-hidden overflow-y-auto px-4 pt-4 dark:scheme-dark",
               cardBodyClassName
             )}
           >
@@ -75,7 +75,7 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
             <IconButton
               variant="plain"
               ariaLabel="close"
-              className="text-bunker-400 hover:text-bunker-50 absolute right-6 top-4 rounded-sm"
+              className="absolute top-4 right-6 rounded-sm text-bunker-400 hover:text-bunker-50"
             >
               <FontAwesomeIcon icon={faTimes} size="lg" className="cursor-pointer" />
             </IconButton>

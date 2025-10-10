@@ -19,7 +19,7 @@ export const AppConnectionsPage = withPermission(
           <link rel="icon" href="/infisical.ico" />
           <meta property="og:image" content="/images/message.png" />
         </Helmet>
-        <div className="bg-bunker-800 flex w-full justify-center text-white">
+        <div className="flex w-full justify-center bg-bunker-800 text-white">
           <div className="w-full max-w-7xl">
             <PageHeader
               className="w-full"
@@ -28,7 +28,7 @@ export const AppConnectionsPage = withPermission(
             />
             <div className="mb-4 flex w-full flex-col rounded-md border border-blue-500/50 bg-blue-500/30 px-4 py-2 text-sm text-blue-200">
               <div className="flex items-center">
-                <FontAwesomeIcon icon={faInfoCircle} className="mb-0.5 mr-2 text-sm" />
+                <FontAwesomeIcon icon={faInfoCircle} className="mr-2 mb-0.5 text-sm" />
                 <span className="text-sm text-blue-200">
                   App connections can also be created and managed independently in projects now.
                 </span>

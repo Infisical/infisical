@@ -884,7 +884,7 @@ export const OverviewPage = () => {
 
   if (isProjectV3 && visibleEnvs.length > 0 && isOverviewLoading) {
     return (
-      <div className="text-mineshaft-50 dark:scheme-dark container mx-auto flex h-screen w-full items-center justify-center px-8">
+      <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:scheme-dark">
         <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
       </div>
     );
@@ -900,7 +900,7 @@ export const OverviewPage = () => {
 
   if (!isProjectV3)
     return (
-      <div className="text-mineshaft-50 dark:scheme-dark flex h-full w-full flex-col items-center justify-center px-6">
+      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-mineshaft-50 dark:scheme-dark">
         <SecretV2MigrationSection />
       </div>
     );
@@ -911,7 +911,7 @@ export const OverviewPage = () => {
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
-      <div className="text-mineshaft-50 dark:scheme-dark relative mx-auto max-w-7xl">
+      <div className="relative mx-auto max-w-7xl text-mineshaft-50 dark:scheme-dark">
         <div className="flex w-full items-baseline justify-between">
           <PageHeader
             title="Secrets Overview"
@@ -919,7 +919,7 @@ export const OverviewPage = () => {
               <p className="text-md text-bunker-300">
                 Inject your secrets using
                 <a
-                  className="text-mineshaft-300 decoration-primary-800 hover:text-mineshaft-100 hover:decoration-primary-600 ml-1 underline underline-offset-4 duration-200"
+                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
                   href="https://infisical.com/docs/cli/overview"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -928,7 +928,7 @@ export const OverviewPage = () => {
                 </a>
                 ,
                 <a
-                  className="text-mineshaft-300 decoration-primary-800 hover:text-mineshaft-100 hover:decoration-primary-600 ml-1 underline underline-offset-4 duration-200"
+                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
                   href="https://infisical.com/docs/documentation/getting-started/api"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -937,7 +937,7 @@ export const OverviewPage = () => {
                 </a>
                 ,
                 <a
-                  className="text-mineshaft-300 decoration-primary-800 hover:text-mineshaft-100 hover:decoration-primary-600 ml-1 underline underline-offset-4 duration-200"
+                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
                   href="https://infisical.com/docs/sdks/overview"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -946,7 +946,7 @@ export const OverviewPage = () => {
                 </a>
                 , and
                 <a
-                  className="text-mineshaft-300 decoration-primary-800 hover:text-mineshaft-100 hover:decoration-primary-600 ml-1 underline underline-offset-4 duration-200"
+                  className="ml-1 text-mineshaft-300 underline decoration-primary-800 underline-offset-4 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
                   href="https://infisical.com/docs/documentation/getting-started/introduction"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -994,7 +994,7 @@ export const OverviewPage = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  className="thin-scrollbar max-h-[70vh] overflow-y-auto"
+                  className="max-h-[70vh] thin-scrollbar overflow-y-auto"
                   align="end"
                   sideOffset={2}
                 >
@@ -1113,7 +1113,7 @@ export const OverviewPage = () => {
                     <IconButton
                       ariaLabel="add-folder-or-import"
                       variant="outline_bg"
-                      className="bg-mineshaft-600 rounded-l-none p-3"
+                      className="rounded-l-none bg-mineshaft-600 p-3"
                     >
                       <FontAwesomeIcon icon={faAngleDown} />
                     </IconButton>
@@ -1204,7 +1204,7 @@ export const OverviewPage = () => {
         <div ref={tableRef} className="mt-4">
           <TableContainer
             onScroll={(e) => setScrollOffset(e.currentTarget.scrollLeft)}
-            className="thin-scrollbar max-h-[66vh] overflow-y-auto rounded-b-none"
+            className="max-h-[66vh] thin-scrollbar overflow-y-auto rounded-b-none"
           >
             <Table>
               <THead
@@ -1221,7 +1221,7 @@ export const OverviewPage = () => {
                   >
                     <div
                       className={twMerge(
-                        "border-mineshaft-600 flex h-full border-b pb-3 pl-3 pr-5",
+                        "flex h-full border-b border-mineshaft-600 pr-5 pb-3 pl-3",
                         !collapseEnvironments && "border-r pt-3.5"
                       )}
                     >
@@ -1238,7 +1238,7 @@ export const OverviewPage = () => {
                               : ""
                           }
                         >
-                          <div className="ml-2 mr-4">
+                          <div className="mr-4 ml-2">
                             <Checkbox
                               isDisabled={totalCount === 0}
                               id="checkbox-select-all-rows"
@@ -1276,7 +1276,7 @@ export const OverviewPage = () => {
                           ariaLabel="Toggle Environment View"
                           variant="plain"
                           colorSchema="secondary"
-                          className="ml-auto mt-auto h-min p-1"
+                          className="mt-auto ml-auto h-min p-1"
                           onClick={handleToggleNarrowHeader}
                         >
                           <FontAwesomeIcon
@@ -1328,10 +1328,10 @@ export const OverviewPage = () => {
                         >
                           <div
                             className={twMerge(
-                              "border-mineshaft-600 border-b",
+                              "border-b border-mineshaft-600",
                               collapseEnvironments
                                 ? "relative"
-                                : "flex items-center justify-center px-5 pb-[0.82rem] pt-3.5",
+                                : "flex items-center justify-center px-5 pt-3.5 pb-[0.82rem]",
                               collapseEnvironments && isLast && "overflow-clip"
                             )}
                             style={{
@@ -1355,7 +1355,7 @@ export const OverviewPage = () => {
                             <button
                               type="button"
                               className={twMerge(
-                                "hover:text-mineshaft-100 duration-100",
+                                "duration-100 hover:text-mineshaft-100",
                                 collapseEnvironments
                                   ? "absolute -rotate-[72.75deg] text-left text-sm font-normal"
                                   : "flex items-center text-center text-sm font-medium"
@@ -1374,7 +1374,7 @@ export const OverviewPage = () => {
                                 className="max-w-none lowercase"
                                 content={`${missingKeyCount} secrets missing\n compared to other environments`}
                               >
-                                <div className="rounded-xs text-bunker-100 ml-2 flex h-[1.1rem] cursor-default items-center justify-center border border-red-400 bg-red-600 p-1 text-xs font-medium">
+                                <div className="ml-2 flex h-[1.1rem] cursor-default items-center justify-center rounded-xs border border-red-400 bg-red-600 p-1 text-xs font-medium text-bunker-100">
                                   <span className="text-bunker-100">{missingKeyCount}</span>
                                 </div>
                               </Tooltip>
@@ -1538,21 +1538,21 @@ export const OverviewPage = () => {
                 )}
               </TBody>
               <TFoot>
-                <Tr className="bg-mineshaft-800 sticky bottom-0 z-10 border-0">
-                  <Td className="bg-mineshaft-800 sticky left-0 z-10 border-0 p-0">
+                <Tr className="sticky bottom-0 z-10 border-0 bg-mineshaft-800">
+                  <Td className="sticky left-0 z-10 border-0 bg-mineshaft-800 p-0">
                     <div
-                      className="border-mineshaft-600 w-full border-r border-t"
+                      className="w-full border-t border-r border-mineshaft-600"
                       style={{ height: "45px" }}
                     />
                   </Td>
                   {visibleEnvs?.map(({ name, slug }, i) => (
                     <Td
                       key={`explore-${name}-btn-${i + 1}`}
-                      className="border-mineshaft-600 border-0 border-r p-0"
+                      className="border-0 border-r border-mineshaft-600 p-0"
                     >
                       <div
                         className={twMerge(
-                          "border-mineshaft-600 flex w-full items-center justify-center border-t py-2"
+                          "flex w-full items-center justify-center border-t border-mineshaft-600 py-2"
                         )}
                       >
                         {collapseEnvironments ? (
@@ -1598,7 +1598,7 @@ export const OverviewPage = () => {
                   secretRotationCount={totalSecretRotationCount}
                 />
               }
-              className="border-t-mineshaft-600 rounded-b-md border-t border-solid"
+              className="rounded-b-md border-t border-solid border-t-mineshaft-600"
               count={totalCount}
               page={page}
               perPage={perPage}

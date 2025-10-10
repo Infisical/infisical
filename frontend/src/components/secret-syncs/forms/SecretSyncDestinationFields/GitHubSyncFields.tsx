@@ -79,7 +79,7 @@ export const GitHubSyncFields = () => {
               onValueChange={(val) => {
                 onChange(val);
               }}
-              className="border-mineshaft-500 w-full border capitalize"
+              className="w-full border border-mineshaft-500 capitalize"
               position="popper"
               placeholder="Select a scope..."
               dropdownContainerClassName="max-w-none"
@@ -131,7 +131,7 @@ export const GitHubSyncFields = () => {
                     onChange(val);
                     setValue("destinationConfig.selectedRepositoryIds", undefined);
                   }}
-                  className="border-mineshaft-500 w-full border capitalize"
+                  className="w-full border border-mineshaft-500 capitalize"
                   position="popper"
                   placeholder="Select visibility..."
                   dropdownContainerClassName="max-w-none"

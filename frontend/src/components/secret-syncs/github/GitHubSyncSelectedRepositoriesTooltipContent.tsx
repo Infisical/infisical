@@ -24,7 +24,7 @@ export const GitHubSyncSelectedRepositoriesTooltipContent = ({ secretSync }: Pro
   if (destinationConfig.scope === GitHubSyncScope.Organization) {
     return (
       <>
-        <span className="text-bunker-300 text-xs">Repositories:</span>
+        <span className="text-xs text-bunker-300">Repositories:</span>
         <p className={twMerge("text-sm", isPending && "text-mineshaft-400")}>
           {isPending
             ? "Loading..."

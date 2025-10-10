@@ -40,7 +40,7 @@ export const GroupContainer = ({
   return (
     <div
       key={group.name}
-      className="border-mineshaft-600 bg-mineshaft-800 overflow-clip border border-b-0 first:rounded-t-md last:rounded-b-md last:border-b"
+      className="overflow-clip border border-b-0 border-mineshaft-600 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md last:border-b"
     >
       <div
         className="flex h-14 cursor-pointer items-center px-5 py-4 text-sm text-gray-300"
@@ -58,7 +58,7 @@ export const GroupContainer = ({
           icon={faChevronRight}
         />
 
-        <div className="grow select-none text-base">{group.name}</div>
+        <div className="grow text-base select-none">{group.name}</div>
       </div>
 
       {(open || search) && (
@@ -66,13 +66,13 @@ export const GroupContainer = ({
           {group.fields.map((field) => (
             <div
               key={field.key}
-              className="border-mineshaft-500 bg-mineshaft-700/50 flex items-center justify-between gap-4 border-t p-4"
+              className="flex items-center justify-between gap-4 border-t border-mineshaft-500 bg-mineshaft-700/50 p-4"
             >
               <div className="flex max-w-lg flex-col">
                 <span className="text-sm">
                   <HighlightText text={field.key} highlight={search} />
                 </span>
-                <span className="text-mineshaft-400 text-sm">
+                <span className="text-sm text-mineshaft-400">
                   <HighlightText text={field.description} highlight={search} />
                 </span>
               </div>
@@ -208,19 +208,19 @@ export const EnvironmentPageForm = () => {
 
   return (
     <form
-      className="border-mineshaft-600 bg-mineshaft-900 flex flex-col gap-4 rounded-lg border p-4"
+      className="flex flex-col gap-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
       onSubmit={handleSubmit(onSubmit)}
     >
       <div className="flex w-full flex-row items-center justify-between">
         <div>
           <div className="flex items-start gap-1">
-            <p className="text-mineshaft-100 text-xl font-medium">Overrides</p>
+            <p className="text-xl font-medium text-mineshaft-100">Overrides</p>
             <a
               href="https://infisical.com/docs/self-hosting/configuration/envars#environment-variable-overrides"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="bg-yellow/20 text-yellow ml-1 mt-[0.32rem] inline-block rounded-md px-1.5 text-sm opacity-80 hover:opacity-100">
+              <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 <span>Docs</span>
                 <FontAwesomeIcon
@@ -230,7 +230,7 @@ export const EnvironmentPageForm = () => {
               </div>
             </a>
           </div>
-          <p className="text-bunker-300 text-sm">
+          <p className="text-sm text-bunker-300">
             Override specific environment variables. After saving, it may take up to 5 minutes for
             variables to propagate throughout every container.
           </p>

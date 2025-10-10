@@ -68,7 +68,7 @@ export const AccessTreeSecretPathInput = ({
       >
         {isExpanded ? (
           <div
-            className="text-mineshaft-300 flex h-10 w-10 cursor-pointer items-center justify-center hover:text-white"
+            className="flex h-10 w-10 cursor-pointer items-center justify-center text-mineshaft-300 hover:text-white"
             onClick={toggleSearch}
             role="button"
             tabIndex={0}
@@ -83,7 +83,7 @@ export const AccessTreeSecretPathInput = ({
         ) : (
           <Tooltip position="bottom" content="Search Paths">
             <div
-              className="text-mineshaft-300 flex h-10 w-10 cursor-pointer items-center justify-center hover:text-white"
+              className="flex h-10 w-10 cursor-pointer items-center justify-center text-mineshaft-300 hover:text-white"
               onClick={toggleSearch}
               role="button"
               tabIndex={0}

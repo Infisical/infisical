@@ -24,7 +24,7 @@ export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuConten
           {...props}
           ref={forwardedRef}
           className={twMerge(
-            "data-[side=bottom]:animate-slide-up-and-fade data-[side=left]:animate-slide-right-and-fade data-[side=right]:animate-slide-left-and-fade data-[side=top]:animate-slide-down-and-fade border-mineshaft-600 bg-mineshaft-900 text-bunker-300 z-30 min-w-[220px] overflow-y-auto rounded-md border shadow-sm will-change-auto",
+            "data-[side=bottom]:animate-slide-up-and-fade data-[side=left]:animate-slide-right-and-fade data-[side=right]:animate-slide-left-and-fade data-[side=top]:animate-slide-down-and-fade z-30 min-w-[220px] overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow-sm will-change-auto",
             className
           )}
         >
@@ -48,7 +48,7 @@ export const DropdownSubMenuContent = forwardRef<HTMLDivElement, DropdownSubMenu
           {...props}
           ref={forwardedRef}
           className={twMerge(
-            "data-[side=bottom]:animate-slide-up-and-fade data-[side=left]:animate-slide-right-and-fade data-[side=right]:animate-slide-left-and-fade data-[side=top]:animate-slide-down-and-fade border-mineshaft-600 bg-mineshaft-900 text-bunker-300 z-30 min-w-[220px] rounded-md border shadow-sm will-change-auto",
+            "data-[side=bottom]:animate-slide-up-and-fade data-[side=left]:animate-slide-right-and-fade data-[side=right]:animate-slide-left-and-fade data-[side=top]:animate-slide-down-and-fade z-30 min-w-[220px] rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow-sm will-change-auto",
             className
           )}
         >
@@ -66,7 +66,7 @@ export type DropdownLabelProps = DropdownMenuPrimitive.DropdownMenuLabelProps;
 export const DropdownMenuLabel = ({ className, ...props }: DropdownLabelProps) => (
   <DropdownMenuPrimitive.Label
     {...props}
-    className={twMerge("text-bunker-400 px-4 pb-1 pt-2 text-xs", className)}
+    className={twMerge("px-4 pt-2 pb-1 text-xs text-bunker-400", className)}
   />
 );
 
@@ -92,7 +92,7 @@ export const DropdownMenuItem = <T extends ElementType = "button">({
   <DropdownMenuPrimitive.Item
     {...props}
     className={twMerge(
-      "rounded-xs font-inter text-mineshaft-200 outline-hidden data-highlighted:bg-mineshaft-700 block cursor-pointer px-4 py-2 text-xs",
+      "block cursor-pointer rounded-xs px-4 py-2 font-inter text-xs text-mineshaft-200 outline-hidden data-highlighted:bg-mineshaft-700",
       className,
       isDisabled ? "pointer-events-none cursor-not-allowed opacity-50" : ""
     )}
@@ -126,7 +126,7 @@ export const DropdownSubMenuTrigger = <T extends ElementType = "button">({
   <DropdownMenuPrimitive.SubTrigger
     {...props}
     className={twMerge(
-      "rounded-xs font-inter text-mineshaft-200 outline-hidden data-highlighted:bg-mineshaft-700 block cursor-pointer px-4 py-2 text-xs",
+      "block cursor-pointer rounded-xs px-4 py-2 font-inter text-xs text-mineshaft-200 outline-hidden data-highlighted:bg-mineshaft-700",
       className
     )}
   >

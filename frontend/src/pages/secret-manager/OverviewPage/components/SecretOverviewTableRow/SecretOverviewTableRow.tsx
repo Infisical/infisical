@@ -114,11 +114,11 @@ export const SecretOverviewTableRow = ({
     <>
       <Tr isHoverable isSelectable onClick={() => setIsFormExpanded.toggle()} className="group">
         <Td
-          className={`bg-mineshaft-800 group-hover:bg-mineshaft-700 sticky left-0 z-10 bg-clip-padding px-0 py-0 ${
-            isFormExpanded && "border-mineshaft-500 border-t-2"
+          className={`sticky left-0 z-10 bg-mineshaft-800 bg-clip-padding px-0 py-0 group-hover:bg-mineshaft-700 ${
+            isFormExpanded && "border-t-2 border-mineshaft-500"
           }`}
         >
-          <div className="border-mineshaft-600 h-full w-full border-r px-5 py-2.5">
+          <div className="h-full w-full border-r border-mineshaft-600 px-5 py-2.5">
             <div className="flex items-center space-x-5">
               <div className="text-bunker-300">
                 <Checkbox
@@ -152,8 +152,8 @@ export const SecretOverviewTableRow = ({
             <Td
               key={`sec-overview-${slug}-${i + 1}-value`}
               className={twMerge(
-                "border-mineshaft-600 group-hover:bg-mineshaft-700 border-r px-0 py-3",
-                isFormExpanded && "border-mineshaft-500 border-t-2",
+                "border-r border-mineshaft-600 px-0 py-3 group-hover:bg-mineshaft-700",
+                isFormExpanded && "border-t-2 border-mineshaft-500",
                 (isSecretPresent && !isSecretEmpty) || isSecretImported ? "text-green-600" : "",
                 isSecretPresent && isSecretEmpty && !isSecretImported ? "text-mineshaft-400" : "",
                 !isSecretPresent && !isSecretEmpty && !isSecretImported ? "text-red-600" : ""
@@ -195,7 +195,7 @@ export const SecretOverviewTableRow = ({
           <Td
             colSpan={totalCols}
             className={`bg-bunker-600 px-0 py-0 ${
-              isFormExpanded && "border-mineshaft-500 border-b-2"
+              isFormExpanded && "border-b-2 border-mineshaft-500"
             }`}
           >
             <div className="ml-2 p-2" style={getExpandedRowStyle(scrollOffset)}>
@@ -208,14 +208,14 @@ export const SecretOverviewTableRow = ({
               <TableContainer>
                 <table className="secret-table">
                   <thead>
-                    <tr className="border-mineshaft-600 h-10 border-b-2">
+                    <tr className="h-10 border-b-2 border-mineshaft-600">
                       <th style={{ padding: "0.5rem 1rem" }} className="min-table-row min-w-44">
                         Environment
                       </th>
                       <th style={{ padding: "0.5rem 1rem" }} className="border-none">
                         Value
                       </th>
-                      <div className="absolute right-0 top-0 ml-auto mr-1 mt-1 w-min">
+                      <div className="absolute top-0 right-0 mt-1 mr-1 ml-auto w-min">
                         <Button
                           variant="outline_bg"
                           className="p-1"
@@ -227,7 +227,7 @@ export const SecretOverviewTableRow = ({
                       </div>
                     </tr>
                   </thead>
-                  <tbody className="border-mineshaft-600 border-t-2">
+                  <tbody className="border-t-2 border-mineshaft-600">
                     {environments.map(({ name, slug }) => {
                       const secret = getSecretByKey(slug, secretKey);
                       const isCreatable = !secret;

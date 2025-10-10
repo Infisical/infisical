@@ -342,7 +342,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
         )}
       />
       {kms && (
-        <span className="text-mineshaft-300 text-xs">
+        <span className="text-xs text-mineshaft-300">
           To change your GCP credentials, create a new external KMS and assign it to project you
           want to use it with.
         </span>

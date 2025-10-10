@@ -65,7 +65,7 @@ export const PkiSyncTable = ({ pkiSyncs, onEdit, onDelete, onTrigger }: Props) =
           {pkiSyncs.map((pkiSync) => (
             <Tr
               key={pkiSync.id}
-              className="hover:bg-mineshaft-700 cursor-pointer"
+              className="cursor-pointer hover:bg-mineshaft-700"
               onClick={() => onEdit(pkiSync)}
             >
               <Td>{pkiSync.name}</Td>

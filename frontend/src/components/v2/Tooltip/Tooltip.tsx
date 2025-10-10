@@ -52,7 +52,7 @@ export const Tooltip = ({
           sideOffset={5}
           {...props}
           className={twMerge(
-            "data-[state=delayed-open]:data-[side=bottom]:animate-slide-up-and-fade data-[state=delayed-open]:data-[side=left]:animate-slide-right-and-fade data-[state=delayed-open]:data-[side=right]:animate-slide-left-and-fade data-[state=delayed-open]:data-[side=top]:animate-slide-down-and-fade border-mineshaft-600 bg-mineshaft-800 text-bunker-200 z-50 max-w-60 select-none border font-light shadow-md",
+            "data-[state=delayed-open]:data-[side=bottom]:animate-slide-up-and-fade data-[state=delayed-open]:data-[side=left]:animate-slide-right-and-fade data-[state=delayed-open]:data-[side=right]:animate-slide-left-and-fade data-[state=delayed-open]:data-[side=top]:animate-slide-down-and-fade z-50 max-w-60 border border-mineshaft-600 bg-mineshaft-800 font-light text-bunker-200 shadow-md select-none",
             isDisabled && "hidden!",
             center && "text-center",
             size === "sm" && "rounded-xs px-2 py-1 text-xs",

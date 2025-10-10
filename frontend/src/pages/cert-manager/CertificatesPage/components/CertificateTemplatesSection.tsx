@@ -63,9 +63,9 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
   };
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 mt-4 rounded-lg border p-4">
-      <div className="border-mineshaft-400 flex items-center justify-between border-b pb-4">
-        <h3 className="text-mineshaft-100 text-lg font-medium">Certificate Templates</h3>
+    <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
+        <h3 className="text-lg font-medium text-mineshaft-100">Certificate Templates</h3>
         <ProjectPermissionCan
           I={ProjectPermissionPkiTemplateActions.Create}
           a={ProjectPermissionSub.CertificateTemplates}

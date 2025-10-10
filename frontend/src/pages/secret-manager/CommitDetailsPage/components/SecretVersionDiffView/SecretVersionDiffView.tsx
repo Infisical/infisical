@@ -578,19 +578,19 @@ export const SecretVersionDiffView = ({
     if (item.isDeleted) {
       textStyle = "line-through text-red-300";
       changeBadge = (
-        <span className="bg-mineshaft-600 ml-2 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium">
+        <span className="ml-2 rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium whitespace-nowrap">
           {isSecret ? "Secret" : "Folder"} Deleted
         </span>
       );
     } else if (item.isAdded) {
       changeBadge = (
-        <span className="bg-mineshaft-600 ml-2 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium">
+        <span className="ml-2 rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium whitespace-nowrap">
           {isSecret ? "Secret" : "Folder"} Added
         </span>
       );
     } else if (item.isUpdated) {
       changeBadge = (
-        <span className="bg-mineshaft-600 ml-2 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium">
+        <span className="ml-2 rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium whitespace-nowrap">
           {isSecret ? "Secret" : "Folder"} Updated
         </span>
       );
@@ -598,7 +598,7 @@ export const SecretVersionDiffView = ({
 
     return (
       <div
-        className="hover:bg-mineshaft-700 flex cursor-pointer items-center justify-between p-4"
+        className="flex cursor-pointer items-center justify-between p-4 hover:bg-mineshaft-700"
         onClick={handleToggle}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -637,21 +637,21 @@ export const SecretVersionDiffView = ({
   };
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-800 overflow-hidden border border-b-0 first:rounded-t last:rounded-b last:border-b">
+    <div className="overflow-hidden border border-b-0 border-mineshaft-600 bg-mineshaft-800 first:rounded-t last:rounded-b last:border-b">
       {showHeader && renderHeader()}
       {!collapsed && (
-        <div className="border-mineshaft-700 bg-mineshaft-900 text-mineshaft-100 border-t p-3">
+        <div className="border-t border-mineshaft-700 bg-mineshaft-900 p-3 text-mineshaft-100">
           <div className="flex gap-3">
             <div
               ref={oldContainerRef}
-              className="thin-scrollbar max-h-96 flex-1 overflow-auto whitespace-pre"
+              className="max-h-96 thin-scrollbar flex-1 overflow-auto whitespace-pre"
             >
               {oldVersionContent}
             </div>
-            <div className="bg-mineshaft-600 max-h-96 w-[0.05rem] self-stretch" />
+            <div className="max-h-96 w-[0.05rem] self-stretch bg-mineshaft-600" />
             <div
               ref={newContainerRef}
-              className="thin-scrollbar max-h-96 flex-1 overflow-auto whitespace-pre"
+              className="max-h-96 thin-scrollbar flex-1 overflow-auto whitespace-pre"
             >
               {newVersionContent}
             </div>

@@ -12,7 +12,7 @@ export const SelectOrganizationPage = () => {
 
   if (duplicateAccounts.isPending) {
     return (
-      <div className="bg-bunker-800 h-screen w-screen">
+      <div className="h-screen w-screen bg-bunker-800">
         <ContentLoader />
       </div>
     );

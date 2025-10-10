@@ -183,7 +183,7 @@ export const EditDynamicSecretCassandraForm = ({
           </div>
         </div>
         <div>
-          <div className="border-b-mineshaft-600 mb-4 border-b pb-2">Configuration</div>
+          <div className="mb-4 border-b border-b-mineshaft-600 pb-2">Configuration</div>
           <div className="flex flex-col">
             <div className="flex items-center space-x-2">
               <Controller
@@ -296,7 +296,7 @@ export const EditDynamicSecretCassandraForm = ({
                   </FormControl>
                 )}
               />
-              <Accordion type="multiple" className="bg-mineshaft-700 w-full">
+              <Accordion type="multiple" className="w-full bg-mineshaft-700">
                 <AccordionItem value="modify-sql-statement">
                   <AccordionTrigger>Modify CQL Statements</AccordionTrigger>
                   <AccordionContent>

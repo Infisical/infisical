@@ -29,7 +29,7 @@ export const PersonalTabGroup = () => {
       </TabPanel>
       <TabPanel value={tabs[2].key}>
         <div className="space-y-3">
-          <div className="border-primary-600/70 bg-primary/[.07] mt-4 flex w-full flex-row items-center rounded-md border p-4 text-base text-white">
+          <div className="mt-4 flex w-full flex-row items-center rounded-md border border-primary-600/70 bg-primary/[.07] p-4 text-base text-white">
             <FontAwesomeIcon icon={faWarning} className="pr-6 text-4xl text-white/80" />
             <div className="flex w-full flex-col text-sm">
               <span className="mb-4 text-lg font-medium">Deprecation Notice</span>
@@ -41,7 +41,7 @@ export const PersonalTabGroup = () => {
                 <a
                   href="https://infisical.com/blog/deprecating-api-keys"
                   target="_blank"
-                  className="text-primary-400 font-medium"
+                  className="font-medium text-primary-400"
                   rel="noreferrer"
                 >
                   here
@@ -51,7 +51,7 @@ export const PersonalTabGroup = () => {
                 <a
                   href="https://infisical.com/docs/documentation/platform/identities/overview"
                   target="_blank"
-                  className="text-primary-400 font-medium"
+                  className="font-medium text-primary-400"
                   rel="noreferrer"
                 >
                   Learn more about Machine Identities

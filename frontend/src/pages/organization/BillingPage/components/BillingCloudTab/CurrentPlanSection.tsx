@@ -38,7 +38,7 @@ export const CurrentPlanSection = () => {
   };
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <h2 className="mb-8 flex-1 text-xl font-medium text-white">Current usage</h2>
       <TableContainer className="mt-4">
         <Table>

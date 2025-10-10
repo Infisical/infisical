@@ -152,7 +152,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                 .map(({ group: { id, name }, roles, createdAt }) => {
                   return (
                     <Tr
-                      className="hover:bg-mineshaft-700 group h-10 w-full cursor-pointer transition-colors duration-100"
+                      className="group h-10 w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                       key={`st-v3-${id}`}
                       role="button"
                       tabIndex={0}

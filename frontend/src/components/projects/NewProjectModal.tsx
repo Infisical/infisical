@@ -202,7 +202,7 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
                   <div
                     key={el.value}
                     className={twMerge(
-                      "border-mineshaft-600 hover:border-primary-400 hover:bg-mineshaft-600 flex cursor-pointer flex-col items-center gap-2 rounded-sm border px-2 py-4 opacity-75 transition-all",
+                      "flex cursor-pointer flex-col items-center gap-2 rounded-sm border border-mineshaft-600 px-2 py-4 opacity-75 transition-all hover:border-primary-400 hover:bg-mineshaft-600",
                       field.value === el.value && "border-primary-400 bg-mineshaft-600 opacity-100"
                     )}
                     onClick={() => field.onChange(el.value)}
@@ -238,7 +238,7 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
                 placeholder="Project description"
                 {...field}
                 rows={3}
-                className="thin-scrollbar resize-none! bg-mineshaft-900 w-full"
+                className="thin-scrollbar w-full resize-none! bg-mineshaft-900"
               />
             </FormControl>
           )}
@@ -311,7 +311,7 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
                       onValueChange={(e) => {
                         onChange(e);
                       }}
-                      className="bg-mineshaft-600 mb-12 w-full"
+                      className="mb-12 w-full bg-mineshaft-600"
                       position="popper"
                       dropdownContainerClassName="max-w-none -top-1"
                       side="top"
@@ -333,7 +333,7 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
             </AccordionContent>
           </AccordionItem>
         </Accordion>
-        <div className="absolute bottom-0 right-0 mb-6 mr-6 flex items-start justify-end">
+        <div className="absolute right-0 bottom-0 mr-6 mb-6 flex items-start justify-end">
           <ModalClose>
             <Button colorSchema="secondary" variant="plain" className="py-2">
               Cancel

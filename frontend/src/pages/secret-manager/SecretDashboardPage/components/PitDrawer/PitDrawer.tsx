@@ -41,13 +41,13 @@ export const PitDrawer = ({
       >
         <div className="flex flex-col space-y-2">
           <NoticeBannerV2 title="Snapshots are being deprecated" className="mb-2">
-            <p className="text-mineshaft-300 my-1 text-sm">
+            <p className="my-1 text-sm text-mineshaft-300">
               Snapshots will be replaced by{" "}
               <a
                 target="_blank"
                 href="https://infisical.com/docs/documentation/platform/pit-recovery"
                 rel="noopener noreferrer"
-                className="decoration-primary hover:text-mineshaft-200 underline underline-offset-2"
+                className="underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
               >
                 Commits
               </a>{" "}

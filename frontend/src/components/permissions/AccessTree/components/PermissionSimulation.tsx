@@ -51,7 +51,7 @@ export const PermissionSimulation = ({
           onClick={handlePermissionSimulation}
           rightIcon={
             <FontAwesomeIcon
-              className="text-bunker-300 hover:text-primary pl-1 text-sm hover:opacity-80"
+              className="pl-1 text-sm text-bunker-300 hover:text-primary hover:opacity-80"
               icon={faChevronDown}
             />
           }
@@ -65,9 +65,9 @@ export const PermissionSimulation = ({
     <Panel
       onClick={handlePermissionSimulation}
       position="top-left"
-      className={`group flex flex-col gap-2 pb-4 pr-4 ${expand ? "" : "cursor-pointer"}`}
+      className={`group flex flex-col gap-2 pr-4 pb-4 ${expand ? "" : "cursor-pointer"}`}
     >
-      <div className="border-mineshaft-600 bg-mineshaft-800 font-inter flex w-[20rem] flex-col gap-1.5 rounded-sm border p-2 text-gray-200">
+      <div className="flex w-[20rem] flex-col gap-1.5 rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-2 font-inter text-gray-200">
         <div>
           <div className="flex w-full items-center justify-between">
             <span className="text-sm">Permission Simulation</span>
@@ -83,7 +83,7 @@ export const PermissionSimulation = ({
             </IconButton>
           </div>
           {expand && (
-            <p className="text-mineshaft-400 mb-2 mt-1 text-xs">
+            <p className="mt-1 mb-2 text-xs text-mineshaft-400">
               Evaluate conditional policies to see what permissions will be granted given a secret
               name or tags
             </p>
@@ -96,7 +96,7 @@ export const PermissionSimulation = ({
               <Select
                 value={subject}
                 onValueChange={(value) => setSubject(value as ProjectPermissionSub)}
-                className="border-mineshaft-500 w-full border capitalize"
+                className="w-full border border-mineshaft-500 capitalize"
                 position="popper"
                 dropdownContainerClassName="max-w-none"
               >
@@ -119,7 +119,7 @@ export const PermissionSimulation = ({
               <Select
                 value={environment}
                 onValueChange={setEnvironment}
-                className="border-mineshaft-500 w-full border capitalize"
+                className="w-full border border-mineshaft-500 capitalize"
                 position="popper"
                 dropdownContainerClassName="max-w-76"
               >

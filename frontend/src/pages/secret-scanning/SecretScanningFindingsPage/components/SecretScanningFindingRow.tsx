@@ -88,7 +88,7 @@ export const SecretScanningFindingRow = ({
       <Tr
         onClick={setIsExpanded.toggle}
         className={twMerge(
-          "hover:bg-mineshaft-700 group h-10 cursor-pointer transition-colors duration-100"
+          "group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
         )}
         key={`resource-${id}`}
       >
@@ -102,7 +102,7 @@ export const SecretScanningFindingRow = ({
             }}
           />
         </Td>
-        <Td className="min-w-16! max-w-0">
+        <Td className="max-w-0 min-w-16!">
           <div className="flex w-full items-center">
             <img
               alt={`${sourceDetails.name} Data Source`}
@@ -118,10 +118,10 @@ export const SecretScanningFindingRow = ({
             <p className="text-mineshaft-300">{format(createdAt, "h:mm aa")}</p>
           </div>
         </Td>
-        <Td className="min-w-32! max-w-0">
+        <Td className="max-w-0 min-w-32!">
           <div className="w-full items-center">
             <p className="truncate">{resourceName}</p>
-            <p className="text-mineshaft-400 truncate text-xs">{dataSourceName}</p>
+            <p className="truncate text-xs text-mineshaft-400">{dataSourceName}</p>
           </div>
         </Td>
         <Td className="whitespace-nowrap">{rule}</Td>
@@ -174,7 +174,7 @@ export const SecretScanningFindingRow = ({
       <Tr>
         <Td colSpan={6} className="border-none! p-0">
           <div
-            className={`bg-mineshaft-900/75 w-full overflow-hidden transition-all duration-500 ${
+            className={`w-full overflow-hidden bg-mineshaft-900/75 transition-all duration-500 ${
               isExpanded ? "max-h-200 opacity-100" : "max-h-0"
             }`}
           >
@@ -208,13 +208,13 @@ export const SecretScanningFindingRow = ({
                 <a
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-mineshaft-300 hover:text-mineshaft-100 cursor-pointer underline underline-offset-2"
+                  className="cursor-pointer text-mineshaft-300 underline underline-offset-2 hover:text-mineshaft-100"
                   href={details.link}
                 >
                   {details.link}
                 </a>
               </GenericFieldLabel>
-              <div className="border-mineshaft-500 col-span-full flex items-center border-t" />
+              <div className="col-span-full flex items-center border-t border-mineshaft-500" />
               <ProjectPermissionCan
                 I={ProjectPermissionSecretScanningFindingActions.Update}
                 a={ProjectPermissionSub.SecretScanningFindings}

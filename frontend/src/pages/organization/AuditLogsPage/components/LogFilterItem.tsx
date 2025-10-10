@@ -29,14 +29,14 @@ export const LogFilterItem = ({
           <Tooltip content={tooltipText} className="max-w-sm">
             <FontAwesomeIcon
               icon={faInfoCircle}
-              className="text-mineshaft-400 -mt-[0.05rem] ml-1 text-[11px]"
+              className="-mt-[0.05rem] ml-1 text-[11px] text-mineshaft-400"
             />
           </Tooltip>
         )}
         <Button
           onClick={() => onClear()}
           variant="link"
-          className="text-mineshaft-400 hover:text-mineshaft-300 ml-auto font-normal transition-all duration-75"
+          className="ml-auto font-normal text-mineshaft-400 transition-all duration-75 hover:text-mineshaft-300"
           size="xs"
         >
           Clear

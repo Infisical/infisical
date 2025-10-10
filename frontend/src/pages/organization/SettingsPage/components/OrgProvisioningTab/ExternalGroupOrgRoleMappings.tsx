@@ -95,7 +95,7 @@ export const ExternalGroupOrgRoleMappings = () => {
   return (
     <div className="py-4">
       <h2 className="text-md text-mineshaft-100">SCIM Group to Organization Role Mappings</h2>
-      <p className="text-mineshaft-300 text-sm">
+      <p className="text-sm text-mineshaft-300">
         Assign newly provisioned users a default organization role based on their SCIM group.
       </p>
       <form onSubmit={handleSubmit(handleUpdateMappings)} className="pt-4">
@@ -109,7 +109,7 @@ export const ExternalGroupOrgRoleMappings = () => {
                   {i === 0 && (
                     <FormLabel
                       label="SCIM Group Name"
-                      className="text-mineshaft-400 text-xs"
+                      className="text-xs text-mineshaft-400"
                       tooltipClassName="max-w-md whitespace-pre-line"
                       tooltipText="The name associated with this group in your SCIM provider"
                     />
@@ -134,7 +134,7 @@ export const ExternalGroupOrgRoleMappings = () => {
                 </div>
                 <div className="flex-1">
                   {i === 0 && (
-                    <span className="text-mineshaft-400 text-xs">
+                    <span className="text-xs text-mineshaft-400">
                       Role to Assign Users in this Group
                     </span>
                   )}

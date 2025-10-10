@@ -173,7 +173,7 @@ export const RequestSecretForm = () => {
         </IconButton>
       </div>
       <Button
-        className="bg-mineshaft-700 text-bunker-200 mt-4 w-full py-3"
+        className="mt-4 w-full bg-mineshaft-700 py-3 text-bunker-200"
         colorSchema="primary"
         variant="outline_bg"
         size="sm"

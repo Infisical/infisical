@@ -19,7 +19,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
         <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="text-mineshaft-400 mt-4 text-sm">Loading options...</p>
+        <p className="mt-4 text-sm text-mineshaft-400">Loading options...</p>
       </div>
     );
   }
@@ -34,7 +34,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
             type="button"
             key={type}
             onClick={() => onSelect(type)}
-            className="border-mineshaft-600 bg-mineshaft-700 hover:bg-mineshaft-600 group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border p-4 duration-200"
+            className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
           >
             <img
               src={`/images/integrations/${image}`}
@@ -59,7 +59,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
             service you're looking for,`}{" "}
               <a
                 target="_blank"
-                className="hover:text-mineshaft-300 underline"
+                className="underline hover:text-mineshaft-300"
                 href="https://infisical.com/slack"
                 rel="noopener noreferrer"
               >
@@ -68,7 +68,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
               or{" "}
               <a
                 target="_blank"
-                className="hover:text-mineshaft-300 underline"
+                className="underline hover:text-mineshaft-300"
                 href="https://github.com/Infisical/infisical/discussions"
                 rel="noopener noreferrer"
               >
@@ -79,7 +79,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
           </>
         }
       >
-        <div className="border-mineshaft-600 bg-mineshaft-800 hover:bg-mineshaft-900/50 group relative flex h-28 flex-col items-center justify-center rounded-md border border-dashed p-4">
+        <div className="group relative flex h-28 flex-col items-center justify-center rounded-md border border-dashed border-mineshaft-600 bg-mineshaft-800 p-4 hover:bg-mineshaft-900/50">
           <FontAwesomeIcon className="mt-auto text-3xl" icon={faWrench} />
           <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
             Coming Soon

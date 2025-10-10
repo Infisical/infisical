@@ -10,11 +10,11 @@ const Option = ({ isSelected, children, ...props }: OptionProps<(typeof AWS_REGI
     <components.Option isSelected={isSelected} {...props}>
       <div className="flex flex-row items-center justify-between">
         <p className="truncate">{children}</p>
-        <Badge variant="success" className="ml-1 mr-auto cursor-pointer">
+        <Badge variant="success" className="mr-auto ml-1 cursor-pointer">
           {props.data.slug}
         </Badge>
         {isSelected && (
-          <FontAwesomeIcon className="text-primary ml-2" icon={faCheckCircle} size="sm" />
+          <FontAwesomeIcon className="ml-2 text-primary" icon={faCheckCircle} size="sm" />
         )}
       </div>
     </components.Option>

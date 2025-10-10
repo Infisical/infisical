@@ -66,16 +66,16 @@ export const RelayTab = withPermission(
     );
 
     return (
-      <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
+      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="text-mineshaft-100 text-lg font-medium">Relays</h3>
+            <h3 className="text-lg font-medium text-mineshaft-100">Relays</h3>
             <a
               href="https://infisical.com/docs/documentation/platform/gateways/relay-deployment"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="bg-yellow/20 text-yellow inline-block rounded-md px-1.5 py-0.5 text-sm font-normal opacity-80 hover:opacity-100">
+              <div className="inline-block rounded-md bg-yellow/20 px-1.5 py-0.5 text-sm font-normal text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 <span>Docs</span>
                 <FontAwesomeIcon
@@ -86,7 +86,7 @@ export const RelayTab = withPermission(
             </a>
           </div>
         </div>
-        <p className="text-mineshaft-400 mb-4 text-sm">
+        <p className="mb-4 text-sm text-mineshaft-400">
           Create and configure relays to securely access private network resources from Infisical
         </p>
         <div>
@@ -120,7 +120,7 @@ export const RelayTab = withPermission(
                         <span>{el.name}</span>
                         {!el.orgId && (
                           <Tooltip content="This is a managed relay provided by Infisical">
-                            <span className="bg-mineshaft-700 text-mineshaft-400 rounded-sm px-1.5 py-0.5 text-xs">
+                            <span className="rounded-sm bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
                               Managed
                             </span>
                           </Tooltip>

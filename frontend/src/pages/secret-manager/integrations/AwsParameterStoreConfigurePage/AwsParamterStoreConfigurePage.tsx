@@ -174,7 +174,7 @@ export const AWSParameterStoreConfigurePage = () => {
       <Helmet>
         <title>Set Up AWS Parameter Integration</title>
       </Helmet>
-      <Card className="border-mineshaft-600 max-w-lg rounded-md border">
+      <Card className="max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Choose which environment in Infisical you want to sync to secerts in AWS Parameter Store."
@@ -194,7 +194,7 @@ export const AWSParameterStoreConfigurePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="bg-yellow/20 text-yellow mb-1 ml-2 inline-block cursor-default rounded-md px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
@@ -207,7 +207,7 @@ export const AWSParameterStoreConfigurePage = () => {
         </CardTitle>
         <Tabs defaultValue={TabSections.Connection} className="px-6">
           <TabList>
-            <div className="border-mineshaft-600 flex w-full flex-row border-b">
+            <div className="flex w-full flex-row border-b border-mineshaft-600">
               <Tab value={TabSections.Connection}>Connection</Tab>
               <Tab value={TabSections.Options}>Options</Tab>
             </div>
@@ -224,7 +224,7 @@ export const AWSParameterStoreConfigurePage = () => {
                 <Select
                   value={selectedSourceEnvironment}
                   onValueChange={(val) => setSelectedSourceEnvironment(val)}
-                  className="border-mineshaft-500 w-full border"
+                  className="w-full border border-mineshaft-500"
                 >
                   {currentProject?.environments.map((sourceEnvironment) => (
                     <SelectItem
@@ -250,7 +250,7 @@ export const AWSParameterStoreConfigurePage = () => {
                     setSelectedAWSRegion(val);
                     setKmsKeyId("");
                   }}
-                  className="border-mineshaft-500 w-full border"
+                  className="w-full border border-mineshaft-500"
                 >
                   {awsRegions.map((awsRegion) => (
                     <SelectItem value={awsRegion.slug} key={`aws-environment-${awsRegion.slug}`}>
@@ -278,7 +278,7 @@ export const AWSParameterStoreConfigurePage = () => {
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: 30 }}
             >
-              <div className="ml-1 mt-2">
+              <div className="mt-2 ml-1">
                 <Switch
                   id="delete-aws"
                   onCheckedChange={setShouldDisableDelete}
@@ -287,7 +287,7 @@ export const AWSParameterStoreConfigurePage = () => {
                   Disable deleting secrets in AWS Parameter Store
                 </Switch>
               </div>
-              <div className="ml-1 mt-4">
+              <div className="mt-4 ml-1">
                 <Switch id="tag-aws" onCheckedChange={setShouldTag} isChecked={shouldTag}>
                   Tag in AWS Parameter Store
                 </Switch>
@@ -316,7 +316,7 @@ export const AWSParameterStoreConfigurePage = () => {
                   onValueChange={(e) => {
                     setKmsKeyId(e);
                   }}
-                  className="border-mineshaft-500 w-full border"
+                  className="w-full border border-mineshaft-500"
                 >
                   {integrationAuthAwsKmsKeys?.length ? (
                     integrationAuthAwsKmsKeys.map((key) => {
@@ -342,19 +342,19 @@ export const AWSParameterStoreConfigurePage = () => {
           onClick={handleButtonClick}
           color="mineshaft"
           variant="outline_bg"
-          className="mb-6 ml-auto mr-6 mt-2"
+          className="mt-2 mr-6 mb-6 ml-auto"
           isLoading={isLoading}
         >
           Create Integration
         </Button>
       </Card>
-      <div className="border-mineshaft-800 mt-6 w-full max-w-md border-t" />
-      <div className="border-mineshaft-600 bg-mineshaft-800 mt-6 flex w-full max-w-lg flex-col rounded-md border p-4">
+      <div className="mt-6 w-full max-w-md border-t border-mineshaft-800" />
+      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4">
         <div className="flex flex-row items-center">
-          <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-200 text-xl" />{" "}
-          <span className="text-md text-mineshaft-100 ml-3">Pro Tip</span>
+          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-mineshaft-200" />{" "}
+          <span className="text-md ml-3 text-mineshaft-100">Pro Tip</span>
         </div>
-        <span className="text-mineshaft-300 mt-4 text-sm">
+        <span className="mt-4 text-sm text-mineshaft-300">
           After creating an integration, your secrets will start syncing immediately. This might
           cause an unexpected override of current secrets in AWS Parameter Store with secrets from
           Infisical.
@@ -374,12 +374,12 @@ export const AWSParameterStoreConfigurePage = () => {
           alt="infisical loading indicator"
         />
       ) : (
-        <div className="border-mineshaft-600 bg-mineshaft-800 text-mineshaft-200 flex h-max max-w-md flex-col rounded-md border p-6 text-center">
+        <div className="flex h-max max-w-md flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-center text-mineshaft-200">
           <FontAwesomeIcon icon={faBugs} className="inlineli my-2 text-6xl" />
           <p>
             Something went wrong. Please contact{" "}
             <a
-              className="text-mineshaft-100 decoration-primary-500 inline cursor-pointer underline underline-offset-4 opacity-80 duration-200 hover:opacity-100"
+              className="inline cursor-pointer text-mineshaft-100 underline decoration-primary-500 underline-offset-4 opacity-80 duration-200 hover:opacity-100"
               target="_blank"
               rel="noopener noreferrer"
               href="mailto:support@infisical.com"

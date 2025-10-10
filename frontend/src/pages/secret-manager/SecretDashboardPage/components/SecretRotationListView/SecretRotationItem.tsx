@@ -44,11 +44,11 @@ export const SecretRotationItem = ({
 
   return (
     <>
-      <div className={twMerge("border-mineshaft-600 hover:bg-mineshaft-700 group flex border-b")}>
-        <div className="text- text-mineshaft-400 flex w-11 items-center py-2 pl-5">
+      <div className={twMerge("group flex border-b border-mineshaft-600 hover:bg-mineshaft-700")}>
+        <div className="text- flex w-11 items-center py-2 pl-5 text-mineshaft-400">
           <FontAwesomeIcon icon={faRotate} />
         </div>
-        <div className="flex grow items-center py-2 pl-4 pr-2">
+        <div className="flex grow items-center py-2 pr-2 pl-4">
           <div className="flex w-full flex-wrap items-center">
             <span>{name}</span>
             <Tag className="mx-2.5 flex items-center gap-1 px-1.5 py-0 text-xs normal-case">
@@ -141,7 +141,7 @@ export const SecretRotationItem = ({
         <AnimatePresence mode="wait">
           <motion.div
             key="options"
-            className="border-mineshaft-600 flex w-16 items-center justify-between border-l px-2 py-3"
+            className="flex w-16 items-center justify-between border-l border-mineshaft-600 px-2 py-3"
             initial={{ x: 0, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 10, opacity: 0 }}

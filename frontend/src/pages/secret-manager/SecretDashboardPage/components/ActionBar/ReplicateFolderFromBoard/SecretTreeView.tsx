@@ -113,7 +113,7 @@ const Folder: React.FC<FolderProps> = ({
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="focus:outline-hidden mr-1 flex h-6 w-6 items-center justify-center rounded-sm"
+              className="mr-1 flex h-6 w-6 items-center justify-center rounded-sm focus:outline-hidden"
               disabled={!hasContents}
               aria-label={open ? "Collapse folder" : "Expand folder"}
             >
@@ -149,7 +149,7 @@ const Folder: React.FC<FolderProps> = ({
           </label>
 
           {allItemIds.length > 0 && (
-            <span className="text-mineshaft-400 ml-2 text-xs">
+            <span className="ml-2 text-xs text-mineshaft-400">
               {allItemIds.length} {allItemIds.length === 1 ? "item" : "items"}
             </span>
           )}
@@ -157,10 +157,10 @@ const Folder: React.FC<FolderProps> = ({
 
         <CollapsibleContent className="overflow-hidden transition-all duration-300 ease-in-out">
           <div className="relative mt-1">
-            <div className="bg-mineshaft-600 absolute bottom-0 left-5 top-0 w-px" />
+            <div className="absolute top-0 bottom-0 left-5 w-px bg-mineshaft-600" />
             {structure.items.map((item) => (
               <div key={item.id} className="group ml-6 flex items-center rounded-sm px-2 py-1">
-                <div className="ml-6 mr-2">
+                <div className="mr-2 ml-6">
                   <FontAwesomeIcon icon={faKey} className="h-3 w-3" />
                 </div>
                 {!isDisabled && (
@@ -294,11 +294,11 @@ export const SecretTreeView: React.FC<TreeViewProps> = ({
   }, [selectedItems]);
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 flex w-full items-start gap-3 rounded-lg border">
-      <div className={`shadow-xs w-full rounded-lg ${className}`}>
+    <div className="flex w-full items-start gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900">
+      <div className={`w-full rounded-lg shadow-xs ${className}`}>
         <div className="h-[25vh] overflow-auto p-3">
           {isEmptyData ? (
-            <div className="text-mineshaft-300 flex h-full w-full items-center justify-center text-center">
+            <div className="flex h-full w-full items-center justify-center text-center text-mineshaft-300">
               <p>No secrets or folders available</p>
             </div>
           ) : (
@@ -321,8 +321,8 @@ export const SecretTreeView: React.FC<TreeViewProps> = ({
         </div>
 
         {!isDisabled && (
-          <div className="flex justify-end pb-2 pr-2 pt-2">
-            <h3 className="text-mineshaft-400 flex items-center">
+          <div className="flex justify-end pt-2 pr-2 pb-2">
+            <h3 className="flex items-center text-mineshaft-400">
               {selectedItems.length} Item{selectedItems.length === 1 ? "" : "s"} Selected
             </h3>
           </div>

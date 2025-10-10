@@ -14,7 +14,7 @@ export const TableContainer = forwardRef<HTMLDivElement, TableContainerProps>(
     <div
       ref={ref}
       className={twMerge(
-        "border-mineshaft-700 bg-mineshaft-800 font-inter relative w-full overflow-x-auto border border-solid",
+        "relative w-full overflow-x-auto border border-solid border-mineshaft-700 bg-mineshaft-800 font-inter",
         isRounded && "rounded-lg",
         className
       )}
@@ -33,7 +33,7 @@ export type TableProps = {
 
 export const Table = ({ children, className }: TableProps): JSX.Element => (
   <table
-    className={twMerge("bg-mineshaft-800 w-full p-2 text-left text-sm text-gray-300", className)}
+    className={twMerge("w-full bg-mineshaft-800 p-2 text-left text-sm text-gray-300", className)}
   >
     {children}
   </table>
@@ -48,7 +48,7 @@ export type THeadProps = {
 
 export const THead = ({ children, className, style }: THeadProps): JSX.Element => (
   <thead
-    className={twMerge("bg-mineshaft-800 text-bunker-300 text-xs uppercase", className)}
+    className={twMerge("bg-mineshaft-800 text-xs text-bunker-300 uppercase", className)}
     style={style}
   >
     {children}
@@ -61,7 +61,7 @@ export type TFootProps = {
 };
 
 export const TFoot = ({ children, className }: TFootProps): JSX.Element => (
-  <tfoot className={twMerge("bg-mineshaft-800 text-bunker-300 text-xs uppercase", className)}>
+  <tfoot className={twMerge("bg-mineshaft-800 text-xs text-bunker-300 uppercase", className)}>
     {children}
   </tfoot>
 );
@@ -83,7 +83,7 @@ export const Tr = ({
 }: TrProps): JSX.Element => (
   <tr
     className={twMerge(
-      "border-mineshaft-600 cursor-default border-b border-solid last:border-b-0",
+      "cursor-default border-b border-solid border-mineshaft-600 last:border-b-0",
       isHoverable && "hover:bg-mineshaft-600",
       isSelectable && "cursor-pointer",
       className
@@ -104,7 +104,7 @@ export type ThProps = {
 export const Th = ({ children, className, style }: ThProps): JSX.Element => (
   <th
     className={twMerge(
-      "border-mineshaft-600 bg-mineshaft-800 border-b-2 px-5 pb-3.5 pt-4 font-medium",
+      "border-b-2 border-mineshaft-600 bg-mineshaft-800 px-5 pt-4 pb-3.5 font-medium",
       className
     )}
     style={style}

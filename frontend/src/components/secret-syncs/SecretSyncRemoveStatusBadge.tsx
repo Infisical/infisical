@@ -69,16 +69,16 @@ export const SecretSyncRemoveStatusBadge = ({ secretSync, className, mini }: Pro
       label = "Failed to Remove Secrets";
       icon = faTriangleExclamation;
       tooltipContent = (
-        <div className="flex flex-col gap-2 whitespace-normal py-1">
+        <div className="flex flex-col gap-2 py-1 whitespace-normal">
           {failureMessage && (
             <div>
-              <div className="text-red mb-2 flex self-start">
-                <FontAwesomeIcon icon={faXmark} className="ml-1 pr-1.5 pt-0.5 text-sm" />
+              <div className="mb-2 flex self-start text-red">
+                <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
                 <div className="text-xs">
                   {mini ? "Failed to Remove Secrets" : "Failure Reason"}
                 </div>
               </div>
-              <div className="bg-mineshaft-600 rounded-sm p-2 text-xs">{failureMessage}</div>
+              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs">{failureMessage}</div>
             </div>
           )}
         </div>

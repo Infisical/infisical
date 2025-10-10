@@ -79,7 +79,7 @@ const OrgConfigSection = ({
   return (
     <>
       <div className="flex flex-col justify-start">
-        <div className="text-mineshaft-100 mb-2 text-xl font-medium">KMIP configuration</div>
+        <div className="mb-2 text-xl font-medium text-mineshaft-100">KMIP configuration</div>
         {isKmipConfigLoading && (
           <div className="mt-8 flex justify-center">
             <Spinner />
@@ -89,7 +89,7 @@ const OrgConfigSection = ({
           <>
             <div className="mt-2">
               <div className="text-lg">Certificate Chain for KMIP Clients</div>
-              <div className="text-mineshaft-400 mt-2 max-w-lg text-sm">
+              <div className="mt-2 max-w-lg text-sm text-mineshaft-400">
                 This certificate chain is used by KMIP clients to verify the identity of the KMIP
                 server. It should be presented by the server during TLS authentication to establish
                 a secure and encrypted connection.
@@ -131,7 +131,7 @@ const OrgConfigSection = ({
             </div>
             <div className="mt-8">
               <div className="text-lg">Certificate Chain for KMIP Server</div>
-              <div className="text-mineshaft-400 mt-2 max-w-lg text-sm">
+              <div className="mt-2 max-w-lg text-sm text-mineshaft-400">
                 This certificate chain is used by the KMIP server to verify the identity of KMIP
                 clients. It should be configured on the server to establish trust in client
                 certificates during mutual TLS authentication.
@@ -261,7 +261,7 @@ export const KmipTab = () => {
   const { data: kmipConfig, isPending } = useGetOrgKmipConfig(currentOrg.id);
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <OrgConfigSection kmipConfig={kmipConfig} isKmipConfigLoading={isPending} />
     </div>
   );

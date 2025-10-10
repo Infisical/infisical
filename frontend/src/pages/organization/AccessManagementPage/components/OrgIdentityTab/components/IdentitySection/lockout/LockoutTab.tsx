@@ -35,7 +35,7 @@ export const LockoutTab = ({
                 errorText={error?.message}
               >
                 <Switch
-                  className="bg-mineshaft-400/80 data-[state=checked]:bg-green/80 ml-0 mr-3 shadow-inner"
+                  className="mr-3 ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
                   containerClassName="flex-row-reverse w-fit"
                   id="lockout-enabled"
                   thumbClassName="bg-mineshaft-800"
@@ -110,25 +110,25 @@ export const LockoutTab = ({
                   >
                     <SelectItem
                       value="s"
-                      className="hover:bg-mineshaft-700 relative py-2 pl-6 pr-8 text-sm"
+                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
                     >
                       <div className="ml-3 font-medium">Seconds</div>
                     </SelectItem>
                     <SelectItem
                       value="m"
-                      className="hover:bg-mineshaft-700 relative py-2 pl-6 pr-8 text-sm"
+                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
                     >
                       <div className="ml-3 font-medium">Minutes</div>
                     </SelectItem>
                     <SelectItem
                       value="h"
-                      className="hover:bg-mineshaft-700 relative py-2 pl-6 pr-8 text-sm"
+                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
                     >
                       <div className="ml-3 font-medium">Hours</div>
                     </SelectItem>
                     <SelectItem
                       value="d"
-                      className="hover:bg-mineshaft-700 relative py-2 pl-6 pr-8 text-sm"
+                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
                     >
                       <div className="ml-3 font-medium">Days</div>
                     </SelectItem>
@@ -177,19 +177,19 @@ export const LockoutTab = ({
                   >
                     <SelectItem
                       value="s"
-                      className="hover:bg-mineshaft-700 relative py-2 pl-6 pr-8 text-sm"
+                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
                     >
                       <div className="ml-3 font-medium">Seconds</div>
                     </SelectItem>
                     <SelectItem
                       value="m"
-                      className="hover:bg-mineshaft-700 relative py-2 pl-6 pr-8 text-sm"
+                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
                     >
                       <div className="ml-3 font-medium">Minutes</div>
                     </SelectItem>
                     <SelectItem
                       value="h"
-                      className="hover:bg-mineshaft-700 relative py-2 pl-6 pr-8 text-sm"
+                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
                     >
                       <div className="ml-3 font-medium">Hours</div>
                     </SelectItem>

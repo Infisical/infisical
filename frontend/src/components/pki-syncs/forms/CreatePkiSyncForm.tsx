@@ -124,12 +124,12 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
   if (showConfirmation)
     return (
       <>
-        <div className="rounded-xs border-mineshaft-600 border-l-primary bg-mineshaft-700/80 flex flex-col border border-l-2 px-4 py-3">
+        <div className="flex flex-col rounded-xs border border-l-2 border-mineshaft-600 border-l-primary bg-mineshaft-700/80 px-4 py-3">
           <div className="mb-1 flex items-center text-sm">
-            <FontAwesomeIcon icon={faInfoCircle} size="sm" className="text-primary mr-1.5" />
+            <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
             Certificate Sync Behavior
           </div>
-          <p className="text-bunker-200 mt-1 text-sm">
+          <p className="mt-1 text-sm text-bunker-200">
             Only certificates managed by Infisical will be affected during sync operations.
             Certificates not created or managed by Infisical will remain untouched, and changes made
             to Infisical-managed certificates directly in the destination service may be overwritten
@@ -162,7 +162,7 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
     <form className={twMerge(isFinalStep && "max-h-[70vh] overflow-y-auto")}>
       <FormProvider {...formMethods}>
         <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-          <Tab.List className="-pb-1 border-mineshaft-600 mb-6 w-full border-b-2">
+          <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
             {FORM_TABS.map((tab, index) => (
               <Tab
                 onClick={async (e) => {
@@ -171,9 +171,9 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
                   setSelectedTabIndex((prev) => (isEnabled ? index : prev));
                 }}
                 className={({ selected }) =>
-                  `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} outline-hidden px-4 py-2 text-sm font-medium disabled:opacity-60 ${
+                  `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
                     selected
-                      ? "border-mineshaft-300 text-mineshaft-200 border-b-2"
+                      ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
                       : "text-bunker-300"
                   }`
                 }
@@ -207,7 +207,7 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
                       errorText={error?.message}
                     >
                       <Switch
-                        className="bg-mineshaft-400/80 data-[state=checked]:bg-green/80 shadow-inner"
+                        className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
                         id="auto-sync-enabled"
                         thumbClassName="bg-mineshaft-800"
                         onCheckedChange={onChange}

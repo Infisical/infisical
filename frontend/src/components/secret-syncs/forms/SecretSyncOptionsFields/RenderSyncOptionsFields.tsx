@@ -17,7 +17,7 @@ export const RenderSyncOptionsFields = () => {
       render={({ field: { value, onChange }, fieldState: { error } }) => (
         <FormControl className="mt-4" isError={Boolean(error?.message)} errorText={error?.message}>
           <Switch
-            className="bg-mineshaft-400/50 data-[state=checked]:bg-green/80 shadow-inner"
+            className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
             id="auto-redeploy-services"
             thumbClassName="bg-mineshaft-800"
             isChecked={value}

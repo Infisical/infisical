@@ -24,9 +24,9 @@ export const DuplicateDestinationConfirmationModal = ({
             destination. Proceeding may cause conflicts or overwrite existing data.
           </p>
           {duplicateProjectId && (
-            <p className="text-mineshaft-400 mt-2 text-xs">
+            <p className="mt-2 text-xs text-mineshaft-400">
               Duplicate found in project ID:{" "}
-              <code className="bg-mineshaft-600 text-mineshaft-200 rounded-sm px-1 py-0.5">
+              <code className="rounded-sm bg-mineshaft-600 px-1 py-0.5 text-mineshaft-200">
                 {duplicateProjectId}
               </code>
             </p>

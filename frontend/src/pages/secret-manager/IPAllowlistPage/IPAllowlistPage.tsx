@@ -14,7 +14,7 @@ export const IPAllowListPage = () => {
         <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="bg-bunker-800 flex h-full w-full justify-center text-white">
+      <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
         <div className="w-full max-w-7xl px-6">
           <div className="my-6">
             <p className="text-3xl font-medium text-gray-200">IP Allowlist</p>

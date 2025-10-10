@@ -166,17 +166,17 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
             )}
           />
           <div className="mt-2">
-            <div className="text-mineshaft-400 mb-0.5 ml-1 block text-sm font-normal">
+            <div className="mb-0.5 ml-1 block text-sm font-normal text-mineshaft-400">
               Tag Color
             </div>
             <div className="flex space-x-2">
-              <div className="border-mineshaft-500 bg-mineshaft-900 flex items-center justify-center rounded-sm border p-2">
+              <div className="flex items-center justify-center rounded-sm border border-mineshaft-500 bg-mineshaft-900 p-2">
                 <div
                   className="h-6 w-6 rounded-full"
                   style={{ background: `${selectedTagColor}` }}
                 />
               </div>
-              <div className="border-mineshaft-500 bg-mineshaft-900 flex grow items-center rounded-sm px-1 pr-2">
+              <div className="flex grow items-center rounded-sm border-mineshaft-500 bg-mineshaft-900 px-1 pr-2">
                 {!showHexInput ? (
                   <div className="inline-flex items-center gap-3 pl-3">
                     {secretTagsColors.map(($tagColor: TagColor) => {
@@ -213,7 +213,7 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
                         </div>
                       )}
                       {!isValidHexColor(selectedTagColor) && (
-                        <div className="bg-blue border-mineshaft-500 h-7 w-7 rounded-full border border-dashed" />
+                        <div className="bg-blue h-7 w-7 rounded-full border border-dashed border-mineshaft-500" />
                       )}
                     </div>
                     <div className="grow">
@@ -227,10 +227,10 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
                     </div>
                   </div>
                 )}
-                <div className="border-mineshaft-500 mx-4 h-8 border" />
+                <div className="mx-4 h-8 border border-mineshaft-500" />
                 <div className="flex h-7 w-7 items-center justify-center">
                   <div
-                    className={`rounded-xs border-mineshaft-500 bg-mineshaft-900 flex h-7 w-7 cursor-pointer items-center justify-center border bg-transparent p-2 hover:ring-2 hover:ring-offset-1 ${
+                    className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-xs border border-mineshaft-500 bg-mineshaft-900 bg-transparent p-2 hover:ring-2 hover:ring-offset-1 ${
                       showHexInput ? "tags-conic-bg rounded-full" : ""
                     }`}
                     onClick={() => setShowHexInput((prev) => !prev)}

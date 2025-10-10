@@ -52,10 +52,10 @@ export const SecretScanningLayout = () => {
           animate={{ x: 0 }}
           exit={{ x: -150 }}
           transition={{ duration: 0.2 }}
-          className="border-mineshaft-600 bg-linear-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 dark w-full border-r md:w-60"
+          className="dark w-full border-r border-mineshaft-600 bg-linear-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60"
         >
-          <nav className="items-between dark:scheme-dark flex h-full flex-col overflow-y-auto">
-            <div className="border-mineshaft-600 flex items-center gap-3 border-b px-4 py-3.5 text-lg text-white">
+          <nav className="items-between flex h-full flex-col overflow-y-auto dark:scheme-dark">
+            <div className="flex items-center gap-3 border-b border-mineshaft-600 px-4 py-3.5 text-lg text-white">
               <Lottie className="inline-block h-5 w-5 shrink-0" icon="secret-scan" />
               Secret Scanning
             </div>
@@ -93,7 +93,7 @@ export const SecretScanningLayout = () => {
                           </div>
                           <span>Findings</span>
                           {Boolean(unresolvedFindings) && (
-                            <Badge variant="primary" className="ml-auto mr-2 h-min">
+                            <Badge variant="primary" className="mr-2 ml-auto h-min">
                               {unresolvedFindings}
                             </Badge>
                           )}
@@ -178,7 +178,7 @@ export const SecretScanningLayout = () => {
               <Menu>
                 <Link to="/organization/projects">
                   <MenuItem
-                    className="text-mineshaft-400 hover:text-mineshaft-300 relative flex items-center gap-2 overflow-hidden text-sm"
+                    className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
                     leftIcon={
                       <div className="w-6">
                         <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faHome} />
@@ -192,7 +192,7 @@ export const SecretScanningLayout = () => {
             </div>
           </nav>
         </motion.div>
-        <div className="bg-bunker-800 flex-1 overflow-y-auto overflow-x-hidden p-4 pt-8">
+        <div className="flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 p-4 pt-8">
           {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
           <Outlet />
         </div>

@@ -286,7 +286,7 @@ export const KubernetesInputForm = ({
           </div>
         </div>
         <div>
-          <div className="border-mineshaft-500 text-mineshaft-200 mb-4 mt-4 border-b pb-2 pl-1 font-medium">
+          <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
             Configuration
           </div>
           <div className="flex flex-col">
@@ -317,7 +317,7 @@ export const KubernetesInputForm = ({
                                   isDisabled={!isAllowed}
                                   value={value}
                                   onValueChange={onChange}
-                                  className="border-mineshaft-500 w-full border"
+                                  className="w-full border border-mineshaft-500"
                                   dropdownContainerClassName="max-w-none"
                                   isLoading={isGatewaysLoading}
                                   placeholder="Default: Internet Gateway"
@@ -383,7 +383,7 @@ export const KubernetesInputForm = ({
                       )}
                     />
                     <div className="mb-2 flex items-center">
-                      <span className="text-mineshaft-400 mr-3 flex items-center text-sm">
+                      <span className="mr-3 flex items-center text-sm text-mineshaft-400">
                         Enable SSL
                         <Tooltip
                           className="ml-1 max-w-md"
@@ -402,7 +402,7 @@ export const KubernetesInputForm = ({
                         control={control}
                         render={({ field: { value, onChange } }) => (
                           <Switch
-                            className="bg-mineshaft-400/50 data-[state=checked]:bg-green/80 shadow-inner"
+                            className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
                             id="ssl-enabled"
                             thumbClassName="bg-mineshaft-800"
                             isChecked={value}

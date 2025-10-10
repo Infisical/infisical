@@ -105,15 +105,15 @@ export const SlackIntegrationForm = ({ adminIntegrationsConfig }: Props) => {
     <form onSubmit={handleSubmit(onSubmit)}>
       <Accordion type="single" collapsible className="w-full">
         <AccordionItem value="slack-integration" className="data-[state=open]:border-none">
-          <AccordionTrigger className="border-mineshaft-500 bg-mineshaft-700 flex h-fit w-full justify-start rounded-md border px-4 py-6 text-sm transition-colors data-[state=open]:rounded-b-none">
+          <AccordionTrigger className="flex h-fit w-full justify-start rounded-md border border-mineshaft-500 bg-mineshaft-700 px-4 py-6 text-sm transition-colors data-[state=open]:rounded-b-none">
             <div className="text-md group order-1 ml-3 flex items-center gap-2">
-              <BsSlack className="group-hover:text-primary-400 text-lg" />
+              <BsSlack className="text-lg group-hover:text-primary-400" />
               <div className="text-[15px] font-medium">Slack</div>
             </div>
           </AccordionTrigger>
           <AccordionContent childrenClassName="px-0 py-0">
-            <div className="border-mineshaft-500 bg-mineshaft-700 flex w-full flex-col justify-start rounded-md rounded-t-none border border-t-0 px-4 py-4">
-              <div className="text-mineshaft-300 mb-4 max-w-lg text-sm">
+            <div className="flex w-full flex-col justify-start rounded-md rounded-t-none border border-t-0 border-mineshaft-500 bg-mineshaft-700 px-4 py-4">
+              <div className="mb-4 max-w-lg text-sm text-mineshaft-300">
                 Step 1: Create your Infisical Slack App
               </div>
               <div className="mb-6">
@@ -124,7 +124,7 @@ export const SlackIntegrationForm = ({ adminIntegrationsConfig }: Props) => {
                   Create Slack App
                 </Button>
               </div>
-              <div className="text-mineshaft-300 mb-4 max-w-lg text-sm">
+              <div className="mb-4 max-w-lg text-sm text-mineshaft-300">
                 Step 2: Configure your instance-wide settings to enable integration with Slack. Copy
                 the values from the App Credentials page of your custom Slack App.
               </div>

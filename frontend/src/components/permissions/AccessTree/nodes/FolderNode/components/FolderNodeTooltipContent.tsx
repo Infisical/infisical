@@ -26,11 +26,11 @@ type ConditionDisplayProps = {
 const ConditionDisplay = ({ _key: key, value, operator }: ConditionDisplayProps) => {
   return (
     <li>
-      <span className="text-mineshaft-100 font-medium capitalize">{camelCaseToSpaces(key)}</span>{" "}
+      <span className="font-medium text-mineshaft-100 capitalize">{camelCaseToSpaces(key)}</span>{" "}
       <span className="text-mineshaft-200">
         {formatedConditionsOperatorNames[operator as PermissionConditionOperators]}
       </span>{" "}
-      <span className="bg-mineshaft-600 rounded-sm p-0.5 font-mono">
+      <span className="rounded-sm bg-mineshaft-600 p-0.5 font-mono">
         {typeof value === "string" ? value : value.join(", ")}
       </span>
       .
@@ -45,13 +45,13 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
     case PermissionAccess.Full:
       component = (
         <>
-          <div className="text-green flex items-center gap-1.5 capitalize">
+          <div className="flex items-center gap-1.5 text-green capitalize">
             <FontAwesomeIcon icon={faCheckCircle} size="xs" />
             <span>Full {formatActionName(action)} Permissions</span>
           </div>
           <p className="text-mineshaft-200">
             Policy grants unconditional{" "}
-            <span className="text-mineshaft-100 font-medium">
+            <span className="font-medium text-mineshaft-100">
               {formatActionName(action).toLowerCase()}
             </span>{" "}
             permission for {subject.replaceAll("-", " ")} in this folder.
@@ -62,13 +62,13 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
     case PermissionAccess.Partial:
       component = (
         <>
-          <div className="text-yellow flex items-center gap-1.5 capitalize">
+          <div className="flex items-center gap-1.5 text-yellow capitalize">
             <FontAwesomeIcon icon={faCircleMinus} className="text-yellow" size="xs" />
             <span>Conditional {formatActionName(action)} Permissions</span>
           </div>
-          <p className="text-mineshaft-200 mb-1">
+          <p className="mb-1 text-mineshaft-200">
             Policy conditionally allows{" "}
-            <span className="text-mineshaft-100 font-medium">
+            <span className="font-medium text-mineshaft-100">
               {formatActionName(action).toLowerCase()}
             </span>{" "}
             permission for {subject.replaceAll("-", " ")} in this folder.
@@ -137,13 +137,13 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
     case PermissionAccess.None:
       component = (
         <>
-          <div className="text-red flex items-center gap-1.5 capitalize">
+          <div className="flex items-center gap-1.5 text-red capitalize">
             <FontAwesomeIcon icon={faCircleXmark} size="xs" />
             <span>No {formatActionName(action)} Permissions</span>
           </div>
           <p className="text-mineshaft-200">
             Policy always forbids{" "}
-            <span className="text-mineshaft-100 font-medium">
+            <span className="font-medium text-mineshaft-100">
               {formatActionName(action).toLowerCase()}
             </span>{" "}
             permission for {subject.replaceAll("-", " ")} in this folder.
@@ -157,7 +157,7 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
 
   return (
     <NodeToolbar
-      className="border-mineshaft-600 bg-mineshaft-800 text-bunker-100 rounded-md border px-4 py-2 text-sm font-light"
+      className="rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-sm font-light text-bunker-100"
       isVisible
       position={Position.Bottom}
     >

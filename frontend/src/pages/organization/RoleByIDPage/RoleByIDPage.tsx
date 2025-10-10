@@ -77,7 +77,7 @@ export const Page = () => {
   const isCustomRole = !["admin", "member", "no-access"].includes(data?.slug ?? "");
 
   return (
-    <div className="bg-bunker-800 container mx-auto flex flex-col justify-between text-white">
+    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
           <PageHeader
@@ -85,7 +85,7 @@ export const Page = () => {
               <div className="flex flex-col">
                 <div>
                   <span>{data.name}</span>
-                  <p className="text-mineshaft-400 text-sm font-normal normal-case leading-3">
+                  <p className="text-sm leading-3 font-normal text-mineshaft-400 normal-case">
                     {data.slug} {data.description && `- ${data.description}`}
                   </p>
                 </div>

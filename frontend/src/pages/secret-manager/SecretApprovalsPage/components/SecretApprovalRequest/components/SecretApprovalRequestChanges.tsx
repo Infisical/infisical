@@ -228,7 +228,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
   return (
     <div className="flex flex-col space-x-6 lg:flex-row">
       <div className="flex-1 lg:max-w-[calc(100%-17rem)]">
-        <div className="bg-bunker-800 sticky -top-8 z-20 flex items-center space-x-4 pb-6 pt-2">
+        <div className="sticky -top-8 z-20 flex items-center space-x-4 bg-bunker-800 pt-2 pb-6">
           <IconButton variant="outline_bg" ariaLabel="go-back" onClick={onGoBack}>
             <FontAwesomeIcon icon={faArrowLeft} />
           </IconButton>
@@ -292,7 +292,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                               {...field}
                               placeholder="Leave a comment..."
                               reSize="none"
-                              className="text-md border-mineshaft-600 bg-mineshaft-800 placeholder:text-mineshaft-400 mt-2 h-40 border"
+                              className="text-md mt-2 h-40 border border-mineshaft-600 bg-mineshaft-800 placeholder:text-mineshaft-400"
                             />
                           </FormControl>
                         )}
@@ -317,7 +317,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                                 <div className="flex items-center gap-2">
                                   <RadioGroupItem
                                     id="approve"
-                                    className="text-green focus:ring-mineshaft-500 h-4 w-4 rounded-full border border-gray-400 focus:ring-2"
+                                    className="h-4 w-4 rounded-full border border-gray-400 text-green focus:ring-2 focus:ring-mineshaft-500"
                                     value={ApprovalStatus.APPROVED}
                                     aria-labelledby="approve-label"
                                   >
@@ -342,7 +342,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                                 <div className="flex items-center gap-2">
                                   <RadioGroupItem
                                     id="reject"
-                                    className="text-red focus:ring-mineshaft-500 h-4 w-4 rounded-full border border-gray-400 focus:ring-2"
+                                    className="h-4 w-4 rounded-full border border-gray-400 text-red focus:ring-2 focus:ring-mineshaft-500"
                                     value={ApprovalStatus.REJECTED}
                                     aria-labelledby="reject-label"
                                   >
@@ -383,19 +383,19 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
               </DropdownMenu>
             )}
         </div>
-        <div className="border-l-primary bg-mineshaft-300/5 mb-4 flex flex-col rounded-r border-l-2 px-4 py-2.5">
+        <div className="mb-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
           <div>
             {secretApprovalRequestDetails.isReplicated ? (
-              <div className="text-bunker-300 text-sm">
+              <div className="text-sm text-bunker-300">
                 A secret import in
                 <p
-                  className="bg-mineshaft-600/80 text-mineshaft-300 mx-1 inline rounded-sm"
+                  className="mx-1 inline rounded-sm bg-mineshaft-600/80 text-mineshaft-300"
                   style={{ padding: "2px 4px" }}
                 >
                   {secretApprovalRequestDetails?.environment}
                 </p>
-                <div className="border-mineshaft-500 mr-1 inline-flex w-min items-center rounded-sm border pl-1.5 pr-2">
-                  <p className="border-mineshaft-500 cursor-default border-r pr-1.5">
+                <div className="mr-1 inline-flex w-min items-center rounded-sm border border-mineshaft-500 pr-2 pl-1.5">
+                  <p className="cursor-default border-r border-mineshaft-500 pr-1.5">
                     <FontAwesomeIcon icon={faFolder} className="text-yellow" size="sm" />
                   </p>
                   <Tooltip content={approvalSecretPath}>
@@ -409,13 +409,13 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                 </div>
                 has pending changes to be accepted from its source at{" "}
                 <p
-                  className="bg-mineshaft-600/80 text-mineshaft-300 mx-1 inline rounded-sm"
+                  className="mx-1 inline rounded-sm bg-mineshaft-600/80 text-mineshaft-300"
                   style={{ padding: "2px 4px" }}
                 >
                   {replicatedImport?.importEnv?.slug}
                 </p>
-                <div className="border-mineshaft-500 mr-1 inline-flex w-min items-center rounded-sm border pl-1.5 pr-2">
-                  <p className="border-mineshaft-500 cursor-default border-r pr-1.5">
+                <div className="mr-1 inline-flex w-min items-center rounded-sm border border-mineshaft-500 pr-2 pl-1.5">
+                  <p className="cursor-default border-r border-mineshaft-500 pr-1.5">
                     <FontAwesomeIcon icon={faFolder} className="text-yellow" size="sm" />
                   </p>
                   <Tooltip content={replicatedImport?.importPath}>
@@ -430,16 +430,16 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                 . Approving these changes will add them to that import.
               </div>
             ) : (
-              <div className="text-bunker-300 text-sm">
+              <div className="text-sm text-bunker-300">
                 <p className="inline">Secret(s) in</p>
                 <p
-                  className="bg-mineshaft-600/80 text-mineshaft-300 mx-1 inline rounded-sm"
+                  className="mx-1 inline rounded-sm bg-mineshaft-600/80 text-mineshaft-300"
                   style={{ padding: "2px 4px" }}
                 >
                   {secretApprovalRequestDetails?.environment}
                 </p>
-                <div className="border-mineshaft-500 mr-1 inline-flex w-min items-center rounded-sm border pl-1.5 pr-2">
-                  <p className="border-mineshaft-500 cursor-default border-r pr-1.5">
+                <div className="mr-1 inline-flex w-min items-center rounded-sm border border-mineshaft-500 pr-2 pl-1.5">
+                  <p className="cursor-default border-r border-mineshaft-500 pr-1.5">
                     <FontAwesomeIcon icon={faFolder} className="text-yellow" size="sm" />
                   </p>
                   <Tooltip content={formatReservedPaths(secretApprovalRequestDetails.secretPath)}>
@@ -474,14 +474,14 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
             )
           )}
         </div>
-        <div className="border-mineshaft-600 my-4 flex flex-col items-center rounded-lg border">
+        <div className="my-4 flex flex-col items-center rounded-lg border border-mineshaft-600">
           {secretApprovalRequestDetails?.policy?.approvers
             .filter((requiredApprover) => reviewedUsers?.[requiredApprover.userId])
             .map((requiredApprover) => {
               const reviewer = reviewedUsers?.[requiredApprover.userId];
               return (
                 <div
-                  className="bg-mineshaft-800 text-mineshaft-100 flex w-full flex-col rounded-md p-4 text-sm"
+                  className="flex w-full flex-col rounded-md bg-mineshaft-800 p-4 text-sm text-mineshaft-100"
                   key={`required-approver-${requiredApprover.userId}`}
                 >
                   <div>
@@ -510,7 +510,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
               );
             })}
         </div>
-        <div className="border-mineshaft-600 bg-mineshaft-800 mt-2 flex items-center space-x-6 rounded-lg border">
+        <div className="mt-2 flex items-center space-x-6 rounded-lg border border-mineshaft-600 bg-mineshaft-800">
           <SecretApprovalRequestAction
             canApprove={canApprove}
             isBypasser={isBypasser === undefined ? true : isBypasser}
@@ -524,8 +524,8 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
           />
         </div>
       </div>
-      <div className="z-51 sticky top-0 w-1/5 cursor-default pt-2" style={{ minWidth: "240px" }}>
-        <div className="text-bunker-300 text-sm">Reviewers</div>
+      <div className="sticky top-0 z-51 w-1/5 cursor-default pt-2" style={{ minWidth: "240px" }}>
+        <div className="text-sm text-bunker-300">Reviewers</div>
         <div className="mt-2 flex flex-col space-y-2 text-sm">
           {secretApprovalRequestDetails?.policy?.approvers
             .filter(
@@ -538,7 +538,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
 
               return (
                 <div
-                  className="border-mineshaft-600 bg-mineshaft-800 flex flex-nowrap items-center justify-between space-x-2 rounded-sm border px-2 py-1"
+                  className="flex flex-nowrap items-center justify-between space-x-2 rounded-sm border border-mineshaft-600 bg-mineshaft-800 px-2 py-1"
                   key={`required-approver-${requiredApprover.userId}`}
                 >
                   <div
@@ -565,7 +565,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                           <FontAwesomeIcon
                             icon={faUserSlash}
                             size="xs"
-                            className="text-mineshaft-300 ml-1"
+                            className="ml-1 text-mineshaft-300"
                           />
                         )}
                       </div>
@@ -577,13 +577,13 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                         <FontAwesomeIcon
                           icon={faComment}
                           size="xs"
-                          className="text-mineshaft-300 mr-1.5"
+                          className="mr-1.5 text-mineshaft-300"
                         />
                       </Tooltip>
                     )}
                     <div className="flex gap-2">
                       <Tooltip
-                        className="z-500! relative"
+                        className="relative z-500!"
                         content={
                           <span className="text-sm">
                             Status:{" "}
@@ -612,7 +612,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
               const { isOrgMembershipActive } = reviewer;
               return (
                 <div
-                  className="bg-mineshaft-800 flex flex-nowrap items-center justify-between space-x-2 rounded-sm px-2 py-1"
+                  className="flex flex-nowrap items-center justify-between space-x-2 rounded-sm bg-mineshaft-800 px-2 py-1"
                   key={`required-approver-${reviewer.userId}`}
                 >
                   <div
@@ -622,7 +622,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                     )}
                   >
                     <Tooltip
-                      className="z-500! relative"
+                      className="relative z-500!"
                       content={
                         !isOrgMembershipActive
                           ? "This user has been deactivated and no longer has an active organization membership."
@@ -635,7 +635,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                           <FontAwesomeIcon
                             icon={faUserSlash}
                             size="xs"
-                            className="text-mineshaft-300 ml-1"
+                            className="ml-1 text-mineshaft-300"
                           />
                         )}
                       </div>
@@ -644,16 +644,16 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
 
                   <div>
                     {reviewer.comment && (
-                      <Tooltip className="z-500! relative" content={reviewer.comment}>
+                      <Tooltip className="relative z-500!" content={reviewer.comment}>
                         <FontAwesomeIcon
                           icon={faComment}
                           size="xs"
-                          className="text-mineshaft-300 mr-1"
+                          className="mr-1 text-mineshaft-300"
                         />
                       </Tooltip>
                     )}
                     <Tooltip
-                      className="z-500! relative"
+                      className="relative z-500!"
                       content={
                         <span className="text-sm">
                           Status:{" "}

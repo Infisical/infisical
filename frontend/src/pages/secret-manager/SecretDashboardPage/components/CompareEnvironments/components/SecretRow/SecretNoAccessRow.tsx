@@ -19,7 +19,7 @@ export const SecretNoAccessRow = ({ environments = [], count, colWidth }: Props)
           key={`no-access-secret-${j + 1}`}
           isHoverable
           isSelectable
-          className="border-mineshaft-500 group"
+          className="group border-mineshaft-500"
         >
           <ResourceNameCell
             label={<Blur />}

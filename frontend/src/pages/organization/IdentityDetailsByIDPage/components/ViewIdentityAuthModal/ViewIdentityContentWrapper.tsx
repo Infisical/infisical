@@ -22,7 +22,7 @@ export const ViewIdentityContentWrapper = ({ children, onDelete, onEdit }: Props
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <div className="border-mineshaft-500 flex items-end justify-between border-b pb-2">
+        <div className="flex items-end justify-between border-b border-mineshaft-500 pb-2">
           <span className="text-bunker-300">Details</span>
           <div className="flex items-center gap-2">
             <DropdownMenu>

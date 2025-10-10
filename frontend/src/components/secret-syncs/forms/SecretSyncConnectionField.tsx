@@ -46,7 +46,7 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
 
   return (
     <>
-      <p className="text-bunker-300 mb-4 text-sm">
+      <p className="mb-4 text-sm text-bunker-300">
         Specify the {appName} Connection to use to connect to {connectionName} and configure
         destination parameters.
       </p>
@@ -89,7 +89,7 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
         name="connection"
       />
       {!isPending && !availableConnections?.length && !canCreateConnection && (
-        <p className="text-yellow -mt-2.5 mb-2.5 text-xs">
+        <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
           <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
           You do not have access to any {appName} Connections. Contact an admin to create one.
         </p>

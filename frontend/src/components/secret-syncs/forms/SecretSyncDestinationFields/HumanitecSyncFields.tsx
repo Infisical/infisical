@@ -135,7 +135,7 @@ export const HumanitecSyncFields = () => {
                     return (
                       <li key={name}>
                         <p className="text-mineshaft-300">
-                          <span className="text-bunker-200 font-medium">{name}</span>: {description}
+                          <span className="font-medium text-bunker-200">{name}</span>: {description}
                         </p>
                       </li>
                     );
@@ -150,7 +150,7 @@ export const HumanitecSyncFields = () => {
                 onChange(val);
                 setValue("destinationConfig.env", "");
               }}
-              className="border-mineshaft-500 w-full border capitalize"
+              className="w-full border border-mineshaft-500 capitalize"
               position="popper"
               placeholder="Select a scope..."
               dropdownContainerClassName="max-w-none"

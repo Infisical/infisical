@@ -27,7 +27,7 @@ export const QuickSearchFolderItem = ({ folderGroup, onClose }: Props) => {
 
   return (
     <Tr
-      className="hover bg-mineshaft-700 hover:bg-mineshaft-600 cursor-pointer"
+      className="hover cursor-pointer bg-mineshaft-700 hover:bg-mineshaft-600"
       onClick={handleNavigate}
     >
       <Td className="w-full whitespace-nowrap">

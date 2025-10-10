@@ -88,17 +88,17 @@ export const SecretSyncsTab = () => {
 
   return (
     <>
-      <div className="border-mineshaft-600 bg-mineshaft-900 w-full rounded-lg border p-4">
+      <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <div className="flex items-start gap-1">
-              <p className="text-mineshaft-100 text-lg font-medium">Secret Syncs</p>
+              <p className="text-lg font-medium text-mineshaft-100">Secret Syncs</p>
               <a
                 href="https://infisical.com/docs/integrations/secret-syncs/overview"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="bg-yellow/20 text-yellow ml-1 mt-[0.32rem] inline-block rounded-md px-1.5 text-sm opacity-80 hover:opacity-100">
+                <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   <span>Docs</span>
                   <FontAwesomeIcon
@@ -108,7 +108,7 @@ export const SecretSyncsTab = () => {
                 </div>
               </a>
             </div>
-            <p className="text-bunker-300 text-sm">
+            <p className="text-sm text-bunker-300">
               Use App Connections to sync secrets to third-party services.
             </p>
           </div>

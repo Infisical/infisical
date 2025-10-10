@@ -22,7 +22,7 @@ export const FolderBreadCrumbs = ({ secretPath = "/" }: Props) => {
   return (
     <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-3">
       <div
-        className="breadcrumb border-mineshaft-600 bg-mineshaft-800 hover:bg-mineshaft-600 relative z-20 border-solid py-1 pl-5 pr-2 text-sm"
+        className="breadcrumb relative z-20 border-solid border-mineshaft-600 bg-mineshaft-800 py-1 pr-2 pl-5 text-sm hover:bg-mineshaft-600"
         onClick={() => onFolderCrumbClick(0)}
         onKeyDown={() => null}
         role="button"
@@ -38,7 +38,7 @@ export const FolderBreadCrumbs = ({ secretPath = "/" }: Props) => {
             key={`secret-path-${index + 1}`}
             className={`breadcrumb relative z-20 ${
               index + 1 === arr.length ? "cursor-default" : "cursor-pointer"
-            } border-mineshaft-600 text-mineshaft-200 border-solid py-1 pl-5 pr-2 text-sm`}
+            } border-solid border-mineshaft-600 py-1 pr-2 pl-5 text-sm text-mineshaft-200`}
             onClick={() => onFolderCrumbClick(index + 1)}
             onKeyDown={() => null}
             role="button"

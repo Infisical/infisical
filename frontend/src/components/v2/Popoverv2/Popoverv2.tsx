@@ -27,7 +27,7 @@ export const PopoverContent = ({
     <PopoverPrimitive.Content
       className={twMerge(
         [
-          "z-100 bg-mineshaft-600 fill-mineshaft-600 font-inter relative w-64 rounded-md p-4 pt-6 text-gray-200 shadow-md",
+          "relative z-100 w-64 rounded-md bg-mineshaft-600 fill-mineshaft-600 p-4 pt-6 font-inter text-gray-200 shadow-md",
           // animation
           "data-[state=open]:data-[side=bottom]:animate-slide-up-and-fade",
           "data-[state=open]:data-[side=top]:animate-slide-down-and-fade",
@@ -44,7 +44,7 @@ export const PopoverContent = ({
           <IconButton
             variant="plain"
             ariaLabel="close"
-            className="text-bunker-400 hover:text-bunker-50 absolute right-1 top-0 rounded-sm"
+            className="absolute top-0 right-1 rounded-sm text-bunker-400 hover:text-bunker-50"
           >
             <FontAwesomeIcon icon={faTimes} size="lg" className="cursor-pointer" />
           </IconButton>

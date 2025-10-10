@@ -78,11 +78,11 @@ export const SecretDetectionIgnoreValuesSection = () => {
   if (!currentProject) return null;
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex w-full items-center justify-between">
         <p className="text-xl font-medium">Secret Detection</p>
       </div>
-      <p className="mb-4 mt-2 max-w-2xl text-sm text-gray-400">
+      <p className="mt-2 mb-4 max-w-2xl text-sm text-gray-400">
         Define secret values to ignore when scanning designated parameter folders. Add values here
         to prevent false positives or allow approved sensitive data. These ignored values will not
         trigger policy violation alerts.
@@ -94,7 +94,7 @@ export const SecretDetectionIgnoreValuesSection = () => {
             {ignoreValuesFormFields.fields.map(({ id: ignoreValueFieldId }, i) => (
               <div key={ignoreValueFieldId} className="flex items-end space-x-2">
                 <div className="grow">
-                  {i === 0 && <span className="text-mineshaft-400 text-xs">Secret Value</span>}
+                  {i === 0 && <span className="text-xs text-mineshaft-400">Secret Value</span>}
                   <Controller
                     control={control}
                     name={`ignoreValues.${i}.value`}

@@ -104,16 +104,16 @@ export const IdentitySection = withPermission(
 
     return (
       <div>
-        <div className="border-mineshaft-600 bg-mineshaft-900 rounded-lg border p-4">
+        <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-1">
-              <p className="text-mineshaft-100 text-xl font-medium">Identities</p>
+              <p className="text-xl font-medium text-mineshaft-100">Identities</p>
               <a
                 href="https://infisical.com/docs/documentation/platform/identities/overview"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="bg-yellow/20 text-yellow ml-1 mt-[0.16rem] inline-block rounded-md px-1.5 text-sm opacity-80 hover:opacity-100">
+                <div className="mt-[0.16rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   <span>Docs</span>
                   <FontAwesomeIcon
@@ -152,16 +152,16 @@ export const IdentitySection = withPermission(
           <IdentityTable handlePopUpOpen={handlePopUpOpen} />
         </div>
         {/* Identity Auth Templates Section */}
-        <div className="border-mineshaft-600 bg-mineshaft-900 mt-4 rounded-lg border p-4">
+        <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-1">
-              <p className="text-mineshaft-100 text-xl font-medium">Identity Auth Templates</p>
+              <p className="text-xl font-medium text-mineshaft-100">Identity Auth Templates</p>
               <a
                 href="https://infisical.com/docs/documentation/platform/identities/auth-templates"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="bg-yellow/20 text-yellow ml-1 mt-[0.16rem] inline-block rounded-md px-1.5 text-sm opacity-80 hover:opacity-100">
+                <div className="mt-[0.16rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   <span>Docs</span>
                   <FontAwesomeIcon

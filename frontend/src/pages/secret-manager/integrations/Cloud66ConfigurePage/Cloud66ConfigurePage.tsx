@@ -96,7 +96,7 @@ export const Cloud66ConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="border-mineshaft-500 w-full border"
+            className="w-full border border-mineshaft-500"
           >
             {currentProject?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -119,7 +119,7 @@ export const Cloud66ConfigurePage = () => {
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
-            className="border-mineshaft-500 w-full border"
+            className="w-full border border-mineshaft-500"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (

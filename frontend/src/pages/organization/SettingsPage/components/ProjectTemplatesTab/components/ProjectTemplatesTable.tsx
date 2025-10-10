@@ -85,7 +85,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
               return (
                 <Tr
                   onClick={() => onEdit(template)}
-                  className="hover:bg-mineshaft-700 cursor-pointer"
+                  className="cursor-pointer hover:bg-mineshaft-700"
                   key={id}
                 >
                   <Td>
@@ -94,7 +94,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                       <Tooltip content={description}>
                         <FontAwesomeIcon
                           size="sm"
-                          className="text-mineshaft-400 ml-2"
+                          className="ml-2 text-mineshaft-400"
                           icon={faCircleInfo}
                         />
                       </Tooltip>
@@ -115,7 +115,7 @@ export const ProjectTemplatesTable = ({ onEdit }: Props) => {
                       >
                         <FontAwesomeIcon
                           size="sm"
-                          className="text-mineshaft-400 ml-2"
+                          className="ml-2 text-mineshaft-400"
                           icon={faCircleInfo}
                         />
                       </Tooltip>

@@ -26,13 +26,13 @@ export const PolicyMemberOption = ({
           {children}
         </p>
         {!props.data.isOrgMembershipActive && (
-          <Badge className="bg-mineshaft-400/50 text-bunker-300 pointer-events-none ml-1 mr-auto flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
+          <Badge className="pointer-events-none mr-auto ml-1 flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
             <FontAwesomeIcon icon={faBan} />
             Inactive
           </Badge>
         )}
         {isSelected && (
-          <FontAwesomeIcon className="text-primary ml-2" icon={faCheckCircle} size="sm" />
+          <FontAwesomeIcon className="ml-2 text-primary" icon={faCheckCircle} size="sm" />
         )}
       </div>
     </components.Option>

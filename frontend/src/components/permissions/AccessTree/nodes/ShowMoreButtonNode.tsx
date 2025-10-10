@@ -12,10 +12,10 @@ export const ShowMoreButtonNode = ({
   const tooltipText = `${remaining} ${remaining === 1 ? "folder is" : "folders are"} hidden. Click to show ${remaining > 10 ? "10 more" : ""}`;
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-800 flex h-full w-full items-center justify-center rounded-md border p-2">
+    <div className="flex h-full w-full items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-2">
       <Handle
         type="target"
-        className="cursor-pointer! pointer-events-none opacity-0"
+        className="pointer-events-none cursor-pointer! opacity-0"
         position={Position.Top}
       />
 

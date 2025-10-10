@@ -64,7 +64,7 @@ export const CommitDetailsPage = () => {
   };
 
   return (
-    <div className="bg-bunker-800 mx-auto flex w-full max-w-7xl justify-center pb-4 pt-2 text-white">
+    <div className="mx-auto flex w-full max-w-7xl justify-center bg-bunker-800 pt-2 pb-4 text-white">
       <div className="w-full max-w-[75vw]">
         <ProjectPermissionCan
           renderGuardBanner

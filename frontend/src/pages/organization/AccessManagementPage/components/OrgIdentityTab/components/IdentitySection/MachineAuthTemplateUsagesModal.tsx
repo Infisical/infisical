@@ -57,7 +57,7 @@ export const MachineAuthTemplateUsagesModal = ({
                 {!isPending &&
                   usages.map((usage) => (
                     <Tr
-                      className="hover:bg-mineshaft-700 h-10 cursor-pointer transition-colors duration-100"
+                      className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                       key={`usage-${usage.identityId}`}
                       onClick={() =>
                         navigate({
@@ -70,7 +70,7 @@ export const MachineAuthTemplateUsagesModal = ({
                     >
                       <Td>{usage.identityName}</Td>
                       <Td>
-                        <span className="text-mineshaft-400 text-sm">{usage.identityId}</span>
+                        <span className="text-sm text-mineshaft-400">{usage.identityId}</span>
                       </Td>
                     </Tr>
                   ))}

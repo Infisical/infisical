@@ -114,7 +114,7 @@ export const NorthflankConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="border-mineshaft-500 w-full border"
+            className="w-full border border-mineshaft-500"
           >
             {currentProject?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -137,7 +137,7 @@ export const NorthflankConfigurePage = () => {
           <Select
             value={targetAppId}
             onValueChange={(val) => setTargetAppId(val)}
-            className="border-mineshaft-500 w-full border"
+            className="w-full border border-mineshaft-500"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
@@ -161,7 +161,7 @@ export const NorthflankConfigurePage = () => {
             <Select
               value={targetSecretGroupId}
               onValueChange={(val) => setTargetSecretGroupId(val)}
-              className="border-mineshaft-500 w-full border"
+              className="w-full border border-mineshaft-500"
               isDisabled={integrationAuthSecretGroups.length === 0}
             >
               {integrationAuthSecretGroups.length > 0 ? (

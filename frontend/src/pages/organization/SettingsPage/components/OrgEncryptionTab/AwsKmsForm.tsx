@@ -240,7 +240,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
               defaultValue={field.value}
               {...field}
               onValueChange={(e) => onChange(e)}
-              className="border-mineshaft-500 w-full border"
+              className="w-full border border-mineshaft-500"
             >
               {AWS_REGIONS.map((awsRegion) => (
                 <SelectItem value={awsRegion.slug} key={`kms-aws-region-${awsRegion.slug}`}>

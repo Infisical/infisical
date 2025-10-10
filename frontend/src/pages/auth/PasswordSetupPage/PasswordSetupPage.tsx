@@ -96,11 +96,11 @@ export const PasswordSetupPage = () => {
     passwordErrorBreached;
 
   return (
-    <div className="bg-bunker-800 flex h-screen w-full flex-col items-center justify-center">
+    <div className="flex h-screen w-full flex-col items-center justify-center bg-bunker-800">
       <form onSubmit={handleSetPassword}>
-        <Card className="border-mineshaft-600 flex w-full max-w-lg flex-col rounded-md border px-8 py-4">
+        <Card className="flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 px-8 py-4">
           <CardTitle
-            className="p-0 pb-4 pt-2 text-left text-xl"
+            className="p-0 pt-2 pb-4 text-left text-xl"
             subTitle="Make sure to store your password somewhere safe."
           >
             <div className="flex flex-row items-center">
@@ -173,13 +173,13 @@ export const PasswordSetupPage = () => {
               }
             />
           </FormControl>
-          <div className="bg-mineshaft-700 mb-4 flex w-full max-w-md flex-col items-start rounded-md px-2 py-2 transition-opacity duration-100">
+          <div className="mb-4 flex w-full max-w-md flex-col items-start rounded-md bg-mineshaft-700 px-2 py-2 transition-opacity duration-100">
             <div className="mb-1 text-sm text-gray-400">Password must contain:</div>
             <div className="ml-1 flex flex-row items-center justify-start">
               {passwordErrorTooShort ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
+                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
               ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
+                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
               )}
               <div
                 className={`${passwordErrorTooShort ? "text-gray-400" : "text-gray-600"} text-sm`}
@@ -189,9 +189,9 @@ export const PasswordSetupPage = () => {
             </div>
             <div className="ml-1 flex flex-row items-center justify-start">
               {passwordErrorTooLong ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
+                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
               ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
+                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
               )}
               <div
                 className={`${passwordErrorTooLong ? "text-gray-400" : "text-gray-600"} text-sm`}
@@ -201,9 +201,9 @@ export const PasswordSetupPage = () => {
             </div>
             <div className="ml-1 flex flex-row items-center justify-start">
               {passwordErrorNoLetterChar ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
+                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
               ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
+                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
               )}
               <div
                 className={`${passwordErrorNoLetterChar ? "text-gray-400" : "text-gray-600"} text-sm`}
@@ -213,9 +213,9 @@ export const PasswordSetupPage = () => {
             </div>
             <div className="ml-1 flex flex-row items-center justify-start">
               {passwordErrorNoNumOrSpecialChar ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
+                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
               ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
+                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
               )}
               <div
                 className={`${
@@ -227,9 +227,9 @@ export const PasswordSetupPage = () => {
             </div>
             <div className="ml-1 flex flex-row items-center justify-start">
               {passwordErrorRepeatedChar ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
+                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
               ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
+                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
               )}
               <div
                 className={`${passwordErrorRepeatedChar ? "text-gray-400" : "text-gray-600"} text-sm`}
@@ -239,9 +239,9 @@ export const PasswordSetupPage = () => {
             </div>
             <div className="ml-1 flex flex-row items-center justify-start">
               {passwordErrorEscapeChar ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
+                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
               ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
+                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
               )}
               <div
                 className={`${passwordErrorEscapeChar ? "text-gray-400" : "text-gray-600"} text-sm`}
@@ -251,9 +251,9 @@ export const PasswordSetupPage = () => {
             </div>
             <div className="ml-1 flex flex-row items-center justify-start">
               {passwordErrorLowEntropy ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
+                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
               ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
+                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
               )}
               <div
                 className={`${passwordErrorLowEntropy ? "text-gray-400" : "text-gray-600"} text-sm`}
@@ -263,9 +263,9 @@ export const PasswordSetupPage = () => {
             </div>
             <div className="ml-1 flex flex-row items-center justify-start">
               {passwordErrorBreached ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
+                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
               ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
+                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
               )}
               <div
                 className={`${passwordErrorBreached ? "text-gray-400" : "text-gray-600"} text-sm`}

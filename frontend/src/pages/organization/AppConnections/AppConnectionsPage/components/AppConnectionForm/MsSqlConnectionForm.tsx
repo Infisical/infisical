@@ -126,7 +126,7 @@ export const MsSqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
                           isDisabled={!isAllowed}
                           value={value as string}
                           onValueChange={onChange}
-                          className="border-mineshaft-500 w-full border"
+                          className="w-full border border-mineshaft-500"
                           dropdownContainerClassName="max-w-none"
                           isLoading={isGatewaysLoading}
                           placeholder="Default: Internet Gateway"
@@ -168,7 +168,7 @@ export const MsSqlConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 isDisabled={isUpdate}
                 value={value}
                 onValueChange={(val) => onChange(val)}
-                className="border-mineshaft-500 w-full border"
+                className="w-full border border-mineshaft-500"
                 position="popper"
                 dropdownContainerClassName="max-w-none"
               >

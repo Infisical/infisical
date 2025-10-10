@@ -13,7 +13,7 @@ export type TabListProps = TabsPrimitive.TabsListProps;
 
 export const TabList = ({ className, children, ...props }: TabListProps) => (
   <TabsPrimitive.List
-    className={twMerge("border-mineshaft-800 flex shrink-0 border-b-2", className)}
+    className={twMerge("flex shrink-0 border-b-2 border-mineshaft-800", className)}
     {...props}
   >
     {children}
@@ -25,7 +25,7 @@ export type TabProps = TabsPrimitive.TabsTriggerProps;
 export const Tab = ({ className, children, ...props }: TabProps) => (
   <TabsPrimitive.Trigger
     className={twMerge(
-      "text-mineshaft-400 hover:text-mineshaft-200 data-[state=active]:border-primary flex h-10 select-none items-center justify-center px-3 text-sm font-medium transition-all first:rounded-tl-md last:rounded-tr-md data-[state=active]:border-b data-[state=active]:text-white",
+      "flex h-10 items-center justify-center px-3 text-sm font-medium text-mineshaft-400 transition-all select-none first:rounded-tl-md last:rounded-tr-md hover:text-mineshaft-200 data-[state=active]:border-b data-[state=active]:border-primary data-[state=active]:text-white",
       className
     )}
     {...props}
@@ -38,7 +38,7 @@ export type TabPanelProps = TabsPrimitive.TabsContentProps;
 
 export const TabPanel = ({ className, children, ...props }: TabPanelProps) => (
   <TabsPrimitive.Content
-    className={twMerge("outline-hidden grow rounded-bl-md rounded-br-md py-5", className)}
+    className={twMerge("grow rounded-br-md rounded-bl-md py-5 outline-hidden", className)}
     {...props}
   >
     {children}

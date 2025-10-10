@@ -61,7 +61,7 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
   return (
     <>
       <div
-        className="border-mineshaft-600 hover:bg-mineshaft-700 group flex cursor-pointer border-b"
+        className="group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700"
         role="button"
         tabIndex={0}
         onClick={setIsExpanded.toggle}
@@ -79,13 +79,13 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
           {mode === "modified" && !preSecret?.isRotatedSecret ? (
             <>
               <div>{preSecret?.key}</div>
-              <div className="bg-primary rounded-lg px-1 py-0.5 text-xs font-bold text-black">
+              <div className="rounded-lg bg-primary px-1 py-0.5 text-xs font-bold text-black">
                 v{preSecret?.version}
               </div>
               <div>
                 <FontAwesomeIcon icon={faChevronRight} size="sm" className="text-orange-700" />
               </div>
-              <div className="bg-primary rounded-lg px-1 py-0.5 text-xs font-bold text-black">
+              <div className="rounded-lg bg-primary px-1 py-0.5 text-xs font-bold text-black">
                 v{postSecret?.version}
               </div>
             </>
@@ -93,7 +93,7 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
             <>
               {postSecret.key}
               {postSecret.isRotatedSecret && (
-                <span className="text-mineshaft-400 ml-2">
+                <span className="ml-2 text-mineshaft-400">
                   Rotated Secrets are not affected by Rollback
                 </span>
               )}
@@ -102,14 +102,14 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
         </div>
       </div>
       {isExpanded && (
-        <div className="bg-bunker-600 flex cursor-pointer p-4">
+        <div className="flex cursor-pointer bg-bunker-600 p-4">
           <TableContainer>
             <Table>
               <THead>
-                <Th className="min-table-row border-mineshaft-600 min-w-44 border-r">Type</Th>
+                <Th className="min-table-row min-w-44 border-r border-mineshaft-600">Type</Th>
                 {isModified ? (
                   <>
-                    <Th className="border-mineshaft-600 border-r">Before rollback</Th>
+                    <Th className="border-r border-mineshaft-600">Before rollback</Th>
                     <Th>After rollback</Th>
                   </>
                 ) : (
@@ -118,16 +118,16 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
               </THead>
               <TBody>
                 <Tr>
-                  <Td className="border-mineshaft-600 border-r">Key</Td>
+                  <Td className="border-r border-mineshaft-600">Key</Td>
                   {isModified && (
-                    <Td className="border-mineshaft-600 border-r">{preSecret?.key}</Td>
+                    <Td className="border-r border-mineshaft-600">{preSecret?.key}</Td>
                   )}
                   <Td>{postSecret.key}</Td>
                 </Tr>
                 <Tr>
-                  <Td className="border-mineshaft-600 border-r">Value</Td>
+                  <Td className="border-r border-mineshaft-600">Value</Td>
                   {isModified && (
-                    <Td className="border-mineshaft-600 border-r">
+                    <Td className="border-r border-mineshaft-600">
                       {preSecret?.secretValueHidden ? (
                         <Blur
                           className="w-min"
@@ -151,9 +151,9 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                 </Tr>
                 {Boolean(preSecret?.idOverride || postSecret?.idOverride) && (
                   <Tr>
-                    <Td className="border-mineshaft-600 border-r">Override</Td>
+                    <Td className="border-r border-mineshaft-600">Override</Td>
                     {isModified && (
-                      <Td className="border-mineshaft-600 border-r">
+                      <Td className="border-r border-mineshaft-600">
                         <SecretInput value={preSecret?.valueOverride} />
                       </Td>
                     )}
@@ -163,16 +163,16 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
                   </Tr>
                 )}
                 <Tr>
-                  <Td className="border-mineshaft-600 border-r">Comment</Td>
+                  <Td className="border-r border-mineshaft-600">Comment</Td>
                   {isModified && (
-                    <Td className="border-mineshaft-600 border-r">{preSecret?.comment}</Td>
+                    <Td className="border-r border-mineshaft-600">{preSecret?.comment}</Td>
                   )}
                   <Td>{postSecret?.comment}</Td>
                 </Tr>
                 <Tr>
-                  <Td className="border-mineshaft-600 border-r">Tags</Td>
+                  <Td className="border-r border-mineshaft-600">Tags</Td>
                   {isModified && (
-                    <Td className="border-mineshaft-600 border-r">
+                    <Td className="border-r border-mineshaft-600">
                       {preSecret?.tags?.map(({ slug, id: tagId, color }) => (
                         <Tag
                           className="flex w-min items-center space-x-2"

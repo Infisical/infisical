@@ -21,7 +21,7 @@ export const CredentialDisplay = ({ children, label, isSensitive }: Props) => {
   return (
     <GenericFieldLabel label={label}>
       {children ? (
-        <div className="text-mineshaft-100 flex w-full items-center gap-1">
+        <div className="flex w-full items-center gap-1 text-mineshaft-100">
           {showCredential ? children : "****************************"}
           <Tooltip content={`Copy ${label}`}>
             <IconButton

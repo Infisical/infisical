@@ -136,7 +136,7 @@ export const SecretScanningDataSourceForm = ({
     <form className={twMerge(isFinalStep && "max-h-[70vh] overflow-y-auto")}>
       <FormProvider {...formMethods}>
         <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-          <Tab.List className="-pb-1 border-mineshaft-600 mb-6 w-full border-b-2">
+          <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
             {FORM_TABS.map((tab, index) => (
               <Tab
                 onClick={async (e) => {
@@ -145,9 +145,9 @@ export const SecretScanningDataSourceForm = ({
                   setSelectedTabIndex((prev) => (isEnabled ? index : prev));
                 }}
                 className={({ selected }) =>
-                  `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} outline-hidden px-4 py-2 text-sm font-medium disabled:opacity-60 ${
+                  `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
                     selected
-                      ? "border-mineshaft-300 text-mineshaft-200 border-b-2"
+                      ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
                       : "text-bunker-300"
                   }`
                 }

@@ -60,14 +60,14 @@ export const SelectImportFromPlatformModal = ({ isOpen, onToggle }: Props) => {
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: -30 }}
             >
-              <div className="text-mineshaft-300 mb-4 text-sm">
+              <div className="mb-4 text-sm text-mineshaft-300">
                 Select a platform to import from
               </div>
               <div className="flex items-center space-x-4">
                 {PLATFORM_LIST.map((platform, idx) => (
                   <div
                     key={`platform-${idx + 1}`}
-                    className="border-mineshaft-500 bg-mineshaft-700 hover:border-primary/70 hover:bg-primary/10 flex h-28 w-32 cursor-pointer flex-col items-center justify-between rounded-sm border p-6 py-5 transition-all hover:text-white"
+                    className="flex h-28 w-32 cursor-pointer flex-col items-center justify-between rounded-sm border border-mineshaft-500 bg-mineshaft-700 p-6 py-5 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
                     role="button"
                     tabIndex={0}
                     onClick={() => {
@@ -86,7 +86,7 @@ export const SelectImportFromPlatformModal = ({ isOpen, onToggle }: Props) => {
                       alt={`${platform.title} logo`}
                       style={{ width: platform.size }}
                     />
-                    <div className="whitespace-pre-wrap text-center text-sm">{platform.title}</div>
+                    <div className="text-center text-sm whitespace-pre-wrap">{platform.title}</div>
                   </div>
                 ))}
               </div>

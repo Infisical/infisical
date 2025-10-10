@@ -124,7 +124,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
         <Button variant="outline_bg" colorSchema="primary" className="relative">
           <FontAwesomeIcon icon={faFilterCircleXmark} />
           {activeFilterCount > 0 && (
-            <Badge className="absolute bottom-0 right-0" variant="primary">
+            <Badge className="absolute right-0 bottom-0" variant="primary">
               {activeFilterCount}
             </Badge>
           )}
@@ -132,8 +132,8 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="mt-4 overflow-visible py-4">
         <form onSubmit={handleSubmit(setFilter)}>
-          <div className="font-inter flex min-w-64 flex-col">
-            <div className="border-b-mineshaft-500 mb-3 flex items-center border-b px-3 pb-2">
+          <div className="flex min-w-64 flex-col font-inter">
+            <div className="mb-3 flex items-center border-b border-b-mineshaft-500 px-3 pb-2">
               <div className="flex w-full items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span>Filters</span>
@@ -175,7 +175,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                     <FormControl>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <div className="thin-scrollbar border-mineshaft-500 bg-mineshaft-700 font-inter text-bunker-200 outline-hidden data-placeholder:text-mineshaft-200 inline-flex w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-md border px-3 py-2 text-sm font-normal">
+                          <div className="inline-flex thin-scrollbar w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-500 bg-mineshaft-700 px-3 py-2 font-inter text-sm font-normal whitespace-nowrap text-bunker-200 outline-hidden data-placeholder:text-mineshaft-200">
                             {selectedEventTypes?.length === 1
                               ? filteredEventTypes.find(
                                   (eventType) => eventType.value === selectedEventTypes[0]
@@ -189,7 +189,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                         <DropdownMenuContent
                           align="end"
                           sideOffset={2}
-                          className="z-100 thin-scrollbar max-h-80 overflow-hidden"
+                          className="z-100 max-h-80 thin-scrollbar overflow-hidden"
                         >
                           <div className="max-h-80 overflow-y-auto">
                             {filteredEventTypes.length > 0 ? (
@@ -224,7 +224,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                                       isSelected ? (
                                         <FontAwesomeIcon
                                           icon={faCheckCircle}
-                                          className="text-primary pr-0.5"
+                                          className="pr-0.5 text-primary"
                                         />
                                       ) : (
                                         <div className="pl-[1.01rem]" />
@@ -269,7 +269,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                           if (e === "all") onChange(undefined);
                           else setValue("userAgentType", e as UserAgentType, { shouldDirty: true });
                         }}
-                        className={twMerge("border-mineshaft-500 bg-mineshaft-700 w-full border")}
+                        className={twMerge("w-full border border-mineshaft-500 bg-mineshaft-700")}
                         position="popper"
                       >
                         <SelectItem value="all" key="all">
@@ -337,9 +337,9 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <div className="mb-3 mt-2">
+                    <div className="mt-2 mb-3">
                       <p className="text-xs opacity-60">Secrets</p>
-                      <div className="bg-mineshaft-500 h-px w-full rounded-full" />
+                      <div className="h-px w-full rounded-full bg-mineshaft-500" />
                     </div>
                     <LogFilterItem
                       label="Environment"

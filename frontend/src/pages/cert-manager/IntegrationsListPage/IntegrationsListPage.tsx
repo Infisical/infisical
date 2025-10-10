@@ -42,7 +42,7 @@ export const IntegrationsListPage = () => {
         <meta property="og:title" content="Manage your certificates in seconds" />
         <meta name="og:description" content="Sync and manage PKI certificates across services" />
       </Helmet>
-      <div className="container relative mx-auto max-w-7xl pb-12 text-white">
+      <div className="relative container mx-auto max-w-7xl pb-12 text-white">
         <div className="mb-8">
           <PageHeader
             title="Integrations"

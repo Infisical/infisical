@@ -12,7 +12,7 @@ export const PkiSubscribersPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "PKI Subscribers" })}</title>
       </Helmet>
-      <div className="bg-bunker-800 h-full">
+      <div className="h-full bg-bunker-800">
         <div className="container mx-auto flex flex-col justify-between text-white">
           <div className="mx-auto mb-6 w-full max-w-7xl">
             <PageHeader

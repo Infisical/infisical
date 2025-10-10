@@ -59,7 +59,7 @@ export const OrgScimSection = () => {
   };
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 rounded-lg border p-6">
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
       <p className="text-xl font-medium text-gray-200">Provision users via SCIM</p>
       <div className="py-4">
         <div className="mb-2 flex items-center justify-between">
@@ -76,7 +76,7 @@ export const OrgScimSection = () => {
             )}
           </OrgPermissionCan>
         </div>
-        <p className="text-mineshaft-300 text-sm">Manage SCIM configuration</p>
+        <p className="text-sm text-mineshaft-300">Manage SCIM configuration</p>
       </div>
       <ExternalGroupOrgRoleMappings />
       <div className="py-4">
@@ -99,7 +99,7 @@ export const OrgScimSection = () => {
             )}
           </OrgPermissionCan>
         </div>
-        <p className="text-mineshaft-300 text-sm">
+        <p className="text-sm text-mineshaft-300">
           Allow member provisioning/deprovisioning with SCIM
         </p>
       </div>

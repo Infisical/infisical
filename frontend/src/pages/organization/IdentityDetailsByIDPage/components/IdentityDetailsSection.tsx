@@ -41,9 +41,9 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
 
   const { data } = useGetIdentityById(identityId);
   return data ? (
-    <div className="border-mineshaft-600 bg-mineshaft-900 rounded-lg border p-4">
-      <div className="border-mineshaft-400 flex items-center justify-between border-b pb-4">
-        <h3 className="text-mineshaft-100 text-lg font-medium">Identity Details</h3>
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
+        <h3 className="text-lg font-medium text-mineshaft-100">Identity Details</h3>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -116,9 +116,9 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
       </div>
       <div className="pt-4">
         <div className="mb-4">
-          <p className="text-mineshaft-300 text-sm font-medium">Identity ID</p>
+          <p className="text-sm font-medium text-mineshaft-300">Identity ID</p>
           <div className="group flex align-top">
-            <p className="text-mineshaft-300 text-sm">{data.identity.id}</p>
+            <p className="text-sm text-mineshaft-300">{data.identity.id}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
               <Tooltip content={copyTextId}>
                 <IconButton
@@ -137,47 +137,47 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-mineshaft-300 text-sm font-medium">Name</p>
-          <p className="text-mineshaft-300 text-sm">{data.identity.name}</p>
+          <p className="text-sm font-medium text-mineshaft-300">Name</p>
+          <p className="text-sm text-mineshaft-300">{data.identity.name}</p>
         </div>
         <div className="mb-4">
-          <p className="text-mineshaft-300 text-sm font-medium">Last Login Auth Method</p>
-          <p className="text-mineshaft-300 text-sm">
+          <p className="text-sm font-medium text-mineshaft-300">Last Login Auth Method</p>
+          <p className="text-sm text-mineshaft-300">
             {data.lastLoginAuthMethod ? identityAuthToNameMap[data.lastLoginAuthMethod] : "-"}
           </p>
         </div>
         <div className="mb-4">
-          <p className="text-mineshaft-300 text-sm font-medium">Last Login Time</p>
-          <p className="text-mineshaft-300 text-sm">
+          <p className="text-sm font-medium text-mineshaft-300">Last Login Time</p>
+          <p className="text-sm text-mineshaft-300">
             {data.lastLoginTime ? format(data.lastLoginTime, "PPpp") : "-"}
           </p>
         </div>
         <div className="mb-4">
-          <p className="text-mineshaft-300 text-sm font-medium">Delete Protection</p>
-          <p className="text-mineshaft-300 text-sm">
+          <p className="text-sm font-medium text-mineshaft-300">Delete Protection</p>
+          <p className="text-sm text-mineshaft-300">
             {data.identity.hasDeleteProtection ? "On" : "Off"}
           </p>
         </div>
         <div className="mb-4">
-          <p className="text-mineshaft-300 text-sm font-medium">Organization Role</p>
-          <p className="text-mineshaft-300 text-sm">{data.role}</p>
+          <p className="text-sm font-medium text-mineshaft-300">Organization Role</p>
+          <p className="text-sm text-mineshaft-300">{data.role}</p>
         </div>
         <div>
-          <p className="text-mineshaft-300 text-sm font-medium">Metadata</p>
+          <p className="text-sm font-medium text-mineshaft-300">Metadata</p>
           {data?.metadata?.length ? (
-            <div className="text-mineshaft-300 mt-1 flex flex-wrap gap-2 text-sm">
+            <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
               {data.metadata?.map((el) => (
                 <div key={el.id} className="flex items-center">
                   <Tag
                     size="xs"
-                    className="border-mineshaft-500 mr-0 flex items-center rounded-r-none border"
+                    className="mr-0 flex items-center rounded-r-none border border-mineshaft-500"
                   >
                     <FontAwesomeIcon icon={faKey} size="xs" className="mr-1" />
                     <div>{el.key}</div>
                   </Tag>
                   <Tag
                     size="xs"
-                    className="border-mineshaft-500 bg-mineshaft-900 flex items-center rounded-l-none border pl-1"
+                    className="flex items-center rounded-l-none border border-mineshaft-500 bg-mineshaft-900 pl-1"
                   >
                     <div className="max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap">
                       {el.value}
@@ -187,7 +187,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
               ))}
             </div>
           ) : (
-            <p className="text-mineshaft-300 text-sm">-</p>
+            <p className="text-sm text-mineshaft-300">-</p>
           )}
         </div>
       </div>

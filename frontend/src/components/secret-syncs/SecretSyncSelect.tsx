@@ -44,7 +44,7 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
         <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="text-mineshaft-400 mt-4 text-sm">Loading options...</p>
+        <p className="mt-4 text-sm text-mineshaft-400">Loading options...</p>
       </div>
     );
   }
@@ -58,7 +58,7 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
         placeholder="Search options..."
         className="bg-mineshaft-800 placeholder:text-mineshaft-400"
       />
-      <div className="h-118 grid grid-cols-4 content-start gap-2">
+      <div className="grid h-118 grid-cols-4 content-start gap-2">
         {filteredOptions.slice(offset, perPage * page)?.map(({ destination, enterprise }) => {
           const { image, name } = SECRET_SYNC_MAP[destination];
           return (
@@ -70,7 +70,7 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
                   ? handlePopUpOpen("upgradePlan")
                   : onSelect(destination)
               }
-              className="border-mineshaft-600 bg-mineshaft-700 hover:bg-mineshaft-600 group relative flex h-28 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-md border p-4 duration-200"
+              className="group relative flex h-28 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
             >
               <img
                 src={`/images/integrations/${image}`}
@@ -107,7 +107,7 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
             service you're looking for,`}{" "}
                     <a
                       target="_blank"
-                      className="hover:text-mineshaft-300 underline"
+                      className="underline hover:text-mineshaft-300"
                       href="https://infisical.com/slack"
                       rel="noopener noreferrer"
                     >
@@ -116,7 +116,7 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
                     or{" "}
                     <a
                       target="_blank"
-                      className="hover:text-mineshaft-300 underline"
+                      className="underline hover:text-mineshaft-300"
                       href="https://github.com/Infisical/infisical/discussions"
                       rel="noopener noreferrer"
                     >
@@ -127,7 +127,7 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
                 </>
               }
             >
-              <div className="text-mineshaft-400 -ml-3 flex items-center gap-1.5">
+              <div className="-ml-3 flex items-center gap-1.5 text-mineshaft-400">
                 <span className="text-xs">
                   Don&#39;t see the third-party service you&#39;re looking for?
                 </span>

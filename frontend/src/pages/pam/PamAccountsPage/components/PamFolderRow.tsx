@@ -27,7 +27,7 @@ type Props = {
 export const PamFolderRow = ({ folder, onClick, onDelete, onUpdate, search }: Props) => {
   return (
     <Tr
-      className="hover:bg-mineshaft-700 group h-10 cursor-pointer transition-colors duration-100"
+      className="group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
       onClick={onClick}
     >
       <Td>
@@ -48,7 +48,7 @@ export const PamFolderRow = ({ folder, onClick, onDelete, onUpdate, search }: Pr
                 <IconButton
                   ariaLabel="Options"
                   colorSchema="secondary"
-                  className="data-[state=open]:flex! hidden w-6 group-hover:flex"
+                  className="hidden w-6 group-hover:flex data-[state=open]:flex!"
                   variant="plain"
                 >
                   <FontAwesomeIcon icon={faEllipsisV} />

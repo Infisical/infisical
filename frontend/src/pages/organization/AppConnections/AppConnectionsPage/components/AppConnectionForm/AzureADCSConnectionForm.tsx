@@ -114,7 +114,7 @@ export const AzureADCSConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 isDisabled={isUpdate}
                 value={value}
                 onValueChange={(val) => onChange(val)}
-                className="border-mineshaft-500 w-full border"
+                className="w-full border border-mineshaft-500"
                 position="popper"
                 dropdownContainerClassName="max-w-none"
               >
@@ -131,13 +131,13 @@ export const AzureADCSConnectionForm = ({ appConnection, onSubmit }: Props) => {
         />
         <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
           <Tab.List
-            className={`-pb-1 ${selectedTabIndex === 1 ? "mb-3" : "mb-6"} border-mineshaft-600 w-full border-b-2`}
+            className={`-pb-1 ${selectedTabIndex === 1 ? "mb-3" : "mb-6"} w-full border-b-2 border-mineshaft-600`}
           >
             <Tab
               className={({ selected }) =>
-                `outline-hidden -mb-[0.14rem] whitespace-nowrap px-4 py-2 text-sm font-medium disabled:opacity-60 ${
+                `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
                   selected
-                    ? "border-mineshaft-300 text-mineshaft-200 border-b-2"
+                    ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
                     : "text-bunker-300"
                 }`
               }
@@ -146,9 +146,9 @@ export const AzureADCSConnectionForm = ({ appConnection, onSubmit }: Props) => {
             </Tab>
             <Tab
               className={({ selected }) =>
-                `outline-hidden -mb-[0.14rem] whitespace-nowrap px-4 py-2 text-sm font-medium disabled:opacity-60 ${
+                `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
                   selected
-                    ? "border-mineshaft-300 text-mineshaft-200 border-b-2"
+                    ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
                     : "text-bunker-300"
                 }`
               }
@@ -157,11 +157,11 @@ export const AzureADCSConnectionForm = ({ appConnection, onSubmit }: Props) => {
             </Tab>
           </Tab.List>
           {selectedTabIndex === 1 && (
-            <div className="text-mineshaft-300 mb-2 text-xs">
+            <div className="mb-2 text-xs text-mineshaft-300">
               SSL configuration for HTTPS connections
             </div>
           )}
-          <Tab.Panels className="border-mineshaft-600 bg-mineshaft-700/70 mb-4 rounded-sm border p-3 pb-0">
+          <Tab.Panels className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
             <Tab.Panel>
               <Controller
                 name="credentials.adcsUrl"
@@ -222,7 +222,7 @@ export const AzureADCSConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     isOptional
                   >
                     <TextArea
-                      className="resize-none! h-[3.6rem]"
+                      className="h-[3.6rem] resize-none!"
                       {...field}
                       isDisabled={!sslEnabled}
                       placeholder="-----BEGIN CERTIFICATE-----
@@ -242,7 +242,7 @@ export const AzureADCSConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     errorText={error?.message}
                   >
                     <Switch
-                      className="bg-mineshaft-400/50 data-[state=checked]:bg-green/80 shadow-inner"
+                      className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
                       id="ssl-reject-unauthorized"
                       thumbClassName="bg-mineshaft-800"
                       isChecked={sslEnabled ? value : false}

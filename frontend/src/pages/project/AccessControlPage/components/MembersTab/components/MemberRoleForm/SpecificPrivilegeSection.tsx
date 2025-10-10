@@ -302,7 +302,7 @@ export const SpecificPrivilegeSecretForm = ({
                 <Select
                   {...field}
                   isDisabled={isMemberEditDisabled}
-                  className="bg-mineshaft-900 hover:bg-mineshaft-800 w-full"
+                  className="w-full bg-mineshaft-900 hover:bg-mineshaft-800"
                   onValueChange={(e) => onChange(e)}
                   position="popper"
                   dropdownContainerClassName="max-w-none"
@@ -331,7 +331,7 @@ export const SpecificPrivilegeSecretForm = ({
                         <Select
                           {...field}
                           isDisabled={isMemberEditDisabled || !selectablePaths.length}
-                          className="hover:bg-mineshaft-800 w-full"
+                          className="w-full hover:bg-mineshaft-800"
                           placeholder="Select a secret path"
                           onValueChange={(e) => field.onChange(e)}
                           position="popper"
@@ -368,7 +368,7 @@ export const SpecificPrivilegeSecretForm = ({
                   name="read"
                   render={({ field }) => (
                     <label
-                      className={`border-mineshaft-600 bg-mineshaft-900 hover:border-primary/30 hover:bg-primary/10 group my-1 flex w-full cursor-pointer flex-row items-center justify-start gap-2 rounded-md border p-3 duration-100 ${field.value ? "border-primary/50 bg-primary/10 hover:border-primary/50" : ""}`}
+                      className={`group my-1 flex w-full cursor-pointer flex-row items-center justify-start gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-3 duration-100 hover:border-primary/30 hover:bg-primary/10 ${field.value ? "border-primary/50 bg-primary/10 hover:border-primary/50" : ""}`}
                       htmlFor="secret-read"
                     >
                       <Checkbox
@@ -378,7 +378,7 @@ export const SpecificPrivilegeSecretForm = ({
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
-                      <div className="text-mineshaft-300 pointer-events-none ml-1 flex select-none flex-col">
+                      <div className="pointer-events-none ml-1 flex flex-col text-mineshaft-300 select-none">
                         <div className="flex flex-row items-center gap-1">
                           <FontAwesomeIcon
                             icon={faEye}
@@ -386,10 +386,10 @@ export const SpecificPrivilegeSecretForm = ({
                           />
                           <FormLabel
                             label="View"
-                            className={`text-mineshaft-300 my-0 ml-0.5 ${field.value ? "text-primary-200" : ""}`}
+                            className={`my-0 ml-0.5 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
                           />
                         </div>
-                        <p className="text-mineshaft-400 text-xs">Read secret values</p>
+                        <p className="text-xs text-mineshaft-400">Read secret values</p>
                       </div>
                     </label>
                   )}
@@ -399,7 +399,7 @@ export const SpecificPrivilegeSecretForm = ({
                   name="create"
                   render={({ field }) => (
                     <label
-                      className={`border-mineshaft-600 bg-mineshaft-900 hover:border-primary/30 hover:bg-primary/10 group my-1 flex w-full cursor-pointer flex-row items-center justify-start gap-2 rounded-md border p-3 duration-100 ${field.value ? "border-primary/50 bg-primary/10 hover:border-primary/50" : ""}`}
+                      className={`group my-1 flex w-full cursor-pointer flex-row items-center justify-start gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-3 duration-100 hover:border-primary/30 hover:bg-primary/10 ${field.value ? "border-primary/50 bg-primary/10 hover:border-primary/50" : ""}`}
                       htmlFor="secret-change"
                     >
                       <Checkbox
@@ -409,7 +409,7 @@ export const SpecificPrivilegeSecretForm = ({
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
-                      <div className="text-mineshaft-300 pointer-events-none ml-1 flex select-none flex-col">
+                      <div className="pointer-events-none ml-1 flex flex-col text-mineshaft-300 select-none">
                         <div className="flex flex-row items-center gap-1">
                           <FontAwesomeIcon
                             icon={faPlus}
@@ -417,10 +417,10 @@ export const SpecificPrivilegeSecretForm = ({
                           />
                           <FormLabel
                             label="Create"
-                            className={`text-mineshaft-300 my-0 ml-0.5 ${field.value ? "text-primary-200" : ""}`}
+                            className={`my-0 ml-0.5 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
                           />
                         </div>
-                        <p className="text-mineshaft-400 text-xs">Create new secrets</p>
+                        <p className="text-xs text-mineshaft-400">Create new secrets</p>
                       </div>
                     </label>
                   )}
@@ -432,7 +432,7 @@ export const SpecificPrivilegeSecretForm = ({
                   name="edit"
                   render={({ field }) => (
                     <label
-                      className={`border-mineshaft-600 bg-mineshaft-900 hover:border-primary/30 hover:bg-primary/10 group my-1 flex w-full cursor-pointer flex-row items-center justify-start gap-2 rounded-md border p-3 duration-100 ${field.value ? "border-primary/50 bg-primary/10 hover:border-primary/50" : ""}`}
+                      className={`group my-1 flex w-full cursor-pointer flex-row items-center justify-start gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-3 duration-100 hover:border-primary/30 hover:bg-primary/10 ${field.value ? "border-primary/50 bg-primary/10 hover:border-primary/50" : ""}`}
                       htmlFor="secret-modify"
                     >
                       <Checkbox
@@ -442,7 +442,7 @@ export const SpecificPrivilegeSecretForm = ({
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
-                      <div className="text-mineshaft-300 pointer-events-none ml-1 flex select-none flex-col">
+                      <div className="pointer-events-none ml-1 flex flex-col text-mineshaft-300 select-none">
                         <div className="flex flex-row items-center gap-1">
                           <FontAwesomeIcon
                             icon={faPencil}
@@ -450,10 +450,10 @@ export const SpecificPrivilegeSecretForm = ({
                           />
                           <FormLabel
                             label="Modify"
-                            className={`text-mineshaft-300 my-0 ml-0.5 ${field.value ? "text-primary-200" : ""}`}
+                            className={`my-0 ml-0.5 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
                           />
                         </div>
-                        <p className="text-mineshaft-400 text-xs">Update existing secrets</p>
+                        <p className="text-xs text-mineshaft-400">Update existing secrets</p>
                       </div>
                     </label>
                   )}
@@ -463,7 +463,7 @@ export const SpecificPrivilegeSecretForm = ({
                   name="delete"
                   render={({ field }) => (
                     <label
-                      className={`border-mineshaft-600 bg-mineshaft-900 hover:border-primary/30 hover:bg-primary/10 group my-1 flex w-full cursor-pointer flex-row items-center justify-start gap-2 rounded-md border p-3 duration-100 ${field.value ? "border-primary/50 bg-primary/10 hover:border-primary/50" : ""}`}
+                      className={`group my-1 flex w-full cursor-pointer flex-row items-center justify-start gap-2 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-3 duration-100 hover:border-primary/30 hover:bg-primary/10 ${field.value ? "border-primary/50 bg-primary/10 hover:border-primary/50" : ""}`}
                       htmlFor="secret-delete"
                     >
                       <Checkbox
@@ -473,7 +473,7 @@ export const SpecificPrivilegeSecretForm = ({
                         isChecked={field.value}
                         onCheckedChange={(isChecked) => field.onChange(isChecked)}
                       />
-                      <div className="text-mineshaft-300 pointer-events-none ml-1 flex select-none flex-col">
+                      <div className="pointer-events-none ml-1 flex flex-col text-mineshaft-300 select-none">
                         <div className="flex flex-row items-center gap-1">
                           <FontAwesomeIcon
                             icon={faTrashCan}
@@ -481,10 +481,10 @@ export const SpecificPrivilegeSecretForm = ({
                           />
                           <FormLabel
                             label="Delete"
-                            className={`text-mineshaft-300 my-0 ml-0.5 ${field.value ? "text-primary-200" : ""}`}
+                            className={`my-0 ml-0.5 text-mineshaft-300 ${field.value ? "text-primary-200" : ""}`}
                           />
                         </div>
-                        <p className="text-mineshaft-400 text-xs">Delete existing secrets</p>
+                        <p className="text-xs text-mineshaft-400">Delete existing secrets</p>
                       </div>
                     </label>
                   )}
@@ -504,7 +504,7 @@ export const SpecificPrivilegeSecretForm = ({
                         rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-4" />}
                         isDisabled={isMemberEditDisabled}
                         className={twMerge(
-                          "border-mineshaft-600 bg-mineshaft-900 text-mineshaft-300 hover:border-mineshaft-600 hover:bg-mineshaft-800 w-full py-2.5 text-sm capitalize",
+                          "w-full border-mineshaft-600 bg-mineshaft-900 py-2.5 text-sm text-mineshaft-300 capitalize hover:border-mineshaft-600 hover:bg-mineshaft-800",
                           isExpired && "text-red-600"
                         )}
                       >
@@ -518,10 +518,10 @@ export const SpecificPrivilegeSecretForm = ({
                   side="right"
                   sideOffset={12}
                   hideCloseBtn
-                  className="border-mineshaft-600 bg-mineshaft-800 border pt-4"
+                  className="border border-mineshaft-600 bg-mineshaft-800 pt-4"
                 >
                   <div className="flex flex-col space-y-4">
-                    <div className="text-mineshaft-300 text-sm">Configure timed access</div>
+                    <div className="text-sm text-mineshaft-300">Configure timed access</div>
                     {isExpired && <Tag colorSchema="red">Expired</Tag>}
                     <Controller
                       control={privilegeForm.control}
@@ -594,7 +594,7 @@ export const SpecificPrivilegeSecretForm = ({
                   <Tooltip content="Cancel" className="mr-4">
                     <IconButton
                       variant="outline_bg"
-                      className="border-mineshaft-500 bg-mineshaft-600 hover:border-red/70 hover:bg-red/20 border py-2.5"
+                      className="border border-mineshaft-500 bg-mineshaft-600 py-2.5 hover:border-red/70 hover:bg-red/20"
                       ariaLabel="delete-privilege"
                       isDisabled={privilegeForm.formState.isSubmitting}
                       onClick={() => privilegeForm.reset()}
@@ -629,7 +629,7 @@ export const SpecificPrivilegeSecretForm = ({
                   <IconButton
                     isDisabled={isMemberEditDisabled}
                     variant="outline_bg"
-                    className="border-mineshaft-500 bg-mineshaft-600 hover:border-red/70 hover:bg-red/20 border py-3"
+                    className="border border-mineshaft-500 bg-mineshaft-600 py-3 hover:border-red/70 hover:bg-red/20"
                     ariaLabel="delete-privilege"
                     onClick={() => handlePopUpOpen("deletePrivilege")}
                   >

@@ -31,7 +31,7 @@ export const RedisCredentialsRotationParametersFields = () => {
                   </p>
                   <p>
                     The default value is{" "}
-                    <code className="bg-mineshaft-700 text-bunker-300 rounded-sm px-1 py-0.5 font-mono font-medium">
+                    <code className="rounded-sm bg-mineshaft-700 px-1 py-0.5 font-mono font-medium text-bunker-300">
                       ~* +@all
                     </code>
                     . You can modify it to suit your needs.
@@ -39,7 +39,7 @@ export const RedisCredentialsRotationParametersFields = () => {
                   <p>
                     For more information, please refer to the{" "}
                     <a
-                      className="text-primary-500 hover:text-primary-600 font-medium underline"
+                      className="font-medium text-primary-500 underline hover:text-primary-600"
                       href="https://redis.io/docs/latest/operate/oss_and_stack/management/security/acl/"
                       target="_blank"
                       rel="noopener noreferrer"
@@ -61,10 +61,10 @@ export const RedisCredentialsRotationParametersFields = () => {
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="border-mineshaft-600 w-full border-b">
-          <span className="text-mineshaft-300 text-sm">Password Requirements</span>
+        <div className="w-full border-b border-mineshaft-600">
+          <span className="text-sm text-mineshaft-300">Password Requirements</span>
         </div>
-        <div className="border-mineshaft-600 bg-mineshaft-700 grid grid-cols-2 gap-x-3 gap-y-1 rounded-sm border px-3 pt-3">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-sm border border-mineshaft-600 bg-mineshaft-700 px-3 pt-3">
           <Controller
             control={control}
             name="parameters.passwordRequirements.length"

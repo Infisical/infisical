@@ -58,7 +58,7 @@ export const DeleteSecretSyncModal = ({ isOpen, onOpenChange, secretSync, onComp
     >
       <Switch
         containerClassName="mt-4"
-        className="bg-mineshaft-400/50 data-[state=checked]:bg-red/50 shadow-inner"
+        className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-red/50"
         thumbClassName="bg-mineshaft-800"
         isChecked={removeSecrets}
         onCheckedChange={setRemoveSecrets}

@@ -68,11 +68,11 @@ export const ViewIdentityTlsCertAuthContent = ({
           side="right"
           className="max-w-xl p-2"
           content={
-            <p className="bg-mineshaft-600 break-words rounded-sm p-2">{data.caCertificate}</p>
+            <p className="rounded-sm bg-mineshaft-600 p-2 break-words">{data.caCertificate}</p>
           }
         >
           <div className="w-min">
-            <Badge className="bg-mineshaft-400/50 text-bunker-300 flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
+            <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
               <FontAwesomeIcon icon={faEye} />
               <span>Reveal</span>
             </Badge>

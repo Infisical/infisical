@@ -138,11 +138,11 @@ export const SignupInvitePage = () => {
 
   // Step 4 of the sign up process (download the emergency kit pdf)
   const stepConfirmEmail = (
-    <div className="h-7/12 border-mineshaft-600 bg-mineshaft-800 mx-1 mb-36 flex w-full max-w-xs flex-col items-center rounded-xl border px-4 py-8 drop-shadow-xl md:mb-16 md:max-w-lg md:px-6">
-      <p className="text-primary-100 mb-2 flex justify-center text-center text-4xl font-medium">
+    <div className="mx-1 mb-36 flex h-7/12 w-full max-w-xs flex-col items-center rounded-xl border border-mineshaft-600 bg-mineshaft-800 px-4 py-8 drop-shadow-xl md:mb-16 md:max-w-lg md:px-6">
+      <p className="mb-2 flex justify-center text-center text-4xl font-medium text-primary-100">
         Confirm your email
       </p>
-      <div className="mx-auto mb-2 mt-4 flex max-h-24 max-w-md flex-col items-center justify-center px-4 text-lg md:p-2">
+      <div className="mx-auto mt-4 mb-2 flex max-h-24 max-w-md flex-col items-center justify-center px-4 text-lg md:p-2">
         <Button
           onClick={async () => {
             try {
@@ -179,8 +179,8 @@ export const SignupInvitePage = () => {
 
   // Because this is the invite signup - we directly go to the last step of signup (email is already verified)
   const main = (
-    <div className="h-7/12 border-mineshaft-600 bg-mineshaft-800 mx-auto mb-32 w-max rounded-xl border px-8 py-10 drop-shadow-xl md:mb-16">
-      <p className="bg-linear-to-tr from-mineshaft-300 mx-8 mb-6 flex justify-center to-white bg-clip-text text-4xl font-bold text-transparent md:mx-16">
+    <div className="mx-auto mb-32 h-7/12 w-max rounded-xl border border-mineshaft-600 bg-mineshaft-800 px-8 py-10 drop-shadow-xl md:mb-16">
+      <p className="mx-8 mb-6 flex justify-center bg-linear-to-tr from-mineshaft-300 to-white bg-clip-text text-4xl font-bold text-transparent md:mx-16">
         Almost there!
       </p>
       <div className="relative z-0 flex max-h-24 w-full items-center justify-end rounded-lg md:p-2">
@@ -232,7 +232,7 @@ export const SignupInvitePage = () => {
                 return (
                   <div className="items-top ml-1 flex flex-row justify-start" key={key}>
                     <div>
-                      <FontAwesomeIcon icon={faXmark} className="text-md text-red ml-0.5 mr-2.5" />
+                      <FontAwesomeIcon icon={faXmark} className="text-md mr-2.5 ml-0.5 text-red" />
                     </div>
                     <p className="text-sm text-gray-400">{errors[key as keyof Errors]}</p>
                   </div>
@@ -259,7 +259,7 @@ export const SignupInvitePage = () => {
   );
 
   return (
-    <div className="bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 flex h-screen flex-col items-center justify-center">
+    <div className="flex h-screen flex-col items-center justify-center bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
       <Helmet>
         <title>Sign Up</title>
         <link rel="icon" href="/infisical.ico" />
@@ -274,7 +274,7 @@ export const SignupInvitePage = () => {
       ) : (
         <>
           <Link to="/">
-            <div className="mb-4 mt-20 flex justify-center">
+            <div className="mt-20 mb-4 flex justify-center">
               <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical Logo" />
             </div>
           </Link>

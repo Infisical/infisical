@@ -67,7 +67,7 @@ const Page = () => {
   };
 
   return (
-    <div className="bg-bunker-800 container mx-auto flex flex-col justify-between text-white">
+    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
           <PageHeader title={data.friendlyName}>

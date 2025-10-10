@@ -210,8 +210,8 @@ export const CreateDynamicSecretForm = ({
               className="mb-0.5 ml-1.5"
               rel="noopener noreferrer"
             >
-              <div className="bg-yellow/20 text-yellow inline-block rounded-md px-1.5 text-sm opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mb-[0.03rem] mr-1 text-[12px]" />
+              <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-[0.03rem] text-[12px]" />
                 <span>Docs</span>
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
@@ -233,12 +233,12 @@ export const CreateDynamicSecretForm = ({
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: -30 }}
             >
-              <div className="text-mineshaft-300 mb-4">Select a service to connect to:</div>
+              <div className="mb-4 text-mineshaft-300">Select a service to connect to:</div>
               <div className="flex flex-wrap items-center gap-4">
                 {DYNAMIC_SECRET_LIST.map(({ icon, provider, title }) => (
                   <div
                     key={`dynamic-secret-provider-${provider}`}
-                    className="border-mineshaft-500 bg-bunker-600 hover:border-primary/70 hover:bg-primary/10 flex h-32 w-32 cursor-pointer flex-col items-center space-y-4 rounded-sm border p-6 transition-all hover:text-white"
+                    className="flex h-32 w-32 cursor-pointer flex-col items-center space-y-4 rounded-sm border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
                     role="button"
                     tabIndex={0}
                     onClick={() => {
@@ -253,7 +253,7 @@ export const CreateDynamicSecretForm = ({
                     }}
                   >
                     {icon}
-                    <div className="whitespace-pre-wrap text-center text-sm">{title}</div>
+                    <div className="text-center text-sm whitespace-pre-wrap">{title}</div>
                   </div>
                 ))}
               </div>

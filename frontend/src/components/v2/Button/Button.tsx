@@ -198,7 +198,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 : "infisical_loading"
             }
             isAutoPlay
-            className="shadow-xs absolute w-8 rounded-xl opacity-80"
+            className="absolute w-8 rounded-xl opacity-80 shadow-xs"
           />
         )}
         {leftIcon && (

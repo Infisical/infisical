@@ -89,7 +89,7 @@ export const GcpSecretManagerAuthorizePage = () => {
       <Helmet>
         <title>Authorize GCP Secret Manager Integration</title>
       </Helmet>
-      <Card className="border-mineshaft-600 mb-12 max-w-lg rounded-md border">
+      <Card className="mb-12 max-w-lg rounded-md border border-mineshaft-600">
         <CardTitle
           className="px-6 text-left text-xl"
           subTitle="Connect Infisical to GCP Secret Manager to sync secrets."
@@ -109,7 +109,7 @@ export const GcpSecretManagerAuthorizePage = () => {
               rel="noopener noreferrer"
               href="https://infisical.com/docs/integrations/cloud/gcp-secret-manager"
             >
-              <div className="bg-yellow/20 text-yellow mb-1 ml-2 inline-block cursor-default rounded-md px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
@@ -131,9 +131,9 @@ export const GcpSecretManagerAuthorizePage = () => {
             Continue with OAuth
           </Button>
           <div className="my-4 flex w-full flex-row items-center py-2">
-            <div className="border-mineshaft-400/40 w-full border-t" />
-            <span className="text-mineshaft-400 mx-2 text-xs">or</span>
-            <div className="border-mineshaft-400/40 w-full border-t" />
+            <div className="w-full border-t border-mineshaft-400/40" />
+            <span className="mx-2 text-xs text-mineshaft-400">or</span>
+            <div className="w-full border-t border-mineshaft-400/40" />
           </div>
         </div>
         <form onSubmit={handleSubmit(onFormSubmit)} className="px-6 pb-8 text-right">
@@ -148,7 +148,7 @@ export const GcpSecretManagerAuthorizePage = () => {
               >
                 <TextArea
                   {...field}
-                  className="border-mineshaft-600 bg-bunker-900/80 h-48 border"
+                  className="h-48 border border-mineshaft-600 bg-bunker-900/80"
                 />
               </FormControl>
             )}

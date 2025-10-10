@@ -105,7 +105,7 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
         name="connection"
       />
       {!isUpdate && !isPending && !availableConnections?.length && !canCreateConnection && (
-        <p className="text-yellow -mt-2.5 mb-2.5 text-xs">
+        <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
           <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
           You do not have access to any {appName} Connections. Contact an admin to create one.
         </p>

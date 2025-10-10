@@ -40,7 +40,7 @@ export const Option = <T,>({ isSelected, children, ...props }: OptionProps<T>) =
       <div className="flex flex-row items-center justify-between">
         <p className="truncate">{children}</p>
         {isSelected && (
-          <FontAwesomeIcon className="text-primary ml-2" icon={faCheckCircle} size="sm" />
+          <FontAwesomeIcon className="ml-2 text-primary" icon={faCheckCircle} size="sm" />
         )}
       </div>
     </components.Option>

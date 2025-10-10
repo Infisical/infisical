@@ -82,7 +82,7 @@ export const GenericDropzone = forwardRef<HTMLInputElement, Props>(
           onDragOver={handleDrag}
           onDrop={handleDrop}
           className={twMerge(
-            "bg-mineshaft-900 text-mineshaft-200 outline-chicago-600 relative mx-0.5 mb-4 mt-4 flex cursor-pointer items-center justify-center rounded-md px-2 py-4 text-sm opacity-60 outline-dashed outline-2 duration-200 hover:opacity-100",
+            "relative mx-0.5 mt-4 mb-4 flex cursor-pointer items-center justify-center rounded-md bg-mineshaft-900 px-2 py-4 text-sm text-mineshaft-200 opacity-60 outline-2 outline-chicago-600 duration-200 outline-dashed hover:opacity-100",
             isDragActive && "opacity-100",
             !isSmaller && "mx-auto w-full max-w-3xl flex-col space-y-4 py-20"
           )}

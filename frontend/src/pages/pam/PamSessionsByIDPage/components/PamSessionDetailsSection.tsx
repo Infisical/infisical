@@ -42,11 +42,11 @@ export const PamSessionDetailsSection = ({
   const details = PAM_RESOURCE_TYPE_MAP[resourceType];
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 max-w-[350px] rounded-lg border p-4">
-      <div className="border-mineshaft-400 flex items-center border-b pb-4">
-        <h3 className="text-mineshaft-100 text-lg font-medium">Session Details</h3>
+    <div className="max-w-[350px] rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="flex items-center border-b border-mineshaft-400 pb-4">
+        <h3 className="text-lg font-medium text-mineshaft-100">Session Details</h3>
       </div>
-      <div className="text-mineshaft-300 pt-4 text-sm">
+      <div className="pt-4 text-sm text-mineshaft-300">
         <DetailItem label="Session ID">
           <div className="group flex align-top">
             <p className="truncate">{id}</p>
@@ -76,7 +76,7 @@ export const PamSessionDetailsSection = ({
               className="size-4"
             />
             <p>{accountName}</p>
-            <Badge className="bg-yellow/20 text-yellow flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
+            <Badge className="flex h-5 w-min items-center gap-1.5 bg-yellow/20 whitespace-nowrap text-yellow">
               <FontAwesomeIcon icon={faBoxOpen} />
               {resourceName}
             </Badge>

@@ -22,12 +22,12 @@ const Content = ({ secretValue, secretRequestName }: ContentProps) => {
   return (
     <>
       {secretRequestName && (
-        <p className="text-mineshaft-200 mb-8 text-sm">
+        <p className="mb-8 text-sm text-mineshaft-200">
           Shared secret value for <strong>{secretRequestName}</strong>
         </p>
       )}
 
-      <div className="bg-mineshaft-700 mb-8 flex items-center justify-between rounded-md p-2 text-base text-gray-400">
+      <div className="mb-8 flex items-center justify-between rounded-md bg-mineshaft-700 p-2 text-base text-gray-400">
         <p className="mr-4 break-all">{secretValue}</p>
         <Tooltip content="Click to copy">
           <IconButton

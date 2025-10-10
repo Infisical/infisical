@@ -11,7 +11,7 @@ import { createRoleNode } from "../utils";
 const getSubjectIcon = (subject: ProjectPermissionSub) => {
   switch (subject) {
     case ProjectPermissionSub.Secrets:
-      return <FontAwesomeIcon icon={faKey} className="text-bunker-300 h-4 w-4" />;
+      return <FontAwesomeIcon icon={faKey} className="h-4 w-4 text-bunker-300" />;
     case ProjectPermissionSub.SecretFolders:
       return <FontAwesomeIcon icon={faFolder} className="h-4 w-4 text-yellow-700" />;
     case ProjectPermissionSub.DynamicSecrets:
@@ -19,7 +19,7 @@ const getSubjectIcon = (subject: ProjectPermissionSub) => {
     case ProjectPermissionSub.SecretImports:
       return <FontAwesomeIcon icon={faFileImport} className="h-4 w-4 text-green-700" />;
     default:
-      return <FontAwesomeIcon icon={faKey} className="text-bunker-300 h-4 w-4" />;
+      return <FontAwesomeIcon icon={faKey} className="h-4 w-4 text-bunker-300" />;
   }
 };
 
@@ -40,18 +40,18 @@ export const RoleNode = ({
     <>
       <Handle
         type="target"
-        className="cursor-pointer! pointer-events-none opacity-0"
+        className="pointer-events-none cursor-pointer! opacity-0"
         position={Position.Top}
       />
-      <div className="border-mineshaft bg-mineshaft-800 font-inter flex h-14 w-full flex-col items-center justify-center rounded-md border px-2 py-3 shadow-lg transition-opacity duration-500">
-        <div className="text-mineshaft-100 flex items-center space-x-2">
+      <div className="flex h-14 w-full flex-col items-center justify-center rounded-md border border-mineshaft bg-mineshaft-800 px-2 py-3 font-inter shadow-lg transition-opacity duration-500">
+        <div className="flex items-center space-x-2 text-mineshaft-100">
           {getSubjectIcon(subject)}
           <span className="text-sm">{formatLabel(subject)} Access</span>
         </div>
       </div>
       <Handle
         type="source"
-        className="cursor-pointer! pointer-events-none opacity-0"
+        className="pointer-events-none cursor-pointer! opacity-0"
         position={Position.Bottom}
       />
     </>

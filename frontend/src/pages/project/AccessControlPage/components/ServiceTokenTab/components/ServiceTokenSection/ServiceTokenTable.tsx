@@ -205,9 +205,9 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
                       {row?.scopes.map(({ secretPath, environment }) => (
                         <div
                           key={`${row.id}-${environment}-${secretPath}`}
-                          className="border-mineshaft-500 inline-flex items-center space-x-1 rounded-md border p-1 px-2"
+                          className="inline-flex items-center space-x-1 rounded-md border border-mineshaft-500 p-1 px-2"
                         >
-                          <div className="border-mineshaft-500 mr-1 border-r pr-2">
+                          <div className="mr-1 border-r border-mineshaft-500 pr-2">
                             {environment}
                           </div>
                           <FontAwesomeIcon icon={faFolder} size="sm" className="text-yellow" />

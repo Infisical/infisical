@@ -68,7 +68,7 @@ export const ProjectSshConfigCasSection = () => {
   };
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <p className="mb-8 text-xl font-medium">Certificate Authorities</p>
       <form onSubmit={handleSubmit(onFormSubmit)}>
         <Controller

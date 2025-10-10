@@ -106,9 +106,9 @@ export const ProjectSelect = () => {
             projectId: currentWorkspace.id
           }}
         >
-          <div className="hover:text-primary flex cursor-pointer items-center gap-2 text-sm text-white duration-100">
+          <div className="flex cursor-pointer items-center gap-2 text-sm text-white duration-100 hover:text-primary">
             <div>
-              <FontAwesomeIcon icon={faTable} className="text-bunker-300 text-xs" />
+              <FontAwesomeIcon icon={faTable} className="text-xs text-bunker-300" />
             </div>
             <Tooltip content={currentWorkspace.name} className="max-w-96 break-words">
               <div className="max-w-44 overflow-hidden text-ellipsis whitespace-nowrap">
@@ -125,18 +125,18 @@ export const ProjectSelect = () => {
               ariaLabel="switch-project"
               className="px-2 py-1"
             >
-              <FontAwesomeIcon icon={faCaretDown} className="text-bunker-300 text-xs" />
+              <FontAwesomeIcon icon={faCaretDown} className="text-xs text-bunker-300" />
             </IconButton>
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="start"
           side="bottom"
-          className="shadow-mineshaft-600 mt-6 cursor-default p-1 drop-shadow-md"
+          className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
           style={{ minWidth: "220px" }}
         >
-          <div className="text-mineshaft-400 px-2 py-1 text-xs capitalize">Projects</div>
-          <div className="border-b-mineshaft-600 mb-1 border-b py-1 pb-1">
+          <div className="px-2 py-1 text-xs text-mineshaft-400 capitalize">Projects</div>
+          <div className="mb-1 border-b border-b-mineshaft-600 py-1 pb-1">
             <Input
               value={searchProject}
               onChange={(evt) => setSearchProject(evt.target.value || "")}
@@ -146,7 +146,7 @@ export const ProjectSelect = () => {
               placeholder="Search projects"
             />
           </div>
-          <div className="thin-scrollbar max-h-80 overflow-auto">
+          <div className="max-h-80 thin-scrollbar overflow-auto">
             {projectsSortedByFav
               ?.filter((el) => el.name?.toLowerCase().includes(searchProject.toLowerCase()))
               ?.map((workspace) => {
@@ -167,14 +167,14 @@ export const ProjectSelect = () => {
                     }}
                     icon={
                       currentWorkspace?.id === workspace.id && (
-                        <FontAwesomeIcon icon={faCheck} className="text-primary mr-3" />
+                        <FontAwesomeIcon icon={faCheck} className="mr-3 text-primary" />
                       )
                     }
                   >
                     <div className="flex items-center">
                       <div className="flex flex-1 items-center justify-between overflow-hidden">
                         <Tooltip side="right" className="break-words" content={workspace.name}>
-                          <div className="max-w-40 overflow-hidden truncate whitespace-nowrap">
+                          <div className="max-w-40 truncate overflow-hidden whitespace-nowrap">
                             {workspace.name}
                           </div>
                         </Tooltip>
@@ -182,7 +182,7 @@ export const ProjectSelect = () => {
                       <div>
                         <FontAwesomeIcon
                           icon={workspace.isFavorite ? faSolidStar : faStar}
-                          className="hover:text-mineshaft-400 text-sm text-yellow-600"
+                          className="text-sm text-yellow-600 hover:text-mineshaft-400"
                           onClick={async (e) => {
                             e.stopPropagation();
                             await (
@@ -198,7 +198,7 @@ export const ProjectSelect = () => {
                 );
               })}
           </div>
-          <div className="border-mineshaft-600 mt-1 h-1 border-t" />
+          <div className="mt-1 h-1 border-t border-mineshaft-600" />
           <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
             {(isOldProjectPermissionAllowed) => (
               <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Project}>

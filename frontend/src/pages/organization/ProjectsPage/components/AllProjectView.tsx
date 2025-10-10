@@ -136,17 +136,17 @@ export const AllProjectView = ({
       <div className="flex w-full flex-row">
         <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
         <Input
-          className="bg-mineshaft-800 placeholder-mineshaft-50 focus:bg-mineshaft-700/80 h-[2.3rem] text-sm duration-200"
+          className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
           containerClassName="w-full ml-2"
           placeholder="Search by project name..."
           value={searchFilter}
           onChange={(e) => setSearchFilter(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
         />
-        <div className="border-mineshaft-600 bg-mineshaft-800 ml-2 flex rounded-md border p-1">
+        <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
           <Tooltip content="Toggle Sort Direction">
             <IconButton
-              className="hover:bg-mineshaft-600 min-w-[2.4rem] border-none"
+              className="min-w-[2.4rem] border-none hover:bg-mineshaft-600"
               ariaLabel="Sort asc"
               variant="plain"
               size="xs"
@@ -161,7 +161,7 @@ export const AllProjectView = ({
           <DropdownMenuTrigger asChild>
             <div
               className={twMerge(
-                "border-mineshaft-600 bg-mineshaft-800 ml-2 flex rounded-md border p-1",
+                "ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1",
                 projectTypeFilter && "border-primary-400 text-primary-400"
               )}
             >
@@ -169,7 +169,7 @@ export const AllProjectView = ({
                 <IconButton
                   ariaLabel="project-types"
                   className={twMerge(
-                    "hover:bg-mineshaft-600 min-w-[2.4rem] border-none",
+                    "min-w-[2.4rem] border-none hover:bg-mineshaft-600",
                     projectTypeFilter && "text-primary-400"
                   )}
                   variant="plain"
@@ -200,7 +200,7 @@ export const AllProjectView = ({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <div className="border-mineshaft-600 bg-mineshaft-800 ml-2 flex gap-x-0.5 rounded-md border p-1">
+        <div className="ml-2 flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
           <Tooltip content="Disabled across All Project view.">
             <div className="flex cursor-not-allowed items-center justify-center">
               <IconButton
@@ -208,7 +208,7 @@ export const AllProjectView = ({
                 ariaLabel="grid"
                 size="xs"
                 isDisabled
-                className="hover:bg-mineshaft-600 pointer-events-none min-w-[2.4rem] border-none bg-transparent"
+                className="pointer-events-none min-w-[2.4rem] border-none bg-transparent hover:bg-mineshaft-600"
               >
                 <FontAwesomeIcon icon={faBorderAll} />
               </IconButton>
@@ -218,7 +218,7 @@ export const AllProjectView = ({
             variant="outline_bg"
             ariaLabel="list"
             size="xs"
-            className="bg-mineshaft-500 hover:bg-mineshaft-600 min-w-[2.4rem] border-none"
+            className="min-w-[2.4rem] border-none bg-mineshaft-500 hover:bg-mineshaft-600"
           >
             <FontAwesomeIcon icon={faList} />
           </IconButton>
@@ -253,12 +253,12 @@ export const AllProjectView = ({
             <div
               key={`workspace-cards-loading-${i + 1}`}
               className={twMerge(
-                "border-mineshaft-600 bg-mineshaft-800 hover:bg-mineshaft-700 flex h-12 min-w-72 cursor-pointer flex-row items-center justify-between border px-6",
+                "flex h-12 min-w-72 cursor-pointer flex-row items-center justify-between border border-mineshaft-600 bg-mineshaft-800 px-6 hover:bg-mineshaft-700",
                 i === 0 && "rounded-t-md",
                 i === 2 && "rounded-b-md border-b"
               )}
             >
-              <Skeleton className="bg-mineshaft-600 w-full" />
+              <Skeleton className="w-full bg-mineshaft-600" />
             </div>
           ))}
         {!isProjectLoading &&
@@ -288,20 +288,20 @@ export const AllProjectView = ({
               }}
               key={workspace.id}
               className={twMerge(
-                "border-mineshaft-600 bg-mineshaft-800 group flex min-w-72 items-center justify-center border-l border-r border-t px-6 py-3 first:rounded-t-md",
-                workspace.isMember ? "hover:bg-mineshaft-700 cursor-pointer" : "cursor-default"
+                "group flex min-w-72 items-center justify-center border-t border-r border-l border-mineshaft-600 bg-mineshaft-800 px-6 py-3 first:rounded-t-md",
+                workspace.isMember ? "cursor-pointer hover:bg-mineshaft-700" : "cursor-default"
               )}
             >
               <div className="mr-3 flex min-w-0 flex-1 items-center gap-3">
-                <div className="border-mineshaft-500 bg-mineshaft-600 rounded-sm border p-1 shadow-inner">
+                <div className="rounded-sm border border-mineshaft-500 bg-mineshaft-600 p-1 shadow-inner">
                   <Lottie
                     className="h-[1.35rem] w-[1.35rem] shrink-0"
                     icon={getProjectLottieIcon(workspace.type)}
                   />
                 </div>
                 <div className="-mt-0.5 flex min-w-0 flex-col">
-                  <p className="text-mineshaft-100 truncate text-sm">{workspace.name}</p>
-                  <p className="text-mineshaft-300 truncate text-xs leading-4">
+                  <p className="truncate text-sm text-mineshaft-100">{workspace.name}</p>
+                  <p className="truncate text-xs leading-4 text-mineshaft-300">
                     {getProjectTitle(workspace.type)}{" "}
                     {workspace.description ? `- ${workspace.description}` : ""}
                   </p>
@@ -351,7 +351,7 @@ export const AllProjectView = ({
       </div>
       {!isProjectLoading && Boolean(searchedProjects?.totalCount) && (
         <Pagination
-          className="border-mineshaft-600 rounded-b-md border"
+          className="rounded-b-md border border-mineshaft-600"
           perPage={perPage}
           perPageList={[12, 24, 48, 96]}
           count={searchedProjects?.totalCount || 0}
@@ -361,10 +361,10 @@ export const AllProjectView = ({
         />
       )}
       {!isProjectLoading && !searchedProjects?.totalCount && (
-        <div className="border-mineshaft-700 bg-mineshaft-800 text-mineshaft-300 mt-4 w-full rounded-md border px-4 py-6 text-base">
+        <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
           <FontAwesomeIcon
             icon={faFolderOpen}
-            className="text-mineshaft-400 mb-4 mt-2 w-full text-center text-5xl"
+            className="mt-2 mb-4 w-full text-center text-5xl text-mineshaft-400"
           />
           <div className="text-center font-light">No Projects Found</div>
         </div>

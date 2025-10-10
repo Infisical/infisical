@@ -74,9 +74,9 @@ export const ExternalCaSection = () => {
   };
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-mineshaft-100 text-xl font-medium">External Certificate Authorities</p>
+        <p className="text-xl font-medium text-mineshaft-100">External Certificate Authorities</p>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Create}
           a={ProjectPermissionSub.CertificateAuthorities}

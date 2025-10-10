@@ -166,8 +166,8 @@ export const ChangeEmailSection = () => {
 
   return (
     <>
-      <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
-        <h2 className="text-mineshaft-100 mb-8 flex-1 text-xl font-medium">Change email</h2>
+      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+        <h2 className="mb-8 flex-1 text-xl font-medium text-mineshaft-100">Change email</h2>
 
         <form onSubmit={emailForm.handleSubmit(handleEmailSubmit)}>
           <div className="max-w-md">
@@ -203,7 +203,7 @@ export const ChangeEmailSection = () => {
           >
             Send Verification Code
           </Button>
-          <p className="font-inter text-mineshaft-400 mt-2 text-sm">
+          <p className="mt-2 font-inter text-sm text-mineshaft-400">
             We&apos;ll send an 6-digit verification code to your new email address.
           </p>
         </form>

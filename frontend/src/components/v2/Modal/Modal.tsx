@@ -40,7 +40,7 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
         <Card
           isRounded
           className={twMerge(
-            "animate-pop-in thin-scrollbar border-mineshaft-600 dark:scheme-dark fixed left-1/2 top-1/2 z-30 max-w-xl -translate-x-2/4 -translate-y-2/4 border drop-shadow-2xl",
+            "animate-pop-in fixed top-1/2 left-1/2 z-30 thin-scrollbar max-w-xl -translate-x-2/4 -translate-y-2/4 border border-mineshaft-600 drop-shadow-2xl dark:scheme-dark",
             className
           )}
           style={{ maxHeight: "90%" }}
@@ -51,7 +51,7 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
             </DialogPrimitive.Title>
           )}
           <CardBody
-            className={twMerge("overflow-y-auto overflow-x-hidden", bodyClassName)}
+            className={twMerge("overflow-x-hidden overflow-y-auto", bodyClassName)}
             style={{ maxHeight: "90%" }}
           >
             {children}
@@ -61,7 +61,7 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
             <IconButton
               variant="plain"
               ariaLabel="close"
-              className="text-bunker-400 hover:text-bunker-50 absolute right-6 top-4 rounded-sm"
+              className="absolute top-4 right-6 rounded-sm text-bunker-400 hover:text-bunker-50"
             >
               <FontAwesomeIcon icon={faTimes} size="lg" className="cursor-pointer" />
             </IconButton>

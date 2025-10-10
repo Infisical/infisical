@@ -296,14 +296,14 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
               variant="plain"
               size="sm"
               className={twMerge(
-                "border-mineshaft-600 bg-mineshaft-800 hover:border-primary/60 hover:bg-primary/10 flex h-10 min-w-10 items-center justify-center overflow-hidden border p-0 transition-all",
+                "flex h-10 min-w-10 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
                 isTableFiltered && "border-primary/50 text-primary"
               )}
             >
               <FontAwesomeIcon icon={faFilter} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="thin-scrollbar max-h-[70vh] overflow-y-auto" align="end">
+          <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
             <DropdownMenuLabel>Resource</DropdownMenuLabel>
             {uniqueResources.length ? (
               uniqueResources.map((resource) => {
@@ -370,7 +370,7 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
                     <IconButton
                       variant="outline_bg"
                       ariaLabel="add-folder-or-import"
-                      className="bg-mineshaft-600 rounded-l-none p-3"
+                      className="rounded-l-none bg-mineshaft-600 p-3"
                     >
                       <FontAwesomeIcon icon={faAngleDown} />
                     </IconButton>

@@ -81,7 +81,7 @@ const EncryptForm = ({ cmek }: FormProps) => {
       {ciphertext ? (
         <FormControl label="Encrypted Data (Ciphertext)">
           <TextArea
-            className="max-h-80 min-h-40 min-w-full max-w-full"
+            className="max-h-80 min-h-40 max-w-full min-w-full"
             isDisabled
             value={cmekEncrypt.data?.ciphertext}
           />
@@ -95,7 +95,7 @@ const EncryptForm = ({ cmek }: FormProps) => {
           >
             <TextArea
               {...register("plaintext")}
-              className="max-h-80 min-h-40 min-w-full max-w-full"
+              className="max-h-80 min-h-40 max-w-full min-w-full"
             />
           </FormControl>
           <Controller

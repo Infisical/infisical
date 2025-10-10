@@ -125,8 +125,8 @@ export const CloudflarePagesConfigurePage = () => {
     integrationAuthApps &&
     targetEnvironment &&
     targetApp ? (
-    <div className="bg-linear-to-tr from-mineshaft-900 to-bunker-900 flex h-full w-full items-center justify-center">
-      <Card className="border-mineshaft-600 max-w-lg rounded-md border p-0">
+    <div className="flex h-full w-full items-center justify-center bg-linear-to-tr from-mineshaft-900 to-bunker-900">
+      <Card className="max-w-lg rounded-md border border-mineshaft-600 p-0">
         <CardTitle
           className="px-6 text-left"
           subTitle="Choose which environment in Infisical you want to sync with your Cloudflare Pages project."
@@ -137,7 +137,7 @@ export const CloudflarePagesConfigurePage = () => {
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="border-mineshaft-500 w-full border"
+            className="w-full border border-mineshaft-500"
           >
             {workspace?.environments.map((sourceEnvironment) => (
               <SelectItem
@@ -161,7 +161,7 @@ export const CloudflarePagesConfigurePage = () => {
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
-            className="border-mineshaft-500 w-full border"
+            className="w-full border border-mineshaft-500"
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
@@ -184,7 +184,7 @@ export const CloudflarePagesConfigurePage = () => {
           <Select
             value={targetEnvironment}
             onValueChange={(val) => setTargetEnvironment(val)}
-            className="border-mineshaft-500 w-full border"
+            className="w-full border border-mineshaft-500"
           >
             {cloudflareEnvironments.map((cloudflareEnvironment) => (
               <SelectItem
@@ -211,7 +211,7 @@ export const CloudflarePagesConfigurePage = () => {
           onClick={handleButtonClick}
           color="mineshaft"
           variant="outline_bg"
-          className="mb-6 ml-auto mr-6 mt-2"
+          className="mt-2 mr-6 mb-6 ml-auto"
           isFullWidth={false}
           isLoading={isLoading}
         >

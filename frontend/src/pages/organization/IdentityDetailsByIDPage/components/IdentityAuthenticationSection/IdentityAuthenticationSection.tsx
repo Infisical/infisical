@@ -19,12 +19,12 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
   const { data, refetch } = useGetIdentityById(identityId);
 
   return data ? (
-    <div className="border-mineshaft-600 bg-mineshaft-900 mt-4 rounded-lg border p-4">
-      <div className="border-mineshaft-400 flex items-center justify-between border-b pb-4">
-        <h3 className="text-mineshaft-100 text-lg font-medium">Authentication</h3>
+    <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
+        <h3 className="text-lg font-medium text-mineshaft-100">Authentication</h3>
       </div>
       {data.identity.authMethods.length > 0 ? (
-        <div className="divide-mineshaft-400/50 flex flex-col divide-y">
+        <div className="flex flex-col divide-y divide-mineshaft-400/50">
           {data.identity.authMethods.map((authMethod) => (
             <button
               key={authMethod}
@@ -36,7 +36,7 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
                 })
               }
               type="button"
-              className="bg-mineshaft-900 hover:bg-mineshaft-700 data-[state=open]:bg-mineshaft-600 flex w-full items-center justify-between px-4 py-2 text-sm"
+              className="flex w-full items-center justify-between bg-mineshaft-900 px-4 py-2 text-sm hover:bg-mineshaft-700 data-[state=open]:bg-mineshaft-600"
             >
               <span>{identityAuthToNameMap[authMethod]}</span>
               <div className="flex gap-2">
@@ -52,7 +52,7 @@ export const IdentityAuthenticationSection = ({ identityId, handlePopUpOpen }: P
         </div>
       ) : (
         <div className="w-full space-y-2 pt-2">
-          <p className="text-mineshaft-300 text-sm">
+          <p className="text-sm text-mineshaft-300">
             No authentication methods configured. Get started by creating a new auth method.
           </p>
         </div>

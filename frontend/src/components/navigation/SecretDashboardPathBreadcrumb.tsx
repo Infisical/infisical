@@ -57,7 +57,7 @@ export const SecretDashboardPathBreadcrumb = ({
                   type: "info"
                 });
               }}
-              className="hover:bg-bunker-100/10 opacity-0 transition duration-75 group-hover:opacity-100"
+              className="opacity-0 transition duration-75 group-hover:opacity-100 hover:bg-bunker-100/10"
             >
               <FontAwesomeIcon
                 icon={!isCopying ? faCopy : faCheck}
@@ -76,7 +76,7 @@ export const SecretDashboardPathBreadcrumb = ({
           }}
           search={(query) => ({ ...query, secretPath: newSecretPath })}
           className={twMerge(
-            "hover:text-primary text-sm transition-all",
+            "text-sm transition-all hover:text-primary",
             isCopying && "text-primary"
           )}
         >

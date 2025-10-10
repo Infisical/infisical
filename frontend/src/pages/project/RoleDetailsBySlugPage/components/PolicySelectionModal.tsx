@@ -119,13 +119,13 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
           ) : null
         }
       />
-      <TableContainer className="max-h-112 thin-scrollbar mt-4">
-        <div className="border-b-mineshaft-600 bg-mineshaft-800 font-inter text-bunker-300 sticky top-0 z-30 flex justify-between border-b py-3 pl-5 pr-4 text-sm font-medium">
+      <TableContainer className="mt-4 max-h-112 thin-scrollbar">
+        <div className="sticky top-0 z-30 flex justify-between border-b border-b-mineshaft-600 bg-mineshaft-800 py-3 pr-4 pl-5 font-inter text-sm font-medium text-bunker-300">
           <span>Resource</span>
           <div className="flex gap-2">
             <Button
               variant="plain"
-              className="text-mineshaft-400 p-0"
+              className="p-0 text-mineshaft-400"
               size="xs"
               colorSchema="secondary"
               onClick={() => {
@@ -162,7 +162,7 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
                 key={`permission-add-${subject}`}
                 render={({ field: { value, onChange } }) => (
                   <Tr
-                    className={`${value ? "bg-mineshaft-600/30" : ""} hover:bg-mineshaft-700 cursor-pointer`}
+                    className={`${value ? "bg-mineshaft-600/30" : ""} cursor-pointer hover:bg-mineshaft-700`}
                     onClick={() => onChange(!value)}
                   >
                     <Td className={`${value ? "text-mineshaft-100" : "text-mineshaft-300"} w-full`}>

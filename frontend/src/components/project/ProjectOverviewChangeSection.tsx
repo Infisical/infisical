@@ -83,9 +83,9 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
   };
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="justify-betweens flex">
-        <h2 className="text-mineshaft-100 mb-8 flex-1 text-xl font-medium">Project Overview</h2>
+        <h2 className="mb-8 flex-1 text-xl font-medium text-mineshaft-100">Project Overview</h2>
         <div className="space-x-2">
           <Button
             variant="outline_bg"
@@ -200,7 +200,7 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
                           placeholder="Project description"
                           {...field}
                           rows={3}
-                          className="thin-scrollbar resize-none! bg-mineshaft-800 max-w-md"
+                          className="thin-scrollbar max-w-md resize-none! bg-mineshaft-800"
                           isDisabled={!isAllowed}
                         />
                       </FormControl>

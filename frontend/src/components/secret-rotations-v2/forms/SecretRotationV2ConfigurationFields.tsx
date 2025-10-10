@@ -26,7 +26,7 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
 
   return (
     <>
-      <p className="text-bunker-300 mb-4 text-sm">
+      <p className="mb-4 text-sm text-bunker-300">
         Configure the connection rotation strategy for this Secret Rotation.
       </p>
       {!isUpdate && environments && (
@@ -90,7 +90,7 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
                     });
                   }
                 }}
-                className="bg-mineshaft-700 scheme-dark text-white"
+                className="bg-mineshaft-700 text-white scheme-dark"
               />
             </FormControl>
           );
@@ -113,7 +113,7 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
               errorText={error?.message}
             >
               <Switch
-                className="bg-mineshaft-400/80 data-[state=checked]:bg-green/80 shadow-inner"
+                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
                 id="auto-rotation-enabled"
                 thumbClassName="bg-mineshaft-800"
                 onCheckedChange={onChange}
@@ -126,7 +126,7 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
         }}
       />
       {!IS_ROTATION_DUAL_CREDENTIALS[type] && isAutoRotationEnabled && (
-        <div className="border-yellow bg-yellow/10 text-yellow rounded-sm border p-2 px-3 text-xs">
+        <div className="rounded-sm border border-yellow bg-yellow/10 p-2 px-3 text-xs text-yellow">
           <FontAwesomeIcon icon={faWarning} className="mr-1" /> Due to{" "}
           {SECRET_ROTATION_MAP[type].name} Rotations rotating a single credential set, auto-rotation
           may result in service interruptions. If you need to ensure service continuity, we
@@ -135,7 +135,7 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
             href="https://infisical.com/docs/documentation/platform/secret-rotation/overview#how-rotation-works"
             target="_blank"
             rel="noopener noreferrer"
-            className="decoration-yellow hover:text-mineshaft-200 underline underline-offset-2"
+            className="underline decoration-yellow underline-offset-2 hover:text-mineshaft-200"
           >
             Read more
           </a>

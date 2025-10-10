@@ -47,17 +47,17 @@ export const ServiceTokenSection = withProjectPermission(
     };
 
     return (
-      <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
+      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-2 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1">
-              <p className="text-mineshaft-100 text-xl font-medium">Service Tokens</p>
+              <p className="text-xl font-medium text-mineshaft-100">Service Tokens</p>
               <a
                 href="https://infisical.com/docs/documentation/platform/token"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="bg-yellow/20 text-yellow ml-1 mt-[0.16rem] inline-block rounded-md px-1.5 text-sm opacity-80 hover:opacity-100">
+                <div className="mt-[0.16rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   <span>Docs</span>
                   <FontAwesomeIcon
@@ -67,7 +67,7 @@ export const ServiceTokenSection = withProjectPermission(
                 </div>
               </a>
             </div>
-            <p className="text-bunker-300 text-sm">
+            <p className="text-sm text-bunker-300">
               {t("section.token.service-tokens-description")}
             </p>
           </div>

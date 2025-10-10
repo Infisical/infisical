@@ -57,10 +57,10 @@ export const CachingPageForm = () => {
 
   return (
     <>
-      <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 flex flex-wrap items-end justify-between gap-4 rounded-lg border p-4">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="flex flex-col">
           <div className="mb-2 flex items-center gap-3">
-            <span className="text-mineshaft-100 text-xl font-medium">Secrets Cache</span>
+            <span className="text-xl font-medium text-mineshaft-100">Secrets Cache</span>
             {isInvalidating && (
               <Badge
                 variant="danger"
@@ -71,7 +71,7 @@ export const CachingPageForm = () => {
               </Badge>
             )}
           </div>
-          <span className="text-mineshaft-400 max-w-xl text-sm">
+          <span className="max-w-xl text-sm text-mineshaft-400">
             The encrypted secrets cache encompasses all secrets stored within the system and
             provides a temporary, secure storage location for frequently accessed credentials.
           </span>

@@ -38,7 +38,7 @@ export const NotificationContent = ({
               {copyActions.map((action) => (
                 <div className="flex flex-row items-center gap-2" key={`copy-${action.name}`}>
                   {action.label && (
-                    <span className="text-mineshaft-400 ml-2 text-xs">{action.label}</span>
+                    <span className="ml-2 text-xs text-mineshaft-400">{action.label}</span>
                   )}
                   <CopyButton
                     value={action.value}

@@ -93,7 +93,7 @@ export const SlackConfigRow = ({ handlePopUpOpen, isSlackConfigLoading, slackCon
       <Td>
         <DropdownMenu>
           <DropdownMenuTrigger asChild className="rounded-lg">
-            <div className="hover:text-primary-400 data-[state=open]:text-primary-400 flex justify-end">
+            <div className="flex justify-end hover:text-primary-400 data-[state=open]:text-primary-400">
               <FontAwesomeIcon size="sm" icon={faEllipsis} />
             </div>
           </DropdownMenuTrigger>

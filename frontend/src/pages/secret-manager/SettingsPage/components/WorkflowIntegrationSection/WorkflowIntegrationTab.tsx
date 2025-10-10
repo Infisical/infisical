@@ -83,9 +83,9 @@ export const WorkflowIntegrationTab = () => {
   };
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
+    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex justify-between">
-        <p className="text-mineshaft-100 text-xl font-medium">Workflow Integrations</p>
+        <p className="text-xl font-medium text-mineshaft-100">Workflow Integrations</p>
         <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Settings}>
           {(isAllowed) => (
             <Button

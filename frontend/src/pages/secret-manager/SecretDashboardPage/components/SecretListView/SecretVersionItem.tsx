@@ -142,7 +142,7 @@ export const SecretVersionItem = ({
       <div className="flex w-full flex-col space-y-1">
         <div className="flex items-center">
           <div className="w-10">
-            <div className="border-mineshaft-600 bg-mineshaft-700 text-mineshaft-300 w-fit rounded-md border px-1 text-sm">
+            <div className="w-fit rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 text-sm text-mineshaft-300">
               v{version}
             </div>
           </div>
@@ -150,7 +150,7 @@ export const SecretVersionItem = ({
         </div>
         <div className="flex w-full cursor-default">
           <div className="relative w-10">
-            <div className="border-mineshaft-400/60 absolute bottom-0 left-3 top-0 mt-0.5 border-l" />
+            <div className="absolute top-0 bottom-0 left-3 mt-0.5 border-l border-mineshaft-400/60" />
           </div>
           <div className="flex w-full cursor-default flex-col">
             {actor && (
@@ -172,14 +172,14 @@ export const SecretVersionItem = ({
               </div>
             )}
             <div className="flex flex-row">
-              <div className="rounded-xs bg-primary-500/10 text-primary-300/70 h-min w-fit px-1">
+              <div className="h-min w-fit rounded-xs bg-primary-500/10 px-1 text-primary-300/70">
                 Value:
               </div>
-              <div className="group break-all pl-1 font-mono">
+              <div className="group pl-1 font-mono break-all">
                 <div className="relative hidden cursor-pointer transition-all duration-200 group-[.show-value]:inline">
                   <button
                     type="button"
-                    className="select-none text-left"
+                    className="text-left select-none"
                     onClick={async (e) => {
                       if (secretValueHidden) return;
 
@@ -194,7 +194,7 @@ export const SecretVersionItem = ({
                     }}
                   >
                     <span
-                      className={twMerge(secretValueHidden && "text-bunker-300 text-xs opacity-40")}
+                      className={twMerge(secretValueHidden && "text-xs text-bunker-300 opacity-40")}
                     >
                       {/* eslint-disable-next-line no-nested-ternary */}
                       {secretValueHidden

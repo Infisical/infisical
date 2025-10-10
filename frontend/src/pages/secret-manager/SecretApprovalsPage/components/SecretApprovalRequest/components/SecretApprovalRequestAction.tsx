@@ -102,11 +102,11 @@ export const SecretApprovalRequestAction = ({
 
   if (!hasMerged && status === "open") {
     return (
-      <div className="text-mineshaft-100 flex w-full flex-col items-start justify-between py-4 transition-all">
+      <div className="flex w-full flex-col items-start justify-between py-4 text-mineshaft-100 transition-all">
         <div className="flex w-full flex-col justify-between xl:flex-row xl:items-center">
           <div className="mr-auto flex items-center space-x-4 px-4">
             <div
-              className={`flex items-center justify-center rounded-full ${isMergable ? "bg-green h-8 w-8" : "h-10 w-10 bg-red-600"}`}
+              className={`flex items-center justify-center rounded-full ${isMergable ? "h-8 w-8 bg-green" : "h-10 w-10 bg-red-600"}`}
             >
               <FontAwesomeIcon
                 icon={isMergable ? faCheck : faXmark}
@@ -118,7 +118,7 @@ export const SecretApprovalRequestAction = ({
                 {isMergable ? "Good to merge" : "Merging is blocked"}
               </p>
               {!isMergable && (
-                <span className="text-mineshaft-300 inline-block text-xs">
+                <span className="inline-block text-xs text-mineshaft-300">
                   At least {approvals} approving review{`${approvals > 1 ? "s" : ""}`} required by
                   eligible reviewers.
                   {Boolean(statusChangeByEmail) && `. Reopened by ${statusChangeByEmail}`}
@@ -156,12 +156,12 @@ export const SecretApprovalRequestAction = ({
                 </Button>
               </div>
             ) : (
-              <div className="text-mineshaft-400 text-sm">Only approvers can merge</div>
+              <div className="text-sm text-mineshaft-400">Only approvers can merge</div>
             )}
           </div>
         </div>
         {isSoftEnforcement && !isMergable && isBypasser && (
-          <div className="border-mineshaft-600 mt-4 w-full border-t px-5">
+          <div className="mt-4 w-full border-t border-mineshaft-600 px-5">
             <div className="mt-2 flex flex-col space-y-2 pt-2">
               <Checkbox
                 onCheckedChange={(checked) => setByPassApproval(checked === true)}
@@ -198,12 +198,12 @@ export const SecretApprovalRequestAction = ({
 
   if (hasMerged && status === "close")
     return (
-      <div className="border-green/60 bg-green/10 flex w-full items-center justify-between rounded-md border">
+      <div className="flex w-full items-center justify-between rounded-md border border-green/60 bg-green/10">
         <div className="flex items-start space-x-2 p-4">
-          <FontAwesomeIcon icon={faCheck} className="text-green mt-0.5 text-xl" />
+          <FontAwesomeIcon icon={faCheck} className="mt-0.5 text-xl text-green" />
           <span className="flex flex-col">
             Change request merged
-            <span className="text-mineshaft-300 inline-block text-xs">
+            <span className="inline-block text-xs text-mineshaft-300">
               Merged by {statusChangeByEmail}.
             </span>
           </span>
@@ -212,12 +212,12 @@ export const SecretApprovalRequestAction = ({
     );
 
   return (
-    <div className="border-yellow/60 bg-yellow/10 flex w-full items-center justify-between rounded-md border">
+    <div className="flex w-full items-center justify-between rounded-md border border-yellow/60 bg-yellow/10">
       <div className="flex items-start space-x-2 p-4">
-        <FontAwesomeIcon icon={faUserLock} className="text-yellow mt-0.5 text-xl" />
+        <FontAwesomeIcon icon={faUserLock} className="mt-0.5 text-xl text-yellow" />
         <span className="flex flex-col">
           Secret approval has been closed
-          <span className="text-mineshaft-300 inline-block text-xs">
+          <span className="inline-block text-xs text-mineshaft-300">
             Closed by {statusChangeByEmail}
           </span>
         </span>
@@ -227,7 +227,7 @@ export const SecretApprovalRequestAction = ({
         isLoading={isStatusChanging}
         variant="plain"
         colorSchema="secondary"
-        className="text-yellow/60 hover:text-yellow mr-4"
+        className="mr-4 text-yellow/60 hover:text-yellow"
         leftIcon={<FontAwesomeIcon icon={faLockOpen} />}
       >
         Reopen request

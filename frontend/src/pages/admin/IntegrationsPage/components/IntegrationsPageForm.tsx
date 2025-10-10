@@ -51,10 +51,10 @@ export const IntegrationsPageForm = () => {
   ];
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 min-h-64 rounded-lg border p-4">
+    <div className="mb-6 min-h-64 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4">
-        <div className="text-mineshaft-100 text-xl font-medium">Integrations</div>
-        <div className="text-mineshaft-300 text-sm">
+        <div className="text-xl font-medium text-mineshaft-100">Integrations</div>
+        <div className="text-sm text-mineshaft-300">
           Configure your instance-wide settings to enable integration with third-party services.
         </div>
       </div>

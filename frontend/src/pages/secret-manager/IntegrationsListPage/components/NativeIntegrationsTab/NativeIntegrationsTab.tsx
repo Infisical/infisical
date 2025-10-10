@@ -166,9 +166,9 @@ export const NativeIntegrationsTab = () => {
   return (
     <>
       {view === IntegrationView.List ? (
-        <div className="border-mineshaft-600 bg-mineshaft-900 w-full rounded-lg border p-4">
+        <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-mineshaft-100 text-xl font-medium">Native Integrations</p>
+            <p className="text-xl font-medium text-mineshaft-100">Native Integrations</p>
             <Button
               colorSchema="secondary"
               type="submit"

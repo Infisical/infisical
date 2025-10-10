@@ -94,7 +94,7 @@ const IdentityTemporaryRoleForm = ({
         className="border border-gray-600 pt-4"
       >
         <div className="flex flex-col space-y-4">
-          <div className="text-mineshaft-300 border-b border-b-gray-700 pb-2 text-sm">
+          <div className="border-b border-b-gray-700 pb-2 text-sm text-mineshaft-300">
             Set Role Temporarily
           </div>
           {isExpired && <Tag colorSchema="red">Expired</Tag>}
@@ -269,7 +269,7 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
 
   return (
     <form onSubmit={handleSubmit(handleRoleUpdate)} id="role-update-form">
-      <div className="thin-scrollbar max-h-80 space-y-4 overflow-y-auto">
+      <div className="max-h-80 thin-scrollbar space-y-4 overflow-y-auto">
         {projectRoles
           ?.filter(
             ({ name, slug }) =>
@@ -409,7 +409,7 @@ export const GroupRoles = ({
           <HoverCardTrigger>
             <Tag>+{roles.length - MAX_ROLES_TO_BE_SHOWN_IN_TABLE}</Tag>
           </HoverCardTrigger>
-          <HoverCardContent className="bg-mineshaft-800 border border-gray-700 p-4">
+          <HoverCardContent className="border border-gray-700 bg-mineshaft-800 p-4">
             {roles
               .slice(MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
               .map(({ role, customRoleName, id, isTemporary, temporaryAccessEndTime }) => {

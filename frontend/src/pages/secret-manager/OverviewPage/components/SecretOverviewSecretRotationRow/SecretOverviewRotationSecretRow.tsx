@@ -48,7 +48,7 @@ export const SecretOverviewRotationSecretRow = ({
       className="max-w-sm"
       content={secret ? undefined : "You do not have permission to view this secret."}
     >
-      <tr className="!last:border-b-0 hover:bg-mineshaft-700 h-full">
+      <tr className="!last:border-b-0 h-full hover:bg-mineshaft-700">
         <td className="flex h-full items-center" style={{ padding: "0.5rem 1rem" }}>
           <span className={twMerge(!secret && "blur-sm")}>{secret?.key ?? "********"}</span>
         </td>

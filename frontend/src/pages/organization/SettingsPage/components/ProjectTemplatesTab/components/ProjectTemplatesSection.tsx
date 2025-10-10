@@ -50,19 +50,19 @@ export const ProjectTemplatesSection = () => {
             className="absolute min-h-40 w-full"
           >
             <div>
-              <p className="font-inter text-bunker-300 mb-6">
+              <p className="mb-6 font-inter text-bunker-300">
                 Create and configure templates with predefined roles and environments to streamline
                 project setup
               </p>
-              <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
+              <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
                 <div className="mb-4 flex items-start">
-                  <p className="text-mineshaft-100 text-xl font-medium">Project Templates</p>
+                  <p className="text-xl font-medium text-mineshaft-100">Project Templates</p>
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
                     href="https://infisical.com/docs/documentation/platform/project-templates"
                   >
-                    <div className="bg-yellow/20 text-yellow ml-2 mt-[0.32rem] inline-block rounded-md px-1.5 text-sm opacity-80 hover:opacity-100">
+                    <div className="mt-[0.32rem] ml-2 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                       <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                       <span>Docs</span>
                       <FontAwesomeIcon

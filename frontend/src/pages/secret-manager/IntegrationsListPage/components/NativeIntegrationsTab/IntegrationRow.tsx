@@ -67,7 +67,7 @@ export const IntegrationRow = ({
         })
       }
       className={twMerge(
-        "hover:bg-mineshaft-700 group h-10 cursor-pointer transition-colors duration-100",
+        "group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700",
         isSynced === false && "bg-red/5 hover:bg-red/10"
       )}
       key={`integration-${id}`}
@@ -82,18 +82,18 @@ export const IntegrationRow = ({
           <span className="hidden lg:inline">{cloudIntegration?.name}</span>
         </div>
       </Td>
-      <Td className="min-w-32! max-w-0">
+      <Td className="max-w-0 min-w-32!">
         <Tooltip side="top" className="max-w-2xl break-words" content={secretPath}>
           <p className="truncate">{secretPath}</p>
         </Tooltip>{" "}
       </Td>
       <Td>{environment?.name ?? "-"}</Td>
-      <Td className="min-w-20! max-w-0">
+      <Td className="max-w-0 min-w-20!">
         <div className="flex items-center gap-2">
           <p className="truncate">{getIntegrationDestination(integration)}</p>
           <Tooltip
             position="left"
-            className="min-w-[20rem] max-w-lg"
+            className="max-w-lg min-w-[20rem]"
             content={<IntegrationDetails integration={integration} />}
           >
             <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400" />
@@ -119,22 +119,22 @@ export const IntegrationRow = ({
                     >
                       <FontAwesomeIcon
                         icon={faCalendarCheck}
-                        className="ml-1 pr-1.5 pt-0.5 text-sm"
+                        className="ml-1 pt-0.5 pr-1.5 text-sm"
                       />
                       <div className="text-xs">Last Synced</div>
                     </div>
-                    <div className="bg-mineshaft-600 rounded-sm p-2 text-xs">
+                    <div className="rounded-sm bg-mineshaft-600 p-2 text-xs">
                       {format(new Date(integration.lastUsed!), "yyyy-MM-dd, hh:mm aaa")}
                     </div>
                   </div>
                 )}
                 {failureMessage && (
                   <div>
-                    <div className="text-red mb-2 flex self-start">
-                      <FontAwesomeIcon icon={faXmark} className="ml-1 pr-1.5 pt-0.5 text-sm" />
+                    <div className="mb-2 flex self-start text-red">
+                      <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
                       <div className="text-xs">Failure Reason</div>
                     </div>
-                    <div className="bg-mineshaft-600 rounded-sm p-2 text-xs">{failureMessage}</div>
+                    <div className="rounded-sm bg-mineshaft-600 p-2 text-xs">{failureMessage}</div>
                   </div>
                 )}
               </div>

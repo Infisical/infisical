@@ -40,7 +40,7 @@ export const GenericResourceFields = () => {
             <Select
               value={value || (null as unknown as string)}
               onValueChange={onChange}
-              className="border-mineshaft-500 w-full border"
+              className="w-full border border-mineshaft-500"
               dropdownContainerClassName="max-w-none"
               isLoading={isGatewaysLoading}
               placeholder="Select a Gateway..."

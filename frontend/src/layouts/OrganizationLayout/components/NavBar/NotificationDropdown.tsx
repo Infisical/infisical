@@ -34,10 +34,10 @@ export const NotificationDropdown = () => {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger>
-        <div className="border-mineshaft-500 hover:bg-mineshaft-600 relative border border-r-0 px-2.5 py-1">
+        <div className="relative border border-r-0 border-mineshaft-500 px-2.5 py-1 hover:bg-mineshaft-600">
           <FontAwesomeIcon icon={faBell} className="text-mineshaft-200" />
           {unreadCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-yellow-400 px-1 text-[10px] text-black">
+            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-yellow-400 px-1 text-[10px] text-black">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
@@ -49,11 +49,11 @@ export const NotificationDropdown = () => {
         className="z-999 mt-3 flex h-[550px] w-[400px] overflow-hidden rounded-lg"
       >
         <div className="flex w-full flex-col">
-          <div className="border-mineshaft-500 flex items-center justify-between border-b px-3 py-2">
+          <div className="flex items-center justify-between border-b border-mineshaft-500 px-3 py-2">
             <span className="font-medium text-white">Notifications</span>
             <button
               type="button"
-              className="text-mineshaft-300 hover:text-primary-400 text-xs font-medium disabled:pointer-events-none disabled:opacity-50"
+              className="text-xs font-medium text-mineshaft-300 hover:text-primary-400 disabled:pointer-events-none disabled:opacity-50"
               onClick={(e) => {
                 e.preventDefault();
                 markAllAsRead();
@@ -72,8 +72,8 @@ export const NotificationDropdown = () => {
             {!isLoading && notifications?.length === 0 && (
               <div className="flex h-full w-full flex-col items-center justify-center">
                 <FontAwesomeIcon icon={faBell} size="3x" className="text-mineshaft-400" />
-                <span className="text-mineshaft-300 mt-4 text-sm">No new notifications</span>
-                <span className="text-mineshaft-400 text-xs">
+                <span className="mt-4 text-sm text-mineshaft-300">No new notifications</span>
+                <span className="text-xs text-mineshaft-400">
                   We&apos;ll let you know when something important happens.
                 </span>
               </div>

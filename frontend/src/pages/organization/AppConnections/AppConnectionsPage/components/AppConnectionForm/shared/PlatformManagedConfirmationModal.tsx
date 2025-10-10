@@ -12,10 +12,10 @@ export const PlatformManagedConfirmationModal = ({ isOpen, onOpenChange, onConfi
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent className="max-w-2xl" title="Platform Managed Credentials">
         <NoticeBannerV2 title="Are you sure you want have Infisical manage the credentials of this connection?">
-          <p className="text-mineshaft-300 my-1 text-sm">
+          <p className="my-1 text-sm text-mineshaft-300">
             Once created, Infisical will update the password of this connection.
           </p>
-          <p className="text-mineshaft-300 text-sm">
+          <p className="text-sm text-mineshaft-300">
             You will not be able to access the updated password.
           </p>
         </NoticeBannerV2>

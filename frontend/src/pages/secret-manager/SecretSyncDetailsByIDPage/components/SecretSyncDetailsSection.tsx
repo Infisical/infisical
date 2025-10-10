@@ -43,9 +43,9 @@ export const SecretSyncDetailsSection = ({ secretSync, onEditDetails }: Props) =
       : ProjectPermissionSub.SecretSyncs;
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 flex w-full flex-col gap-3 rounded-lg border px-4 py-3">
-      <div className="border-mineshaft-400 flex items-center justify-between border-b pb-2">
-        <h3 className="text-mineshaft-100 font-medium">Details</h3>
+    <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
+        <h3 className="font-medium text-mineshaft-100">Details</h3>
         <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
           {(isAllowed) => (
             <IconButton
@@ -76,7 +76,7 @@ export const SecretSyncDetailsSection = ({ secretSync, onEditDetails }: Props) =
           )}
           {syncStatus === SecretSyncStatus.Failed && failureMessage && (
             <GenericFieldLabel labelClassName="text-red" label="Last Sync Error">
-              <p className="bg-mineshaft-600 break-words rounded-sm p-2 text-xs">
+              <p className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
                 {failureMessage}
               </p>
             </GenericFieldLabel>

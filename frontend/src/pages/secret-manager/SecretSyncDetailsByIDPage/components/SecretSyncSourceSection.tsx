@@ -27,9 +27,9 @@ export const SecretSyncSourceSection = ({ secretSync, onEditSource }: Props) => 
 
   return (
     <div>
-      <div className="border-mineshaft-600 bg-mineshaft-900 flex w-full flex-col gap-3 rounded-lg border px-4 py-3">
-        <div className="border-mineshaft-400 flex items-center justify-between border-b pb-2">
-          <h3 className="text-mineshaft-100 font-medium">Source</h3>
+      <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
+          <h3 className="font-medium text-mineshaft-100">Source</h3>
           <div>
             {(!folder || !environment) && (
               <Tooltip content="The source location for this sync has been deleted. Configure a new source or remove this sync.">

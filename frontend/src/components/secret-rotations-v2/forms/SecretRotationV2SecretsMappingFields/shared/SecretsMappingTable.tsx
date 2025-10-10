@@ -32,13 +32,13 @@ export const SecretsMappingTable = ({ items }: Props) => {
             <tr key={name}>
               <td className="whitespace-nowrap">
                 <div className="mb-4 flex h-full items-start justify-center">
-                  <Badge className="border-mineshaft-600 bg-mineshaft-600 text-bunker-200 pointer-events-none flex h-[36px] w-full items-center justify-center gap-1.5 whitespace-nowrap border">
+                  <Badge className="pointer-events-none flex h-[36px] w-full items-center justify-center gap-1.5 border border-mineshaft-600 bg-mineshaft-600 whitespace-nowrap text-bunker-200">
                     <FontAwesomeIcon icon={faKey} />
                     <span>{name}</span>
                   </Badge>
                 </div>
               </td>
-              <td className="whitespace-nowrap pl-5 pr-5">
+              <td className="pr-5 pl-5 whitespace-nowrap">
                 <div className="mb-4 flex items-center justify-center">
                   <FontAwesomeIcon className="text-mineshaft-400" icon={faArrowRight} />
                 </div>

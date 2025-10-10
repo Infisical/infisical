@@ -198,9 +198,9 @@ export const OrgRoleTable = () => {
     orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 rounded-lg border p-4">
+    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-mineshaft-100 text-xl font-medium">Organization Roles</p>
+        <p className="text-xl font-medium text-mineshaft-100">Organization Roles</p>
         <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Role}>
           {(isAllowed) => (
             <Button
@@ -282,7 +282,7 @@ export const OrgRoleTable = () => {
               return (
                 <Tr
                   key={`role-list-${id}`}
-                  className="hover:bg-mineshaft-700 h-10 cursor-pointer transition-colors duration-100"
+                  className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                   onClick={() =>
                     navigate({
                       to: "/organization/roles/$roleId",
@@ -312,7 +312,7 @@ export const OrgRoleTable = () => {
                     {slug}
                   </Td>
                   <Td>
-                    <Badge className="bg-mineshaft-400/50 text-bunker-200 w-min whitespace-nowrap">
+                    <Badge className="w-min bg-mineshaft-400/50 whitespace-nowrap text-bunker-200">
                       {isCustomProjectRole(slug) ? "Custom" : "Default"}
                     </Badge>
                   </Td>

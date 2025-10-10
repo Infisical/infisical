@@ -249,7 +249,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                           }
                         })
                       }
-                      className="hover:bg-mineshaft-700 h-10 cursor-pointer transition-colors duration-100"
+                      className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                       key={`org-group-${id}`}
                     >
                       <Td>{name}</Td>
@@ -264,7 +264,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                               <Select
                                 value={role === "custom" ? (customRole?.slug as string) : role}
                                 isDisabled={!isAllowed}
-                                className="bg-mineshaft-700 h-8 w-48"
+                                className="h-8 w-48 bg-mineshaft-700"
                                 position="popper"
                                 dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
                                 onValueChange={(selectedRole) =>

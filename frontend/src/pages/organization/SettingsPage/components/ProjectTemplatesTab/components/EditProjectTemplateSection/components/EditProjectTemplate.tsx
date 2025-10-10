@@ -52,10 +52,10 @@ export const EditProjectTemplate = ({ isInfisicalTemplate, projectTemplate, onBa
 
   return (
     <>
-      <div className="border-bunker-400 mb-4 flex items-start justify-between border-b pb-4">
+      <div className="mb-4 flex items-start justify-between border-b border-bunker-400 pb-4">
         <div className="flex-col">
           <h3 className="text-xl font-medium">{name}</h3>
-          <h2 className="text-mineshaft-400 text-sm">
+          <h2 className="text-sm text-mineshaft-400">
             {`${getProjectTitle(type)} - `}
             {description || "Project Template"}
           </h2>

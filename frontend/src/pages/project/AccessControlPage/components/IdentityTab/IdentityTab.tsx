@@ -165,16 +165,16 @@ export const IdentityTab = withProjectPermission(
         animate={{ opacity: 1, translateX: 0 }}
         exit={{ opacity: 0, translateX: 30 }}
       >
-        <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
+        <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-1">
-              <p className="text-mineshaft-100 text-xl font-medium">Identities</p>
+              <p className="text-xl font-medium text-mineshaft-100">Identities</p>
               <a
                 href="https://infisical.com/docs/documentation/platform/identities/overview"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="bg-yellow/20 text-yellow ml-1 mt-[0.16rem] inline-block rounded-md px-1.5 text-sm opacity-80 hover:opacity-100">
+                <div className="mt-[0.16rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   <span>Docs</span>
                   <FontAwesomeIcon
@@ -252,7 +252,7 @@ export const IdentityTab = withProjectPermission(
                     } = identityMember;
                     return (
                       <Tr
-                        className="hover:bg-mineshaft-700 group h-10 cursor-pointer transition-colors duration-100"
+                        className="group h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                         key={`st-v3-${id}`}
                         role="button"
                         tabIndex={0}
@@ -325,7 +325,7 @@ export const IdentityTab = withProjectPermission(
                                 <HoverCardTrigger>
                                   <Tag>+{roles.length - MAX_ROLES_TO_BE_SHOWN_IN_TABLE}</Tag>
                                 </HoverCardTrigger>
-                                <HoverCardContent className="bg-mineshaft-800 border border-gray-700 p-4">
+                                <HoverCardContent className="border border-gray-700 bg-mineshaft-800 p-4">
                                   {roles
                                     .slice(MAX_ROLES_TO_BE_SHOWN_IN_TABLE)
                                     .map(

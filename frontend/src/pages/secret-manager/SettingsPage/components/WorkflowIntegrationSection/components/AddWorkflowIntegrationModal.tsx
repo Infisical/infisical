@@ -75,7 +75,7 @@ export const AddWorkflowIntegrationModal = ({ isOpen, onToggle }: Props) => {
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: -30 }}
             >
-              <div className="text-mineshaft-300 mb-4">Select a workflow integration</div>
+              <div className="mb-4 text-mineshaft-300">Select a workflow integration</div>
               <div className="flex items-center space-x-4">
                 {PLATFORM_LIST.map(({ icon, platform, title }) => {
                   const isConfigured =
@@ -87,7 +87,7 @@ export const AddWorkflowIntegrationModal = ({ isOpen, onToggle }: Props) => {
                     <div className="relative" key={platform}>
                       <div
                         className={twMerge(
-                          "border-mineshaft-500 bg-bunker-600 hover:border-primary/70 hover:bg-primary/10 flex h-32 w-36 cursor-pointer flex-col items-center space-y-4 rounded-sm border p-6 transition-all hover:text-white",
+                          "flex h-32 w-36 cursor-pointer flex-col items-center space-y-4 rounded-sm border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white",
                           isConfigured && "border-primary/50 opacity-60"
                         )}
                         role="button"
@@ -104,12 +104,12 @@ export const AddWorkflowIntegrationModal = ({ isOpen, onToggle }: Props) => {
                         }}
                       >
                         <div>{icon}</div>
-                        <div className="whitespace-pre-wrap text-center text-sm">{title}</div>
+                        <div className="text-center text-sm whitespace-pre-wrap">{title}</div>
                       </div>
                       {isConfigured && (
-                        <div className="absolute bottom-0 left-0 right-0 z-30 h-full">
+                        <div className="absolute right-0 bottom-0 left-0 z-30 h-full">
                           <div className="relative h-full">
-                            <div className="bg-primary absolute bottom-0 right-0 w-full flex-row items-center overflow-hidden whitespace-nowrap rounded-b-md px-2 py-0.5 text-center text-xs text-black">
+                            <div className="absolute right-0 bottom-0 w-full flex-row items-center overflow-hidden rounded-b-md bg-primary px-2 py-0.5 text-center text-xs whitespace-nowrap text-black">
                               Already Configured
                             </div>
                           </div>

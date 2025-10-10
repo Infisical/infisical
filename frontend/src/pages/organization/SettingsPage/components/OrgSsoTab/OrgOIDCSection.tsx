@@ -86,7 +86,7 @@ export const OrgOIDCSection = (): JSX.Element => {
   const isGoogleOAuthEnabled = currentOrg.googleSsoAuthEnforced;
 
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-900 mb-4 rounded-lg">
+    <div className="mb-4 rounded-lg border-mineshaft-600 bg-mineshaft-900">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xl font-medium text-gray-200">OIDC</p>
@@ -135,14 +135,14 @@ export const OrgOIDCSection = (): JSX.Element => {
               </OrgPermissionCan>
             )}
           </div>
-          <p className="text-mineshaft-300 text-sm">
+          <p className="text-sm text-mineshaft-300">
             Allow members to authenticate into Infisical with OIDC
           </p>
         </div>
       )}
       <div className="py-4">
         <div className="mb-2 flex justify-between">
-          <div className="text-md text-mineshaft-100 flex items-center">
+          <div className="text-md flex items-center text-mineshaft-100">
             <span>OIDC Group Membership Mapping</span>
             <Tooltip
               className="max-w-lg"
@@ -161,12 +161,12 @@ export const OrgOIDCSection = (): JSX.Element => {
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:text-mineshaft-300 underline underline-offset-2"
+                    className="underline underline-offset-2 hover:text-mineshaft-300"
                     href="https://infisical.com/docs/documentation/platform/sso/overview"
                   >
                     See your OIDC provider docs for details.
                   </a>
-                  <p className="text-yellow mt-4">
+                  <p className="mt-4 text-yellow">
                     <FontAwesomeIcon className="mr-1" icon={faWarning} />
                     Group membership changes in the OIDC provider only sync with Infisical when a
                     user logs in via OIDC. For example, if you remove a user from a group in the
@@ -180,7 +180,7 @@ export const OrgOIDCSection = (): JSX.Element => {
               <FontAwesomeIcon
                 icon={faInfoCircle}
                 size="sm"
-                className="text-mineshaft-400 ml-1 mt-0.5 inline-block"
+                className="mt-0.5 ml-1 inline-block text-mineshaft-400"
               />
             </Tooltip>
           </div>
@@ -195,7 +195,7 @@ export const OrgOIDCSection = (): JSX.Element => {
             )}
           </OrgPermissionCan>
         </div>
-        <p className="text-mineshaft-300 text-sm">
+        <p className="text-sm text-mineshaft-300">
           Infisical will manage user group memberships based on the OIDC provider
         </p>
       </div>

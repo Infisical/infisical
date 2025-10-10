@@ -11,7 +11,7 @@ import { CaSection } from "./components";
 export const CertificateAuthoritiesPage = () => {
   const { t } = useTranslation();
   return (
-    <div className="bg-bunker-800 container mx-auto flex h-full flex-col justify-between text-white">
+    <div className="container mx-auto flex h-full flex-col justify-between bg-bunker-800 text-white">
       <Helmet>
         <title>{t("common.head-title", { title: "Certificate Authorities" })}</title>
       </Helmet>

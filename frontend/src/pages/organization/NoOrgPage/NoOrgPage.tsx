@@ -20,7 +20,7 @@ export const NoOrgPage = () => {
         <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="bg-bunker-800 min-h-screen">
+      <div className="min-h-screen bg-bunker-800">
         <CreateOrgModal
           isOpen={popUp.createOrg.isOpen}
           onClose={() => handlePopUpToggle("createOrg", false)}
