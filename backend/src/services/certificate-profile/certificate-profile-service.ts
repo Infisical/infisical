@@ -277,7 +277,28 @@ export const certificateProfileServiceFactory = ({
       });
     }
 
-    const updatedProfile = await certificateProfileDAL.updateById(profileId, data);
+    const { estConfig, apiConfig, ...profileUpdateData } = data;
+
+    if (estConfig && existingProfile.estConfigId) {
+      await estEnrollmentConfigDAL.updateById(existingProfile.estConfigId, {
+        disableBootstrapCaValidation: estConfig.disableBootstrapCaValidation,
+        ...(estConfig.passphrase && {
+          hashedPassphrase: await crypto.hashing().createHash(estConfig.passphrase, getConfig().SALT_ROUNDS)
+        }),
+        ...(estConfig.caChain && {
+          encryptedCaChain: Buffer.from(estConfig.caChain, "base64")
+        })
+      });
+    }
+
+    if (apiConfig && existingProfile.apiConfigId) {
+      await apiEnrollmentConfigDAL.updateById(existingProfile.apiConfigId, {
+        autoRenew: apiConfig.autoRenew,
+        autoRenewDays: apiConfig.autoRenewDays
+      });
+    }
+
+    const updatedProfile = await certificateProfileDAL.updateById(profileId, profileUpdateData);
     return convertDalToService(updatedProfile);
   };
 

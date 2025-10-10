@@ -10,7 +10,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
 
-      t.string("name", 64).notNullable();
+      t.string("slug").notNullable();
       t.string("description");
 
       t.jsonb("attributes");
@@ -22,13 +22,15 @@ export async function up(knex: Knex): Promise<void> {
       t.jsonb("keyAlgorithm");
 
       t.timestamps(true, true, true);
+
+      t.unique(["slug", "projectId"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.CertificateTemplateV2);
   }
 
-  if (!(await knex.schema.hasTable(TableName.EstEnrollmentConfig))) {
-    await knex.schema.createTable(TableName.EstEnrollmentConfig, (t) => {
+  if (!(await knex.schema.hasTable(TableName.PkiEstEnrollmentConfig))) {
+    await knex.schema.createTable(TableName.PkiEstEnrollmentConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
       t.boolean("disableBootstrapCaValidation").defaultTo(false);
@@ -38,11 +40,11 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
 
-    await createOnUpdateTrigger(knex, TableName.EstEnrollmentConfig);
+    await createOnUpdateTrigger(knex, TableName.PkiEstEnrollmentConfig);
   }
 
-  if (!(await knex.schema.hasTable(TableName.ApiEnrollmentConfig))) {
-    await knex.schema.createTable(TableName.ApiEnrollmentConfig, (t) => {
+  if (!(await knex.schema.hasTable(TableName.PkiApiEnrollmentConfig))) {
+    await knex.schema.createTable(TableName.PkiApiEnrollmentConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
       t.boolean("autoRenew").defaultTo(false);
@@ -51,7 +53,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
     });
 
-    await createOnUpdateTrigger(knex, TableName.ApiEnrollmentConfig);
+    await createOnUpdateTrigger(knex, TableName.PkiApiEnrollmentConfig);
   }
 
   if (!(await knex.schema.hasTable(TableName.CertificateProfile))) {
@@ -61,25 +63,24 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
 
       t.uuid("caId").notNullable();
-      t.foreign("caId").references("id").inTable(TableName.CertificateAuthority).onDelete("CASCADE");
+      t.foreign("caId").references("id").inTable(TableName.CertificateAuthority);
 
       t.uuid("certificateTemplateId").notNullable();
-      t.foreign("certificateTemplateId").references("id").inTable(TableName.CertificateTemplateV2).onDelete("CASCADE");
+      t.foreign("certificateTemplateId").references("id").inTable(TableName.CertificateTemplateV2);
 
-      t.string("name", 64).notNullable();
       t.string("slug").notNullable();
       t.string("description");
       t.string("enrollmentType").notNullable().checkIn(["api", "est"]);
 
       t.uuid("estConfigId");
-      t.foreign("estConfigId").references("id").inTable(TableName.EstEnrollmentConfig).onDelete("SET NULL");
+      t.foreign("estConfigId").references("id").inTable(TableName.PkiEstEnrollmentConfig).onDelete("SET NULL");
 
       t.uuid("apiConfigId");
-      t.foreign("apiConfigId").references("id").inTable(TableName.ApiEnrollmentConfig).onDelete("SET NULL");
+      t.foreign("apiConfigId").references("id").inTable(TableName.PkiApiEnrollmentConfig).onDelete("SET NULL");
 
       t.timestamps(true, true, true);
 
-      t.unique(["slug", "projectId"], { indexName: "certificate_profiles_slug_project_id_unique" });
+      t.unique(["slug", "projectId"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.CertificateProfile);
@@ -89,7 +90,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.alterTable(TableName.Certificate, (t) => {
       t.uuid("profileId");
       t.foreign("profileId").references("id").inTable(TableName.CertificateProfile).onDelete("SET NULL");
-      t.index("profileId", "idx_certificates_profile_id");
+      t.index("profileId");
     });
   }
 }
@@ -98,7 +99,7 @@ export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasColumn(TableName.Certificate, "profileId")) {
     await knex.schema.alterTable(TableName.Certificate, (t) => {
       t.dropForeign(["profileId"]);
-      t.dropIndex("profileId", "idx_certificates_profile_id");
+      t.dropIndex("profileId");
       t.dropColumn("profileId");
     });
   }
@@ -106,11 +107,11 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.CertificateProfile);
   await dropOnUpdateTrigger(knex, TableName.CertificateProfile);
 
-  await knex.schema.dropTableIfExists(TableName.ApiEnrollmentConfig);
-  await dropOnUpdateTrigger(knex, TableName.ApiEnrollmentConfig);
+  await knex.schema.dropTableIfExists(TableName.PkiApiEnrollmentConfig);
+  await dropOnUpdateTrigger(knex, TableName.PkiApiEnrollmentConfig);
 
-  await knex.schema.dropTableIfExists(TableName.EstEnrollmentConfig);
-  await dropOnUpdateTrigger(knex, TableName.EstEnrollmentConfig);
+  await knex.schema.dropTableIfExists(TableName.PkiEstEnrollmentConfig);
+  await dropOnUpdateTrigger(knex, TableName.PkiEstEnrollmentConfig);
 
   await knex.schema.dropTableIfExists(TableName.CertificateTemplateV2);
   await dropOnUpdateTrigger(knex, TableName.CertificateTemplateV2);

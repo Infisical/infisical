@@ -10,11 +10,11 @@ import { TEstEnrollmentConfigInsert, TEstEnrollmentConfigUpdate } from "./enroll
 export type TEstEnrollmentConfigDALFactory = ReturnType<typeof estEnrollmentConfigDALFactory>;
 
 export const estEnrollmentConfigDALFactory = (db: TDbClient) => {
-  const estEnrollmentConfigOrm = ormify(db, TableName.EstEnrollmentConfig);
+  const estEnrollmentConfigOrm = ormify(db, TableName.PkiEstEnrollmentConfig);
 
   const create = async (data: TEstEnrollmentConfigInsert, tx?: Knex) => {
     try {
-      const [estConfig] = await (tx || db)(TableName.EstEnrollmentConfig).insert(data).returning("*");
+      const [estConfig] = await (tx || db)(TableName.PkiEstEnrollmentConfig).insert(data).returning("*");
 
       return estConfig;
     } catch (error) {
@@ -24,7 +24,7 @@ export const estEnrollmentConfigDALFactory = (db: TDbClient) => {
 
   const updateById = async (id: string, data: TEstEnrollmentConfigUpdate, tx?: Knex) => {
     try {
-      const [estConfig] = await (tx || db)(TableName.EstEnrollmentConfig).where({ id }).update(data).returning("*");
+      const [estConfig] = await (tx || db)(TableName.PkiEstEnrollmentConfig).where({ id }).update(data).returning("*");
 
       return estConfig;
     } catch (error) {
@@ -34,7 +34,7 @@ export const estEnrollmentConfigDALFactory = (db: TDbClient) => {
 
   const deleteById = async (id: string, tx?: Knex) => {
     try {
-      const [estConfig] = await (tx || db)(TableName.EstEnrollmentConfig).where({ id }).del().returning("*");
+      const [estConfig] = await (tx || db)(TableName.PkiEstEnrollmentConfig).where({ id }).del().returning("*");
 
       return estConfig;
     } catch (error) {
@@ -44,7 +44,7 @@ export const estEnrollmentConfigDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const estConfig = await (tx || db)(TableName.EstEnrollmentConfig).where({ id }).first();
+      const estConfig = await (tx || db)(TableName.PkiEstEnrollmentConfig).where({ id }).first();
 
       return estConfig;
     } catch (error) {

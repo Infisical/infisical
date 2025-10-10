@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 const attributeTypeSchema = z.enum(["common_name"]);
@@ -87,7 +88,11 @@ export const templateV2KeyAlgorithmSchema = z.object({
 
 export const createCertificateTemplateV2Schema = z.object({
   projectId: z.string().min(1),
-  name: z.string().min(1).max(255),
+  slug: z
+    .string()
+    .min(1)
+    .max(255)
+    .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens"),
   description: z.string().max(1000).optional(),
   attributes: z.array(templateV2AttributeSchema).optional(),
   keyUsages: templateV2KeyUsagesSchema.optional(),
@@ -99,7 +104,12 @@ export const createCertificateTemplateV2Schema = z.object({
 });
 
 export const updateCertificateTemplateV2Schema = z.object({
-  name: z.string().min(1).max(255).optional(),
+  slug: z
+    .string()
+    .min(1)
+    .max(255)
+    .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens")
+    .optional(),
   description: z.string().max(1000).optional(),
   attributes: z.array(templateV2AttributeSchema).optional(),
   keyUsages: templateV2KeyUsagesSchema.optional(),
@@ -112,6 +122,11 @@ export const updateCertificateTemplateV2Schema = z.object({
 
 export const getCertificateTemplateV2ByIdSchema = z.object({
   id: z.string().uuid()
+});
+
+export const getCertificateTemplateV2BySlugSchema = z.object({
+  projectId: z.string().min(1),
+  slug: z.string().min(1)
 });
 
 export const listCertificateTemplatesV2Schema = z.object({

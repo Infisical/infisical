@@ -10,7 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const CertificateTemplatesV2Schema = z.object({
   id: z.string().uuid(),
   projectId: z.string(),
-  name: z.string(),
+  slug: z.string(),
   description: z.string().nullable().optional(),
   attributes: z.unknown().nullable().optional(),
   keyUsages: z.unknown().nullable().optional(),

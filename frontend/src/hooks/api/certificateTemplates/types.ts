@@ -167,7 +167,7 @@ export type TCertificateTemplateV2Policy = {
 export type TCertificateTemplateV2New = {
   id: string;
   projectId: string;
-  name: string;
+  slug: string;
   description?: string;
   attributes: any;
   keyUsages: any;
@@ -182,7 +182,7 @@ export type TCertificateTemplateV2New = {
 
 export type TCreateCertificateTemplateV2NewDTO = {
   projectId: string;
-  name: string;
+  slug: string;
   description?: string;
   attributes: TCertificateTemplateV2Policy["attributes"];
   keyUsages: TCertificateTemplateV2Policy["keyUsages"];
@@ -195,7 +195,7 @@ export type TCreateCertificateTemplateV2NewDTO = {
 
 export type TUpdateCertificateTemplateV2NewDTO = {
   templateId: string;
-  name?: string;
+  slug?: string;
   description?: string;
   attributes?: TCertificateTemplateV2Policy["attributes"];
   keyUsages?: TCertificateTemplateV2Policy["keyUsages"];

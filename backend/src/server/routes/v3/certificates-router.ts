@@ -196,7 +196,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       tags: [ApiDocsTags.PkiCertificates],
       body: z.object({
         profileId: z.string().uuid(),
-        identifiers: z
+        subjectAlternativeNames: z
           .array(
             z.object({
               type: z.enum(["dns", "ip"]),
@@ -217,7 +217,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         200: z.object({
           orderId: z.string(),
           status: z.enum(["pending", "processing", "valid", "invalid"]),
-          identifiers: z.array(
+          subjectAlternativeNames: z.array(
             z.object({
               type: z.enum(["dns", "ip"]),
               value: z.string(),
@@ -256,7 +256,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         actorOrgId: req.permission.orgId,
         profileId: req.body.profileId,
         certificateOrder: {
-          identifiers: req.body.identifiers,
+          subjectAlternativeNames: req.body.subjectAlternativeNames,
           validity: {
             ttl: req.body.ttl
           },
@@ -286,7 +286,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           metadata: {
             certificateProfileId: req.body.profileId,
             orderId: data.orderId,
-            identifiers: req.body.identifiers.map((id) => `${id.type}:${id.value}`)
+            subjectAlternativeNames: req.body.subjectAlternativeNames.map((san) => `${san.type}:${san.value}`)
           }
         }
       });

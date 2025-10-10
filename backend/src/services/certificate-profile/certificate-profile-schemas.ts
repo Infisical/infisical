@@ -8,7 +8,6 @@ export const createCertificateProfileSchema = z
     projectId: z.string().min(1),
     caId: z.string().uuid(),
     certificateTemplateId: z.string().uuid(),
-    name: z.string().min(1).max(255),
     slug: z
       .string()
       .min(1)
@@ -46,7 +45,6 @@ export const createCertificateProfileSchema = z
   );
 
 export const updateCertificateProfileSchema = z.object({
-  name: z.string().min(1).max(255).optional(),
   slug: z
     .string()
     .min(1)

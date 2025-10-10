@@ -12,7 +12,6 @@ import { useDeleteCertificateTemplateV2New } from "@app/hooks/api/certificateTem
 import { TCertificateTemplateV2New } from "@app/hooks/api/certificateTemplates/types";
 
 import { CreateTemplateModal } from "./CreateTemplateModal";
-import { EditTemplateModal } from "./EditTemplateModal";
 import { TemplateList } from "./TemplateList";
 
 export const CertificateTemplatesV2Tab = () => {
@@ -87,23 +86,24 @@ export const CertificateTemplatesV2Tab = () => {
 
       {selectedTemplate && (
         <>
-          <EditTemplateModal
+          <CreateTemplateModal
             isOpen={isEditModalOpen}
             onClose={() => {
               setIsEditModalOpen(false);
               setSelectedTemplate(null);
             }}
             template={selectedTemplate}
+            mode="edit"
           />
 
           <DeleteActionModal
             isOpen={isDeleteModalOpen}
-            title={`Delete Certificate Template ${selectedTemplate.name}?`}
+            title={`Delete Certificate Template ${selectedTemplate.slug}?`}
             onChange={(isOpen) => {
               setIsDeleteModalOpen(isOpen);
               if (!isOpen) setSelectedTemplate(null);
             }}
-            deleteKey={selectedTemplate.name}
+            deleteKey={selectedTemplate.slug}
             onDeleteApproved={handleDeleteConfirm}
           />
         </>

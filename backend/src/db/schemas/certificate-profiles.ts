@@ -12,7 +12,6 @@ export const CertificateProfilesSchema = z.object({
   projectId: z.string(),
   caId: z.string().uuid(),
   certificateTemplateId: z.string().uuid(),
-  name: z.string(),
   slug: z.string(),
   description: z.string().nullable().optional(),
   enrollmentType: z.string(),

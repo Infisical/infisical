@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import slugify from "@sindresorhus/slugify";
 import RE2 from "re2";
 
 import { ActionProjectType } from "@app/db/schemas";
@@ -8,6 +9,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateTemplateV2DALFactory } from "./certificate-template-v2-dal";
@@ -113,6 +115,28 @@ export const certificateTemplateV2ServiceFactory = ({
       data.signatureAlgorithm ||
       data.keyAlgorithm
     );
+  };
+
+  const generateTemplateSlug = (baseSlug?: string): string => {
+    if (baseSlug) {
+      return slugify(baseSlug);
+    }
+    return slugify(alphaNumericNanoId(12));
+  };
+
+  const ensureUniqueSlug = async (projectId: string, desiredSlug: string, templateId?: string): Promise<string> => {
+    const existingTemplate = await certificateTemplateV2DAL.findBySlugAndProjectId(desiredSlug, projectId);
+    if (!existingTemplate || (templateId && existingTemplate.id === templateId)) {
+      return desiredSlug;
+    }
+    const alternativeSlug = `${desiredSlug}-${alphaNumericNanoId(8)}`;
+    const existingAlternative = await certificateTemplateV2DAL.findBySlugAndProjectId(alternativeSlug, projectId);
+    if (!existingAlternative) {
+      return alternativeSlug;
+    }
+
+    const randomSlug = slugify(alphaNumericNanoId(12));
+    return randomSlug;
   };
 
   const validateRequestAgainstPolicy = (
@@ -361,8 +385,12 @@ export const certificateTemplateV2ServiceFactory = ({
       keyAlgorithm: data.keyAlgorithm
     });
 
+    const slug = data.slug || generateTemplateSlug();
+    const uniqueSlug = await ensureUniqueSlug(projectId, slug);
+
     const template = await certificateTemplateV2DAL.create({
       ...data,
+      slug: uniqueSlug,
       projectId
     });
 
@@ -417,7 +445,13 @@ export const certificateTemplateV2ServiceFactory = ({
       validateTemplatePolicy(mergedPolicy);
     }
 
-    const updatedTemplate = await certificateTemplateV2DAL.updateById(templateId, data);
+    const updateData = { ...data };
+    if (data.slug && typeof data.slug === "string" && data.slug !== existingTemplate.slug) {
+      const uniqueSlug = await ensureUniqueSlug(existingTemplate.projectId, data.slug, templateId);
+      updateData.slug = uniqueSlug;
+    }
+
+    const updatedTemplate = await certificateTemplateV2DAL.updateById(templateId, updateData);
     if (!updatedTemplate) {
       throw new NotFoundError({ message: "Failed to update certificate template" });
     }
@@ -455,6 +489,43 @@ export const certificateTemplateV2ServiceFactory = ({
       ProjectPermissionPkiTemplateActions.Read,
       ProjectPermissionSub.CertificateTemplates
     );
+
+    return template;
+  };
+
+  const getTemplateV2BySlug = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    projectId,
+    slug
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+    projectId: string;
+    slug: string;
+  }): Promise<TCertificateTemplateV2> => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPkiTemplateActions.Read,
+      ProjectPermissionSub.CertificateTemplates
+    );
+
+    const template = await certificateTemplateV2DAL.findBySlugAndProjectId(slug, projectId);
+    if (!template) {
+      throw new NotFoundError({ message: "Certificate template not found" });
+    }
 
     return template;
   };
@@ -571,6 +642,7 @@ export const certificateTemplateV2ServiceFactory = ({
     createTemplateV2,
     updateTemplateV2,
     getTemplateV2ById,
+    getTemplateV2BySlug,
     listTemplatesV2,
     deleteTemplateV2,
     validateCertificateRequest

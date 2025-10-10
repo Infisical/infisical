@@ -19,6 +19,15 @@ export type TCertificateProfileInsert = Omit<TCertificateProfilesInsert, "enroll
 
 export type TCertificateProfileUpdate = Omit<TCertificateProfilesUpdate, "enrollmentType"> & {
   enrollmentType?: EnrollmentType;
+  estConfig?: {
+    disableBootstrapCaValidation?: boolean;
+    passphrase?: string;
+    caChain?: string;
+  };
+  apiConfig?: {
+    autoRenew?: boolean;
+    autoRenewDays?: number;
+  };
 };
 
 export type TCertificateProfileWithConfigs = TCertificateProfile & {

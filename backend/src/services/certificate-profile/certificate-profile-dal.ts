@@ -68,18 +68,24 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           (tx || db).ref("name").withSchema(TableName.CertificateAuthority).as("caName"),
           (tx || db).ref("id").withSchema(TableName.CertificateTemplateV2).as("templateId"),
           (tx || db).ref("projectId").withSchema(TableName.CertificateTemplateV2).as("templateProjectId"),
-          (tx || db).ref("name").withSchema(TableName.CertificateTemplateV2).as("templateName"),
+          (tx || db).ref("slug").withSchema(TableName.CertificateTemplateV2).as("templateName"),
           (tx || db).ref("description").withSchema(TableName.CertificateTemplateV2).as("templateDescription"),
-          (tx || db).ref("id").withSchema(TableName.EstEnrollmentConfig).as("estConfigId"),
+          (tx || db).ref("id").withSchema(TableName.PkiEstEnrollmentConfig).as("estConfigId"),
           (tx || db)
             .ref("disableBootstrapCaValidation")
-            .withSchema(TableName.EstEnrollmentConfig)
+            .withSchema(TableName.PkiEstEnrollmentConfig)
             .as("estConfigDisableBootstrapCaValidation"),
-          (tx || db).ref("hashedPassphrase").withSchema(TableName.EstEnrollmentConfig).as("estConfigHashedPassphrase"),
-          (tx || db).ref("encryptedCaChain").withSchema(TableName.EstEnrollmentConfig).as("estConfigEncryptedCaChain"),
-          (tx || db).ref("id").withSchema(TableName.ApiEnrollmentConfig).as("apiConfigId"),
-          (tx || db).ref("autoRenew").withSchema(TableName.ApiEnrollmentConfig).as("apiConfigAutoRenew"),
-          (tx || db).ref("autoRenewDays").withSchema(TableName.ApiEnrollmentConfig).as("apiConfigAutoRenewDays")
+          (tx || db)
+            .ref("hashedPassphrase")
+            .withSchema(TableName.PkiEstEnrollmentConfig)
+            .as("estConfigHashedPassphrase"),
+          (tx || db)
+            .ref("encryptedCaChain")
+            .withSchema(TableName.PkiEstEnrollmentConfig)
+            .as("estConfigEncryptedCaChain"),
+          (tx || db).ref("id").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigId"),
+          (tx || db).ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigAutoRenew"),
+          (tx || db).ref("autoRenewDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigAutoRenewDays")
         )
         .leftJoin(
           TableName.CertificateAuthority,
@@ -92,14 +98,14 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           `${TableName.CertificateTemplateV2}.id`
         )
         .leftJoin(
-          TableName.EstEnrollmentConfig,
+          TableName.PkiEstEnrollmentConfig,
           `${TableName.CertificateProfile}.estConfigId`,
-          `${TableName.EstEnrollmentConfig}.id`
+          `${TableName.PkiEstEnrollmentConfig}.id`
         )
         .leftJoin(
-          TableName.ApiEnrollmentConfig,
+          TableName.PkiApiEnrollmentConfig,
           `${TableName.CertificateProfile}.apiConfigId`,
-          `${TableName.ApiEnrollmentConfig}.id`
+          `${TableName.PkiApiEnrollmentConfig}.id`
         )
         .where(`${TableName.CertificateProfile}.id`, id)
         .first();
@@ -151,9 +157,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       if (search) {
         query = query.where((builder) => {
           void builder
-            .whereILike(`${TableName.CertificateProfile}.name`, `%${search}%`)
-            .orWhereILike(`${TableName.CertificateProfile}.description`, `%${search}%`)
-            .orWhereILike(`${TableName.CertificateProfile}.slug`, `%${search}%`);
+            .whereILike(`${TableName.CertificateProfile}.slug`, `%${search}%`)
+            .orWhereILike(`${TableName.CertificateProfile}.description`, `%${search}%`);
         });
       }
 
@@ -225,10 +230,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
 
       if (search) {
         query = query.where((builder) => {
-          void builder
-            .whereILike("name", `%${search}%`)
-            .orWhereILike("description", `%${search}%`)
-            .orWhereILike("slug", `%${search}%`);
+          void builder.orWhereILike("description", `%${search}%`).orWhereILike("slug", `%${search}%`);
         });
       }
 
@@ -249,7 +251,9 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
 
   const findByNameAndProjectId = async (name: string, projectId: string, tx?: Knex) => {
     try {
-      const certificateProfile = await (tx || db)(TableName.CertificateProfile).where({ name, projectId }).first();
+      const certificateProfile = await (tx || db)(TableName.CertificateProfile)
+        .where({ slug: name, projectId })
+        .first();
       return certificateProfile;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate profile by name and project id" });

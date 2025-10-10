@@ -15,6 +15,7 @@ import {
   AccordionItem,
   AccordionTrigger,
   Button,
+  Checkbox,
   FormControl,
   FormLabel,
   IconButton,
@@ -26,7 +27,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { useProject } from "@app/context";
-import { useCreateCertificateV3, useGetCert, useListWorkspacePkiCollections } from "@app/hooks/api";
+import { useCreateCertificateV3, useGetCert } from "@app/hooks/api";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
   certKeyAlgorithms,
@@ -44,53 +45,15 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { CertificateContent } from "./CertificateContent";
 
-type TriStateToggleProps = {
-  value: boolean | undefined;
-  onChange: (value: boolean | undefined) => void;
-  leftLabel: string;
-  rightLabel: string;
-};
-
-const TriStateToggle = ({ value, onChange, leftLabel, rightLabel }: TriStateToggleProps) => {
-  return (
-    <div className="flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-      <Button
-        variant="outline_bg"
-        onClick={() => {
-          onChange(value === false ? undefined : false);
-        }}
-        size="xs"
-        className={`${
-          value === false ? "bg-mineshaft-500" : "bg-transparent"
-        } min-w-[2.4rem] rounded border-none hover:bg-mineshaft-600`}
-      >
-        {leftLabel}
-      </Button>
-      <Button
-        variant="outline_bg"
-        onClick={() => {
-          onChange(value === true ? undefined : true);
-        }}
-        size="xs"
-        className={`${
-          value === true ? "bg-mineshaft-500" : "bg-transparent"
-        } min-w-[2.4rem] rounded border-none hover:bg-mineshaft-600`}
-      >
-        {rightLabel}
-      </Button>
-    </div>
-  );
-};
-
 const schema = z.object({
   profileId: z.string().min(1, "Profile is required"),
-  collectionId: z.string().optional(),
   friendlyName: z.string(),
   subjectAttributes: z
     .array(
       z.object({
         type: z.enum(["common_name"]),
-        value: z.string().min(1, "Value is required")
+        value: z.string().min(1, "Value is required"),
+        include: z.enum(["mandatory", "optional", "prohibit"]).optional()
       })
     )
     .min(1, "At least one subject attribute is required"),
@@ -98,7 +61,8 @@ const schema = z.object({
     .array(
       z.object({
         type: z.enum(["dns", "ip", "email", "uri"]),
-        value: z.string().min(1, "Value is required")
+        value: z.string().min(1, "Value is required"),
+        include: z.enum(["mandatory", "optional", "prohibit"]).optional()
       })
     )
     .default([]),
@@ -157,10 +121,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle }: Props) =>
   const { data: profilesData } = useListCertificateProfiles({
     projectId: currentProject?.id || "",
     includeMetrics: false
-  });
-
-  const { data: collectionsData } = useListWorkspacePkiCollections({
-    projectId: currentProject?.id || ""
   });
 
   const { mutateAsync: createCertificate } = useCreateCertificateV3();
@@ -461,7 +421,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle }: Props) =>
   const onFormSubmit = async ({
     profileId,
     friendlyName,
-    collectionId,
     subjectAttributes,
     altNames,
     ttl,
@@ -481,7 +440,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle }: Props) =>
       const { serialNumber, certificate, certificateChain, privateKey } = await createCertificate({
         profileId,
         projectSlug: currentProject.slug,
-        pkiCollectionId: collectionId,
         friendlyName,
         commonName: getAttributeValue("common_name"),
         altNames: altNames
@@ -628,34 +586,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle }: Props) =>
                   >
                     {profilesData?.certificateProfiles?.map((profile) => (
                       <SelectItem key={profile.id} value={profile.id}>
-                        {profile.name}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-            />
-
-            <Controller
-              control={control}
-              name="collectionId"
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  label="PKI Collection (Optional)"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
-                  <Select
-                    defaultValue=""
-                    {...field}
-                    onValueChange={(e) => onChange(e)}
-                    className="w-full"
-                    placeholder="Select a collection (optional)"
-                    position="popper"
-                  >
-                    {collectionsData?.collections?.map((collection: any) => (
-                      <SelectItem key={collection.id} value={collection.id}>
-                        {collection.name}
+                        {profile.slug}
                       </SelectItem>
                     ))}
                   </Select>
@@ -701,9 +632,24 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle }: Props) =>
                             onChange(newValue);
                           }}
                           className="w-48"
-                          position="popper"
                         >
                           <SelectItem value="common_name">Common Name</SelectItem>
+                        </Select>
+                        <Select
+                          value={attr.include || "optional"}
+                          onValueChange={(newInclude) => {
+                            const newValue = [...value];
+                            newValue[index] = {
+                              ...attr,
+                              include: newInclude as "mandatory" | "optional" | "prohibit"
+                            };
+                            onChange(newValue);
+                          }}
+                          className="w-32"
+                        >
+                          <SelectItem value="mandatory">Mandatory</SelectItem>
+                          <SelectItem value="optional">Optional</SelectItem>
+                          <SelectItem value="prohibit">Prohibited</SelectItem>
                         </Select>
                         <Input
                           value={attr.value}
@@ -769,13 +715,28 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle }: Props) =>
                             };
                             onChange(newValue);
                           }}
-                          className="w-32"
-                          position="popper"
+                          className="w-24"
                         >
                           <SelectItem value="dns">DNS</SelectItem>
                           <SelectItem value="ip">IP</SelectItem>
                           <SelectItem value="email">Email</SelectItem>
                           <SelectItem value="uri">URI</SelectItem>
+                        </Select>
+                        <Select
+                          value={san.include || "optional"}
+                          onValueChange={(newInclude) => {
+                            const newValue = [...value];
+                            newValue[index] = {
+                              ...san,
+                              include: newInclude as "mandatory" | "optional" | "prohibit"
+                            };
+                            onChange(newValue);
+                          }}
+                          className="w-32"
+                        >
+                          <SelectItem value="mandatory">Mandatory</SelectItem>
+                          <SelectItem value="optional">Optional</SelectItem>
+                          <SelectItem value="prohibit">Prohibited</SelectItem>
                         </Select>
                         <Input
                           value={san.value}
@@ -908,11 +869,11 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle }: Props) =>
               </div>
             </div>
 
-            <Accordion type="single" collapsible>
+            <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="key-usages">
                 <AccordionTrigger>Key Usages</AccordionTrigger>
                 <AccordionContent>
-                  <div className="grid grid-cols-1 gap-3">
+                  <div className="grid grid-cols-2 gap-2 pl-2">
                     {KEY_USAGES_OPTIONS.filter(({ value }) => {
                       if (allowedKeyUsages.length === 0) return true;
                       const templateToEnumMap = {
@@ -933,15 +894,18 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle }: Props) =>
                       <Controller
                         key={label}
                         control={control}
-                        name={`keyUsages.${value}`}
+                        name={`keyUsages.${value}` as any}
                         render={({ field }) => (
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-mineshaft-300">{label}</span>
-                            <TriStateToggle
-                              value={field.value}
-                              onChange={field.onChange}
-                              leftLabel="None"
-                              rightLabel="Include"
+                          <div className="flex items-center space-x-3">
+                            <Checkbox
+                              id={`key-usage-${value}`}
+                              isChecked={field.value || false}
+                              onCheckedChange={(checked) => field.onChange(checked)}
+                            />
+                            <FormLabel
+                              id={`key-usage-${value}`}
+                              className="cursor-pointer text-sm text-mineshaft-300"
+                              label={label}
                             />
                           </div>
                         )}
@@ -954,7 +918,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle }: Props) =>
               <AccordionItem value="extended-key-usages">
                 <AccordionTrigger>Extended Key Usages</AccordionTrigger>
                 <AccordionContent>
-                  <div className="grid grid-cols-1 gap-3">
+                  <div className="grid grid-cols-2 gap-2 pl-2">
                     {EXTENDED_KEY_USAGES_OPTIONS.filter(({ value }) => {
                       if (allowedExtendedKeyUsages.length === 0) return true;
                       const templateToEnumMap = {
@@ -973,15 +937,18 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle }: Props) =>
                       <Controller
                         key={label}
                         control={control}
-                        name={`extendedKeyUsages.${value}`}
+                        name={`extendedKeyUsages.${value}` as any}
                         render={({ field }) => (
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-mineshaft-300">{label}</span>
-                            <TriStateToggle
-                              value={field.value}
-                              onChange={field.onChange}
-                              leftLabel="None"
-                              rightLabel="Include"
+                          <div className="flex items-center space-x-3">
+                            <Checkbox
+                              id={`ext-key-usage-${value}`}
+                              isChecked={field.value || false}
+                              onCheckedChange={(checked) => field.onChange(checked)}
+                            />
+                            <FormLabel
+                              id={`ext-key-usage-${value}`}
+                              className="cursor-pointer text-sm text-mineshaft-300"
+                              label={label}
                             />
                           </div>
                         )}

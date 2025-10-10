@@ -15,7 +15,7 @@ export const sanSchema = z.object({
 });
 
 export const templateSchema = z.object({
-  name: z.string().trim().min(1, "Template name is required"),
+  slug: z.string().trim().min(1, "Template name is required"),
   description: z.string().optional(),
   attributes: z.array(attributeSchema).optional(),
   keyUsages: z

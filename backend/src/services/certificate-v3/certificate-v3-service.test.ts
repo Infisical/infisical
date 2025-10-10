@@ -347,7 +347,7 @@ describe("CertificateV3Service", () => {
 
   describe("orderCertificateFromProfile", () => {
     const mockCertificateOrder = {
-      identifiers: [{ type: "dns" as const, value: "example.com" }],
+      subjectAlternativeNames: [{ type: "dns" as const, value: "example.com" }],
       validity: { ttl: "30d" },
       commonName: "example.com",
       keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE],
@@ -411,8 +411,8 @@ describe("CertificateV3Service", () => {
       expect(result).toHaveProperty("orderId");
       expect(result).toHaveProperty("status", "valid");
       expect(result).toHaveProperty("certificate");
-      expect(result.identifiers).toHaveLength(1);
-      expect(result.identifiers[0]).toEqual({
+      expect(result.subjectAlternativeNames).toHaveLength(1);
+      expect(result.subjectAlternativeNames[0]).toEqual({
         type: "dns",
         value: "example.com",
         status: "valid"

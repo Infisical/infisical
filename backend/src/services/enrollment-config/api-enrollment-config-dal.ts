@@ -10,11 +10,11 @@ import { TApiEnrollmentConfigInsert, TApiEnrollmentConfigUpdate } from "./enroll
 export type TApiEnrollmentConfigDALFactory = ReturnType<typeof apiEnrollmentConfigDALFactory>;
 
 export const apiEnrollmentConfigDALFactory = (db: TDbClient) => {
-  const apiEnrollmentConfigOrm = ormify(db, TableName.ApiEnrollmentConfig);
+  const apiEnrollmentConfigOrm = ormify(db, TableName.PkiApiEnrollmentConfig);
 
   const create = async (data: TApiEnrollmentConfigInsert, tx?: Knex) => {
     try {
-      const [apiConfig] = await (tx || db)(TableName.ApiEnrollmentConfig).insert(data).returning("*");
+      const [apiConfig] = await (tx || db)(TableName.PkiApiEnrollmentConfig).insert(data).returning("*");
 
       return apiConfig;
     } catch (error) {
@@ -24,7 +24,7 @@ export const apiEnrollmentConfigDALFactory = (db: TDbClient) => {
 
   const updateById = async (id: string, data: TApiEnrollmentConfigUpdate, tx?: Knex) => {
     try {
-      const [apiConfig] = await (tx || db)(TableName.ApiEnrollmentConfig).where({ id }).update(data).returning("*");
+      const [apiConfig] = await (tx || db)(TableName.PkiApiEnrollmentConfig).where({ id }).update(data).returning("*");
 
       return apiConfig;
     } catch (error) {
@@ -34,7 +34,7 @@ export const apiEnrollmentConfigDALFactory = (db: TDbClient) => {
 
   const deleteById = async (id: string, tx?: Knex) => {
     try {
-      const [apiConfig] = await (tx || db)(TableName.ApiEnrollmentConfig).where({ id }).del().returning("*");
+      const [apiConfig] = await (tx || db)(TableName.PkiApiEnrollmentConfig).where({ id }).del().returning("*");
 
       return apiConfig;
     } catch (error) {
@@ -44,7 +44,7 @@ export const apiEnrollmentConfigDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const apiConfig = await (tx || db)(TableName.ApiEnrollmentConfig).where({ id }).first();
+      const apiConfig = await (tx || db)(TableName.PkiApiEnrollmentConfig).where({ id }).first();
 
       return apiConfig;
     } catch (error) {
@@ -60,15 +60,15 @@ export const apiEnrollmentConfigDALFactory = (db: TDbClient) => {
 
       const profiles = await (tx || db)(TableName.CertificateProfile)
         .join(
-          TableName.ApiEnrollmentConfig,
+          TableName.PkiApiEnrollmentConfig,
           `${TableName.CertificateProfile}.apiConfigId`,
-          `${TableName.ApiEnrollmentConfig}.id`
+          `${TableName.PkiApiEnrollmentConfig}.id`
         )
-        .where(`${TableName.ApiEnrollmentConfig}.autoRenew`, true)
+        .where(`${TableName.PkiApiEnrollmentConfig}.autoRenew`, true)
         .where((query) => {
           void query
-            .whereNull(`${TableName.ApiEnrollmentConfig}.autoRenewDays`)
-            .orWhere(`${TableName.ApiEnrollmentConfig}.autoRenewDays`, "<=", renewalThresholdDays);
+            .whereNull(`${TableName.PkiApiEnrollmentConfig}.autoRenewDays`)
+            .orWhere(`${TableName.PkiApiEnrollmentConfig}.autoRenewDays`, "<=", renewalThresholdDays);
         })
         .select((tx || db).ref("id").withSchema(TableName.CertificateProfile))
         .select((tx || db).ref("name").withSchema(TableName.CertificateProfile))

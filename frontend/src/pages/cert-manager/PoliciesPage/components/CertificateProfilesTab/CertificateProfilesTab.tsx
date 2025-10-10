@@ -14,7 +14,6 @@ import {
 } from "@app/hooks/api/certificateProfiles";
 
 import { CreateProfileModal } from "./CreateProfileModal";
-import { EditProfileModal } from "./EditProfileModal";
 import { ProfileList } from "./ProfileList";
 
 export const CertificateProfilesTab = () => {
@@ -89,23 +88,24 @@ export const CertificateProfilesTab = () => {
 
       {selectedProfile && (
         <>
-          <EditProfileModal
+          <CreateProfileModal
             isOpen={isEditModalOpen}
             onClose={() => {
               setIsEditModalOpen(false);
               setSelectedProfile(null);
             }}
             profile={selectedProfile}
+            mode="edit"
           />
 
           <DeleteActionModal
             isOpen={isDeleteModalOpen}
-            title={`Delete Certificate Profile ${selectedProfile.name}?`}
+            title={`Delete Certificate Profile ${selectedProfile.slug}?`}
             onChange={(isOpen) => {
               setIsDeleteModalOpen(isOpen);
               if (!isOpen) setSelectedProfile(null);
             }}
-            deleteKey={selectedProfile.name}
+            deleteKey={selectedProfile.slug}
             onDeleteApproved={handleDeleteConfirm}
           />
         </>

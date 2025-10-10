@@ -1,21 +1,21 @@
 import {
-  TApiEnrollmentConfigs,
-  TApiEnrollmentConfigsInsert,
-  TApiEnrollmentConfigsUpdate
-} from "@app/db/schemas/api-enrollment-configs";
+  TPkiApiEnrollmentConfigs,
+  TPkiApiEnrollmentConfigsInsert,
+  TPkiApiEnrollmentConfigsUpdate
+} from "@app/db/schemas/pki-api-enrollment-configs";
 import {
-  TEstEnrollmentConfigs,
-  TEstEnrollmentConfigsInsert,
-  TEstEnrollmentConfigsUpdate
-} from "@app/db/schemas/est-enrollment-configs";
+  TPkiEstEnrollmentConfigs,
+  TPkiEstEnrollmentConfigsInsert,
+  TPkiEstEnrollmentConfigsUpdate
+} from "@app/db/schemas/pki-est-enrollment-configs";
 
-export type TEstEnrollmentConfig = TEstEnrollmentConfigs;
-export type TEstEnrollmentConfigInsert = TEstEnrollmentConfigsInsert;
-export type TEstEnrollmentConfigUpdate = TEstEnrollmentConfigsUpdate;
+export type TEstEnrollmentConfig = TPkiEstEnrollmentConfigs;
+export type TEstEnrollmentConfigInsert = TPkiEstEnrollmentConfigsInsert;
+export type TEstEnrollmentConfigUpdate = TPkiEstEnrollmentConfigsUpdate;
 
-export type TApiEnrollmentConfig = TApiEnrollmentConfigs;
-export type TApiEnrollmentConfigInsert = TApiEnrollmentConfigsInsert;
-export type TApiEnrollmentConfigUpdate = TApiEnrollmentConfigsUpdate;
+export type TApiEnrollmentConfig = TPkiApiEnrollmentConfigs;
+export type TApiEnrollmentConfigInsert = TPkiApiEnrollmentConfigsInsert;
+export type TApiEnrollmentConfigUpdate = TPkiApiEnrollmentConfigsUpdate;
 
 export interface TEstConfigData {
   disableBootstrapCaValidation: boolean;

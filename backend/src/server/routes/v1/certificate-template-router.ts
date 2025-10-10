@@ -52,7 +52,8 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         event: {
           type: EventType.GET_CERTIFICATE_TEMPLATE,
           metadata: {
-            certificateTemplateId: certificateTemplate.id
+            certificateTemplateId: certificateTemplate.id,
+            name: certificateTemplate.name
           }
         }
       });
@@ -116,12 +117,8 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
           type: EventType.CREATE_CERTIFICATE_TEMPLATE,
           metadata: {
             certificateTemplateId: certificateTemplate.id,
-            caId: certificateTemplate.caId,
-            pkiCollectionId: certificateTemplate.pkiCollectionId as string,
             name: certificateTemplate.name,
-            commonName: certificateTemplate.commonName,
-            subjectAlternativeName: certificateTemplate.subjectAlternativeName,
-            ttl: certificateTemplate.ttl
+            projectId: certificateTemplate.projectId
           }
         }
       });
@@ -184,12 +181,7 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
           type: EventType.UPDATE_CERTIFICATE_TEMPLATE,
           metadata: {
             certificateTemplateId: certificateTemplate.id,
-            caId: certificateTemplate.caId,
-            pkiCollectionId: certificateTemplate.pkiCollectionId as string,
-            name: certificateTemplate.name,
-            commonName: certificateTemplate.commonName,
-            subjectAlternativeName: certificateTemplate.subjectAlternativeName,
-            ttl: certificateTemplate.ttl
+            name: certificateTemplate.name
           }
         }
       });
@@ -230,7 +222,8 @@ export const registerCertificateTemplateRouter = async (server: FastifyZodProvid
         event: {
           type: EventType.DELETE_CERTIFICATE_TEMPLATE,
           metadata: {
-            certificateTemplateId: certificateTemplate.id
+            certificateTemplateId: certificateTemplate.id,
+            name: certificateTemplate.name
           }
         }
       });

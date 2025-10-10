@@ -3,7 +3,6 @@ export type TCertificateProfile = {
   projectId: string;
   caId: string;
   certificateTemplateId: string;
-  name: string;
   slug: string;
   description?: string;
   enrollmentType: "api" | "est";
@@ -24,7 +23,7 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
   certificateTemplate?: {
     id: string;
     projectId: string;
-    name: string;
+    slug: string;
     description?: string;
   };
   estConfig?: {
@@ -44,7 +43,6 @@ export type TCreateCertificateProfileDTO = {
   projectId: string;
   caId: string;
   certificateTemplateId: string;
-  name: string;
   slug: string;
   description?: string;
   enrollmentType: "api" | "est";
@@ -61,7 +59,7 @@ export type TCreateCertificateProfileDTO = {
 
 export type TUpdateCertificateProfileDTO = {
   profileId: string;
-  name?: string;
+  slug?: string;
   description?: string;
   estConfig?: {
     disableBootstrapCaValidation?: boolean;

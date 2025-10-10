@@ -293,9 +293,9 @@ export const certificateV3ServiceFactory = ({
       commonName: certificateOrder.commonName,
       keyUsages: certificateOrder.keyUsages,
       extendedKeyUsages: certificateOrder.extendedKeyUsages,
-      subjectAlternativeNames: certificateOrder.identifiers.map((id) => ({
-        type: id.type === "dns" ? ("dns_name" as const) : ("ip_address" as const),
-        value: id.value
+      subjectAlternativeNames: certificateOrder.subjectAlternativeNames.map((san) => ({
+        type: san.type === "dns" ? ("dns_name" as const) : ("ip_address" as const),
+        value: san.value
       })),
       validity: certificateOrder.validity,
       notBefore: certificateOrder.notBefore,
@@ -334,16 +334,16 @@ export const certificateV3ServiceFactory = ({
       });
 
       const orderId = randomUUID();
-      const identifiers = certificateOrder.identifiers.map((id) => ({
-        type: id.type,
-        value: id.value,
+      const subjectAlternativeNames = certificateOrder.subjectAlternativeNames.map((san) => ({
+        type: san.type,
+        value: san.value,
         status: "valid" as const
       }));
 
-      const authorizations = certificateOrder.identifiers.map((id) => ({
+      const authorizations = certificateOrder.subjectAlternativeNames.map((san) => ({
         identifier: {
-          type: id.type,
-          value: id.value
+          type: san.type,
+          value: san.value
         },
         status: "valid" as const,
         expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -360,7 +360,7 @@ export const certificateV3ServiceFactory = ({
       return {
         orderId,
         status: "valid",
-        identifiers,
+        subjectAlternativeNames,
         authorizations,
         finalize: `/api/v3/certificates/orders/${orderId}/finalize`,
         certificate: certificateResult.certificate

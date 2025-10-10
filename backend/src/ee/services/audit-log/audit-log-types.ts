@@ -352,14 +352,10 @@ export enum EventType {
   UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
   DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
   GET_CERTIFICATE_TEMPLATE = "get-certificate-template",
+  LIST_CERTIFICATE_TEMPLATES = "list-certificate-templates",
   CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "create-certificate-template-est-config",
   UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "update-certificate-template-est-config",
   GET_CERTIFICATE_TEMPLATE_EST_CONFIG = "get-certificate-template-est-config",
-  CREATE_CERTIFICATE_TEMPLATE_V2 = "create-certificate-template-v2",
-  UPDATE_CERTIFICATE_TEMPLATE_V2 = "update-certificate-template-v2",
-  DELETE_CERTIFICATE_TEMPLATE_V2 = "delete-certificate-template-v2",
-  GET_CERTIFICATE_TEMPLATE_V2 = "get-certificate-template-v2",
-  LIST_CERTIFICATE_TEMPLATES_V2 = "list-certificate-templates-v2",
   CREATE_CERTIFICATE_PROFILE = "create-certificate-profile",
   UPDATE_CERTIFICATE_PROFILE = "update-certificate-profile",
   DELETE_CERTIFICATE_PROFILE = "delete-certificate-profile",
@@ -2525,46 +2521,6 @@ interface LoadProjectKmsBackupEvent {
   metadata: Record<string, string>; // no metadata yet
 }
 
-interface CreateCertificateTemplate {
-  type: EventType.CREATE_CERTIFICATE_TEMPLATE;
-  metadata: {
-    certificateTemplateId: string;
-    caId: string;
-    pkiCollectionId?: string;
-    name: string;
-    commonName: string;
-    subjectAlternativeName: string;
-    ttl: string;
-  };
-}
-
-interface GetCertificateTemplate {
-  type: EventType.GET_CERTIFICATE_TEMPLATE;
-  metadata: {
-    certificateTemplateId: string;
-  };
-}
-
-interface UpdateCertificateTemplate {
-  type: EventType.UPDATE_CERTIFICATE_TEMPLATE;
-  metadata: {
-    certificateTemplateId: string;
-    caId: string;
-    pkiCollectionId?: string;
-    name: string;
-    commonName: string;
-    subjectAlternativeName: string;
-    ttl: string;
-  };
-}
-
-interface DeleteCertificateTemplate {
-  type: EventType.DELETE_CERTIFICATE_TEMPLATE;
-  metadata: {
-    certificateTemplateId: string;
-  };
-}
-
 interface OrgAdminAccessProjectEvent {
   type: EventType.ORG_ADMIN_ACCESS_PROJECT;
   metadata: {
@@ -2611,8 +2567,8 @@ interface GetCertificateTemplateEstConfig {
   };
 }
 
-interface CreateCertificateTemplateV2 {
-  type: EventType.CREATE_CERTIFICATE_TEMPLATE_V2;
+interface CreateCertificateTemplate {
+  type: EventType.CREATE_CERTIFICATE_TEMPLATE;
   metadata: {
     certificateTemplateId: string;
     name: string;
@@ -2620,30 +2576,32 @@ interface CreateCertificateTemplateV2 {
   };
 }
 
-interface UpdateCertificateTemplateV2 {
-  type: EventType.UPDATE_CERTIFICATE_TEMPLATE_V2;
+interface UpdateCertificateTemplate {
+  type: EventType.UPDATE_CERTIFICATE_TEMPLATE;
   metadata: {
     certificateTemplateId: string;
     name: string;
   };
 }
 
-interface DeleteCertificateTemplateV2 {
-  type: EventType.DELETE_CERTIFICATE_TEMPLATE_V2;
+interface DeleteCertificateTemplate {
+  type: EventType.DELETE_CERTIFICATE_TEMPLATE;
   metadata: {
     certificateTemplateId: string;
+    name: string;
   };
 }
 
-interface GetCertificateTemplateV2 {
-  type: EventType.GET_CERTIFICATE_TEMPLATE_V2;
+interface GetCertificateTemplate {
+  type: EventType.GET_CERTIFICATE_TEMPLATE;
   metadata: {
     certificateTemplateId: string;
+    name: string;
   };
 }
 
-interface ListCertificateTemplatesV2 {
-  type: EventType.LIST_CERTIFICATE_TEMPLATES_V2;
+interface ListCertificateTemplates {
+  type: EventType.LIST_CERTIFICATE_TEMPLATES;
   metadata: {
     projectId: string;
   };
@@ -2710,7 +2668,7 @@ interface OrderCertificateFromProfile {
   metadata: {
     certificateProfileId: string;
     orderId: string;
-    identifiers: string[];
+    subjectAlternativeNames: string[];
   };
 }
 
@@ -4167,18 +4125,14 @@ export type Event =
   | LoadProjectKmsBackupEvent
   | OrgAdminAccessProjectEvent
   | OrgAdminBypassSSOEvent
-  | CreateCertificateTemplate
-  | UpdateCertificateTemplate
-  | GetCertificateTemplate
-  | DeleteCertificateTemplate
   | CreateCertificateTemplateEstConfig
   | UpdateCertificateTemplateEstConfig
   | GetCertificateTemplateEstConfig
-  | CreateCertificateTemplateV2
-  | UpdateCertificateTemplateV2
-  | DeleteCertificateTemplateV2
-  | GetCertificateTemplateV2
-  | ListCertificateTemplatesV2
+  | CreateCertificateTemplate
+  | UpdateCertificateTemplate
+  | DeleteCertificateTemplate
+  | GetCertificateTemplate
+  | ListCertificateTemplates
   | CreateCertificateProfile
   | UpdateCertificateProfile
   | DeleteCertificateProfile

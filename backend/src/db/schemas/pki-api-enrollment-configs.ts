@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const ApiEnrollmentConfigsSchema = z.object({
+export const PkiApiEnrollmentConfigsSchema = z.object({
   id: z.string().uuid(),
   autoRenew: z.boolean().default(false).nullable().optional(),
   autoRenewDays: z.number().nullable().optional(),
@@ -15,6 +15,8 @@ export const ApiEnrollmentConfigsSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TApiEnrollmentConfigs = z.infer<typeof ApiEnrollmentConfigsSchema>;
-export type TApiEnrollmentConfigsInsert = Omit<z.input<typeof ApiEnrollmentConfigsSchema>, TImmutableDBKeys>;
-export type TApiEnrollmentConfigsUpdate = Partial<Omit<z.input<typeof ApiEnrollmentConfigsSchema>, TImmutableDBKeys>>;
+export type TPkiApiEnrollmentConfigs = z.infer<typeof PkiApiEnrollmentConfigsSchema>;
+export type TPkiApiEnrollmentConfigsInsert = Omit<z.input<typeof PkiApiEnrollmentConfigsSchema>, TImmutableDBKeys>;
+export type TPkiApiEnrollmentConfigsUpdate = Partial<
+  Omit<z.input<typeof PkiApiEnrollmentConfigsSchema>, TImmutableDBKeys>
+>;

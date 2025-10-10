@@ -9,7 +9,7 @@ import { zodBuffer } from "@app/lib/zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const EstEnrollmentConfigsSchema = z.object({
+export const PkiEstEnrollmentConfigsSchema = z.object({
   id: z.string().uuid(),
   disableBootstrapCaValidation: z.boolean().default(false).nullable().optional(),
   hashedPassphrase: z.string(),
@@ -18,6 +18,8 @@ export const EstEnrollmentConfigsSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TEstEnrollmentConfigs = z.infer<typeof EstEnrollmentConfigsSchema>;
-export type TEstEnrollmentConfigsInsert = Omit<z.input<typeof EstEnrollmentConfigsSchema>, TImmutableDBKeys>;
-export type TEstEnrollmentConfigsUpdate = Partial<Omit<z.input<typeof EstEnrollmentConfigsSchema>, TImmutableDBKeys>>;
+export type TPkiEstEnrollmentConfigs = z.infer<typeof PkiEstEnrollmentConfigsSchema>;
+export type TPkiEstEnrollmentConfigsInsert = Omit<z.input<typeof PkiEstEnrollmentConfigsSchema>, TImmutableDBKeys>;
+export type TPkiEstEnrollmentConfigsUpdate = Partial<
+  Omit<z.input<typeof PkiEstEnrollmentConfigsSchema>, TImmutableDBKeys>
+>;

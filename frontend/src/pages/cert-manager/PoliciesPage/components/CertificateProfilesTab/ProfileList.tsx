@@ -34,7 +34,7 @@ export const ProfileList = ({ onEditProfile, onDeleteProfile }: Props) => {
   const profiles = data?.certificateProfiles || [];
 
   if (isLoading) {
-    return <TableSkeleton columns={7} innerKey="certificate-profiles" />;
+    return <TableSkeleton columns={6} innerKey="certificate-profiles" />;
   }
 
   if (!profiles || profiles.length === 0) {
@@ -51,7 +51,6 @@ export const ProfileList = ({ onEditProfile, onDeleteProfile }: Props) => {
             <Th>Certificate Authority</Th>
             <Th>Template</Th>
             <Th>Certificates</Th>
-            <Th>Created</Th>
             <Th className="w-5" />
           </Tr>
         </THead>

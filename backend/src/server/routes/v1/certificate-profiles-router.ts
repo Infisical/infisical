@@ -9,7 +9,6 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import {
   createCertificateProfileSchema,
   deleteCertificateProfileSchema,
-  getCertificateProfileByIdSchema,
   listCertificateProfilesSchema,
   updateCertificateProfileSchema
 } from "@app/services/certificate-profile/certificate-profile-schemas";
@@ -49,7 +48,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
           type: EventType.CREATE_CERTIFICATE_PROFILE,
           metadata: {
             certificateProfileId: certificateProfile.id,
-            name: certificateProfile.name,
+            name: certificateProfile.slug,
             projectId: certificateProfile.projectId,
             enrollmentType: certificateProfile.enrollmentType
           }
@@ -125,7 +124,9 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateProfiles],
-      params: getCertificateProfileByIdSchema,
+      params: z.object({
+        id: z.string().min(1)
+      }),
       querystring: z.object({
         includeMetrics: z.coerce.boolean().optional().default(false),
         expiringDays: z.coerce.number().min(1).max(365).optional().default(7)
@@ -262,7 +263,9 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateProfiles],
-      params: getCertificateProfileByIdSchema,
+      params: z.object({
+        id: z.string().min(1)
+      }),
       body: updateCertificateProfileSchema,
       response: {
         200: z.object({
@@ -288,7 +291,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
           type: EventType.UPDATE_CERTIFICATE_PROFILE,
           metadata: {
             certificateProfileId: certificateProfile.id,
-            name: certificateProfile.name
+            name: certificateProfile.slug
           }
         }
       });
@@ -347,7 +350,9 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateProfiles],
-      params: getCertificateProfileByIdSchema,
+      params: z.object({
+        id: z.string().min(1)
+      }),
       querystring: z.object({
         offset: z.number().min(0).default(0),
         limit: z.number().min(1).max(100).default(20),

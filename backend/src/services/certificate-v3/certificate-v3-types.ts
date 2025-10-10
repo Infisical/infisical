@@ -35,7 +35,7 @@ export type TSignCertificateFromProfileDTO = {
 export type TOrderCertificateFromProfileDTO = {
   profileId: string;
   certificateOrder: {
-    identifiers: Array<{
+    subjectAlternativeNames: Array<{
       type: "dns" | "ip";
       value: string;
     }>;
@@ -64,7 +64,7 @@ export type TCertificateFromProfileResponse = {
 export type TCertificateOrderResponse = {
   orderId: string;
   status: "pending" | "processing" | "valid" | "invalid";
-  identifiers: Array<{
+  subjectAlternativeNames: Array<{
     type: "dns" | "ip";
     value: string;
     status: "pending" | "processing" | "valid" | "invalid";

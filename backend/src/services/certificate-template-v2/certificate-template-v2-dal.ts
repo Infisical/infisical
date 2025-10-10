@@ -139,7 +139,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
 
       if (search) {
         query = query.where((builder) => {
-          void builder.whereILike("name", `%${search}%`).orWhereILike("description", `%${search}%`);
+          void builder.whereILike("slug", `%${search}%`).orWhereILike("description", `%${search}%`);
         });
       }
 
@@ -165,7 +165,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
 
       if (search) {
         query = query.where((builder) => {
-          void builder.whereILike("name", `%${search}%`).orWhereILike("description", `%${search}%`);
+          void builder.whereILike("slug", `%${search}%`).orWhereILike("description", `%${search}%`);
         });
       }
 
@@ -176,10 +176,10 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByNameAndProjectId = async (name: string, projectId: string, tx?: Knex) => {
+  const findBySlugAndProjectId = async (slug: string, projectId: string, tx?: Knex) => {
     try {
       const certificateTemplateV2 = await (tx || db)(TableName.CertificateTemplateV2)
-        .where({ name, projectId })
+        .where({ slug, projectId })
         .first();
 
       if (!certificateTemplateV2) {
@@ -188,7 +188,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
 
       return parseJsonFields(certificateTemplateV2);
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find certificate template v2 by name and project id" });
+      throw new DatabaseError({ error, name: "Find certificate template v2 by slug and project id" });
     }
   };
 
@@ -213,7 +213,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
     findById,
     findByProjectId,
     countByProjectId,
-    findByNameAndProjectId,
+    findBySlugAndProjectId,
     isTemplateInUse
   };
 };

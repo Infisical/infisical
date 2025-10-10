@@ -455,6 +455,7 @@ const buildMemberPermissionRules = () => {
 
   // double check if all CRUD are needed for CA and Certificates
   can([ProjectPermissionActions.Read], ProjectPermissionSub.CertificateAuthorities);
+  can([ProjectPermissionPkiTemplateActions.Read], ProjectPermissionSub.CertificateTemplates);
 
   can(
     [

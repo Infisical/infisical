@@ -57,23 +57,16 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
     return <Badge variant={variant}>{label}</Badge>;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
-
   return (
     <Tr key={profile.id} className="h-10 transition-colors duration-100 hover:bg-mineshaft-700">
       <Td>
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="font-medium text-mineshaft-100">{profile.name}</div>
-            {profile.description && (
-              <Tooltip content={profile.description}>
-                <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-              </Tooltip>
-            )}
-          </div>
-          <div className="text-xs text-bunker-300">{profile.slug}</div>
+        <div className="flex items-center gap-2">
+          <div className="font-medium text-mineshaft-100">{profile.slug}</div>
+          {profile.description && (
+            <Tooltip content={profile.description}>
+              <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+            </Tooltip>
+          )}
         </div>
       </Td>
       <Td className="text-center">{getEnrollmentTypeBadge(profile.enrollmentType)}</Td>
@@ -84,63 +77,46 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
       </Td>
       <Td>
         <span className="text-sm text-mineshaft-300">
-          {templateData?.name || profile.certificateTemplateId}
+          {templateData?.slug || profile.certificateTemplateId}
         </span>
       </Td>
       <Td>
-        <div className="flex gap-2 text-xs">
+        <div className="flex flex-wrap gap-1">
           {profile.metrics ? (
             profile.metrics.totalCertificates === 0 ? (
-              <span className="text-bunker-300">No certificates attached</span>
+              <Badge variant="primary" className="text-xs">
+                No certificates
+              </Badge>
             ) : (
               <>
                 {profile.metrics.activeCertificates > 0 && (
-                  <span className="text-green-400">
+                  <Badge variant="success" className="text-xs">
                     {profile.metrics.activeCertificates} active
-                  </span>
+                  </Badge>
                 )}
                 {profile.metrics.expiringCertificates > 0 && (
-                  <>
-                    {profile.metrics.activeCertificates > 0 && (
-                      <span className="text-gray-400">•</span>
-                    )}
-                    <span className="text-yellow-400">
-                      {profile.metrics.expiringCertificates} expiring
-                    </span>
-                  </>
+                  <Badge variant="primary" className="text-xs">
+                    {profile.metrics.expiringCertificates} expiring
+                  </Badge>
                 )}
                 {profile.metrics.expiredCertificates > 0 && (
-                  <>
-                    {(profile.metrics.activeCertificates > 0 ||
-                      profile.metrics.expiringCertificates > 0) && (
-                      <span className="text-gray-400">•</span>
-                    )}
-                    <span className="text-red-300">
-                      {profile.metrics.expiredCertificates} expired
-                    </span>
-                  </>
+                  <Badge variant="danger" className="text-xs">
+                    {profile.metrics.expiredCertificates} expired
+                  </Badge>
                 )}
                 {profile.metrics.revokedCertificates > 0 && (
-                  <>
-                    {(profile.metrics.activeCertificates > 0 ||
-                      profile.metrics.expiringCertificates > 0 ||
-                      profile.metrics.expiredCertificates > 0) && (
-                      <span className="text-gray-400">•</span>
-                    )}
-                    <span className="text-red-400">
-                      {profile.metrics.revokedCertificates} revoked
-                    </span>
-                  </>
+                  <Badge variant="danger" className="text-xs">
+                    {profile.metrics.revokedCertificates} revoked
+                  </Badge>
                 )}
               </>
             )
           ) : (
-            <span className="text-bunker-300">No metrics available</span>
+            <Badge variant="primary" className="text-xs">
+              No metrics
+            </Badge>
           )}
         </div>
-      </Td>
-      <Td>
-        <span className="text-sm text-bunker-300">{formatDate(profile.createdAt)}</span>
       </Td>
       <Td className="text-right">
         <DropdownMenu>

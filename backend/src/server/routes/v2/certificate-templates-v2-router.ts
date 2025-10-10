@@ -48,10 +48,10 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
         ...req.auditLogInfo,
         projectId,
         event: {
-          type: EventType.CREATE_CERTIFICATE_TEMPLATE_V2,
+          type: EventType.CREATE_CERTIFICATE_TEMPLATE,
           metadata: {
             certificateTemplateId: certificateTemplate.id,
-            name: certificateTemplate.name,
+            name: certificateTemplate.slug,
             projectId: certificateTemplate.projectId
           }
         }
@@ -92,7 +92,7 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
         ...req.auditLogInfo,
         projectId: req.query.projectId,
         event: {
-          type: EventType.LIST_CERTIFICATE_TEMPLATES_V2,
+          type: EventType.LIST_CERTIFICATE_TEMPLATES,
           metadata: {
             projectId: req.query.projectId
           }
@@ -133,9 +133,10 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
         ...req.auditLogInfo,
         projectId: certificateTemplate.projectId,
         event: {
-          type: EventType.GET_CERTIFICATE_TEMPLATE_V2,
+          type: EventType.GET_CERTIFICATE_TEMPLATE,
           metadata: {
-            certificateTemplateId: certificateTemplate.id
+            certificateTemplateId: certificateTemplate.id,
+            name: certificateTemplate.slug
           }
         }
       });
@@ -176,10 +177,10 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
         ...req.auditLogInfo,
         projectId: certificateTemplate.projectId,
         event: {
-          type: EventType.UPDATE_CERTIFICATE_TEMPLATE_V2,
+          type: EventType.UPDATE_CERTIFICATE_TEMPLATE,
           metadata: {
             certificateTemplateId: certificateTemplate.id,
-            name: certificateTemplate.name
+            name: certificateTemplate.slug
           }
         }
       });
@@ -218,9 +219,10 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
         ...req.auditLogInfo,
         projectId: certificateTemplate.projectId,
         event: {
-          type: EventType.DELETE_CERTIFICATE_TEMPLATE_V2,
+          type: EventType.DELETE_CERTIFICATE_TEMPLATE,
           metadata: {
-            certificateTemplateId: certificateTemplate.id
+            certificateTemplateId: certificateTemplate.id,
+            name: certificateTemplate.slug
           }
         }
       });

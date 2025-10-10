@@ -27,6 +27,7 @@ describe("CertificateTemplateV2Service", () => {
   let service: TCertificateTemplateV2ServiceFactory;
 
   const mockCertificateTemplateV2DAL = {
+    findBySlugAndProjectId: vi.fn(),
     create: vi.fn(),
     findById: vi.fn(),
     updateById: vi.fn(),
@@ -99,7 +100,7 @@ describe("CertificateTemplateV2Service", () => {
   const sampleTemplate: TCertificateTemplateV2 = {
     id: "template-123",
     projectId: "project-123",
-    name: "Web Server Template",
+    slug: "web-server-template",
     description: "Template for web server certificates",
     ...samplePolicy,
     createdAt: new Date(),
@@ -136,6 +137,7 @@ describe("CertificateTemplateV2Service", () => {
     });
 
     mockCertificateTemplateV2DAL.findByNameAndProjectId.mockResolvedValue(null);
+    mockCertificateTemplateV2DAL.findBySlugAndProjectId.mockResolvedValue(null);
 
     service = certificateTemplateV2ServiceFactory({
       certificateTemplateV2DAL: mockCertificateTemplateV2DAL as TCertificateTemplateV2DALFactory,
@@ -149,7 +151,7 @@ describe("CertificateTemplateV2Service", () => {
 
   describe("createTemplateV2", () => {
     const createData: Omit<TCertificateTemplateV2Insert, "projectId"> = {
-      name: "Test Template",
+      slug: "test-template",
       description: "Test description",
       ...samplePolicy
     };
@@ -239,7 +241,7 @@ describe("CertificateTemplateV2Service", () => {
 
   describe("updateTemplateV2", () => {
     it("should update template with valid data", async () => {
-      const updateData = { name: "Updated Template Name" };
+      const updateData = { slug: "updated-template-name" };
       const updatedTemplate = { ...sampleTemplate, ...updateData };
 
       mockCertificateTemplateV2DAL.findById.mockResolvedValue(sampleTemplate);
@@ -263,7 +265,7 @@ describe("CertificateTemplateV2Service", () => {
         service.updateTemplateV2({
           ...mockActor,
           templateId: "nonexistent-template",
-          data: { name: "Updated Name" }
+          data: { slug: "updated-name" }
         })
       ).rejects.toThrow(NotFoundError);
     });

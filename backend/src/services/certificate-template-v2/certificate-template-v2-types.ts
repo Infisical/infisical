@@ -74,7 +74,7 @@ export type TCertificateTemplateV2Insert = Omit<
 export type TCertificateTemplateV2Update = Partial<
   Pick<
     TCertificateTemplateV2,
-    | "name"
+    | "slug"
     | "description"
     | "attributes"
     | "keyUsages"

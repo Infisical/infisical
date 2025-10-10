@@ -17,9 +17,9 @@ import {
   TAccessApprovalRequestsReviewersInsert,
   TAccessApprovalRequestsReviewersUpdate,
   TAccessApprovalRequestsUpdate,
-  TApiEnrollmentConfigs,
-  TApiEnrollmentConfigsInsert,
-  TApiEnrollmentConfigsUpdate,
+  TPkiApiEnrollmentConfigs,
+  TPkiApiEnrollmentConfigsInsert,
+  TPkiApiEnrollmentConfigsUpdate,
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
@@ -80,9 +80,9 @@ import {
   TDynamicSecrets,
   TDynamicSecretsInsert,
   TDynamicSecretsUpdate,
-  TEstEnrollmentConfigs,
-  TEstEnrollmentConfigsInsert,
-  TEstEnrollmentConfigsUpdate,
+  TPkiEstEnrollmentConfigs,
+  TPkiEstEnrollmentConfigsInsert,
+  TPkiEstEnrollmentConfigsUpdate,
   TExternalCertificateAuthorities,
   TExternalCertificateAuthoritiesInsert,
   TExternalCertificateAuthoritiesUpdate,
@@ -678,15 +678,15 @@ declare module "knex/types/tables" {
       TCertificateProfilesInsert,
       TCertificateProfilesUpdate
     >;
-    [TableName.EstEnrollmentConfig]: KnexOriginal.CompositeTableType<
-      TEstEnrollmentConfigs,
-      TEstEnrollmentConfigsInsert,
-      TEstEnrollmentConfigsUpdate
+    [TableName.PkiEstEnrollmentConfig]: KnexOriginal.CompositeTableType<
+      TPkiEstEnrollmentConfigs,
+      TPkiEstEnrollmentConfigsInsert,
+      TPkiEstEnrollmentConfigsUpdate
     >;
-    [TableName.ApiEnrollmentConfig]: KnexOriginal.CompositeTableType<
-      TApiEnrollmentConfigs,
-      TApiEnrollmentConfigsInsert,
-      TApiEnrollmentConfigsUpdate
+    [TableName.PkiApiEnrollmentConfig]: KnexOriginal.CompositeTableType<
+      TPkiApiEnrollmentConfigs,
+      TPkiApiEnrollmentConfigsInsert,
+      TPkiApiEnrollmentConfigsUpdate
     >;
     [TableName.CertificateTemplateEstConfig]: KnexOriginal.CompositeTableType<
       TCertificateTemplateEstConfigs,

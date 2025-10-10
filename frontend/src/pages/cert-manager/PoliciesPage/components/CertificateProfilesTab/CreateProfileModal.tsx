@@ -1,5 +1,3 @@
-/* eslint-disable jsx-a11y/label-has-associated-control */
-import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,12 +16,15 @@ import {
 } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
-import { useCreateCertificateProfile } from "@app/hooks/api/certificateProfiles";
+import {
+  TCertificateProfileWithDetails,
+  useCreateCertificateProfile,
+  useUpdateCertificateProfile
+} from "@app/hooks/api/certificateProfiles";
 import { useListCertificateTemplatesV2 } from "@app/hooks/api/certificateTemplates/queries";
 
-const schema = z
+const createSchema = z
   .object({
-    name: z.string().trim().min(1, "Profile name is required"),
     slug: z.string().trim().min(1, "Profile slug is required"),
     description: z.string().optional(),
     enrollmentType: z.enum(["api", "est"]),
@@ -58,14 +59,52 @@ const schema = z
     }
   );
 
-export type FormData = z.infer<typeof schema>;
+const editSchema = z
+  .object({
+    slug: z.string().trim().min(1, "Profile slug is required"),
+    description: z.string().optional(),
+    enrollmentType: z.enum(["api", "est"]),
+    certificateAuthorityId: z.string().optional(),
+    certificateTemplateId: z.string().optional(),
+    estConfig: z
+      .object({
+        disableBootstrapCaValidation: z.boolean().optional(),
+        passphrase: z.string().optional(),
+        caChain: z.string().optional()
+      })
+      .optional(),
+    apiConfig: z
+      .object({
+        autoRenew: z.boolean().optional(),
+        autoRenewDays: z.number().min(1).max(365).optional()
+      })
+      .optional()
+  })
+  .refine(
+    (data) => {
+      if (data.enrollmentType === "est" && !data.estConfig) {
+        return false;
+      }
+      if (data.enrollmentType === "api" && !data.apiConfig) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Configuration is required for selected enrollment type"
+    }
+  );
+
+export type FormData = z.infer<typeof createSchema>;
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  profile?: TCertificateProfileWithDetails;
+  mode?: "create" | "edit";
 }
 
-export const CreateProfileModal = ({ isOpen, onClose }: Props) => {
+export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }: Props) => {
   const { currentProject } = useProject();
 
   const { data: caData } = useListCasByProjectId(currentProject?.id || "");
@@ -76,80 +115,97 @@ export const CreateProfileModal = ({ isOpen, onClose }: Props) => {
   });
 
   const createProfile = useCreateCertificateProfile();
+  const updateProfile = useUpdateCertificateProfile();
+
+  const isEdit = mode === "edit" && profile;
 
   const certificateAuthorities = caData || [];
   const certificateTemplates = templateData?.certificateTemplates || [];
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    watch,
-    setValue,
-    formState: { isSubmitting }
-  } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      name: "",
-      slug: "",
-      description: "",
-      enrollmentType: "api",
-      certificateAuthorityId: "",
-      certificateTemplateId: "",
-      apiConfig: {
-        autoRenew: false,
-        autoRenewDays: 30
-      }
-    }
+  const { control, handleSubmit, reset, watch, setValue } = useForm<FormData>({
+    resolver: zodResolver(isEdit ? editSchema : createSchema),
+    defaultValues: isEdit
+      ? {
+          slug: profile.slug,
+          description: profile.description || "",
+          enrollmentType: profile.enrollmentType,
+          certificateAuthorityId: profile.caId,
+          certificateTemplateId: profile.certificateTemplateId,
+          estConfig: {
+            disableBootstrapCaValidation: profile.estConfig?.disableBootstrapCaValidation || false,
+            passphrase: "",
+            caChain: ""
+          },
+          apiConfig: {
+            autoRenew: profile.apiConfig?.autoRenew || false,
+            autoRenewDays: profile.apiConfig?.autoRenewDays || 30
+          }
+        }
+      : {
+          slug: "",
+          description: "",
+          enrollmentType: "api",
+          certificateAuthorityId: "",
+          certificateTemplateId: "",
+          apiConfig: {
+            autoRenew: false,
+            autoRenewDays: 30
+          }
+        }
   });
 
-  const watchedName = watch("name");
   const watchedEnrollmentType = watch("enrollmentType");
   const watchedDisableBootstrapValidation = watch("estConfig.disableBootstrapCaValidation");
   const watchedAutoRenew = watch("apiConfig.autoRenew");
 
-  useEffect(() => {
-    if (watchedName && !watch("slug")) {
-      const slug = watchedName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
-      setValue("slug", slug);
-    }
-  }, [watchedName, setValue, watch]);
-
   const onFormSubmit = async (data: FormData) => {
     try {
-      if (!currentProject?.id) return;
+      if (!currentProject?.id && !isEdit) return;
 
-      const payload: any = {
-        projectId: currentProject.id,
-        name: data.name,
-        slug: data.slug,
-        description: data.description,
-        enrollmentType: data.enrollmentType,
-        caId: data.certificateAuthorityId,
-        certificateTemplateId: data.certificateTemplateId
-      };
+      if (isEdit) {
+        const updateData: any = {
+          profileId: profile.id,
+          name: data.slug,
+          description: data.description
+        };
 
-      if (data.enrollmentType === "est" && data.estConfig) {
-        payload.estConfig = data.estConfig;
-      } else if (data.enrollmentType === "api" && data.apiConfig) {
-        payload.apiConfig = data.apiConfig;
+        if (data.enrollmentType === "est" && data.estConfig) {
+          updateData.estConfig = data.estConfig;
+        } else if (data.enrollmentType === "api" && data.apiConfig) {
+          updateData.apiConfig = data.apiConfig;
+        }
+
+        await updateProfile.mutateAsync(updateData);
+      } else {
+        const createData: any = {
+          projectId: currentProject!.id,
+          slug: data.slug,
+          description: data.description,
+          enrollmentType: data.enrollmentType,
+          caId: data.certificateAuthorityId,
+          certificateTemplateId: data.certificateTemplateId
+        };
+
+        if (data.enrollmentType === "est" && data.estConfig) {
+          createData.estConfig = data.estConfig;
+        } else if (data.enrollmentType === "api" && data.apiConfig) {
+          createData.apiConfig = data.apiConfig;
+        }
+
+        await createProfile.mutateAsync(createData);
       }
-      await createProfile.mutateAsync(payload);
 
       createNotification({
-        text: "Certificate profile created successfully",
+        text: `Certificate profile ${isEdit ? "updated" : "created"} successfully`,
         type: "success"
       });
 
       reset();
       onClose();
     } catch (error) {
-      console.error("Error creating profile:", error);
+      console.error(`Error ${isEdit ? "updating" : "creating"} profile:`, error);
       createNotification({
-        text: "Failed to create certificate profile",
+        text: `Failed to ${isEdit ? "update" : "create"} certificate profile`,
         type: "error"
       });
     }
@@ -166,25 +222,14 @@ export const CreateProfileModal = ({ isOpen, onClose }: Props) => {
       }}
     >
       <ModalContent
-        title="Create Certificate Profile"
-        subTitle="Configure a new certificate profile for unified certificate issuance"
+        title={isEdit ? "Edit Certificate Profile" : "Create Certificate Profile"}
+        subTitle={
+          isEdit
+            ? `Update configuration for ${profile?.slug}`
+            : "Configure a new certificate profile for unified certificate issuance"
+        }
       >
         <form onSubmit={handleSubmit(onFormSubmit)}>
-          <Controller
-            control={control}
-            name="name"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Profile Name"
-                isRequired
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Input {...field} placeholder="Enter profile name" />
-              </FormControl>
-            )}
-          />
-
           <Controller
             control={control}
             name="slug"
@@ -195,7 +240,7 @@ export const CreateProfileModal = ({ isOpen, onClose }: Props) => {
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Input {...field} placeholder="auto-generated-from-name" />
+                <Input {...field} placeholder="your-profile-name" isDisabled={Boolean(isEdit)} />
               </FormControl>
             )}
           />
@@ -226,6 +271,7 @@ export const CreateProfileModal = ({ isOpen, onClose }: Props) => {
                   placeholder="Select a certificate authority"
                   className="w-full"
                   position="popper"
+                  isDisabled={Boolean(isEdit)}
                 >
                   {certificateAuthorities.map((ca: any) => (
                     <SelectItem key={ca.id} value={ca.id}>
@@ -269,10 +315,11 @@ export const CreateProfileModal = ({ isOpen, onClose }: Props) => {
                   placeholder="Select a certificate template"
                   className="w-full"
                   position="popper"
+                  isDisabled={Boolean(isEdit)}
                 >
                   {certificateTemplates.map((template) => (
                     <SelectItem key={template.id} value={template.id}>
-                      {template.name}
+                      {template.slug}
                     </SelectItem>
                   ))}
                 </Select>
@@ -290,7 +337,13 @@ export const CreateProfileModal = ({ isOpen, onClose }: Props) => {
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Select {...field} onValueChange={onChange} className="w-full" position="popper">
+                <Select
+                  {...field}
+                  onValueChange={onChange}
+                  className="w-full"
+                  position="popper"
+                  isDisabled={Boolean(isEdit)}
+                >
                   <SelectItem value="api">API</SelectItem>
                   <SelectItem value="est">EST</SelectItem>
                 </Select>
@@ -314,12 +367,9 @@ export const CreateProfileModal = ({ isOpen, onClose }: Props) => {
                           onCheckedChange={onChange}
                         />
                         <div className="space-y-1">
-                          <label
-                            htmlFor="disableBootstrapCaValidation"
-                            className="text-sm font-medium text-mineshaft-100"
-                          >
+                          <span className="text-sm font-medium text-mineshaft-100">
                             Disable Bootstrap CA Validation
-                          </label>
+                          </span>
                           <p className="text-xs text-bunker-300">
                             Skip CA certificate validation during EST bootstrap phase
                           </p>
@@ -335,7 +385,7 @@ export const CreateProfileModal = ({ isOpen, onClose }: Props) => {
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="EST Passphrase"
-                      isRequired
+                      isRequired={!isEdit}
                       isError={Boolean(error)}
                       errorText={error?.message}
                     >
@@ -356,7 +406,7 @@ export const CreateProfileModal = ({ isOpen, onClose }: Props) => {
                     render={({ field, fieldState: { error } }) => (
                       <FormControl
                         label="CA Chain Certificate"
-                        isRequired
+                        isRequired={!isEdit}
                         isError={Boolean(error)}
                         errorText={error?.message}
                       >
@@ -424,10 +474,18 @@ export const CreateProfileModal = ({ isOpen, onClose }: Props) => {
           )}
 
           <div className="flex gap-3">
-            <Button type="submit" colorSchema="primary" isLoading={isSubmitting}>
-              Create
+            <Button
+              type="submit"
+              colorSchema="primary"
+              isLoading={isEdit ? updateProfile.isPending : createProfile.isPending}
+            >
+              {isEdit ? "Save Changes" : "Create"}
             </Button>
-            <Button variant="outline_bg" onClick={onClose} disabled={isSubmitting}>
+            <Button
+              variant="outline_bg"
+              onClick={onClose}
+              disabled={isEdit ? updateProfile.isPending : createProfile.isPending}
+            >
               Cancel
             </Button>
           </div>

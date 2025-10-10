@@ -80,7 +80,6 @@ describe("CertificateProfileService", () => {
   const sampleProfile: TCertificateProfile = {
     id: "profile-123",
     projectId: "project-123",
-    name: "Test Profile",
     description: "Test certificate profile",
     slug: "test-profile",
     enrollmentType: EnrollmentType.API,
@@ -174,9 +173,8 @@ describe("CertificateProfileService", () => {
 
   describe("createProfile", () => {
     const validProfileData = {
-      name: "New Profile",
-      description: "New test profile",
       slug: "new-profile",
+      description: "New test profile",
       enrollmentType: EnrollmentType.API,
       caId: "ca-123",
       certificateTemplateId: "template-123",
@@ -204,9 +202,8 @@ describe("CertificateProfileService", () => {
       expect(mockCertificateTemplateV2DAL.findById).toHaveBeenCalledWith("template-123");
       expect(mockCertificateProfileDAL.findBySlugAndProjectId).toHaveBeenCalledWith("new-profile", "project-123");
       expect(mockCertificateProfileDAL.create).toHaveBeenCalledWith({
-        name: "New Profile",
-        description: "New test profile",
         slug: "new-profile",
+        description: "New test profile",
         enrollmentType: EnrollmentType.API,
         caId: "ca-123",
         certificateTemplateId: "template-123",
@@ -273,9 +270,8 @@ describe("CertificateProfileService", () => {
 
     it("should throw ForbiddenRequestError for API enrollment without API config", async () => {
       const invalidData = {
-        name: "Invalid Profile",
-        description: "Invalid test profile",
         slug: "invalid-profile",
+        description: "Invalid test profile",
         enrollmentType: EnrollmentType.API,
         caId: "ca-123",
         certificateTemplateId: "template-123"
@@ -292,9 +288,8 @@ describe("CertificateProfileService", () => {
 
     it("should create profile with API enrollment", async () => {
       const apiProfileData = {
-        name: "API Profile",
-        description: "Profile with API enrollment",
         slug: "api-profile",
+        description: "Profile with API enrollment",
         enrollmentType: EnrollmentType.API,
         caId: "ca-123",
         certificateTemplateId: "template-123",
@@ -317,7 +312,7 @@ describe("CertificateProfileService", () => {
 
   describe("updateProfile", () => {
     const updateData = {
-      name: "Updated Profile",
+      slug: "updated-profile",
       description: "Updated description"
     };
 
@@ -333,7 +328,7 @@ describe("CertificateProfileService", () => {
         data: updateData
       });
 
-      expect(result.name).toBe("Updated Profile");
+      expect(result.slug).toBe("updated-profile");
       expect(mockCertificateProfileDAL.findById).toHaveBeenCalledWith("profile-123");
       expect(mockCertificateProfileDAL.updateById).toHaveBeenCalledWith("profile-123", updateData);
     });
@@ -697,9 +692,8 @@ describe("CertificateProfileService", () => {
     describe("profile configuration validation", () => {
       it("should validate EST enrollment configuration", async () => {
         const estProfileData = {
-          name: "EST Profile",
-          description: "Profile with EST enrollment",
           slug: "est-profile",
+          description: "Profile with EST enrollment",
           enrollmentType: EnrollmentType.EST,
           caId: "ca-123",
           certificateTemplateId: "template-123",
@@ -737,9 +731,8 @@ describe("CertificateProfileService", () => {
         vi.clearAllMocks();
 
         const duplicateSlugData = {
-          name: "Different Profile Name",
+          slug: "different-profile-name",
           description: "Profile with duplicate slug",
-          slug: "test-profile",
           enrollmentType: EnrollmentType.API,
           caId: "ca-123",
           certificateTemplateId: "template-123",
@@ -763,9 +756,8 @@ describe("CertificateProfileService", () => {
 
       it("should validate auto-renewal configuration", async () => {
         const autoRenewData = {
-          name: "Auto Renew Profile",
+          slug: "auto-renew-profile",
           description: "Profile with auto-renewal",
-          slug: "auto-renew",
           enrollmentType: EnrollmentType.API,
           caId: "ca-123",
           certificateTemplateId: "template-123",
@@ -987,9 +979,8 @@ describe("CertificateProfileService", () => {
 
       it("should handle invalid template reference during profile creation", async () => {
         const profileData = {
-          name: "Invalid Template Profile",
+          slug: "invalid-template-profile",
           description: "Profile with invalid template",
-          slug: "invalid-template",
           enrollmentType: EnrollmentType.API,
           caId: "ca-123",
           certificateTemplateId: "nonexistent-template",
@@ -1013,9 +1004,8 @@ describe("CertificateProfileService", () => {
 
       it("should handle concurrent profile creation conflicts", async () => {
         const conflictingData = {
-          name: "Concurrent Profile",
-          description: "Profile created concurrently",
           slug: "concurrent-profile",
+          description: "Profile created concurrently",
           enrollmentType: EnrollmentType.API,
           caId: "ca-123",
           certificateTemplateId: "template-123",
@@ -1042,9 +1032,8 @@ describe("CertificateProfileService", () => {
     describe("permission and security", () => {
       it("should validate project ownership for cross-project template access", async () => {
         const crossProjectData = {
-          name: "Cross Project Profile",
+          slug: "cross-project-profile",
           description: "Profile using template from different project",
-          slug: "cross-project",
           enrollmentType: EnrollmentType.API,
           caId: "ca-123",
           certificateTemplateId: "template-456",
@@ -1056,7 +1045,7 @@ describe("CertificateProfileService", () => {
         const foreignTemplate = {
           id: "template-456",
           projectId: "different-project-456",
-          name: "Foreign Template"
+          slug: "foreign-template"
         };
 
         (mockCertificateTemplateV2DAL.findById as any).mockResolvedValue(foreignTemplate);
@@ -1072,9 +1061,8 @@ describe("CertificateProfileService", () => {
 
       it("should validate slug format constraints", async () => {
         const invalidSlugData = {
-          name: "Invalid Slug Profile",
+          slug: "invalid-slug-profile",
           description: "Profile with invalid slug format",
-          slug: "Invalid_Slug_With_Underscores_And_Caps",
           enrollmentType: EnrollmentType.API,
           caId: "ca-123",
           certificateTemplateId: "template-123",
