@@ -2355,6 +2355,9 @@ export const AppConnections = {
       sslRejectUnauthorized:
         "Whether or not to reject unauthorized SSL certificates (true/false). Set to false only in test environments with self-signed certificates.",
       sslCertificate: "The SSL certificate (PEM format) to use for secure connection."
+    },
+    LARAVEL_FORGE: {
+      apiToken: "The API token used to authenticate with Laravel Forge."
     }
   }
 };

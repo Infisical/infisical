@@ -31,6 +31,7 @@ import { GitLabConnectionForm } from "./GitLabConnectionForm";
 import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
+import { LaravelForgeConnectionForm } from "./LaravelForgeConnectionForm";
 import { LdapConnectionForm } from "./LdapConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { MySqlConnectionForm } from "./MySqlConnectionForm";
@@ -146,6 +147,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <HerokuConnectionForm onSubmit={onSubmit} projectId={projectId} />;
     case AppConnection.Render:
       return <RenderConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.LaravelForge:
+      return <LaravelForgeConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Flyio:
       return <FlyioConnectionForm onSubmit={onSubmit} />;
     case AppConnection.GitLab:
@@ -297,6 +300,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       );
     case AppConnection.Render:
       return <RenderConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.LaravelForge:
+      return <LaravelForgeConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Flyio:
       return <FlyioConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.GitLab:
