@@ -92,7 +92,7 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                     <Td>{host.hostname}</Td>
                     <Td>
                       {host.loginMappings.length === 0 ? (
-                        <span className="italic text-mineshaft-400">None</span>
+                        <span className="text-mineshaft-400 italic">None</span>
                       ) : (
                         (() => {
                           const hostMappings = host.loginMappings.filter(

@@ -3,18 +3,18 @@ import { Link } from "@tanstack/react-router";
 
 export const EmailNotVerifiedPage = () => {
   return (
-    <div className="flex min-h-screen flex-col justify-center bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28">
+    <div className="flex min-h-screen flex-col justify-center bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28">
       <Helmet>
         <title>Request a New Invite</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <Link to="/">
-        <div className="mb-4 mt-20 flex justify-center">
+        <div className="mt-20 mb-4 flex justify-center">
           <img src="/images/gradientLogo.svg" className="h-[90px] w-[120px]" alt="Infisical Logo" />
         </div>
       </Link>
       <div className="mx-auto flex w-full flex-col items-center justify-center">
-        <h1 className="mb-2 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
+        <h1 className="mb-2 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
           Your email was not verified
         </h1>
         <p className="w-max justify-center text-center text-sm text-gray-400">

@@ -119,7 +119,7 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
     >
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <div>
-          <h3 className="text-lg font-semibold text-mineshaft-100">Policies</h3>
+          <h3 className="text-lg font-medium text-mineshaft-100">Policies</h3>
           <p className="text-sm leading-3 text-mineshaft-400">Configure granular access policies</p>
         </div>
         {isCustomRole && (

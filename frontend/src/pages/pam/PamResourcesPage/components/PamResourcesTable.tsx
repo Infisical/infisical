@@ -185,7 +185,7 @@ export const PamResourcesTable = ({ projectId, resources }: Props) => {
               <FontAwesomeIcon icon={faFilter} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="thin-scrollbar max-h-[70vh] overflow-y-auto" align="end">
+          <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
             <DropdownMenuLabel>Resource Type</DropdownMenuLabel>
             {resources.length ? (
               [...new Set(resources.map(({ resourceType }) => resourceType))].map((type) => {

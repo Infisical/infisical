@@ -24,7 +24,7 @@ export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuConten
           {...props}
           ref={forwardedRef}
           className={twMerge(
-            "z-30 min-w-[220px] overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow will-change-auto data-[side=bottom]:animate-slideUpAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=top]:animate-slideDownAndFade",
+            "data-[side=bottom]:animate-slide-up-and-fade data-[side=left]:animate-slide-right-and-fade data-[side=right]:animate-slide-left-and-fade data-[side=top]:animate-slide-down-and-fade z-30 min-w-[220px] overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow-sm will-change-auto",
             className
           )}
         >
@@ -48,7 +48,7 @@ export const DropdownSubMenuContent = forwardRef<HTMLDivElement, DropdownSubMenu
           {...props}
           ref={forwardedRef}
           className={twMerge(
-            "z-30 min-w-[220px] rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow will-change-auto data-[side=bottom]:animate-slideUpAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=top]:animate-slideDownAndFade",
+            "data-[side=bottom]:animate-slide-up-and-fade data-[side=left]:animate-slide-right-and-fade data-[side=right]:animate-slide-left-and-fade data-[side=top]:animate-slide-down-and-fade z-30 min-w-[220px] rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow-sm will-change-auto",
             className
           )}
         >
@@ -66,7 +66,7 @@ export type DropdownLabelProps = DropdownMenuPrimitive.DropdownMenuLabelProps;
 export const DropdownMenuLabel = ({ className, ...props }: DropdownLabelProps) => (
   <DropdownMenuPrimitive.Label
     {...props}
-    className={twMerge("px-4 pb-1 pt-2 text-xs text-bunker-400", className)}
+    className={twMerge("px-4 pt-2 pb-1 text-xs text-bunker-400", className)}
   />
 );
 
@@ -92,14 +92,14 @@ export const DropdownMenuItem = <T extends ElementType = "button">({
   <DropdownMenuPrimitive.Item
     {...props}
     className={twMerge(
-      "block cursor-pointer rounded-sm px-4 py-2 font-inter text-xs text-mineshaft-200 outline-none data-[highlighted]:bg-mineshaft-700",
+      "block cursor-pointer rounded-xs px-4 py-2 font-inter text-xs text-mineshaft-200 outline-hidden data-highlighted:bg-mineshaft-700",
       className,
       isDisabled ? "pointer-events-none cursor-not-allowed opacity-50" : ""
     )}
   >
     <Item type="button" role="menuitem" className="flex w-full items-center" ref={inputRef}>
       {icon && iconPos === "left" && <span className="mr-2 flex items-center">{icon}</span>}
-      <span className="flex-grow text-left">{children}</span>
+      <span className="grow text-left">{children}</span>
       {icon && iconPos === "right" && <span className="ml-2 flex items-center">{icon}</span>}
     </Item>
   </DropdownMenuPrimitive.Item>
@@ -126,13 +126,13 @@ export const DropdownSubMenuTrigger = <T extends ElementType = "button">({
   <DropdownMenuPrimitive.SubTrigger
     {...props}
     className={twMerge(
-      "block cursor-pointer rounded-sm px-4 py-2 font-inter text-xs text-mineshaft-200 outline-none data-[highlighted]:bg-mineshaft-700",
+      "block cursor-pointer rounded-xs px-4 py-2 font-inter text-xs text-mineshaft-200 outline-hidden data-highlighted:bg-mineshaft-700",
       className
     )}
   >
     <Item type="button" role="menuitem" className="flex w-full items-center" ref={inputRef}>
       {icon && iconPos === "left" && <span className="mr-2 flex items-center">{icon}</span>}
-      <span className="flex-grow text-left">{children}</span>
+      <span className="grow text-left">{children}</span>
       {icon && iconPos === "right" && <span className="ml-2 flex items-center">{icon}</span>}
     </Item>
   </DropdownMenuPrimitive.SubTrigger>
@@ -161,7 +161,7 @@ export const DropdownMenuSeparator = forwardRef<
   <DropdownMenuPrimitive.Separator
     ref={ref}
     {...props}
-    className={twMerge("m-1 h-[1px] bg-gray-700", className)}
+    className={twMerge("m-1 h-px bg-gray-700", className)}
   />
 ));
 

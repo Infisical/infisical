@@ -76,12 +76,14 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
     return m.status === "invited" ? "Invited" : "Active";
   };
 
-  const roleName = roles?.find((r) => r.slug === membership?.role)?.name;
+  const roleName = roles?.find(
+    (r) => r.slug === membership?.role || r.slug === membership?.customRoleSlug
+  )?.name;
 
   return membership ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-semibold text-mineshaft-100">User Details</h3>
+        <h3 className="text-lg font-medium text-mineshaft-100">User Details</h3>
         {userId !== membership.user.id && (
           <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Member}>
             {(isAllowed) => {
@@ -111,7 +113,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
       </div>
       <div className="pt-4">
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Name</p>
+          <p className="text-sm font-medium text-mineshaft-300">Name</p>
           <p className="text-sm text-mineshaft-300">
             {membership.user.firstName || membership.user.lastName
               ? `${membership.user.firstName} ${membership.user.lastName ?? ""}`.trim()
@@ -119,9 +121,9 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
           </p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Username</p>
+          <p className="text-sm font-medium text-mineshaft-300">Username</p>
           <div className="group flex align-top">
-            <p className="break-all text-sm text-mineshaft-300">{membership.user.username}</p>
+            <p className="text-sm break-all text-mineshaft-300">{membership.user.username}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
               <Tooltip content={copyTextUsername}>
                 <IconButton
@@ -140,9 +142,9 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Email</p>
+          <p className="text-sm font-medium text-mineshaft-300">Email</p>
           <div className="flex items-center">
-            <p className="mr-2 break-all text-sm text-mineshaft-300">
+            <p className="mr-2 text-sm break-all text-mineshaft-300">
               {membership.user.email ?? "-"}{" "}
               <Tooltip
                 content={
@@ -161,31 +163,31 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Last Login Auth Method</p>
+          <p className="text-sm font-medium text-mineshaft-300">Last Login Auth Method</p>
           <div className="group flex align-top">
-            <p className="break-all text-sm text-mineshaft-300">
+            <p className="text-sm break-all text-mineshaft-300">
               {membership.lastLoginAuthMethod || "-"}
             </p>
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Last Login Time</p>
+          <p className="text-sm font-medium text-mineshaft-300">Last Login Time</p>
           <div className="group flex align-top">
-            <p className="break-all text-sm text-mineshaft-300">
+            <p className="text-sm break-all text-mineshaft-300">
               {membership.lastLoginTime ? format(membership.lastLoginTime, "PPpp") : "-"}
             </p>
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Organization Role</p>
+          <p className="text-sm font-medium text-mineshaft-300">Organization Role</p>
           <p className="text-sm text-mineshaft-300">{roleName ?? "-"}</p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Status</p>
+          <p className="text-sm font-medium text-mineshaft-300">Status</p>
           <p className="text-sm text-mineshaft-300">{getStatus(membership)}</p>
         </div>
         <div>
-          <p className="text-sm font-semibold text-mineshaft-300">Metadata</p>
+          <p className="text-sm font-medium text-mineshaft-300">Metadata</p>
           {membership?.metadata?.length ? (
             <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
               {membership.metadata?.map((el) => (

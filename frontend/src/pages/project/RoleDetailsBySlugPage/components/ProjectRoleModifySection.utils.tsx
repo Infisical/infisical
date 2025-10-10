@@ -1298,8 +1298,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
                   This is a legacy action and will be removed in the future.
                   <br />
                   <br /> You should instead use the{" "}
-                  <strong className="font-semibold">Describe Secret</strong> and{" "}
-                  <strong className="font-semibold">Read Value</strong> actions.
+                  <strong className="font-medium">Describe Secret</strong> and{" "}
+                  <strong className="font-medium">Read Value</strong> actions.
                 </div>
               }
             >

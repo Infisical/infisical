@@ -37,7 +37,7 @@ const OutputDisplay = ({
 
   return (
     <div className="relative">
-      <FormControl label={label} className="flex-grow" helperText={helperText}>
+      <FormControl label={label} className="grow" helperText={helperText}>
         <SecretInput
           isReadOnly
           value={value}
@@ -49,7 +49,7 @@ const OutputDisplay = ({
           ariaLabel="Copy to clipboard"
           variant="plain"
           size="md"
-          className="absolute right-2 top-7"
+          className="absolute top-7 right-2"
           onClick={() => {
             navigator.clipboard.writeText(value as string);
             setCopyText("Copied");
@@ -291,7 +291,7 @@ const renderOutputForm = (
           value={PASSWORD}
           helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
         />
-        <FormControl label="DNs" className="flex-grow">
+        <FormControl label="DNs" className="grow">
           <SecretInput
             isReadOnly
             isVisible

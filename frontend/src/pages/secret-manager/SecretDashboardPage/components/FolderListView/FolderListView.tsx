@@ -218,7 +218,7 @@ export const FolderListView = ({
             <FontAwesomeIcon icon={faFolder} />
           </div>
           <div
-            className="flex flex-grow items-center px-4 py-3"
+            className="flex grow items-center px-4 py-3"
             role="button"
             tabIndex={0}
             onKeyDown={(evt) => {
@@ -230,7 +230,7 @@ export const FolderListView = ({
             {description && (
               <Tooltip
                 position="right"
-                className="flex max-w-lg items-center space-x-4 whitespace-pre-wrap py-4"
+                className="flex max-w-lg items-center space-x-4 py-4 whitespace-pre-wrap"
                 content={description}
               >
                 <FontAwesomeIcon icon={faInfoCircle} className="ml-1 text-mineshaft-400" />

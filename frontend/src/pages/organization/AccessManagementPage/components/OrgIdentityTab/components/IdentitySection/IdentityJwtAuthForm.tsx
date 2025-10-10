@@ -368,7 +368,7 @@ export const IdentityJwtAuthForm = ({
                     name={`publicKeys.${index}.value`}
                     render={({ field, fieldState: { error } }) => (
                       <FormControl
-                        className="flex-grow"
+                        className="grow"
                         label={`Public Key ${index + 1}`}
                         errorText={error?.message}
                         isError={Boolean(error)}
@@ -482,7 +482,7 @@ export const IdentityJwtAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       label={index === 0 ? "Claims" : undefined}
                       icon={
                         index === 0 ? (
@@ -512,7 +512,7 @@ export const IdentityJwtAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       isError={Boolean(error)}
                       errorText={error?.message}
                     >
@@ -606,7 +606,7 @@ export const IdentityJwtAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       label={index === 0 ? "Access Token Trusted IPs" : undefined}
                       isError={Boolean(error)}
                       errorText={error?.message}

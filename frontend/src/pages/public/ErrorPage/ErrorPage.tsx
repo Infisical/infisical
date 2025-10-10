@@ -50,7 +50,7 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
         {error?.message && (
           <>
             <div className="my-4 h-px w-full bg-mineshaft-600" />
-            <p className="thin-scrollbar max-h-44 w-full overflow-auto text-ellipsis rounded-md bg-mineshaft-700 p-2">
+            <p className="max-h-44 thin-scrollbar w-full overflow-auto rounded-md bg-mineshaft-700 p-2 text-ellipsis">
               <code className="text-xs">
                 {window.location.pathname}
                 <br />

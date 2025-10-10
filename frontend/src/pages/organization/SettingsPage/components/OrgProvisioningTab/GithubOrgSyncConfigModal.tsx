@@ -149,7 +149,7 @@ export const GithubOrgSyncConfigModal = ({
           >
             Cancel
           </Button>
-          <div className="flex-grow" />
+          <div className="grow" />
           {isUpdate && (
             <Button
               onClick={() => handlePopUpOpen("deleteGithubOrgSyncConfig")}

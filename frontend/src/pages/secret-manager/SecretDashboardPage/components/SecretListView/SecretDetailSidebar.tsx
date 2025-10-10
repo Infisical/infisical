@@ -352,7 +352,7 @@ export const SecretDetailSidebar = ({
       >
         <DrawerContent
           title={`Secret – ${secret?.key}`}
-          className="thin-scrollbar h-full"
+          className="h-full thin-scrollbar"
           cardBodyClassName="pb-0"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
@@ -474,7 +474,7 @@ export const SecretDetailSidebar = ({
                           Multi-line encoding
                           <Tooltip
                             content="When enabled, multiline secrets will be handled by escaping newlines and enclosing the entire value in double quotes."
-                            className="z-[100]"
+                            className="z-100"
                           >
                             <FontAwesomeIcon icon={faCircleQuestion} className="ml-2" />
                           </Tooltip>
@@ -552,7 +552,7 @@ export const SecretDetailSidebar = ({
                             </DropdownMenuTrigger>
                           )}
                         </ProjectPermissionCan>
-                        <DropdownMenuContent align="start" side="right" className="z-[100]">
+                        <DropdownMenuContent align="start" side="right" className="z-100">
                           <DropdownMenuLabel className="pl-2">
                             Add tags to this secret
                           </DropdownMenuLabel>
@@ -618,7 +618,7 @@ export const SecretDetailSidebar = ({
                   <div className="flex flex-col space-y-2">
                     {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
                       <div key={metadataFieldId} className="flex items-end space-x-2">
-                        <div className="flex-grow">
+                        <div className="grow">
                           {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
                           <Controller
                             control={control}
@@ -634,7 +634,7 @@ export const SecretDetailSidebar = ({
                             )}
                           />
                         </div>
-                        <div className="flex-grow">
+                        <div className="grow">
                           {i === 0 && (
                             <FormLabel
                               label="Value"
@@ -692,7 +692,7 @@ export const SecretDetailSidebar = ({
                   className="mb-0 h-[125px] pb-0"
                 >
                   <TextArea
-                    className="mb-0 !resize-none border border-mineshaft-600 bg-mineshaft-900 text-sm"
+                    className="mb-0 resize-none! border border-mineshaft-600 bg-mineshaft-900 text-sm"
                     readOnly={isReadOnly}
                     placeholder="add a comment or note to this secret..."
                     rows={4}
@@ -701,9 +701,9 @@ export const SecretDetailSidebar = ({
                 </FormControl>
               )}
             />
-            <div className="dark flex max-h-[24rem] flex-1 cursor-default flex-col text-sm text-bunker-300">
+            <div className="dark flex max-h-96 flex-1 cursor-default flex-col text-sm text-bunker-300">
               <div className="mb-0.5 text-mineshaft-400">Version History</div>
-              <div className="thin-scrollbar flex flex-1 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:[color-scheme:dark]">
+              <div className="flex thin-scrollbar flex-1 flex-col space-y-2 overflow-x-hidden overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:scheme-dark">
                 {secretVersion?.map((version) => (
                   <SecretVersionItem
                     canReadValue={!cannotReadSecretValue}
@@ -726,13 +726,13 @@ export const SecretDetailSidebar = ({
                 Access List
                 <Tooltip
                   content="Lists all users, machine identities, and groups that have been granted any permission level (read, create, edit, or delete) for this secret."
-                  className="z-[100]"
+                  className="z-100"
                 >
                   <FontAwesomeIcon icon={faCircleQuestion} className="ml-2" />
                 </Tooltip>
               </div>
               {secretAccessList ? (
-                <div className="flex flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:[color-scheme:dark]">
+                <div className="flex flex-col space-y-2 overflow-x-hidden overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 dark:scheme-dark">
                   {secretAccessList.users.length > 0 && (
                     <div className="pb-3">
                       <div className="mb-2 font-bold">Users</div>
@@ -744,20 +744,11 @@ export const SecretDetailSidebar = ({
                               content={user.allowedActions
                                 .map((action) => camelCaseToSpaces(action))
                                 .join(", ")}
-                              className="z-[100] capitalize"
+                              className="z-100 capitalize"
                             >
-                              <Link
-                                to={
-                                  `${getProjectBaseURL(currentProject.type)}/members/$membershipId` as const
-                                }
-                                params={{
-                                  projectId: currentProject.id,
-                                  membershipId: user.membershipId
-                                }}
-                                className="text-secondary/80 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 py-0.5 text-sm hover:text-mineshaft-100"
-                              >
+                              <div className="text-secondary/80 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 py-0.5 text-sm hover:text-mineshaft-100">
                                 {user.name}
-                              </Link>
+                              </div>
                             </Tooltip>
                           </div>
                         ))}
@@ -778,7 +769,7 @@ export const SecretDetailSidebar = ({
                                     action.charAt(0).toUpperCase() + action.slice(1).toLowerCase()
                                 )
                                 .join(", ")}
-                              className="z-[100]"
+                              className="z-100"
                             >
                               <Link
                                 to={
@@ -812,7 +803,7 @@ export const SecretDetailSidebar = ({
                                     action.charAt(0).toUpperCase() + action.slice(1).toLowerCase()
                                 )
                                 .join(", ")}
-                              className="z-[100]"
+                              className="z-100"
                             >
                               <Link
                                 to={"/organization/groups/$groupId" as const}
@@ -853,7 +844,7 @@ export const SecretDetailSidebar = ({
               >
                 Secret Reference Tree
               </Button>
-              <Tooltip content="Copy Secret ID" className="z-[100]">
+              <Tooltip content="Copy Secret ID" className="z-100">
                 <IconButton
                   variant="outline_bg"
                   ariaLabel="Copy Secret ID"
@@ -880,7 +871,7 @@ export const SecretDetailSidebar = ({
                 })}
               >
                 {(isAllowed) => (
-                  <Tooltip content="Delete Secret" align="end" className="z-[100]">
+                  <Tooltip content="Delete Secret" align="end" className="z-100">
                     <IconButton
                       colorSchema="danger"
                       variant="outline_bg"

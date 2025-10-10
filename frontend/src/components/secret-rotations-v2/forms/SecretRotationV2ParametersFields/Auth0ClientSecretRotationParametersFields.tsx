@@ -38,7 +38,7 @@ export const Auth0ClientSecretRotationParametersFields = () => {
               content={
                 <>
                   Ensure that your connection has the{" "}
-                  <span className="font-semibold">read_clients</span> permission and the application
+                  <span className="font-medium">read_clients</span> permission and the application
                   exists in the connection&#39;s audience.
                 </>
               }

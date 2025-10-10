@@ -42,7 +42,7 @@ const iconButtonVariants = cva(
         false: ""
       },
       size: {
-        xs: ["text-xs", "rounded-sm", "py-1.5", "px-2"],
+        xs: ["text-xs", "rounded-xs", "py-1.5", "px-2"],
         sm: ["text-sm", "py-3", "px-3"],
         md: ["text-md", "py-4", "px-4"],
         lg: ["text-lg", "py-6", "px-6"]
@@ -58,7 +58,7 @@ const iconButtonVariants = cva(
         colorSchema: "primary",
         variant: "outline_bg",
         className:
-          "bg-mineshaft-700 border border-mineshaft-600 hover:bg-primary/[0.15] hover:border-primary/60 text-bunker-200 hover:text-bunker-100 duration-100"
+          "bg-mineshaft-700 border border-mineshaft-600 hover:bg-primary/15 hover:border-primary/60 text-bunker-200 hover:text-bunker-100 duration-100"
       },
       {
         colorSchema: "danger",

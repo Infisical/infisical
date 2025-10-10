@@ -200,7 +200,7 @@ export const OrgRoleTable = () => {
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xl font-semibold text-mineshaft-100">Organization Roles</p>
+        <p className="text-xl font-medium text-mineshaft-100">Organization Roles</p>
         <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Role}>
           {(isAllowed) => (
             <Button
@@ -312,7 +312,7 @@ export const OrgRoleTable = () => {
                     {slug}
                   </Td>
                   <Td>
-                    <Badge className="w-min whitespace-nowrap bg-mineshaft-400/50 text-bunker-200">
+                    <Badge className="w-min bg-mineshaft-400/50 whitespace-nowrap text-bunker-200">
                       {isCustomProjectRole(slug) ? "Custom" : "Default"}
                     </Badge>
                   </Td>
@@ -328,7 +328,7 @@ export const OrgRoleTable = () => {
                           <FontAwesomeIcon icon={faEllipsisV} />
                         </IconButton>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent className="min-w-[12rem]" sideOffset={2} align="end">
+                      <DropdownMenuContent className="min-w-48" sideOffset={2} align="end">
                         <OrgPermissionCan
                           I={OrgPermissionActions.Edit}
                           a={OrgPermissionSubjects.Role}

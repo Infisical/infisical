@@ -85,7 +85,7 @@ export const LeaveProjectModal = ({
         >
           <FormControl
             label={
-              <div className="break-words pb-2 text-sm">
+              <div className="pb-2 text-sm break-words">
                 Type <span className="font-bold">{deleteKey}</span> to leave the project
               </div>
             }

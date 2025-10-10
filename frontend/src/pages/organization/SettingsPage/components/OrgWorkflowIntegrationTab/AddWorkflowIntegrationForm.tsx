@@ -63,7 +63,7 @@ export const AddWorkflowIntegrationForm = ({ isOpen, onToggle }: Props) => {
                 {PLATFORM_LIST.map(({ icon, platform, title }) => (
                   <div
                     key={platform}
-                    className="flex h-28 w-32 cursor-pointer flex-col items-center space-y-4 rounded border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
+                    className="flex h-28 w-32 cursor-pointer flex-col items-center space-y-4 rounded-sm border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
                     role="button"
                     tabIndex={0}
                     onClick={() => {
@@ -78,7 +78,7 @@ export const AddWorkflowIntegrationForm = ({ isOpen, onToggle }: Props) => {
                     }}
                   >
                     <div>{icon}</div>
-                    <div className="whitespace-pre-wrap text-center text-sm">{title}</div>
+                    <div className="text-center text-sm whitespace-pre-wrap">{title}</div>
                   </div>
                 ))}
               </div>

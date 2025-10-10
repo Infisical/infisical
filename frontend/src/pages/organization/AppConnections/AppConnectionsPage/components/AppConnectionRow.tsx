@@ -93,14 +93,14 @@ export const AppConnectionRow = ({
               <FontAwesomeIcon
                 icon={connectionDetails.icon}
                 size="xs"
-                className="absolute -bottom-0.5 -right-0.5 text-primary-700"
+                className="absolute -right-0.5 -bottom-0.5 text-primary-700"
               />
             )}
           </div>
           <span className="hidden lg:inline">{connectionDetails.name}</span>
         </div>
       </Td>
-      <Td className="!min-w-[8rem] max-w-0">
+      <Td className="max-w-0 min-w-32!">
         <div className="flex w-full items-center">
           <p className="truncate">{name}</p>
           {description && (
@@ -110,7 +110,7 @@ export const AppConnectionRow = ({
           )}
         </div>
       </Td>
-      <Td className="!min-w-[8rem] max-w-0">
+      <Td className="max-w-0 min-w-32!">
         <p className="truncate">
           <FontAwesomeIcon
             size="sm"
@@ -121,7 +121,7 @@ export const AppConnectionRow = ({
         </p>
       </Td>
       {!isProjectView && (
-        <Td className="!min-w-[8rem] max-w-0">
+        <Td className="max-w-0 min-w-32!">
           {project ? (
             <Link
               // @ts-expect-error app-connections aren't in kms/ssh

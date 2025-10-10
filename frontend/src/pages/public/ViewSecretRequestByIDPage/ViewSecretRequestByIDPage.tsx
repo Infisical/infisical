@@ -79,7 +79,7 @@ export const ViewSecretRequestByIDPage = () => {
         <meta property="og:title" content="" />
         <meta name="og:description" content="" />
       </Helmet>
-      <div className="flex h-screen flex-col justify-between overflow-auto bg-gradient-to-tr from-mineshaft-700 to-bunker-800 text-gray-200 dark:[color-scheme:dark]">
+      <div className="flex h-screen flex-col justify-between overflow-auto bg-linear-to-tr from-mineshaft-700 to-bunker-800 text-gray-200 dark:scheme-dark">
         <div />
         <div className="mx-auto w-full max-w-xl px-4 py-4 md:px-0">
           <div className="mb-8 text-center">
@@ -94,7 +94,7 @@ export const ViewSecretRequestByIDPage = () => {
                 />
               </a>
             </div>
-            <h1 className="bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-4xl font-medium text-transparent">
+            <h1 className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-4xl font-medium text-transparent">
               {step === "set-value" ? "Secret Request" : "Secret request shared"}
             </h1>
             <p className="text-sm text-mineshaft-300">
@@ -107,7 +107,7 @@ export const ViewSecretRequestByIDPage = () => {
                 href="https://github.com/infisical/infisical"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-bold bg-gradient-to-tr from-yellow-500 to-primary-500 bg-clip-text text-transparent"
+                className="text-bold bg-linear-to-tr from-yellow-500 to-primary-500 bg-clip-text text-transparent"
               >
                 Infisical &rarr;
               </a>
@@ -137,9 +137,9 @@ export const ViewSecretRequestByIDPage = () => {
             <div className="w-full border-t border-mineshaft-600" />
           </div>
           <div className="m-auto flex w-full flex-col rounded-md border border-primary-500/30 bg-primary/5 p-6 pt-5">
-            <p className="w-full pb-2 text-lg font-semibold text-mineshaft-100 md:pb-3 md:text-xl">
+            <p className="w-full pb-2 text-lg font-medium text-mineshaft-100 md:pb-3 md:text-xl">
               Open source{" "}
-              <span className="bg-gradient-to-tr from-yellow-500 to-primary-500 bg-clip-text text-transparent">
+              <span className="bg-linear-to-tr from-yellow-500 to-primary-500 bg-clip-text text-transparent">
                 secret management
               </span>{" "}
               for developers
@@ -150,7 +150,7 @@ export const ViewSecretRequestByIDPage = () => {
                   href="https://github.com/infisical/infisical"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-bold bg-gradient-to-tr from-yellow-500 to-primary-500 bg-clip-text text-transparent"
+                  className="text-bold bg-linear-to-tr from-yellow-500 to-primary-500 bg-clip-text text-transparent"
                 >
                   Infisical
                 </a>{" "}

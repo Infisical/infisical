@@ -45,11 +45,11 @@ export const OrganizationLayout = () => {
         {!isLoading && !serverDetails?.emailConfigured && <SmtpBanner />}
         {!isLoading && subscription.auditLogs && <AuditLogBanner />}
         {!window.isSecureContext && <InsecureConnectionBanner />}
-        <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
+        <div className="flex grow flex-col overflow-y-hidden md:flex-row">
           <OrgSidebar isHidden={isInsideProject} />
           <main
             className={twMerge(
-              "flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 px-4 pb-4 pt-8 dark:[color-scheme:dark]",
+              "flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 px-4 pt-8 pb-4 dark:scheme-dark",
               isInsideProject && "p-0"
             )}
           >
@@ -61,7 +61,7 @@ export const OrganizationLayout = () => {
         isOpen={popUp?.createOrg?.isOpen}
         onClose={() => handlePopUpToggle("createOrg", false)}
       />
-      <div className="z-[200] flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
+      <div className="z-200 flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
         <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
         <p className="max-w-sm px-6 text-center text-lg text-gray-200">
           {` ${t("common.no-mobile")} `}

@@ -81,12 +81,12 @@ export const FilterableSelect = <T,>({
       }}
       classNames={{
         container: ({ isDisabled }) =>
-          twMerge("w-full font-inter text-sm", isDisabled && "!pointer-events-auto opacity-50"),
+          twMerge("w-full font-inter text-sm", isDisabled && "pointer-events-auto! opacity-50"),
         control: ({ isFocused, isDisabled }) =>
           twMerge(
             isFocused ? "border-primary-400/50" : "border-mineshaft-600",
             `w-full rounded-md border bg-mineshaft-900 p-0.5 font-inter text-mineshaft-200 ${
-              isDisabled ? "!cursor-not-allowed" : "hover:cursor-pointer hover:border-gray-400"
+              isDisabled ? "cursor-not-allowed!" : "hover:cursor-pointer hover:border-gray-400"
             } `
           ),
         placeholder: () =>
@@ -94,10 +94,10 @@ export const FilterableSelect = <T,>({
         input: () => `pl-1 ${isMulti ? "py-[0.22rem]" : ""}`,
         valueContainer: () =>
           `px-1 max-h-[8.2rem] ${
-            isMulti ? "!overflow-y-auto thin-scrollbar py-1" : "py-[0.1rem]"
+            isMulti ? "overflow-y-auto! thin-scrollbar py-1" : "py-[0.1rem]"
           } gap-1`,
         singleValue: () => "leading-7 ml-1",
-        multiValue: () => "bg-mineshaft-600 text-sm rounded items-center py-0.5 px-2 gap-1.5",
+        multiValue: () => "bg-mineshaft-600 text-sm rounded-sm items-center py-0.5 px-2 gap-1.5",
         multiValueLabel: () => "leading-6 text-sm",
         multiValueRemove: () => "hover:text-red text-bunker-400",
         indicatorsContainer: () => "p-1 gap-1",
@@ -112,7 +112,7 @@ export const FilterableSelect = <T,>({
           twMerge(
             isFocused && "bg-mineshaft-700 active:bg-mineshaft-600",
             isSelected && "text-mineshaft-200",
-            "rounded px-3 py-2 text-xs hover:cursor-pointer"
+            "rounded-sm px-3 py-2 text-xs hover:cursor-pointer"
           ),
         noOptionsMessage: () => "text-mineshaft-400 p-2 rounded-md",
         loadingMessage: () => "text-mineshaft-400 p-2 rounded-md"

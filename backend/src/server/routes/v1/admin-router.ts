@@ -5,6 +5,7 @@ import {
   IdentitiesSchema,
   OrganizationsSchema,
   OrgMembershipsSchema,
+  OrgMembershipStatus,
   SuperAdminSchema,
   UsersSchema
 } from "@app/db/schemas";
@@ -172,7 +173,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             email: true,
             id: true,
             superAdmin: true
-          }).array()
+          }).array(),
+          total: z.number()
         })
       }
     },
@@ -182,13 +184,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const users = await server.services.superAdmin.getUsers({
+      const result = await server.services.superAdmin.getUsers({
         ...req.query
       });
 
-      return {
-        users
-      };
+      return result;
     }
   });
 
@@ -230,7 +230,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
                 createdAt: z.date()
               })
               .array()
-          }).array()
+          }).array(),
+          total: z.number()
         })
       }
     },
@@ -240,13 +241,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const organizations = await server.services.superAdmin.getOrganizations({
+      const result = await server.services.superAdmin.getOrganizations({
         ...req.query
       });
 
-      return {
-        organizations
-      };
+      return result;
     }
   });
 
@@ -281,7 +280,10 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       );
 
       return {
-        organizationMembership
+        organizationMembership: {
+          ...organizationMembership,
+          status: organizationMembership?.status || OrgMembershipStatus.Accepted
+        }
       };
     }
   });
@@ -337,7 +339,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             .extend({
               isInstanceAdmin: z.boolean()
             })
-            .array()
+            .array(),
+          total: z.number()
         })
       }
     },
@@ -347,13 +350,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const identities = await server.services.superAdmin.getIdentities({
+      const result = await server.services.superAdmin.getIdentities({
         ...req.query
       });
 
-      return {
-        identities
-      };
+      return result;
     }
   });
 
@@ -895,7 +896,13 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const organizationMembership = await server.services.superAdmin.resendOrgInvite(req.params, req.permission);
-      return { organizationMembership };
+
+      return {
+        organizationMembership: {
+          ...organizationMembership,
+          status: organizationMembership?.status || OrgMembershipStatus.Accepted
+        }
+      };
     }
   });
 
@@ -925,7 +932,12 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         req.params.organizationId,
         req.permission
       );
-      return { organizationMembership };
+      return {
+        organizationMembership: {
+          ...organizationMembership,
+          status: organizationMembership?.status || OrgMembershipStatus.Accepted
+        }
+      };
     }
   });
 

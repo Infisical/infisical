@@ -147,14 +147,14 @@ export const GcpConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   <div>
                     Example:
                     <span className="ml-1">service-account-</span>
-                    <span className="font-semibold">{expectedAccountIdSuffix}</span>
+                    <span className="font-medium">{expectedAccountIdSuffix}</span>
                     <span>@my-project.iam.gserviceaccount.com</span>
                   </div>
                 </>
               }
             >
               <SecretInput
-                containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
               />

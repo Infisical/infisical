@@ -62,7 +62,7 @@ export const InvoiceEmailSection = () => {
       onSubmit={handleSubmit(onFormSubmit)}
       className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
     >
-      <h2 className="mb-8 flex-1 text-xl font-semibold text-white">Invoice email recipient</h2>
+      <h2 className="mb-8 flex-1 text-xl font-medium text-white">Invoice email recipient</h2>
       <div className="max-w-md">
         <Controller
           defaultValue=""

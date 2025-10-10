@@ -132,7 +132,7 @@ export const EditDynamicSecretSnowflakeForm = ({
       <form onSubmit={handleSubmit(handleUpdateDynamicSecret)} autoComplete="off">
         <div>
           <div className="flex items-center space-x-2">
-            <div className="flex-grow">
+            <div className="grow">
               <Controller
                 control={control}
                 defaultValue=""
@@ -182,7 +182,7 @@ export const EditDynamicSecretSnowflakeForm = ({
             </div>
           </div>
           <div>
-            <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
               Configuration
             </div>
             <div className="flex flex-col">
@@ -194,7 +194,7 @@ export const EditDynamicSecretSnowflakeForm = ({
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="Account Identifer"
-                      className="flex-grow"
+                      className="grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
@@ -225,7 +225,7 @@ export const EditDynamicSecretSnowflakeForm = ({
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="User"
-                      className="flex-grow"
+                      className="grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
@@ -239,7 +239,7 @@ export const EditDynamicSecretSnowflakeForm = ({
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="Password"
-                      className="flex-grow"
+                      className="grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >

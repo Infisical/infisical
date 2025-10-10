@@ -11,9 +11,9 @@ export const IdentityAuthFieldDisplay = ({ label, children, className }: Props) 
     <div className={className}>
       <span className="text-sm text-mineshaft-400">{label}</span>
       {children ? (
-        <p className="break-words text-base leading-4">{children}</p>
+        <p className="text-base leading-4 break-words">{children}</p>
       ) : (
-        <p className="text-base italic leading-4 text-bunker-400">Not set</p>
+        <p className="text-base leading-4 text-bunker-400 italic">Not set</p>
       )}
     </div>
   );

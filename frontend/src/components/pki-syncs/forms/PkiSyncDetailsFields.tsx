@@ -38,7 +38,7 @@ export const PkiSyncDetailsFields = () => {
               value={value}
               onChange={onChange}
               placeholder="Describe the purpose of this sync..."
-              className="!resize-none"
+              className="resize-none!"
               rows={4}
             />
           </FormControl>

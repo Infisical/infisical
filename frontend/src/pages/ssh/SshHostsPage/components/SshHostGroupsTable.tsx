@@ -79,7 +79,7 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                     <Td>{group.hostCount}</Td>
                     <Td>
                       {group.loginMappings.length === 0 ? (
-                        <span className="italic text-mineshaft-400">None</span>
+                        <span className="text-mineshaft-400 italic">None</span>
                       ) : (
                         group.loginMappings.map(({ loginUser, allowedPrincipals }) => (
                           <div key={`${group.id}-${loginUser}`} className="mb-2">

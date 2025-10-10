@@ -89,7 +89,7 @@ export const ConfirmActionModal = ({
         >
           <FormControl
             label={
-              <div className="break-words pb-2 text-sm">
+              <div className="pb-2 text-sm break-words">
                 {confirmationMessage || (
                   <>
                     Type <span className="font-bold">{confirmKey}</span> to perform this action

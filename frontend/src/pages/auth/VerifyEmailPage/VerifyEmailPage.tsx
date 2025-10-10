@@ -43,7 +43,7 @@ export const VerifyEmailPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col justify-center bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28">
+    <div className="flex min-h-screen flex-col justify-center bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28">
       <Helmet>
         <title>Reset Password</title>
         <link rel="icon" href="/infisical.ico" />
@@ -55,7 +55,7 @@ export const VerifyEmailPage = () => {
         />
       </Helmet>
       <Link to="/">
-        <div className="mb-4 mt-20 flex justify-center">
+        <div className="mt-20 mb-4 flex justify-center">
           <img
             src="/images/gradientLogo.svg"
             style={{
@@ -71,7 +71,7 @@ export const VerifyEmailPage = () => {
           onSubmit={onSubmit}
           className="mx-auto flex w-full flex-col items-center justify-center"
         >
-          <h1 className="mb-2 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
+          <h1 className="mb-2 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
             Forgot your password?
           </h1>
           <p className="w-max justify-center text-center text-sm text-gray-400">
@@ -113,7 +113,7 @@ export const VerifyEmailPage = () => {
       )}
       {step === 2 && (
         <div className="mx-auto flex w-full flex-col items-center justify-center">
-          <h1 className="mb-2 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
+          <h1 className="mb-2 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
             Look for an email in your inbox
           </h1>
           <p className="w-max max-w-lg justify-center text-center text-sm text-gray-400">

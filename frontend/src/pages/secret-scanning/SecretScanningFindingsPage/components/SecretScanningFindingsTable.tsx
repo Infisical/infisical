@@ -217,7 +217,7 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
               <FontAwesomeIcon icon={faFilter} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="thin-scrollbar max-h-[70vh] overflow-y-auto" align="end">
+          <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
             <DropdownMenuLabel>Status</DropdownMenuLabel>
             {Object.values(SecretScanningFindingStatus).map((status) => (
               <DropdownMenuItem
@@ -323,7 +323,7 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
                   }}
                 />
               </Th>
-              <Th className="min-w-[10rem]">Platform</Th>
+              <Th className="min-w-40">Platform</Th>
               <Th className="w-1/4">
                 <div className="flex items-center">
                   Timestamp

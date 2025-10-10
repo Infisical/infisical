@@ -84,7 +84,7 @@ export const SecretReferenceNode = ({
         <Collapsible.Trigger
           className={twMerge(
             hasChildren && "decoration-bunker-4ø00 underline-offset-4 data-[state=open]:underline",
-            "[&>svg]:data-[state=open]:rotate-[90deg] [&>svg]:data-[state=open]:text-yellow-500"
+            "data-[state=open]:[&>svg]:rotate-90 data-[state=open]:[&>svg]:text-yellow-500"
           )}
           disabled={!hasChildren}
         >
@@ -201,7 +201,7 @@ export const SecretReferenceTree = ({ secretPath, environment, secretKey }: Prop
         />
       </FormControl>
       <FormLabel className="mb-2" label="Reference Tree" />
-      <div className="thin-scrollbar relative max-h-96 overflow-auto rounded-md border border-mineshaft-600 bg-bunker-700 py-6 text-sm text-mineshaft-200">
+      <div className="relative max-h-96 thin-scrollbar overflow-auto rounded-md border border-mineshaft-600 bg-bunker-700 py-6 text-sm text-mineshaft-200">
         {isError ? (
           <div className="flex items-center justify-center py-4">
             <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2 text-red-500" />

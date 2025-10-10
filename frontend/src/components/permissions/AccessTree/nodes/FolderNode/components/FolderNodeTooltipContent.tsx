@@ -26,11 +26,11 @@ type ConditionDisplayProps = {
 const ConditionDisplay = ({ _key: key, value, operator }: ConditionDisplayProps) => {
   return (
     <li>
-      <span className="font-medium capitalize text-mineshaft-100">{camelCaseToSpaces(key)}</span>{" "}
+      <span className="font-medium text-mineshaft-100 capitalize">{camelCaseToSpaces(key)}</span>{" "}
       <span className="text-mineshaft-200">
         {formatedConditionsOperatorNames[operator as PermissionConditionOperators]}
       </span>{" "}
-      <span className="rounded bg-mineshaft-600 p-0.5 font-mono">
+      <span className="rounded-sm bg-mineshaft-600 p-0.5 font-mono">
         {typeof value === "string" ? value : value.join(", ")}
       </span>
       .
@@ -45,7 +45,7 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
     case PermissionAccess.Full:
       component = (
         <>
-          <div className="flex items-center gap-1.5 capitalize text-green">
+          <div className="flex items-center gap-1.5 text-green capitalize">
             <FontAwesomeIcon icon={faCheckCircle} size="xs" />
             <span>Full {formatActionName(action)} Permissions</span>
           </div>
@@ -62,7 +62,7 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
     case PermissionAccess.Partial:
       component = (
         <>
-          <div className="flex items-center gap-1.5 capitalize text-yellow">
+          <div className="flex items-center gap-1.5 text-yellow capitalize">
             <FontAwesomeIcon icon={faCircleMinus} className="text-yellow" size="xs" />
             <span>Conditional {formatActionName(action)} Permissions</span>
           </div>
@@ -137,7 +137,7 @@ export const FolderNodeTooltipContent = ({ action, access, actionRuleMap, subjec
     case PermissionAccess.None:
       component = (
         <>
-          <div className="flex items-center gap-1.5 capitalize text-red">
+          <div className="flex items-center gap-1.5 text-red capitalize">
             <FontAwesomeIcon icon={faCircleXmark} size="xs" />
             <span>No {formatActionName(action)} Permissions</span>
           </div>

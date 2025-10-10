@@ -93,9 +93,7 @@ export const AuthMethodSection = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <h2 className="mb-8 flex-1 text-xl font-semibold text-mineshaft-100">
-        Authentication methods
-      </h2>
+      <h2 className="mb-8 flex-1 text-xl font-medium text-mineshaft-100">Authentication methods</h2>
       <p className="mb-4 text-gray-400">
         By enabling a SSO provider, you are allowing an account with that provider which uses the
         same email address as your existing Infisical account to be able to log in to Infisical.

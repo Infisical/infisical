@@ -40,7 +40,7 @@ export const RoleNode = ({
     <>
       <Handle
         type="target"
-        className="pointer-events-none !cursor-pointer opacity-0"
+        className="pointer-events-none cursor-pointer! opacity-0"
         position={Position.Top}
       />
       <div className="flex h-14 w-full flex-col items-center justify-center rounded-md border border-mineshaft bg-mineshaft-800 px-2 py-3 font-inter shadow-lg transition-opacity duration-500">
@@ -51,7 +51,7 @@ export const RoleNode = ({
       </div>
       <Handle
         type="source"
-        className="pointer-events-none !cursor-pointer opacity-0"
+        className="pointer-events-none cursor-pointer! opacity-0"
         position={Position.Bottom}
       />
     </>

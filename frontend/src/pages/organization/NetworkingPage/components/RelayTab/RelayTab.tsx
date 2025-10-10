@@ -89,7 +89,7 @@ export const RelayTab = withPermission(
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-mineshaft-100">Relays</h3>
+            <h3 className="text-lg font-medium text-mineshaft-100">Relays</h3>
             <a
               href="https://infisical.com/docs/documentation/platform/gateways/relay-deployment"
               target="_blank"
@@ -150,7 +150,7 @@ export const RelayTab = withPermission(
                         <span>{el.name}</span>
                         {!el.orgId && (
                           <Tooltip content="This is a managed relay provided by Infisical">
-                            <span className="rounded bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
+                            <span className="rounded-sm bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
                               Managed
                             </span>
                           </Tooltip>

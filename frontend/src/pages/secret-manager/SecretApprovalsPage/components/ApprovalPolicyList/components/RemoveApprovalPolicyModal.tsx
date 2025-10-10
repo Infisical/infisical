@@ -100,7 +100,7 @@ export const RemoveApprovalPolicyModal = ({
       ) : (
         <div
           className={twMerge(
-            "mt-4 flex w-full items-start gap-2 rounded border p-2 text-sm",
+            "mt-4 flex w-full items-start gap-2 rounded-sm border p-2 text-sm",
             (openCount ?? 0) > 0
               ? "border-yellow/20 bg-yellow/10 text-yellow"
               : "border-green/20 bg-green/10 text-green"

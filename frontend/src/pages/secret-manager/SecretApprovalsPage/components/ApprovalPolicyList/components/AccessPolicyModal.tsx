@@ -476,7 +476,7 @@ const Form = ({
                   tooltipText="The maximum amount of time someone can request access for. Ex: 1h, 3w, 30d"
                   isError={Boolean(error)}
                   errorText={error?.message}
-                  className="flex-shrink"
+                  className="shrink"
                 >
                   <Input {...field} value={field.value || ""} placeholder="permanent" />
                 </FormControl>
@@ -494,7 +494,7 @@ const Form = ({
                   label="Min. Approvals Required"
                   isError={Boolean(error)}
                   errorText={error?.message}
-                  className="flex-shrink"
+                  className="shrink"
                 >
                   <Input
                     {...field}
@@ -561,11 +561,11 @@ const Form = ({
         </div>
         {isAccessPolicyType ? (
           <>
-            <div className="thin-scrollbar max-h-64 space-y-2 overflow-y-auto rounded border border-mineshaft-600 bg-mineshaft-900 p-2">
+            <div className="max-h-64 thin-scrollbar space-y-2 overflow-y-auto rounded-sm border border-mineshaft-600 bg-mineshaft-900 p-2">
               {sequenceApproversFieldArray.fields.map((el, index) => (
                 <div
                   className={twMerge(
-                    "rounded border border-mineshaft-500 bg-mineshaft-700 p-3 pb-0 shadow-inner",
+                    "rounded-sm border border-mineshaft-500 bg-mineshaft-700 p-3 pb-0 shadow-inner",
                     dragOverItem === index ? "border-2 border-blue-400" : "",
                     draggedItem === index ? "opacity-50" : ""
                   )}

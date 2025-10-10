@@ -303,7 +303,7 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
           onChangePerPage={handlePerPageChange}
         />
       )}
-      <div className="thin-scrollbar flex flex-1 flex-col overflow-y-auto">
+      <div className="flex thin-scrollbar flex-1 flex-col overflow-y-auto">
         <TableContainer
           ref={tableRef}
           className={twMerge(
@@ -344,14 +344,14 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
                         }`}
                         onMouseDown={handleMouseDown}
                       />
-                      <div className="pointer-events-none absolute -right-[0.02rem] top-[0.67rem] z-30">
+                      <div className="pointer-events-none absolute top-[0.67rem] -right-[0.02rem] z-30">
                         <div className="h-5 w-0.5 rounded-[1.5px] bg-gray-400 opacity-50" />
                       </div>
-                      <div className="flex h-full items-center border-b-2 border-r border-mineshaft-500 bg-mineshaft-700 bg-clip-padding p-0 px-4 py-2.5 text-sm normal-case">
+                      <div className="flex h-full items-center border-r border-b-2 border-mineshaft-500 bg-mineshaft-700 bg-clip-padding p-0 px-4 py-2.5 text-sm normal-case">
                         Name
                         <IconButton
                           variant="plain"
-                          className="ml-1 mt-[0.1rem]"
+                          className="mt-[0.1rem] ml-1"
                           ariaLabel="sort"
                           onClick={() =>
                             setOrderDirection((prev) =>
@@ -376,7 +376,7 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
 
                     return (
                       <Th
-                        className="whitespace-nowrap border-none p-0 text-center"
+                        className="border-none p-0 text-center whitespace-nowrap"
                         key={`environment-${slug}`}
                       >
                         <div
@@ -398,7 +398,7 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
                             >
                               <Badge
                                 variant="primary"
-                                className="-mt-[0.05rem] flex h-4 items-center gap-x-1 pt-[0.1rem] font-normal leading-3"
+                                className="-mt-[0.05rem] flex h-4 items-center gap-x-1 pt-[0.1rem] leading-3 font-normal"
                               >
                                 <FontAwesomeIcon icon={faWarning} className="-mt-[0.1rem] w-2.5" />
                                 {missingKeyCount}
@@ -499,7 +499,7 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
                 size="sm"
                 variant="outline_bg"
                 className={twMerge(
-                  "flex h-[2.5rem]",
+                  "flex h-10",
                   isTableFiltered && "border-primary/40 bg-primary/10"
                 )}
                 leftIcon={
@@ -513,7 +513,7 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="thin-scrollbar max-h-[70vh] overflow-y-auto"
+              className="max-h-[70vh] thin-scrollbar overflow-y-auto"
               align="end"
               sideOffset={2}
             >
@@ -574,7 +574,7 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
           </DropdownMenu>
         )}
       </div>
-      <div className="!z-[99999999]">
+      <div className="z-99999999!">
         <FormLabel label="Select Environments to Compare" />
         <FilterableSelect
           value={selectedEnvironments}

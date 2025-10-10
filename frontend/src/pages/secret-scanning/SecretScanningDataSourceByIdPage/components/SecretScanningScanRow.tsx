@@ -76,7 +76,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
           <span className="text-mineshaft-300">{format(createdAt, "h:mm aa")}</span>
         </p>
       </Td>
-      <Td className="!min-w-[8rem] max-w-0">
+      <Td className="max-w-0 min-w-32!">
         <div className="flex flex-col">
           <p className="truncate">{resourceName}</p>
         </div>

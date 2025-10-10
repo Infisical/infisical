@@ -1,4 +1,4 @@
-import { TIdentityAccessTokens, TIdentityOrgMemberships, TIdentityTlsCertAuths } from "@app/db/schemas";
+import { TIdentityAccessTokens, TIdentityTlsCertAuths, TMemberships } from "@app/db/schemas";
 import { TProjectPermission } from "@app/lib/types";
 
 export type TLoginTlsCertAuthDTO = {
@@ -40,7 +40,7 @@ export type TIdentityTlsCertAuthServiceFactory = {
     identityTlsCertAuth: TIdentityTlsCertAuths;
     accessToken: string;
     identityAccessToken: TIdentityAccessTokens;
-    identityMembershipOrg: TIdentityOrgMemberships;
+    identityMembershipOrg: TMemberships;
   }>;
   attachTlsCertAuth: (dto: TAttachTlsCertAuthDTO) => Promise<TIdentityTlsCertAuths>;
   updateTlsCertAuth: (dto: TUpdateTlsCertAuthDTO) => Promise<TIdentityTlsCertAuths>;

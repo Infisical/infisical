@@ -96,7 +96,7 @@ export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Pr
           </FormControl>
         )}
       />
-      <div className="mb-2 mt-4 flex flex-col border-t border-bunker-300/30 pt-4">
+      <div className="mt-4 mb-2 flex flex-col border-t border-bunker-300/30 pt-4">
         <div>Mapping</div>
         <div className="text-sm text-bunker-300">Select keys for rotated value to get saved</div>
       </div>

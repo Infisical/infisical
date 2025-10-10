@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { OrgMembershipRole, OrgMembershipStatus, TableName } from "../schemas";
+import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "../schemas";
 import { seedData1 } from "../seed-data";
 
 export async function seed(knex: Knex): Promise<void> {
@@ -24,13 +24,22 @@ export async function seed(knex: Knex): Promise<void> {
     ])
     .returning("*");
 
-  await knex(TableName.OrgMembership).insert([
+  const [membership] = await knex(TableName.Membership)
+    .insert([
+      {
+        scope: AccessScope.Organization,
+        scopeOrgId: org.id,
+        actorUserId: user.id,
+        isActive: true,
+        status: OrgMembershipStatus.Accepted
+      }
+    ])
+    .returning("*");
+
+  await knex(TableName.MembershipRole).insert([
     {
-      role: OrgMembershipRole.Admin,
-      orgId: org.id,
-      status: OrgMembershipStatus.Accepted,
-      userId: user.id,
-      isActive: true
+      membershipId: membership.id,
+      role: OrgMembershipRole.Admin
     }
   ]);
 }

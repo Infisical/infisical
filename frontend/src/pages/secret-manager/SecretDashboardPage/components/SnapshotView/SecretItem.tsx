@@ -69,13 +69,13 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
           if (evt.key === "Enter") setIsExpanded.toggle();
         }}
       >
-        <div className="w-12 flex-shrink-0 px-4 py-3">
+        <div className="w-12 shrink-0 px-4 py-3">
           <Tooltip content={mode}>{renderIcon(mode)}</Tooltip>
         </div>
-        <div className="w-12 flex-shrink-0 px-4 py-3">
+        <div className="w-12 shrink-0 px-4 py-3">
           <FontAwesomeIcon icon={faKey} />
         </div>
-        <div className="flex flex-grow items-center space-x-4 px-4 py-3">
+        <div className="flex grow items-center space-x-4 px-4 py-3">
           {mode === "modified" && !preSecret?.isRotatedSecret ? (
             <>
               <div>{preSecret?.key}</div>
@@ -106,7 +106,7 @@ export const SecretItem = ({ mode, preSecret, postSecret }: Props) => {
           <TableContainer>
             <Table>
               <THead>
-                <Th className="min-table-row min-w-[11rem] border-r border-mineshaft-600">Type</Th>
+                <Th className="min-table-row min-w-44 border-r border-mineshaft-600">Type</Th>
                 {isModified ? (
                   <>
                     <Th className="border-r border-mineshaft-600">Before rollback</Th>

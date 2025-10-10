@@ -32,7 +32,7 @@ export const FolderNode = ({
     <>
       <Handle
         type="target"
-        className="pointer-events-none !cursor-pointer opacity-0"
+        className="pointer-events-none cursor-pointer! opacity-0"
         position={Position.Top}
       />
       <div
@@ -42,7 +42,7 @@ export const FolderNode = ({
           <FontAwesomeIcon className="mb-0.5 font-medium text-yellow" icon={faFolder} />
           <span>{parentId ? `/${name}` : "/"}</span>
         </div>
-        <div className="mt-1.5 flex w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded bg-mineshaft-600 px-2 py-1 text-xs">
+        <div className="mt-1.5 flex w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-sm bg-mineshaft-600 px-2 py-1 text-xs">
           {Object.entries(actions).map(([action, access]) => {
             const { className, icon } = AccessMap[access];
 
@@ -70,7 +70,7 @@ export const FolderNode = ({
       </div>
       <Handle
         type="source"
-        className="pointer-events-none !cursor-pointer opacity-0"
+        className="pointer-events-none cursor-pointer! opacity-0"
         position={Position.Bottom}
       />
     </>
