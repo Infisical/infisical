@@ -158,7 +158,7 @@ export const CreateTagModal = ({ isOpen, onToggle, append, currentSecret }: Prop
         title={currentSecret ? `Create tag for ${currentSecret.key}` : "Create tag"}
         subTitle={
           currentSecret
-            ? "Create a new tag and it will be automatically added to this secret."
+            ? `Create a new tag, and it will be automatically linked to secret: ${currentSecret.key}.`
             : "Specify your tag name, and the slug will be created automatically."
         }
       >
