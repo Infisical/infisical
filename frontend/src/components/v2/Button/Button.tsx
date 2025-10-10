@@ -116,7 +116,7 @@ const buttonVariants = cva(
         colorSchema: "danger",
         variant: "outline_bg",
         className:
-          "bg-mineshaft-600 border border-red-500 hover:bg-red/15 bg-red/10 hover:border-red/40 text-red-500"
+          "bg-mineshaft-600 border border-red-500/40 hover:bg-red/15 bg-red/10 hover:border-red text-red-500"
       },
       {
         colorSchema: "primary",

@@ -462,8 +462,8 @@ export const SecretItem = memo(
                   />
                   <FontAwesomeSymbol
                     className={twMerge(
-                      "ml-3 block h-3.5 w-3.5 group-hover:hidden",
-                      isSelected && "hidden"
+                      "ml-3 block h-3.5 w-3.5 group-hover:!hidden",
+                      isSelected && "!hidden"
                     )}
                     symbolName={FontAwesomeSpriteName.SecretKey}
                   />

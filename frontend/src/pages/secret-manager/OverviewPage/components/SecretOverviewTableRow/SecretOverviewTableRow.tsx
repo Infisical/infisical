@@ -133,7 +133,7 @@ export const SecretOverviewTableRow = ({
                   className={twMerge("hidden group-hover:flex", isSelected && "flex")}
                 />
                 <FontAwesomeIcon
-                  className={twMerge("block group-hover:hidden", isSelected && "hidden")}
+                  className={twMerge("block group-hover:!hidden", isSelected && "!hidden")}
                   icon={isFormExpanded ? faAngleDown : faKey}
                 />
               </div>

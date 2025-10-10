@@ -401,18 +401,16 @@
   }
 }
 
-@layer components {
-  .Toastify__toast {
+.Toastify__toast {
     @apply rounded-md;
-  }
+}
 
-  .Toastify__toast-body {
+.Toastify__toast-body {
     @apply items-start;
-  }
+}
 
-  .Toastify__toast-icon {
+.Toastify__toast-icon {
     @apply w-4 pt-1;
-  }
 }
 
 .tags-conic-bg {

@@ -73,6 +73,7 @@ export const createNotification = (
 export const NotificationContainer = () => (
   <ToastContainer
     pauseOnHover
+    className="[&>svg]:top-1"
     toastClassName="border border-mineshaft-500"
     style={{ width: "400px" }}
   />
