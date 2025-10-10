@@ -29,7 +29,7 @@ export const UserNameSection = (): JSX.Element => {
   const onFormSubmit = async ({ name }: FormData) => {
     try {
       if (!user?.id) return;
-      if (name === "") return;
+      if (name.trim() === "") return;
 
       await mutateAsync({ newName: name });
       createNotification({
