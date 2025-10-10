@@ -36,7 +36,6 @@ Enabling HSM encryption has a set of key benefits:
 
 ### Requirements
 - An Infisical instance with a version number that is equal to or greater than `v0.91.0`.
-- If you are using Docker, your instance must be using the `infisical/infisical-fips` image.
 - An HSM device from a provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm), [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), [Fortanix HSM](https://www.fortanix.com/platform/data-security-manager), or others.
 
 
@@ -238,7 +237,7 @@ Enabling HSM encryption has a set of key benefits:
               -e DB_CONNECTION_URI="<>" \
               -e REDIS_URL="<>" \
               -e SITE_URL="<>" \
-              infisical/infisical-fips:<version> # Replace <version> with the version you want to use
+              infisical/infisical:<version> # Replace <version> with the version you want to use
             ```
 
             We recommend reading further about [using Infisical with Docker](/self-hosting/deployment-options/standalone-infisical).
@@ -309,7 +308,7 @@ Enabling HSM encryption has a set of key benefits:
               -e DB_CONNECTION_URI="<>" \
               -e REDIS_URL="<>" \
               -e SITE_URL="<>" \
-              infisical/infisical-fips:<version> # Replace <version> with the version you want to use
+              infisical/infisical:<version> # Replace <version> with the version you want to use
             ```
             
             <Warning>
@@ -319,6 +318,192 @@ Enabling HSM encryption has a set of key benefits:
         </Steps>
         After following these steps, your Docker setup will be ready to use Fortanix HSM encryption.
       </Tab>
+    
+
+
+      <Tab title="AWS CloudHSM">
+
+        ### Prerequisites
+        
+        - An [activated AWS CloudHSM cluster](https://docs.aws.amazon.com/cloudhsm/latest/userguide/activate-cluster.html) with at least 1 HSM device.
+        - A [HSM user with the `Crypto User` role](https://docs.aws.amazon.com/cloudhsm/latest/userguide/cloudhsm_cli-user-create.html). In this guide we are using a user with the username `testUser` and the password `testPassword`.
+
+
+        <Steps>
+
+          <Step title="Configure CloudHSM client">
+            Before using the CloudHSM client, it must be configured properly so Infisical can use it for cryptographic operations.
+
+
+            **1. Download the AWS CloudHSM client**
+
+            You can download the AWS CloudHSM client from [the AWS documentation](https://docs.aws.amazon.com/cloudhsm/latest/userguide/pkcs11-library-install.html).
+
+            <Note>
+              Note that the AWS CloudHSM client is only available for Linux and Windows.
+              If you're on a different operating system, you'll need to access a Linux machine to configure the client, such as an AWS EC2 Debian instance.
+            </Note>
+
+            **2. Configure the CloudHSM client**
+
+            After installing the CloudHSM client, you should see all related files in the `/opt/cloudhsm/` directory on your machine.
+
+            You need to run the `configure-pkcs11` binary which will configure the client to connect with your AWS CloudHSM cluster. Depending on if you have multiple HSM's inside your cluster, you'll need to run the command with different arguments. Below you'll find the appropriate command for your use case:
+
+
+            <AccordionGroup>
+              <Accordion title="Single HSM">
+
+                ```bash
+                sudo /opt/cloudhsm/bin/configure-pkcs11 -a <HSM_ENI_IPV4_ADDRESS> --disable-key-availability-check
+                ```
+
+                <Info>
+                  To use a single HSM, you must first manage client key durability settings by setting `disable_key_availability_check` to true by passing the `--disable-key-availability-check` flag. For more information read the [Key Synchronization](https://docs.aws.amazon.com/cloudhsm/latest/userguide/manage-key-sync.html) section in the AWS CloudHSM documentation.
+                </Info>
+              </Accordion>
+              <Accordion title="Multiple HSM's">
+
+                ```bash
+                sudo /opt/cloudhsm/bin/configure-pkcs11 -a <HSM_ENI_IPV4_ADDRESS_1> <HSM_ENI_IPV4_ADDRESS_2> ... --disable-key-availability-check
+                ```
+              </Accordion>
+            </AccordionGroup>
+
+            At this point it is assumed that you have:
+            1. [Activated the CloudHSM cluster](https://docs.aws.amazon.com/cloudhsm/latest/userguide/activate-cluster.html)
+            2. [Created a Crypto User HSM user](https://docs.aws.amazon.com/cloudhsm/latest/userguide/cloudhsm_cli-user-create.html)
+            3. Downloaded and configured the CloudHSM client as described in the previous steps.
+
+            **3. Download the configured HSM client files**
+
+            After configuring the CloudHSM client, you should notice that the PKCS11 configuration file has been updated to include the HSM's ENI IP address. You can find this file in the `/opt/cloudhsm/etc/cloudhsm-pkcs11.cfg` directory, and it should look like this:
+
+            ```json cloudhsm-pkcs11.cfg
+            {
+              "clusters": [
+                {
+                  "type": "hsm1",
+                  "cluster": {
+                    // Your issuing CA certificate.
+                    // As per AWS documentation, this defaults to `/opt/cloudhsm/etc/customerCA.crt`.
+                    "hsm_ca_file": "/opt/cloudhsm/etc/customerCA.crt",
+                    "servers": [
+                      {
+                        "hostname": "<HSM_ENI_IPV4_ADDRESS_1>",
+                        "port": 2223,
+                        "enable": true
+                      },
+                      {
+                        "hostname": "<HSM_ENI_IPV4_ADDRESS_2>",
+                        "port": 2223,
+                        "enable": true
+                      }
+                    ],
+                    // Only relevant if you passed the --disable-key-availability-check flag
+                    "options": {
+                      "disable_key_availability_check": true
+                    }
+                  }
+                }
+              ],
+              "logging": {
+                "log_type": "file",
+                "log_file": "/opt/cloudhsm/run/cloudhsm-pkcs11.log",
+                "log_level": "info",
+                "log_interval": "daily"
+              }
+            }
+          ```
+
+          Save the entire `/opt/cloudhsm` folder, as you will need to mount this to your Infisical Docker container in the later steps. In this guide we will be saving all the files from the folder as `/etc/cloudhsm` and mounting it to the `/etc/cloudhsm` directory in the Docker container.
+
+          </Step>
+
+          <Step title="Find HSM slot number">
+            On the same machine that you configured the CloudHSM client, you can use `pkcs11-tool` to find the HSM slot number and to verify that the client is working correctly.
+
+            First, install the `pkcs11-tool` package:
+
+            ```bash
+            sudo apt-get install opensc -y
+            ```
+
+            Then, run the following command to find the HSM slot number:
+
+            ```bash
+            pkcs11-tool --module /opt/cloudhsm/lib/libcloudhsm_pkcs11.so --list-slots --login
+            ```
+
+            It'll prompt you to log in with your PIN, which is your username and password seperated by a colon. Example: `testUser:testPassword`.
+
+            This will output the HSM slot number like so:
+
+            ```bash
+            ubuntu@ec-2:~$ pkcs11-tool --module /opt/cloudhsm/lib/libcloudhsm_pkcs11.so --list-slots
+            Available slots:
+            Slot 0 (0x2000000000000001): hsm1
+              token label        : hsm1
+              token manufacturer : Marvell Semiconductors, Inc.
+              token model        : LS2
+              token flags        : login required, rng, token initialized
+              hardware version   : 66.48
+              firmware version   : 10.2
+              serial num         : 
+              pin min/max        : 8/32
+            ```
+
+            In this case we see that the HSM has a slot in the position of `0`. This slot number will be used in the later steps to set the `HSM_SLOT` environment variable.
+          </Step>
+
+          <Step title="Download the HSM issuing CA certificate">
+            When you initialized your HSM, you were prompted to download the cluster CSR and sign it.
+            In order to use the HSM with Infisical, you need to obtain the issuer CA certificate that was used to sign the cluster CSR.
+
+            If you followed [the official AWS documentation](https://docs.aws.amazon.com/cloudhsm/latest/userguide/initialize-cluster.html), you should have a CA certificate called `customerCA.crt`. 
+
+            Save the CA certificate to a path, as this will need to be mounted as a Docker volume in the next step. For this example, we'll save it to `/aws-files/customerCA.crt`.
+          </Step>
+
+          <Step title="Run Docker">
+            Running Docker with HSM encryption requires setting the HSM-related environment variables as mentioned previously in the [HSM setup instructions](#setup-instructions). You can set these environment variables in your Docker run command.
+
+            We are setting the environment variables for Docker via the command line in this example, but you can also pass in a `.env` file to set these environment variables.
+
+            <Warning>
+              If no key is found with the provided key label, the HSM will create a new key with the provided label.
+              Infisical depends on an AES and HMAC key to be present in the HSM. If these keys are not present, Infisical will create them. The AES key label will be the value of the `HSM_KEY_LABEL` environment variable, and the HMAC key label will be the value of the `HSM_KEY_LABEL` environment variable with the suffix `_HMAC`.
+            </Warning>
+
+            ```bash
+            docker run -p 80:8080 \
+
+              # Mount the HSM client files to "/opt/cloudhsm"
+              -v /etc/cloudhsm:/opt/cloudhsm \
+              # Mount the issuer CA certificate to "/opt/cloudhsm/etc/customerCA.crt"
+              -v /aws-files/customerCA.crt:/opt/cloudhsm/etc/customerCA.crt \
+
+              # Set the HSM library path to whats expected within Docker (/opt/cloudhsm/lib/libcloudhsm_pkcs11.so)
+              -e HSM_LIB_PATH="/opt/cloudhsm/lib/libcloudhsm_pkcs11.so" \
+              # Set the HSM PIN to the username and password of the HSM user, seperated by a colon
+              -e HSM_PIN=CryptoUserUsername:CryptoUserPassword \
+              # Set the HSM slot number to the slot number of the HSM device as found in the previous step
+              -e HSM_SLOT=<hsm-device-slot> \
+              # Set the HSM key label to a label that will be used to identify the encryption key in the HSM. This key label does not need to exist before hand.
+              -e HSM_KEY_LABEL=infisical-crypto-key \
+            
+              # The rest of your environment variables ...
+              # -e ...
+              infisical/infisical:<version> # Replace <version> with the version you want to use
+            ```
+
+            We recommend reading further about [using Infisical with Docker](/self-hosting/deployment-options/standalone-infisical).
+
+          </Step>
+        </Steps>
+        After following these steps, your Docker setup will be ready to use HSM encryption.
+      </Tab>
+    
     </Tabs>
   </Tab>
   <Tab title="Kubernetes">
@@ -326,6 +511,7 @@ Enabling HSM encryption has a set of key benefits:
 
     <Tabs>
       <Tab title="Thales Luna Cloud HSM">
+
         <Note>
           This is only supported on helm chart version `1.4.1` and above. Please see the [Helm Chart Changelog](https://github.com/Infisical/infisical/blob/main/helm-charts/infisical-standalone-postgres/CHANGELOG.md#141-march-19-2025) for more information.
         </Note>
@@ -591,13 +777,11 @@ Enabling HSM encryption has a set of key benefits:
           <Step title="Updating the Deployment">
             After we've successfully configured the PVC and updated our environment variables, we are ready to update the deployment configuration so that the pods it creates can access the HSM client files.
 
-            We need to update the Docker image of the deployment to use `infisical/infisical-fips`. The `infisical/infisical-fips` image is a functionally identical image to the `infisical/infisical` image, but it is built with HSM support.
-
             ```yaml
               # ... The rest of the values.yaml file ...
               
               image:
-                repository: infisical/infisical-fips # Very important: Must use "infisical/infisical-fips"
+                repository: infisical/infisical
                 tag: "v0.117.1-postgres"
                 pullPolicy: IfNotPresent
 
@@ -757,13 +941,13 @@ Enabling HSM encryption has a set of key benefits:
           </Step>
           
           <Step title="Update Helm Values">
-            Update your Helm values to use the FIPS-compliant image and mount the Fortanix HSM files:
+            Update your Helm values to mount the Fortanix HSM files:
             
             ```yaml
             # ... The rest of the values.yaml file ...
             
             image:
-              repository: infisical/infisical-fips  # Must use "infisical/infisical-fips"
+              repository: infisical/infisical
               tag: "v0.117.1-postgres"
               pullPolicy: IfNotPresent
             
@@ -799,6 +983,314 @@ Enabling HSM encryption has a set of key benefits:
           </Step>
         </Steps>
         After following these steps, your Kubernetes setup will be ready to use Fortanix HSM encryption.
+      </Tab>
+
+      <Tab title="AWS CloudHSM">
+
+        ### Prerequisites
+        
+        - An [activated AWS CloudHSM cluster](https://docs.aws.amazon.com/cloudhsm/latest/userguide/activate-cluster.html) with at least 1 HSM device.
+        - A [HSM user with the `Crypto User` role](https://docs.aws.amazon.com/cloudhsm/latest/userguide/cloudhsm_cli-user-create.html). In this guide we are using a user with the username `testUser` and the password `testPassword`.
+        - A Kubernetes cluster
+
+        <Note>
+          AWS CloudHSM is supported on helm chart version `1.4.1` and above. Please see the [Helm Chart Changelog](https://github.com/Infisical/infisical/blob/main/helm-charts/infisical-standalone-postgres/CHANGELOG.md#141-march-19-2025) for more information.
+        </Note>
+
+        <Steps>
+
+          <Step title="Configure CloudHSM client">
+            Before using the CloudHSM client with Kubernetes, it must be configured properly so Infisical can use it for cryptographic operations.
+
+            **1. Download and configure the AWS CloudHSM client**
+
+            You can download the AWS CloudHSM client from [the AWS documentation](https://docs.aws.amazon.com/cloudhsm/latest/userguide/pkcs11-library-install.html).
+
+            <Note>
+              Note that the AWS CloudHSM client is only available for Linux and Windows.
+              If you're on a different operating system, you'll need to access a Linux machine to configure the client, such as an AWS EC2 Debian instance.
+            </Note>
+
+            After installing the CloudHSM client, you should see all related files in the `/opt/cloudhsm/` directory on your machine.
+
+            You need to run the `configure-pkcs11` binary which will configure the client to connect with your AWS CloudHSM cluster. Depending on if you have multiple HSM's inside your cluster, you'll need to run the command with different arguments. Below you'll find the appropriate command for your use case:
+
+            <AccordionGroup>
+              <Accordion title="Single HSM">
+
+                ```bash
+                sudo /opt/cloudhsm/bin/configure-pkcs11 -a <HSM_ENI_IPV4_ADDRESS> --disable-key-availability-check
+                ```
+
+                <Info>
+                  To use a single HSM, you must first manage client key durability settings by setting `disable_key_availability_check` to true by passing the `--disable-key-availability-check` flag. For more information read the [Key Synchronization](https://docs.aws.amazon.com/cloudhsm/latest/userguide/manage-key-sync.html) section in the AWS CloudHSM documentation.
+                </Info>
+              </Accordion>
+              <Accordion title="Multiple HSM's">
+
+                ```bash
+                sudo /opt/cloudhsm/bin/configure-pkcs11 -a <HSM_ENI_IPV4_ADDRESS_1> <HSM_ENI_IPV4_ADDRESS_2> ... --disable-key-availability-check
+                ```
+              </Accordion>
+            </AccordionGroup>
+
+            At this point it is assumed that you have:
+            1. [Activated the CloudHSM cluster](https://docs.aws.amazon.com/cloudhsm/latest/userguide/activate-cluster.html)
+            2. [Created a Crypto User HSM user](https://docs.aws.amazon.com/cloudhsm/latest/userguide/cloudhsm_cli-user-create.html)
+            3. Downloaded and configured the CloudHSM client as described in the previous steps.
+
+            **2. Verify the configuration file**
+
+            After configuring the CloudHSM client, you should notice that the PKCS11 configuration file has been updated to include the HSM's ENI IP address. You can find this file in the `/opt/cloudhsm/etc/cloudhsm-pkcs11.cfg` directory, and it should look like this:
+
+            ```json cloudhsm-pkcs11.cfg
+            {
+              "clusters": [
+                {
+                  "type": "hsm1",
+                  "cluster": {
+                    // Your issuing CA certificate.
+                    // As per AWS documentation, this defaults to `/opt/cloudhsm/etc/customerCA.crt`.
+                    "hsm_ca_file": "/opt/cloudhsm/etc/customerCA.crt",
+                    "servers": [
+                      {
+                        "hostname": "<HSM_ENI_IPV4_ADDRESS_1>",
+                        "port": 2223,
+                        "enable": true
+                      },
+                      {
+                        "hostname": "<HSM_ENI_IPV4_ADDRESS_2>",
+                        "port": 2223,
+                        "enable": true
+                      }
+                    ],
+                    // Only relevant if you passed the --disable-key-availability-check flag
+                    "options": {
+                      "disable_key_availability_check": true
+                    }
+                  }
+                }
+              ],
+              "logging": {
+                "log_type": "file",
+                "log_file": "/opt/cloudhsm/run/cloudhsm-pkcs11.log",
+                "log_level": "info",
+                "log_interval": "daily"
+              }
+            }
+            ```
+
+            **3. Copy the CloudHSM client files to a staging directory**
+
+            Create a directory to stage the CloudHSM client files for Kubernetes:
+
+            ```bash
+            mkdir -p /etc/cloudhsm-k8s
+            ```
+
+            Copy the entire `/opt/cloudhsm` directory to your staging location:
+
+            ```bash
+            cp -r /opt/cloudhsm/* /etc/cloudhsm-k8s/
+            ```
+
+            Ensure the configuration file paths are correct. The `cloudhsm-pkcs11.cfg` file should reference `/opt/cloudhsm/etc/customerCA.crt` as shown above, since this is where files will be mounted inside the Kubernetes container.
+
+          </Step>
+
+          <Step title="Find HSM slot number">
+            On the same machine that you configured the CloudHSM client, you can use `pkcs11-tool` to find the HSM slot number and to verify that the client is working correctly.
+
+            First, install the `pkcs11-tool` package:
+
+            ```bash
+            sudo apt-get install opensc -y
+            ```
+
+            Then, run the following command to find the HSM slot number:
+
+            ```bash
+            pkcs11-tool --module /opt/cloudhsm/lib/libcloudhsm_pkcs11.so --list-slots --login
+            ```
+
+            It'll prompt you to log in with your PIN, which is your username and password separated by a colon. Example: `testUser:testPassword`.
+
+            This will output the HSM slot number like so:
+
+            ```bash
+            ubuntu@ec-2:~$ pkcs11-tool --module /opt/cloudhsm/lib/libcloudhsm_pkcs11.so --list-slots
+            Available slots:
+            Slot 0 (0x2000000000000001): hsm1
+              token label        : hsm1
+              token manufacturer : Marvell Semiconductors, Inc.
+              token model        : LS2
+              token flags        : login required, rng, token initialized
+              hardware version   : 66.48
+              firmware version   : 10.2
+              serial num         : 
+              pin min/max        : 8/32
+            ```
+
+            In this case we see that the HSM has a slot in the position of `0`. This slot number will be used in the later steps to set the `HSM_SLOT` environment variable.
+          </Step>
+
+          <Step title="Obtain the HSM issuing CA certificate">
+            When you initialized your HSM, you were prompted to download the cluster CSR and sign it.
+            In order to use the HSM with Infisical, you need to obtain the issuer CA certificate that was used to sign the cluster CSR.
+
+            If you followed [the official AWS documentation](https://docs.aws.amazon.com/cloudhsm/latest/userguide/initialize-cluster.html), you should have a CA certificate called `customerCA.crt`. 
+
+            Copy the CA certificate to your staging directory:
+
+            ```bash
+            cp /path/to/customerCA.crt /etc/cloudhsm-k8s/etc/customerCA.crt
+            ```
+
+            Ensure the file is at `/etc/cloudhsm-k8s/etc/customerCA.crt` as this is what the configuration file expects.
+          </Step>
+
+          <Step title="Creating Persistent Volume Claim (PVC)">
+            You need to create a Persistent Volume Claim (PVC) to mount the HSM client files to the Infisical deployment.
+
+            ```bash
+            kubectl apply -f - <<EOF
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: cloudhsm-data-pvc
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 500Mi
+            EOF
+            ```
+            The above command will create a PVC named `cloudhsm-data-pvc` with a storage size of `500Mi`. You can change the storage size if needed.
+
+            Next we need to create a temporary pod with the PVC mounted as a volume, allowing us to copy the HSM client files into this mounted storage.
+
+            ```bash
+            kubectl apply -f - <<EOF
+            apiVersion: v1
+            kind: Pod
+            metadata:
+              name: cloudhsm-setup-pod
+            spec:
+              containers:
+              - name: setup
+                image: busybox
+                command: ["/bin/sh", "-c", "sleep 3600"]
+                volumeMounts:
+                - name: cloudhsm-data
+                  mountPath: /data
+              volumes:
+              - name: cloudhsm-data
+                persistentVolumeClaim:
+                  claimName: cloudhsm-data-pvc
+            EOF
+            ```
+
+            The above command will create a pod named `cloudhsm-setup-pod` with a busybox image. The pod will sleep for 3600 seconds _(one hour)_, which is enough time to upload the HSM client files to the PVC.
+
+            Ensure that the pod is running and is healthy by running the following command:
+
+            ```bash
+            kubectl wait --for=condition=Ready pod/cloudhsm-setup-pod --timeout=60s
+            ```
+
+            Next we need to copy the HSM client files into the PVC.
+
+            ```bash
+            kubectl exec cloudhsm-setup-pod -- mkdir -p /data/ # Create the data directory
+            kubectl cp /etc/cloudhsm-k8s/. cloudhsm-setup-pod:/data/ # Copy the HSM client files into the PVC
+            kubectl exec cloudhsm-setup-pod -- chmod -R 755 /data/ # Set the correct permissions for the HSM client files
+            ```
+
+            Finally, we are ready to delete the temporary pod, as we have successfully uploaded the HSM client files to the PVC. This step may take a few minutes to complete.
+
+            ```bash
+            kubectl delete pod cloudhsm-setup-pod
+            ```
+          </Step>
+
+          <Step title="Updating your environment variables">
+            Next we need to update the environment variables used for the deployment. If you followed the [setup instructions for Kubernetes deployments](/self-hosting/deployment-options/kubernetes-helm), you should have a Kubernetes secret called `infisical-secrets`.
+            We need to update the secret with the following environment variables:
+
+            - `HSM_LIB_PATH` - The path to the CloudHSM PKCS#11 library _(mapped to `/opt/cloudhsm/lib/libcloudhsm_pkcs11.so`)_
+            - `HSM_PIN` - The PIN for the HSM device, which is the username and password of your Crypto User separated by a colon (e.g., `testUser:testPassword`)
+            - `HSM_SLOT` - The slot number for the HSM device that you found in the previous step
+            - `HSM_KEY_LABEL` - The label for the HSM key. If no key is found with the provided key label, the HSM will create a new key with the provided label.
+
+            The following is an example of the secret that you should update:
+
+            ```yaml
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: infisical-secrets
+            type: Opaque
+            stringData:
+              # ... Other environment variables ...
+              HSM_LIB_PATH: "/opt/cloudhsm/lib/libcloudhsm_pkcs11.so"
+              HSM_PIN: "testUser:testPassword"  # Replace with your actual Crypto User credentials
+              HSM_SLOT: "0"  # Replace with your actual slot number
+              HSM_KEY_LABEL: "infisical-crypto-key"
+            ```
+
+            Save the file after updating the environment variables, and apply the secret changes
+
+            ```bash
+            kubectl apply -f ./secret-file-name.yaml
+            ```
+          </Step>
+
+          <Step title="Updating the Deployment">
+            After we've successfully configured the PVC and updated our environment variables, we are ready to update the deployment configuration so that the pods it creates can access the HSM client files.
+
+            ```yaml
+              # ... The rest of the values.yaml file ...
+              
+              image:
+                repository: infisical/infisical
+                tag: "v0.117.1-postgres"
+                pullPolicy: IfNotPresent
+
+              extraVolumeMounts:
+                - name: cloudhsm-data
+                  mountPath: /opt/cloudhsm  # The path we will mount the HSM client files to
+
+              extraVolumes:
+                - name: cloudhsm-data 
+                  persistentVolumeClaim:
+                    claimName: cloudhsm-data-pvc  # The PVC we created in the previous step
+
+              # ... The rest of the values.yaml file ...
+            ```
+
+            <Warning>
+              Ensure that the configuration file at `/opt/cloudhsm/etc/cloudhsm-pkcs11.cfg` references the correct path for the issuer CA certificate (`/opt/cloudhsm/etc/customerCA.crt`). This should already be configured correctly if you followed the previous steps.
+            </Warning>
+
+          </Step>
+
+          <Step title="Upgrading the Helm Chart">
+            After updating the values.yaml file, you need to upgrade the Helm chart in order for the changes to take effect.
+
+            ```bash
+            helm upgrade --install infisical infisical-helm-charts/infisical-standalone --values /path/to/values.yaml
+            ```
+          </Step>
+          <Step title="Restarting the Deployment">
+            After upgrading the Helm chart, you need to restart the deployment in order for the changes to take effect.
+
+            ```bash
+            kubectl rollout restart deployment/infisical-infisical
+            ```
+          </Step>
+        </Steps>
+        After following these steps, your Kubernetes setup will be ready to use AWS CloudHSM encryption.
       </Tab>
     </Tabs>
   </Tab>
