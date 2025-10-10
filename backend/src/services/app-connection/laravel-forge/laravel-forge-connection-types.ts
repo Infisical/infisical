@@ -21,5 +21,43 @@ export type TLaravelForgeConnectionConfig = DiscriminativePick<
   TLaravelForgeConnectionInput,
   "method" | "app" | "credentials"
 > & {
-  orgId: string;
+  orgSlug: string;
+};
+
+export type TLaravelForgeOrganization = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export type TLaravelForgeServer = {
+  id: string;
+  name: string;
+};
+
+export type TLaravelForgeSite = {
+  id: string;
+  name: string;
+};
+
+export type TRawLaravelForgeOrganization = {
+  id: string;
+  attributes: {
+    name: string;
+    slug: string;
+  };
+};
+
+export type TRawLaravelForgeServer = {
+  id: string;
+  attributes: {
+    name: string;
+  };
+};
+
+export type TRawLaravelForgeSite = {
+  id: string;
+  attributes: {
+    name: string;
+  };
 };
