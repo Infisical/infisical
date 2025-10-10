@@ -31,5 +31,5 @@ jobs:
         run: npm run type:check
         working-directory: frontend
       - name: 🏗️ Run Link check
-        run: npm run lint:fix
+        run: npm run lint
         working-directory: frontend
