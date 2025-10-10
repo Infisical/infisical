@@ -48,7 +48,7 @@ import { useDeleteGatewayV2ById } from "@app/hooks/api/gateways-v2";
 
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
 
-export const GatewayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
+const GatewayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
   const now = new Date();
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);

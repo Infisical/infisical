@@ -4,7 +4,7 @@ import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 import { BaseLink } from "./BaseLink";
 
 interface HealthAlertTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
-  type: "gateway" | "relay";
+  type: "gateway" | "relay" | "instance-relay";
   names: string;
 }
 
@@ -24,8 +24,14 @@ export const HealthAlertTemplate = ({ siteUrl, names, type }: HealthAlertTemplat
           heartbeat in over an hour: <strong>{names}</strong>.
         </Text>
         <Text className="text-black text-[14px] leading-[24px]">
-          If your issue persists, you can contact the Infisical team at{" "}
-          <BaseLink href="mailto:support@infisical.com">support@infisical.com</BaseLink>.
+          {type === "instance-relay" && (
+            <>
+              If your issue persists, you can contact the Infisical team at{" "}
+              <BaseLink href="mailto:support@infisical.com">support@infisical.com</BaseLink>.
+            </>
+          )}
+          {type === "relay" && <>Please contact your relay administrators.</>}
+          {type === "gateway" && <>Please contact your gateway administrators.</>}
         </Text>
       </Section>
     </BaseEmailWrapper>

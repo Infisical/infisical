@@ -31,6 +31,7 @@ export const gatewayV2DalFactory = (db: TDbClient) => {
 
       if (isHeartbeatStale) {
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        void query.whereNotNull(`${TableName.GatewayV2}.heartbeat`);
         void query.where(`${TableName.GatewayV2}.heartbeat`, "<", oneHourAgo);
         void query.where((v) => {
           void v

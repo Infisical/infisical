@@ -8,6 +8,7 @@ import { OrgMembershipRole, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
 import { createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -1220,14 +1221,7 @@ export const relayServiceFactory = ({
       "Found relays with last heartbeat over an hour ago. Sending notifications."
     );
 
-    const relaysByOrg = unhealthyRelays.reduce<Record<string, TRelays[]>>((acc, r) => {
-      const key = r.orgId ?? "instance";
-      if (!acc[key]) {
-        acc[key] = [];
-      }
-      acc[key].push(r);
-      return acc;
-    }, {});
+    const relaysByOrg = groupBy(unhealthyRelays, (r) => r.orgId ?? "instance");
 
     for await (const [orgId, relays] of Object.entries(relaysByOrg)) {
       try {
@@ -1244,7 +1238,7 @@ export const relayServiceFactory = ({
               recipients,
               subjectLine: "Relay Health Alert",
               substitutions: {
-                type: "relay",
+                type: "instance-relay",
                 names: relayNames
               },
               template: SmtpTemplates.HealthAlert

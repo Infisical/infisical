@@ -9,6 +9,7 @@ import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
@@ -902,13 +903,7 @@ export const gatewayV2ServiceFactory = ({
       "Found gateways with last heartbeat over an hour ago. Sending notifications."
     );
 
-    const gatewaysByOrg = unhealthyGateways.reduce<Record<string, (typeof unhealthyGateways)[number][]>>((acc, gw) => {
-      if (!acc[gw.orgId]) {
-        acc[gw.orgId] = [];
-      }
-      acc[gw.orgId].push(gw);
-      return acc;
-    }, {});
+    const gatewaysByOrg = groupBy(unhealthyGateways, (gw) => gw.orgId);
 
     for await (const [orgId, gateways] of Object.entries(gatewaysByOrg)) {
       try {
