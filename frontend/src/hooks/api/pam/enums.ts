@@ -1,5 +1,6 @@
 export enum PamResourceType {
   Postgres = "postgres",
+  MySQL = "mysql",
   RDP = "rdp",
   SSH = "ssh",
   Kubernetes = "kubernetes"
