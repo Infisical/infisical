@@ -47,7 +47,7 @@ const RelayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
   const now = new Date();
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
-  const isHealthy = heartbeatDate && heartbeatDate >= oneHourAgo;
+  const isHealthy = !heartbeatDate || heartbeatDate >= oneHourAgo;
   const tooltipContent = heartbeatDate
     ? `Last heartbeat: ${heartbeatDate.toLocaleString()}`
     : "No heartbeat data available";
