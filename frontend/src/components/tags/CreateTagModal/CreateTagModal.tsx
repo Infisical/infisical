@@ -170,13 +170,13 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
               Tag Color
             </div>
             <div className="flex space-x-2">
-              <div className="flex items-center justify-center rounded border border-mineshaft-500 bg-mineshaft-900 p-2">
+              <div className="flex items-center justify-center rounded-sm border border-mineshaft-500 bg-mineshaft-900 p-2">
                 <div
                   className="h-6 w-6 rounded-full"
                   style={{ background: `${selectedTagColor}` }}
                 />
               </div>
-              <div className="flex flex-grow items-center rounded border-mineshaft-500 bg-mineshaft-900 px-1 pr-2">
+              <div className="flex grow items-center rounded-sm border-mineshaft-500 bg-mineshaft-900 px-1 pr-2">
                 {!showHexInput ? (
                   <div className="inline-flex items-center gap-3 pl-3">
                     {secretTagsColors.map(($tagColor: TagColor) => {
@@ -202,7 +202,7 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
                     })}
                   </div>
                 ) : (
-                  <div className="tags-hex-wrapper flex flex-grow items-center px-2">
+                  <div className="tags-hex-wrapper flex grow items-center px-2">
                     <div className="relative flex items-center rounded-md">
                       {isValidHexColor(selectedTagColor) && (
                         <div
@@ -216,7 +216,7 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
                         <div className="bg-blue h-7 w-7 rounded-full border border-dashed border-mineshaft-500" />
                       )}
                     </div>
-                    <div className="flex-grow">
+                    <div className="grow">
                       <Input
                         variant="plain"
                         value={selectedTagColor}
@@ -230,7 +230,7 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
                 <div className="mx-4 h-8 border border-mineshaft-500" />
                 <div className="flex h-7 w-7 items-center justify-center">
                   <div
-                    className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-sm border border-mineshaft-500 bg-mineshaft-900 bg-transparent p-2 hover:ring-2 hover:ring-offset-1 ${
+                    className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-xs border border-mineshaft-500 bg-mineshaft-900 bg-transparent p-2 hover:ring-2 hover:ring-offset-1 ${
                       showHexInput ? "tags-conic-bg rounded-full" : ""
                     }`}
                     onClick={() => setShowHexInput((prev) => !prev)}

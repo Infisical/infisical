@@ -45,8 +45,8 @@ export const SecretContainer = ({ secret, secretKey: key }: Props) => {
 
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
-      <div className="flex items-center justify-between rounded-md bg-white/[0.05] p-2 text-base text-gray-400">
-        <p className="whitespace-pre-wrap break-all">
+      <div className="flex items-center justify-between rounded-md bg-white/5 p-2 text-base text-gray-400">
+        <p className="break-all whitespace-pre-wrap">
           {isVisible ? decryptedSecret : hiddenSecret}
         </p>
         <div className="flex">

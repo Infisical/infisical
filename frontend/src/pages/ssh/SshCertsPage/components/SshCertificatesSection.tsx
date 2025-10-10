@@ -14,7 +14,7 @@ export const SshCertificatesSection = () => {
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-xl font-semibold text-mineshaft-100">Certificates</p>
+        <p className="text-xl font-medium text-mineshaft-100">Certificates</p>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Create}
           a={ProjectPermissionSub.SshCertificates}

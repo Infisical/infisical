@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { ProjectMembershipRole, ProjectType, ProjectVersion, TableName } from "../schemas";
+import { AccessScope, ProjectMembershipRole, ProjectType, ProjectVersion, TableName } from "../schemas";
 import { seedData1 } from "../seed-data";
 
 export const DEFAULT_PROJECT_ENVS = [
@@ -23,15 +23,17 @@ export async function seed(knex: Knex): Promise<void> {
     })
     .returning("*");
 
-  const projectMembershipV3 = await knex(TableName.ProjectMembership)
+  const projectMembershipV3 = await knex(TableName.Membership)
     .insert({
-      projectId: projectV2.id,
-      userId: seedData1.id
+      scopeProjectId: projectV2.id,
+      actorUserId: seedData1.id,
+      scope: AccessScope.Project,
+      scopeOrgId: seedData1.organization.id
     })
     .returning("*");
-  await knex(TableName.ProjectUserMembershipRole).insert({
+  await knex(TableName.MembershipRole).insert({
     role: ProjectMembershipRole.Admin,
-    projectMembershipId: projectMembershipV3[0].id
+    membershipId: projectMembershipV3[0].id
   });
 
   // create default environments and default folders

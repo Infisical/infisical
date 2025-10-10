@@ -158,7 +158,7 @@ export const RequestSecretForm = () => {
     </form>
   ) : (
     <>
-      <div className="mr-2 flex items-center justify-end rounded-md bg-white/[0.05] p-2 text-base text-gray-400">
+      <div className="mr-2 flex items-center justify-end rounded-md bg-white/5 p-2 text-base text-gray-400">
         <p className="mr-4 break-all">{secretLink}</p>
         <IconButton
           ariaLabel="copy icon"

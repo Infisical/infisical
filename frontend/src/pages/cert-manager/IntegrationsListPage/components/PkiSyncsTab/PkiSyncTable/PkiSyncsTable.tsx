@@ -292,7 +292,7 @@ export const PkiSyncsTable = ({ pkiSyncs }: Props) => {
               <FontAwesomeIcon icon={faFilter} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="thin-scrollbar max-h-[70vh] overflow-y-auto" align="end">
+          <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
             <DropdownMenuLabel>Status</DropdownMenuLabel>
             {[PkiSyncStatus.Running, PkiSyncStatus.Succeeded, PkiSyncStatus.Failed].map(
               (status) => (
@@ -409,7 +409,7 @@ export const PkiSyncsTable = ({ pkiSyncs }: Props) => {
                   </IconButton>
                 </div>
               </Th>
-              <Th className="min-w-[10.5rem]">
+              <Th className="min-w-42">
                 <div className="flex items-center">
                   Status
                   <IconButton

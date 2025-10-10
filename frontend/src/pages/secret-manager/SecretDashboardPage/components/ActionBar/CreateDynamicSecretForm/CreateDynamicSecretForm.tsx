@@ -211,7 +211,7 @@ export const CreateDynamicSecretForm = ({
               rel="noopener noreferrer"
             >
               <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mb-[0.03rem] mr-1 text-[12px]" />
+                <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-[0.03rem] text-[12px]" />
                 <span>Docs</span>
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
@@ -238,7 +238,7 @@ export const CreateDynamicSecretForm = ({
                 {DYNAMIC_SECRET_LIST.map(({ icon, provider, title }) => (
                   <div
                     key={`dynamic-secret-provider-${provider}`}
-                    className="flex h-32 w-32 cursor-pointer flex-col items-center space-y-4 rounded border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
+                    className="flex h-32 w-32 cursor-pointer flex-col items-center space-y-4 rounded-sm border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
                     role="button"
                     tabIndex={0}
                     onClick={() => {
@@ -253,7 +253,7 @@ export const CreateDynamicSecretForm = ({
                     }}
                   >
                     {icon}
-                    <div className="whitespace-pre-wrap text-center text-sm">{title}</div>
+                    <div className="text-center text-sm whitespace-pre-wrap">{title}</div>
                   </div>
                 ))}
               </div>

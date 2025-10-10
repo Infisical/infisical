@@ -34,13 +34,15 @@ export const SecretScanningScanStatusBadge = ({
         position="left"
         className="max-w-sm select-text"
         content={
-          <div className="flex flex-col gap-2 whitespace-normal py-1">
+          <div className="flex flex-col gap-2 py-1 whitespace-normal">
             <div>
               <div className="mb-2 flex self-start text-red">
-                <FontAwesomeIcon icon={faXmark} className="ml-1 pr-1.5 pt-0.5 text-sm" />
+                <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
                 <div className="text-xs">Failure Reason</div>
               </div>
-              <div className="break-words rounded bg-mineshaft-600 p-2 text-xs">{errorMessage}</div>
+              <div className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
+                {errorMessage}
+              </div>
               {scannedAt && (
                 <div className="mt-1 text-xs text-mineshaft-400">
                   Attempted {formatDistance(new Date(scannedAt), new Date(), { addSuffix: true })}

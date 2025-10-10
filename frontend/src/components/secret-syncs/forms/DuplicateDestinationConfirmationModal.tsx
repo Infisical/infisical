@@ -26,7 +26,7 @@ export const DuplicateDestinationConfirmationModal = ({
           {duplicateProjectId && (
             <p className="mt-2 text-xs text-mineshaft-400">
               Duplicate found in project ID:{" "}
-              <code className="rounded bg-mineshaft-600 px-1 py-0.5 text-mineshaft-200">
+              <code className="rounded-sm bg-mineshaft-600 px-1 py-0.5 text-mineshaft-200">
                 {duplicateProjectId}
               </code>
             </p>

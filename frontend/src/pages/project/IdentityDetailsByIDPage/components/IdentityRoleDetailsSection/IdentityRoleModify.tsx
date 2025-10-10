@@ -167,7 +167,7 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
               />
               <Popover>
                 <PopoverTrigger disabled={isIdentityEditDisabled} asChild>
-                  <div className="flex-grow">
+                  <div className="grow">
                     <Tooltip
                       content={
                         temporaryAccess?.isTemporary

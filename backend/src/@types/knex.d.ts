@@ -17,9 +17,9 @@ import {
   TAccessApprovalRequestsReviewersInsert,
   TAccessApprovalRequestsReviewersUpdate,
   TAccessApprovalRequestsUpdate,
-  TPkiApiEnrollmentConfigs,
-  TPkiApiEnrollmentConfigsInsert,
-  TPkiApiEnrollmentConfigsUpdate,
+  TAdditionalPrivileges,
+  TAdditionalPrivilegesInsert,
+  TAdditionalPrivilegesUpdate,
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
@@ -80,9 +80,6 @@ import {
   TDynamicSecrets,
   TDynamicSecretsInsert,
   TDynamicSecretsUpdate,
-  TPkiEstEnrollmentConfigs,
-  TPkiEstEnrollmentConfigsInsert,
-  TPkiEstEnrollmentConfigsUpdate,
   TExternalCertificateAuthorities,
   TExternalCertificateAuthoritiesInsert,
   TExternalCertificateAuthoritiesUpdate,
@@ -239,6 +236,15 @@ import {
   TLdapGroupMaps,
   TLdapGroupMapsInsert,
   TLdapGroupMapsUpdate,
+  TMembershipRoles,
+  TMembershipRolesInsert,
+  TMembershipRolesUpdate,
+  TMemberships,
+  TMembershipsInsert,
+  TMembershipsUpdate,
+  TNamespaces,
+  TNamespacesInsert,
+  TNamespacesUpdate,
   TOidcConfigs,
   TOidcConfigsInsert,
   TOidcConfigsUpdate,
@@ -266,12 +272,18 @@ import {
   TPkiAlerts,
   TPkiAlertsInsert,
   TPkiAlertsUpdate,
+  TPkiApiEnrollmentConfigs,
+  TPkiApiEnrollmentConfigsInsert,
+  TPkiApiEnrollmentConfigsUpdate,
   TPkiCollectionItems,
   TPkiCollectionItemsInsert,
   TPkiCollectionItemsUpdate,
   TPkiCollections,
   TPkiCollectionsInsert,
   TPkiCollectionsUpdate,
+  TPkiEstEnrollmentConfigs,
+  TPkiEstEnrollmentConfigsInsert,
+  TPkiEstEnrollmentConfigsUpdate,
   TPkiSubscribers,
   TPkiSubscribersInsert,
   TPkiSubscribersUpdate,
@@ -326,6 +338,9 @@ import {
   TResourceMetadata,
   TResourceMetadataInsert,
   TResourceMetadataUpdate,
+  TRoles,
+  TRolesInsert,
+  TRolesUpdate,
   TSamlConfigs,
   TSamlConfigsInsert,
   TSamlConfigsUpdate,
@@ -1348,5 +1363,19 @@ declare module "knex/types/tables" {
     [TableName.PamResource]: KnexOriginal.CompositeTableType<TPamResources, TPamResourcesInsert, TPamResourcesUpdate>;
     [TableName.PamAccount]: KnexOriginal.CompositeTableType<TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate>;
     [TableName.PamSession]: KnexOriginal.CompositeTableType<TPamSessions, TPamSessionsInsert, TPamSessionsUpdate>;
+
+    [TableName.Namespace]: KnexOriginal.CompositeTableType<TNamespaces, TNamespacesInsert, TNamespacesUpdate>;
+    [TableName.Membership]: KnexOriginal.CompositeTableType<TMemberships, TMembershipsInsert, TMembershipsUpdate>;
+    [TableName.MembershipRole]: KnexOriginal.CompositeTableType<
+      TMembershipRoles,
+      TMembershipRolesInsert,
+      TMembershipRolesUpdate
+    >;
+    [TableName.Role]: KnexOriginal.CompositeTableType<TRoles, TRolesInsert, TRolesUpdate>;
+    [TableName.AdditionalPrivilege]: KnexOriginal.CompositeTableType<
+      TAdditionalPrivileges,
+      TAdditionalPrivilegesInsert,
+      TAdditionalPrivilegesUpdate
+    >;
   }
 }

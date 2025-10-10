@@ -174,7 +174,7 @@ export const EditDynamicSecretAwsIamForm = ({
     <div>
       <form onSubmit={handleSubmit(handleUpdateDynamicSecret)} autoComplete="off">
         <div className="flex items-center space-x-2">
-          <div className="flex-grow">
+          <div className="grow">
             <Controller
               control={control}
               name="newName"
@@ -292,7 +292,7 @@ export const EditDynamicSecretAwsIamForm = ({
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="AWS Access Key"
-                      className="flex-grow"
+                      className="grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
@@ -307,7 +307,7 @@ export const EditDynamicSecretAwsIamForm = ({
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="AWS Secret Key"
-                      className="flex-grow"
+                      className="grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
@@ -326,7 +326,7 @@ export const EditDynamicSecretAwsIamForm = ({
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="Assume Role ARN"
-                      className="flex-grow"
+                      className="grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
@@ -345,7 +345,7 @@ export const EditDynamicSecretAwsIamForm = ({
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="AWS IAM Path"
-                      className="flex-grow"
+                      className="grow"
                       isOptional
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
@@ -365,7 +365,7 @@ export const EditDynamicSecretAwsIamForm = ({
                     className={
                       credentialType === DynamicSecretAwsIamCredentialType.TemporaryCredentials
                         ? "w-full"
-                        : "flex-grow"
+                        : "grow"
                     }
                     isError={Boolean(error?.message)}
                     errorText={error?.message}

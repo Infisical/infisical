@@ -334,7 +334,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         <Popover.Content
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
-          className="relative top-2 z-[100] max-h-64 overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
+          className="relative top-2 z-100 max-h-64 overflow-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
           style={{
             width: "var(--radix-popover-trigger-width)"
           }}
@@ -369,7 +369,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                   className="flex w-full items-center justify-between border-mineshaft-600 text-left"
                   key={`secret-reference-secret-${i + 1}`}
                 >
-                  <div className="text-md relative flex w-full cursor-default select-none items-center justify-between px-2 py-2 opacity-75 outline-none transition-all">
+                  <div className="text-md relative flex w-full cursor-default items-center justify-between px-2 py-2 opacity-75 outline-hidden transition-all select-none">
                     <div className="flex w-full items-start gap-2">
                       <div className="mt-1 flex items-center">{entryIcon}</div>
                       <div className="text-md w-10/12 truncate text-left">
@@ -401,7 +401,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
                   <div
                     className={`${
                       highlightedIndex === i ? "bg-mineshaft-500" : ""
-                    } text-md relative flex w-full cursor-pointer select-none items-center justify-between px-2 py-2 outline-none transition-all hover:bg-mineshaft-700 data-[highlighted]:bg-mineshaft-700`}
+                    } text-md relative flex w-full cursor-pointer items-center justify-between px-2 py-2 outline-hidden transition-all select-none hover:bg-mineshaft-700 data-highlighted:bg-mineshaft-700`}
                   >
                     <div className="flex w-full items-start gap-2">
                       <div className="mt-1 flex items-center">{entryIcon}</div>

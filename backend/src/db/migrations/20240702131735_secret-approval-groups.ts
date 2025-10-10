@@ -127,7 +127,8 @@ export async function down(knex: Knex): Promise<void> {
       });
       await knex.schema.alterTable(TableName.SecretApprovalPolicyApprover, (tb) => {
         tb.dropColumn("approverUserId");
-        tb.uuid("approverId").notNullable().alter();
+        // akhilmhdh: i had to comment this out and is not possible as membership is now changed in structure
+        // tb.uuid("approverId").notNullable().alter();
       });
     }
   }

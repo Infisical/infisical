@@ -118,7 +118,7 @@ export const DynamicSecretListView = ({
               <div className="flex w-11 items-center px-5 py-3 text-yellow-700">
                 <FontAwesomeIcon icon={faFingerprint} />
               </div>
-              <div className="flex flex-grow items-center px-4 py-3" role="button" tabIndex={0}>
+              <div className="flex grow items-center px-4 py-3" role="button" tabIndex={0}>
                 {secret.name}
                 <Tag className="ml-4 px-2 py-0 text-xs normal-case">
                   {formatProviderName(secret.type)}

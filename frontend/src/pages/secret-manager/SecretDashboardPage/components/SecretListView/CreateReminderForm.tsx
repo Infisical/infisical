@@ -337,7 +337,7 @@ export const CreateReminderForm = ({
 
           {/* Conditional Fields Based on Reminder Type */}
           {reminderType === ReminderType.Recurring ? (
-            <div className="grid grid-cols-[1fr,auto] gap-x-2">
+            <div className="grid grid-cols-[1fr_auto] gap-x-2">
               <Controller
                 control={control}
                 name="repeatDays"
@@ -365,7 +365,7 @@ export const CreateReminderForm = ({
                     {/* Interval description */}
                     <div
                       className={twMerge(
-                        "ml-1 mt-2 text-xs",
+                        "mt-2 ml-1 text-xs",
                         field.value ? "opacity-60" : "opacity-0"
                       )}
                     >

@@ -10,19 +10,33 @@ export type TGatewayV2DALFactory = ReturnType<typeof gatewayV2DalFactory>;
 export const gatewayV2DalFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.GatewayV2);
 
-  const find = async (filter: TFindFilter<TGatewaysV2>, { offset, limit, sort, tx }: TFindOpt<TGatewaysV2> = {}) => {
+  const find = async (
+    filter: TFindFilter<TGatewaysV2> & { isHeartbeatStale?: boolean },
+    { offset, limit, sort, tx }: TFindOpt<TGatewaysV2> = {}
+  ) => {
     try {
+      const { isHeartbeatStale, ...regularFilter } = filter;
+
       const query = (tx || db.replicaNode())(TableName.GatewayV2)
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        .where(buildFindFilter(filter, TableName.GatewayV2))
+        .where(buildFindFilter(regularFilter, TableName.GatewayV2))
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.GatewayV2}.identityId`)
-        .join(
-          TableName.IdentityOrgMembership,
-          `${TableName.IdentityOrgMembership}.identityId`,
-          `${TableName.GatewayV2}.identityId`
-        )
         .select(selectAllTableCols(TableName.GatewayV2))
         .select(db.ref("name").withSchema(TableName.Identity).as("identityName"));
+
+      if (isHeartbeatStale) {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        void query.where(`${TableName.GatewayV2}.heartbeat`, "<", oneHourAgo);
+        void query.where((v) => {
+          void v
+            .whereNull(`${TableName.GatewayV2}.healthAlertedAt`)
+            .orWhere(
+              `${TableName.GatewayV2}.healthAlertedAt`,
+              "<",
+              db.ref("heartbeat").withSchema(TableName.GatewayV2)
+            );
+        });
+      }
 
       if (limit) void query.limit(limit);
       if (offset) void query.offset(offset);

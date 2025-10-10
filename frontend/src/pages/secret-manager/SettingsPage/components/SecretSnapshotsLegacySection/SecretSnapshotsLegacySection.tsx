@@ -43,7 +43,7 @@ export const SecretSnapshotsLegacySection = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <p className="mb-3 text-xl font-semibold">Show Secret Snapshots ( legacy )</p>
+      <p className="mb-3 text-xl font-medium">Show Secret Snapshots ( legacy )</p>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
         {(isAllowed) => (
           <div className="w-max">

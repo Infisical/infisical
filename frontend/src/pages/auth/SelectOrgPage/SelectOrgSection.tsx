@@ -254,7 +254,7 @@ export const SelectOrganizationSection = () => {
   }
 
   return (
-    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
       <Helmet>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -284,7 +284,7 @@ export const SelectOrganizationSection = () => {
           </Link>
           <form className="mx-auto flex w-full flex-col items-center justify-center">
             <div className="mb-8 space-y-2">
-              <h1 className="bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-2xl font-medium text-transparent">
+              <h1 className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-2xl font-medium text-transparent">
                 Choose your organization
               </h1>
               <div className="space-y-1">
@@ -293,7 +293,7 @@ export const SelectOrganizationSection = () => {
                 </p>
                 <p className="text-md text-center text-gray-500">
                   Not you?{" "}
-                  <Button variant="link" onClick={handleLogout} className="font-semibold">
+                  <Button variant="link" onClick={handleLogout} className="font-medium">
                     Change account
                   </Button>
                 </p>
@@ -308,7 +308,7 @@ export const SelectOrganizationSection = () => {
                   <div
                     onClick={() => handleSelectOrganization(org)}
                     key={org.id}
-                    className="group flex cursor-pointer items-center justify-between rounded-md bg-mineshaft-700 px-4 py-3 capitalize text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600"
+                    className="group flex cursor-pointer items-center justify-between rounded-md bg-mineshaft-700 px-4 py-3 text-gray-200 capitalize shadow-md transition-colors hover:bg-mineshaft-600"
                   >
                     <p className="truncate transition-colors">{org.name}</p>
 

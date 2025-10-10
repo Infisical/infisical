@@ -26,6 +26,7 @@ import {
 } from "@app/context";
 import {
   useAddUsersToOrg,
+  useAddUserToWsNonE2EE,
   useGetOrgUsers,
   useGetProjectRoles,
   useGetWorkspaceUsers
@@ -85,7 +86,8 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     defaultValues: { orgMemberships: [], projectRoleSlugs: [] }
   });
 
-  const { mutateAsync: addMembersToProject } = useAddUsersToOrg();
+  const { mutateAsync: addMemberToOrg } = useAddUsersToOrg();
+  const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
 
   useEffect(() => {
     if (requesterEmail) {
@@ -119,12 +121,12 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
           .map((member) => {
             if (!member) return null;
 
-            if (member.user.email) {
-              return member.user.email;
-            }
-
             if (member.user.username) {
               return member.user.username;
+            }
+
+            if (member.user.email) {
+              return member.user.email;
             }
 
             return null;
@@ -139,18 +141,19 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
           return;
         }
 
-        if (inviteeEmails.length || newInvitees.length) {
-          await addMembersToProject({
-            inviteeEmails: [...inviteeEmails, ...newInvitees],
+        if (newInvitees.length) {
+          await addMemberToOrg({
+            inviteeEmails: newInvitees,
             organizationId: orgId,
-            organizationRoleSlug: ProjectMembershipRole.Member, // only applies to new invites
-            projects: [
-              {
-                slug: currentProject.slug,
-                id: currentProject.id,
-                projectRoleSlug: projectRoleSlugs.map((role) => role.slug)
-              }
-            ]
+            organizationRoleSlug: ProjectMembershipRole.Member // only applies to new invites
+          });
+        }
+        if (newInvitees.length || inviteeEmails.length) {
+          await addUserToProject({
+            usernames: [...inviteeEmails, ...newInvitees],
+            orgId,
+            projectId: currentProject.id,
+            roleSlugs: projectRoleSlugs.map((role) => role.slug)
           });
         }
       }

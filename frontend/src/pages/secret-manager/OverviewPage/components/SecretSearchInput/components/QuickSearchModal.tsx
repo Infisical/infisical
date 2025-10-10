@@ -205,7 +205,7 @@ const Content = ({
                 </DropdownSubMenuTrigger>
                 <DropdownSubMenuContent
                   collisionPadding={{ right: Infinity }} // forces dropdown to left
-                  className="thin-scrollbar max-h-[20rem] overflow-y-auto rounded-r-none"
+                  className="max-h-80 thin-scrollbar overflow-y-auto rounded-r-none"
                 >
                   <DropdownMenuLabel>Filter Secrets by Tag(s)</DropdownMenuLabel>
                   {tags.map(({ id, slug, color }) => (
@@ -234,7 +234,7 @@ const Content = ({
         </DropdownMenu>
       </div>
 
-      <div className="mt-4 max-h-[19rem] min-h-[19rem] overflow-auto">
+      <div className="mt-4 max-h-76 min-h-76 overflow-auto">
         {/* eslint-disable-next-line no-nested-ternary */}
         {isEnabled ? (
           // eslint-disable-next-line no-nested-ternary
@@ -247,7 +247,7 @@ const Content = ({
               icon={faMagnifyingGlass}
             />
           ) : (
-            <TableContainer className="thin-scrollbar h-full overflow-y-auto">
+            <TableContainer className="h-full thin-scrollbar overflow-y-auto">
               <Table>
                 {showFilter[RowType.Folder] &&
                   Object.entries(folders).map(([key, folderGroup]) => (

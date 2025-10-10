@@ -60,7 +60,7 @@ export const CachingPageForm = () => {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="flex flex-col">
           <div className="mb-2 flex items-center gap-3">
-            <span className="text-xl font-semibold text-mineshaft-100">Secrets Cache</span>
+            <span className="text-xl font-medium text-mineshaft-100">Secrets Cache</span>
             {isInvalidating && (
               <Badge
                 variant="danger"

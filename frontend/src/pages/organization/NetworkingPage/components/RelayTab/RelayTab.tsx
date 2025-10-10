@@ -5,6 +5,7 @@ import {
   faCopy,
   faDoorClosed,
   faEllipsisV,
+  faInfoCircle,
   faMagnifyingGlass,
   faSearch,
   faTrash
@@ -41,6 +42,25 @@ import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useDeleteRelayById, useGetRelays } from "@app/hooks/api/relays";
 
+const RelayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
+  const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
+  const now = new Date();
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+  const isHealthy = !heartbeatDate || heartbeatDate >= oneHourAgo;
+  const tooltipContent = heartbeatDate
+    ? `Last heartbeat: ${heartbeatDate.toLocaleString()}`
+    : "No heartbeat data available";
+
+  return (
+    <Tooltip content={tooltipContent}>
+      <span className={`cursor-default ${isHealthy ? "text-green-400" : "text-red-400"}`}>
+        {isHealthy ? "Healthy" : "Unreachable"}
+      </span>
+    </Tooltip>
+  );
+};
+
 export const RelayTab = withPermission(
   () => {
     const [search, setSearch] = useState("");
@@ -69,7 +89,7 @@ export const RelayTab = withPermission(
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-mineshaft-100">Relays</h3>
+            <h3 className="text-lg font-medium text-mineshaft-100">Relays</h3>
             <a
               href="https://infisical.com/docs/documentation/platform/gateways/relay-deployment"
               target="_blank"
@@ -106,6 +126,16 @@ export const RelayTab = withPermission(
                   <Th className="w-1/3">Name</Th>
                   <Th>Host</Th>
                   <Th>Created</Th>
+                  <Th>
+                    Health Check
+                    <Tooltip
+                      asChild={false}
+                      className="normal-case"
+                      content="The last known healthcheck. Triggers every 1 hour."
+                    >
+                      <FontAwesomeIcon icon={faInfoCircle} className="ml-2" />
+                    </Tooltip>
+                  </Th>
                   <Th className="w-5" />
                 </Tr>
               </THead>
@@ -120,7 +150,7 @@ export const RelayTab = withPermission(
                         <span>{el.name}</span>
                         {!el.orgId && (
                           <Tooltip content="This is a managed relay provided by Infisical">
-                            <span className="rounded bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
+                            <span className="rounded-sm bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
                               Managed
                             </span>
                           </Tooltip>
@@ -129,6 +159,9 @@ export const RelayTab = withPermission(
                     </Td>
                     <Td>{el.host}</Td>
                     <Td>{formatRelative(new Date(el.createdAt), new Date())}</Td>
+                    <Td>
+                      <RelayHealthStatus heartbeat={el.heartbeat} />
+                    </Td>
                     <Td className="w-5">
                       <Tooltip className="max-w-sm text-center" content="Options">
                         <DropdownMenu>

@@ -10,7 +10,7 @@ interface IProps {
 
 const badgeVariants = cva(
   [
-    "inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-xs text-yellow opacity-80 hover:opacity-100"
+    "inline-block cursor-default rounded-md bg-yellow/20 px-1.5 py-0.5 text-xs text-yellow opacity-80 hover:opacity-100"
   ],
   {
     variants: {

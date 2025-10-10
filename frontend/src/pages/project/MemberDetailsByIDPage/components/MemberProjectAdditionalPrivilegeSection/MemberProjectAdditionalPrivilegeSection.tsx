@@ -83,7 +83,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
             initial={{ opacity: 0, translateX: 30 }}
             animate={{ opacity: 1, translateX: 0 }}
             exit={{ opacity: 0, translateX: 30 }}
-            className="absolute min-h-[10rem] w-full"
+            className="absolute min-h-40 w-full"
           >
             <MembershipProjectAdditionalPrivilegeModifySection
               onGoBack={() => handlePopUpClose("modifyPrivilege")}
@@ -105,7 +105,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
             className="absolute w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
           >
             <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-              <h3 className="text-lg font-semibold text-mineshaft-100">
+              <h3 className="text-lg font-medium text-mineshaft-100">
                 Project Additional Privileges
               </h3>
               {userId !== membershipDetails?.user?.id &&

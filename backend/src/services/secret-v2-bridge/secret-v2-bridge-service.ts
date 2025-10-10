@@ -2395,8 +2395,8 @@ export const secretV2BridgeServiceFactory = ({
       projectId: folder.projectId,
       secretVersions: secretVersionsFilter,
       findOpt: {
-        offset,
         limit,
+        offset,
         sort: [["createdAt", "desc"]]
       }
     });

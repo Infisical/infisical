@@ -68,7 +68,7 @@ const BucketScopesConfiguration = ({
       {scopeFields.map((_scope: any, scopeIndex: number) => (
         <div
           key={`scope-${scopeIndex + 1}`}
-          className="space-y-3 rounded border border-mineshaft-600 bg-mineshaft-700 p-3"
+          className="space-y-3 rounded-sm border border-mineshaft-600 bg-mineshaft-700 p-3"
         >
           <div className="flex items-center justify-between">
             <h5 className="text-xs font-medium text-mineshaft-200">Scope {scopeIndex + 1}</h5>
@@ -145,7 +145,7 @@ const BucketScopesConfiguration = ({
 
             {(!scopeFields[scopeIndex]?.collections ||
               scopeFields[scopeIndex].collections.length === 0) && (
-              <div className="text-xs italic text-mineshaft-400">
+              <div className="text-xs text-mineshaft-400 italic">
                 No collections specified (access to all collections in scope)
               </div>
             )}
@@ -154,7 +154,7 @@ const BucketScopesConfiguration = ({
       ))}
 
       {scopeFields.length === 0 && (
-        <div className="rounded border border-dashed border-mineshaft-600 bg-mineshaft-700 p-4 text-center">
+        <div className="rounded-sm border border-dashed border-mineshaft-600 bg-mineshaft-700 p-4 text-center">
           <p className="mb-2 text-xs text-mineshaft-400">
             No scopes configured (access to all scopes in bucket)
           </p>
@@ -424,7 +424,7 @@ export const EditDynamicSecretCouchbaseForm = ({
       <form onSubmit={handleSubmit(handleUpdateDynamicSecret)} autoComplete="off">
         <div>
           <div className="flex items-center space-x-2">
-            <div className="flex-grow">
+            <div className="grow">
               <Controller
                 control={control}
                 name="newName"
@@ -474,7 +474,7 @@ export const EditDynamicSecretCouchbaseForm = ({
           </div>
           <MetadataForm control={control} />
           <div>
-            <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
               Configuration
             </div>
             <div className="flex flex-col space-y-4">
@@ -646,7 +646,7 @@ export const EditDynamicSecretCouchbaseForm = ({
                       (bucketsValue as any[]).map((_, bucketIndex) => (
                         <div
                           key={`bucket-${bucketIndex + 1}`}
-                          className="space-y-4 rounded border border-mineshaft-600 bg-mineshaft-800 p-4"
+                          className="space-y-4 rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-4"
                         >
                           <div className="flex items-center justify-between">
                             <h4 className="text-sm font-medium text-mineshaft-200">
@@ -690,7 +690,7 @@ export const EditDynamicSecretCouchbaseForm = ({
                       ))}
 
                     {(!Array.isArray(bucketsValue) || bucketsValue.length === 0) && (
-                      <div className="rounded border border-dashed border-mineshaft-600 p-8 text-center">
+                      <div className="rounded-sm border border-dashed border-mineshaft-600 p-8 text-center">
                         <p className="mb-2 text-sm text-mineshaft-400">No buckets configured</p>
                         <Button
                           type="button"
@@ -717,7 +717,7 @@ export const EditDynamicSecretCouchbaseForm = ({
                     label="API Key"
                   >
                     <SecretInput
-                      containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                      containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
                       value={value}
                       valueAlwaysHidden
                       rows={1}
@@ -745,7 +745,7 @@ export const EditDynamicSecretCouchbaseForm = ({
                   </FormControl>
                 )}
               />
-              <Accordion type="multiple" className="mb-2 mt-4 w-full bg-mineshaft-700">
+              <Accordion type="multiple" className="mt-4 mb-2 w-full bg-mineshaft-700">
                 <AccordionItem value="password-config">
                   <AccordionTrigger>
                     <div className="flex items-center space-x-2">

@@ -91,7 +91,7 @@ export default function CodeInputStep({
   return (
     <div className="mx-auto h-full w-full pb-4 md:px-8">
       <p className="text-md flex justify-center text-bunker-200">{t("signup.step2-message")}</p>
-      <p className="text-md my-1 flex justify-center font-semibold text-bunker-200">{email} </p>
+      <p className="text-md my-1 flex justify-center font-medium text-bunker-200">{email} </p>
       <div className="mx-auto hidden w-max min-w-[20rem] md:block">
         <ReactCodeInput
           name=""
@@ -100,7 +100,7 @@ export default function CodeInputStep({
           fields={6}
           onChange={setCode}
           {...props}
-          className="mb-2 mt-6"
+          className="mt-6 mb-2"
         />
       </div>
       <div className="mx-auto mt-4 block w-max md:hidden">
@@ -111,11 +111,11 @@ export default function CodeInputStep({
           fields={6}
           onChange={setCode}
           {...propsPhone}
-          className="mb-2 mt-2"
+          className="mt-2 mb-2"
         />
       </div>
       {codeError && <Error text={t("signup.step2-code-error")} />}
-      <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
+      <div className="mx-auto mt-2 flex w-1/4 max-w-xs min-w-[20rem] flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
         <div className="text-l w-full py-1 text-lg">
           <Button
             type="submit"

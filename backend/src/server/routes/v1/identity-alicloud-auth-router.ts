@@ -78,7 +78,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg?.orgId,
+        orgId: identityMembershipOrg.scopeOrgId,
         event: {
           type: EventType.LOGIN_IDENTITY_ALICLOUD_AUTH,
           metadata: {

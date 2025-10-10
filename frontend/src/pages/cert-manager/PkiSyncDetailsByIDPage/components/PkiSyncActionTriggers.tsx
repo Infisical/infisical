@@ -132,7 +132,7 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
 
   return (
     <>
-      <div className="ml-auto mt-4 flex flex-wrap items-center justify-end gap-2">
+      <div className="mt-4 ml-auto flex flex-wrap items-center justify-end gap-2">
         {syncOption?.canImportCertificates && <PkiSyncImportStatusBadge pkiSync={pkiSync} />}
         <PkiSyncRemoveStatusBadge pkiSync={pkiSync} />
         {pkiSync.isAutoSyncEnabled ? (
@@ -149,7 +149,7 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
             content="Auto-Sync is disabled. Certificate changes in the PKI subscriber will not be automatically synced to the destination."
           >
             <div>
-              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
                 <FontAwesomeIcon icon={faBan} />
                 <span>Auto-Sync Disabled</span>
               </Badge>

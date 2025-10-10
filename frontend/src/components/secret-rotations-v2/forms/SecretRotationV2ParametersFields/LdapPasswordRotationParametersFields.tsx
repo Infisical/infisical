@@ -27,7 +27,7 @@ export const LdapPasswordRotationParametersFields = () => {
             tooltipText={
               <>
                 <span>Determines how the rotation will be performed:</span>
-                <ul className="ml-4 mt-2 flex list-disc flex-col gap-2">
+                <ul className="mt-2 ml-4 flex list-disc flex-col gap-2">
                   <li>
                     <span className="font-medium">Connection Principal</span> - The Connection
                     principal will rotate the target principal&#39;s password.
@@ -130,7 +130,7 @@ export const LdapPasswordRotationParametersFields = () => {
         <div className="w-full border-b border-mineshaft-600">
           <span className="text-sm text-mineshaft-300">Password Requirements</span>
         </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded border border-mineshaft-600 bg-mineshaft-700 px-3 pt-3">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-sm border border-mineshaft-600 bg-mineshaft-700 px-3 pt-3">
           <Controller
             control={control}
             name="parameters.passwordRequirements.length"

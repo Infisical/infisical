@@ -34,7 +34,7 @@ export const FrameworkIntegrationTab = () => {
               />
             )}
             {framework?.name && (
-              <div className="mt-auto max-w-xs text-center text-sm font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
+              <div className="mt-auto max-w-xs text-center text-sm font-medium text-gray-300 duration-200 group-hover:text-gray-200">
                 {framework.name}
               </div>
             )}
@@ -47,7 +47,7 @@ export const FrameworkIntegrationTab = () => {
           className="relative flex h-32 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 duration-200 hover:bg-mineshaft-700"
         >
           <FontAwesomeIcon className="mt-auto text-5xl text-white/90" icon={faKeyboard} />
-          <div className="mt-auto max-w-xs text-center text-sm font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
+          <div className="mt-auto max-w-xs text-center text-sm font-medium text-gray-300 duration-200 group-hover:text-gray-200">
             CLI
           </div>
         </a>
@@ -58,7 +58,7 @@ export const FrameworkIntegrationTab = () => {
           className="relative flex h-32 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 duration-200 hover:bg-mineshaft-700"
         >
           <FontAwesomeIcon className="mt-auto text-5xl text-white/90" icon={faComputer} />
-          <div className="mt-auto max-w-xs text-center text-sm font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
+          <div className="mt-auto max-w-xs text-center text-sm font-medium text-gray-300 duration-200 group-hover:text-gray-200">
             SDKs
           </div>
         </a>

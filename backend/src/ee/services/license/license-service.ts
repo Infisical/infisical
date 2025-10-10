@@ -488,7 +488,7 @@ export const licenseServiceFactory = ({
   const getUsageMetrics = async (orgId: string) => {
     const [orgMembersUsed, identityUsed, projectCount] = await Promise.all([
       orgDAL.countAllOrgMembers(orgId),
-      identityOrgMembershipDAL.countAllOrgIdentities({ orgId }),
+      identityOrgMembershipDAL.countAllOrgIdentities({ scopeOrgId: orgId }),
       projectDAL.countOfOrgProjects(orgId)
     ]);
 

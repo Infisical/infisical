@@ -159,7 +159,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
         <div className="mb-6 text-center text-lg font-bold text-white">
           Your organization requires mobile authentication to be configured.
         </div>
-        <div className="mx-auto w-max pb-4 pt-4 md:mb-16 md:px-8">
+        <div className="mx-auto w-max pt-4 pb-4 md:mb-16 md:px-8">
           <TotpRegistration
             shouldCenterQr
             onComplete={async () => {
@@ -173,7 +173,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
   }
 
   return (
-    <div className="mx-auto w-max pb-6 pt-6 md:mb-16 md:px-8">
+    <div className="mx-auto w-max pt-6 pb-6 md:mb-16 md:px-8">
       {!hideLogo && (
         <Link to="/">
           <div className="mb-4 flex justify-center">
@@ -184,12 +184,12 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
       {method === MfaMethod.EMAIL && (
         <>
           <p className="text-l flex justify-center text-bunker-300">{t("mfa.step2-message")}</p>
-          <p className="text-l my-1 flex justify-center font-semibold text-bunker-300">{email}</p>
+          <p className="text-l my-1 flex justify-center font-medium text-bunker-300">{email}</p>
         </>
       )}
       {method === MfaMethod.TOTP && (
         <div className="mb-8 text-center">
-          <h2 className="mb-3 text-xl font-semibold text-bunker-100">Two-Factor Authentication</h2>
+          <h2 className="mb-3 text-xl font-medium text-bunker-100">Two-Factor Authentication</h2>
           <p className="mx-auto max-w-md text-sm leading-relaxed text-bunker-300">
             {showRecoveryCodeInput
               ? "Enter one of your backup recovery codes"
@@ -207,13 +207,13 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                 type="text"
                 fields={6}
                 onChange={setMfaCode}
-                className="mb-2 mt-6"
+                className="mt-6 mb-2"
                 {...codeInputProps}
               />
             </div>
           )}
           {method === MfaMethod.TOTP && (
-            <div className="mb-6 mt-8 flex justify-center">
+            <div className="mt-8 mb-6 flex justify-center">
               <ReactCodeInput
                 key={showRecoveryCodeInput ? "recovery" : "totp"}
                 name=""
@@ -236,13 +236,13 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
                 type="text"
                 fields={6}
                 onChange={setMfaCode}
-                className="mb-2 mt-2"
+                className="mt-2 mb-2"
                 {...codeInputPropsPhone}
               />
             </div>
           )}
           {method === MfaMethod.TOTP && (
-            <div className="mb-6 mt-4 flex justify-center">
+            <div className="mt-4 mb-6 flex justify-center">
               <ReactCodeInput
                 key={showRecoveryCodeInput ? "recovery-mobile" : "totp-mobile"}
                 name=""
@@ -264,7 +264,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
             size="md"
             type="submit"
             isFullWidth
-            className="h-11 rounded-lg font-medium shadow-sm transition-all duration-200 hover:shadow-md"
+            className="h-11 rounded-lg font-medium shadow-xs transition-all duration-200 hover:shadow-md"
             colorSchema="primary"
             variant="outline_bg"
             isLoading={isLoading}

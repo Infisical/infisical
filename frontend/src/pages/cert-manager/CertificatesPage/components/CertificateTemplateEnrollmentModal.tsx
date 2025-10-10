@@ -198,7 +198,7 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
                   <TextArea
                     {...field}
                     isDisabled={disableBootstrapCertValidation}
-                    className="min-h-[15rem] border-none bg-mineshaft-900 text-gray-400"
+                    className="min-h-60 border-none bg-mineshaft-900 text-gray-400"
                     reSize="none"
                   />
                 </FormControl>

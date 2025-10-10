@@ -35,7 +35,7 @@ export const LockoutTab = ({
                 errorText={error?.message}
               >
                 <Switch
-                  className="ml-0 mr-3 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                  className="mr-3 ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
                   containerClassName="flex-row-reverse w-fit"
                   id="lockout-enabled"
                   thumbClassName="bg-mineshaft-800"
@@ -55,7 +55,7 @@ export const LockoutTab = ({
             render={({ field, fieldState: { error } }) => {
               return (
                 <FormControl
-                  className={`mb-0 flex-grow ${lockoutEnabled ? "" : "opacity-70"}`}
+                  className={`mb-0 grow ${lockoutEnabled ? "" : "opacity-70"}`}
                   label="Lockout Threshold"
                   isError={Boolean(error)}
                   errorText={error?.message}
@@ -77,7 +77,7 @@ export const LockoutTab = ({
               render={({ field, fieldState: { error } }) => {
                 return (
                   <FormControl
-                    className={`mb-0 flex-grow ${lockoutEnabled ? "" : "opacity-70"}`}
+                    className={`mb-0 grow ${lockoutEnabled ? "" : "opacity-70"}`}
                     label="Lockout Duration"
                     isError={Boolean(error)}
                     errorText={error?.message}
@@ -110,25 +110,25 @@ export const LockoutTab = ({
                   >
                     <SelectItem
                       value="s"
-                      className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
+                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
                     >
                       <div className="ml-3 font-medium">Seconds</div>
                     </SelectItem>
                     <SelectItem
                       value="m"
-                      className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
+                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
                     >
                       <div className="ml-3 font-medium">Minutes</div>
                     </SelectItem>
                     <SelectItem
                       value="h"
-                      className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
+                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
                     >
                       <div className="ml-3 font-medium">Hours</div>
                     </SelectItem>
                     <SelectItem
                       value="d"
-                      className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
+                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
                     >
                       <div className="ml-3 font-medium">Days</div>
                     </SelectItem>
@@ -144,7 +144,7 @@ export const LockoutTab = ({
               render={({ field, fieldState: { error } }) => {
                 return (
                   <FormControl
-                    className={`mb-0 flex-grow ${lockoutEnabled ? "" : "opacity-70"}`}
+                    className={`mb-0 grow ${lockoutEnabled ? "" : "opacity-70"}`}
                     label="Lockout Counter Reset"
                     isError={Boolean(error)}
                     errorText={error?.message}
@@ -177,19 +177,19 @@ export const LockoutTab = ({
                   >
                     <SelectItem
                       value="s"
-                      className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
+                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
                     >
                       <div className="ml-3 font-medium">Seconds</div>
                     </SelectItem>
                     <SelectItem
                       value="m"
-                      className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
+                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
                     >
                       <div className="ml-3 font-medium">Minutes</div>
                     </SelectItem>
                     <SelectItem
                       value="h"
-                      className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
+                      className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
                     >
                       <div className="ml-3 font-medium">Hours</div>
                     </SelectItem>

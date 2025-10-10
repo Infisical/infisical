@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
-import { IdentityProjectAdditionalPrivilegeTemporaryMode } from "@app/ee/services/identity-project-additional-privilege/identity-project-additional-privilege-types";
+import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
 import { backfillPermissionV1SchemaToV2Schema } from "@app/ee/services/permission/project-permission";
 import { ApiDocsTags, IDENTITY_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
@@ -15,7 +15,7 @@ import {
   ProjectSpecificPrivilegePermissionSchema,
   SanitizedIdentityPrivilegeSchema
 } from "@app/server/routes/sanitizedSchemas";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -56,6 +56,10 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       if (!permissions && !privilegePermission) {
         throw new UnauthorizedError({ message: "Permission or privilegePermission must be provided" });
       }
+      const { id: projectId } = await server.services.convertor.projectSlugToId({
+        orgId: req.permission.orgId,
+        slug: req.body.projectSlug
+      });
 
       const permission = privilegePermission
         ? privilegePermission.actions.map((action) => ({
@@ -64,19 +68,35 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
             conditions: privilegePermission.conditions
           }))
         : permissions!;
-      const privilege = await server.services.identityProjectAdditionalPrivilege.create({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        ...req.body,
-        slug: req.body.slug ?? slugify(alphaNumericNanoId(12)),
-        isTemporary: false,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore-error this is valid ts
-        permissions: backfillPermissionV1SchemaToV2Schema(permission)
+
+      const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.createAdditionalPrivilege({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          projectId,
+          orgId: req.permission.orgId
+        },
+        data: {
+          actorId: req.body.identityId,
+          actorType: ActorType.IDENTITY,
+          ...req.body,
+          isTemporary: false,
+          name: req.body.slug || slugify(alphaNumericNanoId(8)),
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore-error this is valid ts
+          permissions: backfillPermissionV1SchemaToV2Schema(permission)
+        }
       });
-      return { privilege };
+
+      return {
+        privilege: {
+          ...privilege,
+          identityId: req.body.identityId,
+          projectMembershipId: projectId,
+          projectId,
+          slug: privilege.name
+        }
+      };
     }
   });
 
@@ -106,7 +126,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.privilegePermission
         ).optional(),
         temporaryMode: z
-          .nativeEnum(IdentityProjectAdditionalPrivilegeTemporaryMode)
+          .nativeEnum(TemporaryPermissionMode)
           .describe(IDENTITY_ADDITIONAL_PRIVILEGE.CREATE.temporaryMode),
         temporaryRange: z
           .string()
@@ -138,19 +158,39 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
           }))
         : permissions!;
 
-      const privilege = await server.services.identityProjectAdditionalPrivilege.create({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        ...req.body,
-        slug: req.body.slug ?? slugify(alphaNumericNanoId(12)),
-        isTemporary: true,
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore-error this is valid ts
-        permissions: backfillPermissionV1SchemaToV2Schema(permission)
+      const { id: projectId } = await server.services.convertor.projectSlugToId({
+        orgId: req.permission.orgId,
+        slug: req.body.projectSlug
       });
-      return { privilege };
+
+      const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.createAdditionalPrivilege({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          projectId,
+          orgId: req.permission.orgId
+        },
+        data: {
+          actorId: req.body.identityId,
+          actorType: ActorType.IDENTITY,
+          ...req.body,
+          isTemporary: true,
+          name: req.body.slug || slugify(alphaNumericNanoId(8)),
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore-error this is valid ts
+          permissions: backfillPermissionV1SchemaToV2Schema(permission)
+        }
+      });
+
+      return {
+        privilege: {
+          ...privilege,
+          identityId: req.body.identityId,
+          projectMembershipId: projectId,
+          projectId,
+          slug: privilege.name
+        }
+      };
     }
   });
 
@@ -183,7 +223,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
             ).optional(),
             isTemporary: z.boolean().describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.isTemporary),
             temporaryMode: z
-              .nativeEnum(IdentityProjectAdditionalPrivilegeTemporaryMode)
+              .nativeEnum(TemporaryPermissionMode)
               .describe(IDENTITY_ADDITIONAL_PRIVILEGE.UPDATE.temporaryMode),
             temporaryRange: z
               .string()
@@ -216,16 +256,34 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
             conditions: privilegePermission.conditions
           }))
         : permissions!;
-      const privilege = await server.services.identityProjectAdditionalPrivilege.updateBySlug({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        slug: req.body.privilegeSlug,
-        identityId: req.body.identityId,
-        projectSlug: req.body.projectSlug,
+
+      const { id: projectId } = await server.services.convertor.projectSlugToId({
+        orgId: req.permission.orgId,
+        slug: req.body.projectSlug
+      });
+
+      const { privilege: privilegeDoc } = await server.services.convertor.additionalPrivilegeNameToDoc(
+        req.body.privilegeSlug,
+        projectId
+      );
+
+      const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.updateAdditionalPrivilege({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          projectId,
+          orgId: req.permission.orgId
+        },
+        selector: {
+          actorId: req.body.identityId,
+          actorType: ActorType.IDENTITY,
+          id: privilegeDoc.id
+        },
         data: {
+          ...req.body,
           ...updatedInfo,
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore-error this is valid ts
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore-error this is valid ts
           permissions: permission
@@ -235,7 +293,16 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
             : undefined
         }
       });
-      return { privilege };
+
+      return {
+        privilege: {
+          ...privilege,
+          identityId: req.body.identityId,
+          projectMembershipId: projectId,
+          projectId,
+          slug: privilege.name
+        }
+      };
     }
   });
 
@@ -267,16 +334,39 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const privilege = await server.services.identityProjectAdditionalPrivilege.deleteBySlug({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        slug: req.body.privilegeSlug,
-        identityId: req.body.identityId,
-        projectSlug: req.body.projectSlug
+      const { id: projectId } = await server.services.convertor.projectSlugToId({
+        orgId: req.permission.orgId,
+        slug: req.body.projectSlug
       });
-      return { privilege };
+
+      const { privilegeId } = await server.services.convertor.additionalPrivilegeNameToDoc(
+        req.body.privilegeSlug,
+        projectId
+      );
+
+      const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.deleteAdditionalPrivilege({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          projectId,
+          orgId: req.permission.orgId
+        },
+        selector: {
+          actorId: req.body.identityId,
+          actorType: ActorType.IDENTITY,
+          id: privilegeId
+        }
+      });
+
+      return {
+        privilege: {
+          ...privilege,
+          identityId: req.body.identityId,
+          projectMembershipId: projectId,
+          projectId,
+          slug: privilege.name
+        }
+      };
     }
   });
 
@@ -310,15 +400,39 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const privilege = await server.services.identityProjectAdditionalPrivilege.getPrivilegeDetailsBySlug({
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        slug: req.params.privilegeSlug,
-        ...req.query
+      const { id: projectId } = await server.services.convertor.projectSlugToId({
+        orgId: req.permission.orgId,
+        slug: req.query.projectSlug
       });
-      return { privilege };
+
+      const { privilegeId } = await server.services.convertor.additionalPrivilegeNameToDoc(
+        req.params.privilegeSlug,
+        projectId
+      );
+
+      const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.getAdditionalPrivilegeById({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          projectId,
+          orgId: req.permission.orgId
+        },
+        selector: {
+          actorId: req.query.identityId,
+          actorType: ActorType.IDENTITY,
+          id: privilegeId
+        }
+      });
+
+      return {
+        privilege: {
+          ...privilege,
+          identityId: req.query.identityId,
+          projectMembershipId: projectId,
+          projectId,
+          slug: privilege.name
+        }
+      };
     }
   });
 
@@ -349,15 +463,32 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const privileges = await server.services.identityProjectAdditionalPrivilege.listIdentityProjectPrivileges({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        ...req.query
+      const { id: projectId } = await server.services.convertor.projectSlugToId({
+        orgId: req.permission.orgId,
+        slug: req.query.projectSlug
       });
+
+      const { additionalPrivileges: privileges } = await server.services.additionalPrivilege.listAdditionalPrivileges({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          projectId,
+          orgId: req.permission.orgId
+        },
+        selector: {
+          actorId: req.query.identityId,
+          actorType: ActorType.IDENTITY
+        }
+      });
+
       return {
-        privileges
+        privileges: privileges.map((privilege) => ({
+          ...privilege,
+          identityId: req.query.identityId,
+          projectMembershipId: projectId,
+          projectId,
+          slug: privilege.name
+        }))
       };
     }
   });

@@ -36,7 +36,7 @@ export const FormLabel = ({
   >
     {label}
     {isRequired && <span className="ml-1 text-red">*</span>}
-    {isOptional && <span className="ml-1 text-xs italic text-gray-500">- Optional</span>}
+    {isOptional && <span className="ml-1 text-xs text-gray-500 italic">- Optional</span>}
     {icon && !tooltipText && (
       <span className="ml-2 cursor-default text-mineshaft-300 hover:text-mineshaft-200">
         {icon}
@@ -58,7 +58,7 @@ export type FormHelperTextProps = {
 export const FormHelperText = ({ isError, text }: FormHelperTextProps) => (
   <div
     className={twMerge(
-      "mt-2 flex items-center font-inter text-xs text-mineshaft-300 text-opacity-90",
+      "text-opacity-90 mt-2 flex items-center font-inter text-xs text-mineshaft-300",
       isError && "text-red-600"
     )}
   >

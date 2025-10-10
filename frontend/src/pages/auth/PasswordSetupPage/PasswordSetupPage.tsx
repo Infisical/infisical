@@ -100,7 +100,7 @@ export const PasswordSetupPage = () => {
       <form onSubmit={handleSetPassword}>
         <Card className="flex w-full max-w-lg flex-col rounded-md border border-mineshaft-600 px-8 py-4">
           <CardTitle
-            className="p-0 pb-4 pt-2 text-left text-xl"
+            className="p-0 pt-2 pb-4 text-left text-xl"
             subTitle="Make sure to store your password somewhere safe."
           >
             <div className="flex flex-row items-center">

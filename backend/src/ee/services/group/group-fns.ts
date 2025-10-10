@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { ProjectVersion, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
+import { AccessScope, ProjectVersion, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
 
@@ -16,7 +16,7 @@ const addAcceptedUsersToGroup = async ({
   group,
   userGroupMembershipDAL,
   userDAL,
-  groupProjectDAL,
+  membershipGroupDAL,
   projectKeyDAL,
   projectDAL,
   projectBotDAL,
@@ -42,13 +42,15 @@ const addAcceptedUsersToGroup = async ({
   const projectIds = Array.from(
     new Set(
       (
-        await groupProjectDAL.find(
+        await membershipGroupDAL.find(
           {
-            groupId: group.id
+            actorGroupId: group.id,
+            scopeOrgId: group.orgId,
+            scope: AccessScope.Project
           },
           { tx }
         )
-      ).map((gp) => gp.projectId)
+      ).map((gp) => gp.scopeProjectId as string)
     )
   );
 
@@ -167,11 +169,11 @@ export const addUsersToGroupByUserIds = async ({
   userDAL,
   userGroupMembershipDAL,
   orgDAL,
-  groupProjectDAL,
   projectKeyDAL,
   projectDAL,
   projectBotDAL,
-  tx: outerTx
+  tx: outerTx,
+  membershipGroupDAL
 }: TAddUsersToGroupByUserIds) => {
   const processAddition = async (tx: Knex) => {
     const foundMembers = await userDAL.find(
@@ -214,15 +216,18 @@ export const addUsersToGroupByUserIds = async ({
     // check if all user(s) are part of the organization
     const existingUserOrgMemberships = await orgDAL.findMembership(
       {
-        [`${TableName.OrgMembership}.orgId` as "orgId"]: group.orgId,
+        [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: group.orgId,
+        scope: AccessScope.Organization,
         $in: {
-          [`${TableName.OrgMembership}.userId` as "userId"]: userIds
+          [`${TableName.Membership}.actorUserId` as "actorUserId"]: userIds
         }
       },
       { tx }
     );
 
-    const existingUserOrgMembershipsUserIdsSet = new Set(existingUserOrgMemberships.map((u) => u.userId));
+    const existingUserOrgMembershipsUserIdsSet = new Set(
+      existingUserOrgMemberships.map((u) => u.actorUserId as string)
+    );
 
     userIds.forEach((userId) => {
       if (!existingUserOrgMembershipsUserIdsSet.has(userId))
@@ -250,7 +255,7 @@ export const addUsersToGroupByUserIds = async ({
         group,
         userDAL,
         userGroupMembershipDAL,
-        groupProjectDAL,
+        membershipGroupDAL,
         projectKeyDAL,
         projectDAL,
         projectBotDAL,
@@ -292,9 +297,9 @@ export const removeUsersFromGroupByUserIds = async ({
   userIds,
   userDAL,
   userGroupMembershipDAL,
-  groupProjectDAL,
   projectKeyDAL,
-  tx: outerTx
+  tx: outerTx,
+  membershipGroupDAL
 }: TRemoveUsersFromGroupByUserIds) => {
   const processRemoval = async (tx: Knex) => {
     const foundMembers = await userDAL.find({
@@ -352,13 +357,15 @@ export const removeUsersFromGroupByUserIds = async ({
       const projectIds = Array.from(
         new Set(
           (
-            await groupProjectDAL.find(
+            await membershipGroupDAL.find(
               {
-                groupId: group.id
+                scope: AccessScope.Project,
+                actorGroupId: group.id,
+                scopeOrgId: group.orgId
               },
               { tx }
             )
-          ).map((gp) => gp.projectId)
+          ).map((gp) => gp.scopeProjectId as string)
         )
       );
 
@@ -422,11 +429,11 @@ export const convertPendingGroupAdditionsToGroupMemberships = async ({
   userIds,
   userDAL,
   userGroupMembershipDAL,
-  groupProjectDAL,
   projectKeyDAL,
   projectDAL,
   projectBotDAL,
-  tx: outerTx
+  tx: outerTx,
+  membershipGroupDAL
 }: TConvertPendingGroupAdditionsToGroupMemberships) => {
   const processConversion = async (tx: Knex) => {
     const users = await userDAL.find(
@@ -463,7 +470,7 @@ export const convertPendingGroupAdditionsToGroupMemberships = async ({
         group: pendingGroupAddition.group,
         userDAL,
         userGroupMembershipDAL,
-        groupProjectDAL,
+        membershipGroupDAL,
         projectKeyDAL,
         projectDAL,
         projectBotDAL,

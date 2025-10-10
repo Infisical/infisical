@@ -82,7 +82,7 @@ export const EncryptionPageForm = () => {
       >
         <div className="flex flex-col justify-start">
           <div className="flex w-full justify-between">
-            <div className="mb-2 text-xl font-semibold text-mineshaft-100">
+            <div className="mb-2 text-xl font-medium text-mineshaft-100">
               KMS Encryption Strategy
             </div>
           </div>

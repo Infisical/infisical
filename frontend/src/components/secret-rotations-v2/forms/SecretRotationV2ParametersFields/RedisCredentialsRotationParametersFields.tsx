@@ -22,7 +22,7 @@ export const RedisCredentialsRotationParametersFields = () => {
           defaultValue=""
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              tooltipClassName="max-w-[40rem] w-full"
+              tooltipClassName="max-w-160 w-full"
               tooltipText={
                 <div className="flex flex-col gap-4">
                   <p>
@@ -31,7 +31,7 @@ export const RedisCredentialsRotationParametersFields = () => {
                   </p>
                   <p>
                     The default value is{" "}
-                    <code className="rounded bg-mineshaft-700 px-1 py-0.5 font-mono font-medium text-bunker-300">
+                    <code className="rounded-sm bg-mineshaft-700 px-1 py-0.5 font-mono font-medium text-bunker-300">
                       ~* +@all
                     </code>
                     . You can modify it to suit your needs.
@@ -64,7 +64,7 @@ export const RedisCredentialsRotationParametersFields = () => {
         <div className="w-full border-b border-mineshaft-600">
           <span className="text-sm text-mineshaft-300">Password Requirements</span>
         </div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded border border-mineshaft-600 bg-mineshaft-700 px-3 pt-3">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-sm border border-mineshaft-600 bg-mineshaft-700 px-3 pt-3">
           <Controller
             control={control}
             name="parameters.passwordRequirements.length"

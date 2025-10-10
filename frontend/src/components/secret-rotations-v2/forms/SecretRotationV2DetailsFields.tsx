@@ -38,7 +38,7 @@ export const SecretRotationV2DetailsFields = () => {
               value={value ?? ""}
               onChange={onChange}
               placeholder="Describe the purpose of this rotation..."
-              className="!resize-none"
+              className="resize-none!"
               rows={4}
             />
           </FormControl>

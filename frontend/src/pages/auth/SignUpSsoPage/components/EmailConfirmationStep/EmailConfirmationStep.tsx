@@ -149,7 +149,7 @@ export const EmailConfirmationStep = ({
           fields={6}
           onChange={setCode}
           {...props}
-          className="mb-2 mt-6"
+          className="mt-6 mb-2"
         />
       </div>
       <div className="mx-auto mt-4 block w-max md:hidden">
@@ -160,11 +160,11 @@ export const EmailConfirmationStep = ({
           fields={6}
           onChange={setCode}
           {...propsPhone}
-          className="mb-2 mt-2"
+          className="mt-2 mb-2"
         />
       </div>
       {codeError && <Error text="Oops. Your code is wrong. Please try again." />}
-      <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
+      <div className="mx-auto mt-2 flex w-1/4 max-w-xs min-w-[20rem] flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
         <div className="text-l w-full py-1 text-lg">
           <Button
             type="submit"

@@ -89,7 +89,7 @@ export const CloudflarePagesAuthorizePage = () => {
           onClick={handleButtonClick}
           color="mineshaft"
           variant="outline_bg"
-          className="mb-6 ml-auto mr-6 mt-2 w-min"
+          className="mt-2 mr-6 mb-6 ml-auto w-min"
           isFullWidth={false}
           isLoading={isLoading}
         >

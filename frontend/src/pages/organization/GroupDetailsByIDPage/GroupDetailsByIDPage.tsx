@@ -77,7 +77,7 @@ const Page = () => {
     handlePopUpClose("deleteGroup");
   };
 
-  if (isPending) return <Spinner size="sm" className="ml-2 mt-2" />;
+  if (isPending) return <Spinner size="sm" className="mt-2 ml-2" />;
 
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -124,7 +124,7 @@ const Page = () => {
                     <DropdownMenuItem
                       className={twMerge(
                         isAllowed
-                          ? "hover:!bg-red-500 hover:!text-white"
+                          ? "hover:bg-red-500! hover:text-white!"
                           : "pointer-events-none cursor-not-allowed opacity-50"
                       )}
                       onClick={async () => {

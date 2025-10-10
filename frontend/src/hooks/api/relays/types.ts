@@ -6,6 +6,7 @@ export type TRelay = {
   identityId: string | null;
   name: string;
   host: string;
+  heartbeat: string;
 };
 
 export type TDeleteRelayDTO = {

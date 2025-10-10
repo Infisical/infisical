@@ -139,7 +139,7 @@ const VerifyForm = ({ cmek }: FormProps) => {
           </div>
           <div className="mt-3">
             <span className="text-sm opacity-60">Signature:</span>{" "}
-            <div className="whitespace-pre-wrap break-words rounded-md border border-mineshaft-700 bg-mineshaft-900 p-2 text-sm">
+            <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 p-2 text-sm break-words whitespace-pre-wrap">
               {signature}
             </div>
           </div>
@@ -157,10 +157,7 @@ const VerifyForm = ({ cmek }: FormProps) => {
             errorText={errors.data?.message}
             isError={Boolean(errors.data)}
           >
-            <TextArea
-              {...register("data")}
-              className="max-h-[20rem] min-h-[10rem] min-w-full max-w-full"
-            />
+            <TextArea {...register("data")} className="max-h-80 min-h-40 max-w-full min-w-full" />
           </FormControl>
 
           <FormControl
@@ -171,7 +168,7 @@ const VerifyForm = ({ cmek }: FormProps) => {
           >
             <TextArea
               {...register("signature")}
-              className="max-h-[20rem] min-h-[10rem] min-w-full max-w-full"
+              className="max-h-80 min-h-40 max-w-full min-w-full"
             />
           </FormControl>
 

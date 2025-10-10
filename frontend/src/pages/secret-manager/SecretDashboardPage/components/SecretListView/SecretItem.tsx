@@ -449,7 +449,7 @@ export const SecretItem = memo(
                   <FontAwesomeIcon
                     icon={faRotate}
                     size="xs"
-                    className="absolute -bottom-[0.05rem] -right-[0.2rem] text-mineshaft-400"
+                    className="absolute -right-[0.2rem] -bottom-[0.05rem] text-mineshaft-400"
                   />
                 </div>
               ) : (
@@ -462,18 +462,15 @@ export const SecretItem = memo(
                   />
                   <FontAwesomeSymbol
                     className={twMerge(
-                      "ml-3 block h-3.5 w-3.5 group-hover:hidden",
-                      isSelected && "hidden"
+                      "ml-3 block h-3.5 w-3.5 group-hover:!hidden",
+                      isSelected && "!hidden"
                     )}
                     symbolName={FontAwesomeSpriteName.SecretKey}
                   />
                 </>
               )}
             </div>
-            <div
-              className="flex h-11 flex-shrink-0 items-center px-4 py-2"
-              style={{ width: colWidth }}
-            >
+            <div className="flex h-11 shrink-0 items-center px-4 py-2" style={{ width: colWidth }}>
               <Controller
                 name="key"
                 control={control}
@@ -518,7 +515,7 @@ export const SecretItem = memo(
               />
             </div>
             <div
-              className="flex w-80 flex-grow items-center border-x border-mineshaft-600 py-1 pl-4 pr-2"
+              className="flex w-80 grow items-center border-x border-mineshaft-600 py-1 pr-2 pl-4"
               tabIndex={0}
               role="button"
             >
@@ -586,7 +583,7 @@ export const SecretItem = memo(
               {pendingAction !== PendingAction.Create && pendingAction !== PendingAction.Delete && (
                 <div
                   key="actions"
-                  className="flex h-full flex-shrink-0 self-start transition-all group-hover:gap-x-2"
+                  className="flex h-full shrink-0 self-start transition-all group-hover:gap-x-2"
                 >
                   <IconButton
                     isDisabled={secret.secretValueHidden}
@@ -851,7 +848,7 @@ export const SecretItem = memo(
               {pendingAction === PendingAction.Create && (
                 <div
                   key="actions"
-                  className="flex h-full flex-shrink-0 self-start transition-all group-hover:gap-x-2"
+                  className="flex h-full shrink-0 self-start transition-all group-hover:gap-x-2"
                 >
                   <DropdownMenu>
                     <ProjectPermissionCan
@@ -941,7 +938,7 @@ export const SecretItem = memo(
               {isInAutoSaveMode ? (
                 <motion.div
                   key="auto-save-mode"
-                  className="flex w-[63px] flex-shrink-0 items-center justify-between px-3"
+                  className="flex w-[63px] shrink-0 items-center justify-between px-3"
                   initial={{ x: -10, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: -10, opacity: 0 }}
@@ -952,7 +949,7 @@ export const SecretItem = memo(
                 isPending ? (
                   <motion.div
                     key="options"
-                    className="flex w-[63px] flex-shrink-0 items-center justify-between px-3"
+                    className="flex w-[63px] shrink-0 items-center justify-between px-3"
                     initial={{ x: 0, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 10, opacity: 0 }}
@@ -992,7 +989,7 @@ export const SecretItem = memo(
                 ) : (
                   <motion.div
                     key="options"
-                    className="flex w-[63px] flex-shrink-0 items-center justify-between px-3"
+                    className="flex w-[63px] shrink-0 items-center justify-between px-3"
                     initial={{ x: 0, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 10, opacity: 0 }}
@@ -1051,7 +1048,7 @@ export const SecretItem = memo(
               ) : (
                 <motion.div
                   key="options-save"
-                  className="flex w-[63px] flex-shrink-0 items-center justify-between px-3"
+                  className="flex w-[63px] shrink-0 items-center justify-between px-3"
                   initial={{ x: -10, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: -10, opacity: 0 }}

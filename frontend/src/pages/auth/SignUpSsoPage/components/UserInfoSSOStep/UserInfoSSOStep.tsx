@@ -167,7 +167,7 @@ export const UserInfoSSOStep = ({
 
   return (
     <div className="mx-auto mb-36 h-full w-max rounded-xl md:mb-16 md:px-8">
-      <p className="text-medium mx-8 mb-6 flex justify-center bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-xl font-bold text-transparent md:mx-16">
+      <p className="text-medium mx-8 mb-6 flex justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-xl font-bold text-transparent md:mx-16">
         {t("signup.step3-message")}
       </p>
       <div className="mx-auto mb-36 h-full w-max rounded-xl py-6 md:mb-16 md:border md:border-mineshaft-600 md:bg-mineshaft-800 md:px-8">
@@ -184,7 +184,7 @@ export const UserInfoSSOStep = ({
             className="h-12"
           />
           {nameError && (
-            <p className="ml-1 mt-1 w-full text-left text-xs text-red-600">
+            <p className="mt-1 ml-1 w-full text-left text-xs text-red-600">
               Please, specify your name
             </p>
           )}
@@ -204,7 +204,7 @@ export const UserInfoSSOStep = ({
               isDisabled={forceDefaultOrg}
             />
             {organizationNameError && (
-              <p className="ml-1 mt-1 w-full text-left text-xs text-red-600">
+              <p className="mt-1 ml-1 w-full text-left text-xs text-red-600">
                 Please, specify your organization name
               </p>
             )}
@@ -223,7 +223,7 @@ export const UserInfoSSOStep = ({
             />
           </div>
         )}
-        <div className="mx-auto mt-2 flex w-1/4 min-w-[20rem] max-w-xs flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
+        <div className="mx-auto mt-2 flex w-1/4 max-w-xs min-w-[20rem] flex-col items-center justify-center text-center text-sm md:max-w-md md:text-left lg:w-[19%]">
           <div className="text-l w-full py-1 text-lg">
             <Button
               type="submit"

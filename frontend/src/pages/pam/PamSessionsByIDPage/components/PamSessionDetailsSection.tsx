@@ -13,7 +13,7 @@ type Props = {
 
 const DetailItem = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div className="mb-4">
-    <p className="font-semibold">{label}</p>
+    <p className="font-medium">{label}</p>
     {children}
   </div>
 );
@@ -44,7 +44,7 @@ export const PamSessionDetailsSection = ({
   return (
     <div className="max-w-[350px] rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-semibold text-mineshaft-100">Session Details</h3>
+        <h3 className="text-lg font-medium text-mineshaft-100">Session Details</h3>
       </div>
       <div className="pt-4 text-sm text-mineshaft-300">
         <DetailItem label="Session ID">
@@ -76,7 +76,7 @@ export const PamSessionDetailsSection = ({
               className="size-4"
             />
             <p>{accountName}</p>
-            <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-yellow/20 text-yellow">
+            <Badge className="flex h-5 w-min items-center gap-1.5 bg-yellow/20 whitespace-nowrap text-yellow">
               <FontAwesomeIcon icon={faBoxOpen} />
               {resourceName}
             </Badge>

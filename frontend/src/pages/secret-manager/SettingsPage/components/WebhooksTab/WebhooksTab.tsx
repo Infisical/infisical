@@ -141,7 +141,7 @@ export const WebhooksTab = withProjectPermission(
     return (
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="flex justify-between">
-          <p className="text-xl font-semibold text-mineshaft-100">{t("settings.webhooks.title")}</p>
+          <p className="text-xl font-medium text-mineshaft-100">{t("settings.webhooks.title")}</p>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
             a={ProjectPermissionSub.Webhooks}
@@ -202,7 +202,7 @@ export const WebhooksTab = withProjectPermission(
                           {!lastStatus ? (
                             "-"
                           ) : (
-                            <div className="inline-flex w-min items-center rounded bg-mineshaft-600 px-2 py-0.5 text-sm">
+                            <div className="inline-flex w-min items-center rounded-sm bg-mineshaft-600 px-2 py-0.5 text-sm">
                               {lastStatus}{" "}
                               <Tooltip
                                 content={

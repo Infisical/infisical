@@ -60,7 +60,7 @@ export const OrgScimSection = () => {
 
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
-      <p className="text-xl font-semibold text-gray-200">Provision users via SCIM</p>
+      <p className="text-xl font-medium text-gray-200">Provision users via SCIM</p>
       <div className="py-4">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-md text-mineshaft-100">SCIM</h2>

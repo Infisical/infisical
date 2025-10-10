@@ -5,13 +5,12 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
-import { IdentityAuthMethod, OrgMembershipRole, ProjectMembershipRole, TableName } from "../schemas";
+import { AccessScope, IdentityAuthMethod, OrgMembershipRole, ProjectMembershipRole, TableName } from "../schemas";
 import { seedData1 } from "../seed-data";
 
 export async function seed(knex: Knex): Promise<void> {
   // Deletes ALL existing entries
   await knex(TableName.Identity).del();
-  await knex(TableName.IdentityOrgMembership).del();
 
   initLogger();
 
@@ -78,34 +77,47 @@ export async function seed(knex: Knex): Promise<void> {
       isClientSecretRevoked: false
     }
   ]);
-  await knex(TableName.IdentityOrgMembership).insert([
+  const [orgMembership] = await knex(TableName.Membership)
+    .insert([
+      {
+        actorIdentityId: seedData1.machineIdentity.id,
+        scopeOrgId: seedData1.organization.id,
+        scope: AccessScope.Organization
+      }
+    ])
+    .returning("*");
+  await knex(TableName.MembershipRole).insert([
     {
-      identityId: seedData1.machineIdentity.id,
-      orgId: seedData1.organization.id,
+      membershipId: orgMembership.id,
       role: OrgMembershipRole.Admin
     }
   ]);
 
-  const identityProjectMembership = await knex(TableName.IdentityProjectMembership)
+  const identityProjectMembership = await knex(TableName.Membership)
     .insert({
-      identityId: seedData1.machineIdentity.id,
-      projectId: seedData1.project.id
+      actorIdentityId: seedData1.machineIdentity.id,
+      scopeOrgId: seedData1.organization.id,
+      scope: AccessScope.Project,
+      scopeProjectId: seedData1.project.id
     })
     .returning("*");
 
-  await knex(TableName.IdentityProjectMembershipRole).insert({
+  await knex(TableName.MembershipRole).insert({
     role: ProjectMembershipRole.Admin,
-    projectMembershipId: identityProjectMembership[0].id
+    membershipId: identityProjectMembership[0].id
   });
-  const identityProjectMembershipV3 = await knex(TableName.IdentityProjectMembership)
+
+  const identityProjectMembershipV3 = await knex(TableName.Membership)
     .insert({
-      identityId: seedData1.machineIdentity.id,
-      projectId: seedData1.projectV3.id
+      actorIdentityId: seedData1.machineIdentity.id,
+      scopeOrgId: seedData1.organization.id,
+      scope: AccessScope.Project,
+      scopeProjectId: seedData1.projectV3.id
     })
     .returning("*");
 
-  await knex(TableName.IdentityProjectMembershipRole).insert({
+  await knex(TableName.MembershipRole).insert({
     role: ProjectMembershipRole.Admin,
-    projectMembershipId: identityProjectMembershipV3[0].id
+    membershipId: identityProjectMembershipV3[0].id
   });
 }

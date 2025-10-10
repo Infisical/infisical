@@ -27,7 +27,7 @@ export const PkiSyncOptionsSection = ({ pkiSync, onEditOptions }: Props) => {
     <div>
       <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
         <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-          <h3 className="font-semibold text-mineshaft-100">Sync Options</h3>
+          <h3 className="font-medium text-mineshaft-100">Sync Options</h3>
           <ProjectPermissionCan I={ProjectPermissionPkiSyncActions.Edit} a={permissionSubject}>
             {(isAllowed) => (
               <IconButton

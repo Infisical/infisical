@@ -251,7 +251,7 @@ export const ReplicateFolderFromBoard = ({
               control={control}
               name="secretPath"
               render={({ field }) => (
-                <FormControl label="Secret Path" className="flex-grow" isRequired>
+                <FormControl label="Secret Path" className="grow" isRequired>
                   <SecretPathInput
                     {...field}
                     placeholder="Provide a path, default is /"
@@ -266,7 +266,7 @@ export const ReplicateFolderFromBoard = ({
               control={control}
               name="secrets"
               render={({ field: { onChange } }) => (
-                <FormControl className="flex-grow" isRequired>
+                <FormControl className="grow" isRequired>
                   <SecretTreeView
                     data={secretsFilteredByPath}
                     basePath={debouncedEnvCopySecretPath}

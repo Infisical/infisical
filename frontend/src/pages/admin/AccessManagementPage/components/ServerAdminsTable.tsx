@@ -11,7 +11,6 @@ import {
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { InfiniteData } from "@tanstack/react-query";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -28,6 +27,7 @@ import {
   EmptyState,
   IconButton,
   Input,
+  Pagination,
   Table,
   TableContainer,
   TableSkeleton,
@@ -39,7 +39,12 @@ import {
   Tr
 } from "@app/components/v2";
 import { useSubscription, useUser } from "@app/context";
-import { useDebounce, usePopUp } from "@app/hooks";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { useDebounce, usePagination, usePopUp } from "@app/hooks";
 import {
   useAdminBulkDeleteUsers,
   useAdminDeleteUser,
@@ -54,15 +59,17 @@ const removeServerAdminUpgradePlanMessage = "Removing Server Admin permissions f
 
 const ServerAdminsPanelTable = ({
   handlePopUpOpen,
-  users: usersPages,
+  users,
   isPending,
   searchUserFilter,
   setSearchUserFilter,
-  isFetchingNextPage,
-  fetchNextPage,
-  hasNextPage,
   selectedUsers,
-  setSelectedUsers
+  setSelectedUsers,
+  totalCount,
+  page,
+  perPage,
+  setPage,
+  handlePerPageChange
 }: {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
@@ -75,20 +82,20 @@ const ServerAdminsPanelTable = ({
     }
   ) => void;
   isPending: boolean;
-  users: InfiniteData<User[], unknown> | undefined;
+  users?: User[];
   searchUserFilter: string;
   setSearchUserFilter: (filter: string) => void;
   selectedUsers: User[];
   setSelectedUsers: Dispatch<SetStateAction<User[]>>;
-  isFetchingNextPage: boolean;
-  fetchNextPage: () => void;
-  hasNextPage: boolean;
+  totalCount: number;
+  page: number;
+  perPage: number;
+  setPage: Dispatch<SetStateAction<number>>;
+  handlePerPageChange: (newPerPage: number) => void;
 }) => {
   const { subscription } = useSubscription();
 
-  const users = usersPages?.pages.flat();
-
-  const isEmpty = !isPending && !users?.length;
+  const isEmpty = !isPending && totalCount === 0;
 
   const selectedUserIds = selectedUsers.map((user) => user.id);
 
@@ -208,7 +215,7 @@ const ServerAdminsPanelTable = ({
                                   <div className="relative">
                                     <FontAwesomeIcon icon={faShieldHalved} />
                                     <FontAwesomeIcon
-                                      className="absolute -bottom-[0.01rem] -right-1"
+                                      className="absolute -right-1 -bottom-[0.01rem]"
                                       size="2xs"
                                       icon={faXmark}
                                     />
@@ -241,16 +248,13 @@ const ServerAdminsPanelTable = ({
           {!isPending && isEmpty && <EmptyState title="No users found" icon={faUsers} />}
         </TableContainer>
         {!isEmpty && (
-          <Button
-            className="mt-4 py-3 text-sm"
-            isFullWidth
-            variant="outline_bg"
-            isLoading={isFetchingNextPage}
-            isDisabled={isFetchingNextPage || !hasNextPage}
-            onClick={() => fetchNextPage()}
-          >
-            {hasNextPage ? "Load More" : "End of List"}
-          </Button>
+          <Pagination
+            count={totalCount}
+            page={page}
+            perPage={perPage}
+            onChangePage={(newPage) => setPage(newPage)}
+            onChangePerPage={handlePerPageChange}
+          />
         )}
       </div>
     </>
@@ -278,17 +282,23 @@ export const ServerAdminsTable = () => {
   const [searchUserFilter, setSearchUserFilter] = useState("");
   const [debouncedSearchTerm] = useDebounce(searchUserFilter, 500);
 
-  const {
-    data: users,
-    isPending,
-    isFetchingNextPage,
-    hasNextPage,
-    fetchNextPage
-  } = useAdminGetUsers({
-    limit: 20,
+  const { offset, limit, setPage, perPage, page, setPerPage } = usePagination("", {
+    initPerPage: getUserTablePreference("ServerAdminUsersTable", PreferenceKey.PerPage, 20)
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("ServerAdminUsersTable", PreferenceKey.PerPage, newPerPage);
+  };
+
+  const { data, isPending } = useAdminGetUsers({
+    limit,
+    offset,
     searchTerm: debouncedSearchTerm,
     adminsOnly: true
   });
+
+  const { users = [], totalCount = 0 } = data ?? {};
 
   const handleRemoveUser = async () => {
     const { id } = popUp?.removeUser?.data as { id: string; username: string };
@@ -351,7 +361,7 @@ export const ServerAdminsTable = () => {
     <>
       <div
         className={twMerge(
-          "h-0 flex-shrink-0 overflow-hidden transition-all",
+          "h-0 shrink-0 overflow-hidden transition-all",
           selectedUsers.length > 0 && "h-16"
         )}
       >
@@ -389,9 +399,11 @@ export const ServerAdminsTable = () => {
           searchUserFilter={searchUserFilter}
           setSearchUserFilter={setSearchUserFilter}
           isPending={isPending}
-          isFetchingNextPage={isFetchingNextPage}
-          hasNextPage={hasNextPage}
-          fetchNextPage={fetchNextPage}
+          page={page}
+          perPage={perPage}
+          setPage={setPage}
+          handlePerPageChange={handlePerPageChange}
+          totalCount={totalCount}
         />
         <DeleteActionModal
           isOpen={popUp.removeUser.isOpen}
@@ -433,7 +445,7 @@ export const ServerAdminsTable = () => {
           <div className="mt-4 text-sm text-mineshaft-400">
             The following users will be deleted:
           </div>
-          <div className="mt-2 max-h-[20rem] overflow-y-auto rounded border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
+          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
             <ul className="list-disc">
               {selectedUsers?.map((user) => {
                 const email = user.email ?? user.username;
@@ -455,7 +467,7 @@ export const ServerAdminsTable = () => {
                           <div className="inline-block">
                             <Badge
                               variant="primary"
-                              className="ml-1 mt-[0.05rem] inline-flex w-min items-center gap-1.5 whitespace-nowrap"
+                              className="mt-[0.05rem] ml-1 inline-flex w-min items-center gap-1.5 whitespace-nowrap"
                             >
                               <FontAwesomeIcon icon={faWarning} />
                               <span>Deleting Yourself</span>

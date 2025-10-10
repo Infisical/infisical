@@ -247,13 +247,13 @@ export const QuickSearchSecretItem = ({
                       )}
                       <p
                         className={twMerge(
-                          "hidden w-[12rem] max-w-[12rem] truncate text-sm group-hover:block",
+                          "hidden w-48 max-w-48 truncate text-sm group-hover:block",
                           !secret.value && "text-mineshaft-400"
                         )}
                       >
                         {secret.value || "EMPTY"}
                       </p>
-                      <p className="w-[12rem] text-sm group-hover:hidden">
+                      <p className="w-48 text-sm group-hover:!hidden">
                         ***************************
                       </p>
                     </div>
