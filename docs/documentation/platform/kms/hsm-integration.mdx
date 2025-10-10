@@ -370,7 +370,7 @@ Enabling HSM encryption has a set of key benefits:
               </Accordion>
             </AccordionGroup>
 
-            At this point it is assumed that you have:
+            At this point you should have:
             1. [Activated the CloudHSM cluster](https://docs.aws.amazon.com/cloudhsm/latest/userguide/activate-cluster.html)
             2. [Created a Crypto User HSM user](https://docs.aws.amazon.com/cloudhsm/latest/userguide/cloudhsm_cli-user-create.html)
             3. Downloaded and configured the CloudHSM client as described in the previous steps.
@@ -1034,7 +1034,7 @@ Enabling HSM encryption has a set of key benefits:
               </Accordion>
             </AccordionGroup>
 
-            At this point it is assumed that you have:
+            At this point you should have:
             1. [Activated the CloudHSM cluster](https://docs.aws.amazon.com/cloudhsm/latest/userguide/activate-cluster.html)
             2. [Created a Crypto User HSM user](https://docs.aws.amazon.com/cloudhsm/latest/userguide/cloudhsm_cli-user-create.html)
             3. Downloaded and configured the CloudHSM client as described in the previous steps.
@@ -1251,20 +1251,20 @@ Enabling HSM encryption has a set of key benefits:
 
             ```yaml
               # ... The rest of the values.yaml file ...
-              
-              image:
-                repository: infisical/infisical
-                tag: "v0.117.1-postgres"
-                pullPolicy: IfNotPresent
+              infisical:
+                image:
+                  repository: infisical/infisical
+                  tag: "v0.117.1-postgres"
+                  pullPolicy: IfNotPresent
 
-              extraVolumeMounts:
-                - name: cloudhsm-data
-                  mountPath: /opt/cloudhsm  # The path we will mount the HSM client files to
+                extraVolumeMounts:
+                  - name: cloudhsm-data
+                    mountPath: /opt/cloudhsm  # The path we will mount the HSM client files to
 
-              extraVolumes:
-                - name: cloudhsm-data 
-                  persistentVolumeClaim:
-                    claimName: cloudhsm-data-pvc  # The PVC we created in the previous step
+                extraVolumes:
+                  - name: cloudhsm-data 
+                    persistentVolumeClaim:
+                      claimName: cloudhsm-data-pvc  # The PVC we created in the previous step
 
               # ... The rest of the values.yaml file ...
             ```
@@ -1279,6 +1279,7 @@ Enabling HSM encryption has a set of key benefits:
             After updating the values.yaml file, you need to upgrade the Helm chart in order for the changes to take effect.
 
             ```bash
+            helm repo update
             helm upgrade --install infisical infisical-helm-charts/infisical-standalone --values /path/to/values.yaml
             ```
           </Step>
