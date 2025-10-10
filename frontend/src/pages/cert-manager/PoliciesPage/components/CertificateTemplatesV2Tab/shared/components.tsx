@@ -15,7 +15,7 @@ type UsageToggleProps = {
 
 export const UsageToggle = ({ value, onChange }: UsageToggleProps) => {
   return (
-    <div className="flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+    <div className="border-mineshaft-600 bg-mineshaft-800 flex gap-x-0.5 rounded-md border p-1">
       <Button
         variant="outline_bg"
         onClick={() => {
@@ -24,7 +24,7 @@ export const UsageToggle = ({ value, onChange }: UsageToggleProps) => {
         size="xs"
         className={`${
           value === "required" ? "bg-mineshaft-500" : "bg-transparent"
-        } min-w-[2.4rem] rounded border-none hover:bg-mineshaft-600`}
+        } hover:bg-mineshaft-600 min-w-[2.4rem] rounded border-none`}
       >
         Required
       </Button>
@@ -36,7 +36,7 @@ export const UsageToggle = ({ value, onChange }: UsageToggleProps) => {
         size="xs"
         className={`${
           value === "optional" ? "bg-mineshaft-500" : "bg-transparent"
-        } min-w-[2.4rem] rounded border-none hover:bg-mineshaft-600`}
+        } hover:bg-mineshaft-600 min-w-[2.4rem] rounded border-none`}
       >
         Optional
       </Button>
@@ -66,7 +66,7 @@ export const KeyUsagesSection = ({
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-mineshaft-200">Key Usages</h3>
+        <h3 className="text-mineshaft-200 text-sm font-medium">Key Usages</h3>
         <div className="grid grid-cols-2 gap-3">
           {KEY_USAGES.map((usage) => {
             const requiredUsages = Array.isArray(watchedKeyUsages?.requiredUsages)
@@ -80,7 +80,7 @@ export const KeyUsagesSection = ({
 
             return (
               <div key={usage} className="flex items-center justify-between p-2">
-                <span className="text-sm capitalize text-mineshaft-300">
+                <span className="text-mineshaft-300 text-sm capitalize">
                   {formatUsageName(usage)}
                 </span>
                 <UsageToggle
@@ -103,7 +103,7 @@ export const KeyUsagesSection = ({
       </div>
 
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-mineshaft-200">Extended Key Usages</h3>
+        <h3 className="text-mineshaft-200 text-sm font-medium">Extended Key Usages</h3>
         <div className="grid grid-cols-2 gap-3">
           {EXTENDED_KEY_USAGES.map((usage) => {
             const requiredUsages = Array.isArray(watchedExtendedKeyUsages?.requiredUsages)
@@ -117,7 +117,7 @@ export const KeyUsagesSection = ({
 
             return (
               <div key={usage} className="flex items-center justify-between p-2">
-                <span className="text-sm capitalize text-mineshaft-300">
+                <span className="text-mineshaft-300 text-sm capitalize">
                   {formatUsageName(usage)}
                 </span>
                 <UsageToggle
