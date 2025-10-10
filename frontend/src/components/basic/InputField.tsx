@@ -101,7 +101,7 @@ const InputField = ({
           </button>
         )}
         {blurred && (
-          <div className="peer absolute flex h-10 w-fit max-w-xl items-center overflow-hidden rounded-md text-clip text-gray-400/50 group-hover:hidden peer-hover:hidden peer-focus:hidden peer-active:invisible">
+          <div className="peer absolute flex h-10 w-fit max-w-xl items-center overflow-hidden rounded-md text-clip text-gray-400/50 group-hover:!hidden peer-hover:hidden peer-focus:hidden peer-active:invisible">
             <p className="ml-2" />
             {value
               .split("")

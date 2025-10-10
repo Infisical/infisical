@@ -63,16 +63,14 @@ export const CurrentPlanSection = () => {
                 return (
                   <Tr key={`current-plan-row-${name}`} className="h-12">
                     <Td>
-                      {name}
-                      {toolTipText && (
-                        <Tooltip content={toolTipText}>
-                          <FontAwesomeIcon
-                            icon={faInfoCircle}
-                            className="relative bottom-2 left-2"
-                            size="xs"
-                          />
-                        </Tooltip>
-                      )}
+                      <div className="flex items-center">
+                        {name}
+                        {toolTipText && (
+                          <Tooltip content={toolTipText}>
+                            <FontAwesomeIcon icon={faInfoCircle} className="ml-2" size="xs" />
+                          </Tooltip>
+                        )}
+                      </div>
                     </Td>
                     <Td>{displayCell(allowed)}</Td>
                     <Td>{used}</Td>

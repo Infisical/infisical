@@ -525,7 +525,7 @@ export const OrgMembersTable = ({
                           </p>
                           {u.superAdmin && (
                             <Badge variant="primary" className="ml-2 w-min whitespace-nowrap">
-                              <span className="hidden xl:inline">Server Admin</span>
+                              <span className="mr-1 hidden xl:inline">Server Admin</span>
                               <Tooltip content="Server Admin">
                                 <FontAwesomeIcon className="xl:hidden" icon={faUserShield} />
                               </Tooltip>

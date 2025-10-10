@@ -26,14 +26,14 @@
   html {
     @apply overflow-hidden;
   }
+}
 
-  :root {
+:root {
     font-family: var(--font-inter);
     --foreground: oklch(0.985 0 0);
     --background: oklch(0.145 0 0);
 
     --toastify-color-dark: var(--color-mineshaft-700);
-  }
 }
 
 @theme {
@@ -401,18 +401,16 @@
   }
 }
 
-@layer components {
-  .Toastify__toast {
+.Toastify__toast {
     @apply rounded-md;
-  }
+}
 
-  .Toastify__toast-body {
+.Toastify__toast-body {
     @apply items-start;
-  }
+}
 
-  .Toastify__toast-icon {
+.Toastify__toast-icon {
     @apply w-4 pt-1;
-  }
 }
 
 .tags-conic-bg {

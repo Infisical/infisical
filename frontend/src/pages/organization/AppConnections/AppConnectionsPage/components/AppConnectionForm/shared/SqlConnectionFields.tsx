@@ -26,7 +26,7 @@ export const SqlConnectionFields = ({
         <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
           <Tab
             className={({ selected }) =>
-              `-mb-[0.14rem] w-30 px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
+              `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
                 selected ? "border-b-2 border-mineshaft-300 text-mineshaft-200" : "text-bunker-300"
               }`
             }
@@ -35,7 +35,7 @@ export const SqlConnectionFields = ({
           </Tab>
           <Tab
             className={({ selected }) =>
-              `-mb-[0.14rem] w-30 px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
+              `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
                 selected ? "border-b-2 border-mineshaft-300 text-mineshaft-200" : "text-bunker-300"
               }`
             }

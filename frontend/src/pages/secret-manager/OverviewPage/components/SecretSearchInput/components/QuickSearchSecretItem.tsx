@@ -253,7 +253,9 @@ export const QuickSearchSecretItem = ({
                       >
                         {secret.value || "EMPTY"}
                       </p>
-                      <p className="w-48 text-sm group-hover:hidden">***************************</p>
+                      <p className="w-48 text-sm group-hover:!hidden">
+                        ***************************
+                      </p>
                     </div>
                   </Tooltip>
                 </DropdownMenuItem>
