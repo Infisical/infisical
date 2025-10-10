@@ -465,6 +465,22 @@ export const SecretListView = ({
     [environment, secretPath, isProtectedBranch, isBatchMode, projectId, addPendingChange]
   );
 
+  // Function to append newly created tag to the current secret
+  const append = useCallback(
+    (newTag: WsTag) => {
+      const currentSecret = popUp.createTag.data as SecretV3RawSanitized;
+      if (!currentSecret) return;
+
+      const updatedTags = [...(currentSecret.tags || []), { id: newTag.id, slug: newTag.slug }];
+
+      handleSaveSecret(currentSecret, {
+        ...currentSecret,
+        tags: updatedTags
+      });
+    },
+    [popUp.createTag.data, handleSaveSecret]
+  );
+
   const handleSecretDelete = useCallback(async () => {
     const {
       key,
@@ -552,7 +568,13 @@ export const SecretListView = ({
   ]);
 
   // for optimization on minimise re-rendering of secret items
-  const onCreateTag = useCallback(() => handlePopUpOpen("createTag"), []);
+  const onCreateTag = useCallback((secret?: SecretV3RawSanitized) => {
+    if (secret) {
+      handlePopUpOpen("createTag", secret);
+    } else {
+      handlePopUpOpen("createTag");
+    }
+  }, []);
   const onDeleteSecret = useCallback(
     (sec: SecretV3RawSanitized) => handlePopUpOpen("deleteSecret", sec),
     []
@@ -640,6 +662,8 @@ export const SecretListView = ({
       <CreateTagModal
         isOpen={popUp.createTag.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("createTag", isOpen)}
+        append={append}
+        currentSecret={popUp.createTag.data}
       />
       <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
     </>
