@@ -61,6 +61,7 @@ export default tseslint.config(
       "import/prefer-default-export": "off",
       "react-hooks/exhaustive-deps": "off",
       "@typescript-eslint/ban-ts-comment": "warn",
+      "react/prop-types": "off",
       "react/jsx-props-no-spreading": "off", // switched off for component building
       // TODO: This rule will be switched ON after complete revamp of frontend
       "@typescript-eslint/no-explicit-any": "off",

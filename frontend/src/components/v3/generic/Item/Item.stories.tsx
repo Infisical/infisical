@@ -9,19 +9,19 @@ import {
 } from "lucide-react";
 import { fn } from "storybook/test";
 
-import { Button } from "../Button";
 import { Badge } from "../Badge";
+import { Button } from "../Button";
 import {
   Item,
-  ItemMedia,
-  ItemContent,
-  ItemTitle,
-  ItemDescription,
   ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemFooter,
   ItemGroup,
-  ItemSeparator,
   ItemHeader,
-  ItemFooter
+  ItemMedia,
+  ItemSeparator,
+  ItemTitle
 } from "./Item";
 
 const meta = {
@@ -125,7 +125,7 @@ export const WithIcon: Story = {
         </ItemMedia>
         <ItemContent>
           <ItemTitle>Document.pdf</ItemTitle>
-          <ItemDescription>PDF file " 2.4 MB " Modified 2 hours ago</ItemDescription>
+          <ItemDescription>PDF file &quot; 2.4 MB &quot; Modified 2 hours ago</ItemDescription>
         </ItemContent>
         <ItemActions>
           <Button variant="ghost" size="sm">
@@ -297,7 +297,7 @@ export const NoMedia: Story = {
       <>
         <ItemContent>
           <ItemTitle>Item Without Icon</ItemTitle>
-          <ItemDescription>This item doesn't have any media element.</ItemDescription>
+          <ItemDescription>This item doesn&apos;t have any media element.</ItemDescription>
         </ItemContent>
         <ItemActions>
           <Button variant="outline" size="sm">

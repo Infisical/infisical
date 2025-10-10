@@ -37,7 +37,7 @@ const Tooltip = ({
         <TooltipPrimitive.Content
           {...props}
           className={twMerge(
-            "z-50 w-fit max-w-sm text-balance rounded-[4px] border border-border bg-header px-2 py-1 text-xs text-accent",
+            "z-50 w-fit max-w-sm rounded-[4px] border border-border bg-header px-2 py-1 text-xs text-balance text-accent",
             "tooltip-content",
             className,
             typeof content === "string" && "pt-1.5"

@@ -1,4 +1,5 @@
 import { cva, VariantProps } from "cva";
+
 import { cn } from "../../utils";
 
 const PageHeader = ({ className, ...props }: React.ComponentProps<"div">) => (
@@ -60,4 +61,4 @@ const PageHeaderMedia: React.FC<
   />
 );
 
-export { PageHeader, PageHeaderTitle, PageHeaderDescription, PageHeaderMedia };
+export { PageHeader, PageHeaderDescription, PageHeaderMedia, PageHeaderTitle };

@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
   DatabaseIcon,
+  FileTextIcon,
   FolderIcon,
   InboxIcon,
   SearchIcon,
-  UsersIcon,
-  FileTextIcon
+  UsersIcon
 } from "lucide-react";
 
 import { Button } from "../Button";
@@ -38,7 +38,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  name: "Default",
   render: (args) => (
     <Empty {...args}>
       <EmptyHeader>
@@ -56,7 +55,6 @@ export const Default: Story = {
 };
 
 export const WithIconVariant: Story = {
-  name: "With Icon Variant",
   render: (args) => (
     <Empty {...args}>
       <EmptyHeader>
@@ -76,7 +74,6 @@ export const WithIconVariant: Story = {
 };
 
 export const SearchNoResults: Story = {
-  name: "Search No Results",
   render: (args) => (
     <Empty {...args}>
       <EmptyHeader>
@@ -85,7 +82,7 @@ export const SearchNoResults: Story = {
         </EmptyMedia>
         <EmptyTitle>No results found</EmptyTitle>
         <EmptyDescription>
-          We couldn't find any results matching your search. Try adjusting your search terms.
+          We couldn&apos;t find any results matching your search. Try adjusting your search terms.
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
@@ -96,7 +93,6 @@ export const SearchNoResults: Story = {
 };
 
 export const NoUsers: Story = {
-  name: "No Users",
   render: (args) => (
     <Empty {...args}>
       <EmptyHeader>
@@ -117,7 +113,6 @@ export const NoUsers: Story = {
 };
 
 export const NoDocuments: Story = {
-  name: "No Documents",
   render: (args) => (
     <Empty {...args}>
       <EmptyHeader>
@@ -126,7 +121,7 @@ export const NoDocuments: Story = {
         </EmptyMedia>
         <EmptyTitle>No documents</EmptyTitle>
         <EmptyDescription>
-          You haven't created any documents yet. Create your first document to get started.
+          You haven&apos;t created any documents yet. Create your first document to get started.
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
@@ -137,7 +132,6 @@ export const NoDocuments: Story = {
 };
 
 export const EmptyFolder: Story = {
-  name: "Empty Folder",
   render: (args) => (
     <Empty {...args}>
       <EmptyHeader>
@@ -160,7 +154,6 @@ export const EmptyFolder: Story = {
 };
 
 export const WithLink: Story = {
-  name: "With Link",
   render: (args) => (
     <Empty {...args}>
       <EmptyHeader>
@@ -183,7 +176,6 @@ export const WithLink: Story = {
 };
 
 export const MinimalWithoutActions: Story = {
-  name: "Minimal Without Actions",
   render: (args) => (
     <Empty {...args}>
       <EmptyHeader>
@@ -198,7 +190,6 @@ export const MinimalWithoutActions: Story = {
 };
 
 export const OnlyTitle: Story = {
-  name: "Only Title",
   render: (args) => (
     <Empty {...args}>
       <EmptyHeader>
@@ -209,7 +200,6 @@ export const OnlyTitle: Story = {
 };
 
 export const CustomStyling: Story = {
-  name: "Custom Styling",
   render: (args) => (
     <Empty {...args} className="border-2 bg-accent/10">
       <EmptyHeader>
@@ -218,7 +208,7 @@ export const CustomStyling: Story = {
         </EmptyMedia>
         <EmptyTitle className="text-xl">Welcome to your dashboard</EmptyTitle>
         <EmptyDescription className="text-base">
-          This is where you'll see your analytics and insights once you start collecting data.
+          This is where you&apos;ll see your analytics and insights once you start collecting data.
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>

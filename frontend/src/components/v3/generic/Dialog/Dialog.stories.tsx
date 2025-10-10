@@ -34,7 +34,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  name: "Default",
   render: (args) => (
     <Dialog {...args}>
       <DialogTrigger asChild>
@@ -62,7 +61,6 @@ export const Default: Story = {
 };
 
 export const WithoutCloseButton: Story = {
-  name: "Without Close Button",
   render: (args) => (
     <Dialog {...args}>
       <DialogTrigger asChild>
@@ -72,7 +70,7 @@ export const WithoutCloseButton: Story = {
         <DialogHeader>
           <DialogTitle>Dialog Without Close Button</DialogTitle>
           <DialogDescription>
-            This dialog doesn't have a close button in the top-right corner.
+            This dialog doesn&apos;t have a close button in the top-right corner.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
@@ -90,7 +88,6 @@ export const WithoutCloseButton: Story = {
 };
 
 export const SimpleContent: Story = {
-  name: "Simple Content",
   render: (args) => (
     <Dialog {...args}>
       <DialogTrigger asChild>
@@ -115,7 +112,6 @@ export const SimpleContent: Story = {
 };
 
 export const LongContent: Story = {
-  name: "Long Content",
   render: (args) => (
     <Dialog {...args}>
       <DialogTrigger asChild>
@@ -161,7 +157,6 @@ export const LongContent: Story = {
 };
 
 export const FormExample: Story = {
-  name: "Form Example",
   render: (args) => (
     <Dialog {...args}>
       <DialogTrigger asChild>
@@ -176,23 +171,23 @@ export const FormExample: Story = {
           <div className="grid gap-2">
             <label htmlFor="name" className="text-sm font-medium">
               Name
+              <input
+                id="name"
+                placeholder="Enter item name"
+                className="rounded-md border px-3 py-2 text-sm"
+              />
             </label>
-            <input
-              id="name"
-              placeholder="Enter item name"
-              className="rounded-md border px-3 py-2 text-sm"
-            />
           </div>
           <div className="grid gap-2">
             <label htmlFor="description" className="text-sm font-medium">
               Description
+              <textarea
+                id="description"
+                placeholder="Enter item description"
+                className="rounded-md border px-3 py-2 text-sm"
+                rows={3}
+              />
             </label>
-            <textarea
-              id="description"
-              placeholder="Enter item description"
-              className="rounded-md border px-3 py-2 text-sm"
-              rows={3}
-            />
           </div>
         </div>
         <DialogFooter>

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Separator } from "../Separator";
-import { Description, DescriptionHeader, DescriptionContent } from "./Description";
+import { Description, DescriptionContent, DescriptionHeader } from "./Description";
 
 const meta = {
   title: "Generic/Description",
@@ -25,7 +25,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  name: "Default",
   args: {
     className: "grid gap-1",
     children: (

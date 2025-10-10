@@ -1,5 +1,6 @@
 import React from "react";
 import { cva, type VariantProps } from "cva";
+
 import { cn } from "../../utils";
 
 const alertVariants = cva(
@@ -72,4 +73,4 @@ const AlertDescription: React.FC<React.ComponentProps<"div">> = ({ className, ..
   />
 );
 
-export { Alert, AlertTitle, AlertDescription };
+export { Alert, AlertDescription, AlertTitle };

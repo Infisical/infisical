@@ -4,6 +4,8 @@
 @import "@fontsource/inter/500.css" layer(base);
 @import "@fontsource/inter/700.css" layer(base);
 
+@import "tw-animate-css";
+
 @source not "../public";
 
 @font-face {
@@ -23,20 +25,17 @@
   color utility to any element that depends on these defaults.
 */
 @layer base {
-
   *,
   ::after,
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
-    /* border-color: var(--border); */
-
+    border-color: var(--border);
   }
 
   html {
     @apply overflow-hidden;
-    font-family: 'Alliance No.2', sans-serif;
+    font-family: "Alliance No.2", sans-serif;
   }
 
   :root {
@@ -48,12 +47,45 @@
     --header-height: 102px;
     --border: oklch(1 0 0 / 10%);
   }
-
 }
 
 @theme {
-  /*legacy color schema */
-  /* Fonts */
+  /*scopes*/
+  --color-org: #498587;
+  --color-namespace: #874982;
+
+  /*products*/
+  --color-secret-manager: #848749;
+  --color-secret-scanning: #9b59b6;
+  --color-cert-manager: #874949;
+  --color-kms: #45879b;
+  --color-pam: #be6e29;
+  --color-ssh: #876a49;
+
+  /*statuses*/
+  --color-success: #27ae60; /*deeper emerald*/
+  --color-danger: #e74c3c; /*refined red*/
+  --color-warning: #f39c12; /*amber gold*/
+  --color-info: #3498db; /*sapphire*/
+
+  /*generic*/
+  --color-foreground: #ffffff;
+  --color-muted: oklch(0.269 0 0);
+  --color-muted-foreground: #ffffffa6;
+  --color-background: #191919;
+  --color-accent: #c9c9c9;
+  --color-border: #525461;
+  --color-header: #1e1f22;
+  --color-input: #1e1f22;
+  --color-popover: #1e1f22;
+  /*// highlight (menus; selects; etc)
+    // card
+    // label*/
+  --color-ring: #3f3f3c;
+  --color-placeholder: #8e8f90;
+  /* end v3 colors *************************************/
+
+  /*legacy color schema */ /* Fonts */
   --font-inter: "Inter", sans-serif;
 
   /* Primary */
@@ -311,7 +343,6 @@
   }
 
   @keyframes wiggle {
-
     0%,
     100% {
       transform: rotate(-3deg);
@@ -450,11 +481,13 @@
 }
 
 .tags-conic-bg {
-  background: conic-gradient(rgb(235, 87, 87),
-      rgb(242, 201, 76),
-      rgb(76, 183, 130),
-      rgb(78, 167, 252),
-      rgb(250, 96, 122));
+  background: conic-gradient(
+    rgb(235, 87, 87),
+    rgb(242, 201, 76),
+    rgb(76, 183, 130),
+    rgb(78, 167, 252),
+    rgb(250, 96, 122)
+  );
 }
 
 #nprogress .bar {

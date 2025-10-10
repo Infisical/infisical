@@ -1,11 +1,12 @@
 import { cva, type VariantProps } from "cva";
+
 import { cn } from "../../utils";
 
 const Empty = ({ className, ...props }: React.ComponentProps<"div">) => (
   <div
     data-slot="empty"
     className={cn(
-      "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 text-balance rounded-lg border-dashed p-6 text-center text-foreground md:p-12",
+      "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 rounded-lg border-dashed p-6 text-center text-balance text-foreground md:p-12",
       className
     )}
     {...props}
@@ -60,7 +61,7 @@ const EmptyDescription = ({ className, ...props }: React.ComponentProps<"p">) =>
   <div
     data-slot="empty-description"
     className={cn(
-      "text-muted-foreground text-sm/relaxed [&>a:hover]:text-primary [&>a]:underline [&>a]:underline-offset-4",
+      "text-sm/relaxed text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
       className
     )}
     {...props}
@@ -71,11 +72,11 @@ const EmptyContent = ({ className, ...props }: React.ComponentProps<"div">) => (
   <div
     data-slot="empty-content"
     className={cn(
-      "flex w-full min-w-0 max-w-sm flex-col items-center gap-4 text-balance text-sm",
+      "flex w-full max-w-sm min-w-0 flex-col items-center gap-4 text-sm text-balance",
       className
     )}
     {...props}
   />
 );
 
-export { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent, EmptyMedia };
+export { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle };

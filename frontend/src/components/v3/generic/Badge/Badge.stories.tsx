@@ -212,7 +212,7 @@ export const AsButton: Story = {
   args: {
     variant: "org",
     as: "button",
-    onClick: fn(() => alert("Congrats")),
+    onClick: fn(() => console.log("Congrats")),
     children: (
       <>
         <OrgIcon />

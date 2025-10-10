@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { FolderIcon, SettingsIcon, PlusIcon } from "lucide-react";
+import { FolderIcon, PlusIcon, SettingsIcon } from "lucide-react";
 
-import { Button } from "../Button";
 import { Badge } from "../Badge";
-import { PageHeader, PageHeaderTitle, PageHeaderDescription, PageHeaderMedia } from "./PageHeader";
+import { Button } from "../Button";
+import { PageHeader, PageHeaderDescription, PageHeaderMedia, PageHeaderTitle } from "./PageHeader";
 
 const meta = {
   title: "Generic/PageHeader",
@@ -25,9 +25,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
-  name: "Default"
-};
+export const Default: Story = {};
 
 export const WithMediumTitle: Story = {
   name: "Size: Medium Title",

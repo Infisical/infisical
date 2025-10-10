@@ -34,7 +34,7 @@ function DropdownMenuContent({
         sideOffset={sideOffset}
         className={cn(
           "max-h-(--radix-dropdown-menu-content-available-height) origin-(--radix-dropdown-menu-content-transform-origin)",
-          "z-50 min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-[6px] border border-border/50 bg-popover p-1 text-xs text-foreground shadow-md",
+          "z-50 min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-[6px] border border-border/50 bg-popover p-1 text-xs text-foreground shadow-md",
           className
         )}
         {...props}
@@ -65,10 +65,10 @@ function DropdownMenuItem({
       data-variant={variant}
       className={cn(
         "text-xs",
-        "data-[variant=danger]:*:[svg]:!text-danger data-[variant=danger]:text-danger data-[variant=danger]:focus:bg-danger/10",
-        "relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 pb-1.5 pt-2 outline-0 focus:bg-foreground/10",
-        "data-[disabled]:pointer-events-none data-[inset]:pl-8 data-[disabled]:opacity-50",
-        "[&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:mb-0.5 [&_svg]:shrink-0",
+        "data-[variant=danger]:text-danger data-[variant=danger]:focus:bg-danger/10 data-[variant=danger]:*:[svg]:!text-danger",
+        "relative flex cursor-pointer items-center gap-2 rounded-sm px-2 pt-2 pb-1.5 outline-0 select-none focus:bg-foreground/10",
+        "data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8",
+        "[&_svg]:pointer-events-none [&_svg]:mb-0.5 [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
         className
       )}
       disabled={isDisabled}
@@ -87,10 +87,10 @@ function DropdownMenuCheckboxItem({
     <DropdownMenuPrimitive.CheckboxItem
       data-slot="dropdown-menu-checkbox-item"
       className={cn(
-        "relative flex cursor-pointer select-none items-center gap-2 rounded-sm pb-1.5 pl-2 pr-8 pt-2 text-xs outline-0",
+        "relative flex cursor-pointer items-center gap-2 rounded-sm pt-2 pr-8 pb-1.5 pl-2 text-xs outline-0 select-none",
         "focus:bg-foreground/10",
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-        "[&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:mb-0.5 [&_svg]:shrink-0",
+        "[&_svg]:pointer-events-none [&_svg]:mb-0.5 [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
 
         className
       )}
@@ -122,10 +122,10 @@ function DropdownMenuRadioItem({
     <DropdownMenuPrimitive.RadioItem
       data-slot="dropdown-menu-radio-item"
       className={cn(
-        "relative flex cursor-pointer select-none items-center gap-2 rounded-sm pb-1.5 pl-2 pr-8 pt-2 text-xs outline-0",
+        "relative flex cursor-pointer items-center gap-2 rounded-sm pt-2 pr-8 pb-1.5 pl-2 text-xs outline-0 select-none",
         "focus:bg-foreground/10",
         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-        "[&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:mb-0.5 [&_svg]:shrink-0",
+        "[&_svg]:pointer-events-none [&_svg]:mb-0.5 [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
         className
       )}
       {...props}
@@ -197,7 +197,7 @@ function DropdownMenuSubTrigger({
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-xs outline-0 focus:bg-foreground/10 data-[state=open]:bg-foreground/10 data-[inset]:pl-8",
+        "flex cursor-default items-center rounded-sm px-2 py-1.5 text-xs outline-0 select-none focus:bg-foreground/10 data-[inset]:pl-8 data-[state=open]:bg-foreground/10",
         className
       )}
       {...props}
@@ -217,7 +217,7 @@ function DropdownMenuSubContent({
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"
       className={cn(
-        "origin-(--radix-dropdown-menu-content-transform-origin) z-50 min-w-[8rem] overflow-hidden rounded-[6px] border border-border bg-popover p-1 text-foreground shadow-lg",
+        "z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-[6px] border border-border bg-popover p-1 text-foreground shadow-lg",
         className
       )}
       sideOffset={sideOffset}

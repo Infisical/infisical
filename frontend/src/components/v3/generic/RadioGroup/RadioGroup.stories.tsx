@@ -35,9 +35,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
-  name: "Default"
-};
+export const Default: Story = {};
 
 export const WithDefaultValue: Story = {
   name: "Example: With Default Value",
@@ -170,7 +168,7 @@ export const FormExample: Story = {
           <RadioGroupItem value="none" id="none" className="mt-1" />
           <div className="grid gap-1">
             <Label htmlFor="none">None</Label>
-            <p className="text-sm text-muted-foreground">Don't receive any notifications</p>
+            <p className="text-sm text-muted-foreground">Don&apos;t receive any notifications</p>
           </div>
         </div>
       </RadioGroup>

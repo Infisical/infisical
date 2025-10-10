@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 
+import { Button } from "../Button/Button";
 import {
   Sheet,
   SheetClose,
@@ -11,7 +12,6 @@ import {
   SheetTitle,
   SheetTrigger
 } from "./Sheet";
-import { Button } from "../Button/Button";
 
 const meta = {
   title: "Generic/Sheet",
@@ -150,30 +150,30 @@ export const WithForm: Story = {
           <SheetHeader>
             <SheetTitle>Edit Profile</SheetTitle>
             <SheetDescription>
-              Make changes to your profile here. Click save when you're done.
+              Make changes to your profile here. Click save when you&apos;re done.
             </SheetDescription>
           </SheetHeader>
           <div className="flex flex-col gap-4 px-4">
             <div className="flex flex-col gap-2">
               <label htmlFor="name" className="text-sm font-medium">
                 Name
+                <input
+                  id="name"
+                  defaultValue="John Doe"
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
               </label>
-              <input
-                id="name"
-                defaultValue="John Doe"
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-              />
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="name" className="text-sm font-medium">
+              <label htmlFor="email" className="text-sm font-medium">
                 Email
+                <input
+                  id="email"
+                  type="email"
+                  defaultValue="john@example.com"
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
               </label>
-              <input
-                id="email"
-                type="email"
-                defaultValue="john@example.com"
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-              />
             </div>
           </div>
           <SheetFooter>
@@ -205,7 +205,7 @@ export const WithLongContent: Story = {
           </SheetHeader>
           <div className="flex-1 overflow-y-auto px-4">
             {Array.from({ length: 20 }).map((_, i) => (
-              <p key={i} className="mb-4 text-sm">
+              <p key={`terms-${i + 1}`} className="mb-4 text-sm">
                 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
                 incididunt ut labore et dolore magna aliqua.
               </p>
@@ -235,12 +235,12 @@ export const Controlled: Story = {
           <SheetHeader>
             <SheetTitle>Controlled Sheet</SheetTitle>
             <SheetDescription>
-              This sheet's open state is controlled externally via the open prop.
+              This sheet&apos;s open state is controlled externally via the open prop.
             </SheetDescription>
           </SheetHeader>
           <div className="px-4">
             <p className="text-sm">
-              Toggle the "open" control in Storybook to open/close this sheet.
+              Toggle the &quot;open&quot; control in Storybook to open/close this sheet.
             </p>
           </div>
         </SheetContent>

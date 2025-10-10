@@ -4,6 +4,7 @@ import { InfoIcon } from "lucide-react";
 import { Button } from "../Button";
 import { Checkbox } from "../Checkbox";
 import { Input } from "../Input";
+import { RadioGroup, RadioGroupItem } from "../RadioGroup/RadioGroup";
 import {
   Field,
   FieldContent,
@@ -16,7 +17,6 @@ import {
   FieldSet,
   FieldTitle
 } from "./Field";
-import { RadioGroup, RadioGroupItem } from "../RadioGroup/RadioGroup";
 
 const meta = {
   title: "Generic/Field",
@@ -50,7 +50,7 @@ export const VerticalField: Story = {
       <FieldLabel htmlFor="email">Email</FieldLabel>
       <FieldContent>
         <Input id="email" type="email" placeholder="Enter your email" />
-        <FieldDescription>We'll never share your email with anyone else.</FieldDescription>
+        <FieldDescription>We&apos;ll never share your email with anyone else.</FieldDescription>
       </FieldContent>
     </Field>
   )
@@ -85,7 +85,6 @@ export const ResponsiveField: Story = {
 };
 
 export const WithError: Story = {
-  name: "With Error",
   render: (args) => (
     <Field {...args} data-invalid="true">
       <FieldLabel htmlFor="password">Password</FieldLabel>
@@ -98,7 +97,6 @@ export const WithError: Story = {
 };
 
 export const WithMultipleErrors: Story = {
-  name: "With Multiple Errors",
   render: (args) => (
     <Field {...args} data-invalid="true">
       <FieldLabel htmlFor="password-multi">Password</FieldLabel>
@@ -117,7 +115,6 @@ export const WithMultipleErrors: Story = {
 };
 
 export const WithCheckbox: Story = {
-  name: "With Checkbox",
   render: (args) => (
     <Field {...args}>
       <FieldLabel htmlFor="terms" className="flex items-center gap-2">
@@ -130,7 +127,6 @@ export const WithCheckbox: Story = {
 };
 
 export const WithLabelIcon: Story = {
-  name: "With Label Icon",
   render: (args) => (
     <Field {...args}>
       <FieldLabel htmlFor="api-key">
@@ -165,7 +161,7 @@ export const FieldGroupExample: Story = {
         <FieldLabel htmlFor="email-group">Email</FieldLabel>
         <FieldContent>
           <Input id="email-group" type="email" placeholder="john.doe@example.com" />
-          <FieldDescription>We'll use this email for account verification.</FieldDescription>
+          <FieldDescription>We&apos;ll use this email for account verification.</FieldDescription>
         </FieldContent>
       </Field>
     </FieldGroup>
@@ -236,7 +232,6 @@ export const FieldSetExample: Story = {
 };
 
 export const WithSeparator: Story = {
-  name: "With Separator",
   render: (args) => (
     <FieldGroup>
       <Field {...args}>
@@ -274,7 +269,9 @@ export const FormExample: Story = {
             <FieldLabel htmlFor="form-email">Email Address</FieldLabel>
             <FieldContent>
               <Input id="form-email" type="email" placeholder="you@example.com" isRequired />
-              <FieldDescription>We'll send a verification link to this email.</FieldDescription>
+              <FieldDescription>
+                We&apos;ll send a verification link to this email.
+              </FieldDescription>
             </FieldContent>
           </Field>
           <Field {...args}>
@@ -312,7 +309,6 @@ export const FormExample: Story = {
 };
 
 export const WithFieldTitle: Story = {
-  name: "With Field Title",
   render: (args) => (
     <Field {...args}>
       <FieldTitle>

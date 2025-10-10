@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { InfoIcon, TriangleAlertIcon, CheckCircleIcon, XCircleIcon } from "lucide-react";
+import { CheckCircleIcon, InfoIcon, TriangleAlertIcon, XCircleIcon } from "lucide-react";
 
-import { Alert, AlertTitle, AlertDescription } from "./Alert";
+import { Alert, AlertDescription, AlertTitle } from "./Alert";
 
 const meta = {
   title: "Generic/Alert",
@@ -186,9 +186,7 @@ export const WithIcon: Story = {
       <>
         <InfoIcon />
         <AlertTitle>Heads up!</AlertTitle>
-        <AlertDescription>
-          You can add components to your app using the cli.
-        </AlertDescription>
+        <AlertDescription>You can add components to your app using the cli.</AlertDescription>
       </>
     )
   }
@@ -202,7 +200,7 @@ export const WithoutIcon: Story = {
       <>
         <AlertTitle>Important Notice</AlertTitle>
         <AlertDescription>
-          This alert doesn't have an icon, but still conveys important information.
+          This alert doesn&apos;t have an icon, but still conveys important information.
         </AlertDescription>
       </>
     )
@@ -227,11 +225,7 @@ export const DescriptionOnly: Story = {
   args: {
     variant: "default",
     children: (
-      <>
-        <AlertDescription>
-          This is an alert with only a description, no title.
-        </AlertDescription>
-      </>
+      <AlertDescription>This is an alert with only a description, no title.</AlertDescription>
     )
   }
 };

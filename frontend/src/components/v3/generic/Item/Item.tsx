@@ -1,8 +1,9 @@
 import React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "cva";
-import { Separator } from "../Separator";
+
 import { cn } from "../../utils";
+import { Separator } from "../Separator";
 
 const ItemGroup: React.FC<React.ComponentProps<"div">> = ({ className, ...props }) => (
   <div
@@ -101,7 +102,7 @@ const ItemContent: React.FC<React.ComponentProps<"div">> = ({ className, ...prop
 const ItemTitle: React.FC<React.ComponentProps<"div">> = ({ className, ...props }) => (
   <div
     data-slot="item-title"
-    className={cn("flex w-fit items-center gap-2 text-sm font-medium leading-snug", className)}
+    className={cn("flex w-fit items-center gap-2 text-sm leading-snug font-medium", className)}
     {...props}
   />
 );
@@ -110,8 +111,8 @@ const ItemDescription: React.FC<React.ComponentProps<"p">> = ({ className, ...pr
   <p
     data-slot="item-description"
     className={cn(
-      "line-clamp-2 text-balance text-sm font-normal leading-normal text-muted-foreground",
-      "[&>a:hover]:text-primary [&>a]:underline [&>a]:underline-offset-4",
+      "line-clamp-2 text-sm leading-normal font-normal text-balance text-muted-foreground",
+      "[&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
       className
     )}
     {...props}
@@ -140,13 +141,13 @@ const ItemFooter: React.FC<React.ComponentProps<"div">> = ({ className, ...props
 
 export {
   Item,
-  ItemMedia,
-  ItemContent,
   ItemActions,
-  ItemGroup,
-  ItemSeparator,
-  ItemTitle,
+  ItemContent,
   ItemDescription,
+  ItemFooter,
+  ItemGroup,
   ItemHeader,
-  ItemFooter
+  ItemMedia,
+  ItemSeparator,
+  ItemTitle
 };

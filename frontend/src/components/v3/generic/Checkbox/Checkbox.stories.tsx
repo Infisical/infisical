@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 
-import { Checkbox } from "./Checkbox";
 import { Label } from "../Label/Label";
+import { Checkbox } from "./Checkbox";
 
 const meta = {
   title: "Generic/Checkbox",
@@ -51,7 +51,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  name: "Default",
   args: {}
 };
 
@@ -108,7 +107,7 @@ export const WithLabelAndDescription: Story = {
       <Checkbox {...args} id="marketing" />
       <div className="grid gap-1.5 leading-none">
         <Label htmlFor="marketing">Marketing emails</Label>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-sm text-muted-foreground">
           You can enable or disable notifications at any time.
         </p>
       </div>
