@@ -81,6 +81,7 @@ export type TFeatureSet = {
   fips: false;
   eventSubscriptions: false;
   pam: false;
+  namespace: true;
 };
 
 export type TOrgPlansTableDTO = {

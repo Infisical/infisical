@@ -7,6 +7,7 @@ import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionSet } from "./org-permission";
 import { ProjectPermissionSet } from "./project-permission";
+import { NamespacePermissionSet } from "./namespace-permission";
 
 export type TBuildProjectPermissionDTO = {
   permissions?: unknown;
@@ -38,6 +39,14 @@ export type TGetServiceTokenProjectPermissionArg = {
   projectId: string;
   actorOrgId?: string;
   actionProjectType: ActionProjectType;
+};
+
+export type TGetNamespacePermissionArg = {
+  actor: ActorType;
+  actorId: string;
+  namespaceId: string;
+  actorAuthMethod: ActorAuthMethod;
+  actorOrgId?: string;
 };
 
 export type TGetProjectPermissionArg = {
@@ -74,9 +83,24 @@ export type TPermissionServiceFactory = {
     >;
     hasRole: (role: string) => boolean;
   }>;
+  getNamespacePermission: (arg: TGetNamespacePermissionArg) => Promise<{
+    permission: MongoAbility<NamespacePermissionSet, MongoQuery>;
+    memberships: Array<
+      TMemberships & {
+        roles: { role: string; customRoleSlug?: string | null }[];
+        shouldUseNewPrivilegeSystem?: boolean | null;
+      }
+    >;
+    hasRole: (role: string) => boolean;
+  }>;
   getProjectPermission: (arg: TGetProjectPermissionArg) => Promise<{
     permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
-    memberships: Array<TMemberships & { roles: { role: string; customRoleSlug?: string | null }[] }>;
+    memberships: Array<
+      TMemberships & {
+        roles: { role: string; customRoleSlug?: string | null }[];
+        shouldUseNewPrivilegeSystem?: boolean | null;
+      }
+    >;
     hasRole: (role: string) => boolean;
   }>;
   getProjectPermissions: (
@@ -105,6 +129,23 @@ export type TPermissionServiceFactory = {
   ) => Promise<
     {
       permission: MongoAbility<OrgPermissionSet, MongoQuery>;
+      role?: {
+        name: string;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        slug: string;
+        permissions?: unknown;
+        description?: string | null | undefined;
+      };
+    }[]
+  >;
+  getNamespacePermissionByRoles: (
+    roles: string[],
+    namespaceId: string
+  ) => Promise<
+    {
+      permission: MongoAbility<NamespacePermissionSet, MongoQuery>;
       role?: {
         name: string;
         id: string;

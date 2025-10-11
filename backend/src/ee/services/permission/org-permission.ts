@@ -23,6 +23,11 @@ export enum OrgPermissionAppConnectionActions {
   Connect = "connect"
 }
 
+export enum OrgPermissionNamespaceActions {
+  Create = "create",
+  AccessNamespace = "access-namespace"
+}
+
 export enum OrgPermissionAuditLogsActions {
   Read = "read"
 }
@@ -96,6 +101,7 @@ export enum OrgPermissionSubjects {
   Workspace = "workspace",
   Project = "project",
   Role = "role",
+  Namespace = "namespace",
   Member = "member",
   Settings = "settings",
   IncidentAccount = "incident-contact",
@@ -128,6 +134,8 @@ export type OrgPermissionSet =
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Workspace]
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Project]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
+  | [OrgPermissionNamespaceActions.Create, OrgPermissionSubjects.Namespace]
+  | [OrgPermissionNamespaceActions.AccessNamespace, OrgPermissionSubjects.Namespace]
   | [OrgPermissionActions, OrgPermissionSubjects.Member]
   | [OrgPermissionActions, OrgPermissionSubjects.Settings]
   | [OrgPermissionActions, OrgPermissionSubjects.IncidentAccount]
@@ -176,6 +184,13 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(OrgPermissionSubjects.Workspace).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_ENUM([OrgPermissionActions.Create]).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.Namespace).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_ENUM([
+      OrgPermissionNamespaceActions.Create,
+      OrgPermissionNamespaceActions.AccessNamespace
+    ]).describe("Describe what action an entity can take.")
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Project).describe("The entity this permission pertains to."),
@@ -314,6 +329,9 @@ const buildAdminPermission = () => {
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Delete, OrgPermissionSubjects.Role);
 
+  can(OrgPermissionNamespaceActions.Create, OrgPermissionSubjects.Namespace);
+  can(OrgPermissionNamespaceActions.AccessNamespace, OrgPermissionSubjects.Namespace);
+
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
   can(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
@@ -449,6 +467,7 @@ const buildMemberPermission = () => {
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Project);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
   can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+  can(OrgPermissionNamespaceActions.Create, OrgPermissionSubjects.Namespace);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
   can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);

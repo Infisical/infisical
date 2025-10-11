@@ -358,6 +358,7 @@ export const projectDALFactory = (db: TDbClient) => {
             .orWhereIn(`${TableName.Membership}.actorGroupId`, groupMembershipSubquery);
         }
       })
+      .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
       .select("scopeProjectId");
 
     // Get the SQL strings for the subqueries

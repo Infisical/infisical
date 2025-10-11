@@ -230,6 +230,13 @@ export enum OrgMembershipRole {
   Custom = "custom"
 }
 
+export enum NamespaceMembershipRole {
+  Admin = "admin",
+  Member = "member",
+  NoAccess = "no-access",
+  Custom = "custom"
+}
+
 export enum OrgMembershipStatus {
   Invited = "invited",
   Accepted = "accepted"

@@ -178,3 +178,4 @@ export * from "./user-group-membership";
 export * from "./users";
 export * from "./webhooks";
 export * from "./workflow-integrations";
+export * from "./namespaces";

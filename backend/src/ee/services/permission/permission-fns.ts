@@ -15,6 +15,7 @@ import {
   ProjectPermissionV2Schema,
   SecretSubjectFields
 } from "./project-permission";
+import { NamespacePermissionSet } from "./namespace-permission";
 
 export function throwIfMissingSecretReadValueOrDescribePermission(
   permission: MongoAbility<ProjectPermissionSet> | PureAbility,
@@ -169,8 +170,8 @@ const escapeHandlebarsMissingDict = (obj: Record<string, string>, key: string) =
 // regardless of the actor's privilege level.
 const validatePrivilegeChangeOperation = (
   shouldUseNewPrivilegeSystem: boolean,
-  opAction: OrgPermissionSet[0] | ProjectPermissionSet[0],
-  opSubject: OrgPermissionSet[1] | ProjectPermissionSet[1],
+  opAction: OrgPermissionSet[0] | ProjectPermissionSet[0] | NamespacePermissionSet[0],
+  opSubject: OrgPermissionSet[1] | ProjectPermissionSet[1] | NamespacePermissionSet[1],
   actorPermission: MongoAbility,
   managedPermission: MongoAbility
 ) => {
@@ -200,8 +201,8 @@ const validatePrivilegeChangeOperation = (
 const constructPermissionErrorMessage = (
   baseMessage: string,
   shouldUseNewPrivilegeSystem: boolean,
-  opAction: OrgPermissionSet[0] | ProjectPermissionSet[0],
-  opSubject: OrgPermissionSet[1] | ProjectPermissionSet[1]
+  opAction: OrgPermissionSet[0] | ProjectPermissionSet[0] | NamespacePermissionSet[0],
+  opSubject: OrgPermissionSet[1] | ProjectPermissionSet[1] | NamespacePermissionSet[1]
 ) => {
   return `${baseMessage}${
     shouldUseNewPrivilegeSystem
