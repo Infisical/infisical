@@ -1,0 +1,64 @@
+import { z } from "zod";
+
+import { PamResource } from "../pam-resource-enums";
+import {
+  BaseCreatePamAccountSchema,
+  BaseCreatePamResourceSchema,
+  BasePamAccountSchema,
+  BasePamAccountSchemaWithResource,
+  BasePamResourceSchema,
+  BaseUpdatePamAccountSchema,
+  BaseUpdatePamResourceSchema
+} from "../pam-resource-schemas";
+import {
+  BaseSqlAccountCredentialsSchema,
+  BaseSqlResourceConnectionDetailsSchema
+} from "../shared/sql/sql-resource-schemas";
+
+// Resources
+export const MySQLResourceConnectionDetailsSchema = BaseSqlResourceConnectionDetailsSchema;
+
+const BaseMySQLResourceSchema = BasePamResourceSchema.extend({ resourceType: z.literal(PamResource.MySQL) });
+
+export const MySQLResourceSchema = BaseMySQLResourceSchema.extend({
+  connectionDetails: MySQLResourceConnectionDetailsSchema
+});
+
+export const MySQLResourceListItemSchema = z.object({
+  name: z.literal("MySQL"),
+  resource: z.literal(PamResource.MySQL)
+});
+
+export const CreateMySQLResourceSchema = BaseCreatePamResourceSchema.extend({
+  connectionDetails: MySQLResourceConnectionDetailsSchema
+});
+
+export const UpdateMySQLResourceSchema = BaseUpdatePamResourceSchema.extend({
+  connectionDetails: MySQLResourceConnectionDetailsSchema.optional()
+});
+
+// Accounts
+export const MySQLAccountCredentialsSchema = BaseSqlAccountCredentialsSchema;
+
+export const MySQLAccountSchema = BasePamAccountSchema.extend({
+  credentials: MySQLAccountCredentialsSchema
+});
+
+export const CreateMySQLAccountSchema = BaseCreatePamAccountSchema.extend({
+  credentials: MySQLAccountCredentialsSchema
+});
+
+export const UpdateMySQLAccountSchema = BaseUpdatePamAccountSchema.extend({
+  credentials: MySQLAccountCredentialsSchema.optional()
+});
+
+export const SanitizedMySQLAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
+  credentials: MySQLAccountCredentialsSchema.pick({
+    username: true
+  })
+});
+
+// Sessions
+export const MySQLSessionCredentialsSchema = MySQLResourceConnectionDetailsSchema.and(
+  MySQLAccountCredentialsSchema
+);

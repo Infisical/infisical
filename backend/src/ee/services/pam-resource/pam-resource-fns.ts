@@ -4,9 +4,10 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TPamResource, TPamResourceConnectionDetails } from "./pam-resource-types";
 import { getPostgresResourceListItem } from "./postgres/postgres-resource-fns";
+import { getMySQLResourceListItem } from "./mysql/mysql-resource-fns";
 
 export const listResourceOptions = () => {
-  return [getPostgresResourceListItem()].sort((a, b) => a.name.localeCompare(b.name));
+  return [getPostgresResourceListItem(), getMySQLResourceListItem()].sort((a, b) => a.name.localeCompare(b.name));
 };
 
 // Resource
