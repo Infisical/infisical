@@ -122,7 +122,6 @@ export const OrgGroupModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Pr
       }}
     >
       <ModalContent
-        bodyClassName="overflow-visible"
         title={`${popUp?.group?.data ? "Update" : "Create"} Group`}
       >
         <form onSubmit={handleSubmit(onGroupModalSubmit)}>

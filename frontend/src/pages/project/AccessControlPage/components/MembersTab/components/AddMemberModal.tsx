@@ -230,7 +230,6 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
       }}
     >
       <ModalContent
-        bodyClassName="overflow-visible"
         title={t("section.members.add-dialog.add-member-to-project") as string}
         subTitle={t("section.members.add-dialog.user-will-email")}
       >

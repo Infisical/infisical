@@ -211,7 +211,6 @@ export const AddOrgMemberModal = ({
       }}
     >
       <ModalContent
-        bodyClassName="overflow-visible"
         title={`Invite others to ${currentOrg?.name}`}
         subTitle={
           <div>

@@ -1614,7 +1614,6 @@ export const OverviewPage = () => {
       >
         <ModalContent
           className="max-h-[80vh]"
-          bodyClassName="overflow-visible"
           title="Create Secrets"
           subTitle="Create a secret across multiple environments"
           onPointerDownOutside={(e) => e.preventDefault()}
