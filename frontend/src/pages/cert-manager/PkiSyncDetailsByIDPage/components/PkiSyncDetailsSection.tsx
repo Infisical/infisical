@@ -57,7 +57,7 @@ export const PkiSyncDetailsSection = ({ pkiSync, onEditDetails }: Props) => {
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-        <h3 className="font-semibold text-mineshaft-100">Details</h3>
+        <h3 className="font-medium text-mineshaft-100">Details</h3>
         <ProjectPermissionCan I={ProjectPermissionPkiSyncActions.Edit} a={permissionSubject}>
           {(isAllowed) => (
             <IconButton
@@ -91,7 +91,9 @@ export const PkiSyncDetailsSection = ({ pkiSync, onEditDetails }: Props) => {
           )}
           {syncStatus === PkiSyncStatus.Failed && failureMessage && (
             <GenericFieldLabel labelClassName="text-red" label="Last Sync Error">
-              <p className="break-words rounded bg-mineshaft-600 p-2 text-xs">{failureMessage}</p>
+              <p className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
+                {failureMessage}
+              </p>
             </GenericFieldLabel>
           )}
         </div>

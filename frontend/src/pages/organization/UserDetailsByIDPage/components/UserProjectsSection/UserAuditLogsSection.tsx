@@ -16,7 +16,7 @@ export const UserAuditLogsSection = withPermission(
       subscription?.auditLogs && (
         <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
-            <p className="text-lg font-semibold text-gray-200">Audit Logs</p>
+            <p className="text-lg font-medium text-gray-200">Audit Logs</p>
           </div>
           <LogsSection
             presets={{

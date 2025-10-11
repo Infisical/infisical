@@ -2,11 +2,15 @@ import { isIP } from "node:net";
 
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
+import { CronJob } from "cron";
 
-import { TRelays } from "@app/db/schemas";
+import { OrgMembershipRole, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
+import { createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
+import { logger } from "@app/lib/logger";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts, prependCertToPemChain } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
@@ -16,6 +20,11 @@ import {
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { NotificationType } from "@app/services/notification/notification-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -39,7 +48,11 @@ export const relayServiceFactory = ({
   relayDAL,
   kmsService,
   licenseService,
-  permissionService
+  permissionService,
+  orgDAL,
+  notificationService,
+  smtpService,
+  userDAL
 }: {
   instanceRelayConfigDAL: TInstanceRelayConfigDALFactory;
   orgRelayConfigDAL: TOrgRelayConfigDALFactory;
@@ -47,6 +60,10 @@ export const relayServiceFactory = ({
   kmsService: TKmsServiceFactory;
   licenseService: TLicenseServiceFactory;
   permissionService: TPermissionServiceFactory;
+  orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  smtpService: Pick<TSmtpService, "sendMail">;
+  userDAL: Pick<TUserDALFactory, "find">;
 }) => {
   const $getInstanceCAs = async () => {
     const instanceConfig = await instanceRelayConfigDAL.transaction(async (tx) => {
@@ -1056,6 +1073,78 @@ export const relayServiceFactory = ({
     });
   };
 
+  const heartbeat = async ({
+    name,
+    identityId,
+    actorAuthMethod,
+    orgId
+  }: {
+    name: string;
+    identityId?: string;
+    actorAuthMethod?: ActorAuthMethod;
+    orgId?: string;
+  }) => {
+    const relay = await relayDAL.findOne({
+      name,
+      orgId: orgId ?? null
+    });
+
+    if (!relay) {
+      throw new NotFoundError({ message: `Relay with name ${name} not found.` });
+    }
+
+    let clientOrgId: string;
+    let clientOrgName: string;
+
+    if (relay.orgId) {
+      if (!identityId || !orgId || relay.orgId !== orgId) {
+        throw new ForbiddenRequestError({
+          message: "You do not have permission to perform this action on this relay."
+        });
+      }
+
+      const { permission } = await permissionService.getOrgPermission(
+        ActorType.IDENTITY,
+        identityId,
+        orgId,
+        actorAuthMethod!,
+        orgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionRelayActions.CreateRelays,
+        OrgPermissionSubjects.Relay
+      );
+      clientOrgId = orgId;
+      clientOrgName = orgId;
+    } else {
+      clientOrgId = "00000000-0000-0000-0000-000000000000";
+      clientOrgName = "heartbeat";
+    }
+
+    const relayClientCredentials = await getCredentialsForClient({
+      relayId: relay.id,
+      orgId: clientOrgId,
+      orgName: clientOrgName,
+      gatewayId: "00000000-0000-0000-0000-000000000000",
+      gatewayName: "heartbeat",
+      duration: 60 * 1000 // 1 minute
+    });
+
+    try {
+      await createRelayConnection({
+        relayHost: relayClientCredentials.relayHost,
+        clientCertificate: relayClientCredentials.clientCertificate,
+        clientPrivateKey: relayClientCredentials.clientPrivateKey,
+        serverCertificateChain: relayClientCredentials.serverCertificateChain
+      });
+
+      await relayDAL.updateById(relay.id, { heartbeat: new Date() });
+    } catch (err) {
+      const error = err as Error;
+      throw new BadRequestError({ message: `Relay ${name} is not reachable: ${error.message}` });
+    }
+  };
+
   const getRelays = async ({
     actorId,
     actor,
@@ -1120,11 +1209,99 @@ export const relayServiceFactory = ({
     return deletedRelay;
   };
 
+  const $healthcheckNotify = async () => {
+    const unhealthyRelays = await relayDAL.find({
+      isHeartbeatStale: true
+    });
+
+    if (unhealthyRelays.length === 0) return;
+
+    logger.warn(
+      { relayIds: unhealthyRelays.map((g) => g.id) },
+      "Found relays with last heartbeat over an hour ago. Sending notifications."
+    );
+
+    const relaysByOrg = groupBy(unhealthyRelays, (r) => r.orgId ?? "instance");
+
+    for await (const [orgId, relays] of Object.entries(relaysByOrg)) {
+      try {
+        if (orgId === "instance") {
+          const superAdmins = await userDAL.find({
+            superAdmin: true
+          });
+
+          const recipients = superAdmins.map((admin) => admin.email).filter((v): v is string => !!v);
+
+          if (recipients.length > 0) {
+            const relayNames = relays.map((r) => `"${r.name}"`).join(", ");
+            await smtpService.sendMail({
+              recipients,
+              subjectLine: "Relay Health Alert",
+              substitutions: {
+                type: "instance-relay",
+                names: relayNames
+              },
+              template: SmtpTemplates.HealthAlert
+            });
+          }
+        } else {
+          const admins = await orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin);
+          if (admins.length === 0) {
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+
+          const relayNames = relays.map((r) => `"${r.name}"`).join(", ");
+          const body = `The following relay(s) in your organization may be offline as they haven't reported a heartbeat in over an hour: ${relayNames}. Please check their status.`;
+
+          await notificationService.createUserNotifications(
+            admins.map((admin) => ({
+              userId: admin.user.id,
+              orgId,
+              type: NotificationType.RELAY_HEALTH_ALERT,
+              title: "Relay Health Alert",
+              body,
+              link: "/organization/networking"
+            }))
+          );
+
+          await smtpService.sendMail({
+            recipients: admins.map((admin) => admin.user.email).filter((v): v is string => !!v),
+            subjectLine: "Relay Health Alert",
+            substitutions: {
+              type: "relay",
+              names: relayNames
+            },
+            template: SmtpTemplates.HealthAlert
+          });
+        }
+
+        await Promise.all(relays.map((r) => relayDAL.updateById(r.id, { healthAlertedAt: new Date() })));
+      } catch (error) {
+        logger.error(error, `Failed to send relay health notifications for organization [orgId=${orgId}]`);
+      }
+    }
+  };
+
+  const initializeHealthcheckNotify = async () => {
+    logger.info("Setting up background notification process for relay health-checks");
+
+    await $healthcheckNotify();
+
+    // run every 5 minutes
+    const job = new CronJob("*/5 * * * *", $healthcheckNotify);
+    job.start();
+
+    return job;
+  };
+
   return {
     registerRelay,
     getCredentialsForGateway,
     getCredentialsForClient,
     getRelays,
-    deleteRelay
+    deleteRelay,
+    heartbeat,
+    initializeHealthcheckNotify
   };
 };

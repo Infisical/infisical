@@ -94,7 +94,7 @@ const Page = () => {
               <div className="flex flex-col">
                 <div>
                   <span>{data.name}</span>
-                  <p className="text-sm font-[400] normal-case leading-3 text-mineshaft-400">
+                  <p className="text-sm leading-3 font-normal text-mineshaft-400 normal-case">
                     {data.slug} {data.description && `- ${data.description}`}
                   </p>
                 </div>

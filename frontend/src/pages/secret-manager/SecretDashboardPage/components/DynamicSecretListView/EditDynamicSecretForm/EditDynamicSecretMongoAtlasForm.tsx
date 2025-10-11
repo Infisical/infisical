@@ -175,7 +175,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
     <div>
       <form onSubmit={handleSubmit(handleUpdateDynamicSecret)} autoComplete="off">
         <div className="flex items-center space-x-2">
-          <div className="flex-grow">
+          <div className="grow">
             <Controller
               control={control}
               name="newName"
@@ -222,7 +222,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
           </div>
         </div>
         <div>
-          <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+          <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
             Configuration
           </div>
           <div className="flex flex-col">
@@ -234,7 +234,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     label="Admin Public Key"
-                    className="flex-grow"
+                    className="grow"
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >
@@ -249,7 +249,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     label="Admin Private Key"
-                    className="flex-grow"
+                    className="grow"
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >
@@ -277,7 +277,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
             <div className="mb-3 flex flex-col space-y-2">
               {roleFields.fields.map(({ id: roleFieldId }, i) => (
                 <div key={roleFieldId} className="flex items-end space-x-2">
-                  <div className="flex-grow">
+                  <div className="grow">
                     {i === 0 && <span className="text-xs text-mineshaft-400">Database Name</span>}
                     <Controller
                       control={control}
@@ -293,7 +293,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
                       )}
                     />
                   </div>
-                  <div className="flex-grow">
+                  <div className="grow">
                     {i === 0 && (
                       <FormLabel
                         label="Collection Name"
@@ -315,7 +315,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
                       )}
                     />
                   </div>
-                  <div className="flex-grow">
+                  <div className="grow">
                     {i === 0 && (
                       <FormLabel
                         label="Role"
@@ -332,7 +332,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
                         <FormControl
                           isError={Boolean(error?.message)}
                           errorText={error?.message}
-                          className="mb-0 flex-grow"
+                          className="mb-0 grow"
                         >
                           <Input {...field} />
                         </FormControl>
@@ -399,7 +399,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
                   <div className="mb-2 flex flex-col space-y-2">
                     {scopeFields.fields.map(({ id: scopeFieldId }, i) => (
                       <div key={scopeFieldId} className="flex items-end space-x-2">
-                        <div className="flex-grow">
+                        <div className="grow">
                           {i === 0 && (
                             <FormLabel
                               label="Label"
@@ -415,14 +415,14 @@ export const EditDynamicSecretMongoAtlasForm = ({
                               <FormControl
                                 isError={Boolean(error?.message)}
                                 errorText={error?.message}
-                                className="mb-0 flex-grow"
+                                className="mb-0 grow"
                               >
                                 <Input {...field} placeholder="Cluster or data lake id" />
                               </FormControl>
                             )}
                           />
                         </div>
-                        <div className="flex-grow">
+                        <div className="grow">
                           {i === 0 && <span className="text-xs text-mineshaft-400">Type</span>}
                           <Controller
                             control={control}
@@ -431,7 +431,7 @@ export const EditDynamicSecretMongoAtlasForm = ({
                               <FormControl
                                 isError={Boolean(error?.message)}
                                 errorText={error?.message}
-                                className="mb-0 flex-grow"
+                                className="mb-0 grow"
                               >
                                 <Select
                                   defaultValue={field.value}

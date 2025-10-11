@@ -92,13 +92,13 @@ export const SecretSyncsTab = () => {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <div className="flex items-start gap-1">
-              <p className="text-xl font-semibold text-mineshaft-100">Secret Syncs</p>
+              <p className="text-lg font-medium text-mineshaft-100">Secret Syncs</p>
               <a
                 href="https://infisical.com/docs/integrations/secret-syncs/overview"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="ml-1 mt-[0.32rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   <span>Docs</span>
                   <FontAwesomeIcon

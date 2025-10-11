@@ -1283,7 +1283,8 @@ export const secretServiceFactory = ({
     });
 
     const { userPermissions, identityPermissions, groupPermissions } = await permissionService.getProjectPermissions(
-      dto.projectId
+      dto.projectId,
+      dto.actorOrgId
     );
 
     const attachAllowedActions = (

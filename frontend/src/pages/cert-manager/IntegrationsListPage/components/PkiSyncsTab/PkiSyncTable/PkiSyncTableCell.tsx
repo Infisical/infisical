@@ -23,7 +23,7 @@ export const PkiSyncTableCell = ({
   secondaryClassName
 }: PkiSyncTableCellProps) => {
   return (
-    <Td className="!min-w-[8rem] max-w-0">
+    <Td className="max-w-0 min-w-32!">
       <Tooltip
         side="left"
         className="max-w-2xl break-words"

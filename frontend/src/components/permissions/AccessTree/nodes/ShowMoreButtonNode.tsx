@@ -15,7 +15,7 @@ export const ShowMoreButtonNode = ({
     <div className="flex h-full w-full items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-2">
       <Handle
         type="target"
-        className="pointer-events-none !cursor-pointer opacity-0"
+        className="pointer-events-none cursor-pointer! opacity-0"
         position={Position.Top}
       />
 

@@ -278,7 +278,7 @@ export const ReplicateFolderFromBoard = ({
                 <FormControl
                   tooltipText="The folder to use as a root for replication. Using /foo as a root for /foo/bar will result in /bar being copied to this context."
                   label="Source Root Path"
-                  className="flex-grow"
+                  className="grow"
                   isRequired
                 >
                   <SecretPathInput
@@ -296,7 +296,7 @@ export const ReplicateFolderFromBoard = ({
             render={({ field: { onChange } }) => (
               <FormControl
                 tooltipText="The folders and secrets to replicate into this context"
-                className="flex-grow"
+                className="grow"
                 label="Affected Subjects"
                 isRequired
               >

@@ -72,7 +72,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-semibold text-mineshaft-100">Group Details</h3>
+        <h3 className="text-lg font-medium text-mineshaft-100">Group Details</h3>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton ariaLabel="Options" colorSchema="secondary" className="w-6" variant="plain">
@@ -101,7 +101,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
       </div>
       <div className="pt-4">
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Group ID</p>
+          <p className="text-sm font-medium text-mineshaft-300">Group ID</p>
           <div className="group flex items-center gap-2">
             <p className="text-sm text-mineshaft-300">{groupMembership.group.id}</p>
             <CopyButton
@@ -113,18 +113,18 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Name</p>
+          <p className="text-sm font-medium text-mineshaft-300">Name</p>
           <p className="text-sm text-mineshaft-300">{groupMembership.group.name}</p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Slug</p>
+          <p className="text-sm font-medium text-mineshaft-300">Slug</p>
           <div className="group flex items-center gap-2">
             <p className="text-sm text-mineshaft-300">{groupMembership.group.slug}</p>
             <CopyButton value={groupMembership.group.slug} name="Slug" size="xs" variant="plain" />
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Project Role</p>
+          <p className="text-sm font-medium text-mineshaft-300">Project Role</p>
           <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Groups}>
             {(isAllowed) => (
               <GroupRoles
@@ -138,7 +138,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
           </ProjectPermissionCan>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Assigned to Project</p>
+          <p className="text-sm font-medium text-mineshaft-300">Assigned to Project</p>
           <p className="text-sm text-mineshaft-300">
             {format(groupMembership.createdAt, "M/d/yyyy")}
           </p>

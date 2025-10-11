@@ -58,7 +58,7 @@ export const GroupContainer = ({
           icon={faChevronRight}
         />
 
-        <div className="flex-grow select-none text-base">{group.name}</div>
+        <div className="grow text-base select-none">{group.name}</div>
       </div>
 
       {(open || search) && (
@@ -214,13 +214,13 @@ export const EnvironmentPageForm = () => {
       <div className="flex w-full flex-row items-center justify-between">
         <div>
           <div className="flex items-start gap-1">
-            <p className="text-xl font-semibold text-mineshaft-100">Overrides</p>
+            <p className="text-xl font-medium text-mineshaft-100">Overrides</p>
             <a
               href="https://infisical.com/docs/self-hosting/configuration/envars#environment-variable-overrides"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="ml-1 mt-[0.32rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 <span>Docs</span>
                 <FontAwesomeIcon

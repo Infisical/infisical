@@ -118,7 +118,7 @@ export const OrgSSOSection = (): JSX.Element => {
     <div className="space-y-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xl font-semibold text-gray-200">SAML</p>
+          <p className="text-xl font-medium text-gray-200">SAML</p>
           <p className="mb-2 text-gray-400">Manage SAML authentication configuration</p>
         </div>
         {!isPending && (
@@ -206,7 +206,7 @@ export const OrgSSOSection = (): JSX.Element => {
                 <FontAwesomeIcon
                   icon={faInfoCircle}
                   size="sm"
-                  className="ml-1 mt-0.5 inline-block text-mineshaft-400"
+                  className="mt-0.5 ml-1 inline-block text-mineshaft-400"
                 />
               </Tooltip>
             </div>

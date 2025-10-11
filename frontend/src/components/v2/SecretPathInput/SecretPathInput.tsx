@@ -130,14 +130,14 @@ export const SecretPathInput = ({
         align="start"
         onOpenAutoFocus={(e) => e.preventDefault()}
         className={twMerge(
-          "relative top-2 z-[100] overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
+          "relative top-2 z-100 overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-900 font-inter text-bunker-100 shadow-md"
         )}
         style={{
           width: "var(--radix-popover-trigger-width)",
           maxHeight: "var(--radix-select-content-available-height)"
         }}
       >
-        <div className="thin-scrollbar max-h-[25vh] w-full flex-col items-center justify-center overflow-y-scroll rounded-md text-white">
+        <div className="max-h-[25vh] thin-scrollbar w-full flex-col items-center justify-center overflow-y-scroll rounded-md text-white">
           {suggestions.map((suggestion, i) => (
             <div
               tabIndex={0}
@@ -154,7 +154,7 @@ export const SecretPathInput = ({
               <div
                 className={`${
                   highlightedIndex === i ? "bg-gray-600" : ""
-                } text-md relative mb-0.5 flex w-full cursor-pointer select-none items-center justify-between rounded-md px-2 py-1 outline-none transition-all hover:bg-mineshaft-500 data-[highlighted]:bg-mineshaft-500`}
+                } text-md relative mb-0.5 flex w-full cursor-pointer items-center justify-between rounded-md px-2 py-1 outline-hidden transition-all select-none hover:bg-mineshaft-500 data-highlighted:bg-mineshaft-500`}
               >
                 <div className="flex gap-2">
                   <div className="flex items-center text-yellow-700">

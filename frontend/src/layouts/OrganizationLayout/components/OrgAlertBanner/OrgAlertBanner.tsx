@@ -31,7 +31,7 @@ export const OrgAlertBanner = ({ text, link }: Props) => {
               here
             </span>
             <FontAwesomeIcon
-              className="ml-1 mt-[0.12rem] group-hover:text-mineshaft-100"
+              className="mt-[0.12rem] ml-1 group-hover:text-mineshaft-100"
               icon={faArrowUpRightFromSquare}
               size="xs"
             />

@@ -76,10 +76,10 @@ const PageContent = () => {
           <img
             alt={`${details.name} data source`}
             src={`/images/integrations/${details.image}`}
-            className="ml-1 mt-3 w-14"
+            className="mt-3 ml-1 w-14"
           />
           <div>
-            <p className="text-3xl font-semibold text-white">{dataSource.name}</p>
+            <p className="text-3xl font-medium text-white">{dataSource.name}</p>
             <p className="leading-3 text-bunker-300">{details.name} Data Source</p>
           </div>
         </div>

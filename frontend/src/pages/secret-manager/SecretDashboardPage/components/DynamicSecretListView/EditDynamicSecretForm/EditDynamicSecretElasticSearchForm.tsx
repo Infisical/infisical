@@ -160,7 +160,7 @@ export const EditDynamicSecretElasticSearchForm = ({
       <form onSubmit={handleSubmit(handleUpdateDynamicSecret)} autoComplete="off">
         <div>
           <div className="flex items-center space-x-2">
-            <div className="flex-grow">
+            <div className="grow">
               <Controller
                 control={control}
                 defaultValue=""
@@ -210,7 +210,7 @@ export const EditDynamicSecretElasticSearchForm = ({
             </div>
           </div>
           <div>
-            <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
               Configuration
             </div>
             <div className="flex flex-col">
@@ -222,7 +222,7 @@ export const EditDynamicSecretElasticSearchForm = ({
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="Host"
-                      className="flex-grow"
+                      className="grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
@@ -353,11 +353,11 @@ export const EditDynamicSecretElasticSearchForm = ({
                     key={`role-${i}`}
                     render={({ field, fieldState: { error } }) => (
                       <div className="flex items-center gap-2">
-                        <div className="flex-grow">
+                        <div className="grow">
                           <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
                             <Input
                               placeholder="Insert role name, (superuser, kibana_admin, custom_role)"
-                              className="mb-0 flex-grow"
+                              className="mb-0 grow"
                               {...field}
                             />
                           </FormControl>

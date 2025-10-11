@@ -301,7 +301,7 @@ export const PasswordStep = ({
 
   if (shouldShowMfa) {
     return (
-      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
         <Mfa
           email={email}
           successCallback={mfaSuccessCallback}
@@ -326,7 +326,7 @@ export const PasswordStep = ({
 
   if (hasExchangedPrivateKey) {
     return (
-      <div className="fixed left-0 top-0 h-screen w-screen bg-bunker-800">
+      <div className="fixed top-0 left-0 h-screen w-screen bg-bunker-800">
         <ContentLoader />
       </div>
     );
@@ -335,11 +335,11 @@ export const PasswordStep = ({
   return (
     <form onSubmit={handleLogin} className="mx-auto h-full w-full max-w-md px-6 pt-8">
       <div className="mb-8">
-        <p className="mx-auto mb-4 flex w-max justify-center bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
+        <p className="mx-auto mb-4 flex w-max justify-center bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
           What&apos;s your Infisical password?
         </p>
       </div>
-      <div className="relative mx-auto flex max-h-24 w-full min-w-[22rem] items-center justify-center rounded-lg md:max-h-28 lg:w-1/6">
+      <div className="relative mx-auto flex max-h-24 w-full min-w-88 items-center justify-center rounded-lg md:max-h-28 lg:w-1/6">
         <div className="flex max-h-24 w-full items-center justify-center rounded-lg md:max-h-28">
           <Input
             value={password}
@@ -354,7 +354,7 @@ export const PasswordStep = ({
         </div>
       </div>
       {shouldShowCaptcha && envConfig.CAPTCHA_SITE_KEY && (
-        <div className="mx-auto mt-4 flex w-full min-w-[22rem] items-center justify-center lg:w-1/6">
+        <div className="mx-auto mt-4 flex w-full min-w-88 items-center justify-center lg:w-1/6">
           <HCaptcha
             theme="dark"
             sitekey={envConfig.CAPTCHA_SITE_KEY}
@@ -363,7 +363,7 @@ export const PasswordStep = ({
           />
         </div>
       )}
-      <div className="mx-auto mt-4 flex w-full min-w-[22rem] items-center justify-center rounded-md text-center lg:w-1/6">
+      <div className="mx-auto mt-4 flex w-full min-w-88 items-center justify-center rounded-md text-center lg:w-1/6">
         <Button
           disabled={shouldShowCaptcha && captchaToken === ""}
           type="submit"

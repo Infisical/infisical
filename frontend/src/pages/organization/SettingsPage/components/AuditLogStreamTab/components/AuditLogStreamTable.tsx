@@ -171,7 +171,7 @@ export const AuditLogStreamTable = () => {
               <FontAwesomeIcon icon={faFilter} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="thin-scrollbar max-h-[70vh] overflow-y-auto" align="end">
+          <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
             <DropdownMenuLabel>Filter by Provider</DropdownMenuLabel>
             {logStreams.length ? (
               [...new Set(logStreams.map(({ provider }) => provider))].map((provider) => {

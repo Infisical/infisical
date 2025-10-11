@@ -10,7 +10,8 @@ import {
   ProjectPermissionSub,
   useOrganization,
   useProject,
-  useProjectPermission
+  useProjectPermission,
+  useUser
 } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useDeleteWorkspace, useGetWorkspaceUsers, useLeaveProject } from "@app/hooks/api";
@@ -24,8 +25,9 @@ export const DeleteProjectSection = () => {
     "leaveWorkspace"
   ] as const);
 
+  const { user } = useUser();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole, membership } = useProjectPermission();
+  const { hasProjectRole } = useProjectPermission();
   const { currentProject } = useProject();
   const [isDeleting, setIsDeleting] = useToggle();
   const [isLeaving, setIsLeaving] = useToggle();
@@ -39,14 +41,14 @@ export const DeleteProjectSection = () => {
   const isNoAccessMember = hasProjectRole("no-access");
 
   const isOnlyAdminMember = useMemo(() => {
-    if (!members || !membership || !hasProjectRole("admin")) return false;
+    if (!members || !hasProjectRole("admin")) return false;
 
     const adminMembers = members.filter(
-      (member) => member.roles.map((r) => r.role).includes("admin") && member.id !== membership.id // exclude the current user
+      (member) => member.roles.map((r) => r.role).includes("admin") && member.user.id !== user.id // exclude the current user
     );
 
     return !adminMembers.length;
-  }, [members, membership]);
+  }, [members, user]);
 
   const handleDeleteWorkspaceSubmit = async () => {
     setIsDeleting.on();
@@ -129,7 +131,7 @@ export const DeleteProjectSection = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <p className="mb-4 text-xl font-semibold text-mineshaft-100">Danger Zone</p>
+      <p className="mb-4 text-xl font-medium text-mineshaft-100">Danger Zone</p>
       <div className="space-x-4">
         <ProjectPermissionCan I={ProjectPermissionActions.Delete} a={ProjectPermissionSub.Project}>
           {(isAllowed) => (

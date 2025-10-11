@@ -183,7 +183,8 @@ export const kmipOperationServiceFactory = ({
       algorithm: completeKeyDetails.internalKms.encryptionAlgorithm,
       isActive: !key.isDisabled,
       createdAt: key.createdAt,
-      updatedAt: key.updatedAt
+      updatedAt: key.updatedAt,
+      kmipMetadata: key.kmipMetadata as Record<string, unknown>
     };
   };
 
@@ -373,7 +374,8 @@ export const kmipOperationServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    kmipMetadata
   }: TKmipRegisterDTO) => {
     const { permission } = await permissionService.getOrgPermission(
       actor,
@@ -405,7 +407,8 @@ export const kmipOperationServiceFactory = ({
       isReserved: false,
       projectId,
       keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
-      orgId: project.orgId
+      orgId: project.orgId,
+      kmipMetadata
     });
 
     return kmsKey;

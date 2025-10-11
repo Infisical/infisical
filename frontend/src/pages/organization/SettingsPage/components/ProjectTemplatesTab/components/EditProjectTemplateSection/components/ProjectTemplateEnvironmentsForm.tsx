@@ -102,7 +102,7 @@ export const ProjectTemplateEnvironmentsForm = ({
     >
       <div className="mb-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <div>
-          <h2 className="text-lg font-semibold">Project Environments</h2>
+          <h2 className="text-lg font-medium">Project Environments</h2>
           {!isInfisicalTemplate && (
             <p className="text-sm text-mineshaft-400">
               Add, rename, remove and reorder environments for this project template
@@ -185,7 +185,7 @@ export const ProjectTemplateEnvironmentsForm = ({
                             <FormControl
                               isError={Boolean(error?.message)}
                               errorText={error?.message}
-                              className="mb-0 flex-grow"
+                              className="mb-0 grow"
                             >
                               <Input isDisabled={!isAllowed} {...field} placeholder="Name..." />
                             </FormControl>
@@ -211,7 +211,7 @@ export const ProjectTemplateEnvironmentsForm = ({
                             <FormControl
                               isError={Boolean(error?.message)}
                               errorText={error?.message}
-                              className="mb-0 flex-grow"
+                              className="mb-0 grow"
                             >
                               <Input isDisabled={!isAllowed} {...field} placeholder="Slug..." />
                             </FormControl>

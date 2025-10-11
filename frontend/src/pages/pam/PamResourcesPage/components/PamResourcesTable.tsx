@@ -34,7 +34,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub, useSubscription } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -62,8 +62,6 @@ type Props = {
 };
 
 export const PamResourcesTable = ({ projectId, resources }: Props) => {
-  const { subscription } = useSubscription();
-
   const navigate = useNavigate({ from: ROUTE_PATHS.Pam.ResourcesPage.path });
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -187,7 +185,7 @@ export const PamResourcesTable = ({ projectId, resources }: Props) => {
               <FontAwesomeIcon icon={faFilter} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="thin-scrollbar max-h-[70vh] overflow-y-auto" align="end">
+          <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
             <DropdownMenuLabel>Resource Type</DropdownMenuLabel>
             {resources.length ? (
               [...new Set(resources.map(({ resourceType }) => resourceType))].map((type) => {
@@ -246,9 +244,7 @@ export const PamResourcesTable = ({ projectId, resources }: Props) => {
                     colorSchema="secondary"
                     leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     onClick={() => handlePopUpOpen("addResource")}
-                    isDisabled={
-                      !isAllowed || !isGatewayAllowed || !subscription.gateway || !subscription.pam
-                    }
+                    isDisabled={!isAllowed || !isGatewayAllowed}
                   >
                     Add Resource
                   </Button>

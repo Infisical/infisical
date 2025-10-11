@@ -150,10 +150,10 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
   return (
     <form
       onSubmit={handleSubmit(handleFormSubmit)}
-      className="secret-table relative mb-2 flex w-full flex-row items-center justify-between overflow-hidden rounded-lg border border-solid border-mineshaft-700 bg-mineshaft-800 font-inter"
+      className="relative mb-2 flex secret-table w-full flex-row items-center justify-between overflow-hidden rounded-lg border border-solid border-mineshaft-700 bg-mineshaft-800 font-inter"
     >
-      <div className="flex h-11 flex-1 flex-shrink-0 items-center">
-        <span className="flex h-full min-w-[11rem] items-center justify-between gap-2 border-r-2 border-mineshaft-600 px-4">
+      <div className="flex h-11 flex-1 shrink-0 items-center">
+        <span className="flex h-full min-w-44 items-center justify-between gap-2 border-r-2 border-mineshaft-600 px-4">
           Key
           {currentSecretValue?.trim()?.includes(" ") &&
             currentSecretValue?.trim() !== secretKey && (
@@ -204,7 +204,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
             {!isDirty ? (
               <motion.div
                 key="options"
-                className="flex flex-shrink-0 items-center space-x-4 px-3"
+                className="flex shrink-0 items-center space-x-4 px-3"
                 initial={{ x: 0, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: 10, opacity: 0 }}
@@ -226,7 +226,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
             ) : (
               <motion.div
                 key="options-save"
-                className="flex flex-shrink-0 items-center space-x-4 px-3"
+                className="flex shrink-0 items-center space-x-4 px-3"
                 initial={{ x: -10, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: -10, opacity: 0 }}

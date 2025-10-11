@@ -20,7 +20,7 @@ export const useSyntaxHighlight = () => {
           ) : (
             <FontAwesomeIcon
               key={`${text}_${el}_${i + 1}`}
-              className="mr-0.5 text-xxs"
+              className="text-xxs mr-0.5"
               icon={faCircle}
             />
           )

@@ -93,7 +93,7 @@ export const ProjectTemplateEditRoleForm = ({
         <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
           <Button
             leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-            className="text-base font-semibold text-mineshaft-200"
+            className="text-base font-medium text-mineshaft-200"
             variant="link"
             onClick={onGoBack}
           >
@@ -134,7 +134,7 @@ export const ProjectTemplateEditRoleForm = ({
         <div className="mt-2 border-b border-gray-800 p-4 pt-2 first:rounded-t-md last:rounded-b-md">
           {isDisabled ? (
             <div className="flex flex-col">
-              <span className="text-lg font-semibold">{role?.name}</span>
+              <span className="text-lg font-medium">{role?.name}</span>
               <span className="text-mineshaft-400">{role?.slug}</span>
             </div>
           ) : (

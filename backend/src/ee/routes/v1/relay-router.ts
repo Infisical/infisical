@@ -146,4 +146,85 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
       });
     }
   });
+
+  server.route({
+    method: "POST",
+    url: "/heartbeat-instance-relay",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        name: slugSchema({ min: 1, max: 32, field: "name" })
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: (req, _, next) => {
+      const authHeader = req.headers.authorization;
+
+      if (!appCfg.RELAY_AUTH_SECRET) {
+        throw new UnauthorizedError({
+          message: "Relay authentication not configured"
+        });
+      }
+
+      if (!authHeader) {
+        throw new UnauthorizedError({
+          message: "Missing authorization header"
+        });
+      }
+
+      const expectedHeader = `Bearer ${appCfg.RELAY_AUTH_SECRET}`;
+      if (
+        authHeader.length === expectedHeader.length &&
+        crypto.nativeCrypto.timingSafeEqual(Buffer.from(authHeader), Buffer.from(expectedHeader))
+      ) {
+        return next();
+      }
+
+      throw new UnauthorizedError({
+        message: "Invalid relay auth secret"
+      });
+    },
+    handler: async (req) => {
+      await server.services.relay.heartbeat({
+        name: req.body.name
+      });
+
+      return { message: "Successfully triggered heartbeat" };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/heartbeat-org-relay",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        name: slugSchema({ min: 1, max: 32, field: "name" })
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      await server.services.relay.heartbeat({
+        name: req.body.name,
+        identityId: req.permission.id,
+        orgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+
+      return { message: "Successfully triggered heartbeat" };
+    }
+  });
 };

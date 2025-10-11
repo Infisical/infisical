@@ -79,7 +79,7 @@ const OrgConfigSection = ({
   return (
     <>
       <div className="flex flex-col justify-start">
-        <div className="mb-2 text-xl font-semibold text-mineshaft-100">KMIP configuration</div>
+        <div className="mb-2 text-xl font-medium text-mineshaft-100">KMIP configuration</div>
         {isKmipConfigLoading && (
           <div className="mt-8 flex justify-center">
             <Spinner />

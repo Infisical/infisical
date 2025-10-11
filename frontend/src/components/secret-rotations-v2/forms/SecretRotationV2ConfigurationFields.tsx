@@ -90,7 +90,7 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
                     });
                   }
                 }}
-                className="bg-mineshaft-700 text-white [color-scheme:dark]"
+                className="bg-mineshaft-700 text-white scheme-dark"
               />
             </FormControl>
           );
@@ -126,7 +126,7 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
         }}
       />
       {!IS_ROTATION_DUAL_CREDENTIALS[type] && isAutoRotationEnabled && (
-        <div className="rounded border border-yellow bg-yellow/10 p-2 px-3 text-xs text-yellow">
+        <div className="rounded-sm border border-yellow bg-yellow/10 p-2 px-3 text-xs text-yellow">
           <FontAwesomeIcon icon={faWarning} className="mr-1" /> Due to{" "}
           {SECRET_ROTATION_MAP[type].name} Rotations rotating a single credential set, auto-rotation
           may result in service interruptions. If you need to ensure service continuity, we

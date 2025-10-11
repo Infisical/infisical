@@ -44,6 +44,7 @@ export interface GetIdentityAuthTemplatesDTO {
   limit?: number;
   offset?: number;
   search?: string;
+  isDisabled?: boolean;
 }
 
 export interface MachineAuthTemplateUsage {

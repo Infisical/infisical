@@ -221,7 +221,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
         {deepRollback && nestedFolderChanges.length > 0 && (
           <>
             <div className="border-b border-mineshaft-600 bg-mineshaft-800 px-4 py-2">
-              <span className="text-sm font-semibold text-white">Child folders to be restored</span>
+              <span className="text-sm font-medium text-white">Child folders to be restored</span>
             </div>
             {nestedFolderChanges.map((folder) => (
               <div
@@ -297,7 +297,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl justify-center bg-bunker-800 pb-4 pt-2 text-white">
+    <div className="mx-auto flex w-full max-w-7xl justify-center bg-bunker-800 pt-2 pb-4 text-white">
       <ProjectPermissionCan
         renderGuardBanner
         I={ProjectPermissionCommitsActions.PerformRollback}

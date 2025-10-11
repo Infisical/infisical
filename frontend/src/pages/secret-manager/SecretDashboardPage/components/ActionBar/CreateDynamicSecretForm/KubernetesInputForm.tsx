@@ -236,7 +236,7 @@ export const KubernetesInputForm = ({
     <form onSubmit={handleSubmit(handleCreateDynamicSecret)} autoComplete="off">
       <div>
         <div className="flex items-center space-x-2">
-          <div className="flex-grow">
+          <div className="grow">
             <Controller
               control={control}
               defaultValue=""
@@ -286,12 +286,12 @@ export const KubernetesInputForm = ({
           </div>
         </div>
         <div>
-          <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+          <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
             Configuration
           </div>
           <div className="flex flex-col">
             <div className="flex items-center space-x-2">
-              <div className="flex-grow">
+              <div className="grow">
                 <div>
                   <OrgPermissionCan
                     I={OrgGatewayPermissionActions.AttachGateways}
@@ -599,7 +599,7 @@ export const KubernetesInputForm = ({
                               <Input
                                 {...control.register(`provider.audiences.${index}`)}
                                 placeholder="Enter audience"
-                                className="flex-grow"
+                                className="grow"
                               />
                               <IconButton
                                 onClick={() => remove(index)}

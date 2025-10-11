@@ -396,7 +396,7 @@ export const IdentityUniversalAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       label={index === 0 ? "Client Secret Trusted IPs" : undefined}
                       isError={Boolean(error)}
                       errorText={error?.message}
@@ -464,7 +464,7 @@ export const IdentityUniversalAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       label={index === 0 ? "Access Token Trusted IPs" : undefined}
                       isError={Boolean(error)}
                       errorText={error?.message}

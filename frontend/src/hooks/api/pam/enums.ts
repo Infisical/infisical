@@ -1,5 +1,8 @@
 export enum PamResourceType {
-  Postgres = "postgres"
+  Postgres = "postgres",
+  RDP = "rdp",
+  SSH = "ssh",
+  Kubernetes = "kubernetes"
 }
 
 export enum PamSessionStatus {

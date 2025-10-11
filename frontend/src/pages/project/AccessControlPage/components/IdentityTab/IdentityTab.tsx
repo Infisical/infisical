@@ -168,13 +168,13 @@ export const IdentityTab = withProjectPermission(
         <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-1">
-              <p className="text-xl font-semibold text-mineshaft-100">Identities</p>
+              <p className="text-xl font-medium text-mineshaft-100">Identities</p>
               <a
                 href="https://infisical.com/docs/documentation/platform/identities/overview"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="ml-1 mt-[0.16rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                <div className="mt-[0.16rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   <span>Docs</span>
                   <FontAwesomeIcon

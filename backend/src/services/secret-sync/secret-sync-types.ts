@@ -324,6 +324,13 @@ export type TDeleteSecretSyncDTO = {
   removeSecrets: boolean;
 };
 
+export type TCheckDuplicateDestinationDTO = {
+  destination: SecretSync;
+  destinationConfig: Record<string, unknown>;
+  excludeSyncId?: string;
+  projectId: string;
+};
+
 export enum SecretSyncStatus {
   Pending = "pending",
   Running = "running",
@@ -408,3 +415,8 @@ export type TSecretMap = Record<
     secretMetadata?: ResourceMetadataDTO;
   }
 >;
+
+export type DestinationDuplicateCheckFn = (
+  existingConfig: Record<string, unknown>,
+  newConfig: Record<string, unknown>
+) => boolean;

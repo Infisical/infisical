@@ -33,7 +33,7 @@ export const ProjectTemplatesSection = () => {
             initial={{ opacity: 0, translateX: 30 }}
             animate={{ opacity: 1, translateX: 0 }}
             exit={{ opacity: 0, translateX: 30 }}
-            className="absolute min-h-[10rem] w-full"
+            className="absolute min-h-40 w-full"
           >
             <EditProjectTemplateSection
               template={editTemplate}
@@ -47,7 +47,7 @@ export const ProjectTemplatesSection = () => {
             initial={{ opacity: 0, translateX: 30 }}
             animate={{ opacity: 1, translateX: 0 }}
             exit={{ opacity: 0, translateX: 30 }}
-            className="absolute min-h-[10rem] w-full"
+            className="absolute min-h-40 w-full"
           >
             <div>
               <p className="mb-6 font-inter text-bunker-300">
@@ -56,13 +56,13 @@ export const ProjectTemplatesSection = () => {
               </p>
               <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
                 <div className="mb-4 flex items-start">
-                  <p className="text-xl font-semibold text-mineshaft-100">Project Templates</p>
+                  <p className="text-xl font-medium text-mineshaft-100">Project Templates</p>
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
                     href="https://infisical.com/docs/documentation/platform/project-templates"
                   >
-                    <div className="ml-2 mt-[0.32rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                    <div className="mt-[0.32rem] ml-2 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                       <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                       <span>Docs</span>
                       <FontAwesomeIcon

@@ -1,4 +1,5 @@
-import { faTerminal } from "@fortawesome/free-solid-svg-icons";
+import { useState } from "react";
+import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { TPamSession } from "@app/hooks/api/pam";
@@ -8,31 +9,78 @@ type Props = {
 };
 
 export const PamSessionLogsSection = ({ session }: Props) => {
-  return (
-    <div className="flex h-full flex-col gap-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-semibold text-mineshaft-100">Session Logs</h3>
-      </div>
-      <div className="flex grow flex-col gap-8 overflow-y-auto text-xs">
-        {session.commandLogs.length > 0 ? (
-          session.commandLogs.map((log) => (
-            <div key={log.timestamp} className="flex flex-col">
-              <div className="flex items-center gap-1.5 text-bunker-400">
-                <FontAwesomeIcon icon={faTerminal} className="size-3" />
-                <span>{new Date(log.timestamp).toLocaleString()}</span>
-              </div>
+  const [expandedLogTimestamps, setExpandedLogTimestamps] = useState<Set<string>>(new Set());
 
-              <div className="overflow-hidden whitespace-pre-wrap break-all font-mono">
-                {log.input}
-              </div>
-              <div className="overflow-hidden whitespace-pre-wrap break-all font-mono text-bunker-300">
-                {log.output}
-              </div>
-            </div>
-          ))
+  const toggleExpand = (timestamp: string) => {
+    setExpandedLogTimestamps((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(timestamp)) {
+        newSet.delete(timestamp);
+      } else {
+        newSet.add(timestamp);
+      }
+      return newSet;
+    });
+  };
+
+  return (
+    <div className="flex h-full w-full flex-col gap-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="flex items-center border-b border-mineshaft-400 pb-4">
+        <h3 className="text-lg font-medium text-mineshaft-100">Session Logs</h3>
+      </div>
+      <div className="flex flex-col gap-2 overflow-y-auto text-xs">
+        {session.commandLogs.length > 0 ? (
+          session.commandLogs.map((log) => {
+            const isExpanded = expandedLogTimestamps.has(log.timestamp);
+            return (
+              <button
+                type="button"
+                key={log.timestamp}
+                className={`flex w-full flex-col rounded-md border border-mineshaft-700 p-3 text-left focus:ring-2 focus:ring-mineshaft-400 focus:outline-hidden ${
+                  isExpanded ? "bg-mineshaft-700" : "bg-mineshaft-800 hover:bg-mineshaft-700"
+                }`}
+                onClick={() => toggleExpand(log.timestamp)}
+              >
+                <div className="flex items-center justify-between text-bunker-400">
+                  <div className="flex items-center gap-2 select-none">
+                    <FontAwesomeIcon
+                      icon={isExpanded ? faChevronDown : faChevronRight}
+                      className="size-3 transition-transform duration-200"
+                    />
+                    <span>{new Date(log.timestamp).toLocaleString()}</span>
+                  </div>
+                </div>
+
+                <div
+                  className={`mt-2 font-mono ${
+                    isExpanded ? "break-all whitespace-pre-wrap" : "truncate"
+                  }`}
+                >
+                  {log.input}
+                </div>
+
+                {isExpanded && log.output && (
+                  <div className="mt-2 border-t border-mineshaft-700 pt-2 font-mono break-all whitespace-pre-wrap text-bunker-300">
+                    {log.output}
+                  </div>
+                )}
+              </button>
+            );
+          })
         ) : (
           <div className="flex w-full grow items-center justify-center text-bunker-300">
-            No session logs
+            {session.startedAt && session.endedAt ? (
+              <div className="text-center">
+                <div className="mb-2">Session logs are not yet available</div>
+                <div className="text-xs text-bunker-400">
+                  Logs will be uploaded after the session duration has elapsed.
+                  <br />
+                  If logs do not appear after some time, please contact your Gateway administrators.
+                </div>
+              </div>
+            ) : (
+              "No session logs"
+            )}
           </div>
         )}
       </div>

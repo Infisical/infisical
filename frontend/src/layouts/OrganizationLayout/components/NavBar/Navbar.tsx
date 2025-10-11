@@ -186,7 +186,7 @@ export const Navbar = () => {
 
   if (shouldShowMfa) {
     return (
-      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
         <Mfa
           email={user.email as string}
           method={requiredMfaMethod}
@@ -206,7 +206,7 @@ export const Navbar = () => {
           <img alt="infisical logo" src="/images/logotransparent.png" className="h-4" />
         </Link>
       </div>
-      <p className="pl-1 pr-3 text-lg text-mineshaft-400/70">/</p>
+      <p className="pr-3 pl-1 text-lg text-mineshaft-400/70">/</p>
       {isServerAdminPanel ? (
         <>
           <Link
@@ -218,7 +218,7 @@ export const Navbar = () => {
             </div>
             <div className="whitespace-nowrap">Server Console</div>
           </Link>
-          <p className="pl-3 pr-3 text-lg text-mineshaft-400/70">/</p>
+          <p className="pr-3 pl-3 text-lg text-mineshaft-400/70">/</p>
           {breadcrumbs ? (
             // scott: remove /admin as we show server console above
             <BreadcrumbContainer breadcrumbs={breadcrumbs.slice(1) as TBreadcrumbFormat[]} />
@@ -234,7 +234,7 @@ export const Navbar = () => {
                     <FontAwesomeIcon icon={faBuilding} className="text-xs text-bunker-300" />
                   </div>
                   <div className="whitespace-nowrap">{currentOrg?.name}</div>
-                  <div className="mr-1 rounded border border-mineshaft-500 px-1 text-xs text-bunker-300 !no-underline">
+                  <div className="mr-1 rounded-sm border border-mineshaft-500 px-1 text-xs text-bunker-300 no-underline!">
                     {getPlan(subscription)}
                   </div>
                   {subscription.cardDeclined && (
@@ -270,7 +270,7 @@ export const Navbar = () => {
                 className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
                 style={{ minWidth: "220px" }}
               >
-                <div className="px-2 py-1 text-xs capitalize text-mineshaft-400">organizations</div>
+                <div className="px-2 py-1 text-xs text-mineshaft-400 capitalize">organizations</div>
                 {orgs?.map((org) => {
                   return (
                     <DropdownMenuItem key={org.id}>
@@ -325,13 +325,13 @@ export const Navbar = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <p className="pl-1 pr-3 text-lg text-mineshaft-400/70">/</p>
+          <p className="pr-3 pl-1 text-lg text-mineshaft-400/70">/</p>
           {breadcrumbs ? (
             <BreadcrumbContainer breadcrumbs={breadcrumbs as TBreadcrumbFormat[]} />
           ) : null}
         </>
       )}
-      <div className="flex-grow" />
+      <div className="grow" />
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger>
           <div className="rounded-l-md border border-r-0 border-mineshaft-500 px-2.5 py-1 hover:bg-mineshaft-600">
@@ -362,7 +362,7 @@ export const Navbar = () => {
                     onClick={() => setShowAdminsModal(true)}
                     className="flex w-full items-center rounded-md font-normal text-mineshaft-300 duration-200"
                   >
-                    <div className="relative flex w-full cursor-pointer select-none items-center justify-start rounded-md">
+                    <div className="relative flex w-full cursor-pointer items-center justify-start rounded-md select-none">
                       {icon}
                       <div className="text-sm">{text}</div>
                     </div>
@@ -374,7 +374,7 @@ export const Navbar = () => {
                     href={String(url)}
                     className="flex w-full items-center rounded-md font-normal text-mineshaft-300 duration-200"
                   >
-                    <div className="relative flex w-full cursor-pointer select-none items-center justify-start rounded-md">
+                    <div className="relative flex w-full cursor-pointer items-center justify-start rounded-md select-none">
                       {icon}
                       <div className="text-sm">{text}</div>
                     </div>
@@ -384,7 +384,7 @@ export const Navbar = () => {
             );
           })}
           {envConfig.PLATFORM_VERSION && (
-            <div className="mb-2 mt-2 w-full cursor-default pl-5 text-sm duration-200 hover:text-mineshaft-200">
+            <div className="mt-2 mb-2 w-full cursor-default pl-5 text-sm duration-200 hover:text-mineshaft-200">
               <FontAwesomeIcon icon={faInfo} className="mr-4 px-[0.1rem]" />
               Version: {envConfig.PLATFORM_VERSION}
             </div>
@@ -400,12 +400,12 @@ export const Navbar = () => {
         </DropdownMenuTrigger>
         <DropdownMenuContent side="bottom" align="end" className="mt-3 p-1">
           <div className="cursor-default px-1 py-1">
-            <div className="flex w-full items-center justify-center rounded-md border border-mineshaft-600 bg-gradient-to-tr from-primary-500/10 to-mineshaft-800 p-1 px-2 transition-all duration-150">
+            <div className="flex w-full items-center justify-center rounded-md border border-mineshaft-600 bg-linear-to-tr from-primary-500/10 to-mineshaft-800 p-1 px-2 transition-all duration-150">
               <div className="p-1 pr-3">
                 <FontAwesomeIcon icon={faUser} className="text-xl text-mineshaft-400" />
               </div>
-              <div className="flex flex-grow flex-col text-white">
-                <div className="max-w-36 truncate text-ellipsis text-sm font-medium capitalize">
+              <div className="flex grow flex-col text-white">
+                <div className="max-w-36 truncate text-sm font-medium text-ellipsis capitalize">
                   {user?.firstName} {user?.lastName}
                 </div>
                 <div className="text-xs text-mineshaft-300">{user.email}</div>
@@ -419,13 +419,13 @@ export const Navbar = () => {
             href="https://infisical.com/docs/documentation/getting-started/introduction"
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3 w-full text-sm font-normal leading-[1.2rem] text-mineshaft-300 hover:text-mineshaft-100"
+            className="mt-3 w-full text-sm leading-[1.2rem] font-normal text-mineshaft-300 hover:text-mineshaft-100"
           >
             <DropdownMenuItem>
               Documentation
               <FontAwesomeIcon
                 icon={faArrowUpRightFromSquare}
-                className="mb-[0.06rem] pl-1.5 text-xxs"
+                className="text-xxs mb-[0.06rem] pl-1.5"
               />
             </DropdownMenuItem>
           </a>
@@ -433,13 +433,13 @@ export const Navbar = () => {
             href="https://infisical.com/slack"
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3 w-full text-sm font-normal leading-[1.2rem] text-mineshaft-300 hover:text-mineshaft-100"
+            className="mt-3 w-full text-sm leading-[1.2rem] font-normal text-mineshaft-300 hover:text-mineshaft-100"
           >
             <DropdownMenuItem>
               Join Slack Community
               <FontAwesomeIcon
                 icon={faArrowUpRightFromSquare}
-                className="mb-[0.06rem] pl-1.5 text-xxs"
+                className="text-xxs mb-[0.06rem] pl-1.5"
               />
             </DropdownMenuItem>
           </a>

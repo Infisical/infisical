@@ -1,11 +1,14 @@
 import { ReactNode } from "react";
 import { useFormContext } from "react-hook-form";
+import { faWarning } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { Badge } from "@app/components/v2";
+import { useProject } from "@app/context";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
-import { SecretSync } from "@app/hooks/api/secretSyncs";
+import { SecretSync, useDuplicateDestinationCheck } from "@app/hooks/api/secretSyncs";
 
 import {
   AwsParameterStoreDestinationReviewFields,
@@ -46,6 +49,7 @@ import { ZabbixSyncReviewFields } from "./ZabbixSyncReviewFields";
 
 export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
+  const { currentProject } = useProject();
 
   let DestinationFieldsComponent: ReactNode;
   let AdditionalSyncOptionsFieldsComponent: ReactNode;
@@ -62,6 +66,13 @@ export const SecretSyncReviewFields = () => {
   } = watch();
 
   const destinationName = SECRET_SYNC_MAP[destination].name;
+
+  const { hasDuplicate, duplicateProjectId, isChecking } = useDuplicateDestinationCheck({
+    destination,
+    projectId: currentProject?.id || "",
+    enabled: true,
+    destinationConfig: watch("destinationConfig")
+  });
 
   switch (destination) {
     case SecretSync.AWSParameterStore:
@@ -173,9 +184,31 @@ export const SecretSyncReviewFields = () => {
         </div>
       </div>
       <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-mineshaft-600">
+        <div className="flex w-full items-center gap-2 border-b border-mineshaft-600">
           <span className="text-sm text-mineshaft-300">Destination</span>
+          {isChecking && <span className="text-xs text-mineshaft-400">Checking...</span>}
         </div>
+        {hasDuplicate && (
+          <div className="mb-2 flex items-start rounded-md border border-yellow-600 bg-yellow-900/20 px-3 py-2">
+            <div className="flex text-sm text-yellow-100">
+              <FontAwesomeIcon icon={faWarning} className="mt-1 mr-2 text-yellow-600" />
+              <div>
+                <p>
+                  Another secret sync in your organization is already configured with the same
+                  destination. This may lead to conflicts or unexpected behavior.
+                </p>
+                {duplicateProjectId && (
+                  <p className="mt-1 text-xs text-yellow-200">
+                    Duplicate found in project ID:{" "}
+                    <code className="rounded-sm bg-yellow-800/50 px-1 py-0.5">
+                      {duplicateProjectId}
+                    </code>
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex flex-wrap gap-x-8 gap-y-2">
           <GenericFieldLabel label="Connection">{connection.name}</GenericFieldLabel>
           {DestinationFieldsComponent}

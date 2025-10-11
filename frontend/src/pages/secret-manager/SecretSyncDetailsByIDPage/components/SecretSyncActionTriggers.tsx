@@ -139,7 +139,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
 
   return (
     <>
-      <div className="ml-auto mt-4 flex flex-wrap items-center justify-end gap-2">
+      <div className="mt-4 ml-auto flex flex-wrap items-center justify-end gap-2">
         <SecretSyncImportStatusBadge secretSync={secretSync} />
         <SecretSyncRemoveStatusBadge secretSync={secretSync} />
         {secretSync.isAutoSyncEnabled ? (
@@ -156,7 +156,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
             content="Auto-Sync is disabled. Changes to the source location will not be automatically synced to the destination."
           >
             <div>
-              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
                 <FontAwesomeIcon icon={faBan} />
                 <span>Auto-Sync Disabled</span>
               </Badge>

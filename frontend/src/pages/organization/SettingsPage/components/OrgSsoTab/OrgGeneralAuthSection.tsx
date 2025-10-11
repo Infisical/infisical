@@ -144,8 +144,8 @@ export const OrgGeneralAuthSection = ({
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
       <div>
-        <p className="text-xl font-semibold text-gray-200">SSO Enforcement</p>
-        <p className="mb-2 mt-1 text-gray-400">
+        <p className="text-xl font-medium text-gray-200">SSO Enforcement</p>
+        <p className="mt-1 mb-2 text-gray-400">
           Manage strict enforcement of specific authentication methods for your organization.
         </p>
       </div>

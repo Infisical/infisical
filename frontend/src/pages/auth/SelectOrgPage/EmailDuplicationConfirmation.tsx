@@ -37,7 +37,7 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
   }, [logout, navigate]);
 
   return (
-    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
       <Helmet>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -60,15 +60,15 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
         </Link>
         <form className="mx-auto flex w-full flex-col items-center justify-center">
           <div className="mb-6">
-            <h1 className="mb-2 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-2xl font-medium text-transparent">
+            <h1 className="mb-2 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-2xl font-medium text-transparent">
               Multiple Accounts Detected
             </h1>
             <p className="text-md mb-4 text-center text-white">
               <span className="text-slate-300">You&apos;re currently logged in as</span>{" "}
               <b>{duplicateAccounts?.data?.myAccount?.username}</b>.
             </p>
-            <div className="mb-4 mt-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
-              <p className="mb-2 mt-1 text-sm text-bunker-300">
+            <div className="mt-4 mb-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
+              <p className="mt-1 mb-2 text-sm text-bunker-300">
                 We&apos;ve detected multiple accounts using variations of the same email address.
               </p>
             </div>
@@ -76,7 +76,7 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
           <div className="mb-4 w-full border-b border-mineshaft-400 pb-1 text-sm text-mineshaft-200">
             Your other accounts
           </div>
-          <div className="thin-scrollbar flex h-full max-h-60 w-full flex-col items-stretch gap-2 overflow-auto rounded-md">
+          <div className="flex h-full max-h-60 thin-scrollbar w-full flex-col items-stretch gap-2 overflow-auto rounded-md">
             {duplicateAccounts?.data?.duplicateAccounts?.map((el) => {
               const lastSession = el.devices?.at(-1);
               return (
@@ -84,7 +84,7 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
                   key={el.id}
                   className="flex items-center gap-8 rounded-md bg-mineshaft-700 px-4 py-3 text-gray-200"
                 >
-                  <div className="group flex flex-grow flex-col">
+                  <div className="group flex grow flex-col">
                     <div className="truncate text-sm transition-colors">{el.username}</div>
                     <div className="mt-2 text-xs">
                       Last logged in at {format(new Date(el.updatedAt), "Pp")}
@@ -113,7 +113,7 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
           <div className="mt-4 flex w-full flex-col">
             <div className="flex gap-6">
               <Button
-                className="flex-1 flex-grow"
+                className="flex-1 grow"
                 isLoading={removeDuplicateEmails.isPending}
                 onClick={() => handlePopUpToggle("removeDuplicateConfirm", true)}
               >
@@ -122,7 +122,7 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
               <Button
                 variant="outline_bg"
                 onClick={() => onRemoveDuplicateLater()}
-                className="flex-1 flex-grow"
+                className="flex-1 grow"
               >
                 Remind me later
               </Button>

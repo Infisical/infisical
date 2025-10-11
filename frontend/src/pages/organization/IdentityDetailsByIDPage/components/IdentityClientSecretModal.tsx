@@ -159,7 +159,7 @@ export const IdentityClientSecretModal = ({ popUp, handlePopUpToggle }: Props) =
             </div>
           </form>
         ) : (
-          <div className="mb-3 mr-2 mt-2 flex items-center justify-end rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
+          <div className="mt-2 mr-2 mb-3 flex items-center justify-end rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
             <p className="mr-4 break-all">{token}</p>
             <Tooltip content={copyTextToken}>
               <IconButton

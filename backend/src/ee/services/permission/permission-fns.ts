@@ -2,7 +2,7 @@
 import { ForbiddenError, MongoAbility, PureAbility, subject } from "@casl/ability";
 import { z } from "zod";
 
-import { OrgMembershipRole, TOrganizations } from "@app/db/schemas";
+import { TOrganizations } from "@app/db/schemas";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ActorAuthMethod, AuthMethod } from "@app/services/auth/auth-type";
@@ -123,13 +123,13 @@ function validateOrgSSO(
   isOrgSsoEnforced: TOrganizations["authEnforced"],
   isOrgGoogleSsoEnforced: TOrganizations["googleSsoAuthEnforced"],
   isOrgSsoBypassEnabled: TOrganizations["bypassOrgAuthEnabled"],
-  orgRole: OrgMembershipRole
+  isAdmin: boolean
 ) {
   if (actorAuthMethod === undefined) {
     throw new UnauthorizedError({ name: "No auth method defined" });
   }
 
-  if ((isOrgSsoEnforced || isOrgGoogleSsoEnforced) && isOrgSsoBypassEnabled && orgRole === OrgMembershipRole.Admin) {
+  if ((isOrgSsoEnforced || isOrgGoogleSsoEnforced) && isOrgSsoBypassEnabled && isAdmin) {
     return;
   }
 

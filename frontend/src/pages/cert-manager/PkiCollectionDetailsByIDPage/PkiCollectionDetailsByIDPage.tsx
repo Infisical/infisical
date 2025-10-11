@@ -111,7 +111,7 @@ export const PkiCollectionPage = () => {
                     <DropdownMenuItem
                       className={twMerge(
                         isAllowed
-                          ? "hover:!bg-red-500 hover:!text-white"
+                          ? "hover:bg-red-500! hover:text-white!"
                           : "pointer-events-none cursor-not-allowed opacity-50"
                       )}
                       onClick={() =>

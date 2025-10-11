@@ -85,9 +85,8 @@ const getZodDefaultValue = (type: unknown, value: string | number | boolean | Ob
 };
 
 const bigIntegerColumns: Record<string, string[]> = {
-  "folder_commits": ["commitId"]
+  folder_commits: ["commitId"]
 };
-
 
 const main = async () => {
   const tables = (
@@ -99,6 +98,7 @@ const main = async () => {
     (el) =>
       !el.tableName.includes("_migrations") &&
       !el.tableName.includes("audit_logs_") &&
+      !el.tableName.includes("user_notifications_") &&
       !el.tableName.includes("active_locks") &&
       el.tableName !== "intermediate_audit_logs"
   );

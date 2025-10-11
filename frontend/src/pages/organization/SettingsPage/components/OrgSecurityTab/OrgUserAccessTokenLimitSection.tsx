@@ -88,9 +88,9 @@ export const OrgUserAccessTokenLimitSection = () => {
   return (
     <div className="mb-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex w-full items-center justify-between">
-        <p className="text-xl font-semibold">Session Length</p>
+        <p className="text-xl font-medium">Session Length</p>
       </div>
-      <p className="mb-4 mt-2 text-sm text-gray-400">
+      <p className="mt-2 mb-4 text-sm text-gray-400">
         Specify the duration of each login session for users in this organization.
       </p>
       <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
@@ -140,7 +140,7 @@ export const OrgUserAccessTokenLimitSection = () => {
                         <SelectItem
                           key={value}
                           value={value}
-                          className="relative py-2 pl-6 pr-8 text-sm hover:bg-mineshaft-700"
+                          className="relative py-2 pr-8 pl-6 text-sm hover:bg-mineshaft-700"
                         >
                           <div className="ml-3 font-medium">{label}</div>
                         </SelectItem>

@@ -72,11 +72,11 @@ const generateRequestText = (request: TAccessApprovalRequest) => {
     <div className="flex items-center justify-between text-sm">
       <div>
         Requested {isTemporary ? "temporary" : "permanent"} access to{" "}
-        <code className="mx-1 rounded bg-mineshaft-600 px-1.5 py-0.5 font-mono text-[13px] text-mineshaft-200">
+        <code className="mx-1 rounded-sm bg-mineshaft-600 px-1.5 py-0.5 font-mono text-[13px] text-mineshaft-200">
           {request.policy.secretPath}
         </code>{" "}
         in{" "}
-        <code className="mx-1 rounded bg-mineshaft-600 px-1.5 py-0.5 font-mono text-[13px] text-mineshaft-200">
+        <code className="mx-1 rounded-sm bg-mineshaft-600 px-1.5 py-0.5 font-mono text-[13px] text-mineshaft-200">
           {request.environmentName}
         </code>
       </div>
@@ -311,13 +311,13 @@ export const AccessApprovalRequest = ({
           <div className="mb-4 flex items-center justify-between">
             <div>
               <div className="flex items-start gap-1">
-                <p className="text-xl font-semibold text-mineshaft-100">Access Requests</p>
+                <p className="text-xl font-medium text-mineshaft-100">Access Requests</p>
                 <a
                   href="https://infisical.com/docs/documentation/platform/access-controls/access-requests"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <div className="ml-1 mt-[0.32rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                  <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                     <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                     <span>Docs</span>
                     <FontAwesomeIcon
@@ -390,7 +390,7 @@ export const AccessApprovalRequest = ({
               <FontAwesomeIcon icon={faCheck} className="mr-2" />
               {!!requestCount && requestCount.finalizedCount} Closed
             </div>
-            <div className="flex flex-grow justify-end space-x-8">
+            <div className="flex grow justify-end space-x-8">
               <DropdownMenu>
                 <DropdownMenuTrigger>
                   <Button
@@ -405,7 +405,7 @@ export const AccessApprovalRequest = ({
                 <DropdownMenuContent
                   align="end"
                   sideOffset={1}
-                  className="thin-scrollbar max-h-[20rem] overflow-y-auto"
+                  className="max-h-80 thin-scrollbar overflow-y-auto"
                 >
                   <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
                     Select an Environment
@@ -442,7 +442,7 @@ export const AccessApprovalRequest = ({
                   <DropdownMenuContent
                     align="end"
                     sideOffset={1}
-                    className="thin-scrollbar max-h-[20rem] overflow-y-auto"
+                    className="max-h-80 thin-scrollbar overflow-y-auto"
                   >
                     <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
                       Select Requesting User
@@ -470,7 +470,7 @@ export const AccessApprovalRequest = ({
               )}
             </div>
           </div>
-          <div className="flex flex-col rounded-b-md border-x border-b border-t border-mineshaft-600 bg-mineshaft-800">
+          <div className="flex flex-col rounded-b-md border-x border-t border-b border-mineshaft-600 bg-mineshaft-800">
             {filteredRequests?.length === 0 && !isFiltered && (
               <div className="py-12">
                 <EmptyState
@@ -526,7 +526,7 @@ export const AccessApprovalRequest = ({
                       </div>
                       <div className="flex items-center gap-3">
                         {request.requestedByUserId === user.id && (
-                          <div className="flex items-center gap-1.5 whitespace-nowrap text-xs text-bunker-300">
+                          <div className="flex items-center gap-1.5 text-xs whitespace-nowrap text-bunker-300">
                             <FontAwesomeIcon icon={faUser} size="sm" />
                             <span>Requested By You</span>
                           </div>

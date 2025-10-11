@@ -8,7 +8,6 @@ import { queryClient as qc } from "@app/hooks/api/reactQuery";
 import { APIKeyDataV2 } from "../apiKeys/types";
 import { MfaMethod } from "../auth/types";
 import { TGroupWithProjectMemberships } from "../groups/types";
-import { projectKeys } from "../projects";
 import { setAuthToken } from "../reactQuery";
 import { subscriptionQueryKeys } from "../subscriptions/queries";
 import { userKeys } from "./query-keys";
@@ -86,6 +85,8 @@ export const useDeleteMe = () => {
       localStorage.removeItem("tag");
       localStorage.removeItem("PRIVATE_KEY");
       localStorage.removeItem("orgData.id");
+
+      setAuthToken("");
 
       queryClient.clear();
     }
@@ -188,19 +189,10 @@ export const useAddUsersToOrg = () => {
     mutationFn: (dto) => {
       return apiRequest.post("/api/v1/invite-org/signup", dto);
     },
-    onSuccess: (_, { organizationId, projects }) => {
+    onSuccess: (_, { organizationId }) => {
       queryClient.invalidateQueries({ queryKey: userKeys.getOrgUsers(organizationId) });
       queryClient.invalidateQueries({
         queryKey: subscriptionQueryKeys.getOrgSubsription(organizationId)
-      });
-
-      projects?.forEach((project) => {
-        if (project.slug) {
-          queryClient.invalidateQueries({
-            queryKey: projectKeys.getProjectGroupMemberships(project.slug)
-          });
-        }
-        queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(project.id) });
       });
     }
   });

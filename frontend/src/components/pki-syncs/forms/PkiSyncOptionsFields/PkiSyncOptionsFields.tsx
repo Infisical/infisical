@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { FormControl, Input, Switch, Tooltip } from "@app/components/v2";
 import { PkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
-import { TPkiSyncForm } from "../schemas";
+import { TPkiSyncForm } from "../schemas/pki-sync-schema";
 
 type Props = {
   destination?: PkiSync;
