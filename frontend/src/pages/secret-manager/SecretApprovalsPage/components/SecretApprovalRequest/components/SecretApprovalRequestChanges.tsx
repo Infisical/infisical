@@ -252,7 +252,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                 secretApprovalRequestDetails.isReplicated
               )}
             </div>
-            <p className="-mt-1 truncate text-xs text-gray-400">
+            <p className="-mt-1 truncate text-sm text-gray-400">
               By{" "}
               {secretApprovalRequestDetails?.committerUser ? (
                 <>
