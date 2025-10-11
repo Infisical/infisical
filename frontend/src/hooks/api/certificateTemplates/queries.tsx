@@ -5,8 +5,11 @@ import { apiRequest } from "@app/config/request";
 import {
   TCertificateTemplate,
   TCertificateTemplateV2,
+  TCertificateTemplateV2New,
   TEstConfig,
-  TListCertificateTemplatesDTO
+  TGetCertificateTemplateV2ByIdDTO,
+  TListCertificateTemplatesDTO,
+  TListCertificateTemplatesV2DTO
 } from "./types";
 
 export const certTemplateKeys = {
@@ -16,7 +19,16 @@ export const certTemplateKeys = {
     projectId,
     el
   ],
-  getEstConfig: (id: string) => [{ id }, "cert-template-est-config"]
+  getEstConfig: (id: string) => [{ id }, "cert-template-est-config"],
+  listTemplatesV2: ({
+    projectId,
+    ...el
+  }: {
+    limit?: number;
+    offset?: number;
+    projectId: string;
+  }) => ["list-templates-v2", projectId, el],
+  getTemplateV2ById: (id: string) => ["cert-template-v2", id]
 };
 
 export const useGetCertTemplate = (id: string) => {
@@ -66,5 +78,44 @@ export const useGetEstConfig = (certificateTemplateId: string) => {
       return estConfig;
     },
     enabled: Boolean(certificateTemplateId)
+  });
+};
+
+export const useListCertificateTemplatesV2 = ({
+  projectId,
+  limit = 20,
+  offset = 0
+}: TListCertificateTemplatesV2DTO) => {
+  return useQuery({
+    queryKey: certTemplateKeys.listTemplatesV2({ projectId, limit, offset }),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        certificateTemplates: TCertificateTemplateV2New[];
+        totalCount: number;
+      }>("/api/v2/certificate-templates", {
+        params: {
+          projectId,
+          limit,
+          offset
+        }
+      });
+      return data;
+    },
+    enabled: Boolean(projectId)
+  });
+};
+
+export const useGetCertificateTemplateV2ById = ({
+  templateId
+}: TGetCertificateTemplateV2ByIdDTO) => {
+  return useQuery({
+    queryKey: certTemplateKeys.getTemplateV2ById(templateId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        certificateTemplate: TCertificateTemplateV2New;
+      }>(`/api/v2/certificate-templates/${templateId}`);
+      return data.certificateTemplate;
+    },
+    enabled: Boolean(templateId)
   });
 };

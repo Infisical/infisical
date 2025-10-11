@@ -7,13 +7,17 @@ import { projectKeys } from "../projects";
 import { certTemplateKeys } from "./queries";
 import {
   TCertificateTemplate,
+  TCertificateTemplateV2New,
   TCreateCertificateTemplateDTO,
   TCreateCertificateTemplateV2DTO,
+  TCreateCertificateTemplateV2NewDTO,
   TCreateEstConfigDTO,
   TDeleteCertificateTemplateDTO,
   TDeleteCertificateTemplateV2DTO,
+  TDeleteCertificateTemplateV2NewDTO,
   TUpdateCertificateTemplateDTO,
   TUpdateCertificateTemplateV2DTO,
+  TUpdateCertificateTemplateV2NewDTO,
   TUpdateEstConfigDTO
 } from "./types";
 
@@ -159,6 +163,63 @@ export const useUpdateEstConfig = () => {
     onSuccess: (_, { certificateTemplateId }) => {
       queryClient.invalidateQueries({
         queryKey: certTemplateKeys.getEstConfig(certificateTemplateId)
+      });
+    }
+  });
+};
+
+export const useCreateCertificateTemplateV2New = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TCertificateTemplateV2New, object, TCreateCertificateTemplateV2NewDTO>({
+    mutationFn: async (data) => {
+      const { data: response } = await apiRequest.post<{
+        certificateTemplate: TCertificateTemplateV2New;
+      }>("/api/v2/certificate-templates", data);
+      return response.certificateTemplate;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({
+        queryKey: certTemplateKeys.listTemplatesV2({ projectId })
+      });
+    }
+  });
+};
+
+export const useUpdateCertificateTemplateV2New = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TCertificateTemplateV2New, object, TUpdateCertificateTemplateV2NewDTO>({
+    mutationFn: async ({ templateId, ...data }) => {
+      const { data: response } = await apiRequest.patch<{
+        certificateTemplate: TCertificateTemplateV2New;
+      }>(`/api/v2/certificate-templates/${templateId}`, data);
+      return response.certificateTemplate;
+    },
+    onSuccess: (template, { templateId }) => {
+      queryClient.invalidateQueries({
+        queryKey: certTemplateKeys.listTemplatesV2({ projectId: template.projectId })
+      });
+      queryClient.invalidateQueries({
+        queryKey: certTemplateKeys.getTemplateV2ById(templateId)
+      });
+    }
+  });
+};
+
+export const useDeleteCertificateTemplateV2New = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TCertificateTemplateV2New, object, TDeleteCertificateTemplateV2NewDTO>({
+    mutationFn: async ({ templateId }) => {
+      const { data: response } = await apiRequest.delete<{
+        certificateTemplate: TCertificateTemplateV2New;
+      }>(`/api/v2/certificate-templates/${templateId}`);
+      return response.certificateTemplate;
+    },
+    onSuccess: (template, { templateId }) => {
+      queryClient.invalidateQueries({
+        queryKey: certTemplateKeys.listTemplatesV2({ projectId: template.projectId })
+      });
+      queryClient.removeQueries({
+        queryKey: certTemplateKeys.getTemplateV2ById(templateId)
       });
     }
   });

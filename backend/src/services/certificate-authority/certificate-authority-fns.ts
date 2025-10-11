@@ -99,6 +99,32 @@ export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
   }
 };
 
+export const signatureAlgorithmToAlgCfg = (signatureAlgorithm: string, keyAlgorithm: CertKeyAlgorithm) => {
+  // Parse signature algorithm like "RSA-SHA256", "ECDSA-SHA256" etc.
+  const [keyType, hashType] = signatureAlgorithm.split("-");
+
+  switch (keyType) {
+    case "RSA":
+      return {
+        name: "RSASSA-PKCS1-v1_5",
+        hash: hashType || "SHA-256",
+        publicExponent: new Uint8Array([1, 0, 1]),
+        modulusLength: keyAlgorithm === CertKeyAlgorithm.RSA_4096 ? 4096 : 2048
+      };
+    case "ECDSA":
+      // eslint-disable-next-line no-case-declarations
+      const namedCurve = keyAlgorithm === CertKeyAlgorithm.ECDSA_P384 ? "P-384" : "P-256";
+      return {
+        name: "ECDSA",
+        namedCurve,
+        hash: hashType || (namedCurve === "P-384" ? "SHA-384" : "SHA-256")
+      };
+    default:
+      // Fallback to key algorithm default
+      return keyAlgorithmToAlgCfg(keyAlgorithm);
+  }
+};
+
 /**
  * Return the public and private key of CA with id [caId]
  * Note: credentials are returned as crypto.webcrypto.CryptoKey

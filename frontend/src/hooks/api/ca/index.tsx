@@ -2,6 +2,7 @@ export { AcmeDnsProvider, CaRenewalType, CaStatus, CaType, InternalCaType } from
 export {
   useCreateCa,
   useCreateCertificate,
+  useCreateCertificateV3,
   useDeleteCa,
   useImportCaCertificate,
   useRenewCa,

@@ -56,6 +56,9 @@ import {
   TCertificateBodies,
   TCertificateBodiesInsert,
   TCertificateBodiesUpdate,
+  TCertificateProfiles,
+  TCertificateProfilesInsert,
+  TCertificateProfilesUpdate,
   TCertificates,
   TCertificateSecrets,
   TCertificateSecretsInsert,
@@ -68,6 +71,9 @@ import {
   TCertificateTemplates,
   TCertificateTemplatesInsert,
   TCertificateTemplatesUpdate,
+  TCertificateTemplatesV2,
+  TCertificateTemplatesV2Insert,
+  TCertificateTemplatesV2Update,
   TDynamicSecretLeases,
   TDynamicSecretLeasesInsert,
   TDynamicSecretLeasesUpdate,
@@ -266,12 +272,18 @@ import {
   TPkiAlerts,
   TPkiAlertsInsert,
   TPkiAlertsUpdate,
+  TPkiApiEnrollmentConfigs,
+  TPkiApiEnrollmentConfigsInsert,
+  TPkiApiEnrollmentConfigsUpdate,
   TPkiCollectionItems,
   TPkiCollectionItemsInsert,
   TPkiCollectionItemsUpdate,
   TPkiCollections,
   TPkiCollectionsInsert,
   TPkiCollectionsUpdate,
+  TPkiEstEnrollmentConfigs,
+  TPkiEstEnrollmentConfigsInsert,
+  TPkiEstEnrollmentConfigsUpdate,
   TPkiSubscribers,
   TPkiSubscribersInsert,
   TPkiSubscribersUpdate,
@@ -670,6 +682,26 @@ declare module "knex/types/tables" {
       TCertificateTemplates,
       TCertificateTemplatesInsert,
       TCertificateTemplatesUpdate
+    >;
+    [TableName.CertificateTemplateV2]: KnexOriginal.CompositeTableType<
+      TCertificateTemplatesV2,
+      TCertificateTemplatesV2Insert,
+      TCertificateTemplatesV2Update
+    >;
+    [TableName.CertificateProfile]: KnexOriginal.CompositeTableType<
+      TCertificateProfiles,
+      TCertificateProfilesInsert,
+      TCertificateProfilesUpdate
+    >;
+    [TableName.PkiEstEnrollmentConfig]: KnexOriginal.CompositeTableType<
+      TPkiEstEnrollmentConfigs,
+      TPkiEstEnrollmentConfigsInsert,
+      TPkiEstEnrollmentConfigsUpdate
+    >;
+    [TableName.PkiApiEnrollmentConfig]: KnexOriginal.CompositeTableType<
+      TPkiApiEnrollmentConfigs,
+      TPkiApiEnrollmentConfigsInsert,
+      TPkiApiEnrollmentConfigsUpdate
     >;
     [TableName.CertificateTemplateEstConfig]: KnexOriginal.CompositeTableType<
       TCertificateTemplateEstConfigs,
