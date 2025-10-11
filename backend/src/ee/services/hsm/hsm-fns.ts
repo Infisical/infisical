@@ -25,7 +25,7 @@ export const initializeHsmModule = (envConfig: Pick<TEnvConfig, "isHsmConfigured
 
       logger.info("PKCS#11 module initialized");
     } catch (error) {
-      if (error instanceof pkcs11js.Pkcs11Error && error.code === pkcs11js.CKR_CRYPTOKI_ALREADY_INITIALIZED) {
+      if ((error as { code?: number })?.code === pkcs11js.CKR_CRYPTOKI_ALREADY_INITIALIZED) {
         logger.info("Skipping HSM initialization because it's already initialized.");
       } else {
         logger.error(error, "Failed to initialize PKCS#11 module");
