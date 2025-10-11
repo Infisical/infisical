@@ -32,9 +32,11 @@ export const MySQLResourceForm = ({ resource, onSubmit }: Props) => {
       resourceType: PamResourceType.Postgres,
       connectionDetails: {
         host: "",
-        port: 5432,
-        database: "default",
-        sslEnabled: true,
+        port: 3306,
+        database: "",
+        // TODO: SSL not supported for now
+        sslEnabled: false,
+        // TODO: maybe need to modify these
         sslRejectUnauthorized: true,
         sslCertificate: undefined
       }
