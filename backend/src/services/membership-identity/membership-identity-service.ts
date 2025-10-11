@@ -1,4 +1,10 @@
-import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import {
+  AccessScope,
+  ProjectMembershipRole,
+  TemporaryPermissionMode,
+  TIdentities,
+  TMembershipRolesInsert
+} from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -20,8 +26,10 @@ import {
 import { newNamespaceMembershipIdentityFactory } from "./namespace/namespace-membership-identity-factory";
 import { newOrgMembershipIdentityFactory } from "./org/org-membership-identity-factory";
 import { newProjectMembershipIdentityFactory } from "./project/project-membership-identity-factory";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 
 type TMembershipIdentityServiceFactoryDep = {
+  identityDAL: TIdentityDALFactory;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
   roleDAL: Pick<TRoleDALFactory, "find">;
@@ -41,7 +49,8 @@ export const membershipIdentityServiceFactory = ({
   membershipRoleDAL,
   permissionService,
   orgDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  identityDAL
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
@@ -54,6 +63,19 @@ export const membershipIdentityServiceFactory = ({
       permissionService
     }),
     [AccessScope.Namespace]: newNamespaceMembershipIdentityFactory({})
+  };
+
+  const $validateIdentityScope = (identity: TIdentities, scope: AccessScope) => {
+    const isProjectScoped = Boolean(identity.scopeProjectId);
+    const isNamespaceScoped = Boolean(identity.scopeNamespaceId);
+
+    if (isProjectScoped && scope !== AccessScope.Project) {
+      throw new BadRequestError({ message: "Invalid scope membership. This identity is scoped to project." });
+    }
+
+    if (isNamespaceScoped && scope === AccessScope.Organization) {
+      throw new BadRequestError({ message: "Invalid scope membership. This identity is scoped to namespace." });
+    }
   };
 
   const createMembership = async (dto: TCreateMembershipIdentityDTO) => {
@@ -82,6 +104,10 @@ export const membershipIdentityServiceFactory = ({
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     await factory.onCreateMembershipIdentityGuard(dto);
+    const identity = await identityDAL.findOne({
+      id: data.identityId
+    });
+    $validateIdentityScope(identity, dto.scopeData.scope);
 
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
@@ -174,6 +200,11 @@ export const membershipIdentityServiceFactory = ({
       });
     }
 
+    const identity = await identityDAL.findOne({
+      id: dto.selector.identityId
+    });
+    $validateIdentityScope(identity, dto.scopeData.scope);
+
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipIdentityDAL.findOne({
       scope: scopeData.scope,
@@ -257,6 +288,10 @@ export const membershipIdentityServiceFactory = ({
     const factory = scopeFactory[scopeData.scope];
 
     await factory.onDeleteMembershipIdentityGuard(dto);
+    const identity = await identityDAL.findOne({
+      id: dto.selector.identityId
+    });
+    $validateIdentityScope(identity, dto.scopeData.scope);
 
     const scopeField = factory.getScopeField(scopeData);
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);

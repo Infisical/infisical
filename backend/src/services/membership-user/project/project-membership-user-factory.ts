@@ -13,7 +13,6 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
@@ -22,7 +21,6 @@ import { TMembershipUserScopeFactory } from "../membership-user-types";
 
 type TProjectMembershipUserScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -30,7 +28,6 @@ type TProjectMembershipUserScopeFactoryDep = {
 
 export const newProjectMembershipUserFactory = ({
   permissionService,
-  orgDAL,
   projectDAL,
   membershipUserDAL,
   smtpService
@@ -56,7 +53,7 @@ export const newProjectMembershipUserFactory = ({
     newUsers
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, memberships } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -66,7 +63,7 @@ export const newProjectMembershipUserFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
 
-    // TODO(namespace): this becomes tricky in namespace due to group flow
+    // TODO(namespace): this would change to check for namespace membership exist or org membership exist accordingly
     const orgMemberships = await membershipUserDAL.find({
       scope: AccessScope.Organization,
       scopeOrgId: dto.permission.orgId,
@@ -81,7 +78,7 @@ export const newProjectMembershipUserFactory = ({
       throw new BadRequestError({ message: `Users ${missingUsers.join(",")} not part of organization` });
     }
 
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
+    const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.filter((el) => el.role !== ProjectMembershipRole.NoAccess).map((el) => el.role),
       scope.value
@@ -147,7 +144,7 @@ export const newProjectMembershipUserFactory = ({
 
   const onUpdateMembershipUserGuard: TMembershipUserScopeFactory["onUpdateMembershipUserGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, memberships } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -157,7 +154,7 @@ export const newProjectMembershipUserFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member);
 
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
+    const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.filter((el) => el.role !== ProjectMembershipRole.NoAccess).map((el) => el.role),
       scope.value

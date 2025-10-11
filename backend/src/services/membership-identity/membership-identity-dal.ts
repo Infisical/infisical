@@ -278,6 +278,8 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         .select(
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("id").withSchema(TableName.Identity).as("identityId"),
+          db.ref("projectId").withSchema(TableName.Identity).as("identityScopeProjectId"),
+          db.ref("namespaceId").withSchema(TableName.Identity).as("identityScopeNamespaceId"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity).as("identityHasDeleteProtection"),
 
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
@@ -307,13 +309,21 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         data: docs,
         key: "id",
         parentMapper: (el) => {
-          const { identityId: actorIdentityId, identityHasDeleteProtection, identityName } = el;
+          const {
+            identityId: actorIdentityId,
+            identityHasDeleteProtection,
+            identityName,
+            identityScopeProjectId,
+            identityScopeNamespaceId
+          } = el;
           return {
             ...MembershipsSchema.parse(el),
             identity: {
               name: identityName,
               id: actorIdentityId,
-              hasDeleteProtection: identityHasDeleteProtection
+              hasDeleteProtection: identityHasDeleteProtection,
+              projectId: identityScopeProjectId,
+              namespaceId: identityScopeNamespaceId
             }
           };
         },
