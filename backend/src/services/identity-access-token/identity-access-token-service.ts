@@ -1,4 +1,4 @@
-import { IdentityAuthMethod, TableName, TIdentityAccessTokens } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod, TableName, TIdentityAccessTokens } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -7,27 +7,27 @@ import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload, TRenewAccessTokenDTO } from "./identity-access-token-types";
 
 type TIdentityAccessTokenServiceFactoryDep = {
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
   identityDAL: Pick<TIdentityDALFactory, "getTrustedIpsByAuthMethod">;
-  identityOrgMembershipDAL: TIdentityOrgDALFactory;
   accessTokenQueue: Pick<
     TAccessTokenQueueServiceFactory,
     "updateIdentityAccessTokenStatus" | "getIdentityTokenDetailsInCache"
   >;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne">;
 };
 
 export type TIdentityAccessTokenServiceFactory = ReturnType<typeof identityAccessTokenServiceFactory>;
 
 export const identityAccessTokenServiceFactory = ({
   identityAccessTokenDAL,
-  identityOrgMembershipDAL,
   accessTokenQueue,
-  identityDAL
+  identityDAL,
+  membershipIdentityDAL
 }: TIdentityAccessTokenServiceFactoryDep) => {
   const validateAccessTokenExp = async (identityAccessToken: TIdentityAccessTokens) => {
     const {
@@ -202,8 +202,8 @@ export const identityAccessTokenServiceFactory = ({
         trustedIps: trustedIps as TIp[]
       });
     }
-
-    const identityOrgMembership = await identityOrgMembershipDAL.findOne({
+    const identityOrgMembership = await membershipIdentityDAL.findOne({
+      scope: AccessScope.Organization,
       actorIdentityId: identityAccessToken.identityId
     });
 
