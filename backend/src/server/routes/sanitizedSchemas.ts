@@ -287,3 +287,14 @@ export const InternalCertificateAuthorityResponseSchema = CertificateAuthorities
   notAfter: z.string().optional(),
   notBefore: z.string().optional()
 });
+
+export const SanitizedNamespaceRoleSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  description: z.string().nullable().optional(),
+  slug: z.string(),
+  permissions: z.unknown(),
+  namespaceId: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});

@@ -11,6 +11,13 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("scopeProjectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
     });
   }
+
+  if (await knex.schema.hasTable(TableName.Project)) {
+    await knex.schema.alterTable(TableName.Project, (t) => {
+      t.uuid("namespaceId");
+      t.foreign("namespaceId").references("id").inTable(TableName.Namespace).onDelete("CASCADE");
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -20,6 +27,13 @@ export async function down(knex: Knex): Promise<void> {
     await knex.schema.alterTable(TableName.Identity, (t) => {
       if (hasNamespaceId) t.dropColumn("scopeNamespaceId");
       if (hasProjectId) t.dropColumn("scopeProjectId");
+    });
+  }
+
+  const hasProjectNamespaceCol = await knex.schema.hasColumn(TableName.Project, "namespaceId");
+  if (hasProjectNamespaceCol) {
+    await knex.schema.alterTable(TableName.Project, (t) => {
+      t.dropColumn("namespaceId");
     });
   }
 }

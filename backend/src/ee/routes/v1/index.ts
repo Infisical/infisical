@@ -50,6 +50,10 @@ import { registerSshHostGroupRouter } from "./ssh-host-group-router";
 import { registerSshHostRouter } from "./ssh-host-router";
 import { registerTrustedIpRouter } from "./trusted-ip-router";
 import { registerUserAdditionalPrivilegeRouter } from "./user-additional-privilege-router";
+import { registerNamespaceRouter } from "./namespace-router";
+import { registerNamespaceUserMembershipRouter } from "./namespace-user-membership-router";
+import { registerNamespaceIdentityMembershipRouter } from "./namespace-identity-membership-router";
+import { registerNamespaceIdentityRouter } from "./namespace-identity-router";
 
 export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   // org role starts with organization
@@ -164,6 +168,15 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerIdentityTemplateRouter, { prefix: "/identity-templates" });
 
   await server.register(registerProjectTemplateRouter, { prefix: "/project-templates" });
+  await server.register(
+    async (namespaceRouter) => {
+      await namespaceRouter.register(registerNamespaceRouter);
+      await namespaceRouter.register(registerNamespaceUserMembershipRouter);
+      await namespaceRouter.register(registerNamespaceIdentityMembershipRouter);
+      await namespaceRouter.register(registerNamespaceIdentityRouter);
+    },
+    { prefix: "/namespaces" }
+  );
 
   await server.register(
     async (kmipRouter) => {

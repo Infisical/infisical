@@ -11,12 +11,11 @@ export const IdentitiesSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   authMethod: z.string().nullable().optional(),
-  authMethod: z.string().nullable().optional(),
-  scopeProjectId: z.string().nullable().optional(),
-  scopeNamespaceId: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  hasDeleteProtection: z.boolean().default(false)
+  hasDeleteProtection: z.boolean().default(false),
+  scopeNamespaceId: z.string().uuid().nullable().optional(),
+  scopeProjectId: z.string().nullable().optional()
 });
 
 export type TIdentities = z.infer<typeof IdentitiesSchema>;

@@ -43,10 +43,7 @@ type TMembershipUserServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "transaction">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   userDAL: TUserDALFactory;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermission"
-  >;
+  permissionService: TPermissionServiceFactory;
   licenseService: TLicenseServiceFactory;
   projectKeyDAL: TProjectKeyDALFactory;
   userAliasDAL: TUserAliasDALFactory;
@@ -85,9 +82,13 @@ export const membershipUserServiceFactory = ({
       userDAL,
       userGroupMembershipDAL
     }),
-    [AccessScope.Namespace]: newNamespaceMembershipUserFactory({}),
+    [AccessScope.Namespace]: newNamespaceMembershipUserFactory({
+      permissionService,
+      membershipUserDAL,
+      smtpService,
+      licenseService
+    }),
     [AccessScope.Project]: newProjectMembershipUserFactory({
-      orgDAL,
       permissionService,
       membershipUserDAL,
       projectDAL,

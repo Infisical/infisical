@@ -18,6 +18,7 @@ import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/
 
 export enum ApiDocsTags {
   Identities = "Identities",
+  Namespaces = "Namespaces",
   IdentityTemplates = "Identity Templates",
   TokenAuth = "Token Auth",
   UniversalAuth = "Universal Auth",
@@ -35,6 +36,8 @@ export enum ApiDocsTags {
   Organizations = "Organizations",
   Projects = "Projects",
   ProjectUsers = "Project Users",
+  NamespaceUsers = "Namespace Users",
+  NamespaceIdentities = "Namespace Identities",
   ProjectGroups = "Project Groups",
   ProjectIdentities = "Project Identities",
   ProjectRoles = "Project Roles",
@@ -840,6 +843,99 @@ export const PROJECT_USERS = {
     projectId: "The ID of the project to update the membership for.",
     membershipId: "The ID of the membership to update.",
     roles: "A list of roles to update the membership to."
+  }
+};
+
+export const NAMESPACE_USERS = {
+  CREATE_USER_MEMBERSHIP: {
+    namespaceId: "The ID of the namespace to invite the member to.",
+    usernames: "A list of usernames to invite to the namespace.",
+    roles: "A list of roles to create the membership to."
+  },
+  REMOVE_MEMBER: {
+    namespaceId: "The ID of the namespace to remove the member from.",
+    userId: "A ID of the user to remove from the namespace."
+  },
+  GET_USER_MEMBERSHIPS: {
+    namespaceId: "The ID of the namespace to get memberships from."
+  },
+  GET_USER_MEMBERSHIP: {
+    namespaceId: "The ID of the namespace to get memberships from.",
+    userId: "The ID of the user to get membership."
+  },
+  UPDATE_USER_MEMBERSHIP: {
+    namespaceId: "The ID of the namespace to update the membership for.",
+    userId: "The ID of the user to update.",
+    roles: "A list of roles to update the membership to."
+  }
+};
+
+export const NAMESPACE_IDENTITIES = {
+  CREATE: {
+    name: "The name of the identity to create.",
+    namespaceId: "The ID of the namespace to create the identity in.",
+    hasDeleteProtection: "Prevents deletion of the identity when enabled."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update.",
+    namespaceId: "The ID of the namespace the identity belongs to.",
+    name: "The new name of the identity.",
+    hasDeleteProtection: "Prevents deletion of the identity when enabled."
+  },
+  DELETE: {
+    identityId: "The ID of the identity to delete.",
+    namespaceId: "The ID of the namespace the identity belongs to."
+  },
+  GET_BY_ID: {
+    identityId: "The ID of the identity to get details.",
+    namespaceId: "The ID of the namespace the identity belongs to."
+  },
+  LIST: {
+    namespaceId: "The ID of the namespace to list identities from.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
+    limit: "The number of identities to return.",
+    search: "The text string that identity names will be filtered by."
+  },
+  LIST_IDENTITY_MEMBERSHIPS: {
+    namespaceId: "The ID of the namespace to get identity memberships from.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity membership.",
+    limit: "The number of identity memberships to return.",
+    identityName: "The name of the identity to filter by.",
+    roles: "The roles to filter by."
+  },
+  GET_IDENTITY_MEMBERSHIP_BY_ID: {
+    identityId: "The ID of the identity to get the membership for.",
+    namespaceId: "The ID of the namespace to get the identity membership for."
+  },
+  UPDATE_IDENTITY_MEMBERSHIP: {
+    namespaceId: "The ID of the namespace to update the identity membership for.",
+    identityId: "The ID of the identity to update the membership for.",
+    roles: {
+      description: "A list of role slugs to assign to the identity namespace membership.",
+      role: "The role slug to assign to the identity namespace membership.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
+      temporaryMode: "Type of temporary expiry.",
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s, 2m, 3h, etc.",
+      temporaryAccessStartTime: "Time to which the temporary access starts."
+    }
+  },
+  DELETE_IDENTITY_MEMBERSHIP: {
+    namespaceId: "The ID of the namespace to delete the identity membership from.",
+    identityId: "The ID of the identity to delete the membership from."
+  },
+  CREATE_IDENTITY_MEMBERSHIP: {
+    namespaceId: "The ID of the namespace to create the identity membership in.",
+    identityId: "The ID of the identity to create the membership for.",
+    roles: {
+      description: "A list of role slugs to assign to the newly created identity namespace membership.",
+      role: "The role slug to assign to the newly created identity namespace membership.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
+      temporaryMode: "Type of temporary expiry.",
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s, 2m, 3h, etc.",
+      temporaryAccessStartTime: "Time to which the temporary access starts."
+    }
   }
 };
 
@@ -2926,6 +3022,37 @@ export const LdapSso = {
     groupSearchFilter:
       "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
     caCert: "The CA certificate to use when verifying the LDAP server certificate."
+  }
+};
+
+export const NAMESPACES = {
+  CREATE: {
+    name: "The name of the namespace to create. Must be a valid slug (lowercase, alphanumeric, hyphens, underscores).",
+    description: "An optional description for the namespace."
+  },
+  LIST: {
+    offset: "The offset to start from. If you enter 10, it will start from the 10th namespace.",
+    limit: "The number of namespaces to return. Maximum is 100.",
+    search: "Search term to filter namespaces by name."
+  },
+  GET: {
+    name: "The name of the namespace to retrieve."
+  },
+  UPDATE: {
+    name: "The current name of the namespace to update.",
+    newName: "The new name for the namespace. Must be a valid slug (lowercase, alphanumeric, hyphens, underscores).",
+    description: "The new description for the namespace."
+  },
+  DELETE: {
+    name: "The name of the namespace to delete."
+  },
+  SEARCH: {
+    name: "Search term to filter namespaces by name.",
+    limit: "The number of namespaces to return. Maximum is 100.",
+    offset: "The offset to start from.",
+    orderBy: "The field to order by.",
+    orderDirection: "The direction to order by (ASC or DESC).",
+    namespaceIds: "Array of namespace IDs to filter by."
   }
 };
 

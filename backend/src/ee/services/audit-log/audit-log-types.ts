@@ -79,6 +79,7 @@ export type TCreateAuditLogDTO = {
     | UnknownUserActor
     | KmipClientActor;
   orgId?: string;
+  namespaceId?: string;
   projectId?: string;
 } & BaseAuthData;
 
@@ -253,6 +254,11 @@ export enum EventType {
   ADD_PROJECT_MEMBER = "add-project-member",
   ADD_BATCH_PROJECT_MEMBER = "add-project-members",
   REMOVE_PROJECT_MEMBER = "remove-project-member",
+
+  ADD_NAMESPACE_MEMBERS = "add-namespace-members",
+  UPDATE_NAMESPACE_MEMBER = "add-namespace-member",
+  REMOVE_NAMESPACE_MEMBER = "remove-namespace-member",
+
   CREATE_FOLDER = "create-folder",
   UPDATE_FOLDER = "update-folder",
   DELETE_FOLDER = "delete-folder",
@@ -493,6 +499,10 @@ export enum EventType {
   CREATE_ORG_ROLE = "create-org-role",
   UPDATE_ORG_ROLE = "update-org-role",
   DELETE_ORG_ROLE = "delete-org-role",
+
+  CREATE_NAMESPACE_ROLE = "create-namespace-role",
+  UPDATE_NAMESPACE_ROLE = "update-namespace-role",
+  DELETE_NAMESPACE_ROLE = "delete-namespace-role",
 
   CREATE_SECRET_REMINDER = "create-secret-reminder",
   GET_SECRET_REMINDER = "get-secret-reminder",
@@ -1639,6 +1649,38 @@ interface RemoveProjectMemberEvent {
   metadata: {
     userId: string;
     email: string;
+  };
+}
+
+interface AddNamespaceMembersEvent {
+  type: EventType.ADD_NAMESPACE_MEMBERS;
+  metadata: {
+    users: {
+      userId: string;
+      username: string;
+    }[];
+    roles: unknown;
+  };
+}
+
+interface UpdateNamespaceMemberEvent {
+  type: EventType.UPDATE_NAMESPACE_MEMBER;
+  metadata: {
+    user: {
+      userId: string;
+      username: string;
+    };
+    roles: unknown;
+  };
+}
+
+interface RemoveNamespaceMemberEvent {
+  type: EventType.REMOVE_NAMESPACE_MEMBER;
+  metadata: {
+    users: {
+      userId: string;
+      username: string;
+    };
   };
 }
 
@@ -3706,6 +3748,37 @@ interface OrgRoleDeleteEvent {
   };
 }
 
+interface NamespaceRoleCreateEvent {
+  type: EventType.CREATE_NAMESPACE_ROLE;
+  metadata: {
+    roleId: string;
+    slug: string;
+    name: string;
+    description?: string | null;
+    permissions: string;
+  };
+}
+
+interface NamespaceRoleUpdateEvent {
+  type: EventType.UPDATE_NAMESPACE_ROLE;
+  metadata: {
+    roleId: string;
+    slug?: string;
+    name?: string;
+    description?: string | null;
+    permissions?: string;
+  };
+}
+
+interface NamespaceRoleDeleteEvent {
+  type: EventType.DELETE_NAMESPACE_ROLE;
+  metadata: {
+    roleId: string;
+    slug: string;
+    name: string;
+  };
+}
+
 interface PamSessionStartEvent {
   type: EventType.PAM_SESSION_START;
   metadata: {
@@ -3965,6 +4038,9 @@ export type Event =
   | AddProjectMemberEvent
   | AddBatchProjectMemberEvent
   | RemoveProjectMemberEvent
+  | AddNamespaceMembersEvent
+  | UpdateNamespaceMemberEvent
+  | RemoveNamespaceMemberEvent
   | CreateFolderEvent
   | UpdateFolderEvent
   | DeleteFolderEvent
@@ -4196,6 +4272,9 @@ export type Event =
   | OrgRoleCreateEvent
   | OrgRoleUpdateEvent
   | OrgRoleDeleteEvent
+  | NamespaceRoleCreateEvent
+  | NamespaceRoleUpdateEvent
+  | NamespaceRoleDeleteEvent
   | PamSessionStartEvent
   | PamSessionLogsUpdateEvent
   | PamSessionEndEvent
