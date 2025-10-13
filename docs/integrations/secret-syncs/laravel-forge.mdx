@@ -1,11 +1,11 @@
 ---
-title: "Netlify Sync"
-description: "Learn how to configure a Netlify Sync for Infisical."
+title: "Laravel Forge Sync"
+description: "Learn how to configure a Laravel Forge Sync for Infisical."
 ---
 
 **Prerequisites:**
 
-- Create a [Netlify Connection](/integrations/app-connections/netlify)
+- Create a [Laravel Forge Connection](/integrations/app-connections/laravel-forge)
 
 <Tabs>
   <Tab title="Infisical UI">
@@ -15,13 +15,13 @@ description: "Learn how to configure a Netlify Sync for Infisical."
 
         ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
       </Step>
-      <Step title="Select 'Netlify'">
-        ![Select Netlify](/images/secret-syncs/netlify/select-option.png)
+      <Step title="Select 'Laravel Forge'">
+        ![Select Laravel Forge](/images/secret-syncs/laravel-forge/select-option.png)
       </Step>
       <Step title="Configure source">
         Configure the **Source** from where secrets should be retrieved, then click **Next**.
 
-        ![Configure Source](/images/secret-syncs/netlify/sync-source.png)
+        ![Configure Source](/images/secret-syncs/laravel-forge/sync-source.png)
 
         - **Environment**: The project environment to retrieve secrets from.
         - **Secret Path**: The folder path to retrieve secrets from.
@@ -33,25 +33,22 @@ description: "Learn how to configure a Netlify Sync for Infisical."
       <Step title="Configure destination">
         Configure the **Destination** to where secrets should be deployed, then click **Next**.
 
-        ![Configure Destination](/images/secret-syncs/netlify/sync-destination.png)
+        ![Configure Destination](/images/secret-syncs/laravel-forge/sync-destination.png)
 
-        - **Netlify Connection**: The Netlify Connection to authenticate with.
-        - **Account**: The Netlify Account to be used.
-        - **Site**: The Netlify site where secrets should be synced.
-        - **Context**: The Netlify deployment context where secrets should be created in.
+        - **Laravel Forge Connection**: The Laravel Forge Connection to authenticate with.
+        - **Organization**: The Organization in which the server and site reside.
+        - **Server**: The Server on which the site resides.
+        - **Site**: The Site for which secrets should be synced.
       </Step>
       <Step title="Configure Sync Options">
         Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
 
-        ![Configure Options](/images/secret-syncs/netlify/sync-options.png)
+        ![Configure Options](/images/secret-syncs/laravel-forge/sync-options.png)
 
         - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
             - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
-            - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over Netlify when keys conflict.
-            - **Import Secrets (Prioritize Netlify)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Netlify over Infisical when keys conflict.
-        <Note>
-          Netlify only supports importing non-secret values.
-        </Note>
+            - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over Laravel Forge when keys conflict.
+            - **Import Secrets (Prioritize Laravel Forge)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Laravel Forge over Infisical when keys conflict.
         - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
         <Note>
           We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
@@ -60,53 +57,56 @@ description: "Learn how to configure a Netlify Sync for Infisical."
         - **Disable Secret Deletion**: If enabled, Infisical will not remove secrets from the sync destination. Enable this option if you intend to manage some secrets manually outside of Infisical.
       </Step>
       <Step title="Configure details">
-        Configure the **Details** of your Netlify Sync, then click **Next**.
+        Configure the **Details** of your Laravel Forge Sync, then click **Next**.
 
-        ![Configure Details](/images/secret-syncs/netlify/sync-details.png)
+        ![Configure Details](/images/secret-syncs/laravel-forge/sync-details.png)
 
         - **Name**: The name of your sync. Must be slug-friendly.
         - **Description**: An optional description for your sync.
       </Step>
       <Step title="Review configuration">
-        Review your Netlify Sync configuration, then click **Create Sync**.
+        Review your Laravel Forge Sync configuration, then click **Create Sync**.
 
-        ![Review Configuration](/images/secret-syncs/netlify/sync-review.png)
+        ![Review Configuration](/images/secret-syncs/laravel-forge/sync-review.png)
       </Step>
       <Step title="Sync created">
-        If enabled, your Netlify Sync will begin syncing your secrets to the destination endpoint.
+        If enabled, your Laravel Forge Sync will begin syncing your secrets to the destination endpoint.
 
-        ![Sync Created](/images/secret-syncs/netlify/sync-created.png)
+        ![Sync Created](/images/secret-syncs/laravel-forge/sync-created.png)
       </Step>
     </Steps>
 
   </Tab>
 
   <Tab title="API">
-    To create a **Netlify Sync**, make an API request to the [Create Netlify Sync](/api-reference/endpoints/secret-syncs/netlify/create) API endpoint.
+    To create a **Laravel Forge Sync**, make an API request to the [Create Laravel Forge Sync](/api-reference/endpoints/secret-syncs/laravel-forge/create) API endpoint.
 
     ### Sample request
 
     ```bash Request
     curl    --request POST \
-            --url https://app.infisical.com/api/v1/secret-syncs/netlify \
+            --url https://app.infisical.com/api/v1/secret-syncs/laravel-forge \
             --header 'Content-Type: application/json' \
             --data '{
-                "name": "my-netlify-sync",
+                "name": "my-laravel-forge-sync",
                 "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "description": "sync to netlify site",
+                "description": "sync to laravel forge site",
                 "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "environment": "production",
-                "secretPath": "/site-secrets",
+                "environment": "dev",
+                "secretPath": "/",
                 "isEnabled": true,
+                "isAutoSyncEnabled": true,
                 "syncOptions": {
                     "initialSyncBehavior": "overwrite-destination",
-                    "autoSyncEnabled": true,
                     "disableSecretDeletion": false
                 },
                 "destinationConfig": {
+                    "orgSlug": "org-abc123",
+                    "orgName": "org-name",
+                    "serverId": "server-abc123",
+                    "serverName": "server-name",
                     "siteId": "site-abc123",
-                    "accountId": "account-abc123",
-                    "context": "dev"
+                    "siteName": "site-name"
                 }
             }'
     ```
@@ -117,10 +117,8 @@ description: "Learn how to configure a Netlify Sync for Infisical."
     {
         "secretSync": {
             "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-            "name": "my-netlify-sync",
-            "description": "sync to netlify site",
-            "isEnabled": true,
-            "version": 1,
+            "name": "my-laravel-forge-sync",
+            "description": "sync to laravel forge site",
             "folderId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
             "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
             "createdAt": "2025-07-19T12:00:00Z",
@@ -131,29 +129,31 @@ description: "Learn how to configure a Netlify Sync for Infisical."
             "lastSyncedAt": "2025-07-19T12:00:00Z",
             "syncOptions": {
                 "initialSyncBehavior": "overwrite-destination",
-                "autoSyncEnabled": true,
                 "disableSecretDeletion": false
             },
             "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
             "connection": {
-                "app": "netlify",
-                "name": "my-netlify-connection",
+                "app": "laravel-forge",
+                "name": "my-laravel-forge-connection",
                 "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
             },
             "environment": {
-                "slug": "production",
-                "name": "Production",
+                "slug": "dev",
+                "name": "Development",
                 "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a"
             },
             "folder": {
                 "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "path": "/site-secrets"
+                "path": "/"
             },
-            "destination": "netlify",
+            "destination": "laravel-forge",
             "destinationConfig": {
+                "orgSlug": "org-abc123",
+                "orgName": "org-name",
+                "serverId": "server-abc123",
+                "serverName": "server-name",
                 "siteId": "site-abc123",
-                "accountId": "account-abc123",
-                "context": "dev"
+                "siteName": "site-name"
             }
         }
     }
