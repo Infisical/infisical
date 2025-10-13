@@ -2,7 +2,6 @@ import net from "node:net";
 
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
-import { CronJob } from "cron";
 
 import { OrgMembershipRole, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
