@@ -117,6 +117,7 @@ const Page = () => {
       {identityMembershipDetails ? (
         <>
           <PageHeader
+            scope="project"
             title={identityMembershipDetails?.identity?.name}
             description={`Identity joined on ${identityMembershipDetails?.createdAt && formatRelative(new Date(identityMembershipDetails?.createdAt || ""), new Date())}`}
           >

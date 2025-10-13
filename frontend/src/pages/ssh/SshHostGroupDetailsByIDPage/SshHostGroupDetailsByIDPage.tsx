@@ -71,7 +71,7 @@ const Page = () => {
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={data.name}>
+          <PageHeader scope="project" title={data.name}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
                 <div className="hover:text-primary-400 data-[state=open]:text-primary-400">

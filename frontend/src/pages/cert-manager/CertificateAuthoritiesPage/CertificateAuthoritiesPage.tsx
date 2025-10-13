@@ -17,6 +17,7 @@ export const CertificateAuthoritiesPage = () => {
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-7xl">
         <PageHeader
+          scope="project"
           title="Certificate Authorities"
           description="Manage certificate authorities for issuing and signing certificates"
         />

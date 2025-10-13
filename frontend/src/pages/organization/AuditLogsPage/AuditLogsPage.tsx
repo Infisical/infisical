@@ -16,7 +16,8 @@ export const AuditLogsPage = () => {
       <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
         <div className="w-full max-w-7xl">
           <PageHeader
-            title="Audit logs"
+            scope="org"
+            title="Audit Logs"
             description="Audit logs for security and compliance teams to monitor information access."
           />
           <LogsSection pageView />

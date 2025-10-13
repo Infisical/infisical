@@ -307,6 +307,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
           <div className="h-full w-full">
             <div>
               <PageHeader
+                scope="project"
                 title={`Restore folder at commit ${selectedCommitId.substring(0, 8)}`}
                 description={`Will return all changes in this folder to how they appeared at the point of commit ${selectedCommitId.substring(0, 8)}. Any modifications made after this commit will be undone.`}
               />

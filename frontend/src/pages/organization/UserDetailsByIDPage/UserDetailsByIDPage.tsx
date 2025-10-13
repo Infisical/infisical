@@ -119,6 +119,7 @@ const Page = withPermission(
         {membership && (
           <div className="mx-auto mb-6 w-full max-w-7xl">
             <PageHeader
+              scope="org"
               title={
                 membership.user.firstName || membership.user.lastName
                   ? `${membership.user.firstName} ${membership.user.lastName ?? ""}`.trim()

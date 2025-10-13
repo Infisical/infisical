@@ -4,11 +4,11 @@ import { faCircleQuestion, faUserCircle } from "@fortawesome/free-regular-svg-ic
 import {
   faArrowUpRightFromSquare,
   faBook,
-  faBuilding,
   faCaretDown,
   faCheck,
   faEnvelope,
   faExclamationTriangle,
+  faGlobe,
   faInfo,
   faInfoCircle,
   faServer,
@@ -20,11 +20,13 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
+import { twMerge } from "tailwind-merge";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
+  Badge,
   BreadcrumbContainer,
   Button,
   DropdownMenu,
@@ -199,6 +201,8 @@ export const Navbar = () => {
 
   const isServerAdminPanel = location.pathname.startsWith("/admin");
 
+  const isOrgScope = breadcrumbs?.length === 1; // TODO: scott/akhil is this adequate?
+
   return (
     <div className="z-10 flex min-h-12 items-center border-b border-mineshaft-600 bg-mineshaft-800 px-4">
       <div>
@@ -230,10 +234,13 @@ export const Navbar = () => {
             <DropdownMenu modal={false}>
               <Link to="/organization/projects">
                 <div className="group flex cursor-pointer items-center gap-2 text-sm text-white transition-all duration-100 hover:text-primary">
-                  <div>
-                    <FontAwesomeIcon icon={faBuilding} className="text-xs text-bunker-300" />
-                  </div>
-                  <div className="whitespace-nowrap">{currentOrg?.name}</div>
+                  <Badge
+                    variant="org"
+                    className={twMerge("text-sm", !isOrgScope && "bg-transparent opacity-75")}
+                  >
+                    <FontAwesomeIcon icon={faGlobe} />
+                    {currentOrg?.name}
+                  </Badge>
                   <div className="mr-1 rounded-sm border border-mineshaft-500 px-1 text-xs text-bunker-300 no-underline!">
                     {getPlan(subscription)}
                   </div>

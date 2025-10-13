@@ -48,6 +48,7 @@ export const IntegrationsListPage = () => {
       <div className="relative container mx-auto max-w-7xl pb-12 text-white">
         <div className="mb-8">
           <PageHeader
+            scope="project"
             title="Integrations"
             description="Manage integrations with third-party services."
           />
