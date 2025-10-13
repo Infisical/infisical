@@ -1,5 +1,6 @@
 import { request } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import {
@@ -69,7 +70,14 @@ const getLaravelForgeSecrets = async (secretSync: TLaravelForgeSyncWithCredentia
 };
 
 const buildEnvString = (secrets: LaravelForgeSecret[]) => {
-  return secrets.map((secret) => `${secret.key}=${secret.value}`).join("\n");
+  return secrets
+    .map((secret) => {
+      if (secret.value.includes(" ")) {
+        return `${secret.key}="${secret.value}"`;
+      }
+      return `${secret.key}=${secret.value}`;
+    })
+    .join("\n");
 };
 
 const updateLaravelForgeSecrets = async (secretSync: TLaravelForgeSyncWithCredentials, envString: string) => {
@@ -98,14 +106,36 @@ const updateLaravelForgeSecrets = async (secretSync: TLaravelForgeSyncWithCreden
 
 export const LaravelForgeSyncFns = {
   async syncSecrets(secretSync: TLaravelForgeSyncWithCredentials, secretMap: TSecretMap) {
+    const {
+      environment,
+      syncOptions: { disableSecretDeletion, keySchema }
+    } = secretSync;
+
     const secrets = await getLaravelForgeSecrets(secretSync);
-    const secretsMap = Object.fromEntries(secrets.map((secret) => [secret.key, { value: secret.value }]));
+
+    // Create a map of the existing secrets
+    const updatedSecretsMap = new Map(secrets.map((secret) => [secret.key, secret.value]));
 
     for (const [key, { value }] of Object.entries(secretMap)) {
-      secretsMap[key] = { value };
+      // Add the new secrets to the map
+      updatedSecretsMap.set(key, value);
     }
 
-    await updateLaravelForgeSecrets(secretSync, buildEnvString(secrets));
+    if (!disableSecretDeletion) {
+      secrets.forEach((secret) => {
+        if (!matchesSchema(secret.key, environment?.slug || "", keySchema)) return;
+
+        if (!secretMap[secret.key]) {
+          updatedSecretsMap.delete(secret.key);
+        }
+      });
+    }
+
+    const updatedSecrets = Array.from(updatedSecretsMap.entries()).map(([key, value]) => ({ key, value }));
+
+    const envString = buildEnvString(updatedSecrets);
+
+    await updateLaravelForgeSecrets(secretSync, envString);
   },
 
   async getSecrets(secretSync: TLaravelForgeSyncWithCredentials): Promise<TSecretMap> {
