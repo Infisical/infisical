@@ -12,8 +12,14 @@ import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types"
 
 const LaravelForgeSyncDestinationConfigSchema = z.object({
   orgSlug: z.string().min(1, "Org Slug is required").describe(SecretSyncs.DESTINATION_CONFIG.LARAVEL_FORGE.orgSlug),
+  orgName: z.string().min(1, "Org Name is required").describe(SecretSyncs.DESTINATION_CONFIG.LARAVEL_FORGE.orgName),
   serverId: z.string().min(1, "Server ID is required").describe(SecretSyncs.DESTINATION_CONFIG.LARAVEL_FORGE.serverId),
-  siteId: z.string().min(1, "Site ID is required").describe(SecretSyncs.DESTINATION_CONFIG.LARAVEL_FORGE.siteId)
+  serverName: z
+    .string()
+    .min(1, "Server Name is required")
+    .describe(SecretSyncs.DESTINATION_CONFIG.LARAVEL_FORGE.serverName),
+  siteId: z.string().min(1, "Site ID is required").describe(SecretSyncs.DESTINATION_CONFIG.LARAVEL_FORGE.siteId),
+  siteName: z.string().min(1, "Site Name is required").describe(SecretSyncs.DESTINATION_CONFIG.LARAVEL_FORGE.siteName)
 });
 
 const LaravelForgeSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };

@@ -6,8 +6,11 @@ export type TLaravelForgeSync = TRootSecretSync & {
   destination: SecretSync.LaravelForge;
   destinationConfig: {
     orgSlug: string;
+    orgName: string;
     serverId: string;
+    serverName: string;
     siteId: string;
+    siteName: string;
   };
   connection: {
     app: AppConnection.LaravelForge;

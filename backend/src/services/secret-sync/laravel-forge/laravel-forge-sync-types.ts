@@ -18,24 +18,29 @@ export type TLaravelForgeSyncWithCredentials = TLaravelForgeSync & {
   connection: TLaravelForgeConnection;
 };
 
+export type TGetLaravelForgeSecrets = {
+  apiToken: string;
+  orgSlug: string;
+  serverId: string;
+  siteId: string;
+};
+
+export type TLaravelForgeSecrets = {
+  data: {
+    id: string;
+    type: string;
+    attributes: {
+      content: string;
+    };
+  };
+};
+
 export type LaravelForgeSecret = {
-  description: string;
-  is_secret: boolean;
   key: string;
-  source: "app" | "env";
   value: string;
 };
 
 export interface LaravelForgeApiSecret {
-  id: string;
   key: string;
   value: string;
-  type: string;
-  target: string[];
-  customEnvironmentIds?: string[];
-  gitBranch?: string;
-  createdAt?: number;
-  updatedAt?: number;
-  configurationId?: string;
-  system?: boolean;
 }

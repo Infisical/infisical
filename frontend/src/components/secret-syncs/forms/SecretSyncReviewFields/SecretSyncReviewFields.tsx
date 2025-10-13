@@ -35,6 +35,7 @@ import { GitLabSyncReviewFields } from "./GitLabSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
+import { LaravelForgeSyncReviewFields } from "./LaravelForgeSyncReviewFields";
 import { NetlifySyncReviewFields } from "./NetlifySyncReviewFields";
 import { OCIVaultSyncReviewFields } from "./OCIVaultSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
@@ -168,6 +169,9 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.Bitbucket:
       DestinationFieldsComponent = <BitbucketSyncReviewFields />;
       break;
+    case SecretSync.LaravelForge:
+      DestinationFieldsComponent = <LaravelForgeSyncReviewFields />;
+      break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);
   }
@@ -175,8 +179,8 @@ export const SecretSyncReviewFields = () => {
   return (
     <div className="mb-4 flex flex-col gap-6">
       <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Source</span>
+        <div className="border-mineshaft-600 w-full border-b">
+          <span className="text-mineshaft-300 text-sm">Source</span>
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
           <GenericFieldLabel label="Environment">{environment.name}</GenericFieldLabel>
@@ -184,14 +188,14 @@ export const SecretSyncReviewFields = () => {
         </div>
       </div>
       <div className="flex flex-col gap-3">
-        <div className="flex w-full items-center gap-2 border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Destination</span>
-          {isChecking && <span className="text-xs text-mineshaft-400">Checking...</span>}
+        <div className="border-mineshaft-600 flex w-full items-center gap-2 border-b">
+          <span className="text-mineshaft-300 text-sm">Destination</span>
+          {isChecking && <span className="text-mineshaft-400 text-xs">Checking...</span>}
         </div>
         {hasDuplicate && (
           <div className="mb-2 flex items-start rounded-md border border-yellow-600 bg-yellow-900/20 px-3 py-2">
             <div className="flex text-sm text-yellow-100">
-              <FontAwesomeIcon icon={faWarning} className="mt-1 mr-2 text-yellow-600" />
+              <FontAwesomeIcon icon={faWarning} className="mr-2 mt-1 text-yellow-600" />
               <div>
                 <p>
                   Another secret sync in your organization is already configured with the same
@@ -215,8 +219,8 @@ export const SecretSyncReviewFields = () => {
         </div>
       </div>
       <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Sync Options</span>
+        <div className="border-mineshaft-600 w-full border-b">
+          <span className="text-mineshaft-300 text-sm">Sync Options</span>
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
           <GenericFieldLabel label="Auto-Sync">
@@ -237,8 +241,8 @@ export const SecretSyncReviewFields = () => {
         </div>
       </div>
       <div className="flex flex-col gap-3">
-        <div className="w-full border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Details</span>
+        <div className="border-mineshaft-600 w-full border-b">
+          <span className="text-mineshaft-300 text-sm">Details</span>
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
           <GenericFieldLabel label="Name">{name}</GenericFieldLabel>

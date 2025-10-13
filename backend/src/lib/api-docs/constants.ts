@@ -2512,8 +2512,11 @@ export const SecretSyncs = {
     },
     LARAVEL_FORGE: {
       orgSlug: "The slug of the Laravel Forge org to sync secrets to.",
+      orgName: "The name of the Laravel Forge org to sync secrets to.",
       serverId: "The ID of the Laravel Forge server to sync secrets to.",
-      siteId: "The ID of the Laravel Forge site to sync secrets to."
+      serverName: "The name of the Laravel Forge server to sync secrets to.",
+      siteId: "The ID of the Laravel Forge site to sync secrets to.",
+      siteName: "The name of the Laravel Forge site to sync secrets to."
     },
     WINDMILL: {
       workspace: "The Windmill workspace to sync secrets to.",

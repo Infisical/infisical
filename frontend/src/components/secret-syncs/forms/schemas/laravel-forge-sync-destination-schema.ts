@@ -8,8 +8,11 @@ export const LaravelForgeSyncDestinationSchema = BaseSecretSyncSchema().merge(
     destination: z.literal(SecretSync.LaravelForge),
     destinationConfig: z.object({
       orgSlug: z.string().trim().min(1, "Org Slug required"),
+      orgName: z.string().trim().min(1, "Org Name required"),
       serverId: z.string().trim().min(1, "Server ID required"),
-      siteId: z.string().trim().min(1, "Site ID required")
+      serverName: z.string().trim().min(1, "Server Name required"),
+      siteId: z.string().trim().min(1, "Site ID required"),
+      siteName: z.string().trim().min(1, "Site Name required")
     })
   })
 );

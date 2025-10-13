@@ -50,6 +50,9 @@ export const LaravelForgeSyncFields = () => {
     setValue("destinationConfig.orgSlug", "");
     setValue("destinationConfig.serverId", "");
     setValue("destinationConfig.siteId", "");
+    setValue("destinationConfig.orgName", "");
+    setValue("destinationConfig.serverName", "");
+    setValue("destinationConfig.siteName", "");
   };
 
   return (
@@ -69,6 +72,7 @@ export const LaravelForgeSyncFields = () => {
               onChange={(option) => {
                 const selectedOrg = option as SingleValue<TLaravelForgeOrganization>;
                 onChange(selectedOrg?.slug ?? "");
+                setValue("destinationConfig.orgName", selectedOrg?.name ?? "");
                 setValue("destinationConfig.serverId", "");
                 setValue("destinationConfig.siteId", "");
               }}
@@ -94,6 +98,7 @@ export const LaravelForgeSyncFields = () => {
               onChange={(option) => {
                 const selectedServer = option as SingleValue<TLaravelForgeServer>;
                 onChange(selectedServer?.id ?? "");
+                setValue("destinationConfig.serverName", selectedServer?.name ?? "");
                 setValue("destinationConfig.siteId", "");
               }}
               options={servers}
@@ -118,6 +123,7 @@ export const LaravelForgeSyncFields = () => {
               onChange={(option) => {
                 const selectedSite = option as SingleValue<TLaravelForgeSite>;
                 onChange(selectedSite?.id ?? "");
+                setValue("destinationConfig.siteName", selectedSite?.name ?? "");
               }}
               options={sites}
               placeholder="Select a site..."

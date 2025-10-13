@@ -71,6 +71,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.DigitalOceanAppPlatform:
     case SecretSync.Netlify:
     case SecretSync.Bitbucket:
+    case SecretSync.LaravelForge:
       AdditionalSyncOptionsComponent = null;
       break;
     default:
@@ -87,9 +88,9 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
 
   return (
     <div>
-      <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-        <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-          <h3 className="font-medium text-mineshaft-100">Sync Options</h3>
+      <div className="border-mineshaft-600 bg-mineshaft-900 flex w-full flex-col gap-3 rounded-lg border px-4 py-3">
+        <div className="border-mineshaft-400 flex items-center justify-between border-b pb-2">
+          <h3 className="text-mineshaft-100 font-medium">Sync Options</h3>
           <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
             {(isAllowed) => (
               <IconButton
