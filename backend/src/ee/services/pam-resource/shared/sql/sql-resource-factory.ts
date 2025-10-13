@@ -122,11 +122,17 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
     } catch (error) {
       // Hacky way to know if we successfully hit the database
       if (error instanceof BadRequestError) {
-        if (error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"`) {
+        if (resourceType == PamResource.Postgres &&
+          (
+            error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"` ||
+            error.message.includes("no pg_hba.conf entry for host")
+          )
+        ) {
           return connectionDetails;
         }
 
-        if (error.message.includes("no pg_hba.conf entry for host")) {
+        // For mysql
+        if (resourceType === PamResource.MySQL && error.message.startsWith(`Access denied for user '${TEST_CONNECTION_USERNAME}'@`)) {
           return connectionDetails;
         }
 
