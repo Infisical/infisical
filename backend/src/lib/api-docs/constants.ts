@@ -3036,7 +3036,8 @@ export const NAMESPACES = {
     search: "Search term to filter namespaces by name."
   },
   GET: {
-    name: "The name of the namespace to retrieve."
+    name: "The name of the namespace to retrieve.",
+    id: "The id of the namespace to retrieve."
   },
   UPDATE: {
     name: "The current name of the namespace to update.",

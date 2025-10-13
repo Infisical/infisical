@@ -9,14 +9,14 @@ export type TCreateNamespaceDTO = {
 
 export type TUpdateNamespaceDTO = {
   permission: OrgServiceActor;
-  name: string;
-  newName?: string;
+  namespaceId: string;
+  name?: string;
   description?: string;
 };
 
 export type TDeleteNamespaceDTO = {
   permission: OrgServiceActor;
-  name: string;
+  namespaceId: string;
 };
 
 export type TListNamespaceDTO = {
@@ -29,6 +29,11 @@ export type TListNamespaceDTO = {
 export type TGetByNameNamespaceDTO = {
   permission: OrgServiceActor;
   name: string;
+};
+
+export type TGetByIdNamespaceDTO = {
+  permission: OrgServiceActor;
+  namespaceId: string;
 };
 
 export enum SearchNamespaceSortBy {

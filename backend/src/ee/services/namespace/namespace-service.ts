@@ -7,11 +7,12 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import { NamespacePermissionActions, NamespacePermissionSubjects } from "../permission/namespace-permission";
+import { NamespacePermissionNamespaceActions, NamespacePermissionSubjects } from "../permission/namespace-permission";
 import { TNamespaceDALFactory } from "./namespace-dal";
 import {
   TCreateNamespaceDTO,
   TDeleteNamespaceDTO,
+  TGetByIdNamespaceDTO,
   TGetByNameNamespaceDTO,
   TListNamespaceDTO,
   TSearchNamespaceDTO,
@@ -34,6 +35,7 @@ export type TNamespaceServiceFactory = {
   deleteNamespace: (dto: TDeleteNamespaceDTO) => Promise<TNamespaces>;
   listNamespaces: (dto: TListNamespaceDTO) => Promise<{ namespaces: TNamespaces[]; totalCount: number }>;
   getNamespaceByName: (dto: TGetByNameNamespaceDTO) => Promise<TNamespaces>;
+  getNamespaceById: (dto: TGetByIdNamespaceDTO) => Promise<TNamespaces>;
   searchNamespaces: (
     dto: TSearchNamespaceDTO
   ) => Promise<{ namespaces: Array<TNamespaces & { isMember: boolean }>; totalCount: number }>;
@@ -83,8 +85,8 @@ export const namespaceServiceFactory = ({
       const namespaceMembership = await membershipDAL.create(
         {
           scopeNamespaceId: newNamespace.id,
-          scopeOrgId: permission.orgId,
           scope: AccessScope.Namespace,
+          scopeOrgId: permission.orgId,
           [permission.type === ActorType.USER ? "actorUserId" : "actorIdentityId"]: permission.id
         },
         tx
@@ -104,11 +106,11 @@ export const namespaceServiceFactory = ({
 
   const updateNamespace: TNamespaceServiceFactory["updateNamespace"] = async ({
     permission,
+    namespaceId,
     name,
-    newName,
     description
   }: TUpdateNamespaceDTO) => {
-    const existingNamespace = await namespaceDAL.findOne({ name, orgId: permission.orgId });
+    const existingNamespace = await namespaceDAL.findOne({ id: namespaceId, orgId: permission.orgId });
     if (!existingNamespace) {
       throw new NotFoundError({ message: `Namespace with name '${name}' not found` });
     }
@@ -121,8 +123,8 @@ export const namespaceServiceFactory = ({
       actorOrgId: permission.orgId
     });
     ForbiddenError.from(namespacePermission).throwUnlessCan(
-      NamespacePermissionActions.Edit,
-      NamespacePermissionSubjects.Settings
+      NamespacePermissionNamespaceActions.Edit,
+      NamespacePermissionSubjects.Namespace
     );
 
     const plan = await licenseService.getPlan(permission.orgId);
@@ -132,17 +134,17 @@ export const namespaceServiceFactory = ({
       });
     }
 
-    if (newName && newName !== name) {
-      const namespaceWithNewName = await namespaceDAL.findOne({ name: newName, orgId: permission.orgId });
+    if (name) {
+      const namespaceWithNewName = await namespaceDAL.findOne({ name, orgId: permission.orgId });
       if (namespaceWithNewName) {
-        throw new BadRequestError({ message: `Namespace with name '${newName}' already exists` });
+        throw new BadRequestError({ message: `Namespace with name '${name}' already exists` });
       }
     }
 
     const [updatedNamespace] = await namespaceDAL.update(
       { id: existingNamespace.id },
       {
-        ...(newName && { name: newName }),
+        ...(name && { name }),
         ...(description !== undefined && { description })
       }
     );
@@ -152,23 +154,23 @@ export const namespaceServiceFactory = ({
 
   const deleteNamespace: TNamespaceServiceFactory["deleteNamespace"] = async ({
     permission,
-    name
+    namespaceId
   }: TDeleteNamespaceDTO) => {
-    const existingNamespace = await namespaceDAL.findOne({ name, orgId: permission.orgId });
+    const existingNamespace = await namespaceDAL.findOne({ id: namespaceId, orgId: permission.orgId });
     if (!existingNamespace) {
-      throw new NotFoundError({ message: `Namespace with name '${name}' not found` });
+      throw new NotFoundError({ message: `Namespace with id '${namespaceId}' not found` });
     }
 
     const { permission: namespacePermission } = await permissionService.getNamespacePermission({
       actor: permission.type,
       actorId: permission.id,
-      namespaceId: existingNamespace.id,
+      namespaceId,
       actorAuthMethod: permission.authMethod,
       actorOrgId: permission.orgId
     });
     ForbiddenError.from(namespacePermission).throwUnlessCan(
-      NamespacePermissionActions.Edit,
-      NamespacePermissionSubjects.Settings
+      NamespacePermissionNamespaceActions.Delete,
+      NamespacePermissionSubjects.Namespace
     );
 
     const [deletedNamespace] = await namespaceDAL.delete({ id: existingNamespace.id });
@@ -221,6 +223,23 @@ export const namespaceServiceFactory = ({
     return namespace;
   };
 
+  const getNamespaceById: TNamespaceServiceFactory["getNamespaceById"] = async ({ permission, namespaceId }) => {
+    const namespace = await namespaceDAL.findOne({ id: namespaceId, orgId: permission.orgId });
+    if (!namespace) {
+      throw new NotFoundError({ message: `Namespace with id '${namespaceId}' not found` });
+    }
+
+    await permissionService.getNamespacePermission({
+      actor: permission.type,
+      actorId: permission.id,
+      actorOrgId: permission.orgId,
+      actorAuthMethod: permission.authMethod,
+      namespaceId: namespace.id
+    });
+
+    return namespace;
+  };
+
   const searchNamespaces: TNamespaceServiceFactory["searchNamespaces"] = async ({
     permission,
     name,
@@ -259,6 +278,7 @@ export const namespaceServiceFactory = ({
     deleteNamespace,
     listNamespaces,
     getNamespaceByName,
+    getNamespaceById,
     searchNamespaces
   };
 };

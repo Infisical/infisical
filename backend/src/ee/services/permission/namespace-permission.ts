@@ -19,6 +19,11 @@ export enum NamespacePermissionActions {
   Delete = "delete"
 }
 
+export enum NamespacePermissionNamespaceActions {
+  Edit = "edit",
+  Delete = "delete"
+}
+
 export enum NamespacePermissionMemberActions {
   Read = "read",
   Create = "create",
@@ -96,6 +101,7 @@ export enum NamespacePermissionBillingActions {
 export enum NamespacePermissionSubjects {
   Project = "project",
   Role = "role",
+  Namespace = "namespace",
   Member = "member",
   Settings = "settings",
   Groups = "groups",
@@ -127,6 +133,7 @@ export type NamespacePermissionSet =
   | [NamespacePermissionAuditLogsActions, NamespacePermissionSubjects.AuditLogs]
   | [NamespacePermissionActions, NamespacePermissionSubjects.ProjectTemplates]
   | [NamespacePermissionGatewayActions, NamespacePermissionSubjects.Gateway]
+  | [NamespacePermissionNamespaceActions, NamespacePermissionSubjects.Namespace]
   | [
       NamespacePermissionAppConnectionActions,
       (

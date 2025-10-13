@@ -137,6 +137,40 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/:namespaceId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.Namespaces],
+      description: "Get namespace by id",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        namespaceId: slugSchema().describe(NAMESPACES.GET.id)
+      }),
+      response: {
+        200: z.object({
+          namespace: NamespacesSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const namespace = await server.services.namespace.getNamespaceById({
+        permission: req.permission,
+        namespaceId: req.params.namespaceId
+      });
+      return { namespace };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:name",
     config: {
       rateLimit: readLimit
@@ -171,7 +205,7 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "PATCH",
-    url: "/:name",
+    url: "/:namespaceId",
     config: {
       rateLimit: writeLimit
     },
@@ -185,10 +219,10 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        name: slugSchema().describe(NAMESPACES.UPDATE.name)
+        namespaceId: z.string().uuid().describe(NAMESPACES.UPDATE.name)
       }),
       body: z.object({
-        newName: slugSchema().optional().describe(NAMESPACES.UPDATE.newName),
+        name: slugSchema().optional().describe(NAMESPACES.UPDATE.newName),
         description: z.string().optional().describe(NAMESPACES.UPDATE.description)
       }),
       response: {
@@ -201,8 +235,8 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const namespace = await server.services.namespace.updateNamespace({
         permission: req.permission,
-        name: req.params.name,
-        newName: req.body.newName,
+        namespaceId: req.params.namespaceId,
+        name: req.body.name,
         description: req.body.description
       });
       return { namespace };
@@ -211,7 +245,7 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "DELETE",
-    url: "/:name",
+    url: "/:namespaceId",
     config: {
       rateLimit: writeLimit
     },
@@ -225,7 +259,7 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        name: slugSchema().describe(NAMESPACES.DELETE.name)
+        namespaceId: z.string().uuid().describe(NAMESPACES.DELETE.name)
       }),
       response: {
         200: z.object({
@@ -237,7 +271,7 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const namespace = await server.services.namespace.deleteNamespace({
         permission: req.permission,
-        name: req.params.name
+        namespaceId: req.params.namespaceId
       });
       return { namespace };
     }
