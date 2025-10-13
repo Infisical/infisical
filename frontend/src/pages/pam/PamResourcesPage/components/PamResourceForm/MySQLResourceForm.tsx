@@ -4,19 +4,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, ModalClose } from "@app/components/v2";
-import { PamResourceType, TPostgresResource } from "@app/hooks/api/pam";
+import { PamResourceType, TMySQLResource } from "@app/hooks/api/pam";
 
 import { BaseSqlResourceSchema } from "./shared/sql-resource-schemas";
 import { SqlResourceFields } from "./shared/SqlResourceFields";
 import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
 
 type Props = {
-  resource?: TPostgresResource;
+  resource?: TMySQLResource;
   onSubmit: (formData: FormData) => Promise<void>;
 };
 
 const formSchema = genericResourceFieldsSchema.extend({
-  resourceType: z.literal(PamResourceType.Postgres),
+  resourceType: z.literal(PamResourceType.MySQL),
   connectionDetails: BaseSqlResourceSchema
 });
 
@@ -29,7 +29,7 @@ export const MySQLResourceForm = ({ resource, onSubmit }: Props) => {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: resource ?? {
-      resourceType: PamResourceType.Postgres,
+      resourceType: PamResourceType.MySQL,
       connectionDetails: {
         host: "",
         port: 3306,
