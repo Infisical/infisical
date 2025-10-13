@@ -96,7 +96,7 @@ const UpdateForm = ({ resource, onComplete }: UpdateFormProps) => {
     case PamResourceType.Postgres:
       return <PostgresResourceForm resource={resource} onSubmit={onSubmit} />;
     case PamResourceType.MySQL:
-      return <MySqlResourceForm resource={resource} onSubmit={onSubmit} />;
+      return <MySQLResourceForm resource={resource} onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${resource.resourceType}`);
   }

@@ -17,7 +17,9 @@ type Props = {
 
 const formSchema = genericResourceFieldsSchema.extend({
   resourceType: z.literal(PamResourceType.MySQL),
-  connectionDetails: BaseSqlResourceSchema
+  connectionDetails: BaseSqlResourceSchema.extend({
+    database: z.string().trim().optional().default(""),
+  })
 });
 
 type FormData = z.infer<typeof formSchema>;
