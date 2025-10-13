@@ -344,6 +344,10 @@ import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
 import { registerV4Routes } from "./v4";
+import { namespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
+import { namespaceServiceFactory } from "@app/ee/services/namespace/namespace-service";
+import { scopedIdentityServiceFactory } from "@app/services/scoped-identity/scoped-identity-service";
+import { scopedIdentityDALFactory } from "@app/services/scoped-identity/scoped-identity-dal";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
@@ -537,6 +541,8 @@ export const registerRoutes = async (
   const eventBusService = eventBusFactory(server.redis);
   const sseService = sseServiceFactory(eventBusService, server.redis);
 
+  const namespaceDAL = namespaceDALFactory(db);
+
   const permissionService = permissionServiceFactory({
     permissionDAL,
     serviceTokenDAL,
@@ -580,13 +586,22 @@ export const registerRoutes = async (
     additionalPrivilegeDAL
   });
 
+  const namespaceService = namespaceServiceFactory({
+    permissionService,
+    membershipRoleDAL,
+    membershipDAL,
+    licenseService,
+    namespaceDAL
+  });
+
   const membershipIdentityService = membershipIdentityServiceFactory({
     membershipIdentityDAL,
     membershipRoleDAL,
     orgDAL,
     permissionService,
     roleDAL,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    identityDAL
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
@@ -1565,7 +1580,17 @@ export const registerRoutes = async (
     accessTokenQueue,
     smtpService
   });
+  const scopedIdentityDAL = scopedIdentityDALFactory(db);
+  const scopedIdentityService = scopedIdentityServiceFactory({
+    membershipRoleDAL,
+    membershipIdentityDAL,
+    licenseService,
+    permissionService,
+    identityDAL: scopedIdentityDAL,
+    identityMetadataDAL
+  });
 
+  // deprecated in favour of scopedIdentityService
   const identityService = identityServiceFactory({
     permissionService,
     identityDAL,
@@ -2349,7 +2374,9 @@ export const registerRoutes = async (
     role: roleService,
     additionalPrivilege: additionalPrivilegeService,
     identityProject: identityProjectService,
-    convertor: convertorService
+    convertor: convertorService,
+    namespace: namespaceService,
+    scopedIdentity: scopedIdentityService
   });
 
   const cronJobs: CronJob[] = [];

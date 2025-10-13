@@ -171,7 +171,7 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:name",
+    url: "/name/:name",
     config: {
       rateLimit: readLimit
     },
