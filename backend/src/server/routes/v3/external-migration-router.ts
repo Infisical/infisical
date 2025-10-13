@@ -113,4 +113,151 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       return { enabled };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/config",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        platform: z.nativeEnum(ExternalMigrationProviders)
+      }),
+      response: {
+        200: z.object({
+          config: z
+            .object({
+              id: z.string(),
+              orgId: z.string(),
+              platform: z.string(),
+              connectionId: z.string().nullable().optional(),
+              createdAt: z.date(),
+              updatedAt: z.date()
+            })
+            .nullable()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const config = await server.services.migration.getExternalMigrationConfig({
+        platform: req.query.platform,
+        actor: req.permission
+      });
+
+      return { config };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/config",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        connectionId: z.string().nullable(),
+        platform: z.nativeEnum(ExternalMigrationProviders)
+      }),
+      response: {
+        200: z.object({
+          config: z.object({
+            id: z.string(),
+            orgId: z.string(),
+            platform: z.string(),
+            connectionId: z.string().nullable().optional(),
+            createdAt: z.date(),
+            updatedAt: z.date()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const config = await server.services.migration.configureExternalMigration({
+        ...req.body,
+        actor: req.permission
+      });
+      return { config };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/vault/namespaces",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          namespaces: z.array(z.object({ id: z.string(), name: z.string() }))
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const namespaces = await server.services.migration.getVaultNamespaces({
+        actor: req.permission
+      });
+
+      return { namespaces };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/vault/policies",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        namespace: z.string().optional()
+      }),
+      response: {
+        200: z.object({
+          policies: z.array(z.object({ name: z.string(), rules: z.string() }))
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const policies = await server.services.migration.getVaultPolicies({
+        actor: req.permission,
+        namespace: req.query.namespace
+      });
+
+      return { policies };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/vault/mounts",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        namespace: z.string().optional()
+      }),
+      response: {
+        200: z.object({
+          mounts: z.array(z.object({ path: z.string(), type: z.string(), version: z.string().nullish() }))
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const mounts = await server.services.migration.getVaultMounts({
+        actor: req.permission,
+        namespace: req.query.namespace
+      });
+
+      return { mounts };
+    }
+  });
 };

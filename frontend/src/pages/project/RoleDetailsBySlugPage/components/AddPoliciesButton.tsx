@@ -6,12 +6,18 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-  IconButton
+  IconButton,
+  Tooltip
 } from "@app/components/v2";
+import { useOrgPermission } from "@app/context";
+import { OrgMembershipRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
+import { useGetExternalMigrationConfig } from "@app/hooks/api/migration";
+import { ExternalMigrationProviders } from "@app/hooks/api/migration/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { PolicySelectionModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicySelectionModal";
 import { PolicyTemplateModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicyTemplateModal";
+import { VaultPolicyImportModal } from "@app/pages/project/RoleDetailsBySlugPage/components/VaultPolicyImportModal";
 
 type Props = {
   isDisabled?: boolean;
@@ -22,8 +28,16 @@ export const AddPoliciesButton = ({ isDisabled, projectType }: Props) => {
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addPolicy",
     "addPolicyOptions",
-    "applyTemplate"
+    "applyTemplate",
+    "importFromVault"
   ] as const);
+
+  const { hasOrgRole } = useOrgPermission();
+  const { data: vaultConfig } = useGetExternalMigrationConfig(ExternalMigrationProviders.Vault);
+
+  const hasVaultConnection = Boolean(vaultConfig?.connectionId);
+  const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
+  const isVaultImportDisabled = isDisabled || !isOrgAdmin;
 
   return (
     <div>
@@ -44,7 +58,7 @@ export const AddPoliciesButton = ({ isDisabled, projectType }: Props) => {
           <IconButton
             ariaLabel="Open policy template options"
             variant="outline_bg"
-            className="rounded-l-none bg-mineshaft-600 p-3"
+            className="bg-mineshaft-600 rounded-l-none p-3"
           >
             <FontAwesomeIcon icon={faAngleDown} />
           </IconButton>
@@ -64,6 +78,35 @@ export const AddPoliciesButton = ({ isDisabled, projectType }: Props) => {
             >
               Add From Template
             </Button>
+            {hasVaultConnection && (
+              <Tooltip
+                content={
+                  !isOrgAdmin
+                    ? "Only organization admins can import policies from HashiCorp Vault"
+                    : undefined
+                }
+              >
+                <Button
+                  leftIcon={
+                    <img
+                      src="/images/integrations/Vault.png"
+                      alt="HashiCorp Vault"
+                      className="h-4 w-4"
+                    />
+                  }
+                  onClick={() => {
+                    handlePopUpOpen("importFromVault");
+                    handlePopUpClose("addPolicyOptions");
+                  }}
+                  isDisabled={isVaultImportDisabled}
+                  variant="outline_bg"
+                  className="h-10 text-left"
+                  isFullWidth
+                >
+                  Add from HashiCorp Vault
+                </Button>
+              </Tooltip>
+            )}
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -76,6 +119,10 @@ export const AddPoliciesButton = ({ isDisabled, projectType }: Props) => {
         type={projectType}
         isOpen={popUp.applyTemplate.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("applyTemplate", isOpen)}
+      />
+      <VaultPolicyImportModal
+        isOpen={popUp.importFromVault.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}
       />
     </div>
   );

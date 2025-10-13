@@ -13,7 +13,12 @@ import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { HCVaultConnectionMethod } from "./hc-vault-connection-enums";
-import { THCVaultConnection, THCVaultConnectionConfig, THCVaultMountResponse } from "./hc-vault-connection-types";
+import {
+  THCVaultConnection,
+  THCVaultConnectionConfig,
+  THCVaultMount,
+  THCVaultMountResponse
+} from "./hc-vault-connection-types";
 
 export const getHCVaultInstanceUrl = async (config: THCVaultConnectionConfig) => {
   const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
@@ -181,29 +186,179 @@ export const validateHCVaultConnectionCredentials = async (
   }
 };
 
-export const listHCVaultMounts = async (
+export const listHCVaultPolicies = async (
+  connection: THCVaultConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  namespace?: string
+) => {
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
+  const accessToken = await getHCVaultAccessToken(connection, gatewayService);
+
+  if (namespace && connection.credentials.namespace) {
+    throw new BadRequestError({
+      message: "Namespace cannot be specified when namespace is already set in the connection credentials"
+    });
+  }
+
+  const targetNamespace = namespace || connection.credentials.namespace;
+
+  try {
+    const { data: listData } = await requestWithHCVaultGateway<{
+      policies: string[];
+    }>(connection, gatewayService, {
+      url: `${instanceUrl}/v1/sys/policy`,
+      method: "GET",
+      headers: {
+        "X-Vault-Token": accessToken,
+        ...(targetNamespace ? { "X-Vault-Namespace": targetNamespace } : {})
+      }
+    });
+
+    const policyNames = listData.policies || [];
+
+    const policies = await Promise.all(
+      policyNames.map(async (policyName) => {
+        try {
+          const { data: policyData } = await requestWithHCVaultGateway<{
+            name: string;
+            rules: string;
+          }>(connection, gatewayService, {
+            url: `${instanceUrl}/v1/sys/policy/${policyName}`,
+            method: "GET",
+            headers: {
+              "X-Vault-Token": accessToken,
+              ...(targetNamespace ? { "X-Vault-Namespace": targetNamespace } : {})
+            }
+          });
+
+          return {
+            name: policyData.name,
+            rules: policyData.rules
+          };
+        } catch (error: unknown) {
+          logger.error(error, `Unable to fetch policy details for ${policyName}`);
+          return {
+            name: policyName,
+            rules: ""
+          };
+        }
+      })
+    );
+
+    return policies;
+  } catch (error: unknown) {
+    logger.error(error, "Unable to list HC Vault policies");
+
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to list policies: ${error.message || "Unknown error"}`
+      });
+    }
+
+    throw new BadRequestError({
+      message: "Unable to list policies from HashiCorp Vault"
+    });
+  }
+};
+
+export const listHCVaultNamespaces = async (
   connection: THCVaultConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
 ) => {
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService);
 
+  try {
+    const { data } = await requestWithHCVaultGateway<{
+      data: {
+        keys: string[];
+        key_info?: {
+          [key: string]: {
+            id: string;
+            path: string;
+            custom_metadata?: Record<string, unknown>;
+          };
+        };
+      };
+    }>(connection, gatewayService, {
+      url: `${instanceUrl}/v1/sys/namespaces`,
+      method: "LIST",
+      headers: {
+        "X-Vault-Token": accessToken,
+        ...(connection.credentials.namespace ? { "X-Vault-Namespace": connection.credentials.namespace } : {})
+      }
+    });
+
+    // Transform using key_info if available, otherwise fall back to keys array
+    const namespaces = (data.data.keys || []).map((namespaceKey) => {
+      const keyInfo = data.data.key_info?.[namespaceKey];
+      return {
+        id: keyInfo?.id || namespaceKey.replace(/\/$/, ""), // Use Vault's ID if available, otherwise use the key
+        name: namespaceKey.replace(/\/$/, "") // Remove trailing slash for display
+      };
+    });
+
+    return namespaces;
+  } catch (error: unknown) {
+    // 404 means namespaces endpoint doesn't exist (Vault Community Edition)
+    // Return empty array to gracefully degrade
+    if (error instanceof AxiosError && error.response?.status === 404) {
+      logger.info("Namespaces endpoint not available (likely Vault Community Edition). Returning empty list.");
+      return [
+        {
+          id: "default",
+          name: "default"
+        }
+      ];
+    }
+
+    logger.error(error, "Unable to list HC Vault namespaces");
+
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to list namespaces: ${error.message || "Unknown error"}`
+      });
+    }
+
+    throw new BadRequestError({
+      message: "Unable to list namespaces from HashiCorp Vault"
+    });
+  }
+};
+
+export const listHCVaultMounts = async (
+  connection: THCVaultConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  namespace?: string
+) => {
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
+  const accessToken = await getHCVaultAccessToken(connection, gatewayService);
+
+  if (namespace && connection.credentials.namespace) {
+    throw new BadRequestError({
+      message: "Namespace cannot be specified when namespace is already set in the connection credentials"
+    });
+  }
+
+  const targetNamespace = namespace || connection.credentials.namespace;
+
   const { data } = await requestWithHCVaultGateway<THCVaultMountResponse>(connection, gatewayService, {
     url: `${instanceUrl}/v1/sys/mounts`,
     method: "GET",
     headers: {
       "X-Vault-Token": accessToken,
-      ...(connection.credentials.namespace ? { "X-Vault-Namespace": connection.credentials.namespace } : {})
+      ...(targetNamespace ? { "X-Vault-Namespace": targetNamespace } : {})
     }
   });
 
-  const mounts: string[] = [];
+  const mounts: THCVaultMount[] = [];
 
-  // Filter for "kv" version 2 type only
   Object.entries(data.data).forEach(([path, mount]) => {
-    if (mount.type === "kv" && mount.options?.version === "2") {
-      mounts.push(path);
-    }
+    mounts.push({
+      path,
+      type: mount.type,
+      version: mount.options?.version
+    });
   });
 
   return mounts;

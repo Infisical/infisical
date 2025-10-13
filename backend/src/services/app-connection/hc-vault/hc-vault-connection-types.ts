@@ -33,3 +33,9 @@ export type THCVaultMountResponse = {
     };
   };
 };
+
+export type THCVaultMount = {
+  path: string;
+  type: string;
+  version?: string | null;
+};

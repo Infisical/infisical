@@ -174,6 +174,7 @@ import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { convertorServiceFactory } from "@app/services/convertor/convertor-service";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
+import { externalMigrationConfigDALFactory } from "@app/services/external-migration/external-migration-config-dal";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
 import { externalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
 import { folderCheckpointDALFactory } from "@app/services/folder-checkpoint/folder-checkpoint-dal";
@@ -532,6 +533,8 @@ export const registerRoutes = async (
   const additionalPrivilegeDAL = additionalPrivilegeDALFactory(db);
   const membershipRoleDAL = membershipRoleDALFactory(db);
   const roleDAL = roleDALFactory(db);
+
+  const externalMigrationConfigDAL = externalMigrationConfigDALFactory(db);
 
   const eventBusService = eventBusFactory(server.redis);
   const sseService = sseServiceFactory(eventBusService, server.redis);
@@ -1873,13 +1876,6 @@ export const registerRoutes = async (
     notificationService
   });
 
-  const migrationService = externalMigrationServiceFactory({
-    externalMigrationQueue,
-    userDAL,
-    permissionService,
-    gatewayService
-  });
-
   const externalGroupOrgRoleMappingService = externalGroupOrgRoleMappingServiceFactory({
     permissionService,
     licenseService,
@@ -2194,6 +2190,16 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     kmsService
+  });
+
+  const migrationService = externalMigrationServiceFactory({
+    externalMigrationQueue,
+    userDAL,
+    permissionService,
+    gatewayService,
+    kmsService,
+    appConnectionService,
+    externalMigrationConfigDAL
   });
 
   // setup the communication with license key server

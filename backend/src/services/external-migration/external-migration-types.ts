@@ -1,4 +1,4 @@
-import { TOrgPermission } from "@app/lib/types";
+import { OrgServiceActor, TOrgPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
@@ -121,3 +121,9 @@ export enum ExternalMigrationProviders {
   Vault = "vault",
   EnvKey = "env-key"
 }
+
+export type TConfigureExternalMigrationDTO = {
+  platform: ExternalMigrationProviders;
+  connectionId: string | null;
+  actor: OrgServiceActor;
+};

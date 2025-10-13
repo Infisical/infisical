@@ -3,6 +3,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { projectKeys } from "../projects";
+import { externalMigrationQueryKeys } from "./queries";
+import { ExternalMigrationProviders, TExternalMigrationConfig } from "./types";
 
 export const useImportEnvKey = () => {
   const queryClient = useQueryClient();
@@ -61,6 +63,29 @@ export const useImportVault = () => {
         vaultUrl,
         mappingType,
         gatewayId
+      });
+    }
+  });
+};
+
+export const useUpdateExternalMigrationConfig = (platform: ExternalMigrationProviders) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<TExternalMigrationConfig, Error, { connectionId: string | null }>({
+    mutationFn: async ({ connectionId }: { connectionId: string | null }) => {
+      const { data } = await apiRequest.put<{ config: TExternalMigrationConfig }>(
+        "/api/v3/external-migration/config",
+        {
+          connectionId,
+          platform
+        }
+      );
+
+      return data.config;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: externalMigrationQueryKeys.config(platform)
       });
     }
   });
