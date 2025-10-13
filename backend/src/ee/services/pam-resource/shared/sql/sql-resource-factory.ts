@@ -42,6 +42,11 @@ const getConnectionConfig = (
           : false
       };
     }
+    case PamResource.MySQL: {
+      return {
+        // TODO: support SSL connections
+      };
+    }
     default:
       throw new BadRequestError({
         message: `Unhandled SQL Resource Connection Config: ${resourceType as PamResource}`
