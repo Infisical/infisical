@@ -435,7 +435,7 @@ Enabling HSM encryption has a set of key benefits:
             pkcs11-tool --module /opt/cloudhsm/lib/libcloudhsm_pkcs11.so --list-slots --login
             ```
 
-            It'll prompt you to log in with your PIN, which is your username and password seperated by a colon. Example: `testUser:testPassword`.
+            It'll prompt you to log in with your PIN, which is your username and password separated by a colon. Example: `testUser:testPassword`.
 
             This will output the HSM slot number like so:
 
@@ -485,7 +485,7 @@ Enabling HSM encryption has a set of key benefits:
 
               # Set the HSM library path to whats expected within Docker (/opt/cloudhsm/lib/libcloudhsm_pkcs11.so)
               -e HSM_LIB_PATH="/opt/cloudhsm/lib/libcloudhsm_pkcs11.so" \
-              # Set the HSM PIN to the username and password of the HSM user, seperated by a colon
+              # Set the HSM PIN to the username and password of the HSM user, separated by a colon
               -e HSM_PIN=CryptoUserUsername:CryptoUserPassword \
               # Set the HSM slot number to the slot number of the HSM device as found in the previous step
               -e HSM_SLOT=<hsm-device-slot> \
@@ -513,7 +513,7 @@ Enabling HSM encryption has a set of key benefits:
       <Tab title="Thales Luna Cloud HSM">
 
         <Note>
-          This is only supported on helm chart version `1.4.1` and above. Please see the [Helm Chart Changelog](https://github.com/Infisical/infisical/blob/main/helm-charts/infisical-standalone-postgres/CHANGELOG.md#141-march-19-2025) for more information.
+          This is only supported on helm chart version `1.7.1` and above. Please see the [Helm Chart Changelog](https://github.com/Infisical/infisical/blob/main/helm-charts/infisical-standalone-postgres/CHANGELOG.md#141-march-19-2025) for more information.
         </Note>
 
         <Steps>
@@ -994,7 +994,7 @@ Enabling HSM encryption has a set of key benefits:
         - A Kubernetes cluster
 
         <Note>
-          AWS CloudHSM is supported on helm chart version `1.4.1` and above. Please see the [Helm Chart Changelog](https://github.com/Infisical/infisical/blob/main/helm-charts/infisical-standalone-postgres/CHANGELOG.md#141-march-19-2025) for more information.
+          AWS CloudHSM is supported on helm chart version `1.7.1` and above. Please see the [Helm Chart Changelog](https://github.com/Infisical/infisical/blob/main/helm-charts/infisical-standalone-postgres/CHANGELOG.md#141-march-19-2025) for more information.
         </Note>
 
         <Steps>
@@ -1022,7 +1022,7 @@ Enabling HSM encryption has a set of key benefits:
 
                 </Step>
 
-                <Step title="Ensure the EBS CSI Driver is installed and running">
+                <Step title="Check if the EBS CSI Driver is installed and running">
 
                   1. Check if EBS CSI Driver is installed and running by running the following command:
 
@@ -1179,7 +1179,7 @@ Enabling HSM encryption has a set of key benefits:
 
           <Step title="Configure the PVC">
 
-          We need to configure the PVC to work with the CloudHSM, so Infiscial can consume the HSM client files.
+          We need to configure the PVC to work with the CloudHSM, so Infisical can consume the HSM client files.
 
           **2.1. Start a shell in the PVC pod:**
 
@@ -1189,15 +1189,7 @@ Enabling HSM encryption has a set of key benefits:
           kubectl exec -it cloudhsm-setup-pod -- /bin/sh
           ```
 
-          **2.2. Create the data directory:**
-
-          This will create a directory called `/data/` within the setup pod. This directory will remain even after the setup pod is deleted, as it's mounted as a volume from the PVC.
-
-          ```bash
-          mkdir -p /data/
-          ```
-
-          **2.3. Install the necessary packages:**
+          **2.2. Install the necessary packages:**
 
           This will install the necessary packages to allow us to test and install the CloudHSM client.
 
@@ -1206,7 +1198,7 @@ Enabling HSM encryption has a set of key benefits:
           apt-get install opensc telnet wget -y
           ```
 
-          **2.4. Try to reach the HSM device:**
+          **2.3. Try to reach the HSM device:**
 
           We need to validate that we're able to reach the HSM device from within Kubernetes. You can use telnet to ping the HSM device like so:
 
@@ -1223,7 +1215,7 @@ Enabling HSM encryption has a set of key benefits:
 
           If it gets stuck on `Trying ....`, you may have configured your HSM client's security group incorrectly. Make sure you configure the security group to allow traffic from EKS on port 2223-2225.
 
-          **2.5. Install the AWS CloudHSM client:**
+          **2.4. Install the AWS CloudHSM client:**
 
           The Infisical images run on Debian, so we need to install a Debian-compatible version of the AWS CloudHSM client.
 
@@ -1232,7 +1224,7 @@ Enabling HSM encryption has a set of key benefits:
           apt-get install ./cloudhsm-pkcs11_latest_u22.04_amd64.deb -y
           ```
 
-          **2.6. Configure the CloudHSM client:**
+          **2.5. Configure the CloudHSM client:**
 
             After installing the CloudHSM client, you should see all related files in the `/opt/cloudhsm/` directory on the CloudHSM setup pod.
 
@@ -1257,7 +1249,7 @@ Enabling HSM encryption has a set of key benefits:
               </Accordion>
             </AccordionGroup>
 
-          **2.7. Verify the CloudHSM client is configured correctly:**
+          **2.6. Verify the CloudHSM client is configured correctly:**
 
           You can verify the CloudHSM client is configured correctly by running the following command:
           ```bash
@@ -1295,14 +1287,14 @@ Enabling HSM encryption has a set of key benefits:
           }
           ```
 
-          **2.8. Exit the pod:**
+          **2.7. Exit the pod:**
 
           Exit the pod by running the following command:
           ```bash
           exit
           ```
 
-          **2.9. Copy your issuer CA certificate to the PVC:**
+          **2.8. Copy your issuer CA certificate to the PVC:**
 
           When you initialized your HSM, you were prompted to download the cluster CSR and sign it.
           In order to use the HSM with Infisical, you need to obtain the issuer CA certificate that was used to sign the cluster CSR.
@@ -1320,7 +1312,7 @@ Enabling HSM encryption has a set of key benefits:
           kubectl exec -it cloudhsm-setup-pod -- cat /opt/cloudhsm/etc/customerCA.crt
           ```
 
-          **2.10. Test the HSM client:**
+          **2.9. Test the HSM client:**
 
           Finally, after we're done configuring the HSM client, we need to test it to ensure that it's working correctly.
 
@@ -1342,9 +1334,15 @@ Enabling HSM encryption has a set of key benefits:
           av1dlhVEsssjpcTNS+ysGUoKWH6+/PCaEDIdal5oQc0=
           ```
 
+          <Note>
+            Replace the `<crypto-user-username>:<crypto-user-password>` with your username and password combination of the Crypto user you have created that you want to use to perform cryptographic operations.
+
+            In AWS CloudHSM, the PIN is always the username and password separated by a colon.
+          </Note>
 
 
-          **2.12. Copy the configured client to the PVC:**
+
+          **2.10. Copy the configured client to the PVC:**
 
           Copy from the HSM files into the `/data` directory in the PVC, which is what will be mounted for the Infisical deployment.
           ```bash
@@ -1368,20 +1366,20 @@ Enabling HSM encryption has a set of key benefits:
           drwxr-xr-t. 2 root root 4096 Oct 13 18:50 run
           ```
 
-          **2.13. Set the correct permissions for the HSM client files:**
+          **2.11. Set the correct permissions for the HSM client files:**
 
           ```bash
           chmod -R 755 /data/
           ```
 
-          **2.14. Exit the pod:**
+          **2.12. Exit the pod:**
 
           Exit the pod by running the following command:
           ```bash
           exit
           ```
 
-          **2.15. Delete the setup pod:**
+          **2.13. Delete the setup pod:**
 
           Delete the setup pod by running the following command:
           ```bash
@@ -1430,7 +1428,7 @@ Enabling HSM encryption has a set of key benefits:
               infisical:
                 image:
                   repository: infisical/infisical
-                  tag: "v0.117.1-postgres"
+                  tag: "v0.151.0-nightly-20251013.1"
                   pullPolicy: IfNotPresent
 
                 extraVolumeMounts:
@@ -1444,6 +1442,10 @@ Enabling HSM encryption has a set of key benefits:
 
               # ... The rest of the values.yaml file ...
             ```
+
+            <Warning>
+              Make sure to set the `tag` to **`v0.151.0-nightly-20251013.1` or above**, as this is the minimum Infisical version that supports AWS CloudHSM.
+            </Warning>
 
             <Warning>
               Ensure that the configuration file at `/opt/cloudhsm/etc/cloudhsm-pkcs11.cfg` references the correct path for the issuer CA certificate (`/opt/cloudhsm/etc/customerCA.crt`). This should already be configured correctly if you followed the previous steps.
@@ -1463,7 +1465,7 @@ Enabling HSM encryption has a set of key benefits:
             After upgrading the Helm chart, you need to restart the deployment in order for the changes to take effect.
 
             ```bash
-            kubectl rollout restart deployment/infisical-infisical
+            kubectl rollout restart deployment/infisical-infisical-standalone-infisical
             ```
           </Step>
         </Steps>
@@ -1481,15 +1483,3 @@ To disable HSM encryption, navigate to Infisical's Server Admin Console and set 
 <Note>
   In order to disable HSM encryption, the Infisical instance must be able to access the HSM device. If the HSM device is no longer accessible, you will not be able to disable HSM encryption.
 </Note>
-
-
-
-## Troubleshooting
-
-<AccordionGroup>
-  <Accordion title="Failing to create PVC for Kubernetes on EKS: no persistent volumes available for this claim and no storage class is set">
-    If you're using EKS, you may encounter an error like the following: `no persistent volumes available for this claim and no storage class is set`
-
-
-  </Accordion>
-</AccordionGroup>
