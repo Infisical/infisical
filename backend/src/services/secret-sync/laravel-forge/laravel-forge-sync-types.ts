@@ -39,8 +39,3 @@ export type LaravelForgeSecret = {
   key: string;
   value: string;
 };
-
-export interface LaravelForgeApiSecret {
-  key: string;
-  value: string;
-}
