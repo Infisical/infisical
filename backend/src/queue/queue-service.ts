@@ -353,6 +353,10 @@ export type TQueueJobTypes = {
     name: QueueJobs.UserNotification;
     payload: { notifications: TCreateUserNotificationDTO[] };
   };
+  [QueueName.HealthAlert]: {
+    name: QueueJobs.HealthAlert;
+    payload: undefined;
+  };
 };
 
 const SECRET_SCANNING_JOBS = [
