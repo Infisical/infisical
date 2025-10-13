@@ -47,7 +47,7 @@ export const healthAlertServiceFactory = ({
       {
         batchSize: 1,
         workerCount: 1,
-        pollingIntervalSeconds: 1
+        pollingIntervalSeconds: 60
       }
     );
 
