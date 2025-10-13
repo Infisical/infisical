@@ -19,9 +19,7 @@ export const ExternalMigrationsTab = () => {
       {/* In-Platform Migration Tooling Section */}
       <div className="border-mineshaft-600 bg-mineshaft-900 rounded-lg border p-4">
         <div className="mb-4">
-          <h2 className="text-mineshaft-100 text-xl font-semibold">
-            In-Platform Migration Tooling
-          </h2>
+          <h2 className="text-mineshaft-100 text-xl font-medium">In-Platform Migration Tooling</h2>
           <p className="mb-6 mt-1 text-sm text-gray-400">
             Configure platform connections to enable migration features throughout Infisical, such
             as importing policies and resources directly within the UI.
@@ -33,7 +31,7 @@ export const ExternalMigrationsTab = () => {
       {/* Bulk Data Import Section */}
       <div className="border-mineshaft-600 bg-mineshaft-900 rounded-lg border p-4">
         <div className="mb-4">
-          <h2 className="text-mineshaft-100 text-xl font-semibold">Bulk Data Import</h2>
+          <h2 className="text-mineshaft-100 text-xl font-medium">Bulk Data Import</h2>
           <p className="mb-6 mt-1 text-sm text-gray-400">
             Perform one-time bulk imports of data from external platforms.
           </p>
