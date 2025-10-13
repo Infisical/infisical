@@ -6,8 +6,17 @@ export enum OrgMembershipRole {
   NoAccess = "no-access"
 }
 
+export enum NamespaceMembershipRole {
+  Admin = "admin",
+  Member = "member",
+  NoAccess = "no-access"
+}
+
 export const isCustomOrgRole = (slug: string) =>
   !Object.values(OrgMembershipRole).includes(slug as OrgMembershipRole);
+
+export const isCustomNamespaceRole = (slug: string) =>
+  !Object.values(NamespaceMembershipRole).includes(slug as NamespaceMembershipRole);
 
 export const isCustomProjectRole = (slug: string) =>
   !Object.values(ProjectMembershipRole).includes(slug as ProjectMembershipRole);

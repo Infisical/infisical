@@ -1,0 +1,1 @@
+export { useNamespace } from "./NamespaceContext";
