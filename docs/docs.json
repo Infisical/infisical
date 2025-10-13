@@ -1779,6 +1779,18 @@
                     ]
                   },
                   {
+                    "group": "Laravel Forge",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/laravel-forge/list",
+                      "api-reference/endpoints/app-connections/laravel-forge/available",
+                      "api-reference/endpoints/app-connections/laravel-forge/get-by-id",
+                      "api-reference/endpoints/app-connections/laravel-forge/get-by-name",
+                      "api-reference/endpoints/app-connections/laravel-forge/create",
+                      "api-reference/endpoints/app-connections/laravel-forge/update",
+                      "api-reference/endpoints/app-connections/laravel-forge/delete"
+                    ]
+                  },
+                  {
                     "group": "LDAP",
                     "pages": [
                       "api-reference/endpoints/app-connections/ldap/list",
