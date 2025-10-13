@@ -2271,6 +2271,19 @@
                     ]
                   },
                   {
+                    "group": "Laravel Forge",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/laravel-forge/list",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/get-by-id",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/get-by-name",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/create",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/update",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/delete",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Netlify",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/netlify/list",
