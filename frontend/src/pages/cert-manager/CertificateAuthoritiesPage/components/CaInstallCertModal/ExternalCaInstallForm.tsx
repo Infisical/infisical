@@ -113,7 +113,7 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
             </div>
           </div>
           <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
-            <p className="mr-4 whitespace-pre-wrap break-all">{csr}</p>
+            <p className="mr-4 break-all whitespace-pre-wrap">{csr}</p>
           </div>
         </>
       )}

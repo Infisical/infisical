@@ -3,10 +3,10 @@ import { faStar } from "@fortawesome/free-regular-svg-icons";
 import {
   faCaretDown,
   faCheck,
+  faCube,
   faMagnifyingGlass,
   faPlus,
-  faStar as faSolidStar,
-  faTable
+  faStar as faSolidStar
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, linkOptions } from "@tanstack/react-router";
@@ -16,6 +16,7 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -106,14 +107,16 @@ export const ProjectSelect = () => {
             projectId: currentWorkspace.id
           }}
         >
-          <div className="flex cursor-pointer items-center gap-2 text-sm text-white duration-100 hover:text-primary">
-            <div>
-              <FontAwesomeIcon icon={faTable} className="text-xs text-bunker-300" />
-            </div>
+          <div className="relative flex cursor-pointer items-center gap-2 text-sm text-white duration-100 hover:text-primary">
             <Tooltip content={currentWorkspace.name} className="max-w-96 break-words">
-              <div className="max-w-44 overflow-hidden text-ellipsis whitespace-nowrap">
+              <Badge
+                variant="project"
+                className="max-w-44 overflow-hidden text-sm text-ellipsis whitespace-nowrap"
+              >
+                <FontAwesomeIcon icon={faCube} />
+
                 {currentWorkspace?.name}
-              </div>
+              </Badge>
             </Tooltip>
           </div>
         </Link>
@@ -135,7 +138,7 @@ export const ProjectSelect = () => {
           className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
           style={{ minWidth: "220px" }}
         >
-          <div className="px-2 py-1 text-xs capitalize text-mineshaft-400">Projects</div>
+          <div className="px-2 py-1 text-xs text-mineshaft-400 capitalize">Projects</div>
           <div className="mb-1 border-b border-b-mineshaft-600 py-1 pb-1">
             <Input
               value={searchProject}
@@ -146,7 +149,7 @@ export const ProjectSelect = () => {
               placeholder="Search projects"
             />
           </div>
-          <div className="thin-scrollbar max-h-80 overflow-auto">
+          <div className="max-h-80 thin-scrollbar overflow-auto">
             {projectsSortedByFav
               ?.filter((el) => el.name?.toLowerCase().includes(searchProject.toLowerCase()))
               ?.map((workspace) => {
@@ -174,7 +177,7 @@ export const ProjectSelect = () => {
                     <div className="flex items-center">
                       <div className="flex flex-1 items-center justify-between overflow-hidden">
                         <Tooltip side="right" className="break-words" content={workspace.name}>
-                          <div className="max-w-40 overflow-hidden truncate whitespace-nowrap">
+                          <div className="max-w-40 truncate overflow-hidden whitespace-nowrap">
                             {workspace.name}
                           </div>
                         </Tooltip>

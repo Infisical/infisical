@@ -76,7 +76,8 @@ export enum QueueName {
   TelemetryAggregatedEvents = "telemetry-aggregated-events",
   DailyReminders = "daily-reminders",
   SecretReminderMigration = "secret-reminder-migration",
-  UserNotification = "user-notification"
+  UserNotification = "user-notification",
+  HealthAlert = "health-alert"
 }
 
 export enum QueueJobs {
@@ -124,7 +125,8 @@ export enum QueueJobs {
   TelemetryAggregatedEvents = "telemetry-aggregated-events",
   DailyReminders = "daily-reminders",
   SecretReminderMigration = "secret-reminder-migration",
-  UserNotification = "user-notification-job"
+  UserNotification = "user-notification-job",
+  HealthAlert = "health-alert"
 }
 
 export type TQueueJobTypes = {
@@ -350,6 +352,10 @@ export type TQueueJobTypes = {
   [QueueName.UserNotification]: {
     name: QueueJobs.UserNotification;
     payload: { notifications: TCreateUserNotificationDTO[] };
+  };
+  [QueueName.HealthAlert]: {
+    name: QueueJobs.HealthAlert;
+    payload: undefined;
   };
 };
 

@@ -43,7 +43,7 @@ export const AuditLogStreamHeader = ({ provider, logStreamExists, onBack }: Prop
             rel="noopener noreferrer"
           >
             <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-              <FontAwesomeIcon icon={faBookOpen} className="mb-px mr-1 text-xs" />
+              <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-px text-xs" />
               <span>Docs</span>
               <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="mb-px ml-1 text-[10px]" />
             </div>
@@ -58,7 +58,7 @@ export const AuditLogStreamHeader = ({ provider, logStreamExists, onBack }: Prop
       {onBack && (
         <button
           type="button"
-          className="ml-auto mt-1 text-xs text-mineshaft-400 underline underline-offset-2 hover:text-mineshaft-300"
+          className="mt-1 ml-auto text-xs text-mineshaft-400 underline underline-offset-2 hover:text-mineshaft-300"
           onClick={onBack}
         >
           Select another provider

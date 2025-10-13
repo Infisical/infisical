@@ -43,7 +43,7 @@ export const SecretSharingSection = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <p className="mb-3 text-xl font-semibold">Allow Secret Sharing</p>
+      <p className="mb-3 text-xl font-medium">Allow Secret Sharing</p>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
         {(isAllowed) => (
           <div className="w-max">

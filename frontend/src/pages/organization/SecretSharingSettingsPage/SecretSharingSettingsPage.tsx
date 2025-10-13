@@ -21,7 +21,7 @@ export const SecretSharingSettingsPage = withPermission(
         </Helmet>
         <div className="flex w-full justify-center bg-bunker-800 text-white">
           <div className="w-full max-w-7xl">
-            <PageHeader title="Secret Share Settings" />
+            <PageHeader scope="org" title="Secret Share Settings" />
             <SecretSharingSettingsTabGroup />
           </div>
         </div>

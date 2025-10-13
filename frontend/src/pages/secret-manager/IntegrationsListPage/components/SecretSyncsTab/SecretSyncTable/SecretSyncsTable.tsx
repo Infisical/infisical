@@ -301,7 +301,7 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
               <FontAwesomeIcon icon={faFilter} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="thin-scrollbar max-h-[70vh] overflow-y-auto" align="end">
+          <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
             <DropdownMenuLabel>Status</DropdownMenuLabel>
             {[SecretSyncStatus.Running, SecretSyncStatus.Succeeded, SecretSyncStatus.Failed].map(
               (status) => (
@@ -441,7 +441,7 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
                   </IconButton>
                 </div>
               </Th>
-              <Th className="min-w-[10.5rem]">
+              <Th className="min-w-42">
                 <div className="flex items-center">
                   Status
                   <IconButton

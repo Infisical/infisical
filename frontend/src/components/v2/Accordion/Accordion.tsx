@@ -27,7 +27,7 @@ export const AccordionTrigger = forwardRef<
   <AccordionPrimitive.Header className="flex">
     <AccordionPrimitive.Trigger
       className={twMerge(
-        "group flex h-11 flex-1 items-center justify-between px-4 py-2 outline-none hover:text-primary data-[state=open]:text-primary",
+        "group flex h-11 flex-1 items-center justify-between px-4 py-2 outline-hidden hover:text-primary data-[state=open]:text-primary",
         className
       )}
       {...props}
@@ -36,7 +36,7 @@ export const AccordionTrigger = forwardRef<
       {children}
       <FontAwesomeIcon
         icon={faChevronDown}
-        className="text-sm transition-transform duration-300 ease-[cubic-bezier(0.87,_0,_0.13,_1)] group-data-[state=open]:rotate-180"
+        className="text-sm transition-transform duration-300 ease-[cubic-bezier(0.87,0,0.13,1)] group-data-[state=open]:rotate-180"
         aria-hidden
       />
     </AccordionPrimitive.Trigger>
@@ -53,7 +53,7 @@ export const AccordionContent = forwardRef<
 >(({ children, className, childrenClassName, ...props }, forwardedRef) => (
   <AccordionPrimitive.Content
     className={twMerge(
-      "overflow-hidden data-[state=closed]:animate-slideUp data-[state=open]:animate-slideDown",
+      "data-[state=closed]:animate-slide-up data-[state=open]:animate-slide-down overflow-hidden",
       className
     )}
     {...props}

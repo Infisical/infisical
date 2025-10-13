@@ -25,35 +25,46 @@ Please ensure you have the following before beginning installation of Infisical:
   Select your Linux distribution to get started. Only AMD64-based systems are supported at this time, ARM support is coming soon.
 
   <Tabs>
+    <Tab title="Debian/Ubuntu">
 
-  <Tab title="Debian/Ubuntu">
-  Add the Infisical repository:
-  ```bash
-  curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-core/setup.deb.sh' | sudo -E bash
-  ```
+    <Warning>
+      As of October 10, 2025, all future releases for Debian/Ubuntu will be distributed via the official Infisical repository at https://artifacts-infisical-core.infisical.com.
+      No new releases will be published for Debian/Ubuntu on Cloudsmith going forward.
+    </Warning>
 
-  Install Infisical:
-  ```bash
-  sudo apt-get update && sudo apt-get install -y infisical-core
-  ```
+      Add the Infisical repository:
+      ```bash
+      curl -1sLf 'https://artifacts-infisical-core.infisical.com/setup.deb.sh' | sudo -E bash
+      ```
 
-  > **Note**: For production use, we recommend locking to a specific version to ensure consistency. [View available versions](https://cloudsmith.io/~infisical/repos/infisical-core/packages/).
+      Install Infisical:
+      ```bash
+      sudo apt-get update && sudo apt-get install -y infisical-core
+      ```
+
+      > **Note**: For production use, we recommend locking to a specific version to ensure consistency. [View available versions](https://github.com/Infisical/infisical/releases). All versions from `infisical-core-0.150.0~nightly~20251005` and above are supported.
+
   </Tab>
+    <Tab title="RedHat/CentOS/Amazon Linux">
 
-  <Tab title="RedHat/CentOS/Amazon Linux">
-  Add the Infisical repository:
-  ```bash
-  curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-core/setup.rpm.sh' | sudo -E bash
-  ```
+    <Warning>
+      As of October 10, 2025, all future releases for Red Hat/CentOS/Amazon Linux will be distributed via the official Infisical repository at https://artifacts-infisical-core.infisical.com.
+      No new releases will be published for Red Hat/CentOS/Amazon Linux on Cloudsmith going forward.
+    </Warning>
 
-  Install Infisical:
-  ```bash
-  sudo yum install infisical-core
-  ```
+      Add the Infisical repository:
+      ```bash
+      curl -1sLf 'https://artifacts-infisical-core.infisical.com/setup.rpm.sh' | sudo -E bash
+      ```
 
-  > **Note**: For production use, we recommend locking to a specific version to ensure consistency. [View available versions](https://cloudsmith.io/~infisical/repos/infisical-core/packages/).
-  </Tab>
+      Install Infisical:
+      ```bash
+      sudo yum install infisical-core
+      ```
 
+      > **Note**: For production use, we recommend locking to a specific version to ensure consistency. [View available versions](https://github.com/Infisical/infisical/releases). All versions from `infisical-core-0.150.0~nightly~20251005` and above are supported.
+      
+    </Tab>
   </Tabs>
 
   Verify the installation:

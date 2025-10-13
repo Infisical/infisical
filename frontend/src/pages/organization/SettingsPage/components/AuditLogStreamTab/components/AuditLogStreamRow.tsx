@@ -56,7 +56,7 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
           <span className="hidden lg:inline">{providerDetails.name}</span>
         </div>
       </Td>
-      <Td className="!min-w-[8rem] max-w-0">
+      <Td className="max-w-0 min-w-32!">
         <div className="flex w-full items-center">
           <p className="truncate">{url}</p>
         </div>

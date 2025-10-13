@@ -6,6 +6,7 @@ export * from "./EmailVerificationTemplate";
 export * from "./ExternalImportFailedTemplate";
 export * from "./ExternalImportStartedTemplate";
 export * from "./ExternalImportSucceededTemplate";
+export * from "./HealthAlertTemplate";
 export * from "./IntegrationSyncFailedTemplate";
 export * from "./NewDeviceLoginTemplate";
 export * from "./OAuthPasswordResetTemplate";

@@ -75,7 +75,7 @@ export const MicrosoftTeamsIntegrationForm = ({ adminIntegrationsConfig }: Props
           <AccordionTrigger className="flex h-fit w-full justify-start rounded-md border border-mineshaft-500 bg-mineshaft-700 px-4 py-6 text-sm transition-colors data-[state=open]:rounded-b-none">
             <div className="text-md group order-1 ml-3 flex items-center gap-2">
               <BsMicrosoftTeams className="text-lg group-hover:text-primary-400" />
-              <div className="text-[15px] font-semibold">Microsoft Teams</div>
+              <div className="text-[15px] font-medium">Microsoft Teams</div>
             </div>
           </AccordionTrigger>
           <AccordionContent childrenClassName="px-0 py-0">

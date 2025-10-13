@@ -18,7 +18,7 @@ export const HoverObject = ({ text, icon, color }: Props): JSX.Element => (
       </a>
     </HoverCard.Trigger>
     <HoverCard.Portal>
-      <HoverCard.Content className="HoverCardContent z-[300]" sideOffset={5}>
+      <HoverCard.Content className="HoverCardContent z-300" sideOffset={5}>
         <div className="rounded-md border border-mineshaft-600 bg-bunker-700 p-2 text-bunker-300 drop-shadow-xl">
           <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
             <div>

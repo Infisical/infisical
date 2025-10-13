@@ -23,6 +23,7 @@ const Page = () => {
       {session && (
         <div className="mx-auto mb-6 flex w-full max-w-7xl flex-col">
           <PageHeader
+            scope="project"
             title={`${session.accountName} Session`}
             description={`View details for this ${session.accountName} session.`}
           />

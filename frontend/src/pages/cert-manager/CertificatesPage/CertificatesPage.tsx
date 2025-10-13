@@ -33,6 +33,7 @@ export const CertificatesPage = () => {
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-7xl">
         <PageHeader
+          scope="project"
           title="Certificates"
           description="View and track issued certificates, monitor expiration dates, and manage certificate lifecycles."
         />

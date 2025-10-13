@@ -30,7 +30,7 @@ export const EnvironmentSecretRow = ({
           <FontAwesomeIcon className="pl-2" size="sm" icon={faEyeSlash} />
         </Tooltip>
       )}
-      <div className="flex-1 pl-3 pr-2">
+      <div className="flex-1 pr-2 pl-3">
         <InfisicalSecretInput
           onChange={() => {}}
           isReadOnly

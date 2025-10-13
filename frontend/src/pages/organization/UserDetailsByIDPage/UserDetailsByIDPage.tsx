@@ -119,6 +119,7 @@ const Page = withPermission(
         {membership && (
           <div className="mx-auto mb-6 w-full max-w-7xl">
             <PageHeader
+              scope="org"
               title={
                 membership.user.firstName || membership.user.lastName
                   ? `${membership.user.firstName} ${membership.user.lastName ?? ""}`.trim()
@@ -170,7 +171,7 @@ const Page = withPermission(
                               membership.isActive
                                 ? twMerge(
                                     isAllowed
-                                      ? "hover:!bg-red-500 hover:!text-white"
+                                      ? "hover:bg-red-500! hover:text-white!"
                                       : "pointer-events-none cursor-not-allowed opacity-50"
                                   )
                                 : ""
@@ -215,7 +216,7 @@ const Page = withPermission(
                           <DropdownMenuItem
                             className={twMerge(
                               isAllowed
-                                ? "hover:!bg-red-500 hover:!text-white"
+                                ? "hover:bg-red-500! hover:text-white!"
                                 : "pointer-events-none cursor-not-allowed opacity-50"
                             )}
                             onClick={() => {

@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
 
 import { ProjectPermissionSshHostActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TCreateSshLoginMappingsDTO } from "./ssh-host-types";
@@ -59,11 +60,12 @@ export const createSshLoginMappings = async ({
 
         for await (const user of users) {
           // check that each user has access to the SSH project
-          await permissionService.getUserProjectPermission({
-            userId: user.id,
+          await permissionService.getProjectPermission({
+            actor: ActorType.USER,
+            actorId: user.id,
             projectId,
-            authMethod: actorAuthMethod,
-            userOrgId: actorOrgId,
+            actorAuthMethod,
+            actorOrgId,
             actionProjectType: ActionProjectType.SSH
           });
         }

@@ -22,7 +22,7 @@ export const PamResourceHeader = ({ resourceType, onBack }: Props) => {
       {onBack && (
         <button
           type="button"
-          className="ml-auto mt-1 text-xs text-mineshaft-400 underline underline-offset-2 hover:text-mineshaft-300"
+          className="mt-1 ml-auto text-xs text-mineshaft-400 underline underline-offset-2 hover:text-mineshaft-300"
           onClick={onBack}
         >
           Select another resource type

@@ -103,7 +103,7 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
             <THead>
               <Tr className="text-xs font-medium">
                 <Th className="py-1 font-normal">Name</Th>
-                <Th className="whitespace-nowrap py-1 font-normal">Number of Uses</Th>
+                <Th className="py-1 font-normal whitespace-nowrap">Number of Uses</Th>
                 <Th className="py-1 font-normal">Expires</Th>
                 <Th className="w-5 py-1 font-normal" />
               </Tr>

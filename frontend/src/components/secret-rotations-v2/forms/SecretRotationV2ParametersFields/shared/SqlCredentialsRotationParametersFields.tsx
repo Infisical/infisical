@@ -74,7 +74,7 @@ export const SqlCredentialsRotationParametersFields = () => {
           to suit your needs.
         </p>
         <p className="mb-3 text-sm">
-          <pre className="max-h-[10rem] overflow-y-auto whitespace-pre-wrap rounded border border-mineshaft-700 bg-mineshaft-800 p-2 text-mineshaft-300">
+          <pre className="max-h-40 overflow-y-auto rounded-sm border border-mineshaft-700 bg-mineshaft-800 p-2 whitespace-pre-wrap text-mineshaft-300">
             {rotationOption!.template.createUserStatement}
           </pre>
         </p>

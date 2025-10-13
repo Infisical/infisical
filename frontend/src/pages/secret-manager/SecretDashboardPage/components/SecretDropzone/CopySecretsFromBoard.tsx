@@ -180,7 +180,7 @@ export const CopySecretsFromBoard = ({
               control={control}
               name="secretPath"
               render={({ field }) => (
-                <FormControl label="Secret Path" className="flex-grow" isRequired>
+                <FormControl label="Secret Path" className="grow" isRequired>
                   <SecretPathInput
                     {...field}
                     placeholder="Provide a path, default is /"

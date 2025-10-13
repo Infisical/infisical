@@ -25,7 +25,9 @@ export const BillingTabGroup = withPermission(
       <Tabs defaultValue={tabs[0].key}>
         <TabList>
           {tabsFiltered.map((tab) => (
-            <Tab value={tab.key}>{tab.name}</Tab>
+            <Tab variant="org" value={tab.key}>
+              {tab.name}
+            </Tab>
           ))}
         </TabList>
         <TabPanel value={tabs[0].key}>

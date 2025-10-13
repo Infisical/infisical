@@ -26,8 +26,8 @@ export const PamResourceOption = ({
         ) : (
           <>
             <p className="truncate">{children}</p>
-            <div className="ml-2 mr-auto">
-              <Badge className="flex h-5 items-center gap-1 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+            <div className="mr-auto ml-2">
+              <Badge className="flex h-5 items-center gap-1 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
                 <img
                   alt={`${name} logo`}
                   src={`/images/integrations/${image}`}

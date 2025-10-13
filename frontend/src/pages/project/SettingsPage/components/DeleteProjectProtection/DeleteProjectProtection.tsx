@@ -32,7 +32,7 @@ export const DeleteProjectProtection = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <p className="mb-3 text-xl font-semibold">Delete Protection</p>
+      <p className="mb-3 text-xl font-medium">Delete Protection</p>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
         {(isAllowed) => (
           <div className="w-max">

@@ -19,7 +19,7 @@ export const NoticeBanner = ({ icon = faWarning, title, children, className }: P
   >
     <FontAwesomeIcon icon={icon} className="pr-6 text-4xl text-white/80" />
     <div className="flex w-full flex-col text-sm">
-      <div className="mb-2 text-lg font-semibold">{title}</div>
+      <div className="mb-2 text-lg font-medium">{title}</div>
       <div>{children}</div>
     </div>
   </div>

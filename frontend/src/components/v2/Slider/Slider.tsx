@@ -55,7 +55,7 @@ const sliderFillVariants = cva("absolute h-full rounded-full", {
 });
 
 const sliderThumbVariants = cva(
-  "absolute w-4 h-4 rounded-full shadow transform -translate-x-1/2 -mt-1.5 focus:outline-none",
+  "absolute w-4 h-4 rounded-full shadow-sm transform -translate-x-1/2 -mt-1.5 focus:outline-hidden",
   {
     variants: {
       variant: {

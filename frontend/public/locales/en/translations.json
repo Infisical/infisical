@@ -270,7 +270,7 @@
       "description": "This page shows the members of the selected project, and allows you to modify their permissions."
     },
     "org": {
-      "title": "Organization Settings",
+      "title": "Settings",
       "description": "Manage members of your organization. These users could afterwards be formed into projects."
     },
     "personal": {
@@ -290,7 +290,7 @@
       }
     },
     "project": {
-      "title": "Project Settings",
+      "title": "Settings",
       "description": "These settings only apply to the currently selected Project.",
       "danger-zone": "Danger Zone",
       "delete-project": "Delete Project",

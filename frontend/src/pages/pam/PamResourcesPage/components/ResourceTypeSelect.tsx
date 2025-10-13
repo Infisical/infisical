@@ -95,7 +95,7 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
         placeholder="Search options..."
         className="bg-mineshaft-800 placeholder:text-mineshaft-400"
       />
-      <div className="grid h-[29.5rem] grid-cols-4 content-start gap-2">
+      <div className="grid h-118 grid-cols-4 content-start gap-2">
         {filteredOptions.slice(offset, perPage * page)?.map((option) => {
           const { image, name, size = 50 } = PAM_RESOURCE_TYPE_MAP[option.resource];
 

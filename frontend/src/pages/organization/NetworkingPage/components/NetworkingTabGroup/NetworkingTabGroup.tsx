@@ -22,7 +22,7 @@ export const NetworkingTabGroup = () => {
     <Tabs value={selectedTab} onValueChange={setSelectedTab}>
       <TabList>
         {tabs.map((tab) => (
-          <Tab value={tab.key} key={tab.key}>
+          <Tab variant="org" value={tab.key} key={tab.key}>
             {tab.name}
           </Tab>
         ))}

@@ -108,7 +108,7 @@ export const EditDynamicSecretGcpIamForm = ({
       <form onSubmit={handleSubmit(handleUpdateDynamicSecret)} autoComplete="off">
         <div>
           <div className="flex items-center space-x-2">
-            <div className="flex-grow">
+            <div className="grow">
               <Controller
                 control={control}
                 name="newName"
@@ -155,7 +155,7 @@ export const EditDynamicSecretGcpIamForm = ({
             </div>
           </div>
           <div>
-            <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
               Configuration
             </div>
 
@@ -165,7 +165,7 @@ export const EditDynamicSecretGcpIamForm = ({
               render={({ field, fieldState: { error } }) => (
                 <FormControl
                   label="Service Account Email"
-                  className="flex-grow"
+                  className="grow"
                   isError={Boolean(error?.message)}
                   errorText={error?.message}
                 >

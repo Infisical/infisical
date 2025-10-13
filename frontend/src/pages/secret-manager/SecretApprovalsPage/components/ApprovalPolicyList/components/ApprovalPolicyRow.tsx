@@ -140,7 +140,7 @@ export const ApprovalPolicyRow = ({
                 </IconButton>
               </DropdownMenuTrigger>
             </DropdownMenuTrigger>
-            <DropdownMenuContent sideOffset={2} align="end" className="min-w-[12rem] p-1">
+            <DropdownMenuContent sideOffset={2} align="end" className="min-w-48 p-1">
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
                 a={ProjectPermissionSub.SecretApproval}
@@ -180,10 +180,10 @@ export const ApprovalPolicyRow = ({
         </Td>
       </Tr>
       <Tr>
-        <Td colSpan={6} className="!border-none p-0">
+        <Td colSpan={6} className="border-none! p-0">
           <div
             className={`w-full overflow-hidden bg-mineshaft-900/75 transition-all duration-500 ease-in-out ${
-              isExpanded ? "thin-scrollbar max-h-[26rem] !overflow-y-auto opacity-100" : "max-h-0"
+              isExpanded ? "max-h-104 thin-scrollbar overflow-y-auto! opacity-100" : "max-h-0"
             }`}
           >
             <div className="p-4">
@@ -193,19 +193,16 @@ export const ApprovalPolicyRow = ({
                   {labels.length > 1 && (
                     <div className="flex w-12 flex-col items-center gap-2 pr-4">
                       <div
-                        className={twMerge(
-                          "flex-grow border-mineshaft-600",
-                          index !== 0 && "border-r"
-                        )}
+                        className={twMerge("grow border-mineshaft-600", index !== 0 && "border-r")}
                       />
                       {labels.length > 1 && (
-                        <Badge className="my-auto flex h-5 w-min min-w-5 items-center justify-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-center text-bunker-200">
+                        <Badge className="my-auto flex h-5 w-min min-w-5 items-center justify-center gap-1.5 bg-mineshaft-400/50 text-center whitespace-nowrap text-bunker-200">
                           <span>{index + 1}</span>
                         </Badge>
                       )}
                       <div
                         className={twMerge(
-                          "flex-grow border-mineshaft-600",
+                          "grow border-mineshaft-600",
                           index < labels.length - 1 && "border-r"
                         )}
                       />
@@ -228,7 +225,7 @@ export const ApprovalPolicyRow = ({
                                   <span className="text-xs">
                                     <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
                                       <div>
-                                        <Badge className="pointer-events-none ml-1 mr-auto flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+                                        <Badge className="pointer-events-none mr-auto ml-1 flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
                                           <FontAwesomeIcon icon={faBan} />
                                           Inactive
                                         </Badge>

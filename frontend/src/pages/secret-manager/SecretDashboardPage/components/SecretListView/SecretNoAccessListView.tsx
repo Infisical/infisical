@@ -39,7 +39,7 @@ export const SecretNoAccessListView = ({ count, isRotationView }: Props) => {
                   <FontAwesomeIcon
                     icon={faRotate}
                     size="xs"
-                    className="absolute -bottom-[0.05rem] -right-[0.2rem] text-mineshaft-400"
+                    className="absolute -right-[0.2rem] -bottom-[0.05rem] text-mineshaft-400"
                   />
                 </div>
               ) : (
@@ -49,14 +49,14 @@ export const SecretNoAccessListView = ({ count, isRotationView }: Props) => {
                 />
               )}
             </div>
-            <div className="ml-[0.05rem] flex h-11 w-80 flex-shrink-0 items-center border-r border-mineshaft-600 px-4 py-2">
+            <div className="ml-[0.05rem] flex h-11 w-80 shrink-0 items-center border-r border-mineshaft-600 px-4 py-2">
               <Input
                 autoComplete="off"
                 isReadOnly
                 variant="plain"
                 value="NO ACCESS"
                 isDisabled
-                className="w-full px-0 blur-sm placeholder:text-red-500 focus:text-bunker-100 focus:ring-transparent"
+                className="w-full px-0 blur-xs placeholder:text-red-500 focus:text-bunker-100 focus:ring-transparent"
               />
             </div>
             <Blur className="pl-8" />

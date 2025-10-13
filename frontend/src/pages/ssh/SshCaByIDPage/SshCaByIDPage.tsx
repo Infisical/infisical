@@ -70,7 +70,7 @@ const Page = () => {
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={data.friendlyName}>
+          <PageHeader scope="project" title={data.friendlyName}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
                 <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
@@ -88,7 +88,7 @@ const Page = () => {
                     <DropdownMenuItem
                       className={twMerge(
                         isAllowed
-                          ? "hover:!bg-red-500 hover:!text-white"
+                          ? "hover:bg-red-500! hover:text-white!"
                           : "pointer-events-none cursor-not-allowed opacity-50"
                       )}
                       onClick={() =>

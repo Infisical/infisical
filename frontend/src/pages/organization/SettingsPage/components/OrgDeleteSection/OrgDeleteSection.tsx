@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { useOrganization, useOrgPermission } from "@app/context";
+import { OrgMembershipRole } from "@app/helpers/roles";
 import { useDeleteOrgById } from "@app/hooks/api";
 import { clearSession } from "@app/hooks/api/users/queries";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -11,7 +12,7 @@ export const OrgDeleteSection = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
 
-  const { membership } = useOrgPermission();
+  const { hasOrgRole } = useOrgPermission();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["deleteOrg"] as const);
 
@@ -52,7 +53,7 @@ export const OrgDeleteSection = () => {
           variant="outline_bg"
           type="submit"
           onClick={() => handlePopUpOpen("deleteOrg")}
-          isDisabled={Boolean(membership && membership.role !== "admin")}
+          isDisabled={Boolean(!hasOrgRole(OrgMembershipRole.Admin))}
         >
           {`Delete ${currentOrg?.name}`}
         </Button>

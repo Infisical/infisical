@@ -197,7 +197,7 @@ export const SlackIntegrationForm = ({ onClose }: Props) => {
                 <FormControl
                   isError={Boolean(error)}
                   errorText={error?.message}
-                  className="mb-2 mt-3"
+                  className="mt-3 mb-2"
                 >
                   <Switch
                     id="secret-approval-notification"

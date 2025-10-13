@@ -65,7 +65,8 @@ export const ProjectsPage = () => {
       </Helmet>
       <div className="mb-4 flex flex-col items-start justify-start">
         <PageHeader
-          title="Projects"
+          scope="org"
+          title="Overview"
           description="Your team's complete security toolkit - organized and ready when you need them."
         />
       </div>

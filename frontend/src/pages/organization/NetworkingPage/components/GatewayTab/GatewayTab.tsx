@@ -103,7 +103,7 @@ export const GatewayTab = withPermission(
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-mineshaft-100">Gateways</h3>
+            <h3 className="text-lg font-medium text-mineshaft-100">Gateways</h3>
             <a
               href="https://infisical.com/docs/documentation/platform/gateways/overview"
               target="_blank"
@@ -160,7 +160,7 @@ export const GatewayTab = withPermission(
                     <Td>
                       <div className="flex items-center gap-2">
                         <span>{el.name}</span>
-                        <span className="rounded bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
+                        <span className="rounded-sm bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
                           Gateway v{el.isV1 ? "1" : "2"}
                         </span>
                       </div>

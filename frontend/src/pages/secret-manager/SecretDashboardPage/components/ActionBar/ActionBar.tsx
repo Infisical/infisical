@@ -380,7 +380,7 @@ export const ActionBar = ({
     }
   };
 
-  // Replicate Folder Logic
+  // Replicate Secrets Logic
   const createSecretCount = Object.keys(
     (popUp.confirmUpload?.data as TSecOverwriteOpt)?.create || {}
   ).length;
@@ -439,17 +439,22 @@ export const ActionBar = ({
           const processBatches = async () => {
             await secretBatches.reduce(async (previous, batch) => {
               await previous;
+              try {
+                const { secrets: batchSecrets } = await fetchDashboardProjectSecretsByKeys({
+                  secretPath: normalizedPath,
+                  environment,
+                  projectId,
+                  keys: batch
+                });
 
-              const { secrets: batchSecrets } = await fetchDashboardProjectSecretsByKeys({
-                secretPath: normalizedPath,
-                environment,
-                projectId,
-                keys: batch
-              });
-
-              batchSecrets.forEach((secret) => {
-                existingSecretLookup.add(`${normalizedPath}-${secret.secretKey}`);
-              });
+                batchSecrets.forEach((secret) => {
+                  existingSecretLookup.add(`${normalizedPath}-${secret.secretKey}`);
+                });
+              } catch (error) {
+                if (!(error instanceof AxiosError && error.response?.status === 404)) {
+                  throw error;
+                }
+              }
             }, Promise.resolve());
           };
 
@@ -682,7 +687,7 @@ export const ActionBar = ({
                 size="sm"
                 variant="outline_bg"
                 className={twMerge(
-                  "flex h-[2.5rem]",
+                  "flex h-10",
                   isTableFiltered && "border-primary/40 bg-primary/10"
                 )}
                 leftIcon={
@@ -779,7 +784,7 @@ export const ActionBar = ({
                       {Boolean(filteredTags) && <Badge>{filteredTags} Applied</Badge>}
                     </div>
                   </DropdownSubMenuTrigger>
-                  <DropdownSubMenuContent className="thin-scrollbar max-h-[20rem] overflow-y-auto rounded-l-none">
+                  <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
                     <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
                       <div className="flex w-full items-center justify-between">
                         <span>Filter by Secret Tags</span>
@@ -818,7 +823,7 @@ export const ActionBar = ({
             Clear Filters
           </Button>
         )}
-        <div className="flex-grow" />
+        <div className="grow" />
         <div>
           {isProtectedBranch && (
             <Tooltip content={`Protected by policy ${protectedBranchPolicyName}`}>
@@ -1050,7 +1055,7 @@ export const ActionBar = ({
                       className="h-10 text-left"
                       isFullWidth
                     >
-                      Replicate Folder
+                      Replicate Secrets
                     </Button>
                   )}
                 </ProjectPermissionCan>
@@ -1061,7 +1066,7 @@ export const ActionBar = ({
       </div>
       <div
         className={twMerge(
-          "h-0 flex-shrink-0 overflow-hidden transition-all",
+          "h-0 shrink-0 overflow-hidden transition-all",
           isMultiSelectActive && "h-16"
         )}
       >

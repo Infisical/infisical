@@ -1,6 +1,7 @@
+import { Identity } from "@app/hooks/api/identities/types";
 import { OrgMembershipStatus } from "@app/hooks/api/organization/types";
 
-import { Organization } from "../types";
+import { Organization, User } from "../types";
 
 export enum LoginMethod {
   EMAIL = "email",
@@ -32,6 +33,21 @@ export type OrganizationWithProjects = Organization & {
     slug: string;
     createdAt: string;
   }[];
+};
+
+export type TGetOrganizationsResponse = {
+  organizations: OrganizationWithProjects[];
+  total: number;
+};
+
+export type TGetIdentitiesResponse = {
+  identities: Identity[];
+  total: number;
+};
+
+export type TGetUsersResponse = {
+  users: User[];
+  total: number;
 };
 
 export type TServerConfig = {
@@ -81,19 +97,22 @@ export type TCreateAdminUserDTO = {
 };
 
 export type AdminGetOrganizationsFilters = {
-  limit: number;
-  searchTerm: string;
+  searchTerm?: string;
+  limit?: number;
+  offset?: number;
 };
 
 export type AdminGetUsersFilters = {
-  limit: number;
-  searchTerm: string;
-  adminsOnly: boolean;
+  limit?: number;
+  offset?: number;
+  searchTerm?: string;
+  adminsOnly?: boolean;
 };
 
 export type AdminGetIdentitiesFilters = {
-  limit: number;
-  searchTerm: string;
+  limit?: number;
+  offset?: number;
+  searchTerm?: string;
 };
 
 export type AdminIntegrationsConfig = {

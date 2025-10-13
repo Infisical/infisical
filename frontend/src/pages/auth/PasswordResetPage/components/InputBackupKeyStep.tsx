@@ -45,7 +45,7 @@ export const InputBackupKeyStep = ({ verificationToken, onComplete }: Props) => 
       onSubmit={handleSubmit(getEncryptedKeyHandler)}
       className="mx-auto flex w-full flex-col items-center justify-center"
     >
-      <h1 className="mb-2 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
+      <h1 className="mb-2 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
         Enter your backup key
       </h1>
       <p className="w-max justify-center text-center text-sm text-gray-400">

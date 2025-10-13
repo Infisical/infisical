@@ -34,7 +34,7 @@ export const SshCaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
   return ca ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-semibold text-mineshaft-100">SSH CA Details</h3>
+        <h3 className="text-lg font-medium text-mineshaft-100">SSH CA Details</h3>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Edit}
           a={ProjectPermissionSub.SshCertificateAuthorities}
@@ -63,7 +63,7 @@ export const SshCaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
       </div>
       <div className="pt-4">
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">SSH CA ID</p>
+          <p className="text-sm font-medium text-mineshaft-300">SSH CA ID</p>
           <div className="group flex align-top">
             <p className="text-sm text-mineshaft-300">{ca.id}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
@@ -84,21 +84,21 @@ export const SshCaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Friendly Name</p>
+          <p className="text-sm font-medium text-mineshaft-300">Friendly Name</p>
           <p className="text-sm text-mineshaft-300">{ca.friendlyName}</p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Status</p>
+          <p className="text-sm font-medium text-mineshaft-300">Status</p>
           <p className="text-sm text-mineshaft-300">{caStatusToNameMap[ca.status]}</p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Key Algorithm</p>
+          <p className="text-sm font-medium text-mineshaft-300">Key Algorithm</p>
           <p className="text-sm text-mineshaft-300">
             {sshCertKeyAlgorithmToNameMap[ca.keyAlgorithm]}
           </p>
         </div>
         <div>
-          <p className="text-sm font-semibold text-mineshaft-300">Public Key</p>
+          <p className="text-sm font-medium text-mineshaft-300">Public Key</p>
           <div className="group flex align-top">
             <p className="flex-1 text-sm text-mineshaft-300">{ca.publicKey.substring(0, 20)}...</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">

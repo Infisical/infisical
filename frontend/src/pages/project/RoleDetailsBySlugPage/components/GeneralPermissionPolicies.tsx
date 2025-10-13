@@ -138,7 +138,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
       >
         <FontAwesomeIcon className="mr-6 w-4" icon={isOpen ? faChevronDown : faChevronRight} />
 
-        <div className="flex-grow select-none text-base">{title}</div>
+        <div className="grow text-base select-none">{title}</div>
         {fields.length > 1 && (
           <div>
             <Tag size="xs" className="mr-2 px-2">
@@ -247,7 +247,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                             colorSchema="danger"
                             variant="plain"
                             size="xs"
-                            className="ml-auto mr-3 rounded"
+                            className="mr-3 ml-auto rounded-sm"
                             onClick={() => remove(rootIndex)}
                             isDisabled={isDisabled}
                           >
@@ -280,7 +280,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                           colorSchema="danger"
                           variant="plain"
                           size="xs"
-                          className="ml-auto rounded"
+                          className="ml-auto rounded-sm"
                           onClick={() => remove(rootIndex)}
                           isDisabled={isDisabled}
                         >
@@ -289,7 +289,7 @@ export const GeneralPermissionPolicies = <T extends keyof NonNullable<TFormSchem
                       </Tooltip>
                     )}
                   </div>
-                  <div className="flex flex-grow flex-wrap justify-start gap-x-8 gap-y-4">
+                  <div className="flex grow flex-wrap justify-start gap-x-8 gap-y-4">
                     {actions.map(({ label, value }, index) => {
                       if (typeof value !== "string") return undefined;
 

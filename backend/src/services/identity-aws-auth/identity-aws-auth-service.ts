@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import axios from "axios";
 import RE2 from "re2";
 
-import { IdentityAuthMethod } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -17,9 +17,10 @@ import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedEr
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityAwsAuthDALFactory } from "./identity-aws-auth-dal";
 import { extractPrincipalArn, extractPrincipalArnEntity } from "./identity-aws-auth-fns";
@@ -36,9 +37,10 @@ import {
 type TIdentityAwsAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   identityAwsAuthDAL: Pick<TIdentityAwsAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 export type TIdentityAwsAuthServiceFactory = ReturnType<typeof identityAwsAuthServiceFactory>;
@@ -80,9 +82,10 @@ function isValidAwsRegion(region: string | null): boolean {
 export const identityAwsAuthServiceFactory = ({
   identityAccessTokenDAL,
   identityAwsAuthDAL,
-  identityOrgMembershipDAL,
+  membershipIdentityDAL,
   licenseService,
-  permissionService
+  permissionService,
+  orgDAL
 }: TIdentityAwsAuthServiceFactoryDep) => {
   const login = async ({ identityId, iamHttpRequestMethod, iamRequestBody, iamRequestHeaders }: TLoginAwsAuthDTO) => {
     const identityAwsAuth = await identityAwsAuthDAL.findOne({ identityId });
@@ -90,7 +93,10 @@ export const identityAwsAuthServiceFactory = ({
       throw new NotFoundError({ message: "AWS auth method not found for identity, did you configure AWS auth?" });
     }
 
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityAwsAuth.identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.findOne({
+      actorIdentityId: identityAwsAuth.identityId,
+      scope: AccessScope.Organization
+    });
     if (!identityMembershipOrg) throw new UnauthorizedError({ message: "Identity not attached to a organization" });
 
     const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
@@ -153,7 +159,7 @@ export const identityAwsAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityAwsAuthDAL.transaction(async (tx) => {
-      await identityOrgMembershipDAL.updateById(
+      await membershipIdentityDAL.updateById(
         identityMembershipOrg.id,
         {
           lastLoginAuthMethod: IdentityAuthMethod.AWS_AUTH,
@@ -226,7 +232,13 @@ export const identityAwsAuthServiceFactory = ({
   }: TAttachAwsAuthDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.AWS_AUTH)) {
@@ -242,13 +254,13 @@ export const identityAwsAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -269,7 +281,7 @@ export const identityAwsAuthServiceFactory = ({
     const identityAwsAuth = await identityAwsAuthDAL.transaction(async (tx) => {
       const doc = await identityAwsAuthDAL.create(
         {
-          identityId: identityMembershipOrg.identityId,
+          identityId: identityMembershipOrg.identity.id,
           type: "iam",
           stsEndpoint,
           allowedPrincipalArns,
@@ -283,7 +295,7 @@ export const identityAwsAuthServiceFactory = ({
       );
       return doc;
     });
-    return { ...identityAwsAuth, orgId: identityMembershipOrg.orgId };
+    return { ...identityAwsAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   const updateAwsAuth = async ({
@@ -300,7 +312,13 @@ export const identityAwsAuthServiceFactory = ({
     actor,
     actorOrgId
   }: TUpdateAwsAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.AWS_AUTH)) {
@@ -321,13 +339,13 @@ export const identityAwsAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -357,11 +375,17 @@ export const identityAwsAuthServiceFactory = ({
         : undefined
     });
 
-    return { ...updatedAwsAuth, orgId: identityMembershipOrg.orgId };
+    return { ...updatedAwsAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   const getAwsAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetAwsAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.AWS_AUTH)) {
@@ -375,12 +399,12 @@ export const identityAwsAuthServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
-    return { ...awsIdentityAuth, orgId: identityMembershipOrg.orgId };
+    return { ...awsIdentityAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   const revokeIdentityAwsAuth = async ({
@@ -390,17 +414,23 @@ export const identityAwsAuthServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TRevokeAwsAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.AWS_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have aws auth"
       });
     }
-    const { permission, membership } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission(
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
@@ -408,14 +438,15 @@ export const identityAwsAuthServiceFactory = ({
 
     const { permission: rolePermission } = await permissionService.getOrgPermission(
       ActorType.IDENTITY,
-      identityMembershipOrg.identityId,
-      identityMembershipOrg.orgId,
+      identityMembershipOrg.identity.id,
+      identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
     );
 
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
-      membership.shouldUseNewPrivilegeSystem,
+      shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,
       OrgPermissionSubjects.Identity,
       permission,
@@ -426,7 +457,7 @@ export const identityAwsAuthServiceFactory = ({
       throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to revoke aws auth of identity with more privileged role",
-          membership.shouldUseNewPrivilegeSystem,
+          shouldUseNewPrivilegeSystem,
           OrgPermissionIdentityActions.RevokeAuth,
           OrgPermissionSubjects.Identity
         ),
@@ -437,7 +468,7 @@ export const identityAwsAuthServiceFactory = ({
       const deletedAwsAuth = await identityAwsAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.AWS_AUTH }, tx);
 
-      return { ...deletedAwsAuth?.[0], orgId: identityMembershipOrg.orgId };
+      return { ...deletedAwsAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
     return revokedIdentityAwsAuth;
   };

@@ -178,6 +178,14 @@ export enum TableName {
   SecretScanningScan = "secret_scanning_scans",
   SecretScanningFinding = "secret_scanning_findings",
   SecretScanningConfig = "secret_scanning_configs",
+
+  Membership = "memberships",
+  MembershipRole = "membership_roles",
+  Role = "roles",
+  AdditionalPrivilege = "additional_privileges",
+
+  Namespace = "namespaces",
+
   // reminders
   Reminder = "reminders",
   ReminderRecipient = "reminders_recipients",
@@ -302,7 +310,39 @@ export enum ActionProjectType {
   Any = "any"
 }
 
+export enum TemporaryPermissionMode {
+  Relative = "relative"
+}
+
+export enum MembershipActors {
+  Group = "group",
+  User = "user",
+  Identity = "identity"
+}
+
 export enum SortDirection {
   ASC = "asc",
   DESC = "desc"
 }
+
+export enum AccessScope {
+  Organization = "organization",
+  Namespace = "namespace",
+  Project = "project"
+}
+
+export type AccessScopeData =
+  | {
+      scope: AccessScope.Organization;
+      orgId: string;
+    }
+  | {
+      scope: AccessScope.Namespace;
+      orgId: string;
+      namespaceId: string;
+    }
+  | {
+      scope: AccessScope.Project;
+      orgId: string;
+      projectId: string;
+    };

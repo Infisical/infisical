@@ -181,7 +181,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
           >
             <Tab
               className={({ selected }) =>
-                `w-30 -mb-[0.14rem] px-4 py-2 text-sm font-medium outline-none disabled:opacity-60 ${
+                `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
                   selected
                     ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
                     : "text-bunker-300"
@@ -192,7 +192,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
             </Tab>
             <Tab
               className={({ selected }) =>
-                `w-30 -mb-[0.14rem] px-4 py-2 text-sm font-medium outline-none disabled:opacity-60 ${
+                `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
                   selected
                     ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
                     : "text-bunker-300"
@@ -205,7 +205,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
           {selectedTabIndex === 1 && (
             <div className="mb-2 text-xs text-mineshaft-300">Requires ldaps:// URL</div>
           )}
-          <Tab.Panels className="mb-4 rounded border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
+          <Tab.Panels className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
             <Tab.Panel>
               <Controller
                 name="credentials.url"
@@ -244,7 +244,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
                       label="Binding Password"
                     >
                       <SecretInput
-                        containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                        containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
                       />
@@ -266,7 +266,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     isOptional
                   >
                     <TextArea
-                      className="h-[3.6rem] !resize-none"
+                      className="h-[3.6rem] resize-none!"
                       {...field}
                       isDisabled={!sslEnabled}
                     />
@@ -290,7 +290,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
                       onCheckedChange={onChange}
                       isDisabled={!sslEnabled}
                     >
-                      <p className="w-[9.5rem]">
+                      <p className="w-38">
                         Reject Unauthorized
                         <Tooltip
                           className="max-w-md"

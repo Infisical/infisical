@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faClone } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpRightFromSquare, faBookOpen, faClone } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -226,8 +226,27 @@ export const ReplicateFolderFromBoard = ({
       <ModalContent
         bodyClassName="overflow-visible"
         className="max-w-2xl"
-        title="Replicate Folder Content From An Environment"
-        subTitle="Replicate folder content from other environments into this context"
+        title={
+          <div className="flex items-center gap-1 text-mineshaft-300">
+            <span>Replicate Secrets</span>
+            <a
+              target="_blank"
+              href="https://infisical.com/docs/documentation/platform/folder#replicating-folder-contents"
+              className="mb-1 ml-1"
+              rel="noopener noreferrer"
+            >
+              <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-[0.03rem] text-[12px]" />
+                <span>Docs</span>
+                <FontAwesomeIcon
+                  icon={faArrowUpRightFromSquare}
+                  className="mb-[0.07rem] ml-1 text-[10px]"
+                />
+              </div>
+            </a>
+          </div>
+        }
+        subTitle="Copy folder contents from other locations into this context"
       >
         <form onSubmit={handleSubmit(handleFormSubmit)}>
           <div className="flex items-center space-x-2">
@@ -235,7 +254,12 @@ export const ReplicateFolderFromBoard = ({
               control={control}
               name="environment"
               render={({ field: { value, onChange } }) => (
-                <FormControl label="Environment" isRequired className="w-1/3">
+                <FormControl
+                  tooltipText="The environment to replicate secrets from"
+                  label="Source Environment"
+                  isRequired
+                  className="w-1/3"
+                >
                   <FilterableSelect
                     value={value}
                     onChange={onChange}
@@ -251,7 +275,12 @@ export const ReplicateFolderFromBoard = ({
               control={control}
               name="secretPath"
               render={({ field }) => (
-                <FormControl label="Secret Path" className="flex-grow" isRequired>
+                <FormControl
+                  tooltipText="The folder to use as a root for replication. Using /foo as a root for /foo/bar will result in /bar being copied to this context."
+                  label="Source Root Path"
+                  className="grow"
+                  isRequired
+                >
                   <SecretPathInput
                     {...field}
                     placeholder="Provide a path, default is /"
@@ -261,44 +290,49 @@ export const ReplicateFolderFromBoard = ({
               )}
             />
           </div>
-          <div className="border-t border-mineshaft-600 pt-4">
-            <Controller
-              control={control}
-              name="secrets"
-              render={({ field: { onChange } }) => (
-                <FormControl className="flex-grow" isRequired>
-                  <SecretTreeView
-                    data={secretsFilteredByPath}
-                    basePath={debouncedEnvCopySecretPath}
-                    onChange={onChange}
-                  />
-                </FormControl>
-              )}
-            />
-            <div className="my-6 ml-2">
-              <Switch
-                id="populate-include-value"
-                isChecked={shouldIncludeValues}
-                onCheckedChange={(isChecked) => {
-                  setValue("secrets", []);
-                  setShouldIncludeValues(isChecked as boolean);
-                }}
+          <Controller
+            control={control}
+            name="secrets"
+            render={({ field: { onChange } }) => (
+              <FormControl
+                tooltipText="The folders and secrets to replicate into this context"
+                className="grow"
+                label="Affected Subjects"
+                isRequired
               >
-                Include secret values
-              </Switch>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Button
-                leftIcon={<FontAwesomeIcon icon={faClone} />}
-                type="submit"
-                isDisabled={!selectedSecrets || selectedSecrets.length === 0}
-              >
-                Replicate Folder
-              </Button>
-              <Button variant="plain" colorSchema="secondary" onClick={() => onToggle(false)}>
-                Cancel
-              </Button>
-            </div>
+                <SecretTreeView
+                  data={secretsFilteredByPath}
+                  basePath={debouncedEnvCopySecretPath}
+                  onChange={onChange}
+                />
+              </FormControl>
+            )}
+          />
+          <div className="my-6 ml-2">
+            <Switch
+              id="populate-include-value"
+              isChecked={shouldIncludeValues}
+              onCheckedChange={(isChecked) => {
+                setValue("secrets", []);
+                setShouldIncludeValues(isChecked as boolean);
+              }}
+            >
+              Include secret values
+            </Switch>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Button
+              leftIcon={<FontAwesomeIcon icon={faClone} />}
+              type="submit"
+              variant="outline_bg"
+              colorSchema="secondary"
+              isDisabled={!selectedSecrets || selectedSecrets.length === 0}
+            >
+              Replicate Secrets
+            </Button>
+            <Button variant="plain" colorSchema="secondary" onClick={() => onToggle(false)}>
+              Cancel
+            </Button>
           </div>
         </form>
       </ModalContent>

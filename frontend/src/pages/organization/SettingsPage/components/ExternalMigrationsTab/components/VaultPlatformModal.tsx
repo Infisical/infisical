@@ -255,14 +255,14 @@ export const VaultPlatformModal = ({ onClose }: Props) => {
                   <div
                     key={el.value}
                     className={twMerge(
-                      "flex w-full cursor-pointer flex-col items-center gap-2 rounded border border-mineshaft-600 p-4 opacity-75 transition-all",
+                      "flex w-full cursor-pointer flex-col items-center gap-2 rounded-sm border border-mineshaft-600 p-4 opacity-75 transition-all",
                       field.value === el.value
-                        ? "border-primary-700 border-opacity-70 bg-mineshaft-700 opacity-100"
+                        ? "border-opacity-70 border-primary-700 bg-mineshaft-700 opacity-100"
                         : "hover:border-primary-800/75 hover:bg-mineshaft-600",
                       el.isCustom && "col-span-2",
                       el.isCustom &&
                         !isCustomMigrationAvailable?.data?.enabled &&
-                        "!cursor-not-allowed !border-mineshaft-600 !bg-mineshaft-600 !opacity-40"
+                        "cursor-not-allowed! border-mineshaft-600! bg-mineshaft-600! opacity-40!"
                     )}
                     onClick={() => {
                       if (el.isCustom && !isCustomMigrationAvailable?.data?.enabled) return;

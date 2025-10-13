@@ -230,8 +230,8 @@ const renderJsonWithDiffs = (
   const getLineClass = (different: boolean) => {
     if (!different) return "flex";
     return isOldVersion
-      ? "flex bg-red-500/50 rounded-sm text-red-300"
-      : "flex bg-green-500/50 rounded-sm text-green-300";
+      ? "flex bg-red-500/50 rounded-xs text-red-300"
+      : "flex bg-green-500/50 rounded-xs text-green-300";
   };
 
   const prefix = isDifferent ? (isOldVersion ? " -" : " +") : " ";
@@ -253,7 +253,7 @@ const renderJsonWithDiffs = (
 
     return (
       <div key={reactKey} className={getLineClass(isDifferent)}>
-        <div className="w-4 flex-shrink-0">{prefix}</div>
+        <div className="w-4 shrink-0">{prefix}</div>
         <div>
           {indent}
           {keyName && <span>{keyDisplay}</span>}
@@ -267,7 +267,7 @@ const renderJsonWithDiffs = (
   if (isArray(obj) && obj.length === 0) {
     return (
       <div key={reactKey} className={getLineClass(isDifferent)}>
-        <div className="w-4 flex-shrink-0">{prefix}</div>
+        <div className="w-4 shrink-0">{prefix}</div>
         <div>
           {indent}
           {keyName && <span>{keyDisplay}</span>}
@@ -281,7 +281,7 @@ const renderJsonWithDiffs = (
   if (isObject(obj) && Object.keys(obj).length === 0) {
     return (
       <div key={reactKey} className={getLineClass(isDifferent)}>
-        <div className="w-4 flex-shrink-0">{prefix}</div>
+        <div className="w-4 shrink-0">{prefix}</div>
         <div>
           {indent}
           {keyName && <span>{keyDisplay}</span>}
@@ -320,7 +320,7 @@ const renderJsonWithDiffs = (
     return (
       <div key={reactKey}>
         <div className={getLineClass(isContainerAddedOrRemoved)}>
-          <div className="w-4 flex-shrink-0">
+          <div className="w-4 shrink-0">
             {isContainerAddedOrRemoved ? (isOldVersion ? " -" : " +") : " "}
           </div>
           <div>
@@ -353,7 +353,7 @@ const renderJsonWithDiffs = (
         })}
 
         <div className={getLineClass(isContainerAddedOrRemoved)}>
-          <div className="w-4 flex-shrink-0">
+          <div className="w-4 shrink-0">
             {isContainerAddedOrRemoved ? (isOldVersion ? " -" : " +") : " "}
           </div>
           <div>
@@ -372,7 +372,7 @@ const renderJsonWithDiffs = (
     return (
       <div key={reactKey}>
         <div className={getLineClass(isContainerAddedOrRemoved)}>
-          <div className="w-4 flex-shrink-0">
+          <div className="w-4 shrink-0">
             {isContainerAddedOrRemoved ? (isOldVersion ? " -" : " +") : " "}
           </div>
           <div>
@@ -406,7 +406,7 @@ const renderJsonWithDiffs = (
         })}
 
         <div className={getLineClass(isContainerAddedOrRemoved)}>
-          <div className="w-4 flex-shrink-0">
+          <div className="w-4 shrink-0">
             {isContainerAddedOrRemoved ? (isOldVersion ? " -" : " +") : " "}
           </div>
           <div>
@@ -420,7 +420,7 @@ const renderJsonWithDiffs = (
 
   return (
     <div key={reactKey} className={getLineClass(isDifferent)}>
-      <div className="w-4 flex-shrink-0">{prefix}</div>
+      <div className="w-4 shrink-0">{prefix}</div>
       <div>
         {indent}
         {keyDisplay}
@@ -439,7 +439,7 @@ const formatAddedJson = (json: JsonValue): JSX.Element => {
         const lineKey = `added-${line.slice(0, 30)}-${lineIndex}`;
         return (
           <div key={lineKey} className="flex">
-            <div className="w-4 flex-shrink-0">+</div>
+            <div className="w-4 shrink-0">+</div>
             <div>{line}</div>
           </div>
         );
@@ -456,7 +456,7 @@ const formatDeletedJson = (json: JsonValue): JSX.Element => {
         const lineKey = `deleted-${line.slice(0, 30)}-${lineIndex}`;
         return (
           <div key={lineKey} className="flex">
-            <div className="w-4 flex-shrink-0">-</div>
+            <div className="w-4 shrink-0">-</div>
             <div>{line}</div>
           </div>
         );
@@ -522,7 +522,7 @@ export const SecretVersionDiffView = ({
     }
 
     oldVersionContent = (
-      <div className="w-fit min-w-[100%] font-mono text-sm">
+      <div className="w-fit min-w-full font-mono text-sm">
         {renderJsonWithDiffs(
           cleanOldVersion,
           diffPaths,
@@ -538,7 +538,7 @@ export const SecretVersionDiffView = ({
       </div>
     );
     newVersionContent = (
-      <div className="w-fit min-w-[100%] font-mono text-sm">
+      <div className="w-fit min-w-full font-mono text-sm">
         {renderJsonWithDiffs(
           cleanNewVersion,
           diffPaths,
@@ -578,19 +578,19 @@ export const SecretVersionDiffView = ({
     if (item.isDeleted) {
       textStyle = "line-through text-red-300";
       changeBadge = (
-        <span className="ml-2 whitespace-nowrap rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
+        <span className="ml-2 rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium whitespace-nowrap">
           {isSecret ? "Secret" : "Folder"} Deleted
         </span>
       );
     } else if (item.isAdded) {
       changeBadge = (
-        <span className="ml-2 whitespace-nowrap rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
+        <span className="ml-2 rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium whitespace-nowrap">
           {isSecret ? "Secret" : "Folder"} Added
         </span>
       );
     } else if (item.isUpdated) {
       changeBadge = (
-        <span className="ml-2 whitespace-nowrap rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium">
+        <span className="ml-2 rounded-md bg-mineshaft-600 px-2 py-0.5 text-xs font-medium whitespace-nowrap">
           {isSecret ? "Secret" : "Folder"} Updated
         </span>
       );
@@ -644,14 +644,14 @@ export const SecretVersionDiffView = ({
           <div className="flex gap-3">
             <div
               ref={oldContainerRef}
-              className="thin-scrollbar max-h-96 flex-1 overflow-auto whitespace-pre"
+              className="max-h-96 thin-scrollbar flex-1 overflow-auto whitespace-pre"
             >
               {oldVersionContent}
             </div>
             <div className="max-h-96 w-[0.05rem] self-stretch bg-mineshaft-600" />
             <div
               ref={newContainerRef}
-              className="thin-scrollbar max-h-96 flex-1 overflow-auto whitespace-pre"
+              className="max-h-96 thin-scrollbar flex-1 overflow-auto whitespace-pre"
             >
               {newVersionContent}
             </div>
