@@ -130,9 +130,9 @@ export const CloudIntegrationSection = ({
                 tabIndex={0}
                 className={`group relative ${
                   cloudIntegration.isAvailable
-                    ? "hover:bg-mineshaft-700 cursor-pointer duration-200"
+                    ? "cursor-pointer duration-200 hover:bg-mineshaft-700"
                     : "opacity-50"
-                } border-mineshaft-600 bg-mineshaft-800 flex h-36 flex-col items-center justify-center rounded-md border p-3`}
+                } flex h-36 flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3`}
                 onClick={() => {
                   if (isSyncAvailable) {
                     navigate({
@@ -180,9 +180,9 @@ export const CloudIntegrationSection = ({
                 </div>
                 {cloudIntegration.isAvailable &&
                   Boolean(integrationAuths?.[cloudIntegration.slug]) && (
-                    <div className="absolute right-0 top-0 z-30 h-full">
+                    <div className="absolute top-0 right-0 z-30 h-full">
                       <div className="relative h-full">
-                        <div className="bg-primary absolute right-0 top-0 w-24 flex-row items-center overflow-hidden whitespace-nowrap rounded-bl-md rounded-tr-md px-2 py-0.5 text-xs text-black opacity-80 transition-all duration-300 group-hover:w-0 group-hover:p-0">
+                        <div className="absolute top-0 right-0 w-24 flex-row items-center overflow-hidden rounded-tr-md rounded-bl-md bg-primary px-2 py-0.5 text-xs whitespace-nowrap text-black opacity-80 transition-all duration-300 group-hover:w-0 group-hover:p-0">
                           <FontAwesomeIcon icon={faCheck} className="mr-2 text-xs" />
                           Authorized
                         </div>
@@ -197,7 +197,7 @@ export const CloudIntegrationSection = ({
                                 provider: cloudIntegration.slug
                               });
                             }}
-                            className="bg-red absolute right-0 top-0 flex h-0 w-12 cursor-pointer items-center justify-center overflow-hidden rounded-r-md text-xs opacity-50 transition-all duration-300 hover:opacity-100 group-hover:h-full"
+                            className="absolute top-0 right-0 flex h-0 w-12 cursor-pointer items-center justify-center overflow-hidden rounded-r-md bg-red text-xs opacity-50 transition-all duration-300 group-hover:h-full hover:opacity-100"
                           >
                             <FontAwesomeIcon icon={faXmark} size="xl" />
                           </div>
@@ -208,7 +208,7 @@ export const CloudIntegrationSection = ({
                 {isSyncAvailable && (
                   <div className="absolute bottom-0 left-0 z-30 h-full w-full">
                     <div className="relative h-full">
-                      <div className="bg-yellow/20 text-yellow absolute bottom-0 left-0 w-full flex-row overflow-hidden whitespace-nowrap rounded-bl-md rounded-br-md px-2 py-0.5 text-center text-xs">
+                      <div className="absolute bottom-0 left-0 w-full flex-row overflow-hidden rounded-br-md rounded-bl-md bg-yellow/20 px-2 py-0.5 text-center text-xs whitespace-nowrap text-yellow">
                         Secret Sync Available
                       </div>
                     </div>
@@ -230,7 +230,7 @@ export const CloudIntegrationSection = ({
           {Array.from({ length: 16 }).map((_, index) => (
             <div
               key={`dummy-cloud-integration-${index + 1}`}
-              className="border-mineshaft-600 bg-mineshaft-800 h-32 animate-pulse rounded-md border"
+              className="h-32 animate-pulse rounded-md border border-mineshaft-600 bg-mineshaft-800"
             />
           ))}
         </div>
