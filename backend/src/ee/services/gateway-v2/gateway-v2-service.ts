@@ -2,7 +2,6 @@ import net from "node:net";
 
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
-import { CronJob } from "cron";
 
 import { OrgMembershipRole, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -891,7 +890,7 @@ export const gatewayV2ServiceFactory = ({
     });
   };
 
-  const $healthcheckNotify = async () => {
+  const healthcheckNotify = async () => {
     const unhealthyGateways = await gatewayV2DAL.find({
       isHeartbeatStale: true
     });
@@ -945,18 +944,6 @@ export const gatewayV2ServiceFactory = ({
     }
   };
 
-  const initializeHealthcheckNotify = async () => {
-    logger.info("Setting up background notification process for gateway v2 health-checks");
-
-    await $healthcheckNotify();
-
-    // run every 5 minutes
-    const job = new CronJob("*/5 * * * *", $healthcheckNotify);
-    job.start();
-
-    return job;
-  };
-
   return {
     listGateways,
     registerGateway,
@@ -965,6 +952,6 @@ export const gatewayV2ServiceFactory = ({
     deleteGatewayById,
     heartbeat,
     getPamSessionKey,
-    initializeHealthcheckNotify
+    healthcheckNotify
   };
 };

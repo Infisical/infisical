@@ -2,7 +2,6 @@ import { isIP } from "node:net";
 
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
-import { CronJob } from "cron";
 
 import { OrgMembershipRole, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -1209,7 +1208,7 @@ export const relayServiceFactory = ({
     return deletedRelay;
   };
 
-  const $healthcheckNotify = async () => {
+  const healthcheckNotify = async () => {
     const unhealthyRelays = await relayDAL.find({
       isHeartbeatStale: true
     });
@@ -1283,18 +1282,6 @@ export const relayServiceFactory = ({
     }
   };
 
-  const initializeHealthcheckNotify = async () => {
-    logger.info("Setting up background notification process for relay health-checks");
-
-    await $healthcheckNotify();
-
-    // run every 5 minutes
-    const job = new CronJob("*/5 * * * *", $healthcheckNotify);
-    job.start();
-
-    return job;
-  };
-
   return {
     registerRelay,
     getCredentialsForGateway,
@@ -1302,6 +1289,6 @@ export const relayServiceFactory = ({
     getRelays,
     deleteRelay,
     heartbeat,
-    initializeHealthcheckNotify
+    healthcheckNotify
   };
 };
