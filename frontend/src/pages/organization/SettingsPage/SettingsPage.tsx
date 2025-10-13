@@ -15,7 +15,7 @@ export const SettingsPage = () => {
       </Helmet>
       <div className="flex w-full justify-center bg-bunker-800 text-white">
         <div className="w-full max-w-7xl">
-          <PageHeader title={t("settings.org.title")} />
+          <PageHeader scope="org" title={t("settings.org.title")} />
           <OrgTabGroup />
         </div>
       </div>

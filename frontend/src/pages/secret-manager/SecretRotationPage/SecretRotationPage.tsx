@@ -147,6 +147,7 @@ const Page = () => {
   return (
     <div className="container mx-auto w-full max-w-7xl bg-bunker-800 text-white">
       <PageHeader
+        scope="project"
         title="Secret Rotation"
         description="Stop manually rotating secrets and automate credential rotation."
       >

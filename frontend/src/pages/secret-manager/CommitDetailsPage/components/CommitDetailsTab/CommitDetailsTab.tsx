@@ -260,6 +260,7 @@ export const CommitDetailsTab = ({
         Commit History
       </Button>
       <PageHeader
+        scope="project"
         title={`${parsedCommitDetails.changes?.message}` || "No message"}
         description={
           <>

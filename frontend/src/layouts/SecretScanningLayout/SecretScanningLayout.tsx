@@ -69,7 +69,7 @@ export const SecretScanningLayout = () => {
                     }}
                   >
                     {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
+                      <MenuItem variant="project" isSelected={isActive}>
                         <div className="mx-1 flex gap-2">
                           <div className="w-6">
                             <FontAwesomeIcon icon={faDatabase} />
@@ -86,7 +86,7 @@ export const SecretScanningLayout = () => {
                     }}
                   >
                     {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
+                      <MenuItem variant="project" isSelected={isActive}>
                         <div className="mx-1 flex w-full gap-2">
                           <div className="w-6">
                             <FontAwesomeIcon icon={faMagnifyingGlass} />
@@ -108,7 +108,7 @@ export const SecretScanningLayout = () => {
                     }}
                   >
                     {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
+                      <MenuItem variant="project" isSelected={isActive}>
                         <div className="mx-1 flex gap-2">
                           <div className="w-6">
                             <FontAwesomeIcon icon={faPlug} />
@@ -127,12 +127,12 @@ export const SecretScanningLayout = () => {
                     }}
                   >
                     {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
+                      <MenuItem variant="project" isSelected={isActive}>
                         <div className="mx-1 flex gap-2">
                           <div className="w-6">
                             <FontAwesomeIcon icon={faUsers} />
                           </div>
-                          Access Management
+                          Project Access
                         </div>
                       </MenuItem>
                     )}
@@ -144,7 +144,7 @@ export const SecretScanningLayout = () => {
                     }}
                   >
                     {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
+                      <MenuItem variant="project" isSelected={isActive}>
                         <div className="mx-1 flex gap-2">
                           <div className="w-6">
                             <FontAwesomeIcon icon={faBook} />
@@ -166,7 +166,7 @@ export const SecretScanningLayout = () => {
                           <div className="w-6">
                             <FontAwesomeIcon icon={faCog} />
                           </div>
-                          Settings
+                          Project Settings
                         </div>
                       </MenuItem>
                     )}
@@ -178,6 +178,7 @@ export const SecretScanningLayout = () => {
               <Menu>
                 <Link to="/organization/projects">
                   <MenuItem
+                    variant="project"
                     className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
                     leftIcon={
                       <div className="w-6">

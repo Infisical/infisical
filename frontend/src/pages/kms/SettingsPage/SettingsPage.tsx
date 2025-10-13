@@ -21,7 +21,7 @@ export const SettingsPage = () => {
         <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
       </Helmet>
       <div className="w-full max-w-7xl">
-        <PageHeader title="Settings" />
+        <PageHeader scope="project" title="Settings" />
         <Tabs defaultValue={tabs[0].key}>
           <TabList>
             {tabs.map((tab) => (

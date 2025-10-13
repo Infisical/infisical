@@ -40,6 +40,7 @@ export const SecretApprovalsPage = () => {
       </Helmet>
       <div className="container mx-auto h-full w-full max-w-7xl bg-bunker-800 text-white">
         <PageHeader
+          scope="project"
           title="Approval Workflows"
           description="Create approval policies for any modifications to secrets in sensitive environments and folders."
         />

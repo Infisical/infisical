@@ -82,7 +82,8 @@ export const AccessManagementPage = () => {
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-7xl">
         <PageHeader
-          title="Organization Access Control"
+          scope="org"
+          title="Access Control"
           description="Manage fine-grained access for users, groups, roles, and identities within your organization resources."
         />
         {!currentOrg.shouldUseNewPrivilegeSystem && (
@@ -115,7 +116,7 @@ export const AccessManagementPage = () => {
             {tabSections
               .filter((el) => !el.isHidden)
               .map((el) => (
-                <Tab value={el.key} key={`org-access-tab-${el.key}`}>
+                <Tab variant="org" value={el.key} key={`org-access-tab-${el.key}`}>
                   {el.label}
                 </Tab>
               ))}
