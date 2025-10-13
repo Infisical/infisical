@@ -46,7 +46,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
         <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="mt-4 text-sm text-mineshaft-400">Loading options...</p>
+        <p className="text-mineshaft-400 mt-4 text-sm">Loading options...</p>
       </div>
     );
   }
@@ -60,7 +60,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
         placeholder="Search options..."
         className="bg-mineshaft-800 placeholder:text-mineshaft-400"
       />
-      <div className="grid h-118 grid-cols-4 content-start gap-2">
+      <div className="h-118 grid grid-cols-4 content-start gap-2">
         {filteredOptions.slice(offset, perPage * page)?.map((option) => {
           const {
             image,
@@ -78,9 +78,9 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
                   ? handlePopUpOpen("upgradePlan")
                   : onSelect(option.app)
               }
-              className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
+              className="border-mineshaft-600 bg-mineshaft-700 hover:bg-mineshaft-600 group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border p-4 duration-200"
             >
-              <div className="relative">
+              {image && (
                 <img
                   src={`/images/integrations/${image}`}
                   style={{
@@ -89,14 +89,16 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
                   className="mt-auto"
                   alt={`${name} logo`}
                 />
-                {icon && (
+              )}
+              {icon && (
+                <div className="relative">
                   <FontAwesomeIcon
-                    className="absolute -right-1.5 -bottom-1.5 text-primary-700"
+                    className="text-primary-700 absolute -bottom-1.5 -right-1.5"
                     size="xl"
                     icon={icon}
                   />
-                )}
-              </div>
+                </div>
+              )}
               <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
                 {name}
               </div>
@@ -125,7 +127,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
             service you're looking for,`}{" "}
                     <a
                       target="_blank"
-                      className="underline hover:text-mineshaft-300"
+                      className="hover:text-mineshaft-300 underline"
                       href="https://infisical.com/slack"
                       rel="noopener noreferrer"
                     >
@@ -134,7 +136,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
                     or{" "}
                     <a
                       target="_blank"
-                      className="underline hover:text-mineshaft-300"
+                      className="hover:text-mineshaft-300 underline"
                       href="https://github.com/Infisical/infisical/discussions"
                       rel="noopener noreferrer"
                     >
@@ -145,7 +147,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
                 </>
               }
             >
-              <div className="-ml-3 flex items-center gap-1.5 text-mineshaft-400">
+              <div className="text-mineshaft-400 -ml-3 flex items-center gap-1.5">
                 <span className="text-xs">
                   Don&#39;t see the third-party service you&#39;re looking for?
                 </span>

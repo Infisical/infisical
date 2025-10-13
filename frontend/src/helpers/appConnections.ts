@@ -57,7 +57,14 @@ import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/su
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
-  { name: string; image: string; size?: number; icon?: IconDefinition; enterprise?: boolean }
+  {
+    name: string;
+    image: string;
+    size?: number;
+    icon?: IconDefinition;
+    enterprise?: boolean;
+    imageClassName?: string;
+  }
 > = {
   [AppConnection.AWS]: { name: "AWS", image: "Amazon Web Services.png" },
   [AppConnection.GitHub]: { name: "GitHub", image: "GitHub.png" },
@@ -117,7 +124,11 @@ export const APP_CONNECTION_MAP: Record<
   },
   [AppConnection.Okta]: { name: "Okta", image: "Okta.png" },
   [AppConnection.Redis]: { name: "Redis", image: "Redis.png" },
-  [AppConnection.LaravelForge]: { name: "Laravel Forge", image: "Laravel Forge.png" }
+  [AppConnection.LaravelForge]: {
+    name: "Laravel Forge",
+    image: "Laravel Forge.png",
+    imageClassName: "object-contain"
+  }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
