@@ -19,7 +19,8 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { ProjectOrderBy, ResourceViewMode } from "./ProjectListToggle";
+
+import { ProjectOrderBy, ResourceViewMode } from "./ResourceListToolbar";
 
 type Props = {
   searchValue: string;

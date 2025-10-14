@@ -12,7 +12,7 @@ export const SettingsPage = () => {
         <title>Namespace Settings</title>
       </Helmet>
       <div className="w-full max-w-7xl">
-        <PageHeader title="Settings" />
+        <PageHeader title="Settings" scope="namespace" />
         <OverviewSection />
         <DeleteNamespaceSection />
       </div>

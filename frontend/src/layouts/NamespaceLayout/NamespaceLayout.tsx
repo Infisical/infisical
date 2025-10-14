@@ -22,7 +22,7 @@ export const NamespaceLayout = () => {
       >
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
           <NamespaceSidebar />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 px-4 pb-4 pt-8 dark:[color-scheme:dark]">
+          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 px-4 pt-8 pb-4 dark:[color-scheme:dark]">
             <Outlet />
           </main>
         </div>

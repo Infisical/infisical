@@ -1,17 +1,3 @@
-import {
-  Button,
-  IconButton,
-  Input,
-  Tooltip,
-  DropdownMenu,
-  DropdownMenuItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-  DropdownMenuLabel
-} from "@app/components/v2";
-import { getProjectTitle } from "@app/helpers/project";
-import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowDownAZ,
@@ -23,6 +9,21 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { ReactNode } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
+
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  IconButton,
+  Input,
+  Tooltip
+} from "@app/components/v2";
+import { getProjectTitle } from "@app/helpers/project";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 export enum ResourceListScopeFilter {
   Personal = "personal",
@@ -57,7 +58,7 @@ type Props = {
   children?: ReactNode;
 };
 
-export const Toolbar = ({
+export const ResourceListToolbar = ({
   resourceListScope: resourceListView,
   onSearchChange,
   searchValue,
@@ -74,16 +75,16 @@ export const Toolbar = ({
   const isGridDisabled = resourceListView === ResourceListScopeFilter.Global;
 
   return (
-    <div className="flex w-full flex-row">
+    <div className="flex w-full flex-row gap-2">
       <Input
-        className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50/60 duration-200 focus:bg-mineshaft-700/80"
+        className="bg-mineshaft-800 text-sm placeholder-mineshaft-50/60 duration-200 focus:bg-mineshaft-700/80"
         containerClassName="w-full"
         placeholder="Search by project name..."
         value={searchValue}
         onChange={(e) => onSearchChange(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
       />
-      <div className="mx-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+      <div className="flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
         <Tooltip content="Toggle Sort Direction">
           <IconButton
             className="min-w-[2.4rem] border-none hover:bg-mineshaft-600"
@@ -111,7 +112,7 @@ export const Toolbar = ({
         <DropdownMenuTrigger asChild>
           <div
             className={twMerge(
-              "ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1",
+              "flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1",
               isTableFilteredByType && "border-primary-400 text-primary-400"
             )}
           >
@@ -181,7 +182,7 @@ export const Toolbar = ({
           Global
         </Button>
       </div>
-      <div className="ml-2 flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+      <div className="flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
         <IconButton
           variant="outline_bg"
           onClick={() => {

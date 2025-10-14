@@ -23,7 +23,11 @@ export const OrganizationLayout = () => {
     strict: false,
     select: (el) => el?.projectId
   });
-  const isInsideProject = Boolean(projectId);
+  const namespaceId = useParams({
+    strict: false,
+    select: (el) => el?.namespaceId
+  });
+  const isInsideProject = Boolean(projectId) || Boolean(namespaceId);
 
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
 

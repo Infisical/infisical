@@ -11,8 +11,8 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, usePagination, useResetPageHelper } from "@app/hooks";
-import { namespacesQueryKeys, SearchNamespaceSortBy, TNamespace } from "@app/hooks/api/namespaces";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { namespacesQueryKeys, SearchNamespaceSortBy, TNamespace } from "@app/hooks/api/namespaces";
 
 type Props = {
   searchValue: string;

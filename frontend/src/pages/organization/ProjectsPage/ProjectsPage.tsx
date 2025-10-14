@@ -2,8 +2,13 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { faCube, faCubes, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { NewNamespaceModal } from "@app/components/namespace";
+import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import {
   Button,
@@ -13,33 +18,20 @@ import {
   PageHeader
 } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
+import { OrgPermissionNamespaceActions } from "@app/context/OrgPermissionContext/types";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { AllProjectView } from "./components/AllProjectView";
-import { MyProjectView } from "./components/MyProjectView";
-import { ResourceListScopeFilter, ResourceViewMode, Toolbar } from "./components/ProjectListToggle";
-import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { OrgPermissionCan } from "@app/components/permissions";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCube, faCubes, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { MyNamespaceView } from "./components/MyNamespaceView";
-import { ProjectType } from "@app/hooks/api/projects/types";
-import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
-import { OrgPermissionNamespaceActions } from "@app/context/OrgPermissionContext/types";
 import { AllNamespaceView } from "./components/AllNamespaceView";
-import { NewNamespaceModal } from "@app/components/namespace";
-
-// const formatDescription = (type: ProjectType) => {
-//   if (type === ProjectType.SecretManager)
-//     return "Securely store, manage, and rotate various application secrets, such as database credentials, API keys, etc.";
-//   if (type === ProjectType.CertificateManager)
-//     return "Manage your PKI infrastructure and issue digital certificates for services, applications, and devices.";
-//   if (type === ProjectType.KMS)
-//     return "Centralize the management of keys for cryptographic operations, such as encryption and decryption.";
-//   if (type === ProjectType.SecretScanning)
-//     return "Connect and monitor data sources to prevent secret leaks.";
-//   return "Infisical SSH lets you issue SSH credentials to users for short-lived, secure SSH access to infrastructure.";
-// };
+import { AllProjectView } from "./components/AllProjectView";
+import { MyNamespaceView } from "./components/MyNamespaceView";
+import { MyProjectView } from "./components/MyProjectView";
+import {
+  ResourceListScopeFilter,
+  ResourceListToolbar,
+  ResourceViewMode
+} from "./components/ResourceListToolbar";
 
 export const ProjectsPage = () => {
   const { t } = useTranslation();
@@ -114,7 +106,7 @@ export const ProjectsPage = () => {
         />
       </div>
       <div>
-        <Toolbar
+        <ResourceListToolbar
           resourceListScope={resourceListScope}
           onResourceListScopeChange={handleSetProjectListView}
           resourceViewMode={resourceViewMode}
@@ -195,7 +187,7 @@ export const ProjectsPage = () => {
               </OrgPermissionCan>
             </DropdownMenuContent>
           </DropdownMenu>
-        </Toolbar>
+        </ResourceListToolbar>
       </div>
       <div className="mt-8">
         <div className="mb-4 flex items-center text-xl text-white">

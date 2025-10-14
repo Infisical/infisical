@@ -1,6 +1,7 @@
-import { namespacesQueryKeys } from "@app/hooks/api/namespaces";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
+
+import { namespacesQueryKeys } from "@app/hooks/api/namespaces";
 
 export const useNamespace = () => {
   const params = useParams({

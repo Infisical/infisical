@@ -7,7 +7,7 @@ import { Menu, MenuGroup, MenuItem } from "@app/components/v2";
 import { useNamespace } from "@app/context";
 
 export const NamespaceSidebar = () => {
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
 
   return (
     <AnimatePresence mode="popLayout">
@@ -22,11 +22,8 @@ export const NamespaceSidebar = () => {
       >
         <nav className="items-between flex h-full flex-col overflow-y-auto dark:[color-scheme:dark]">
           <Menu>
-            <MenuGroup title="Namespace">
-              <Link
-                to="/organization/namespaces/$namespaceName/projects"
-                params={{ namespaceName }}
-              >
+            <MenuGroup title="Overview">
+              <Link to="/organization/namespaces/$namespaceId/projects" params={{ namespaceId }}>
                 {({ isActive }) => (
                   <MenuItem isSelected={isActive}>
                     <div className="mx-1 flex gap-2">
@@ -39,8 +36,8 @@ export const NamespaceSidebar = () => {
                 )}
               </Link>
               <Link
-                to="/organization/namespaces/$namespaceName/access-management"
-                params={{ namespaceName }}
+                to="/organization/namespaces/$namespaceId/access-management"
+                params={{ namespaceId }}
               >
                 {({ isActive }) => (
                   <MenuItem isSelected={isActive}>
@@ -48,15 +45,12 @@ export const NamespaceSidebar = () => {
                       <div className="w-6">
                         <FontAwesomeIcon icon={faUsers} />
                       </div>
-                      Access Control
+                      Namespace Access
                     </div>
                   </MenuItem>
                 )}
               </Link>
-              <Link
-                to="/organization/namespaces/$namespaceName/settings"
-                params={{ namespaceName }}
-              >
+              <Link to="/organization/namespaces/$namespaceId/settings" params={{ namespaceId }}>
                 {({ isActive }) => (
                   <MenuItem isSelected={isActive}>
                     <div className="mx-1 flex gap-2">

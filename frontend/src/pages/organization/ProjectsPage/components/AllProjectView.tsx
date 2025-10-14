@@ -17,8 +17,8 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useOrgAdminAccessProject, useSearchProjects } from "@app/hooks/api";
-import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
 
 type Props = {
   searchValue: string;

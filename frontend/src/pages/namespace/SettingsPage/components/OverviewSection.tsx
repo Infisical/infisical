@@ -1,6 +1,5 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -8,10 +7,10 @@ import { NamespacePermissionCan } from "@app/components/permissions";
 import { Button, FormControl, Input, TextArea } from "@app/components/v2";
 import { useNamespace } from "@app/context";
 import {
-  NamespacePermissionActions,
+  NamespacePermissionNamespaceActions,
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
-import { namespacesQueryKeys, useUpdateNamespace } from "@app/hooks/api/namespaces";
+import { useUpdateNamespace } from "@app/hooks/api/namespaces";
 
 const baseFormSchema = z.object({
   name: z
@@ -32,25 +31,20 @@ const baseFormSchema = z.object({
 type BaseFormData = z.infer<typeof baseFormSchema>;
 
 export const OverviewSection = () => {
-  const { namespaceName } = useNamespace();
-  const getNamespaceQuery = useQuery(
-    namespacesQueryKeys.detail({
-      name: namespaceName
-    })
-  );
+  const { namespaceId, namespace } = useNamespace();
 
   const { mutateAsync, isPending } = useUpdateNamespace();
   const { handleSubmit, control } = useForm<BaseFormData>({
     resolver: zodResolver(baseFormSchema),
-    values: getNamespaceQuery?.data
+    values: namespace
   });
 
   const onFormSubmit = async (data: BaseFormData) => {
     try {
       await mutateAsync({
-        name: namespaceName,
+        namespaceId,
         description: data.description,
-        newName: data.name
+        name: data.name
       });
 
       createNotification({
@@ -69,13 +63,13 @@ export const OverviewSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="justify-betweens flex">
-        <h2 className="mb-8 flex-1 text-xl font-semibold text-mineshaft-100">Namespace Overview</h2>
+        <h2 className="mb-8 flex-1 text-xl font-medium text-mineshaft-100">Namespace Overview</h2>
         <div className="space-x-2">
           <Button
             variant="outline_bg"
             size="sm"
             onClick={() => {
-              navigator.clipboard.writeText(namespaceName || "");
+              navigator.clipboard.writeText(namespace.name || "");
               createNotification({
                 text: "Copied namespace name to clipboard",
                 type: "success"
@@ -92,18 +86,14 @@ export const OverviewSection = () => {
           <div className="flex w-full flex-row items-end gap-4">
             <div className="w-full max-w-md">
               <NamespacePermissionCan
-                I={NamespacePermissionActions.Edit}
+                I={NamespacePermissionNamespaceActions.Edit}
                 a={NamespacePermissionSubjects.Namespace}
               >
                 {(isAllowed) => (
                   <Controller
                     defaultValue=""
                     render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                        label="Project name"
-                      >
+                      <FormControl isError={Boolean(error)} errorText={error?.message} label="Name">
                         <Input
                           placeholder="Project name"
                           {...field}
@@ -122,7 +112,7 @@ export const OverviewSection = () => {
           <div className="flex w-full flex-row items-end gap-4">
             <div className="w-full max-w-md">
               <NamespacePermissionCan
-                I={NamespacePermissionActions.Edit}
+                I={NamespacePermissionNamespaceActions.Edit}
                 a={NamespacePermissionSubjects.Namespace}
               >
                 {(isAllowed) => (
@@ -132,7 +122,7 @@ export const OverviewSection = () => {
                       <FormControl
                         isError={Boolean(error)}
                         errorText={error?.message}
-                        label="Namespace description"
+                        label="Description"
                       >
                         <TextArea
                           placeholder="Namespace description"
@@ -152,7 +142,7 @@ export const OverviewSection = () => {
           </div>
           <div>
             <NamespacePermissionCan
-              I={NamespacePermissionActions.Edit}
+              I={NamespacePermissionNamespaceActions.Edit}
               a={NamespacePermissionSubjects.Namespace}
             >
               {(isAllowed) => (

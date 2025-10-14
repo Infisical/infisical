@@ -56,10 +56,10 @@ export const namespaceRolesQueryKeys = {
     queryOptions({
       queryKey: namespaceRolesQueryKeys.permissionsKey(namespaceId),
       queryFn: async () => {
-        const { data } = await apiRequest.get<{ data: TNamespaceUserPermissions }>(
+        const { data } = await apiRequest.get<TNamespaceUserPermissions>(
           `/api/v1/namespaces/${namespaceId}/permissions`
         );
-        return data.data;
+        return data;
       }
     })
 };

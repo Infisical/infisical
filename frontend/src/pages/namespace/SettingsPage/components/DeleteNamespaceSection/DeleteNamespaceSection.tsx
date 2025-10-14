@@ -15,7 +15,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 // TODO(namespace): add leave namespace
 export const DeleteNamespaceSection = () => {
   const navigate = useNavigate();
-  const { namespaceName } = useNamespace();
+  const { namespace, namespaceId } = useNamespace();
 
   const { permission } = useNamespacePermission();
 
@@ -26,7 +26,7 @@ export const DeleteNamespaceSection = () => {
   const handleDeleteNamespaceSubmit = async () => {
     try {
       await mutateAsync({
-        name: namespaceName
+        namespaceId
       });
 
       createNotification({
@@ -61,12 +61,12 @@ export const DeleteNamespaceSection = () => {
             NamespacePermissionSubjects.Namespace
           )}
         >
-          {`Delete namespace ${namespaceName}`}
+          {`Delete namespace ${namespace.name}`}
         </Button>
         <DeleteActionModal
           isOpen={popUp.deleteNamespace.isOpen}
           title="Are you sure you want to delete this organization?"
-          subTitle={`Permanently remove ${namespaceName} and all of its data. This action is not reversible, so please be careful.`}
+          subTitle={`Permanently remove ${namespace.name} and all of its data. This action is not reversible, so please be careful.`}
           onChange={(isOpen) => handlePopUpToggle("deleteNamespace", isOpen)}
           deleteKey="confirm"
           onDeleteApproved={handleDeleteNamespaceSubmit}
