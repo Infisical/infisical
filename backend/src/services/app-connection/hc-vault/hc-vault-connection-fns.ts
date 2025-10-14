@@ -12,10 +12,15 @@ import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
-import { HCVaultConnectionMethod } from "./hc-vault-connection-enums";
+import { HCVaultAuthType, HCVaultConnectionMethod } from "./hc-vault-connection-enums";
 import {
+  THCVaultAuthMount,
+  THCVaultAuthMountResponse,
   THCVaultConnection,
   THCVaultConnectionConfig,
+  THCVaultKubernetesAuthConfig,
+  THCVaultKubernetesAuthRole,
+  THCVaultKubernetesAuthRoleWithConfig,
   THCVaultMount,
   THCVaultMountResponse
 } from "./hc-vault-connection-types";
@@ -187,20 +192,18 @@ export const validateHCVaultConnectionCredentials = async (
 };
 
 export const listHCVaultPolicies = async (
+  namespace: string,
   connection: THCVaultConnection,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  namespace?: string
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
 ) => {
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService);
 
-  if (namespace && connection.credentials.namespace) {
+  if (connection.credentials.namespace && connection.credentials.namespace !== namespace) {
     throw new BadRequestError({
-      message: "Namespace cannot be specified when namespace is already set in the connection credentials"
+      message: "Specified namespace does not match the namespace in the connection credentials"
     });
   }
-
-  const targetNamespace = namespace || connection.credentials.namespace;
 
   try {
     const { data: listData } = await requestWithHCVaultGateway<{
@@ -210,7 +213,7 @@ export const listHCVaultPolicies = async (
       method: "GET",
       headers: {
         "X-Vault-Token": accessToken,
-        ...(targetNamespace ? { "X-Vault-Namespace": targetNamespace } : {})
+        "X-Vault-Namespace": namespace
       }
     });
 
@@ -227,7 +230,7 @@ export const listHCVaultPolicies = async (
             method: "GET",
             headers: {
               "X-Vault-Token": accessToken,
-              ...(targetNamespace ? { "X-Vault-Namespace": targetNamespace } : {})
+              "X-Vault-Namespace": namespace
             }
           });
 
@@ -365,20 +368,18 @@ export const listHCVaultMounts = async (
 };
 
 export const listHCVaultSecretPaths = async (
+  namespace: string,
   connection: THCVaultConnection,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  namespace?: string
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
 ) => {
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService);
 
-  if (namespace && connection.credentials.namespace) {
+  if (connection.credentials.namespace && connection.credentials.namespace !== namespace) {
     throw new BadRequestError({
-      message: "Namespace cannot be specified when namespace is already set in the connection credentials"
+      message: "Specified namespace does not match the namespace in the connection credentials"
     });
   }
-
-  const targetNamespace = namespace || connection.credentials.namespace;
 
   const getPaths = async (mountPath: string, secretPath: string, kvVersion: "1" | "2"): Promise<string[] | null> => {
     try {
@@ -400,7 +401,7 @@ export const listHCVaultSecretPaths = async (
         method: "GET",
         headers: {
           "X-Vault-Token": accessToken,
-          ...(targetNamespace ? { "X-Vault-Namespace": targetNamespace } : {})
+          "X-Vault-Namespace": namespace
         }
       });
 
@@ -470,10 +471,10 @@ export const listHCVaultSecretPaths = async (
 };
 
 export const getHCVaultSecretsForPath = async (
-  connection: THCVaultConnection,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   namespace: string,
-  secretPath: string
+  secretPath: string,
+  connection: THCVaultConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
 ) => {
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService);
@@ -483,8 +484,6 @@ export const getHCVaultSecretsForPath = async (
       message: "Specified namespace does not match the namespace in the connection credentials"
     });
   }
-
-  const targetNamespace = namespace || connection.credentials.namespace;
 
   try {
     // Extract mount and path from the secretPath
@@ -529,7 +528,7 @@ export const getHCVaultSecretsForPath = async (
         method: "GET",
         headers: {
           "X-Vault-Token": accessToken,
-          ...(targetNamespace ? { "X-Vault-Namespace": targetNamespace } : {})
+          "X-Vault-Namespace": namespace
         }
       });
 
@@ -547,7 +546,7 @@ export const getHCVaultSecretsForPath = async (
       method: "GET",
       headers: {
         "X-Vault-Token": accessToken,
-        ...(targetNamespace ? { "X-Vault-Namespace": targetNamespace } : {})
+        "X-Vault-Namespace": namespace
       }
     });
 
@@ -567,6 +566,159 @@ export const getHCVaultSecretsForPath = async (
 
     throw new BadRequestError({
       message: "Unable to fetch secrets from HashiCorp Vault"
+    });
+  }
+};
+
+export const getHCVaultAuthMounts = async (
+  namespace: string,
+  authType: HCVaultAuthType,
+  connection: THCVaultConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+): Promise<THCVaultAuthMount[]> => {
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
+  const accessToken = await getHCVaultAccessToken(connection, gatewayService);
+
+  if (connection.credentials.namespace && connection.credentials.namespace !== namespace) {
+    throw new BadRequestError({
+      message: "Specified namespace does not match the namespace in the connection credentials"
+    });
+  }
+
+  try {
+    const { data } = await requestWithHCVaultGateway<THCVaultAuthMountResponse>(connection, gatewayService, {
+      url: `${instanceUrl}/v1/sys/auth`,
+      method: "GET",
+      headers: {
+        "X-Vault-Token": accessToken,
+        "X-Vault-Namespace": namespace
+      }
+    });
+
+    const authMounts: THCVaultAuthMount[] = [];
+
+    Object.entries(data.data).forEach(([path, authMethod]) => {
+      if (authMethod.type === authType) {
+        authMounts.push({
+          path,
+          type: authMethod.type,
+          description: authMethod.description,
+          accessor: authMethod.accessor
+        });
+      }
+    });
+
+    return authMounts;
+  } catch (error: unknown) {
+    logger.error(error, `Unable to list HC Vault ${authType} auth mounts`);
+
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to list ${authType} auth mounts: ${error.message || "Unknown error"}`
+      });
+    }
+
+    throw new BadRequestError({
+      message: `Unable to list ${authType} auth mounts from HashiCorp Vault`
+    });
+  }
+};
+
+export const getHCVaultKubernetesAuthRoles = async (
+  namespace: string,
+  mountPath: string,
+  connection: THCVaultConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+): Promise<THCVaultKubernetesAuthRoleWithConfig[]> => {
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
+  const accessToken = await getHCVaultAccessToken(connection, gatewayService);
+
+  if (connection.credentials.namespace && connection.credentials.namespace !== namespace) {
+    throw new BadRequestError({
+      message: "Specified namespace does not match the namespace in the connection credentials"
+    });
+  }
+
+  // Remove trailing slash from mount path
+  const cleanMountPath = mountPath.endsWith("/") ? mountPath.slice(0, -1) : mountPath;
+
+  try {
+    // 1. Get the Kubernetes auth configuration for this mount
+    const { data: configResponse } = await requestWithHCVaultGateway<{ data: THCVaultKubernetesAuthConfig }>(
+      connection,
+      gatewayService,
+      {
+        url: `${instanceUrl}/v1/auth/${cleanMountPath}/config`,
+        method: "GET",
+        headers: {
+          "X-Vault-Token": accessToken,
+          "X-Vault-Namespace": namespace
+        }
+      }
+    );
+
+    const kubernetesConfig = configResponse.data;
+
+    // 2. List all roles in this mount
+    const { data: roleListResponse } = await requestWithHCVaultGateway<{ data: { keys: string[] } }>(
+      connection,
+      gatewayService,
+      {
+        url: `${instanceUrl}/v1/auth/${cleanMountPath}/role`,
+        method: "LIST",
+        headers: {
+          "X-Vault-Token": accessToken,
+          "X-Vault-Namespace": namespace
+        }
+      }
+    );
+
+    const roleNames = roleListResponse.data.keys;
+
+    if (!roleNames || roleNames.length === 0) {
+      return [];
+    }
+
+    // 3. Fetch details for each role
+    const roleDetailsPromises = roleNames.map(async (roleName) => {
+      const { data: roleResponse } = await requestWithHCVaultGateway<{ data: THCVaultKubernetesAuthRole }>(
+        connection,
+        gatewayService,
+        {
+          url: `${instanceUrl}/v1/auth/${cleanMountPath}/role/${roleName}`,
+          method: "GET",
+          headers: {
+            "X-Vault-Token": accessToken,
+            "X-Vault-Namespace": namespace
+          }
+        }
+      );
+
+      // 4. Merge the role with the config
+      return {
+        ...roleResponse.data,
+        name: roleName,
+        config: kubernetesConfig,
+        mountPath: cleanMountPath
+      } as THCVaultKubernetesAuthRoleWithConfig;
+    });
+
+    const roles = await Promise.all(roleDetailsPromises);
+
+    return roles;
+  } catch (error: unknown) {
+    logger.error(error, "Unable to list HC Vault Kubernetes auth roles");
+
+    if (error instanceof AxiosError) {
+      const errorMessage =
+        (error.response?.data as { errors?: string[] })?.errors?.[0] || error.message || "Unknown error";
+      throw new BadRequestError({
+        message: `Failed to list Kubernetes auth roles: ${errorMessage}`
+      });
+    }
+
+    throw new BadRequestError({
+      message: "Unable to list Kubernetes auth roles from HashiCorp Vault"
     });
   }
 };

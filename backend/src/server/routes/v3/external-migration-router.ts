@@ -215,7 +215,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     },
     schema: {
       querystring: z.object({
-        namespace: z.string().optional()
+        namespace: z.string()
       }),
       response: {
         200: z.object({
@@ -301,7 +301,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     },
     schema: {
       querystring: z.object({
-        namespace: z.string().optional()
+        namespace: z.string()
       }),
       response: {
         200: z.object({
@@ -317,6 +317,59 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       });
 
       return { secretPaths };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/vault/auth-roles/kubernetes",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        namespace: z.string()
+      }),
+
+      response: {
+        200: z.object({
+          roles: z.array(
+            z.object({
+              name: z.string(),
+              mountPath: z.string(),
+              bound_service_account_names: z.array(z.string()),
+              bound_service_account_namespaces: z.array(z.string()),
+              token_ttl: z.number().optional(),
+              token_max_ttl: z.number().optional(),
+              token_policies: z.array(z.string()).optional(),
+              token_bound_cidrs: z.array(z.string()).optional(),
+              token_explicit_max_ttl: z.number().optional(),
+              token_no_default_policy: z.boolean().optional(),
+              token_num_uses: z.number().optional(),
+              token_period: z.number().optional(),
+              token_type: z.string().optional(),
+              audience: z.string().optional(),
+              alias_name_source: z.string().optional(),
+              config: z.object({
+                kubernetes_host: z.string(),
+                kubernetes_ca_cert: z.string().optional(),
+                issuer: z.string().optional(),
+                disable_iss_validation: z.boolean().optional(),
+                disable_local_ca_jwt: z.boolean().optional()
+              })
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const roles = await server.services.migration.getVaultKubernetesAuthRoles({
+        actor: req.permission,
+        namespace: req.query.namespace
+      });
+
+      return { roles };
     }
   });
 };

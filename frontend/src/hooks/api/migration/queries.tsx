@@ -2,7 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { ExternalMigrationProviders, TExternalMigrationConfig } from "./types";
+import {
+  ExternalMigrationProviders,
+  TExternalMigrationConfig,
+  VaultKubernetesAuthRole
+} from "./types";
 
 export const externalMigrationQueryKeys = {
   customMigrationAvailable: (provider: ExternalMigrationProviders) => [
@@ -13,7 +17,8 @@ export const externalMigrationQueryKeys = {
   vaultNamespaces: () => ["vault-namespaces"],
   vaultPolicies: () => ["vault-policies"],
   vaultMounts: () => ["vault-mounts"],
-  vaultSecretPaths: () => ["vault-secret-paths"]
+  vaultSecretPaths: () => ["vault-secret-paths"],
+  vaultKubernetesAuthRoles: (namespace?: string) => ["vault-kubernetes-auth-roles", namespace]
 };
 
 export const useHasCustomMigrationAvailable = (provider: ExternalMigrationProviders) => {
@@ -103,6 +108,24 @@ export const useGetVaultSecretPaths = (enabled = true, namespace?: string) => {
       });
 
       return data.secretPaths;
+    },
+    enabled
+  });
+};
+
+export const useGetVaultKubernetesAuthRoles = (enabled = true, namespace?: string) => {
+  return useQuery({
+    queryKey: externalMigrationQueryKeys.vaultKubernetesAuthRoles(namespace),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        roles: VaultKubernetesAuthRole[];
+      }>("/api/v3/external-migration/vault/auth-roles/kubernetes", {
+        params: {
+          namespace
+        }
+      });
+
+      return data.roles;
     },
     enabled
   });

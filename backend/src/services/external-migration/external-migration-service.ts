@@ -15,7 +15,10 @@ import { AppConnection } from "../app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "../app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
 import {
+  getHCVaultAuthMounts,
+  getHCVaultKubernetesAuthRoles,
   getHCVaultSecretsForPath,
+  HCVaultAuthType,
   listHCVaultMounts,
   listHCVaultNamespaces,
   listHCVaultPolicies,
@@ -301,7 +304,7 @@ export const externalMigrationServiceFactory = ({
     return namespaces;
   };
 
-  const getVaultPolicies = async ({ actor, namespace }: { actor: OrgServiceActor; namespace?: string }) => {
+  const getVaultPolicies = async ({ actor, namespace }: { actor: OrgServiceActor; namespace: string }) => {
     const { hasRole } = await permissionService.getOrgPermission(
       actor.type,
       actor.id,
@@ -339,7 +342,7 @@ export const externalMigrationServiceFactory = ({
       credentials
     } as THCVaultConnection;
 
-    const policies = await listHCVaultPolicies(connection, gatewayService, namespace);
+    const policies = await listHCVaultPolicies(namespace, connection, gatewayService);
     return policies;
   };
 
@@ -385,7 +388,7 @@ export const externalMigrationServiceFactory = ({
     return mounts;
   };
 
-  const getVaultSecretPaths = async ({ actor, namespace }: { actor: OrgServiceActor; namespace?: string }) => {
+  const getVaultSecretPaths = async ({ actor, namespace }: { actor: OrgServiceActor; namespace: string }) => {
     const { hasRole } = await permissionService.getOrgPermission(
       actor.type,
       actor.id,
@@ -423,7 +426,7 @@ export const externalMigrationServiceFactory = ({
       credentials
     } as THCVaultConnection;
 
-    const secretPaths = await listHCVaultSecretPaths(connection, gatewayService, namespace);
+    const secretPaths = await listHCVaultSecretPaths(namespace, connection, gatewayService);
 
     return secretPaths;
   };
@@ -482,7 +485,7 @@ export const externalMigrationServiceFactory = ({
       credentials
     } as THCVaultConnection;
 
-    const vaultSecrets = await getHCVaultSecretsForPath(connection, gatewayService, vaultNamespace, vaultSecretPath);
+    const vaultSecrets = await getHCVaultSecretsForPath(vaultNamespace, vaultSecretPath, connection, gatewayService);
 
     const secretOperation = await secretService.createManySecretsRaw({
       actorId: actor.id,
@@ -522,6 +525,58 @@ export const externalMigrationServiceFactory = ({
     }
   };
 
+  const getVaultKubernetesAuthRoles = async ({ actor, namespace }: { actor: OrgServiceActor; namespace: string }) => {
+    const { hasRole } = await permissionService.getOrgPermission(
+      actor.type,
+      actor.id,
+      actor.orgId,
+      actor.authMethod,
+      actor.orgId
+    );
+
+    if (!hasRole(OrgMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({ message: "Only admins can view vault Kubernetes auth roles" });
+    }
+
+    const vaultConfig = await externalMigrationConfigDAL.findOne({
+      orgId: actor.orgId,
+      platform: ExternalMigrationProviders.Vault
+    });
+
+    if (!vaultConfig) {
+      throw new NotFoundError({ message: "Vault migration config not found" });
+    }
+
+    if (!vaultConfig.connection) {
+      throw new BadRequestError({ message: "Vault migration connection is not configured" });
+    }
+
+    const credentials = await decryptAppConnectionCredentials({
+      orgId: vaultConfig.orgId,
+      encryptedCredentials: vaultConfig.connection.encryptedCredentials,
+      kmsService,
+      projectId: null
+    });
+
+    const connection = {
+      ...vaultConfig.connection,
+      credentials
+    } as THCVaultConnection;
+
+    // Get all Kubernetes auth mounts for this namespace
+    const authMounts = await getHCVaultAuthMounts(namespace, HCVaultAuthType.Kubernetes, connection, gatewayService);
+
+    // For each mount, get all roles with their configuration
+    const allRolesPromises = authMounts.map(async (mount) => {
+      const roles = await getHCVaultKubernetesAuthRoles(namespace, mount.path, connection, gatewayService);
+      return roles;
+    });
+
+    const rolesPerMount = await Promise.all(allRolesPromises);
+
+    return rolesPerMount.flat();
+  };
+
   return {
     importEnvKeyData,
     importVaultData,
@@ -532,6 +587,7 @@ export const externalMigrationServiceFactory = ({
     getVaultPolicies,
     getVaultMounts,
     getVaultSecretPaths,
-    importVaultSecrets
+    importVaultSecrets,
+    getVaultKubernetesAuthRoles
   };
 };
