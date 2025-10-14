@@ -363,3 +363,210 @@ export const listHCVaultMounts = async (
 
   return mounts;
 };
+
+export const listHCVaultSecretPaths = async (
+  connection: THCVaultConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  namespace?: string
+) => {
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
+  const accessToken = await getHCVaultAccessToken(connection, gatewayService);
+
+  if (namespace && connection.credentials.namespace) {
+    throw new BadRequestError({
+      message: "Namespace cannot be specified when namespace is already set in the connection credentials"
+    });
+  }
+
+  const targetNamespace = namespace || connection.credentials.namespace;
+
+  const getPaths = async (mountPath: string, secretPath: string, kvVersion: "1" | "2"): Promise<string[] | null> => {
+    try {
+      let path: string;
+      if (kvVersion === "2") {
+        // For KV v2: /v1/{mount}/metadata/{path}?list=true
+        path = secretPath ? `${mountPath}/metadata/${secretPath}` : `${mountPath}/metadata`;
+      } else {
+        // For KV v1: /v1/{mount}/{path}?list=true
+        path = secretPath ? `${mountPath}/${secretPath}` : mountPath;
+      }
+
+      const { data } = await requestWithHCVaultGateway<{
+        data: {
+          keys: string[];
+        };
+      }>(connection, gatewayService, {
+        url: `${instanceUrl}/v1/${path}?list=true`,
+        method: "GET",
+        headers: {
+          "X-Vault-Token": accessToken,
+          ...(targetNamespace ? { "X-Vault-Namespace": targetNamespace } : {})
+        }
+      });
+
+      return data.data.keys;
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        return null;
+      }
+
+      throw error;
+    }
+  };
+
+  // Recursive function to get all secret paths in a mount
+  const recursivelyGetAllPaths = async (
+    mountPath: string,
+    kvVersion: "1" | "2",
+    currentPath: string = ""
+  ): Promise<string[]> => {
+    const paths = await getPaths(mountPath, currentPath, kvVersion);
+
+    if (paths === null || paths.length === 0) {
+      return [];
+    }
+
+    const allSecrets: string[] = [];
+
+    // Process paths sequentially to maintain tree traversal order
+    // eslint-disable-next-line no-restricted-syntax
+    for (const path of paths) {
+      const cleanPath = path.endsWith("/") ? path.slice(0, -1) : path;
+      const fullItemPath = currentPath ? `${currentPath}/${cleanPath}` : cleanPath;
+
+      if (path.endsWith("/")) {
+        // it's a folder so we recurse into it
+        // eslint-disable-next-line no-await-in-loop
+        const subSecrets = await recursivelyGetAllPaths(mountPath, kvVersion, fullItemPath);
+        allSecrets.push(...subSecrets);
+      } else {
+        // it's a secret so we add it to our results
+        allSecrets.push(`${mountPath}/${fullItemPath}`);
+      }
+    }
+
+    return allSecrets;
+  };
+
+  // Get all mounts
+  const mounts = await listHCVaultMounts(connection, gatewayService, namespace);
+
+  // Filter for KV mounts (kv, kv-v1, kv-v2)
+  const kvMounts = mounts.filter((mount) => mount.type === "kv" || mount.type.startsWith("kv"));
+
+  // Collect all secret paths from all KV mounts in parallel
+  const allSecretPathsArrays = await Promise.all(
+    kvMounts.map(async (mount) => {
+      const kvVersion = mount.version === "2" ? "2" : "1";
+      const cleanMountPath = mount.path.replace(/\/$/, ""); // Remove trailing slash
+      return recursivelyGetAllPaths(cleanMountPath, kvVersion);
+    })
+  );
+
+  // Flatten the arrays into a single array
+  const allSecretPaths = allSecretPathsArrays.flat();
+
+  return allSecretPaths;
+};
+
+export const getHCVaultSecretsForPath = async (
+  connection: THCVaultConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  namespace: string,
+  secretPath: string
+) => {
+  const instanceUrl = await getHCVaultInstanceUrl(connection);
+  const accessToken = await getHCVaultAccessToken(connection, gatewayService);
+
+  if (connection.credentials.namespace && connection.credentials.namespace !== namespace) {
+    throw new BadRequestError({
+      message: "Specified namespace does not match the namespace in the connection credentials"
+    });
+  }
+
+  const targetNamespace = namespace || connection.credentials.namespace;
+
+  try {
+    // Extract mount and path from the secretPath
+    // secretPath format: {mount}/{path}
+    const pathParts = secretPath.split("/");
+    const mountPath = pathParts[0];
+    const actualPath = pathParts.slice(1).join("/");
+
+    if (!mountPath || !actualPath) {
+      throw new BadRequestError({
+        message: "Invalid secret path format. Expected format: {mount}/{path}"
+      });
+    }
+
+    // Get mounts to determine KV version
+    const mounts = await listHCVaultMounts(connection, gatewayService, namespace);
+    const mount = mounts.find((m) => m.path.replace(/\/$/, "") === mountPath);
+
+    if (!mount) {
+      throw new BadRequestError({
+        message: `Mount '${mountPath}' not found in HashiCorp Vault`
+      });
+    }
+
+    const kvVersion = mount.version === "2" ? "2" : "1";
+
+    // Fetch secrets based on KV version
+    if (kvVersion === "2") {
+      // For KV v2: /v1/{mount}/data/{path}
+      const { data } = await requestWithHCVaultGateway<{
+        data: {
+          data: Record<string, string>; // KV v2 has nested data structure
+          metadata: {
+            created_time: string;
+            deletion_time: string;
+            destroyed: boolean;
+            version: number;
+          };
+        };
+      }>(connection, gatewayService, {
+        url: `${instanceUrl}/v1/${mountPath}/data/${actualPath}`,
+        method: "GET",
+        headers: {
+          "X-Vault-Token": accessToken,
+          ...(targetNamespace ? { "X-Vault-Namespace": targetNamespace } : {})
+        }
+      });
+
+      return data.data.data;
+    }
+
+    // For KV v1: /v1/{mount}/{path}
+    const { data } = await requestWithHCVaultGateway<{
+      data: Record<string, string>; // KV v1 has flat data structure
+      lease_duration: number;
+      lease_id: string;
+      renewable: boolean;
+    }>(connection, gatewayService, {
+      url: `${instanceUrl}/v1/${mountPath}/${actualPath}`,
+      method: "GET",
+      headers: {
+        "X-Vault-Token": accessToken,
+        ...(targetNamespace ? { "X-Vault-Namespace": targetNamespace } : {})
+      }
+    });
+
+    return data.data;
+  } catch (error: unknown) {
+    logger.error(error, "Unable to fetch secrets from HC Vault path");
+
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to fetch secrets: ${error.message || "Unknown error"}`
+      });
+    }
+
+    if (error instanceof BadRequestError) {
+      throw error;
+    }
+
+    throw new BadRequestError({
+      message: "Unable to fetch secrets from HashiCorp Vault"
+    });
+  }
+};

@@ -77,6 +77,8 @@ import {
   fetchDashboardProjectSecretsByKeys
 } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
+import { useGetExternalMigrationConfig, useImportVaultSecrets } from "@app/hooks/api/migration";
+import { ExternalMigrationProviders } from "@app/hooks/api/migration/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
@@ -98,6 +100,7 @@ import { CreateDynamicSecretForm } from "./CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
 import { MoveSecretsModal } from "./MoveSecretsModal";
+import { VaultSecretImportModal } from "./VaultSecretImportModal";
 
 type TParsedEnv = { value: string; comments: string[]; secretPath?: string; secretKey: string }[];
 type TParsedFolderEnv = Record<
@@ -171,7 +174,8 @@ export const ActionBar = ({
     "upgradePlan",
     "replicateFolder",
     "confirmUpload",
-    "requestAccess"
+    "requestAccess",
+    "importFromVault"
   ] as const);
   const isProtectedBranch = Boolean(protectedBranchPolicyName);
   const { subscription } = useSubscription();
@@ -185,6 +189,7 @@ export const ActionBar = ({
   const { mutateAsync: createSecretBatch, isPending: isCreatingSecrets } = useCreateSecretBatch({
     options: { onSuccess: undefined }
   });
+  const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
   const queryClient = useQueryClient();
   const { addPendingChange } = useBatchModeActions();
 
@@ -193,6 +198,8 @@ export const ActionBar = ({
   const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
 
   const { permission } = useProjectPermission();
+  const { data: vaultConfig } = useGetExternalMigrationConfig(ExternalMigrationProviders.Vault);
+  const hasVaultConnection = Boolean(vaultConfig?.connectionId);
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
     try {
@@ -663,6 +670,33 @@ export const ActionBar = ({
     }
   };
 
+  const handleVaultImport = async (vaultPath: string, namespace: string) => {
+    try {
+      await importVaultSecrets({
+        projectId,
+        environment,
+        secretPath,
+        vaultNamespace: namespace,
+        vaultSecretPath: vaultPath
+      });
+
+      createNotification({
+        type: "success",
+        text: "Successfully imported secrets from HashiCorp Vault"
+      });
+    } catch (err) {
+      console.error("Vault import error:", err);
+      const error = err as AxiosError<{ message?: string }>;
+      const errorMessage =
+        error.response?.data?.message || "Failed to import secrets from Vault. Please try again.";
+
+      createNotification({
+        type: "error",
+        text: errorMessage
+      });
+    }
+  };
+
   const isTableFiltered =
     Object.values(filter.tags).some(Boolean) || Object.values(filter.include).some(Boolean);
 
@@ -784,8 +818,8 @@ export const ActionBar = ({
                       {Boolean(filteredTags) && <Badge>{filteredTags} Applied</Badge>}
                     </div>
                   </DropdownSubMenuTrigger>
-                  <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
-                    <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
+                  <DropdownSubMenuContent className="thin-scrollbar max-h-80 overflow-y-auto rounded-l-none">
+                    <DropdownMenuLabel className="bg-mineshaft-900 sticky top-0">
                       <div className="flex w-full items-center justify-between">
                         <span>Filter by Secret Tags</span>
                         <Tooltip content="Matches secrets with one or more of the applied tags">
@@ -926,7 +960,7 @@ export const ActionBar = ({
               <IconButton
                 ariaLabel="add-folder-or-import"
                 variant="outline_bg"
-                className="rounded-l-none bg-mineshaft-600 p-3"
+                className="bg-mineshaft-600 rounded-l-none p-3"
               >
                 <FontAwesomeIcon icon={faAngleDown} />
               </IconButton>
@@ -1059,6 +1093,39 @@ export const ActionBar = ({
                     </Button>
                   )}
                 </ProjectPermissionCan>
+                {hasVaultConnection && (
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Create}
+                    a={subject(ProjectPermissionSub.Secrets, {
+                      environment,
+                      secretPath,
+                      secretName: "*",
+                      secretTags: ["*"]
+                    })}
+                  >
+                    {(isAllowed) => (
+                      <Button
+                        leftIcon={
+                          <img
+                            src="/images/integrations/Vault.png"
+                            alt="HashiCorp Vault"
+                            className="h-4 w-4"
+                          />
+                        }
+                        onClick={() => {
+                          handlePopUpOpen("importFromVault");
+                          handlePopUpClose("misc");
+                        }}
+                        isDisabled={!isAllowed}
+                        variant="outline_bg"
+                        className="h-10 text-left"
+                        isFullWidth
+                      >
+                        Add from HashiCorp Vault
+                      </Button>
+                    )}
+                  </ProjectPermissionCan>
+                )}
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1070,11 +1137,11 @@ export const ActionBar = ({
           isMultiSelectActive && "h-16"
         )}
       >
-        <div className="mt-3.5 flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
+        <div className="border-mineshaft-600 bg-mineshaft-800 text-bunker-300 mt-3.5 flex items-center rounded-md border px-4 py-2">
           <div className="mr-2 text-sm">{Object.keys(selectedSecrets).length} Selected</div>
           <button
             type="button"
-            className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
+            className="text-mineshaft-400 hover:text-mineshaft-200 mr-auto text-xs underline-offset-2 hover:underline"
             onClick={resetSelectedSecret}
           >
             Unselect All
@@ -1261,7 +1328,7 @@ export const ActionBar = ({
         onOpenChange={(open) => handlePopUpToggle("requestAccess", open)}
       >
         <ModalContent title="Access Restricted">
-          <p className="mb-2 text-bunker-300">You do not have permission to perform this action.</p>
+          <p className="text-bunker-300 mb-2">You do not have permission to perform this action.</p>
           <p className="text-bunker-300">Request access to perform this action in this folder.</p>
           <div className="mt-8 flex items-center gap-4">
             <ModalClose asChild>
@@ -1277,6 +1344,13 @@ export const ActionBar = ({
           </div>
         </ModalContent>
       </Modal>
+      <VaultSecretImportModal
+        isOpen={popUp.importFromVault.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}
+        environment={environment}
+        secretPath={secretPath}
+        onImport={handleVaultImport}
+      />
     </>
   );
 };

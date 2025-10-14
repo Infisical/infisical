@@ -11,3 +11,11 @@ export type TExternalMigrationConfig = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type TImportVaultSecretsDTO = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  vaultNamespace: string;
+  vaultSecretPath: string;
+};

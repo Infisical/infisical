@@ -139,7 +139,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const config = await server.services.migration.getExternalMigrationConfig({
         platform: req.query.platform,
@@ -258,6 +258,65 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       });
 
       return { mounts };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/vault/import-secrets",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        projectId: z.string(),
+        environment: z.string(),
+        secretPath: z.string(),
+        vaultNamespace: z.string(),
+        vaultSecretPath: z.string()
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      await server.services.migration.importVaultSecrets({
+        actor: req.permission,
+        auditLogInfo: req.auditLogInfo,
+        ...req.body
+      });
+
+      return { message: "Successfully imported vault secrets" };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/vault/secret-paths",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        namespace: z.string().optional()
+      }),
+      response: {
+        200: z.object({
+          secretPaths: z.string().array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const secretPaths = await server.services.migration.getVaultSecretPaths({
+        actor: req.permission,
+        namespace: req.query.namespace
+      });
+
+      return { secretPaths };
     }
   });
 };

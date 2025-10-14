@@ -1,10 +1,16 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
+import { secretKeys } from "@app/hooks/api/secrets/queries";
 
 import { projectKeys } from "../projects";
 import { externalMigrationQueryKeys } from "./queries";
-import { ExternalMigrationProviders, TExternalMigrationConfig } from "./types";
+import {
+  ExternalMigrationProviders,
+  TExternalMigrationConfig,
+  TImportVaultSecretsDTO
+} from "./types";
 
 export const useImportEnvKey = () => {
   const queryClient = useQueryClient();
@@ -86,6 +92,30 @@ export const useUpdateExternalMigrationConfig = (platform: ExternalMigrationProv
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: externalMigrationQueryKeys.config(platform)
+      });
+    }
+  });
+};
+
+export const useImportVaultSecrets = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ message: string }, object, TImportVaultSecretsDTO>({
+    mutationFn: async (dto) => {
+      const { data } = await apiRequest.post<{ message: string }>(
+        "/api/v3/external-migration/vault/import-secrets",
+        dto
+      );
+      return data;
+    },
+    onSuccess: (_, { projectId, environment, secretPath }) => {
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({
+          projectId,
+          environment,
+          secretPath
+        })
       });
     }
   });

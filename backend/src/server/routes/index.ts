@@ -2199,7 +2199,9 @@ export const registerRoutes = async (
     gatewayService,
     kmsService,
     appConnectionService,
-    externalMigrationConfigDAL
+    externalMigrationConfigDAL,
+    secretService,
+    auditLogService
   });
 
   // setup the communication with license key server

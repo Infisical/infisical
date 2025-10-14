@@ -1,4 +1,10 @@
 import { OrgMembershipRole } from "@app/db/schemas";
+import {
+  AuditLogInfo,
+  EventType,
+  SecretApprovalEvent,
+  TAuditLogServiceFactory
+} from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -9,12 +15,16 @@ import { AppConnection } from "../app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "../app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
 import {
+  getHCVaultSecretsForPath,
   listHCVaultMounts,
   listHCVaultNamespaces,
   listHCVaultPolicies,
+  listHCVaultSecretPaths,
   THCVaultConnection
 } from "../app-connection/hc-vault";
 import { TKmsServiceFactory } from "../kms/kms-service";
+import { TSecretServiceFactory } from "../secret/secret-service";
+import { SecretProtectionType } from "../secret/secret-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TExternalMigrationConfigDALFactory } from "./external-migration-config-dal";
 import {
@@ -35,6 +45,8 @@ import {
 
 type TExternalMigrationServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
+  secretService: TSecretServiceFactory;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   externalMigrationQueue: TExternalMigrationQueueFactory;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
   externalMigrationConfigDAL: Pick<TExternalMigrationConfigDALFactory, "create" | "upsert" | "findOne" | "transaction">;
@@ -50,6 +62,8 @@ export const externalMigrationServiceFactory = ({
   externalMigrationQueue,
   userDAL,
   gatewayService,
+  secretService,
+  auditLogService,
   appConnectionService,
   externalMigrationConfigDAL,
   kmsService
@@ -371,6 +385,143 @@ export const externalMigrationServiceFactory = ({
     return mounts;
   };
 
+  const getVaultSecretPaths = async ({ actor, namespace }: { actor: OrgServiceActor; namespace?: string }) => {
+    const { hasRole } = await permissionService.getOrgPermission(
+      actor.type,
+      actor.id,
+      actor.orgId,
+      actor.authMethod,
+      actor.orgId
+    );
+
+    if (!hasRole(OrgMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({ message: "Only admins can view vault secret paths" });
+    }
+
+    const vaultConfig = await externalMigrationConfigDAL.findOne({
+      orgId: actor.orgId,
+      platform: ExternalMigrationProviders.Vault
+    });
+
+    if (!vaultConfig) {
+      throw new NotFoundError({ message: "Vault migration config not found" });
+    }
+
+    if (!vaultConfig.connection) {
+      throw new BadRequestError({ message: "Vault migration connection is not configured" });
+    }
+
+    const credentials = await decryptAppConnectionCredentials({
+      orgId: vaultConfig.orgId,
+      encryptedCredentials: vaultConfig.connection.encryptedCredentials,
+      kmsService,
+      projectId: null
+    });
+
+    const connection = {
+      ...vaultConfig.connection,
+      credentials
+    } as THCVaultConnection;
+
+    const secretPaths = await listHCVaultSecretPaths(connection, gatewayService, namespace);
+
+    return secretPaths;
+  };
+
+  const importVaultSecrets = async ({
+    actor,
+    projectId,
+    environment,
+    secretPath,
+    vaultNamespace,
+    vaultSecretPath,
+    auditLogInfo
+  }: {
+    actor: OrgServiceActor;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    vaultNamespace: string;
+    vaultSecretPath: string;
+    auditLogInfo: AuditLogInfo;
+  }) => {
+    const { hasRole } = await permissionService.getOrgPermission(
+      actor.type,
+      actor.id,
+      actor.orgId,
+      actor.authMethod,
+      actor.orgId
+    );
+
+    if (!hasRole(OrgMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({ message: "Only admins can import vault secrets" });
+    }
+
+    const vaultConfig = await externalMigrationConfigDAL.findOne({
+      orgId: actor.orgId,
+      platform: ExternalMigrationProviders.Vault
+    });
+
+    if (!vaultConfig) {
+      throw new NotFoundError({ message: "Vault migration config not found" });
+    }
+
+    if (!vaultConfig.connection) {
+      throw new BadRequestError({ message: "Vault migration connection is not configured" });
+    }
+
+    const credentials = await decryptAppConnectionCredentials({
+      orgId: vaultConfig.orgId,
+      encryptedCredentials: vaultConfig.connection.encryptedCredentials,
+      kmsService,
+      projectId: null
+    });
+
+    const connection = {
+      ...vaultConfig.connection,
+      credentials
+    } as THCVaultConnection;
+
+    const vaultSecrets = await getHCVaultSecretsForPath(connection, gatewayService, vaultNamespace, vaultSecretPath);
+
+    const secretOperation = await secretService.createManySecretsRaw({
+      actorId: actor.id,
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      secretPath,
+      environment,
+      projectId,
+      secrets: Object.entries(vaultSecrets).map(([secretKey, secretValue]) => ({
+        secretKey,
+        secretValue
+      }))
+    });
+
+    if (secretOperation.type === SecretProtectionType.Approval) {
+      await auditLogService.createAuditLog({
+        projectId,
+        ...auditLogInfo,
+        event: {
+          type: EventType.SECRET_APPROVAL_REQUEST,
+          metadata: {
+            committedBy: secretOperation.approval.committerUserId,
+            secretApprovalRequestId: secretOperation.approval.id,
+            secretApprovalRequestSlug: secretOperation.approval.slug,
+            secretPath,
+            environment,
+            secrets: Object.entries(vaultSecrets).map(([secretKey]) => ({
+              secretKey
+            })),
+            eventType: SecretApprovalEvent.CreateMany
+          }
+        }
+      });
+
+      return { approval: secretOperation.approval };
+    }
+  };
+
   return {
     importEnvKeyData,
     importVaultData,
@@ -379,6 +530,8 @@ export const externalMigrationServiceFactory = ({
     getExternalMigrationConfig,
     getVaultNamespaces,
     getVaultPolicies,
-    getVaultMounts
+    getVaultMounts,
+    getVaultSecretPaths,
+    importVaultSecrets
   };
 };

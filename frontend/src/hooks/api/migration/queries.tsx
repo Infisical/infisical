@@ -12,7 +12,8 @@ export const externalMigrationQueryKeys = {
   config: (platform: string) => ["external-migration-config", { platform }],
   vaultNamespaces: () => ["vault-namespaces"],
   vaultPolicies: () => ["vault-policies"],
-  vaultMounts: () => ["vault-mounts"]
+  vaultMounts: () => ["vault-mounts"],
+  vaultSecretPaths: () => ["vault-secret-paths"]
 };
 
 export const useHasCustomMigrationAvailable = (provider: ExternalMigrationProviders) => {
@@ -84,6 +85,24 @@ export const useGetVaultMounts = (enabled = true, namespace?: string) => {
       });
 
       return data.mounts;
+    },
+    enabled
+  });
+};
+
+export const useGetVaultSecretPaths = (enabled = true, namespace?: string) => {
+  return useQuery({
+    queryKey: externalMigrationQueryKeys.vaultSecretPaths(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        secretPaths: string[];
+      }>("/api/v3/external-migration/vault/secret-paths", {
+        params: {
+          namespace
+        }
+      });
+
+      return data.secretPaths;
     },
     enabled
   });
