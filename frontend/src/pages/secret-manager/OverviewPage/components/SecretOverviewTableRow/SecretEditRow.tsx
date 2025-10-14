@@ -115,20 +115,21 @@ export const SecretEditRow = ({
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
 
-  const fetchSecretValueParams = importedSecret && !isSecretPresent
-    ? {
-        environment: importedSecret.environment,
-        secretPath: importedSecret.secretPath,
-        secretKey: importedSecret.secret?.key ?? "",
-        projectId: currentProject.id
-      }
-    : {
-        environment,
-        secretPath,
-        secretKey: secretName,
-        projectId: currentProject.id,
-        isOverride
-      };
+  const fetchSecretValueParams =
+    importedSecret && !isSecretPresent
+      ? {
+          environment: importedSecret.environment,
+          secretPath: importedSecret.secretPath,
+          secretKey: importedSecret.secret?.key ?? "",
+          projectId: currentProject.id
+        }
+      : {
+          environment,
+          secretPath,
+          secretKey: secretName,
+          projectId: currentProject.id,
+          isOverride
+        };
 
   // scott: only fetch value if secret exists, has non-empty value and user has permission
   const canFetchValue = Boolean(importedSecret ?? secretId) && !isEmpty && !secretValueHidden;
