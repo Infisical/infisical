@@ -5,6 +5,7 @@ import {
   AccessScope,
   OrganizationsSchema,
   OrgMembershipRole,
+  OrgMembershipStatus,
   TableName,
   TMemberships,
   TMembershipsInsert,
@@ -346,6 +347,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.Membership)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.status`, OrgMembershipStatus.Accepted)
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .count("*")
         .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
