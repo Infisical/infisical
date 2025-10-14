@@ -24,6 +24,8 @@ export type TListNamespaceDTO = {
   offset?: number;
   limit?: number;
   search?: string;
+  orderBy?: SearchNamespaceSortBy;
+  orderDirection?: SortDirection;
 };
 
 export type TGetByNameNamespaceDTO = {
@@ -46,6 +48,6 @@ export type TSearchNamespaceDTO = {
   limit?: number;
   offset?: number;
   orderBy?: SearchNamespaceSortBy;
-  namespaceIds?: string[];
   orderDirection?: SortDirection;
+  namespaceIds?: string[];
 };

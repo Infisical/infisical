@@ -55,7 +55,8 @@ export const namespaceDALFactory = (db: TDbClient): TNamespaceDALFactory => {
       .select(selectAllTableCols(TableName.Namespace))
       .select<(TNamespaces & { count: number })[]>(
         db.raw(
-          `count(DISTINCT ${TableName.Namespace}."id") OVER(PARTITION BY ${TableName.Membership}."scopeOrgId") as total`
+          // TODO(namespace-group): consider group counting here
+          `count(${TableName.Membership}."actorUserId") OVER(PARTITION BY ${TableName.Membership}."scopeOrgId") as total`
         )
       )
       .limit(limit)
@@ -94,7 +95,7 @@ export const namespaceDALFactory = (db: TDbClient): TNamespaceDALFactory => {
         }
       })
       .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
-      .select("scopeProjectId");
+      .select("scopeNamespaceId");
 
     // Get the SQL strings for the subqueries
     const membershipSQL = membershipSubQuery.toQuery();

@@ -181,7 +181,9 @@ export const namespaceServiceFactory = ({
     permission,
     offset,
     limit,
-    search
+    search,
+    orderBy,
+    orderDirection
   }: TListNamespaceDTO) => {
     await permissionService.getOrgPermission(
       permission.type,
@@ -197,7 +199,9 @@ export const namespaceServiceFactory = ({
       actor: permission.type,
       actorId: permission.id,
       offset,
-      limit
+      limit,
+      sortBy: orderBy,
+      sortDir: orderDirection
     });
 
     return { namespaces, totalCount };

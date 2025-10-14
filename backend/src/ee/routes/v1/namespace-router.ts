@@ -63,7 +63,15 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0).describe(NAMESPACES.LIST.offset),
         limit: z.coerce.number().min(1).max(100).default(50).describe(NAMESPACES.LIST.limit),
-        search: z.string().optional().describe(NAMESPACES.LIST.search)
+        search: z.string().optional().describe(NAMESPACES.LIST.search),
+        orderBy: z
+          .nativeEnum(SearchNamespaceSortBy)
+          .default(SearchNamespaceSortBy.NAME)
+          .describe(NAMESPACES.SEARCH.orderBy),
+        orderDirection: z
+          .nativeEnum(SortDirection)
+          .default(SortDirection.ASC)
+          .describe(NAMESPACES.SEARCH.orderDirection)
       }),
       response: {
         200: z.object({
