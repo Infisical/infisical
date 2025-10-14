@@ -30,7 +30,10 @@ type TRoleServiceFactoryDep = {
   roleDAL: TRoleDALFactory;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getProjectPermission" | "getOrgPermission" | "getNamespacePermission"
+  >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   externalGroupOrgRoleMappingDAL: Pick<TExternalGroupOrgRoleMappingDALFactory, "findOne">;
 };
@@ -221,6 +224,17 @@ export const roleServiceFactory = ({
         dto.permission.authMethod,
         dto.permission.orgId
       );
+      return { permissions: packRules(permission.rules), memberships, assumedPrivilegeDetails: undefined };
+    }
+
+    if (dto.scopeData.scope === AccessScope.Namespace) {
+      const { permission, memberships } = await permissionService.getNamespacePermission({
+        actor: dto.permission.type,
+        actorId: dto.permission.id,
+        actorAuthMethod: dto.permission.authMethod,
+        namespaceId: dto.scopeData.namespaceId,
+        actorOrgId: dto.permission.orgId
+      });
       return { permissions: packRules(permission.rules), memberships, assumedPrivilegeDetails: undefined };
     }
 

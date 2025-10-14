@@ -597,11 +597,11 @@ export const registerRoutes = async (
   const membershipIdentityService = membershipIdentityServiceFactory({
     membershipIdentityDAL,
     membershipRoleDAL,
-    orgDAL,
     permissionService,
     roleDAL,
     additionalPrivilegeDAL,
-    identityDAL
+    identityDAL,
+    licenseService
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
@@ -1582,6 +1582,7 @@ export const registerRoutes = async (
   });
   const scopedIdentityDAL = scopedIdentityDALFactory(db);
   const scopedIdentityService = scopedIdentityServiceFactory({
+    projectDAL,
     membershipRoleDAL,
     membershipIdentityDAL,
     licenseService,

@@ -55,6 +55,7 @@ export const registerNamespaceRoleRouter = async (server: FastifyZodProvider) =>
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        namespaceId: req.params.namespaceId,
         event: {
           type: EventType.CREATE_NAMESPACE_ROLE,
           metadata: {
@@ -62,8 +63,7 @@ export const registerNamespaceRoleRouter = async (server: FastifyZodProvider) =>
             slug: req.body.slug,
             name: req.body.name,
             description: req.body.description,
-            permissions: JSON.stringify(req.body.permissions),
-            namespaceId: req.params.namespaceId
+            permissions: JSON.stringify(req.body.permissions)
           }
         }
       });
@@ -123,6 +123,7 @@ export const registerNamespaceRoleRouter = async (server: FastifyZodProvider) =>
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        namespaceId: req.params.namespaceId,
         event: {
           type: EventType.UPDATE_NAMESPACE_ROLE,
           metadata: {
@@ -130,8 +131,7 @@ export const registerNamespaceRoleRouter = async (server: FastifyZodProvider) =>
             slug: req.body.slug,
             name: req.body.name,
             description: req.body.description,
-            permissions: req.body.permissions ? JSON.stringify(req.body.permissions) : undefined,
-            namespaceId: req.params.namespaceId
+            permissions: req.body.permissions ? JSON.stringify(req.body.permissions) : undefined
           }
         }
       });
@@ -174,9 +174,10 @@ export const registerNamespaceRoleRouter = async (server: FastifyZodProvider) =>
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
+        namespaceId: req.params.namespaceId,
         event: {
           type: EventType.DELETE_NAMESPACE_ROLE,
-          metadata: { roleId: role.id, slug: role.slug, name: role.name, namespaceId: req.params.namespaceId }
+          metadata: { roleId: role.id, slug: role.slug, name: role.name }
         }
       });
 

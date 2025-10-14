@@ -13,7 +13,6 @@ import { SearchResourceOperators } from "@app/lib/search-resource/search";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
-import { TOrgDALFactory } from "../org/org-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TMembershipIdentityDALFactory } from "./membership-identity-dal";
 import {
@@ -27,18 +26,16 @@ import { newNamespaceMembershipIdentityFactory } from "./namespace/namespace-mem
 import { newOrgMembershipIdentityFactory } from "./org/org-membership-identity-factory";
 import { newProjectMembershipIdentityFactory } from "./project/project-membership-identity-factory";
 import { TIdentityDALFactory } from "../identity/identity-dal";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 
 type TMembershipIdentityServiceFactoryDep = {
   identityDAL: TIdentityDALFactory;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
   roleDAL: Pick<TRoleDALFactory, "find">;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getOrgPermission" | "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermissionByRoles"
-  >;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  permissionService: TPermissionServiceFactory;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -48,21 +45,23 @@ export const membershipIdentityServiceFactory = ({
   roleDAL,
   membershipRoleDAL,
   permissionService,
-  orgDAL,
   additionalPrivilegeDAL,
-  identityDAL
+  identityDAL,
+  licenseService
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
-      orgDAL,
       permissionService
     }),
     [AccessScope.Project]: newProjectMembershipIdentityFactory({
       membershipIdentityDAL,
-      orgDAL,
       permissionService
     }),
-    [AccessScope.Namespace]: newNamespaceMembershipIdentityFactory({})
+    [AccessScope.Namespace]: newNamespaceMembershipIdentityFactory({
+      membershipIdentityDAL,
+      permissionService,
+      licenseService
+    })
   };
 
   const $validateIdentityScope = (identity: TIdentities, scope: AccessScope) => {
