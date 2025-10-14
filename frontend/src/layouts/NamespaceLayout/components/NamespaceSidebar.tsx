@@ -25,7 +25,7 @@ export const NamespaceSidebar = () => {
             <MenuGroup title="Overview">
               <Link to="/organization/namespaces/$namespaceId/projects" params={{ namespaceId }}>
                 {({ isActive }) => (
-                  <MenuItem isSelected={isActive}>
+                  <MenuItem isSelected={isActive} variant="namespace">
                     <div className="mx-1 flex gap-2">
                       <div className="w-6">
                         <FontAwesomeIcon icon={faTable} />
@@ -40,7 +40,7 @@ export const NamespaceSidebar = () => {
                 params={{ namespaceId }}
               >
                 {({ isActive }) => (
-                  <MenuItem isSelected={isActive}>
+                  <MenuItem isSelected={isActive} variant="namespace">
                     <div className="mx-1 flex gap-2">
                       <div className="w-6">
                         <FontAwesomeIcon icon={faUsers} />
@@ -52,7 +52,7 @@ export const NamespaceSidebar = () => {
               </Link>
               <Link to="/organization/namespaces/$namespaceId/settings" params={{ namespaceId }}>
                 {({ isActive }) => (
-                  <MenuItem isSelected={isActive}>
+                  <MenuItem isSelected={isActive} variant="namespace">
                     <div className="mx-1 flex gap-2">
                       <div className="w-6">
                         <FontAwesomeIcon icon={faCog} className="mr-4" />

@@ -13,7 +13,7 @@ export const SanitizedNamespaceIdentityMembershipDetailSchema = z.object({
   updatedAt: z.date(),
   identityId: z.string().uuid(),
   namespaceId: z.string(),
-  identity: IdentitiesSchema.pick({ name: true, id: true }).extend({
+  identity: IdentitiesSchema.pick({ name: true, id: true, scopeNamespaceId: true, scopeProjectId: true }).extend({
     authMethods: z.array(z.string())
   }),
   roles: z.array(
@@ -69,7 +69,7 @@ export const registerNamespaceIdentityMembershipRouter = async (server: FastifyZ
         limit: z.coerce
           .number()
           .min(1)
-          .max(100)
+          .max(1000)
           .default(20)
           .describe(NAMESPACE_IDENTITIES.LIST_IDENTITY_MEMBERSHIPS.limit)
           .optional(),
@@ -87,7 +87,7 @@ export const registerNamespaceIdentityMembershipRouter = async (server: FastifyZ
       }),
       response: {
         200: z.object({
-          data: SanitizedNamespaceIdentityMembershipDetailSchema.extend({
+          identityMemberships: SanitizedNamespaceIdentityMembershipDetailSchema.extend({
             identity: SanitizedNamespaceIdentityMembershipDetailSchema.shape.identity.omit({ authMethods: true })
           }).array(),
           totalCount: z.number()
@@ -115,7 +115,7 @@ export const registerNamespaceIdentityMembershipRouter = async (server: FastifyZ
       });
 
       return {
-        data: data.map((el) => ({
+        identityMemberships: data.map((el) => ({
           ...el,
           identityId: el.actorIdentityId as string,
           namespaceId: req.params.namespaceId
@@ -144,7 +144,7 @@ export const registerNamespaceIdentityMembershipRouter = async (server: FastifyZ
       }),
       response: {
         200: z.object({
-          membership: SanitizedNamespaceIdentityMembershipDetailSchema
+          identityMembership: SanitizedNamespaceIdentityMembershipDetailSchema
         })
       }
     },
@@ -163,7 +163,7 @@ export const registerNamespaceIdentityMembershipRouter = async (server: FastifyZ
       });
 
       return {
-        membership: {
+        identityMembership: {
           ...membership,
           identityId: req.params.identityId,
           namespaceId: req.params.namespaceId
@@ -227,7 +227,7 @@ export const registerNamespaceIdentityMembershipRouter = async (server: FastifyZ
       }),
       response: {
         200: z.object({
-          membership: SanitizedNamespaceIdentityMembershipSchema
+          identityMembership: SanitizedNamespaceIdentityMembershipSchema
         })
       }
     },
@@ -247,7 +247,7 @@ export const registerNamespaceIdentityMembershipRouter = async (server: FastifyZ
       });
 
       return {
-        membership: {
+        identityMembership: {
           ...membership,
           identityId: req.params.identityId,
           namespaceId: req.params.namespaceId
@@ -355,7 +355,7 @@ export const registerNamespaceIdentityMembershipRouter = async (server: FastifyZ
       }),
       response: {
         200: z.object({
-          membership: SanitizedNamespaceIdentityMembershipSchema
+          identityMembership: SanitizedNamespaceIdentityMembershipSchema
         })
       }
     },
@@ -374,7 +374,7 @@ export const registerNamespaceIdentityMembershipRouter = async (server: FastifyZ
       });
 
       return {
-        membership: {
+        identityMembership: {
           ...membership,
           identityId: req.params.identityId,
           namespaceId: req.params.namespaceId

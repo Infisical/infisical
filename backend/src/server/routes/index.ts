@@ -570,6 +570,7 @@ export const registerRoutes = async (
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL });
 
   const membershipUserService = membershipUserServiceFactory({
+    namespaceDAL,
     licenseService,
     membershipRoleDAL,
     membershipUserDAL,

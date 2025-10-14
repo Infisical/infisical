@@ -22,24 +22,24 @@ import { namespaceUserMembershipQueryKeys } from "@app/hooks/api/namespaceUserMe
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
-  membershipId: string;
+  userId: string;
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["namespaceMembership"]>, data?: object) => void;
 };
 
-export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => {
+export const UserDetailsSection = ({ userId, handlePopUpOpen }: Props) => {
   const [copyTextUsername, isCopyingUsername, setCopyTextUsername] = useTimedReset<string>({
     initialState: "Copy username to clipboard"
   });
 
   const { user } = useUser();
-  const userId = user?.id || "";
+  const currentUserId = user?.id || "";
 
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
 
   const { data: membership } = useQuery(
     namespaceUserMembershipQueryKeys.detail({
-      membershipId,
-      namespaceName
+      userId,
+      namespaceId
     })
   );
 
@@ -47,7 +47,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">User Details</h3>
-        {userId !== membership.user.id && (
+        {currentUserId !== membership.user.id && (
           <NamespacePermissionCan
             I={NamespacePermissionActions.Edit}
             a={NamespacePermissionSubjects.Member}
@@ -87,7 +87,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Username</p>
           <div className="group flex align-top">
-            <p className="break-all text-sm text-mineshaft-300">{membership.user.username}</p>
+            <p className="text-sm break-all text-mineshaft-300">{membership.user.username}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
               <Tooltip content={copyTextUsername}>
                 <IconButton
@@ -108,7 +108,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Email</p>
           <div className="flex items-center">
-            <p className="mr-2 break-all text-sm text-mineshaft-300">
+            <p className="mr-2 text-sm break-all text-mineshaft-300">
               {membership.user.email ?? "-"}{" "}
               <Tooltip
                 content={
@@ -129,7 +129,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Last Login Auth Method</p>
           <div className="group flex align-top">
-            <p className="break-all text-sm text-mineshaft-300">
+            <p className="text-sm break-all text-mineshaft-300">
               {membership.lastLoginAuthMethod || "-"}
             </p>
           </div>
@@ -137,7 +137,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Last Login Time</p>
           <div className="group flex align-top">
-            <p className="break-all text-sm text-mineshaft-300">
+            <p className="text-sm break-all text-mineshaft-300">
               {membership.lastLoginTime ? format(membership.lastLoginTime, "PPpp") : "-"}
             </p>
           </div>

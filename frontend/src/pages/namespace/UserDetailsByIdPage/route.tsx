@@ -3,7 +3,7 @@ import { createFileRoute, linkOptions } from '@tanstack/react-router'
 import { UserDetailsByIdPage } from './UserDetailsByIdPage'
 
 export const Route = createFileRoute(
-  '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceId/_namespace-layout/members/$membershipId',
+  '/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceId/_namespace-layout/members/$userId',
 )({
   component: UserDetailsByIdPage,
   beforeLoad: ({ params, context }) => ({

@@ -6,15 +6,7 @@ import { Link } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  FilterableSelect,
-  FormControl,
-  Modal,
-  ModalClose,
-  ModalContent,
-  Spinner
-} from "@app/components/v2";
+import { Button, FilterableSelect, FormControl, ModalClose, Spinner } from "@app/components/v2";
 import { useNamespace, useOrganization } from "@app/context";
 import { useGetIdentityMembershipOrgs } from "@app/hooks/api";
 import {
@@ -32,34 +24,33 @@ const schema = z.object({
 export type FormData = z.infer<typeof schema>;
 
 type Props = {
-  popUp: UsePopUpState<["linkOrgIdentity"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["linkOrgIdentity"]>, state?: boolean) => void;
 };
 
-const Content = ({ popUp, handlePopUpToggle }: Props) => {
+export const LinkOrgIdentityForm = ({ handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
 
   const organizationId = currentOrg?.id || "";
 
   const { data: identityMembershipOrgsData, isPending: isMembershipsLoading } =
     useGetIdentityMembershipOrgs({
       organizationId,
-      limit: 20000 // TODO: this is temp to preserve functionality for larger projects, will replace with combobox in separate PR
+      limit: 1000 // TODO: this is temp to preserve functionality for larger namespace, will replace with combobox in separate PR
     });
 
   const identityMembershipOrgs = identityMembershipOrgsData?.identityMemberships;
   const { data: identityMembershipsData } = useQuery(
     namespaceIdentityMembershipQueryKeys.list({
-      limit: 10000,
-      namespaceName
+      limit: 1000,
+      namespaceId
     })
   );
   const identityMemberships = identityMembershipsData?.identityMemberships;
 
   const { data: { roles = [] } = {}, isPending: isRolesLoading } = useQuery(
     namespaceRolesQueryKeys.list({
-      namespaceName,
+      namespaceId,
       limit: 10000
     })
   );
@@ -90,13 +81,13 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   const onFormSubmit = async ({ identity, role }: FormData) => {
     try {
       await addIdentityToNamespaceMutateAsync({
-        namespaceName,
+        namespaceId,
         identityId: identity.id,
         roles: [{ role: role.slug, isTemporary: false }]
       });
 
       createNotification({
-        text: "Successfully added identity to project",
+        text: "Successfully added identity to namespace",
         type: "success"
       });
 
@@ -118,7 +109,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
       const text =
         typeof error?.response?.data?.message === "string"
           ? error?.response?.data?.message
-          : "Failed to add identity to project";
+          : "Failed to add identity to namespace";
 
       createNotification({
         text,
@@ -181,7 +172,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
           isLoading={isSubmitting}
           isDisabled={isSubmitting}
         >
-          {popUp?.linkOrgIdentity?.data ? "Update" : "Add"}
+          Assign Identity
         </Button>
         <ModalClose asChild>
           <Button colorSchema="secondary" variant="plain">
@@ -193,7 +184,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   ) : (
     <div className="flex flex-col space-y-4">
       <div className="text-sm">
-        All identities in your organization have already been added to this project.
+        All identities in your organization have already been added to this namespace.
       </div>
       <Link to={"/organization/access-management" as const}>
         <Button isDisabled={isRolesLoading} isLoading={isRolesLoading} variant="outline_bg">
@@ -201,20 +192,5 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
         </Button>
       </Link>
     </div>
-  );
-};
-
-export const LinkOrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
-  return (
-    <Modal
-      isOpen={popUp?.linkOrgIdentity?.isOpen}
-      onOpenChange={(isOpen) => {
-        handlePopUpToggle("linkOrgIdentity", isOpen);
-      }}
-    >
-      <ModalContent title="Add Identity to Project" bodyClassName="overflow-visible">
-        <Content popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      </ModalContent>
-    </Modal>
   );
 };

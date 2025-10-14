@@ -68,10 +68,10 @@ type Props = {
 
 export const MemberRoleModify = ({ namespaceMember, onOpenUpgradeModal }: Props) => {
   const { subscription } = useSubscription();
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
   const { data: { roles: namespaceRoles = [] } = {}, isPending: isRolesLoading } = useQuery(
     namespaceRolesQueryKeys.list({
-      namespaceName,
+      namespaceId,
       limit: 1000
     })
   );
@@ -136,8 +136,8 @@ export const MemberRoleModify = ({ namespaceMember, onOpenUpgradeModal }: Props)
 
     try {
       await updateMembershipRole.mutateAsync({
-        namespaceName,
-        membershipId: namespaceMember.id,
+        namespaceId,
+        userId: namespaceMember.user.id,
         roles: sanitizedRoles
       });
       createNotification({ text: "Successfully updated roles", type: "success" });

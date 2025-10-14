@@ -11,7 +11,7 @@ import { NamespaceRoleListTab } from "./components/NamespaceRoleListTab";
 
 export const AccessManagementPage = () => {
   const navigate = useNavigate();
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
   const selectedTab = useSearch({
     strict: false,
     select: (el) => el.selectedTab
@@ -19,10 +19,10 @@ export const AccessManagementPage = () => {
 
   const updateSelectedTab = (tab: string) => {
     navigate({
-      to: "/organization/namespaces/$namespaceName/access-management",
+      to: "/organization/namespaces/$namespaceId/access-management",
       search: (prev) => ({ ...prev, selectedTab: tab }),
       params: {
-        namespaceName
+        namespaceId
       }
     });
   };
@@ -37,18 +37,23 @@ export const AccessManagementPage = () => {
         <div className="mx-auto mb-6 w-full max-w-7xl">
           <PageHeader
             title="Access Control"
+            scope="namespace"
             description="Manage fine-grained access for users, groups, roles, and identities within your project resources."
           />
           <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
             <TabList>
-              <Tab value={OrgAccessControlTabSections.Member}>Users</Tab>
+              <Tab variant="namespace" value={OrgAccessControlTabSections.Member}>
+                Users
+              </Tab>
               {/* <Tab value={OrgAccessControlTabSections.Groups}>Groups</Tab> */}
-              <Tab value={OrgAccessControlTabSections.Identities}>
+              <Tab variant="namespace" value={OrgAccessControlTabSections.Identities}>
                 <div className="flex items-center">
                   <p>Machine Identities</p>
                 </div>
               </Tab>
-              <Tab value={OrgAccessControlTabSections.Roles}>Namespace Roles</Tab>
+              <Tab variant="namespace" value={OrgAccessControlTabSections.Roles}>
+                Namespace Roles
+              </Tab>
             </TabList>
             <TabPanel value={OrgAccessControlTabSections.Member}>
               <MembersTab />

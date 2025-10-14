@@ -1,5 +1,4 @@
 import { AccessScopeData } from "@app/db/schemas";
-import { TSearchResourceOperator } from "@app/lib/search-resource/search";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { Knex } from "knex";
 

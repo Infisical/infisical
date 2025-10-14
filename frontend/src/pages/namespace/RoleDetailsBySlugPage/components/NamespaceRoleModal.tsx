@@ -27,13 +27,13 @@ type Props = {
 };
 
 export const NamespaceRoleModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
   const navigate = useNavigate();
   const isOpen = popUp?.role?.isOpen;
   const roleSlug = (popUp?.role?.data as { roleSlug?: string })?.roleSlug;
 
   const { data: role } = useQuery({
-    ...namespaceRolesQueryKeys.detail({ namespaceName, roleSlug: roleSlug! }),
+    ...namespaceRolesQueryKeys.detail({ namespaceId, roleSlug: roleSlug! }),
     enabled: Boolean(roleSlug)
   });
 
@@ -81,7 +81,7 @@ export const NamespaceRoleModal = ({ popUp, handlePopUpToggle }: Props) => {
         if (!role?.id) return;
 
         await updateRole({
-          namespaceName,
+          namespaceId,
           roleId: role.id,
           name: data.name,
           slug: data.slug,
@@ -95,7 +95,7 @@ export const NamespaceRoleModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
       } else {
         await createRole({
-          namespaceName,
+          namespaceId,
           name: data.name,
           slug: data.slug,
           description: data.description,
@@ -108,9 +108,9 @@ export const NamespaceRoleModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
 
         navigate({
-          to: "/organization/namespaces/$namespaceName/roles/$roleSlug",
+          to: "/organization/namespaces/$namespaceId/roles/$roleSlug",
           params: {
-            namespaceName,
+            namespaceId,
             roleSlug: data.slug
           }
         });

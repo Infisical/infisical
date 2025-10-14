@@ -197,9 +197,7 @@ export const registerNamespaceRoleRouter = async (server: FastifyZodProvider) =>
       }),
       response: {
         200: z.object({
-          data: z.object({
-            roles: SanitizedNamespaceRoleSchema.omit({ permissions: true }).array()
-          })
+          roles: SanitizedNamespaceRoleSchema.omit({ permissions: true }).array()
         })
       }
     },
@@ -215,9 +213,7 @@ export const registerNamespaceRoleRouter = async (server: FastifyZodProvider) =>
         data: {}
       });
       return {
-        data: {
-          roles: roles.map((el) => ({ ...el, namespaceId: req.params.namespaceId }))
-        }
+        roles: roles.map((el) => ({ ...el, namespaceId: req.params.namespaceId }))
       };
     }
   });
@@ -250,6 +246,40 @@ export const registerNamespaceRoleRouter = async (server: FastifyZodProvider) =>
         },
         selector: {
           id: req.params.roleId
+        }
+      });
+      return { role: { ...role, namespaceId: req.params.namespaceId } };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:namespaceId/roles/slug/:roleSlug",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        namespaceId: z.string().trim(),
+        roleSlug: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          role: SanitizedNamespaceRoleSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const role = await server.services.role.getRoleBySlug({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Namespace,
+          namespaceId: req.params.namespaceId,
+          orgId: req.permission.orgId
+        },
+        selector: {
+          slug: req.params.roleSlug
         }
       });
       return { role: { ...role, namespaceId: req.params.namespaceId } };

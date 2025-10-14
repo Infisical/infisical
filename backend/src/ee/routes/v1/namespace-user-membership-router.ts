@@ -18,6 +18,7 @@ export const SanitizedNamespaceUserMembershipDetailSchema = z.object({
     email: z.string().nullable().optional(),
     firstName: z.string().nullable().optional(),
     lastName: z.string().nullable().optional(),
+    isEmailVerified: z.boolean().nullable().optional(),
     id: z.string().uuid(),
     username: z.string()
   }),
@@ -206,6 +207,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
       });
 
       await server.services.auditLog.createAuditLog({
+        orgId: req.permission.orgId,
         namespaceId: req.params.namespaceId,
         ...req.auditLogInfo,
         event: {
@@ -338,6 +340,7 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
+        orgId: req.permission.orgId,
         namespaceId: req.params.namespaceId,
         event: {
           type: EventType.REMOVE_PROJECT_MEMBER,

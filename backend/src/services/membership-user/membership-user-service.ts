@@ -36,6 +36,7 @@ import {
 import { newNamespaceMembershipUserFactory } from "./namespace/namespace-membership-user-factory";
 import { newOrgMembershipUserFactory } from "./org/org-membership-user-factory";
 import { newProjectMembershipUserFactory } from "./project/project-membership-user-factory";
+import { TNamespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
 
 type TMembershipUserServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;
@@ -52,6 +53,7 @@ type TMembershipUserServiceFactoryDep = {
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectDAL: TProjectDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
+  namespaceDAL: TNamespaceDALFactory;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -70,7 +72,8 @@ export const membershipUserServiceFactory = ({
   tokenService,
   userGroupMembershipDAL,
   projectDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  namespaceDAL
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -86,7 +89,8 @@ export const membershipUserServiceFactory = ({
       permissionService,
       membershipUserDAL,
       smtpService,
-      licenseService
+      licenseService,
+      namespaceDAL
     }),
     [AccessScope.Project]: newProjectMembershipUserFactory({
       permissionService,

@@ -21,7 +21,7 @@ import { MembersTable } from "./MembersTable";
 
 export const MembersTab = withNamespacePermission(
   () => {
-    const { namespaceName } = useNamespace();
+    const { namespaceId } = useNamespace();
 
     const { mutateAsync: removeUserFromNamespace } = useDeleteNamespaceUserMembership();
 
@@ -32,12 +32,12 @@ export const MembersTab = withNamespacePermission(
     ] as const);
 
     const handleRemoveUser = async () => {
-      const membershipId = (popUp?.removeMember?.data as { membershipId: string })?.membershipId;
+      const userId = (popUp?.removeMember?.data as { userId: string })?.userId;
 
       try {
         await removeUserFromNamespace({
-          membershipId,
-          namespaceName
+          userId,
+          namespaceId
         });
         createNotification({
           text: "Successfully removed user from namespace",

@@ -47,7 +47,7 @@ export type TListNamespaceMembershipsDTO = {
 
 export type TGetNamespaceMembershipByIdDTO = {
   namespaceId: string;
-  membershipId: string;
+  userId: string;
 };
 
 export type TSearchNamespaceMembershipsDTO = {
@@ -59,7 +59,7 @@ export type TSearchNamespaceMembershipsDTO = {
 
 export type TUpdateNamespaceMembershipDTO = {
   namespaceId: string;
-  membershipId: string;
+  userId: string;
   roles: Array<{
     role: string;
     isTemporary?: boolean;
@@ -71,11 +71,17 @@ export type TUpdateNamespaceMembershipDTO = {
 
 export type TDeleteNamespaceMembershipDTO = {
   namespaceId: string;
-  membershipId: string;
+  userId: string;
 };
 
 export type TAddUsersToNamespaceDTO = {
   namespaceId: string;
   usernames: string[];
-  roleSlugs: string[];
+  roles: Array<{
+    role: string;
+    isTemporary?: boolean;
+    temporaryMode?: string;
+    temporaryRange?: string;
+    temporaryAccessStartTime?: string;
+  }>;
 };

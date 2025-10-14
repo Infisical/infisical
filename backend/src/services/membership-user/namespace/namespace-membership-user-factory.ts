@@ -17,19 +17,22 @@ import {
 import { TMembershipUserDALFactory } from "../membership-user-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getConfig } from "@app/lib/config/env";
+import { TNamespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
 
 type TNamespaceMembershipUserScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getNamespacePermission" | "getNamespacePermissionByRoles">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
+  namespaceDAL: Pick<TNamespaceDALFactory, "findById">;
 };
 
 export const newNamespaceMembershipUserFactory = ({
   permissionService,
   licenseService,
   smtpService,
-  membershipUserDAL
+  membershipUserDAL,
+  namespaceDAL
 }: TNamespaceMembershipUserScopeFactoryDep): TMembershipUserScopeFactory => {
   const getScopeField: TMembershipUserScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Namespace) {

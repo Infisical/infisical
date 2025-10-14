@@ -33,12 +33,12 @@ import {
 export const Page = () => {
   const navigate = useNavigate();
   const { roleSlug } = useParams({
-    from: "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceName/_namespace-layout/roles/$roleSlug",
+    from: "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceId/_namespace-layout/roles/$roleSlug",
     select: (el) => ({ roleSlug: el.roleSlug })
   });
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
 
-  const { data } = useQuery(namespaceRolesQueryKeys.detail({ namespaceName, roleSlug }));
+  const { data } = useQuery(namespaceRolesQueryKeys.detail({ namespaceId, roleSlug }));
 
   const { mutateAsync: deleteNamespaceRole } = useDeleteNamespaceRole();
 
@@ -50,10 +50,10 @@ export const Page = () => {
 
   const onDeleteNamespaceRoleSubmit = async () => {
     try {
-      if (!namespaceName || !data?.id) return;
+      if (!namespaceId || !data?.id) return;
 
       await deleteNamespaceRole({
-        namespaceName,
+        namespaceId,
         roleId: data.id
       });
 
@@ -64,9 +64,9 @@ export const Page = () => {
 
       handlePopUpClose("deleteNamespaceRole");
       navigate({
-        to: "/organization/namespaces/$namespaceName/access-management" as const,
+        to: "/organization/namespaces/$namespaceId/access-management" as const,
         params: {
-          namespaceName
+          namespaceId
         }
       });
     } catch (err) {
@@ -88,6 +88,7 @@ export const Page = () => {
       {data && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
           <PageHeader
+            scope="namespace"
             title={
               <div className="flex flex-col">
                 <div>

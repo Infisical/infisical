@@ -42,16 +42,17 @@ const Page = withNamespacePermission(
     const search = useParams({
       from: ROUTE_PATHS.Namespace.UserDetailsByIDPage.id
     });
-    const membershipId = search.membershipId as string;
-    const { user } = useUser();
-    const { namespaceName } = useNamespace();
 
-    const userId = user?.id || "";
+    const userId = search.userId as string;
+    const { user } = useUser();
+    const { namespaceId } = useNamespace();
+
+    const currentUserId = user?.id || "";
 
     const { data: membership } = useQuery(
       namespaceUserMembershipQueryKeys.detail({
-        membershipId,
-        namespaceName
+        userId,
+        namespaceId
       })
     );
 
@@ -67,8 +68,8 @@ const Page = withNamespacePermission(
     const onRemoveMemberSubmit = async () => {
       try {
         await deleteNamespaceMembership({
-          membershipId,
-          namespaceName
+          userId,
+          namespaceId
         });
 
         createNotification({
@@ -78,7 +79,10 @@ const Page = withNamespacePermission(
 
         handlePopUpClose("removeMember");
         navigate({
-          to: "/organization/access-management" as const,
+          to: "/organization/namespaces/$namespaceId/access-management" as const,
+          params: {
+            namespaceId
+          },
           search: {
             selectedTab: OrgAccessControlTabSections.Member
           }
@@ -99,6 +103,7 @@ const Page = withNamespacePermission(
         {membership && (
           <div className="mx-auto mb-6 w-full max-w-7xl">
             <PageHeader
+              scope="namespace"
               title={
                 membership.user.firstName || membership.user.lastName
                   ? `${membership.user.firstName} ${membership.user.lastName ?? ""}`.trim()
@@ -106,7 +111,7 @@ const Page = withNamespacePermission(
               }
             >
               <div>
-                {userId !== membership.user.id && (
+                {currentUserId !== membership.user.id && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild className="rounded-lg">
                       <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
@@ -117,28 +122,7 @@ const Page = withNamespacePermission(
                         </Tooltip>
                       </div>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="p-1">
-                      <NamespacePermissionCan
-                        I={NamespacePermissionActions.Edit}
-                        a={NamespacePermissionSubjects.Member}
-                      >
-                        {(isAllowed) => (
-                          <DropdownMenuItem
-                            className={twMerge(
-                              !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                            )}
-                            onClick={() =>
-                              handlePopUpOpen("namespaceMembership", {
-                                membershipId: membership.id,
-                                roles: membership.roles
-                              })
-                            }
-                            disabled={!isAllowed}
-                          >
-                            Edit User
-                          </DropdownMenuItem>
-                        )}
-                      </NamespacePermissionCan>
+                    <DropdownMenuContent align="end" sideOffset={5} className="p-1">
                       <NamespacePermissionCan
                         I={NamespacePermissionActions.Delete}
                         a={NamespacePermissionSubjects.Member}
@@ -152,7 +136,7 @@ const Page = withNamespacePermission(
                             )}
                             onClick={() => {
                               handlePopUpOpen("removeMember", {
-                                orgMembershipId: membershipId,
+                                orgMembershipId: userId,
                                 username: membership.user.username
                               });
                             }}
@@ -169,7 +153,7 @@ const Page = withNamespacePermission(
             </PageHeader>
             <div className="flex">
               <div className="mr-4 w-96">
-                <UserDetailsSection membershipId={membershipId} handlePopUpOpen={handlePopUpOpen} />
+                <UserDetailsSection userId={userId} handlePopUpOpen={handlePopUpOpen} />
               </div>
               <div className="w-full space-y-2">
                 <div className="w-full space-y-4">

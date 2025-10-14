@@ -75,7 +75,12 @@ export const scopedIdentityServiceFactory = ({
 
     const identity = await identityDAL.transaction(async (tx) => {
       const newIdentity = await identityDAL.create(
-        { name: data.name, hasDeleteProtection: data.hasDeleteProtection },
+        {
+          name: data.name,
+          hasDeleteProtection: data.hasDeleteProtection,
+          scopeNamespaceId: scopeData.scope === AccessScope.Namespace ? scopeData.namespaceId : null,
+          scopeProjectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : null
+        },
         tx
       );
       const orgMembership = await membershipIdentityDAL.create(

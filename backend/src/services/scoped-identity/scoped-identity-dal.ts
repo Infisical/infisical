@@ -21,11 +21,11 @@ export const scopedIdentityDALFactory = (db: TDbClient) => {
       .where(`${TableName.Identity}.id`, identityId)
       .where((qb) => {
         if (scopeData.scope === AccessScope.Project) {
-          void qb.where(`${TableName.Identity}.projectId`, scopeData.projectId);
+          void qb.where(`${TableName.Identity}.scopeProjectId`, scopeData.projectId);
         } else if (scopeData.scope === AccessScope.Namespace) {
-          void qb.where(`${TableName.Identity}.namespaceId`, scopeData.namespaceId);
+          void qb.where(`${TableName.Identity}.scopeNamespaceId`, scopeData.namespaceId);
         } else {
-          void qb.whereNull(`${TableName.Identity}.namespaceId`).whereNull(`${TableName.Identity}.projectId`);
+          void qb.whereNull(`${TableName.Identity}.scopeNamespaceId`).whereNull(`${TableName.Identity}.scopeProjectId`);
         }
       })
       .select(
@@ -73,11 +73,11 @@ export const scopedIdentityDALFactory = (db: TDbClient) => {
       .where(`${TableName.Membership}.scope`, AccessScope.Organization)
       .where((qb) => {
         if (scopeData.scope === AccessScope.Project) {
-          void qb.where(`${TableName.Identity}.projectId`, scopeData.projectId);
+          void qb.where(`${TableName.Identity}.scopeProjectId`, scopeData.projectId);
         } else if (scopeData.scope === AccessScope.Namespace) {
-          void qb.where(`${TableName.Identity}.namespaceId`, scopeData.namespaceId);
+          void qb.where(`${TableName.Identity}.scopeNamespaceId`, scopeData.namespaceId);
         } else {
-          void qb.whereNull(`${TableName.Identity}.namespaceId`).whereNull(`${TableName.Identity}.projectId`);
+          void qb.whereNull(`${TableName.Identity}.scopeNamespaceId`).whereNull(`${TableName.Identity}.scopeProjectId`);
         }
       })
       .select(

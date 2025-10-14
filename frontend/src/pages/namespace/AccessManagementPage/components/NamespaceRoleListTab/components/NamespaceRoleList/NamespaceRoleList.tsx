@@ -64,7 +64,7 @@ enum RolesOrderBy {
 }
 
 export const NamespaceRoleList = () => {
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
   const navigate = useNavigate();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -74,7 +74,7 @@ export const NamespaceRoleList = () => {
   ] as const);
 
   const { data: rolesData, isPending: isRolesLoading } = useQuery(
-    namespaceRolesQueryKeys.list({ namespaceName })
+    namespaceRolesQueryKeys.list({ namespaceId })
   );
 
   const { mutateAsync: deleteRole } = useDeleteNamespaceRole();
@@ -83,7 +83,7 @@ export const NamespaceRoleList = () => {
     const { id } = popUp?.deleteRole?.data as TNamespaceRole;
     try {
       await deleteRole({
-        namespaceName,
+        namespaceId,
         roleId: id
       });
       createNotification({ type: "success", text: "Successfully removed the role" });
@@ -238,9 +238,9 @@ export const NamespaceRoleList = () => {
                   className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                   onClick={() =>
                     navigate({
-                      to: "/organization/namespaces/$namespaceName/roles/$roleSlug",
+                      to: "/organization/namespaces/$namespaceId/roles/$roleSlug",
                       params: {
-                        namespaceName,
+                        namespaceId,
                         roleSlug: slug
                       }
                     })
@@ -249,7 +249,7 @@ export const NamespaceRoleList = () => {
                   <Td>{name}</Td>
                   <Td>{slug}</Td>
                   <Td>
-                    <Badge className="w-min whitespace-nowrap bg-mineshaft-400/50 text-bunker-200">
+                    <Badge className="w-min bg-mineshaft-400/50 whitespace-nowrap text-bunker-200">
                       {isCustomNamespaceRole(slug) ? "Custom" : "Default"}
                     </Badge>
                   </Td>
@@ -280,9 +280,9 @@ export const NamespaceRoleList = () => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate({
-                                    to: "/organization/namespaces/$namespaceName/roles/$roleSlug",
+                                    to: "/organization/namespaces/$namespaceId/roles/$roleSlug",
                                     params: {
-                                      namespaceName,
+                                      namespaceId,
                                       roleSlug: slug
                                     }
                                   });

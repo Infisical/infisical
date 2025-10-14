@@ -26,9 +26,9 @@ import {
 import { ViewIdentityAuthModal } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityAuthModal";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
-import { NamespaceIdentityModal } from "../AccessManagementPage/components/IdentityTab/components/NamespaceIdentityModal";
 import { IdentityDetailsSection } from "./components/IdentityDetailsSection";
 import { IdentityRoleDetailsSection } from "./components/IdentityRoleDetailsSection";
+import { NamespaceIdentityForm } from "../AccessManagementPage/components/IdentityTab/components/NamespaceIdentityForm";
 
 const Page = () => {
   const navigate = useNavigate();
@@ -36,11 +36,11 @@ const Page = () => {
     from: ROUTE_PATHS.Namespace.IdentityDetailsByIdPage.id
   });
   const identityId = params.identityId as string;
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
   const { data, isPending: isMembershipDetailsLoading } = useQuery(
     namespaceIdentityQueryKeys.detail({
       identityId,
-      namespaceName
+      namespaceId
     })
   );
   const { mutateAsync: deleteIdentity } = useDeleteNamespaceIdentity();
@@ -57,7 +57,7 @@ const Page = () => {
     try {
       await deleteIdentity({
         identityId: id,
-        namespaceName
+        namespaceId
       });
 
       createNotification({
@@ -67,9 +67,9 @@ const Page = () => {
 
       handlePopUpClose("deleteIdentity");
       navigate({
-        to: "/organization/namespaces/$namespaceName/access-management",
+        to: "/organization/namespaces/$namespaceId/access-management",
         params: {
-          namespaceName
+          namespaceId
         },
         search: {
           selectedTab: OrgAccessControlTabSections.Identities
@@ -94,7 +94,7 @@ const Page = () => {
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={data.identity.name} />
+          <PageHeader scope="namespace" title={data.identity.name} />
           <div className="flex">
             <div className="mr-4 w-96">
               <IdentityDetailsSection identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
@@ -120,7 +120,7 @@ const Page = () => {
         }}
       >
         <ModalContent title="Edit Identity " bodyClassName="overflow-visible">
-          <NamespaceIdentityModal
+          <NamespaceIdentityForm
             handlePopUpToggle={() => handlePopUpToggle("identity")}
             identityId={identityId}
           />

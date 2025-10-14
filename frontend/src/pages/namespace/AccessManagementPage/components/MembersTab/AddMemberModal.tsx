@@ -24,13 +24,14 @@ import {
   useOrganization,
   useOrgPermission
 } from "@app/context";
-import { useGetOrgUsers } from "@app/hooks/api";
+import { useAddUsersToOrg, useGetOrgUsers } from "@app/hooks/api";
 import { namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles";
 import {
   namespaceUserMembershipQueryKeys,
   useAddUsersToNamespace
 } from "@app/hooks/api/namespaceUserMembership";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { OrgMembershipRole } from "@app/helpers/roles";
 
 const addMemberFormSchema = z.object({
   orgMemberships: z
@@ -54,7 +55,7 @@ type Props = {
 
 export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentOrg } = useOrganization();
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
   const navigate = useNavigate({ from: "" });
   const { permission } = useOrgPermission();
   const requesterEmail = useSearch({
@@ -64,9 +65,9 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const orgId = currentOrg?.id || "";
 
-  const { data: { members = [] } = {} } = useQuery(
+  const { data: { memberships = [] } = {} } = useQuery(
     namespaceUserMembershipQueryKeys.list({
-      namespaceName,
+      namespaceId,
       limit: 1000
     })
   );
@@ -74,7 +75,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const { data: { roles = [] } = {} } = useQuery(
     namespaceRolesQueryKeys.list({
-      namespaceName,
+      namespaceId,
       limit: 1000
     })
   );
@@ -91,6 +92,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     defaultValues: { orgMemberships: [], namespaceRoleSlugs: [] }
   });
 
+  const { mutateAsync: addUserToOrgMutateAsync } = useAddUsersToOrg();
   const { mutateAsync: addMembersToNamespace } = useAddUsersToNamespace();
 
   useEffect(() => {
@@ -117,13 +119,12 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
       const inviteeEmails = selectedMembers
         .map((member) => {
           if (!member) return null;
+          if (member.user.username) {
+            return member.user.username;
+          }
 
           if (member.user.email) {
             return member.user.email;
-          }
-
-          if (member.user.username) {
-            return member.user.username;
           }
 
           return null;
@@ -138,11 +139,19 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
         return;
       }
 
+      if (newInvitees.length) {
+        await addUserToOrgMutateAsync({
+          inviteeEmails: newInvitees,
+          organizationId: orgId,
+          organizationRoleSlug: OrgMembershipRole.Member // only applies to new invites
+        });
+      }
+
       if (inviteeEmails.length || newInvitees.length) {
         await addMembersToNamespace({
-          namespaceName,
-          usernames: inviteeEmails,
-          roleSlugs: namespaceRoleSlugs.map((i) => i.slug)
+          namespaceId,
+          usernames: [...inviteeEmails, ...newInvitees],
+          roles: namespaceRoleSlugs.map((i) => ({ role: i.slug, isTemporary: false }))
         });
       }
       createNotification({
@@ -164,7 +173,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { append } = useFieldArray<TAddMemberForm>({ control, name: "orgMemberships" });
   const namespaceInviteList = useMemo(() => {
     const wsUserUsernames = new Map();
-    members?.forEach((member) => {
+    memberships?.forEach((member) => {
       wsUserUsernames.set(member.user.username, true);
     });
     const list = (orgUsers || [])
@@ -196,7 +205,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
 
     return { list, requesterStatus };
-  }, [orgUsers, members]);
+  }, [orgUsers, memberships]);
 
   const selectedOrgMemberships = watch("orgMemberships");
   const selectedRoleSlugs = watch("namespaceRoleSlugs");

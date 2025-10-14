@@ -14,9 +14,9 @@ import {
 export const useUpdateNamespaceUserMembership = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ namespaceId, membershipId, roles }: TUpdateNamespaceMembershipDTO) => {
+    mutationFn: ({ namespaceId, userId, roles }: TUpdateNamespaceMembershipDTO) => {
       return apiRequest.patch<{ roles: TNamespaceMembershipRole[] }>(
-        `/api/v1/namespaces/${namespaceId}/memberships/${membershipId}`,
+        `/api/v1/namespaces/${namespaceId}/memberships/${userId}`,
         { roles }
       );
     },
@@ -35,9 +35,9 @@ export const useUpdateNamespaceUserMembership = () => {
 export const useDeleteNamespaceUserMembership = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ namespaceId, membershipId }: TDeleteNamespaceMembershipDTO) => {
+    mutationFn: ({ namespaceId, userId }: TDeleteNamespaceMembershipDTO) => {
       return apiRequest.delete<{ membership: TNamespaceMembership }>(
-        `/api/v1/namespaces/${namespaceId}/memberships/${membershipId}`
+        `/api/v1/namespaces/${namespaceId}/memberships/${userId}`
       );
     },
     onSuccess: (_, { namespaceId }) => {
@@ -55,13 +55,13 @@ export const useDeleteNamespaceUserMembership = () => {
 export const useAddUsersToNamespace = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ namespaceId, usernames, roleSlugs }: TAddUsersToNamespaceDTO) => {
+    mutationFn: ({ namespaceId, usernames, roles }: TAddUsersToNamespaceDTO) => {
       return apiRequest.post<{
         message: string;
         completeInviteLinks?: Array<{ email: string; link: string }>;
       }>(`/api/v1/namespaces/${namespaceId}/memberships`, {
         usernames,
-        roleSlugs
+        roles
       });
     },
     onSuccess: (_, { namespaceId }) => {

@@ -64,10 +64,10 @@ type Props = {
 };
 
 export const IdentityRoleModify = ({ identityNamespaceMembership }: Props) => {
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
   const { data: { roles = [] } = {}, isPending: isRolesLoading } = useQuery(
     namespaceRolesQueryKeys.list({
-      namespaceName,
+      namespaceId,
       limit: 1000
     })
   );
@@ -123,7 +123,7 @@ export const IdentityRoleModify = ({ identityNamespaceMembership }: Props) => {
 
     try {
       await updateIdentityNamespaceRole.mutateAsync({
-        namespaceName,
+        namespaceId,
         identityId: identityNamespaceMembership.identity.id,
         roles: sanitizedRoles
       });

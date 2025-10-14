@@ -49,7 +49,7 @@ export const MemberRoleDetailsSection = ({
 }: Props) => {
   const { user } = useUser();
   const userId = user?.id;
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deleteRole",
     "modifyRole"
@@ -63,7 +63,7 @@ export const MemberRoleDetailsSection = ({
     try {
       const updatedRoles = membershipDetails?.roles?.filter((el) => el.id !== id);
       await updateUserNamespaceRole({
-        namespaceName,
+        namespaceId,
         roles: updatedRoles.map(
           ({
             role,
@@ -88,7 +88,7 @@ export const MemberRoleDetailsSection = ({
                 })
           })
         ),
-        membershipId: membershipDetails.id
+        userId: membershipDetails.user.id
       });
       createNotification({ type: "success", text: "Successfully removed role" });
       handlePopUpClose("deleteRole");

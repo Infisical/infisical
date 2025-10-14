@@ -43,11 +43,11 @@ type Props = {
 };
 
 export const RolePermissionsSection = ({ roleSlug }: Props) => {
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
 
   const { data: role } = useQuery(
     namespaceRolesQueryKeys.detail({
-      namespaceName,
+      namespaceId,
       roleSlug
     })
   );
@@ -69,7 +69,7 @@ export const RolePermissionsSection = ({ roleSlug }: Props) => {
     try {
       await updateRole({
         ...el,
-        namespaceName,
+        namespaceId,
         roleId: role?.id || "",
         permissions: formRolePermission2API(el.permissions)
       });

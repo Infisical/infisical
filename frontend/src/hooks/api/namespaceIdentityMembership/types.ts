@@ -16,7 +16,8 @@ export type TNamespaceIdentityBasic = {
   name: string;
   authMethods: string[];
   hasDeleteProtection: boolean;
-  namespaceId?: string;
+  scopeNamespaceId?: string;
+  scopeProjectId?: string;
 };
 
 export type TNamespaceIdentityMembershipRole = {

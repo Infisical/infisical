@@ -68,7 +68,7 @@ enum MembersOrderBy {
 }
 
 export const MembersTable = ({ handlePopUpOpen }: Props) => {
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
   const { user } = useUser();
   const navigate = useNavigate();
   // const filterRoles = useMemo(() => filter.roles, [filter.roles]);
@@ -99,16 +99,16 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
 
   const { data, isPending: isMembersLoading } = useQuery(
     namespaceUserMembershipQueryKeys.list({
-      namespaceName,
+      namespaceId,
       limit: 10000,
       offset
     })
   );
-  const { members = [] } = data || {};
+  const { memberships = [] } = data || {};
 
   const filteredUsers = useMemo(
     () =>
-      members
+      memberships
         ?.filter(
           ({ user: u }) =>
             u?.firstName?.toLowerCase().includes(search.toLowerCase()) ||
@@ -138,7 +138,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
 
           return valueOne.toLowerCase().localeCompare(valueTwo.toLowerCase());
         }),
-    [members, search, orderDirection, orderBy]
+    [memberships, search, orderDirection, orderBy]
   );
 
   useResetPageHelper({
@@ -231,20 +231,20 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     onKeyDown={(evt) => {
                       if (evt.key === "Enter") {
                         navigate({
-                          to: "/organization/namespaces/$namespaceName/members/$membershipId",
+                          to: "/organization/namespaces/$namespaceId/members/$userId",
                           params: {
-                            namespaceName,
-                            membershipId
+                            namespaceId,
+                            userId: u.id
                           }
                         });
                       }
                     }}
                     onClick={() =>
                       navigate({
-                        to: "/organization/namespaces/$namespaceName/members/$membershipId",
+                        to: "/organization/namespaces/$namespaceId/members/$userId",
                         params: {
-                          namespaceName,
-                          membershipId
+                          namespaceId,
+                          userId: u.id
                         }
                       })
                     }
@@ -359,7 +359,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                                     onClick={(evt) => {
                                       evt.preventDefault();
                                       evt.stopPropagation();
-                                      handlePopUpOpen("removeMember", { membershipId });
+                                      handlePopUpOpen("removeMember", { userId: u.id });
                                     }}
                                   >
                                     Remove User From Namespace
@@ -388,9 +388,11 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
         {!isMembersLoading && !filteredUsers?.length && (
           <EmptyState
             title={
-              members.length ? "No namespace members match search..." : "No namespace members found"
+              memberships.length
+                ? "No namespace members match search..."
+                : "No namespace members found"
             }
-            icon={members.length ? faSearch : faUsers}
+            icon={memberships.length ? faSearch : faUsers}
           />
         )}
       </TableContainer>

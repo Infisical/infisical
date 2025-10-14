@@ -1,4 +1,3 @@
-import { subject } from "@casl/ability";
 import { faFolder, faPencil, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistance } from "date-fns";
@@ -44,7 +43,7 @@ export const IdentityRoleDetailsSection = ({
   identityMembershipDetails,
   isMembershipDetailsLoading
 }: Props) => {
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deleteRole",
     "modifyRole"
@@ -56,7 +55,7 @@ export const IdentityRoleDetailsSection = ({
     try {
       const updatedRoles = identityMembershipDetails?.roles?.filter((el) => el.id !== id);
       await updateIdentityWorkspaceRole({
-        namespaceName,
+        namespaceId,
         identityId: identityMembershipDetails.identity.id,
         roles: updatedRoles.map(
           ({
@@ -97,9 +96,7 @@ export const IdentityRoleDetailsSection = ({
         <h3 className="text-lg font-semibold text-mineshaft-100">Namespace Roles</h3>
         <NamespacePermissionCan
           I={NamespacePermissionIdentityActions.Edit}
-          a={subject(NamespacePermissionSubjects.Identity, {
-            identityId: identityMembershipDetails.identity.id
-          })}
+          a={NamespacePermissionSubjects.Identity}
           renderTooltip
           allowedLabel="Edit Role(s)"
         >
@@ -181,9 +178,7 @@ export const IdentityRoleDetailsSection = ({
                         <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                           <NamespacePermissionCan
                             I={NamespacePermissionIdentityActions.Edit}
-                            a={subject(NamespacePermissionSubjects.Identity, {
-                              identityId: identityMembershipDetails.identity.id
-                            })}
+                            a={NamespacePermissionSubjects.Identity}
                             renderTooltip
                             allowedLabel="Remove Role"
                           >

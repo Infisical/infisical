@@ -1,1 +1,1 @@
-export { LinkOrgIdentityModal } from "./LinkOrgIdentityModal";
+export { AddIdentityNamespaceModal } from "./AddIdentityNamespaceModal";

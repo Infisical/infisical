@@ -24,10 +24,10 @@ type Props = {
 };
 
 export const DuplicateNamespaceRoleModal = ({ isOpen, onOpenChange, roleSlug }: Props) => {
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
 
   const { data: role } = useQuery({
-    ...namespaceRolesQueryKeys.detail({ namespaceName, roleSlug }),
+    ...namespaceRolesQueryKeys.detail({ namespaceId, roleSlug }),
     enabled: Boolean(roleSlug) && isOpen
   });
 
@@ -62,7 +62,7 @@ export const DuplicateNamespaceRoleModal = ({ isOpen, onOpenChange, roleSlug }: 
       if (!role) return;
 
       await createRole({
-        namespaceName,
+        namespaceId,
         name: data.name,
         slug: data.slug,
         description: data.description,

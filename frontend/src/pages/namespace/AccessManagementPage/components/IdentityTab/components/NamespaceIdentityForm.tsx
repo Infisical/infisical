@@ -50,16 +50,16 @@ type Props = {
   identityId?: string;
 };
 
-export const NamespaceIdentityModal = ({ handlePopUpToggle, identityId }: Props) => {
+export const NamespaceIdentityForm = ({ handlePopUpToggle, identityId }: Props) => {
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
   const isUpdate = Boolean(identityId);
 
   const { data: identityDetails } = useQuery({
     ...namespaceIdentityQueryKeys.detail({
       identityId: identityId as string,
-      namespaceName
+      namespaceId
     }),
     enabled: Boolean(identityId)
   });
@@ -67,7 +67,7 @@ export const NamespaceIdentityModal = ({ handlePopUpToggle, identityId }: Props)
   const { data: { roles = [] } = {} } = useQuery(
     namespaceRolesQueryKeys.list({
       limit: 1000,
-      namespaceName
+      namespaceId
     })
   );
 
@@ -105,7 +105,7 @@ export const NamespaceIdentityModal = ({ handlePopUpToggle, identityId }: Props)
           name,
           hasDeleteProtection,
           metadata,
-          namespaceName
+          namespaceId
         });
 
         handlePopUpToggle();
@@ -117,11 +117,11 @@ export const NamespaceIdentityModal = ({ handlePopUpToggle, identityId }: Props)
           name,
           hasDeleteProtection,
           metadata,
-          namespaceName
+          namespaceId
         });
         await updateNamespaceIdentityMembership({
           identityId: identity.id,
-          namespaceName,
+          namespaceId,
           roles: [{ role: role.slug, isTemporary: false }]
         });
 
@@ -142,9 +142,9 @@ export const NamespaceIdentityModal = ({ handlePopUpToggle, identityId }: Props)
 
         handlePopUpToggle();
         navigate({
-          to: "/organization/namespaces/$namespaceName/identities/$identityId",
+          to: "/organization/namespaces/$namespaceId/identities/$identityId",
           params: {
-            namespaceName,
+            namespaceId,
             identityId: identity.id
           }
         });
@@ -210,7 +210,7 @@ export const NamespaceIdentityModal = ({ handlePopUpToggle, identityId }: Props)
         render={({ field: { onChange, value }, fieldState: { error } }) => (
           <FormControl errorText={error?.message} isError={Boolean(error)}>
             <Switch
-              className="ml-0 mr-2 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+              className="mr-2 ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
               containerClassName="flex-row-reverse w-fit"
               id="delete-protection-enabled"
               thumbClassName="bg-mineshaft-800"

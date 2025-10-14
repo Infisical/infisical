@@ -1,28 +1,26 @@
-import { subject } from "@casl/ability";
 import {
-  faAngleDown,
   faArrowDown,
   faArrowUp,
   faArrowUpRightFromSquare,
   faBookOpen,
   faCircleXmark,
   faClock,
+  faCubes,
   faEllipsisV,
-  faLink,
+  faGlobe,
   faMagnifyingGlass,
   faPlus,
   faServer
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { NamespacePermissionCan } from "@app/components/permissions";
-import { ManagedByBadge } from "@app/components/permissions/ManagedByBadge";
 import {
   Button,
   DeleteActionModal,
@@ -71,15 +69,13 @@ import {
   useDeleteNamespaceIdentityMembership
 } from "@app/hooks/api/namespaceIdentityMembership";
 import { usePopUp } from "@app/hooks/usePopUp";
-
-import { LinkOrgIdentityModal } from "./components/LinkOrgIdentityModal";
-import { NamespaceIdentityModal } from "./components/NamespaceIdentityModal";
+import { AddIdentityNamespaceModal } from "./components";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
 export const IdentityTab = withNamespacePermission(
   () => {
-    const { namespaceName } = useNamespace();
+    const { namespaceId } = useNamespace();
     const navigate = useNavigate();
 
     const {
@@ -110,7 +106,7 @@ export const IdentityTab = withNamespacePermission(
         limit,
         offset,
         search,
-        namespaceName,
+        namespaceId,
         orderBy,
         orderDirection
       }),
@@ -130,9 +126,8 @@ export const IdentityTab = withNamespacePermission(
       useDeleteNamespaceIdentityMembership();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-      "linkOrgIdentity",
       "deleteIdentity",
-      "createNamespaceIdentity",
+      "linkIdentity",
       "unlinkFromNamespace",
       "upgradePlan"
     ] as const);
@@ -141,7 +136,7 @@ export const IdentityTab = withNamespacePermission(
       try {
         await deleteNamespaceIdentity({
           identityId,
-          namespaceName
+          namespaceId
         });
 
         createNotification({
@@ -166,7 +161,7 @@ export const IdentityTab = withNamespacePermission(
       try {
         await deleteNamespaceIdentityMembership({
           identityId,
-          namespaceName
+          namespaceId
         });
 
         createNotification({
@@ -216,7 +211,7 @@ export const IdentityTab = withNamespacePermission(
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="ml-1 mt-[0.16rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                <div className="mt-[0.16rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   <span>Docs</span>
                   <FontAwesomeIcon
@@ -236,43 +231,14 @@ export const IdentityTab = withNamespacePermission(
                     variant="outline_bg"
                     type="submit"
                     leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                    onClick={() => handlePopUpOpen("createNamespaceIdentity")}
+                    onClick={() => handlePopUpOpen("linkIdentity")}
                     isDisabled={!isAllowed}
                     className="h-10 rounded-r-none"
                   >
-                    Create Identity
+                    Add Namespace Identity
                   </Button>
                 )}
               </NamespacePermissionCan>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <IconButton
-                    ariaLabel="add-folder-or-import"
-                    variant="outline_bg"
-                    className="rounded-l-none bg-mineshaft-600 p-3"
-                  >
-                    <FontAwesomeIcon icon={faAngleDown} />
-                  </IconButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" sideOffset={5}>
-                  <NamespacePermissionCan
-                    I={NamespacePermissionIdentityActions.Create}
-                    a={NamespacePermissionSubjects.Identity}
-                  >
-                    {(isAllowed) => (
-                      <DropdownMenuItem
-                        icon={<FontAwesomeIcon icon={faLink} className="pr-2" />}
-                        onClick={() => {
-                          handlePopUpOpen("linkOrgIdentity");
-                        }}
-                        isDisabled={!isAllowed}
-                      >
-                        Link Org Identity
-                      </DropdownMenuItem>
-                    )}
-                  </NamespacePermissionCan>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </div>
           <Input
@@ -321,7 +287,7 @@ export const IdentityTab = withNamespacePermission(
                   data.identityMemberships.length > 0 &&
                   data.identityMemberships.map((identityMember) => {
                     const {
-                      identity: { id, name, namespaceId },
+                      identity: { id, name, scopeNamespaceId },
                       roles,
                       createdAt
                     } = identityMember;
@@ -335,9 +301,9 @@ export const IdentityTab = withNamespacePermission(
                         onKeyDown={(evt) => {
                           if (evt.key === "Enter") {
                             navigate({
-                              to: "/organization/namespaces/$namespaceName/identities/$identityId",
+                              to: "/organization/namespaces/$namespaceId/identities/$identityId",
                               params: {
-                                namespaceName,
+                                namespaceId,
                                 identityId: id
                               }
                             });
@@ -345,9 +311,9 @@ export const IdentityTab = withNamespacePermission(
                         }}
                         onClick={() =>
                           navigate({
-                            to: "/organization/namespaces/$namespaceName/identities/$identityId",
+                            to: "/organization/namespaces/$namespaceId/identities/$identityId",
                             params: {
-                              namespaceName,
+                              namespaceId,
                               identityId: id
                             }
                           })
@@ -449,7 +415,44 @@ export const IdentityTab = withNamespacePermission(
                         </Td>
                         <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>
                         <Td>
-                          <ManagedByBadge namespaceId={namespaceId} />
+                          {!scopeNamespaceId ? (
+                            <Link
+                              to="/organization/identities/$identityId"
+                              params={{
+                                identityId: id
+                              }}
+                              className="underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <p className="truncate">
+                                <FontAwesomeIcon
+                                  size="sm"
+                                  className="mr-1.5 text-mineshaft-300/75"
+                                  icon={faGlobe}
+                                />
+                                Organization
+                              </p>
+                            </Link>
+                          ) : (
+                            <Link
+                              to="/organization/namespaces/$namespaceId/identities/$identityId"
+                              params={{
+                                namespaceId,
+                                identityId: id
+                              }}
+                              className="underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <p className="truncate">
+                                <FontAwesomeIcon
+                                  size="sm"
+                                  className="mr-1.5 text-mineshaft-300/75"
+                                  icon={faCubes}
+                                />
+                                Namespace
+                              </p>
+                            </Link>
+                          )}
                         </Td>
                         <Td className="flex justify-end space-x-2">
                           <Tooltip className="max-w-sm text-center" content="Options">
@@ -464,13 +467,11 @@ export const IdentityTab = withNamespacePermission(
                                   <FontAwesomeIcon icon={faEllipsisV} />
                                 </IconButton>
                               </DropdownMenuTrigger>
-                              {namespaceId ? (
+                              {scopeNamespaceId ? (
                                 <DropdownMenuContent sideOffset={2} align="end">
                                   <NamespacePermissionCan
                                     I={NamespacePermissionIdentityActions.Delete}
-                                    a={subject(NamespacePermissionSubjects.Identity, {
-                                      identityId: id
-                                    })}
+                                    a={NamespacePermissionSubjects.Identity}
                                   >
                                     {(isAllowed) => (
                                       <DropdownMenuItem
@@ -494,9 +495,7 @@ export const IdentityTab = withNamespacePermission(
                                 <DropdownMenuContent sideOffset={2} align="end">
                                   <NamespacePermissionCan
                                     I={NamespacePermissionIdentityActions.Delete}
-                                    a={subject(NamespacePermissionSubjects.Identity, {
-                                      identityId: id
-                                    })}
+                                    a={NamespacePermissionSubjects.Identity}
                                   >
                                     {(isAllowed) => (
                                       <DropdownMenuItem
@@ -545,16 +544,19 @@ export const IdentityTab = withNamespacePermission(
               />
             )}
           </TableContainer>
-          <LinkOrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
           <Modal
-            isOpen={popUp?.createNamespaceIdentity?.isOpen}
+            isOpen={popUp?.linkIdentity?.isOpen}
             onOpenChange={(isOpen) => {
-              handlePopUpToggle("createNamespaceIdentity", isOpen);
+              handlePopUpToggle("linkIdentity", isOpen);
             }}
           >
-            <ModalContent title="Add Identity to Namespace" bodyClassName="overflow-visible">
-              <NamespaceIdentityModal
-                handlePopUpToggle={() => handlePopUpToggle("createNamespaceIdentity")}
+            <ModalContent
+              title="Add Identity to Namespace"
+              subTitle="Create a new identity or assign an existing identity"
+              bodyClassName="overflow-visible"
+            >
+              <AddIdentityNamespaceModal
+                handlePopUpToggle={() => handlePopUpToggle("linkIdentity")}
               />
             </ModalContent>
           </Modal>

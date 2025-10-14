@@ -44,11 +44,11 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
   const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
-  const { namespaceName } = useNamespace();
+  const { namespaceId } = useNamespace();
   const { data } = useQuery(
     namespaceIdentityQueryKeys.detail({
       identityId,
-      namespaceName
+      namespaceId
     })
   );
   return data ? (

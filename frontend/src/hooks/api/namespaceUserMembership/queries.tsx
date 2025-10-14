@@ -17,11 +17,11 @@ export const namespaceUserMembershipQueryKeys = {
     params.namespaceId,
     params
   ],
-  detailKey: (namespaceId: string, membershipId: string) => [
+  detailKey: (namespaceId: string, userId: string) => [
     ...namespaceUserMembershipQueryKeys.allKey(),
     "detail",
     namespaceId,
-    membershipId
+    userId
   ],
   searchKey: (params: TSearchNamespaceMembershipsDTO) => [
     ...namespaceUserMembershipQueryKeys.allKey(),
@@ -34,7 +34,7 @@ export const namespaceUserMembershipQueryKeys = {
       queryKey: namespaceUserMembershipQueryKeys.listKey({ namespaceId, ...params }),
       queryFn: async () => {
         const { data } = await apiRequest.get<{
-          members: TNamespaceMembership[];
+          memberships: TNamespaceMembership[];
           totalCount: number;
         }>(`/api/v1/namespaces/${namespaceId}/memberships`, {
           params
@@ -42,12 +42,12 @@ export const namespaceUserMembershipQueryKeys = {
         return data;
       }
     }),
-  detail: ({ namespaceId, membershipId }: TGetNamespaceMembershipByIdDTO) =>
+  detail: ({ namespaceId, userId }: TGetNamespaceMembershipByIdDTO) =>
     queryOptions({
-      queryKey: namespaceUserMembershipQueryKeys.detailKey(namespaceId, membershipId),
+      queryKey: namespaceUserMembershipQueryKeys.detailKey(namespaceId, userId),
       queryFn: async () => {
         const { data } = await apiRequest.get<{ membership: TNamespaceMembership }>(
-          `/api/v1/namespaces/${namespaceId}/memberships/${membershipId}`
+          `/api/v1/namespaces/${namespaceId}/memberships/${userId}`
         );
         return data.membership;
       }
@@ -57,7 +57,7 @@ export const namespaceUserMembershipQueryKeys = {
       queryKey: namespaceUserMembershipQueryKeys.searchKey({ namespaceId, ...params }),
       queryFn: async () => {
         const { data } = await apiRequest.get<{
-          members: TNamespaceMembership[];
+          memberships: TNamespaceMembership[];
           totalCount: number;
         }>(`/api/v1/namespaces/${namespaceId}/memberships/search`, {
           params
