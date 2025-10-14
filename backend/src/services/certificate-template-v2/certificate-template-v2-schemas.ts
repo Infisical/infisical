@@ -1,13 +1,22 @@
-import RE2 from "re2";
 import { z } from "zod";
 
-const attributeTypeSchema = z.enum(["common_name"]);
+import { slugSchema } from "@app/server/lib/schemas";
+import {
+  CertDurationUnit,
+  CertExtendedKeyUsageType,
+  CertIncludeType,
+  CertKeyUsageType,
+  CertSubjectAlternativeNameType,
+  CertSubjectAttributeType
+} from "@app/services/certificate-common/certificate-constants";
 
-const includeTypeSchema = z.enum(["mandatory", "optional", "prohibit"]);
+const attributeTypeSchema = z.nativeEnum(CertSubjectAttributeType);
 
-const sanTypeSchema = z.enum(["dns_name", "ip_address", "email", "uri"]);
+const includeTypeSchema = z.nativeEnum(CertIncludeType);
 
-const durationUnitSchema = z.enum(["days", "months", "years"]);
+const sanTypeSchema = z.nativeEnum(CertSubjectAlternativeNameType);
+
+const durationUnitSchema = z.nativeEnum(CertDurationUnit);
 
 export const templateV2AttributeSchema = z
   .object({
@@ -17,32 +26,43 @@ export const templateV2AttributeSchema = z
   })
   .refine(
     (data) => {
+      if (data.type === "common_name" && data.value && data.value.length > 1) {
+        return false;
+      }
       if (data.include === "mandatory" && (!data.value || data.value.length > 1)) {
         return false;
       }
       return true;
     },
     {
-      message: "Mandatory attributes can only have one value or no value (empty)"
+      message: "Common name can only have one value. Mandatory attributes can only have one value or no value (empty)"
     }
   );
 
 export const templateV2KeyUsagesSchema = z.object({
-  requiredUsages: z.object({
-    all: z.array(z.string())
-  }),
-  optionalUsages: z.object({
-    all: z.array(z.string())
-  })
+  requiredUsages: z
+    .object({
+      all: z.array(z.nativeEnum(CertKeyUsageType))
+    })
+    .optional(),
+  optionalUsages: z
+    .object({
+      all: z.array(z.nativeEnum(CertKeyUsageType))
+    })
+    .optional()
 });
 
 export const templateV2ExtendedKeyUsagesSchema = z.object({
-  requiredUsages: z.object({
-    all: z.array(z.string())
-  }),
-  optionalUsages: z.object({
-    all: z.array(z.string())
-  })
+  requiredUsages: z
+    .object({
+      all: z.array(z.nativeEnum(CertExtendedKeyUsageType))
+    })
+    .optional(),
+  optionalUsages: z
+    .object({
+      all: z.array(z.nativeEnum(CertExtendedKeyUsageType))
+    })
+    .optional()
 });
 
 export const templateV2SanSchema = z
@@ -76,26 +96,30 @@ export const templateV2ValiditySchema = z.object({
     .optional()
 });
 
-export const templateV2SignatureAlgorithmSchema = z.object({
-  allowedAlgorithms: z.array(z.string()).min(1),
-  defaultAlgorithm: z.string()
-});
+export const templateV2SignatureAlgorithmSchema = z
+  .object({
+    allowedAlgorithms: z.array(z.string()).min(1),
+    defaultAlgorithm: z.string()
+  })
+  .refine((data) => data.allowedAlgorithms.includes(data.defaultAlgorithm), {
+    message: "Default signature algorithm must be included in the allowed algorithms list"
+  });
 
-export const templateV2KeyAlgorithmSchema = z.object({
-  allowedKeyTypes: z.array(z.string()).min(1),
-  defaultKeyType: z.string()
-});
+export const templateV2KeyAlgorithmSchema = z
+  .object({
+    allowedKeyTypes: z.array(z.string()).min(1),
+    defaultKeyType: z.string()
+  })
+  .refine((data) => data.allowedKeyTypes.includes(data.defaultKeyType), {
+    message: "Default key algorithm must be included in the allowed key types list"
+  });
 
 export const createCertificateTemplateV2Schema = z.object({
   projectId: z.string().min(1),
-  slug: z
-    .string()
-    .min(1)
-    .max(255)
-    .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens"),
+  slug: slugSchema({ min: 1, max: 255 }),
   description: z.string().max(1000).optional(),
-  attributes: z.array(templateV2AttributeSchema).optional(),
-  keyUsages: templateV2KeyUsagesSchema.optional(),
+  attributes: z.array(templateV2AttributeSchema).min(1),
+  keyUsages: templateV2KeyUsagesSchema,
   extendedKeyUsages: templateV2ExtendedKeyUsagesSchema.optional(),
   subjectAlternativeNames: z.array(templateV2SanSchema).optional(),
   validity: templateV2ValiditySchema.optional(),
@@ -104,12 +128,7 @@ export const createCertificateTemplateV2Schema = z.object({
 });
 
 export const updateCertificateTemplateV2Schema = z.object({
-  slug: z
-    .string()
-    .min(1)
-    .max(255)
-    .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens")
-    .optional(),
+  slug: slugSchema({ min: 1, max: 255 }).optional(),
   description: z.string().max(1000).optional(),
   attributes: z.array(templateV2AttributeSchema).optional(),
   keyUsages: templateV2KeyUsagesSchema.optional(),
@@ -126,7 +145,7 @@ export const getCertificateTemplateV2ByIdSchema = z.object({
 
 export const getCertificateTemplateV2BySlugSchema = z.object({
   projectId: z.string().min(1),
-  slug: z.string().min(1)
+  slug: slugSchema()
 });
 
 export const listCertificateTemplatesV2Schema = z.object({
@@ -142,8 +161,8 @@ export const deleteCertificateTemplateV2Schema = z.object({
 
 export const certificateRequestSchema = z.object({
   commonName: z.string().optional(),
-  keyUsages: z.array(z.string()).optional(),
-  extendedKeyUsages: z.array(z.string()).optional(),
+  keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
+  extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
   subjectAlternativeNames: z
     .array(
       z.object({

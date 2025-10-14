@@ -99,29 +99,52 @@ export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
   }
 };
 
-export const signatureAlgorithmToAlgCfg = (signatureAlgorithm: string, keyAlgorithm: CertKeyAlgorithm) => {
+export const signatureAlgorithmToAlgCfg = (signatureAlgorithm: string, keyAlgorithm: CertKeyAlgorithm | string) => {
   // Parse signature algorithm like "RSA-SHA256", "ECDSA-SHA256" etc.
   const [keyType, hashType] = signatureAlgorithm.split("-");
+
+  const normalizeHashType = (hash: string) => {
+    const upperHash = hash.toUpperCase();
+
+    if (upperHash === "SHA1" || upperHash === "SHA-1") return "SHA-1";
+
+    if (upperHash === "SHA224" || upperHash === "SHA-224") return "SHA-224";
+    if (upperHash === "SHA256" || upperHash === "SHA-256") return "SHA-256";
+    if (upperHash === "SHA384" || upperHash === "SHA-384") return "SHA-384";
+    if (upperHash === "SHA512" || upperHash === "SHA-512") return "SHA-512";
+
+    if (upperHash === "SHA3224" || upperHash === "SHA3-224") return "SHA3-224";
+    if (upperHash === "SHA3256" || upperHash === "SHA3-256") return "SHA3-256";
+    if (upperHash === "SHA3384" || upperHash === "SHA3-384") return "SHA3-384";
+    if (upperHash === "SHA3512" || upperHash === "SHA3-512") return "SHA3-512";
+
+    return hash;
+  };
+
+  const normalizedHash = hashType ? normalizeHashType(hashType) : undefined;
 
   switch (keyType) {
     case "RSA":
       return {
         name: "RSASSA-PKCS1-v1_5",
-        hash: hashType || "SHA-256",
+        hash: normalizedHash || "SHA-256",
         publicExponent: new Uint8Array([1, 0, 1]),
         modulusLength: keyAlgorithm === CertKeyAlgorithm.RSA_4096 ? 4096 : 2048
       };
     case "ECDSA":
       // eslint-disable-next-line no-case-declarations
-      const namedCurve = keyAlgorithm === CertKeyAlgorithm.ECDSA_P384 ? "P-384" : "P-256";
+      const is384Curve =
+        keyAlgorithm === CertKeyAlgorithm.ECDSA_P384 || keyAlgorithm === "EC_secp384r1" || keyAlgorithm === "EC_P384";
+      // eslint-disable-next-line no-case-declarations
+      const namedCurve = is384Curve ? "P-384" : "P-256";
       return {
         name: "ECDSA",
         namedCurve,
-        hash: hashType || (namedCurve === "P-384" ? "SHA-384" : "SHA-256")
+        hash: normalizedHash || (namedCurve === "P-384" ? "SHA-384" : "SHA-256")
       };
     default:
       // Fallback to key algorithm default
-      return keyAlgorithmToAlgCfg(keyAlgorithm);
+      return keyAlgorithmToAlgCfg(keyAlgorithm as CertKeyAlgorithm);
   }
 };
 

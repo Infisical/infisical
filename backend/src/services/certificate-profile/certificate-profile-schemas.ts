@@ -31,42 +31,72 @@ export const createCertificateProfileSchema = z
   })
   .refine(
     (data) => {
-      if (data.enrollmentType === EnrollmentType.EST && !data.estConfig) {
-        return false;
+      if (data.enrollmentType === EnrollmentType.EST) {
+        if (!data.estConfig) {
+          return false;
+        }
+        if (data.apiConfig) {
+          return false;
+        }
       }
-      if (data.enrollmentType === EnrollmentType.API && !data.apiConfig) {
-        return false;
+      if (data.enrollmentType === EnrollmentType.API) {
+        if (!data.apiConfig) {
+          return false;
+        }
+        if (data.estConfig) {
+          return false;
+        }
       }
       return true;
     },
     {
-      message: "Config must be provided based on enrollment type"
+      message:
+        "EST enrollment type requires EST configuration and cannot have API configuration. API enrollment type requires API configuration and cannot have EST configuration."
     }
   );
 
-export const updateCertificateProfileSchema = z.object({
-  slug: z
-    .string()
-    .min(1)
-    .max(255)
-    .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens")
-    .optional(),
-  description: z.string().max(1000).optional(),
-  enrollmentType: z.nativeEnum(EnrollmentType).optional(),
-  estConfig: z
-    .object({
-      disableBootstrapCaValidation: z.boolean().default(false),
-      passphrase: z.string().min(1),
-      encryptedCaChain: z.string()
-    })
-    .optional(),
-  apiConfig: z
-    .object({
-      autoRenew: z.boolean().default(false),
-      autoRenewDays: z.number().min(1).max(365).optional()
-    })
-    .optional()
-});
+export const updateCertificateProfileSchema = z
+  .object({
+    slug: z
+      .string()
+      .min(1)
+      .max(255)
+      .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens")
+      .optional(),
+    description: z.string().max(1000).optional(),
+    enrollmentType: z.nativeEnum(EnrollmentType).optional(),
+    estConfig: z
+      .object({
+        disableBootstrapCaValidation: z.boolean().default(false),
+        passphrase: z.string().min(1),
+        encryptedCaChain: z.string()
+      })
+      .optional(),
+    apiConfig: z
+      .object({
+        autoRenew: z.boolean().default(false),
+        autoRenewDays: z.number().min(1).max(365).optional()
+      })
+      .optional()
+  })
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.EST) {
+        if (data.apiConfig) {
+          return false;
+        }
+      }
+      if (data.enrollmentType === EnrollmentType.API) {
+        if (data.estConfig) {
+          return false;
+        }
+      }
+      return true;
+    },
+    {
+      message: "Cannot have EST config with API enrollment type or API config with EST enrollment type."
+    }
+  );
 
 export const getCertificateProfileByIdSchema = z.object({
   id: z.string().uuid()

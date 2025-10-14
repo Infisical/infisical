@@ -2493,10 +2493,21 @@
               {
                 "group": "Certificate Templates",
                 "pages": [
-                  "api-reference/endpoints/certificate-templates/create",
-                  "api-reference/endpoints/certificate-templates/update",
-                  "api-reference/endpoints/certificate-templates/get-by-id",
-                  "api-reference/endpoints/certificate-templates/delete"
+                  "api-reference/endpoints/certificate-templates-v2/list",
+                  "api-reference/endpoints/certificate-templates-v2/create",
+                  "api-reference/endpoints/certificate-templates-v2/update",
+                  "api-reference/endpoints/certificate-templates-v2/get-by-id",
+                  "api-reference/endpoints/certificate-templates-v2/delete",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/certificate-templates/list",
+                      "api-reference/endpoints/certificate-templates/create",
+                      "api-reference/endpoints/certificate-templates/update",
+                      "api-reference/endpoints/certificate-templates/get-by-id",
+                      "api-reference/endpoints/certificate-templates/delete"
+                    ]
+                  }
                 ]
               },
               {
@@ -2518,6 +2529,15 @@
                   "api-reference/endpoints/pki-alerts/read",
                   "api-reference/endpoints/pki-alerts/update",
                   "api-reference/endpoints/pki-alerts/delete"
+                ]
+              },
+              {
+                "group": "Certificate Profiles",
+                "pages": [
+                  "api-reference/endpoints/certificate-profiles/create",
+                  "api-reference/endpoints/certificate-profiles/update",
+                  "api-reference/endpoints/certificate-profiles/get-by-id",
+                  "api-reference/endpoints/certificate-profiles/delete"
                 ]
               },
               {

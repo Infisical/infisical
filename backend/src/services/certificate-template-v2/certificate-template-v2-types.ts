@@ -1,27 +1,35 @@
 import { TCertificateTemplatesV2, TCertificateTemplatesV2Insert } from "@app/db/schemas/certificate-templates-v2";
+import {
+  CertDurationUnit,
+  CertExtendedKeyUsageType,
+  CertIncludeType,
+  CertKeyUsageType,
+  CertSubjectAlternativeNameType,
+  CertSubjectAttributeType
+} from "@app/services/certificate-common/certificate-constants";
 
 export interface TTemplateV2Policy {
   attributes: Array<{
-    type: "common_name";
-    include: "mandatory" | "optional" | "prohibit";
+    type: CertSubjectAttributeType;
+    include: CertIncludeType;
     value?: string[];
   }>;
   keyUsages: {
-    requiredUsages: { all: string[] };
-    optionalUsages: { all: string[] };
+    requiredUsages?: { all: CertKeyUsageType[] };
+    optionalUsages?: { all: CertKeyUsageType[] };
   };
   extendedKeyUsages: {
-    requiredUsages: { all: string[] };
-    optionalUsages: { all: string[] };
+    requiredUsages?: { all: CertExtendedKeyUsageType[] };
+    optionalUsages?: { all: CertExtendedKeyUsageType[] };
   };
   subjectAlternativeNames: Array<{
-    type: "dns_name" | "ip_address" | "email" | "uri";
-    include: "mandatory" | "optional" | "prohibit";
+    type: CertSubjectAlternativeNameType;
+    include: CertIncludeType;
     value?: string[];
   }>;
   validity: {
-    maxDuration: { value: number; unit: "days" | "months" | "years" };
-    minDuration?: { value: number; unit: "days" | "months" | "years" };
+    maxDuration: { value: number; unit: CertDurationUnit };
+    minDuration?: { value: number; unit: CertDurationUnit };
   };
   signatureAlgorithm: {
     allowedAlgorithms: string[];
@@ -88,15 +96,25 @@ export type TCertificateTemplateV2Update = Partial<
 
 export interface TCertificateRequest {
   commonName?: string;
-  keyUsages?: string[];
-  extendedKeyUsages?: string[];
+  organizationName?: string;
+  organizationUnit?: string;
+  locality?: string;
+  state?: string;
+  country?: string;
+  email?: string;
+  streetAddress?: string;
+  postalCode?: string;
+  keyUsages?: CertKeyUsageType[];
+  extendedKeyUsages?: CertExtendedKeyUsageType[];
   subjectAlternativeNames?: Array<{
-    type: "dns_name" | "ip_address" | "email" | "uri";
+    type: CertSubjectAlternativeNameType;
     value: string;
   }>;
   validity?: {
     ttl: string;
   };
+  notBefore?: Date;
+  notAfter?: Date;
   signatureAlgorithm?: string;
   keyAlgorithm?: string;
 }

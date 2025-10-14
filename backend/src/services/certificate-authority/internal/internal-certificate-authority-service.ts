@@ -1280,16 +1280,31 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
     }
 
-    // Use provided keyAlgorithm if available, otherwise fall back to CA's algorithm
     const effectiveKeyAlgorithm =
       (keyAlgorithm as CertKeyAlgorithm) || (ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
     const keyGenAlg = keyAlgorithmToAlgCfg(effectiveKeyAlgorithm);
     const leafKeys = await crypto.nativeCrypto.subtle.generateKey(keyGenAlg, true, ["sign", "verify"]);
 
+    if (signatureAlgorithm) {
+      const caKeyAlgorithm = ca.internalCa.keyAlgorithm;
+      const requestedKeyType = signatureAlgorithm.split("-")[0];
+
+      const isRsaCa = caKeyAlgorithm.startsWith("RSA");
+      const isEcdsaCa = caKeyAlgorithm.startsWith("EC");
+
+      if ((requestedKeyType === "RSA" && !isRsaCa) || (requestedKeyType === "ECDSA" && !isEcdsaCa)) {
+        // eslint-disable-next-line no-nested-ternary
+        const supportedType = isRsaCa ? "RSA" : isEcdsaCa ? "ECDSA" : "unknown";
+        throw new BadRequestError({
+          message: `Requested signature algorithm ${signatureAlgorithm} is not compatible with CA key algorithm ${caKeyAlgorithm}. CA can only sign with ${supportedType}-based signature algorithms.`
+        });
+      }
+    }
+
     // Determine signing algorithm for certificate signing
     const signingAlg = signatureAlgorithm
-      ? signatureAlgorithmToAlgCfg(signatureAlgorithm, effectiveKeyAlgorithm)
-      : keyGenAlg;
+      ? signatureAlgorithmToAlgCfg(signatureAlgorithm, ca.internalCa.keyAlgorithm as CertKeyAlgorithm)
+      : keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
       name: `CN=${commonName}`,
@@ -1528,7 +1543,9 @@ export const internalCertificateAuthorityServiceFactory = ({
       notBefore,
       notAfter,
       keyUsages,
-      extendedKeyUsages
+      extendedKeyUsages,
+      signatureAlgorithm,
+      keyAlgorithm
     } = dto;
 
     let collectionId = pkiCollectionId;
@@ -1633,7 +1650,26 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
     }
 
-    const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
+    if (signatureAlgorithm) {
+      const caKeyAlgorithm = ca.internalCa.keyAlgorithm;
+      const requestedKeyType = signatureAlgorithm.split("-")[0]; // Get the first part (RSA, ECDSA)
+
+      const isRsaCa = caKeyAlgorithm.startsWith("RSA");
+      const isEcdsaCa = caKeyAlgorithm.startsWith("EC");
+
+      if ((requestedKeyType === "RSA" && !isRsaCa) || (requestedKeyType === "ECDSA" && !isEcdsaCa)) {
+        // eslint-disable-next-line no-nested-ternary
+        const supportedType = isRsaCa ? "RSA" : isEcdsaCa ? "ECDSA" : "unknown";
+        throw new BadRequestError({
+          message: `Requested signature algorithm ${signatureAlgorithm} is not compatible with CA key algorithm ${caKeyAlgorithm}. CA can only sign with ${supportedType}-based signature algorithms.`
+        });
+      }
+    }
+
+    const effectiveKeyAlgorithm = (keyAlgorithm || ca.internalCa.keyAlgorithm) as CertKeyAlgorithm;
+    const alg = signatureAlgorithm
+      ? signatureAlgorithmToAlgCfg(signatureAlgorithm, effectiveKeyAlgorithm)
+      : keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
 
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
 

@@ -150,6 +150,8 @@ export type TSignCertFromCaDTO =
       notAfter?: string;
       keyUsages?: CertKeyUsage[];
       extendedKeyUsages?: CertExtendedKeyUsage[];
+      signatureAlgorithm?: string;
+      keyAlgorithm?: string;
     }
   | ({
       isInternal: false;
@@ -165,6 +167,8 @@ export type TSignCertFromCaDTO =
       notAfter?: string;
       keyUsages?: CertKeyUsage[];
       extendedKeyUsages?: CertExtendedKeyUsage[];
+      signatureAlgorithm?: string;
+      keyAlgorithm?: string;
     } & Omit<TProjectPermission, "projectId">);
 
 export type TGetCaCertificateTemplatesDTO = {

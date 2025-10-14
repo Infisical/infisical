@@ -10,6 +10,7 @@ import {
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { CertificateOrderStatus } from "@app/services/certificate/certificate-types";
 import {
   TCertificateAuthorityDALFactory,
   TCertificateAuthorityWithAssociatedCa
@@ -20,10 +21,13 @@ import { TCertificateProfileDALFactory } from "@app/services/certificate-profile
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
 
+import { CertSubjectAlternativeNameType } from "../certificate-common/certificate-constants";
 import {
   bufferToString,
   buildCertificateSubjectFromTemplate,
   buildSubjectAlternativeNamesFromTemplate,
+  convertExtendedKeyUsageArrayToLegacy,
+  convertKeyUsageArrayToLegacy,
   mapEnumsForValidation,
   normalizeDateForApi
 } from "../certificate-common/certificate-utils";
@@ -95,6 +99,45 @@ const validateCaSupport = (ca: TCertificateAuthorityWithAssociatedCa, operation:
   return caType;
 };
 
+const validateAlgorithmCompatibility = (
+  ca: TCertificateAuthorityWithAssociatedCa,
+  template: {
+    signatureAlgorithm?: {
+      allowedAlgorithms?: string[];
+    };
+  }
+) => {
+  if (!template.signatureAlgorithm || !template.signatureAlgorithm.allowedAlgorithms) {
+    return;
+  }
+
+  const caKeyAlgorithm = ca.internalCa?.keyAlgorithm;
+  if (!caKeyAlgorithm) {
+    throw new BadRequestError({ message: "CA key algorithm not found" });
+  }
+
+  const compatibleAlgorithms = template.signatureAlgorithm.allowedAlgorithms.filter((sigAlg: string) => {
+    const parts = sigAlg.split("-");
+    const keyType = parts[parts.length - 1];
+
+    if (caKeyAlgorithm.startsWith("RSA")) {
+      return keyType === "RSA";
+    }
+
+    if (caKeyAlgorithm.startsWith("EC")) {
+      return keyType === "ECDSA";
+    }
+
+    return false;
+  });
+
+  if (compatibleAlgorithms.length === 0) {
+    throw new BadRequestError({
+      message: `Template signature algorithms (${template.signatureAlgorithm.allowedAlgorithms.join(", ")}) are not compatible with CA key algorithm (${caKeyAlgorithm})`
+    });
+  }
+};
+
 const extractCertificateFromBuffer = (certData: Buffer | { rawData: Buffer } | string): string => {
   if (typeof certData === "string") return certData;
   if (Buffer.isBuffer(certData)) return bufferToString(certData);
@@ -131,6 +174,12 @@ export const certificateV3ServiceFactory = ({
       EnrollmentType.API
     );
 
+    if (certificateRequest.commonName && Array.isArray(certificateRequest.commonName)) {
+      throw new BadRequestError({
+        message: "Common Name must be a single value, not an array"
+      });
+    }
+
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
     const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
       profile.certificateTemplateId,
@@ -166,33 +215,48 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate template not found for this profile" });
     }
 
+    validateAlgorithmCompatibility(ca, template);
+
     const effectiveSignatureAlgorithm =
       certificateRequest.signatureAlgorithm || template.signatureAlgorithm?.defaultAlgorithm;
     const effectiveKeyAlgorithm = certificateRequest.keyAlgorithm || template.keyAlgorithm?.defaultKeyType;
 
+    if (template.keyAlgorithm?.allowedKeyTypes && !effectiveKeyAlgorithm) {
+      throw new BadRequestError({
+        message: "Key algorithm is required by template policy but not provided in request or template default"
+      });
+    }
+
+    if (template.signatureAlgorithm?.allowedAlgorithms && !effectiveSignatureAlgorithm) {
+      throw new BadRequestError({
+        message: "Signature algorithm is required by template policy but not provided in request or template default"
+      });
+    }
+
     const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequest, template.attributes);
     const subjectAlternativeNames = buildSubjectAlternativeNamesFromTemplate(
-      certificateRequest,
+      { subjectAlternativeNames: certificateRequest.altNames },
       template.subjectAlternativeNames
     );
 
-    const { certificate, certificateChain, privateKey, serialNumber } = await internalCaService.issueCertFromCa({
-      caId: ca.id,
-      friendlyName: certificateSubject.common_name || "Certificate",
-      commonName: certificateSubject.common_name || "",
-      altNames: subjectAlternativeNames,
-      ttl: certificateRequest.validity.ttl,
-      keyUsages: certificateRequest.keyUsages,
-      extendedKeyUsages: certificateRequest.extendedKeyUsages,
-      notBefore: normalizeDateForApi(certificateRequest.notBefore),
-      notAfter: normalizeDateForApi(certificateRequest.notAfter),
-      signatureAlgorithm: effectiveSignatureAlgorithm,
-      keyAlgorithm: effectiveKeyAlgorithm,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const { certificate, certificateChain, issuingCaCertificate, privateKey, serialNumber } =
+      await internalCaService.issueCertFromCa({
+        caId: ca.id,
+        friendlyName: certificateSubject.common_name || "Certificate",
+        commonName: certificateSubject.common_name || "",
+        altNames: subjectAlternativeNames,
+        ttl: certificateRequest.validity.ttl,
+        keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
+        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
+        notBefore: normalizeDateForApi(certificateRequest.notBefore),
+        notAfter: normalizeDateForApi(certificateRequest.notAfter),
+        signatureAlgorithm: effectiveSignatureAlgorithm,
+        keyAlgorithm: effectiveKeyAlgorithm,
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId
+      });
 
     const cert = await certificateDAL.findOne({ serialNumber, caId: ca.id });
     if (!cert) {
@@ -201,14 +265,15 @@ export const certificateV3ServiceFactory = ({
 
     await certificateDAL.updateById(cert.id, { profileId });
 
-    const certificateChainString = bufferToString(certificateChain);
     return {
       certificate: bufferToString(certificate),
-      issuingCaCertificate: certificateChainString.split("\n").pop() || bufferToString(certificate),
-      certificateChain: certificateChainString,
+      issuingCaCertificate: bufferToString(issuingCaCertificate),
+      certificateChain: bufferToString(certificateChain),
       privateKey: bufferToString(privateKey),
       serialNumber,
-      certificateId: cert.id
+      certificateId: cert.id,
+      projectId: profile.projectId,
+      profileName: profile.slug
     };
   };
 
@@ -218,6 +283,8 @@ export const certificateV3ServiceFactory = ({
     validity,
     notBefore,
     notAfter,
+    signatureAlgorithm,
+    keyAlgorithm,
     actor,
     actorId,
     actorAuthMethod,
@@ -241,15 +308,51 @@ export const certificateV3ServiceFactory = ({
 
     validateCaSupport(ca, "CSR signing");
 
-    const { certificate, certificateChain, serialNumber } = await internalCaService.signCertFromCa({
-      isInternal: true,
-      caId: ca.id,
-      csr,
-      ttl: validity.ttl,
-      altNames: "",
-      notBefore: normalizeDateForApi(notBefore),
-      notAfter: normalizeDateForApi(notAfter)
+    if (!actorAuthMethod) {
+      throw new BadRequestError({ message: "Authentication method is required for certificate signing" });
+    }
+
+    const template = await certificateTemplateV2Service.getTemplateV2ById({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      templateId: profile.certificateTemplateId
     });
+
+    if (!template) {
+      throw new NotFoundError({ message: "Certificate template not found for this profile" });
+    }
+
+    validateAlgorithmCompatibility(ca, template);
+
+    const effectiveSignatureAlgorithm = signatureAlgorithm || template.signatureAlgorithm?.defaultAlgorithm;
+    const effectiveKeyAlgorithm = keyAlgorithm || template.keyAlgorithm?.defaultKeyType;
+
+    if (template.keyAlgorithm?.allowedKeyTypes && !effectiveKeyAlgorithm) {
+      throw new BadRequestError({
+        message: "Key algorithm is required by template policy but not provided in request or template default"
+      });
+    }
+
+    if (template.signatureAlgorithm?.allowedAlgorithms && !effectiveSignatureAlgorithm) {
+      throw new BadRequestError({
+        message: "Signature algorithm is required by template policy but not provided in request or template default"
+      });
+    }
+
+    const { certificate, certificateChain, issuingCaCertificate, serialNumber } =
+      await internalCaService.signCertFromCa({
+        isInternal: true,
+        caId: ca.id,
+        csr,
+        ttl: validity.ttl,
+        altNames: "",
+        notBefore: normalizeDateForApi(notBefore),
+        notAfter: normalizeDateForApi(notAfter),
+        signatureAlgorithm: effectiveSignatureAlgorithm,
+        keyAlgorithm: effectiveKeyAlgorithm
+      });
 
     const cert = await certificateDAL.findOne({ serialNumber, caId: ca.id });
     if (!cert) {
@@ -263,10 +366,12 @@ export const certificateV3ServiceFactory = ({
 
     return {
       certificate: certificateString,
-      issuingCaCertificate: certificateChainString.split("\n").pop() || certificateString,
+      issuingCaCertificate: extractCertificateFromBuffer(issuingCaCertificate as unknown as Buffer),
       certificateChain: certificateChainString,
       serialNumber,
-      certificateId: cert.id
+      certificateId: cert.id,
+      projectId: profile.projectId,
+      profileName: profile.slug
     };
   };
 
@@ -293,8 +398,8 @@ export const certificateV3ServiceFactory = ({
       commonName: certificateOrder.commonName,
       keyUsages: certificateOrder.keyUsages,
       extendedKeyUsages: certificateOrder.extendedKeyUsages,
-      subjectAlternativeNames: certificateOrder.subjectAlternativeNames.map((san) => ({
-        type: san.type === "dns" ? ("dns_name" as const) : ("ip_address" as const),
+      subjectAlternativeNames: certificateOrder.altNames.map((san) => ({
+        type: san.type === "dns" ? CertSubjectAlternativeNameType.DNS_NAME : CertSubjectAlternativeNameType.IP_ADDRESS,
         value: san.value
       })),
       validity: certificateOrder.validity,
@@ -334,43 +439,26 @@ export const certificateV3ServiceFactory = ({
       });
 
       const orderId = randomUUID();
-      const subjectAlternativeNames = certificateOrder.subjectAlternativeNames.map((san) => ({
-        type: san.type,
-        value: san.value,
-        status: "valid" as const
-      }));
-
-      const authorizations = certificateOrder.subjectAlternativeNames.map((san) => ({
-        identifier: {
-          type: san.type,
-          value: san.value
-        },
-        status: "valid" as const,
-        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        challenges: [
-          {
-            type: "internal-validation",
-            status: "valid" as const,
-            url: `/api/v3/certificates/orders/${orderId}/internal`,
-            token: "internal-ca-validation"
-          }
-        ]
-      }));
 
       return {
         orderId,
-        status: "valid",
-        subjectAlternativeNames,
-        authorizations,
-        finalize: `/api/v3/certificates/orders/${orderId}/finalize`,
-        certificate: certificateResult.certificate
+        status: CertificateOrderStatus.VALID,
+        subjectAlternativeNames: certificateOrder.altNames.map((san) => ({
+          type: san.type,
+          value: san.value,
+          status: CertificateOrderStatus.VALID
+        })),
+        authorizations: [],
+        finalize: `/api/v3/certificates/orders/${orderId}/completed`,
+        certificate: certificateResult.certificate,
+        projectId: certificateResult.projectId,
+        profileName: certificateResult.profileName
       };
     }
 
     if (caType === CaType.ACME) {
       throw new BadRequestError({
-        message:
-          "ACME certificate ordering via profiles is not yet implemented. Use direct certificate issuance for ACME CAs."
+        message: "ACME certificate ordering via profiles is not yet implemented."
       });
     }
 

@@ -32,16 +32,6 @@ export const estEnrollmentConfigDALFactory = (db: TDbClient) => {
     }
   };
 
-  const deleteById = async (id: string, tx?: Knex) => {
-    try {
-      const [estConfig] = await (tx || db)(TableName.PkiEstEnrollmentConfig).where({ id }).del().returning("*");
-
-      return estConfig;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Delete EST enrollment config" });
-    }
-  };
-
   const findById = async (id: string, tx?: Knex) => {
     try {
       const estConfig = await (tx || db)(TableName.PkiEstEnrollmentConfig).where({ id }).first();
@@ -52,25 +42,10 @@ export const estEnrollmentConfigDALFactory = (db: TDbClient) => {
     }
   };
 
-  const isConfigInUse = async (configId: string, tx?: Knex) => {
-    try {
-      const profileCount = await (tx || db)(TableName.CertificateProfile)
-        .where({ estConfigId: configId })
-        .count("* as count")
-        .first();
-
-      return parseInt(profileCount || "0", 10) > 0;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Check if EST enrollment config is in use" });
-    }
-  };
-
   return {
     ...estEnrollmentConfigOrm,
     create,
     updateById,
-    deleteById,
-    findById,
-    isConfigInUse
+    findById
   };
 };

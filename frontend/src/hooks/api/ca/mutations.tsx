@@ -14,6 +14,8 @@ import {
   TDeleteCertificateAuthorityDTO,
   TImportCaCertificateDTO,
   TImportCaCertificateResponse,
+  TOrderCertificateDTO,
+  TOrderCertificateResponse,
   TRenewCaDTO,
   TRenewCaResponse,
   TSignIntermediateDTO,
@@ -156,6 +158,24 @@ export const useCreateCertificateV3 = () => {
     mutationFn: async (body) => {
       const { data } = await apiRequest.post<TCreateCertificateV3Response>(
         "/api/v3/certificates/issue-certificate",
+        body
+      );
+      return data;
+    },
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.forProjectCertificates(projectSlug)
+      });
+    }
+  });
+};
+
+export const useOrderCertificateWithProfile = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TOrderCertificateResponse, object, TOrderCertificateDTO>({
+    mutationFn: async (body) => {
+      const { data } = await apiRequest.post<TOrderCertificateResponse>(
+        "/api/v3/certificates/order-certificate",
         body
       );
       return data;

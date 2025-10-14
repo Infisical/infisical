@@ -155,7 +155,7 @@ export type TCreateCertificateDTO = {
   pkiCollectionId?: string;
   friendlyName?: string;
   commonName: string;
-  altNames: string; // sans
+  subjectAltNames: string; // sans
   ttl: string; // string compatible with ms
   notBefore?: string;
   notAfter?: string;
@@ -185,7 +185,7 @@ export type TCreateCertificateV3DTO = {
   email?: string;
   streetAddress?: string;
   postalCode?: string;
-  altNames: string;
+  subjectAltNames: string;
   ttl: string;
   notBefore?: string;
   notAfter?: string;
@@ -196,6 +196,54 @@ export type TCreateCertificateV3DTO = {
 };
 
 export type TCreateCertificateV3Response = TCreateCertificateResponse;
+
+export type TOrderCertificateDTO = {
+  projectSlug: string;
+  profileId: string;
+  subjectAlternativeNames: Array<{
+    type: "dns" | "ip";
+    value: string;
+  }>;
+  ttl: string;
+  keyUsages?: CertKeyUsage[];
+  extendedKeyUsages?: CertExtendedKeyUsage[];
+  notBefore?: string;
+  notAfter?: string;
+  commonName?: string;
+  signatureAlgorithm?: string;
+  keyAlgorithm?: string;
+};
+
+export type TOrderCertificateResponse = {
+  orderId: string;
+  status: "pending" | "processing" | "valid" | "invalid";
+  subjectAlternativeNames: Array<{
+    type: "dns" | "ip";
+    value: string;
+    status: "pending" | "processing" | "valid" | "invalid";
+  }>;
+  authorizations: Array<{
+    identifier: {
+      type: "dns" | "ip";
+      value: string;
+    };
+    status: "pending" | "processing" | "valid" | "invalid";
+    expires?: string;
+    challenges: Array<{
+      type: string;
+      status: "pending" | "processing" | "valid" | "invalid";
+      url: string;
+      token: string;
+      validated?: string;
+      error?: any;
+    }>;
+  }>;
+  certificate?: string;
+  privateKey?: string;
+  expires: string;
+  notBefore: string;
+  notAfter: string;
+};
 
 export type TRenewCaDTO = {
   projectSlug: string;

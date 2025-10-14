@@ -56,14 +56,6 @@ export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  if (isLoading) {
-    return <TableSkeleton columns={4} innerKey="certificate-templates" />;
-  }
-
-  if (!templates || templates.length === 0) {
-    return <EmptyState title="No Certificate Templates" />;
-  }
-
   return (
     <TableContainer>
       <Table>
@@ -75,7 +67,15 @@ export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {
           </Tr>
         </THead>
         <TBody>
-          {templates.map((template) => (
+          {isLoading && <TableSkeleton columns={3} innerKey="certificate-templates" />}
+          {!isLoading && (!templates || templates.length === 0) && (
+            <Tr>
+              <Td colSpan={3}>
+                <EmptyState title="No Certificate Templates" />
+              </Td>
+            </Tr>
+          )}
+          {!isLoading && templates && templates.length > 0 && templates.map((template) => (
             <Tr
               key={template.id}
               className="h-10 transition-colors duration-100 hover:bg-mineshaft-700"

@@ -1,15 +1,20 @@
 import { TProjectPermission } from "@app/lib/types";
 
-import { CertExtendedKeyUsage, CertKeyUsage } from "../certificate/certificate-types";
+import { ACMESANType, CertificateOrderStatus } from "../certificate/certificate-types";
+import {
+  CertExtendedKeyUsageType,
+  CertKeyUsageType,
+  CertSubjectAlternativeNameType
+} from "../certificate-common/certificate-constants";
 
 export type TIssueCertificateFromProfileDTO = {
   profileId: string;
   certificateRequest: {
     commonName?: string;
-    keyUsages?: CertKeyUsage[];
-    extendedKeyUsages?: CertExtendedKeyUsage[];
-    subjectAlternativeNames?: Array<{
-      type: "dns_name" | "ip_address" | "email" | "uri";
+    keyUsages?: CertKeyUsageType[];
+    extendedKeyUsages?: CertExtendedKeyUsageType[];
+    altNames?: Array<{
+      type: CertSubjectAlternativeNameType;
       value: string;
     }>;
     validity: {
@@ -30,21 +35,23 @@ export type TSignCertificateFromProfileDTO = {
   };
   notBefore?: Date;
   notAfter?: Date;
+  signatureAlgorithm?: string;
+  keyAlgorithm?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {
   profileId: string;
   certificateOrder: {
-    subjectAlternativeNames: Array<{
-      type: "dns" | "ip";
+    altNames: Array<{
+      type: ACMESANType;
       value: string;
     }>;
     validity: {
       ttl: string;
     };
     commonName?: string;
-    keyUsages?: CertKeyUsage[];
-    extendedKeyUsages?: CertExtendedKeyUsage[];
+    keyUsages?: CertKeyUsageType[];
+    extendedKeyUsages?: CertExtendedKeyUsageType[];
     notBefore?: Date;
     notAfter?: Date;
     signatureAlgorithm?: string;
@@ -59,30 +66,34 @@ export type TCertificateFromProfileResponse = {
   privateKey?: string;
   serialNumber: string;
   certificateId: string;
+  projectId: string;
+  profileName: string;
 };
 
 export type TCertificateOrderResponse = {
   orderId: string;
-  status: "pending" | "processing" | "valid" | "invalid";
+  status: CertificateOrderStatus;
   subjectAlternativeNames: Array<{
-    type: "dns" | "ip";
+    type: ACMESANType;
     value: string;
-    status: "pending" | "processing" | "valid" | "invalid";
+    status: CertificateOrderStatus;
   }>;
   authorizations: Array<{
     identifier: {
-      type: "dns" | "ip";
+      type: ACMESANType;
       value: string;
     };
-    status: "pending" | "processing" | "valid" | "invalid";
+    status: CertificateOrderStatus;
     expires?: string;
     challenges: Array<{
       type: string;
-      status: "pending" | "processing" | "valid" | "invalid";
+      status: CertificateOrderStatus;
       url: string;
       token: string;
     }>;
   }>;
   finalize: string;
   certificate?: string;
+  projectId: string;
+  profileName: string;
 };

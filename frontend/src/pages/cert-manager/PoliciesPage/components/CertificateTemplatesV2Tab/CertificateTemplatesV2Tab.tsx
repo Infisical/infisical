@@ -2,6 +2,7 @@ import { useState } from "react";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { useProjectPermission } from "@app/context";
 import {
@@ -52,7 +53,11 @@ export const CertificateTemplatesV2Tab = () => {
       });
       setIsDeleteModalOpen(false);
       setSelectedTemplate(null);
-    } catch (error) {
+      createNotification({
+        text: `Certificate template "${selectedTemplate.slug}" deleted successfully`,
+        type: "success"
+      });
+    } catch (error: any) {
       console.error("Failed to delete template:", error);
     }
   };

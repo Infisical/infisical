@@ -7,7 +7,8 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
-  useProject
+  useProject,
+  useSubscription
 } from "@app/context";
 import { useDeletePkiSubscriber, useUpdatePkiSubscriber } from "@app/hooks/api";
 import { PkiSubscriberStatus } from "@app/hooks/api/pkiSubscriber/types";
@@ -18,9 +19,10 @@ import { PkiSubscribersTable } from "./PkiSubscribersTable";
 
 export const PkiSubscriberSection = () => {
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
   const projectId = currentProject.id;
 
-  const allowNewSubscriberCreation = false;
+  const allowNewSubscriberCreation = subscription.pkiLegacyTemplates;
   const { mutateAsync: deletePkiSubscriber } = useDeletePkiSubscriber();
   const { mutateAsync: updatePkiSubscriber } = useUpdatePkiSubscriber();
 
@@ -85,16 +87,16 @@ export const PkiSubscriberSection = () => {
   const subscriberName = subscriberStatusData?.subscriberName || "";
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="border-mineshaft-600 bg-mineshaft-900 mb-6 rounded-lg border p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">Subscribers</p>
+        <p className="text-mineshaft-100 text-xl font-medium">Subscribers</p>
         <div className="flex w-full justify-end">
           <a
             target="_blank"
             rel="noopener noreferrer"
             href="https://infisical.com/docs/documentation/platform/pki/subscribers"
           >
-            <span className="flex w-max cursor-pointer items-center rounded-md border border-mineshaft-500 bg-mineshaft-600 px-4 py-2 text-mineshaft-200 duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-white">
+            <span className="border-mineshaft-500 bg-mineshaft-600 text-mineshaft-200 hover:border-primary/40 hover:bg-primary/10 flex w-max cursor-pointer items-center rounded-md border px-4 py-2 duration-200 hover:text-white">
               Documentation{" "}
               <FontAwesomeIcon
                 icon={faArrowUpRightFromSquare}

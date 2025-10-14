@@ -1119,6 +1119,13 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.CertificateProfiles).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCertificateProfileActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
   ...GeneralPermissionSchema
 ]);
 

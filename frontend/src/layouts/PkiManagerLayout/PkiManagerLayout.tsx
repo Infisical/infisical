@@ -18,7 +18,7 @@ import { Link, Outlet } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import { Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
-import { useProject, useProjectPermission } from "@app/context";
+import { useProject, useProjectPermission, useSubscription } from "@app/context";
 import {
   useListWorkspaceCertificateTemplates,
   useListWorkspacePkiSubscribers
@@ -29,6 +29,7 @@ import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePri
 export const PkiManagerLayout = () => {
   const { currentProject } = useProject();
   const { assumedPrivilegeDetails } = useProjectPermission();
+  const { subscription } = useSubscription();
   const { t } = useTranslation();
 
   const { data: subscribers = [] } = useListWorkspacePkiSubscribers(currentProject?.id || "");
@@ -39,7 +40,8 @@ export const PkiManagerLayout = () => {
 
   const hasExistingSubscribers = subscribers.length > 0;
   const hasExistingTemplates = templates.length > 0;
-  const showLegacySection = hasExistingSubscribers || hasExistingTemplates;
+  const showLegacySection =
+    subscription.pkiLegacyTemplates || hasExistingSubscribers || hasExistingTemplates;
 
   return (
     <>
@@ -166,7 +168,7 @@ export const PkiManagerLayout = () => {
                   </MenuGroup>
                   {showLegacySection && (
                     <MenuGroup title="Legacy">
-                      {hasExistingSubscribers && (
+                      {(subscription.pkiLegacyTemplates || hasExistingSubscribers) && (
                         <Link
                           to="/projects/cert-management/$projectId/subscribers"
                           params={{
@@ -185,7 +187,7 @@ export const PkiManagerLayout = () => {
                           )}
                         </Link>
                       )}
-                      {hasExistingTemplates && (
+                      {(subscription.pkiLegacyTemplates || hasExistingTemplates) && (
                         <Link
                           to="/projects/cert-management/$projectId/certificate-templates"
                           params={{

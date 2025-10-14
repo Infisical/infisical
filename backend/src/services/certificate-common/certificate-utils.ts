@@ -1,34 +1,39 @@
+import { CertExtendedKeyUsage, CertKeyUsage } from "../certificate/certificate-types";
+import {
+  CertExtendedKeyUsageType,
+  CertKeyUsageType,
+  mapExtendedKeyUsageToLegacy,
+  mapKeyUsageToLegacy,
+  mapLegacyExtendedKeyUsageToStandard,
+  mapLegacyKeyUsageToStandard
+} from "./certificate-constants";
+
 interface CertificateRequestInput {
   keyUsages?: string[];
   extendedKeyUsages?: string[];
 }
 
 export const mapEnumsForValidation = <T extends CertificateRequestInput>(request: T): T => {
-  const keyUsageMapping: Record<string, string> = {
-    digitalSignature: "digital_signature",
-    keyEncipherment: "key_encipherment",
-    nonRepudiation: "non_repudiation",
-    dataEncipherment: "data_encipherment",
-    keyAgreement: "key_agreement",
-    keyCertSign: "key_cert_sign",
-    cRLSign: "crl_sign",
-    encipherOnly: "encipher_only",
-    decipherOnly: "decipher_only"
+  const mapKeyUsage = (usage: string): string => {
+    try {
+      return mapLegacyKeyUsageToStandard(usage);
+    } catch {
+      return usage;
+    }
   };
 
-  const extendedKeyUsageMapping: Record<string, string> = {
-    serverAuth: "server_auth",
-    clientAuth: "client_auth",
-    codeSigning: "code_signing",
-    emailProtection: "email_protection",
-    timeStamping: "time_stamping",
-    ocspSigning: "ocsp_signing"
+  const mapExtendedKeyUsage = (usage: string): string => {
+    try {
+      return mapLegacyExtendedKeyUsageToStandard(usage);
+    } catch {
+      return usage;
+    }
   };
 
   return {
     ...request,
-    keyUsages: request.keyUsages?.map((usage: string) => keyUsageMapping[usage] || usage),
-    extendedKeyUsages: request.extendedKeyUsages?.map((usage: string) => extendedKeyUsageMapping[usage] || usage)
+    keyUsages: request.keyUsages?.map(mapKeyUsage),
+    extendedKeyUsages: request.extendedKeyUsages?.map(mapExtendedKeyUsage)
   } as T;
 };
 
@@ -51,26 +56,27 @@ export const buildCertificateSubjectFromTemplate = (
 ): Record<string, string | undefined> => {
   const subject: Record<string, string> = {};
   const attributeMap: Record<string, string> = {
-    common_name: "commonName",
-    organization_name: "organization",
-    organization_unit: "organizationUnit",
-    locality: "locality",
-    state: "state",
-    country: "country",
-    email: "email",
-    street_address: "streetAddress",
-    postal_code: "postalCode"
+    common_name: "commonName"
   };
 
   if (!templateAttributes || templateAttributes.length === 0) {
-    Object.entries(attributeMap).forEach(([templateKey, requestKey]) => {
-      const value = request[requestKey];
-      if (value && typeof value === "string") {
-        subject[templateKey] = value;
-      }
-    });
-    return subject;
+    throw new Error(
+      "Template must define allowed certificate attributes. Cannot issue certificate without template attribute constraints."
+    );
   }
+
+  const allowedAttributes = new Set(templateAttributes.map((attr) => attributeMap[attr.type]));
+
+  Object.keys(attributeMap).forEach((templateType) => {
+    const requestKey = attributeMap[templateType];
+    const value = request[requestKey];
+
+    if (value && !allowedAttributes.has(requestKey)) {
+      throw new Error(
+        `Certificate attribute '${requestKey}' is not allowed by the template. Template must define constraints for all requested attributes.`
+      );
+    }
+  });
 
   templateAttributes.forEach((attr) => {
     if (attr.include === "prohibit") {
@@ -101,11 +107,27 @@ export const buildSubjectAlternativeNamesFromTemplate = (
   }
 
   if (!templateSans || templateSans.length === 0) {
-    return request.subjectAlternativeNames.map((san) => san.value).join(",");
+    if (request.subjectAlternativeNames.length > 0) {
+      throw new Error(
+        "Template must define allowed subject alternative names. Cannot issue certificate with SANs when template has no SAN constraints."
+      );
+    }
+    return "";
   }
 
-  const allowedSans: string[] = [];
+  const templateSanTypes = new Set(templateSans.map((san) => san.type));
   const prohibitedTypes = new Set(templateSans.filter((san) => san.include === "prohibit").map((san) => san.type));
+
+  request.subjectAlternativeNames.forEach((san) => {
+    const sanType = san.type === "dns_name" ? "dns_name" : san.type;
+    if (!templateSanTypes.has(sanType)) {
+      throw new Error(
+        `Subject Alternative Name type '${sanType}' is not allowed by the template. Template must define constraints for all requested SAN types.`
+      );
+    }
+  });
+
+  const allowedSans: string[] = [];
 
   request.subjectAlternativeNames.forEach((san) => {
     const sanType = san.type === "dns_name" ? "dns_name" : san.type;
@@ -115,4 +137,40 @@ export const buildSubjectAlternativeNamesFromTemplate = (
   });
 
   return allowedSans.join(",");
+};
+
+export const convertLegacyKeyUsage = (usage: CertKeyUsage): CertKeyUsageType => {
+  return mapLegacyKeyUsageToStandard(usage);
+};
+
+export const convertToLegacyKeyUsage = (usage: CertKeyUsageType): CertKeyUsage => {
+  return mapKeyUsageToLegacy(usage) as CertKeyUsage;
+};
+
+export const convertLegacyExtendedKeyUsage = (usage: CertExtendedKeyUsage): CertExtendedKeyUsageType => {
+  return mapLegacyExtendedKeyUsageToStandard(usage);
+};
+
+export const convertToLegacyExtendedKeyUsage = (usage: CertExtendedKeyUsageType): CertExtendedKeyUsage => {
+  return mapExtendedKeyUsageToLegacy(usage) as CertExtendedKeyUsage;
+};
+
+export const convertKeyUsageArrayFromLegacy = (usages?: CertKeyUsage[]): CertKeyUsageType[] | undefined => {
+  return usages?.map(convertLegacyKeyUsage);
+};
+
+export const convertKeyUsageArrayToLegacy = (usages?: CertKeyUsageType[]): CertKeyUsage[] | undefined => {
+  return usages?.map(convertToLegacyKeyUsage);
+};
+
+export const convertExtendedKeyUsageArrayFromLegacy = (
+  usages?: CertExtendedKeyUsage[]
+): CertExtendedKeyUsageType[] | undefined => {
+  return usages?.map(convertLegacyExtendedKeyUsage);
+};
+
+export const convertExtendedKeyUsageArrayToLegacy = (
+  usages?: CertExtendedKeyUsageType[]
+): CertExtendedKeyUsage[] | undefined => {
+  return usages?.map(convertToLegacyExtendedKeyUsage);
 };

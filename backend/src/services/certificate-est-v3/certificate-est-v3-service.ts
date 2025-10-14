@@ -8,6 +8,7 @@ import { TCertificateAuthorityDALFactory } from "@app/services/certificate-autho
 import { getCaCertChain, getCaCertChains } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -54,6 +55,10 @@ export const certificateEstV3ServiceFactory = ({
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
+    }
+
+    if (profile.enrollmentType !== EnrollmentType.EST) {
+      throw new BadRequestError({ message: "Profile is not configured for EST enrollment" });
     }
 
     if (!profile.estConfigId) {
@@ -139,6 +144,10 @@ export const certificateEstV3ServiceFactory = ({
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
+    }
+
+    if (profile.enrollmentType !== EnrollmentType.EST) {
+      throw new BadRequestError({ message: "Profile is not configured for EST enrollment" });
     }
 
     if (!profile.estConfigId) {
@@ -237,6 +246,10 @@ export const certificateEstV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
 
+    if (profile.enrollmentType !== EnrollmentType.EST) {
+      throw new BadRequestError({ message: "Profile is not configured for EST enrollment" });
+    }
+
     if (!profile.estConfigId) {
       throw new BadRequestError({ message: "EST enrollment not configured for this profile" });
     }
@@ -280,8 +293,14 @@ export const certificateEstV3ServiceFactory = ({
       kmsService
     });
 
-    const certificates = extractX509CertFromChain(caCertChain).map((cert) => new x509.X509Certificate(cert));
+    const certificateChain = extractX509CertFromChain(caCertChain);
+    if (!certificateChain || certificateChain.length === 0) {
+      throw new BadRequestError({
+        message: "Invalid CA certificate chain: unable to extract certificates"
+      });
+    }
 
+    const certificates = certificateChain.map((cert) => new x509.X509Certificate(cert));
     const caCertificate = new x509.X509Certificate(caCert);
     return convertRawCertsToPkcs7([caCertificate.rawData, ...certificates.map((cert) => cert.rawData)]);
   };

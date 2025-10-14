@@ -14,6 +14,10 @@ import {
 
 export type TCertificateTemplateV2DALFactory = ReturnType<typeof certificateTemplateV2DALFactory>;
 
+interface CountResult {
+  count: string;
+}
+
 export const certificateTemplateV2DALFactory = (db: TDbClient) => {
   const certificateTemplateV2Orm = ormify(db, TableName.CertificateTemplateV2);
 
@@ -199,9 +203,30 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
         .count("*")
         .first();
 
-      return parseInt(profileCount || "0", 10) > 0;
+      const profileUsage = parseInt((profileCount as unknown as CountResult).count || "0", 10) > 0;
+
+      const certCount = await (tx || db)(TableName.Certificate)
+        .where({ certificateTemplateId: templateId })
+        .count("*")
+        .first();
+
+      const certUsage = parseInt((certCount as unknown as CountResult).count || "0", 10) > 0;
+
+      return profileUsage || certUsage;
     } catch (error) {
       throw new DatabaseError({ error, name: "Check if certificate template v2 is in use" });
+    }
+  };
+
+  const getProfilesUsingTemplate = async (templateId: string, tx?: Knex) => {
+    try {
+      const profiles = await (tx || db)(TableName.CertificateProfile)
+        .select("id", "slug", "description")
+        .where({ certificateTemplateId: templateId });
+
+      return profiles;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Get profiles using certificate template v2" });
     }
   };
 
@@ -214,6 +239,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
     findByProjectId,
     countByProjectId,
     findBySlugAndProjectId,
-    isTemplateInUse
+    isTemplateInUse,
+    getProfilesUsingTemplate
   };
 };

@@ -49,70 +49,6 @@ const convertDalToService = (dalResult: Record<string, unknown>): TCertificatePr
   } as TCertificateProfile;
 };
 
-const validateEnrollmentConfig = async (data: {
-  enrollmentType: EnrollmentType;
-  estConfig?: TEstConfigData | null;
-  apiConfig?: TApiConfigData | null;
-}): Promise<void> => {
-  if (data.enrollmentType === EnrollmentType.EST) {
-    if (!data.estConfig) {
-      throw new ForbiddenRequestError({
-        message: "EST enrollment type requires EST configuration"
-      });
-    }
-    if (data.apiConfig) {
-      throw new ForbiddenRequestError({
-        message: "EST enrollment type cannot have API configuration"
-      });
-    }
-  } else if (data.enrollmentType === EnrollmentType.API) {
-    if (!data.apiConfig) {
-      throw new ForbiddenRequestError({
-        message: "API enrollment type requires API configuration"
-      });
-    }
-    if (data.estConfig) {
-      throw new ForbiddenRequestError({
-        message: "API enrollment type cannot have EST configuration"
-      });
-    }
-  }
-};
-
-const validateEnrollmentConfigForUpdate = async (data: {
-  enrollmentType: EnrollmentType;
-  estConfigId?: string | null;
-  apiConfigId?: string | null;
-}): Promise<void> => {
-  if (data.enrollmentType === EnrollmentType.EST) {
-    if (!data.estConfigId) {
-      throw new ForbiddenRequestError({
-        message: "EST enrollment type requires EST configuration ID"
-      });
-    }
-    if (data.apiConfigId) {
-      throw new ForbiddenRequestError({
-        message: "EST enrollment type cannot have API configuration ID"
-      });
-    }
-  } else if (data.enrollmentType === EnrollmentType.API) {
-    if (!data.apiConfigId) {
-      throw new ForbiddenRequestError({
-        message: "API enrollment type requires API configuration ID"
-      });
-    }
-    if (data.estConfigId) {
-      throw new ForbiddenRequestError({
-        message: "API enrollment type cannot have EST configuration ID"
-      });
-    }
-  }
-};
-
-const hasEnrollmentConfigChanges = (data: TCertificateProfileUpdate): boolean => {
-  return !!(data.enrollmentType || data.estConfigId || data.apiConfigId);
-};
-
 export const certificateProfileServiceFactory = ({
   certificateProfileDAL,
   certificateTemplateV2DAL,
@@ -169,43 +105,61 @@ export const certificateProfileServiceFactory = ({
       });
     }
 
-    // Validate enrollment type configuration
-    await validateEnrollmentConfig({
-      enrollmentType: data.enrollmentType,
-      estConfig: data.estConfig,
-      apiConfig: data.apiConfig
-    });
-
-    // Create enrollment configs based on type
-    let estConfigId: string | null = null;
-    let apiConfigId: string | null = null;
-
-    if (data.enrollmentType === EnrollmentType.EST && data.estConfig) {
-      const appCfg = getConfig();
-      // Hash the passphrase
-      const hashedPassphrase = await crypto.hashing().createHash(data.estConfig.passphrase, appCfg.SALT_ROUNDS);
-
-      const estConfig = await estEnrollmentConfigDAL.create({
-        disableBootstrapCaValidation: data.estConfig.disableBootstrapCaValidation,
-        hashedPassphrase,
-        encryptedCaChain: Buffer.from(data.estConfig.encryptedCaChain, "base64")
+    // Validate enrollment configuration requirements
+    if (data.enrollmentType === EnrollmentType.EST && !data.estConfig) {
+      throw new ForbiddenRequestError({
+        message: "EST enrollment requires EST configuration"
       });
-      estConfigId = estConfig.id;
-    } else if (data.enrollmentType === EnrollmentType.API && data.apiConfig) {
-      const apiConfig = await apiEnrollmentConfigDAL.create({
-        autoRenew: data.apiConfig.autoRenew,
-        autoRenewDays: data.apiConfig.autoRenewDays
+    }
+    if (data.enrollmentType === EnrollmentType.API && !data.apiConfig) {
+      throw new ForbiddenRequestError({
+        message: "API enrollment requires API configuration"
       });
-      apiConfigId = apiConfig.id;
     }
 
-    // Create the profile with the created config IDs
-    const { estConfig, apiConfig, ...profileData } = data;
-    const profile = await certificateProfileDAL.create({
-      ...profileData,
-      projectId,
-      estConfigId,
-      apiConfigId
+    // Create enrollment configs and profile
+    const profile = await certificateProfileDAL.transaction(async (tx) => {
+      let estConfigId: string | null = null;
+      let apiConfigId: string | null = null;
+
+      if (data.enrollmentType === EnrollmentType.EST && data.estConfig) {
+        const appCfg = getConfig();
+        // Hash the passphrase
+        const hashedPassphrase = await crypto.hashing().createHash(data.estConfig.passphrase, appCfg.SALT_ROUNDS);
+
+        const estConfig = await estEnrollmentConfigDAL.create(
+          {
+            disableBootstrapCaValidation: data.estConfig.disableBootstrapCaValidation,
+            hashedPassphrase,
+            encryptedCaChain: Buffer.from(data.estConfig.encryptedCaChain, "base64")
+          },
+          tx
+        );
+        estConfigId = estConfig.id;
+      } else if (data.enrollmentType === EnrollmentType.API && data.apiConfig) {
+        const apiConfig = await apiEnrollmentConfigDAL.create(
+          {
+            autoRenew: data.apiConfig.autoRenew,
+            autoRenewDays: data.apiConfig.autoRenewDays
+          },
+          tx
+        );
+        apiConfigId = apiConfig.id;
+      }
+
+      // Create the profile with the created config IDs
+      const { estConfig, apiConfig, ...profileData } = data;
+      const profileResult = await certificateProfileDAL.create(
+        {
+          ...profileData,
+          projectId,
+          estConfigId,
+          apiConfigId
+        },
+        tx
+      );
+
+      return profileResult;
     });
 
     return convertDalToService(profile);
@@ -268,37 +222,40 @@ export const certificateProfileServiceFactory = ({
       }
     }
 
-    if (hasEnrollmentConfigChanges(data)) {
-      const mergedData = { ...existingProfile, ...data };
-      await validateEnrollmentConfigForUpdate({
-        enrollmentType: mergedData.enrollmentType as EnrollmentType,
-        estConfigId: mergedData.estConfigId,
-        apiConfigId: mergedData.apiConfigId
-      });
-    }
-
     const { estConfig, apiConfig, ...profileUpdateData } = data;
 
-    if (estConfig && existingProfile.estConfigId) {
-      await estEnrollmentConfigDAL.updateById(existingProfile.estConfigId, {
-        disableBootstrapCaValidation: estConfig.disableBootstrapCaValidation,
-        ...(estConfig.passphrase && {
-          hashedPassphrase: await crypto.hashing().createHash(estConfig.passphrase, getConfig().SALT_ROUNDS)
-        }),
-        ...(estConfig.caChain && {
-          encryptedCaChain: Buffer.from(estConfig.caChain, "base64")
-        })
-      });
-    }
+    const updatedProfile = await certificateProfileDAL.transaction(async (tx) => {
+      if (estConfig && existingProfile.estConfigId) {
+        await estEnrollmentConfigDAL.updateById(
+          existingProfile.estConfigId,
+          {
+            disableBootstrapCaValidation: estConfig.disableBootstrapCaValidation,
+            ...(estConfig.passphrase && {
+              hashedPassphrase: await crypto.hashing().createHash(estConfig.passphrase, getConfig().SALT_ROUNDS)
+            }),
+            ...(estConfig.caChain && {
+              encryptedCaChain: Buffer.from(estConfig.caChain, "base64")
+            })
+          },
+          tx
+        );
+      }
 
-    if (apiConfig && existingProfile.apiConfigId) {
-      await apiEnrollmentConfigDAL.updateById(existingProfile.apiConfigId, {
-        autoRenew: apiConfig.autoRenew,
-        autoRenewDays: apiConfig.autoRenewDays
-      });
-    }
+      if (apiConfig && existingProfile.apiConfigId) {
+        await apiEnrollmentConfigDAL.updateById(
+          existingProfile.apiConfigId,
+          {
+            autoRenew: apiConfig.autoRenew,
+            autoRenewDays: apiConfig.autoRenewDays
+          },
+          tx
+        );
+      }
 
-    const updatedProfile = await certificateProfileDAL.updateById(profileId, profileUpdateData);
+      const profileResult = await certificateProfileDAL.updateById(profileId, profileUpdateData, tx);
+      return profileResult;
+    });
+
     return convertDalToService(updatedProfile);
   };
 

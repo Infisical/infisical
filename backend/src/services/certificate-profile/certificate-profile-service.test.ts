@@ -122,9 +122,7 @@ describe("CertificateProfileService", () => {
     create: vi.fn().mockResolvedValue({ id: "api-config-123" }),
     findById: vi.fn(),
     updateById: vi.fn(),
-    deleteById: vi.fn(),
     findProfilesForAutoRenewal: vi.fn(),
-    isConfigInUse: vi.fn(),
     transaction: vi.fn(),
     find: vi.fn(),
     findOne: vi.fn(),
@@ -136,8 +134,6 @@ describe("CertificateProfileService", () => {
     create: vi.fn().mockResolvedValue({ id: "est-config-123" }),
     findById: vi.fn(),
     updateById: vi.fn(),
-    deleteById: vi.fn(),
-    isConfigInUse: vi.fn(),
     transaction: vi.fn(),
     find: vi.fn(),
     findOne: vi.fn(),
@@ -157,6 +153,12 @@ describe("CertificateProfileService", () => {
     vi.spyOn(ForbiddenError, "from").mockReturnValue({
       throwUnlessCan: vi.fn()
     } as any);
+
+    // Mock the transaction method to execute the callback and return the result
+    (mockCertificateProfileDAL.transaction as any).mockImplementation(async (fn: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/return-await
+      return await fn();
+    });
 
     service = certificateProfileServiceFactory({
       certificateProfileDAL: mockCertificateProfileDAL,
@@ -188,7 +190,10 @@ describe("CertificateProfileService", () => {
       (mockCertificateTemplateV2DAL.findById as any).mockResolvedValue(sampleTemplate);
       (mockCertificateProfileDAL.findByNameAndProjectId as any).mockResolvedValue(null);
       (mockCertificateProfileDAL.findBySlugAndProjectId as any).mockResolvedValue(null);
-      (mockCertificateProfileDAL.create as any).mockResolvedValue(sampleProfile);
+      (mockCertificateProfileDAL.create as any).mockResolvedValue({
+        ...sampleProfile,
+        enrollmentType: EnrollmentType.API // Ensure enrollmentType is explicitly included
+      });
     });
 
     it("should create profile successfully", async () => {
@@ -201,16 +206,19 @@ describe("CertificateProfileService", () => {
       expect(result).toEqual(sampleProfile);
       expect(mockCertificateTemplateV2DAL.findById).toHaveBeenCalledWith("template-123");
       expect(mockCertificateProfileDAL.findBySlugAndProjectId).toHaveBeenCalledWith("new-profile", "project-123");
-      expect(mockCertificateProfileDAL.create).toHaveBeenCalledWith({
-        slug: "new-profile",
-        description: "New test profile",
-        enrollmentType: EnrollmentType.API,
-        caId: "ca-123",
-        certificateTemplateId: "template-123",
-        apiConfigId: "api-config-123",
-        estConfigId: null,
-        projectId: "project-123"
-      });
+      expect(mockCertificateProfileDAL.create).toHaveBeenCalledWith(
+        {
+          slug: "new-profile",
+          description: "New test profile",
+          enrollmentType: EnrollmentType.API,
+          caId: "ca-123",
+          certificateTemplateId: "template-123",
+          apiConfigId: "api-config-123",
+          estConfigId: null,
+          projectId: "project-123"
+        },
+        undefined
+      );
     });
 
     it("should throw NotFoundError when certificate template not found", async () => {
@@ -318,7 +326,11 @@ describe("CertificateProfileService", () => {
 
     beforeEach(() => {
       (mockCertificateProfileDAL.findById as any).mockResolvedValue(sampleProfile);
-      (mockCertificateProfileDAL.updateById as any).mockResolvedValue({ ...sampleProfile, ...updateData });
+      (mockCertificateProfileDAL.updateById as any).mockResolvedValue({
+        ...sampleProfile,
+        ...updateData,
+        enrollmentType: EnrollmentType.API // Ensure enrollmentType is explicitly included
+      });
     });
 
     it("should update profile successfully", async () => {
@@ -330,7 +342,7 @@ describe("CertificateProfileService", () => {
 
       expect(result.slug).toBe("updated-profile");
       expect(mockCertificateProfileDAL.findById).toHaveBeenCalledWith("profile-123");
-      expect(mockCertificateProfileDAL.updateById).toHaveBeenCalledWith("profile-123", updateData);
+      expect(mockCertificateProfileDAL.updateById).toHaveBeenCalledWith("profile-123", updateData, undefined);
     });
 
     it("should throw NotFoundError when profile not found", async () => {
@@ -720,11 +732,14 @@ describe("CertificateProfileService", () => {
         });
 
         expect(result.enrollmentType).toBe(EnrollmentType.EST);
-        expect(mockEstEnrollmentConfigDAL.create).toHaveBeenCalledWith({
-          disableBootstrapCaValidation: estProfileData.estConfig.disableBootstrapCaValidation,
-          hashedPassphrase: "mocked-hash",
-          encryptedCaChain: Buffer.from(estProfileData.estConfig.encryptedCaChain, "base64")
-        });
+        expect(mockEstEnrollmentConfigDAL.create).toHaveBeenCalledWith(
+          {
+            disableBootstrapCaValidation: estProfileData.estConfig.disableBootstrapCaValidation,
+            hashedPassphrase: "mocked-hash",
+            encryptedCaChain: Buffer.from(estProfileData.estConfig.encryptedCaChain, "base64")
+          },
+          undefined
+        );
       });
 
       it("should handle profile slug uniqueness validation", async () => {
@@ -772,7 +787,8 @@ describe("CertificateProfileService", () => {
         (mockCertificateProfileDAL.findBySlugAndProjectId as any).mockResolvedValue(null);
         (mockCertificateProfileDAL.create as any).mockResolvedValue({
           ...sampleProfile,
-          apiConfigId: "api-config-123"
+          apiConfigId: "api-config-123",
+          enrollmentType: EnrollmentType.API
         });
 
         const result = await service.createProfile({
@@ -781,10 +797,13 @@ describe("CertificateProfileService", () => {
           data: autoRenewData
         });
 
-        expect(mockApiEnrollmentConfigDAL.create).toHaveBeenCalledWith({
-          autoRenew: true,
-          autoRenewDays: 7
-        });
+        expect(mockApiEnrollmentConfigDAL.create).toHaveBeenCalledWith(
+          {
+            autoRenew: true,
+            autoRenewDays: 7
+          },
+          undefined
+        );
         expect(result).toBeDefined();
       });
     });
@@ -1076,7 +1095,8 @@ describe("CertificateProfileService", () => {
         (mockCertificateProfileDAL.findBySlugAndProjectId as any).mockResolvedValue(null);
         (mockCertificateProfileDAL.create as any).mockResolvedValue({
           ...sampleProfile,
-          slug: invalidSlugData.slug
+          slug: invalidSlugData.slug,
+          enrollmentType: EnrollmentType.API
         });
 
         const result = await service.createProfile({

@@ -4,18 +4,107 @@ import { CertificateTemplatesV2Schema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
-  certificateRequestSchema,
-  createCertificateTemplateV2Schema,
-  deleteCertificateTemplateV2Schema,
-  getCertificateTemplateV2ByIdSchema,
-  listCertificateTemplatesV2Schema,
-  updateCertificateTemplateV2Schema
-} from "@app/services/certificate-template-v2/certificate-template-v2-schemas";
+  CertDurationUnit,
+  CertExtendedKeyUsageType,
+  CertIncludeType,
+  CertKeyUsageType,
+  CertSubjectAlternativeNameType,
+  CertSubjectAttributeType
+} from "@app/services/certificate-common/certificate-constants";
 
 export const registerCertificateTemplatesV2Router = async (server: FastifyZodProvider) => {
+  const templateV2AttributeSchema = z
+    .object({
+      type: z.nativeEnum(CertSubjectAttributeType),
+      include: z.nativeEnum(CertIncludeType),
+      value: z.array(z.string()).optional()
+    })
+    .refine(
+      (data) => {
+        if (data.type === CertSubjectAttributeType.COMMON_NAME && data.value && data.value.length > 1) {
+          return false;
+        }
+        if (data.include === CertIncludeType.MANDATORY && (!data.value || data.value.length > 1)) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: "Common name can only have one value. Mandatory attributes can only have one value or no value (empty)"
+      }
+    );
+
+  const templateV2KeyUsagesSchema = z.object({
+    requiredUsages: z
+      .object({
+        all: z.array(z.nativeEnum(CertKeyUsageType))
+      })
+      .optional(),
+    optionalUsages: z
+      .object({
+        all: z.array(z.nativeEnum(CertKeyUsageType))
+      })
+      .optional()
+  });
+
+  const templateV2ExtendedKeyUsagesSchema = z.object({
+    requiredUsages: z
+      .object({
+        all: z.array(z.nativeEnum(CertExtendedKeyUsageType))
+      })
+      .optional(),
+    optionalUsages: z
+      .object({
+        all: z.array(z.nativeEnum(CertExtendedKeyUsageType))
+      })
+      .optional()
+  });
+
+  const templateV2SanSchema = z
+    .object({
+      type: z.nativeEnum(CertSubjectAlternativeNameType),
+      include: z.nativeEnum(CertIncludeType),
+      value: z.array(z.string()).optional()
+    })
+    .refine(
+      (data) => {
+        if (data.include === CertIncludeType.MANDATORY && (!data.value || data.value.length > 1)) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: "Mandatory SANs can only have one value or no value (empty)"
+      }
+    );
+
+  const templateV2ValiditySchema = z.object({
+    maxDuration: z.object({
+      value: z.number().positive(),
+      unit: z.nativeEnum(CertDurationUnit)
+    }),
+    minDuration: z
+      .object({
+        value: z.number().positive(),
+        unit: z.nativeEnum(CertDurationUnit)
+      })
+      .optional()
+  });
+
+  const templateV2SignatureAlgorithmSchema = z.object({
+    allowedAlgorithms: z.array(z.string()).min(1),
+    defaultAlgorithm: z.string()
+  });
+
+  const templateV2KeyAlgorithmSchema = z.object({
+    allowedKeyTypes: z.array(z.string()).min(1),
+    defaultKeyType: z.string()
+  });
+
   server.route({
     method: "POST",
     url: "/",
@@ -25,7 +114,36 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateTemplates],
-      body: createCertificateTemplateV2Schema,
+      body: z
+        .object({
+          projectId: z.string().min(1),
+          slug: slugSchema({ min: 1, max: 255 }),
+          description: z.string().max(1000).optional(),
+          attributes: z.array(templateV2AttributeSchema).optional(),
+          keyUsages: templateV2KeyUsagesSchema.optional(),
+          extendedKeyUsages: templateV2ExtendedKeyUsagesSchema.optional(),
+          subjectAlternativeNames: z.array(templateV2SanSchema).optional(),
+          validity: templateV2ValiditySchema.optional(),
+          signatureAlgorithm: templateV2SignatureAlgorithmSchema.optional(),
+          keyAlgorithm: templateV2KeyAlgorithmSchema.optional()
+        })
+        .refine(
+          (data) => {
+            const hasConstraints =
+              (data.attributes && data.attributes.length > 0) ||
+              (data.subjectAlternativeNames && data.subjectAlternativeNames.length > 0) ||
+              data.keyUsages ||
+              data.extendedKeyUsages ||
+              data.validity ||
+              data.signatureAlgorithm ||
+              data.keyAlgorithm;
+            return hasConstraints;
+          },
+          {
+            message:
+              "Certificate template must define at least one constraint (attributes, SANs, key usages, validity, or algorithms)"
+          }
+        ),
       response: {
         200: z.object({
           certificateTemplate: CertificateTemplatesV2Schema
@@ -70,7 +188,12 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateTemplates],
-      querystring: listCertificateTemplatesV2Schema,
+      querystring: z.object({
+        projectId: z.string().min(1),
+        offset: z.coerce.number().min(0).default(0),
+        limit: z.coerce.number().min(1).max(100).default(20),
+        search: z.string().optional()
+      }),
       response: {
         200: z.object({
           certificateTemplates: CertificateTemplatesV2Schema.array(),
@@ -112,7 +235,9 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateTemplates],
-      params: getCertificateTemplateV2ByIdSchema,
+      params: z.object({
+        id: z.string().uuid()
+      }),
       response: {
         200: z.object({
           certificateTemplate: CertificateTemplatesV2Schema
@@ -154,8 +279,20 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateTemplates],
-      params: getCertificateTemplateV2ByIdSchema,
-      body: updateCertificateTemplateV2Schema,
+      params: z.object({
+        id: z.string().uuid()
+      }),
+      body: z.object({
+        slug: slugSchema({ min: 1, max: 255 }).optional(),
+        description: z.string().max(1000).optional(),
+        attributes: z.array(templateV2AttributeSchema).optional(),
+        keyUsages: templateV2KeyUsagesSchema.optional(),
+        extendedKeyUsages: templateV2ExtendedKeyUsagesSchema.optional(),
+        subjectAlternativeNames: z.array(templateV2SanSchema).optional(),
+        validity: templateV2ValiditySchema.optional(),
+        signatureAlgorithm: templateV2SignatureAlgorithmSchema.optional(),
+        keyAlgorithm: templateV2KeyAlgorithmSchema.optional()
+      }),
       response: {
         200: z.object({
           certificateTemplate: CertificateTemplatesV2Schema
@@ -198,7 +335,9 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateTemplates],
-      params: deleteCertificateTemplateV2Schema,
+      params: z.object({
+        id: z.string().uuid()
+      }),
       response: {
         200: z.object({
           certificateTemplate: CertificateTemplatesV2Schema
@@ -228,40 +367,6 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
       });
 
       return { certificateTemplate };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/:id/validate",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      hide: false,
-      tags: [ApiDocsTags.PkiCertificateTemplates],
-      params: getCertificateTemplateV2ByIdSchema,
-      body: z.object({
-        request: certificateRequestSchema
-      }),
-      response: {
-        200: z.object({
-          valid: z.boolean(),
-          errors: z.array(z.string()).optional()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const result = await server.services.certificateTemplateV2.validateCertificateRequest(
-        req.params.id,
-        req.body.request
-      );
-
-      return {
-        valid: result.isValid,
-        errors: result.errors.length > 0 ? result.errors : undefined
-      };
     }
   });
 };

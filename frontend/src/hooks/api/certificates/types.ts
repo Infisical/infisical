@@ -7,7 +7,7 @@ export type TCertificate = {
   status: CertStatus;
   friendlyName: string;
   commonName: string;
-  altNames: string;
+  subjectAltNames: string;
   serialNumber: string;
   notBefore: string;
   notAfter: string;

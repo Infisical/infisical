@@ -4,6 +4,7 @@ import {
   TableContainer,
   TableSkeleton,
   TBody,
+  Td,
   Th,
   THead,
   Tr
@@ -33,14 +34,6 @@ export const ProfileList = ({ onEditProfile, onDeleteProfile }: Props) => {
 
   const profiles = data?.certificateProfiles || [];
 
-  if (isLoading) {
-    return <TableSkeleton columns={6} innerKey="certificate-profiles" />;
-  }
-
-  if (!profiles || profiles.length === 0) {
-    return <EmptyState title="No Certificate Profiles" />;
-  }
-
   return (
     <TableContainer>
       <Table>
@@ -48,21 +41,32 @@ export const ProfileList = ({ onEditProfile, onDeleteProfile }: Props) => {
           <Tr>
             <Th>Name</Th>
             <Th>Enrollment Type</Th>
-            <Th>Certificate Authority</Th>
-            <Th>Template</Th>
+            <Th>Issuing CA</Th>
+            <Th>Certificate Template</Th>
             <Th>Certificates</Th>
             <Th className="w-5" />
           </Tr>
         </THead>
         <TBody>
-          {profiles.map((profile) => (
-            <ProfileRow
-              key={profile.id}
-              profile={profile}
-              onEditProfile={onEditProfile}
-              onDeleteProfile={onDeleteProfile}
-            />
-          ))}
+          {isLoading && <TableSkeleton columns={6} innerKey="certificate-profiles" />}
+          {!isLoading && (!profiles || profiles.length === 0) && (
+            <Tr>
+              <Td colSpan={6}>
+                <EmptyState title="No Certificate Profiles" />
+              </Td>
+            </Tr>
+          )}
+          {!isLoading &&
+            profiles &&
+            profiles.length > 0 &&
+            profiles.map((profile) => (
+              <ProfileRow
+                key={profile.id}
+                profile={profile}
+                onEditProfile={onEditProfile}
+                onDeleteProfile={onDeleteProfile}
+              />
+            ))}
         </TBody>
       </Table>
     </TableContainer>

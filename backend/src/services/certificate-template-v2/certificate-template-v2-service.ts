@@ -12,13 +12,13 @@ import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { CertIncludeType, CertSubjectAttributeType } from "../certificate-common/certificate-constants";
 import { TCertificateTemplateV2DALFactory } from "./certificate-template-v2-dal";
 import {
   TCertificateRequest,
   TCertificateTemplateV2,
   TCertificateTemplateV2Insert,
   TCertificateTemplateV2Update,
-  TTemplateV2Policy,
   TTemplateValidationResult
 } from "./certificate-template-v2-types";
 
@@ -70,51 +70,46 @@ export const certificateTemplateV2ServiceFactory = ({
     }
   };
 
-  const getRequestAttributeValue = (request: TCertificateRequest, attrType: string): string | undefined => {
+  const validateSubjectAttributePolicy = (attributes: Array<{ type: string; include: string; value?: string[] }>) => {
+    if (!attributes || attributes.length === 0) return;
+
+    const attributesByType = attributes.reduce(
+      (acc, attr) => {
+        if (!acc[attr.type]) acc[attr.type] = [];
+        acc[attr.type].push(attr);
+        return acc;
+      },
+      {} as Record<string, typeof attributes>
+    );
+
+    for (const [type, attrs] of Object.entries(attributesByType)) {
+      const mandatoryAttrs = attrs.filter((attr) => attr.include === CertIncludeType.MANDATORY);
+
+      if (mandatoryAttrs.length > 1) {
+        throw new ForbiddenRequestError({
+          message: `Multiple mandatory values found for subject attribute type '${type}'. Only one mandatory value is allowed per attribute type.`
+        });
+      }
+
+      if (mandatoryAttrs.length === 1 && attrs.length > 1) {
+        throw new ForbiddenRequestError({
+          message: `When a mandatory value exists for subject attribute type '${type}', no other values (optional or forbidden) are allowed for that attribute type.`
+        });
+      }
+    }
+  };
+
+  const getRequestAttributeValue = (
+    request: TCertificateRequest,
+    attrType: CertSubjectAttributeType | string
+  ): string | undefined => {
     switch (attrType) {
+      case CertSubjectAttributeType.COMMON_NAME:
       case "common_name":
         return request.commonName;
       default:
         return undefined;
     }
-  };
-
-  const validateTemplatePolicy = (policy: Partial<TTemplateV2Policy>): void => {
-    if (!policy) {
-      throw new Error("Template policy is required");
-    }
-
-    if (!policy.attributes || policy.attributes.length === 0) {
-      throw new Error("Template policy must include attributes array");
-    }
-
-    if (!policy.keyUsages || !policy.keyUsages.requiredUsages || !policy.keyUsages.optionalUsages) {
-      throw new Error("Template policy must include valid key usages configuration");
-    }
-
-    if (policy.signatureAlgorithm) {
-      if (!policy.signatureAlgorithm.allowedAlgorithms.includes(policy.signatureAlgorithm.defaultAlgorithm)) {
-        throw new Error("Default signature algorithm must be in allowed algorithms list");
-      }
-    }
-
-    if (policy.keyAlgorithm) {
-      if (!policy.keyAlgorithm.allowedKeyTypes.includes(policy.keyAlgorithm.defaultKeyType)) {
-        throw new Error("Default key algorithm must be in allowed key types list");
-      }
-    }
-  };
-
-  const hasAnyPolicyField = (data: TCertificateTemplateV2Update): boolean => {
-    return !!(
-      data.attributes ||
-      data.keyUsages ||
-      data.extendedKeyUsages ||
-      data.subjectAlternativeNames ||
-      data.validity ||
-      data.signatureAlgorithm ||
-      data.keyAlgorithm
-    );
   };
 
   const generateTemplateSlug = (baseSlug?: string): string => {
@@ -139,177 +134,274 @@ export const certificateTemplateV2ServiceFactory = ({
     return randomSlug;
   };
 
+  const isWildcardPattern = (value: string): boolean => {
+    return value.includes("*");
+  };
+
+  const createWildcardRegex = (pattern: string): RegExp => {
+    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+    const regexPattern = escaped.replace(/\*/g, ".*");
+    return new RE2(`^${regexPattern}$`);
+  };
+
+  const mapTemplateSignatureAlgorithmToApi = (templateFormat: string): string => {
+    const mapping: Record<string, string> = {
+      "SHA256-RSA": "RSA-SHA256",
+      "SHA384-RSA": "RSA-SHA384",
+      "SHA512-RSA": "RSA-SHA512",
+      "SHA256-ECDSA": "ECDSA-SHA256",
+      "SHA384-ECDSA": "ECDSA-SHA384",
+      "SHA512-ECDSA": "ECDSA-SHA512"
+    };
+    return mapping[templateFormat] || templateFormat;
+  };
+
+  const mapTemplateKeyAlgorithmToApi = (templateFormat: string): string => {
+    const mapping: Record<string, string> = {
+      "RSA-2048": "RSA_2048",
+      "RSA-4096": "RSA_4096",
+      "ECDSA-P256": "EC_prime256v1",
+      "ECDSA-P384": "EC_secp384r1"
+    };
+    return mapping[templateFormat] || templateFormat;
+  };
+
+  const validateValueAgainstConstraints = (
+    value: string,
+    allowedValues: string[],
+    fieldName: string
+  ): { isValid: boolean; error?: string } => {
+    if (!allowedValues || allowedValues.length === 0) {
+      return { isValid: true };
+    }
+
+    const hasWildcards = allowedValues.some(isWildcardPattern);
+
+    for (const allowedValue of allowedValues) {
+      if (isWildcardPattern(allowedValue)) {
+        try {
+          const regex = createWildcardRegex(allowedValue);
+          if (regex.test(value)) {
+            return { isValid: true };
+          }
+        } catch {
+          if (allowedValue === value) {
+            return { isValid: true };
+          }
+        }
+      } else if (allowedValue === value) {
+        return { isValid: true };
+      }
+    }
+
+    if (hasWildcards) {
+      return {
+        isValid: false,
+        error: `${fieldName} value '${value}' does not match allowed patterns: ${allowedValues.join(", ")}`
+      };
+    }
+    return {
+      isValid: false,
+      error: `${fieldName} value '${value}' is not in allowed values list`
+    };
+  };
+
   const validateRequestAgainstPolicy = (
     template: TCertificateTemplateV2,
     request: TCertificateRequest
   ): TTemplateValidationResult => {
     const errors: string[] = [];
-
     const warnings: string[] = [];
 
+    const templateAttributeTypes = new Set(template.attributes?.map((attr) => attr.type) || []);
+
+    const attributePoliciesByType = new Map<string, typeof template.attributes>();
     template.attributes?.forEach((attrPolicy) => {
-      const requestValue = getRequestAttributeValue(request, attrPolicy.type);
-
-      if (attrPolicy.include === "mandatory") {
-        if (!requestValue) {
-          errors.push(`${attrPolicy.type} is mandatory but not provided in request`);
-        } else if (attrPolicy.value && attrPolicy.value.length > 0) {
-          // Check if the request value matches any allowed pattern
-          const hasWildcards = attrPolicy.value.some((val) => val.includes("*"));
-          const isValidValue = attrPolicy.value.some((allowedValue) => {
-            if (allowedValue.includes("*")) {
-              // Handle wildcard patterns
-              const pattern = allowedValue.replace(/\./g, "\\.").replace(/\*/g, ".*");
-              const regex = new RE2(`^${pattern}$`);
-              return regex.test(requestValue);
-            }
-            return allowedValue === requestValue;
-          });
-          if (!isValidValue) {
-            if (hasWildcards) {
-              errors.push(
-                `${attrPolicy.type} value '${requestValue}' does not match allowed patterns: ${attrPolicy.value.join(", ")}`
-              );
-            } else {
-              errors.push(`${attrPolicy.type} value '${requestValue}' is not in allowed values list`);
-            }
-          }
-        }
-      }
-
-      if (attrPolicy.include === "prohibit" && requestValue) {
-        errors.push(`${attrPolicy.type} is prohibited by template policy`);
-      }
-
-      if (attrPolicy.include === "optional" && requestValue && attrPolicy.value && attrPolicy.value.length > 0) {
-        const hasWildcards = attrPolicy.value.some((val) => val.includes("*"));
-        const isValidValue = attrPolicy.value.some((allowedValue) => {
-          if (allowedValue.includes("*")) {
-            // Handle wildcard patterns - escape dots and replace * with .*
-            const pattern = allowedValue.replace(/\./g, "\\.").replace(/\*/g, ".*");
-            const regex = new RE2(`^${pattern}$`);
-            return regex.test(requestValue);
-          }
-          return allowedValue === requestValue;
-        });
-        if (!isValidValue) {
-          if (hasWildcards) {
-            errors.push(
-              `${attrPolicy.type} value '${requestValue}' does not match allowed patterns: ${attrPolicy.value.join(", ")}`
-            );
-          } else {
-            errors.push(`${attrPolicy.type} value '${requestValue}' is not in allowed values list`);
-          }
-        }
-      }
+      const existing = attributePoliciesByType.get(attrPolicy.type) || [];
+      attributePoliciesByType.set(attrPolicy.type, [...existing, attrPolicy]);
     });
 
-    if (template.keyUsages) {
-      const missingRequired = template.keyUsages.requiredUsages.all.filter(
-        (usage) => !request.keyUsages?.includes(usage)
-      );
-      if (missingRequired.length > 0) {
-        errors.push(`Missing required key usages: ${missingRequired.join(", ")}`);
+    for (const [attrType, policies] of attributePoliciesByType) {
+      const requestValue = getRequestAttributeValue(request, attrType);
+
+      const hasMandatory = policies.some((p) => p.include === CertIncludeType.MANDATORY);
+      const hasProhibit = policies.some((p) => p.include === CertIncludeType.PROHIBIT);
+
+      if (hasProhibit && requestValue) {
+        errors.push(`${attrType} is prohibited by template policy`);
+        // eslint-disable-next-line no-continue
+        continue;
       }
 
-      if (request.keyUsages) {
-        const allAllowedUsages = [...template.keyUsages.requiredUsages.all, ...template.keyUsages.optionalUsages.all];
-        const invalidUsages = request.keyUsages.filter((usage) => !allAllowedUsages.includes(usage));
-        if (invalidUsages.length > 0) {
-          errors.push(`Invalid key usages: ${invalidUsages.join(", ")}`);
+      if (hasMandatory && !requestValue) {
+        errors.push(`${attrType} is mandatory but not provided in request`);
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      if (requestValue) {
+        const policiesWithValues = policies.filter(
+          (p) =>
+            p.value &&
+            p.value.length > 0 &&
+            (p.include === CertIncludeType.MANDATORY || p.include === CertIncludeType.OPTIONAL)
+        );
+
+        if (policiesWithValues.length > 0) {
+          const allAllowedValues = policiesWithValues.flatMap((p) => p.value || []);
+
+          const validation = validateValueAgainstConstraints(requestValue, allAllowedValues, attrType);
+          if (!validation.isValid && validation.error) {
+            errors.push(validation.error);
+          }
         }
       }
+    }
+
+    const requestAttributeTypes: CertSubjectAttributeType[] = [];
+    if (request.commonName) requestAttributeTypes.push(CertSubjectAttributeType.COMMON_NAME);
+
+    for (const requestAttrType of requestAttributeTypes) {
+      if (!templateAttributeTypes.has(requestAttrType)) {
+        errors.push(`${requestAttrType} is not allowed by template policy (not defined in template)`);
+      }
+    }
+    if (template.keyUsages) {
+      if (template.keyUsages.requiredUsages && template.keyUsages.requiredUsages.all.length > 0) {
+        const missingRequired = template.keyUsages.requiredUsages.all.filter(
+          (usage) => !request.keyUsages?.includes(usage)
+        );
+        if (missingRequired.length > 0) {
+          errors.push(`Missing required key usages: ${missingRequired.join(", ")}`);
+        }
+      }
+
+      if (request.keyUsages && (template.keyUsages.requiredUsages || template.keyUsages.optionalUsages)) {
+        const allAllowedUsages = [
+          ...(template.keyUsages.requiredUsages?.all || []),
+          ...(template.keyUsages.optionalUsages?.all || [])
+        ];
+
+        if (allAllowedUsages.length > 0) {
+          const invalidUsages = request.keyUsages.filter((usage) => !allAllowedUsages.includes(usage));
+          if (invalidUsages.length > 0) {
+            errors.push(`Invalid key usages: ${invalidUsages.join(", ")}`);
+          }
+        }
+      }
+    } else if (request.keyUsages && request.keyUsages.length > 0) {
+      errors.push(`Key usages are not allowed by template policy (not defined in template)`);
     }
 
     if (template.extendedKeyUsages) {
-      const missingRequired = template.extendedKeyUsages.requiredUsages.all.filter(
-        (usage) => !request.extendedKeyUsages?.includes(usage)
-      );
-      if (missingRequired.length > 0) {
-        errors.push(`Missing required extended key usages: ${missingRequired.join(", ")}`);
-      }
-
-      if (request.extendedKeyUsages) {
-        const allAllowedUsages = [
-          ...template.extendedKeyUsages.requiredUsages.all,
-          ...template.extendedKeyUsages.optionalUsages.all
-        ];
-        const invalidUsages = request.extendedKeyUsages.filter((usage) => !allAllowedUsages.includes(usage));
-        if (invalidUsages.length > 0) {
-          errors.push(`Invalid extended key usages: ${invalidUsages.join(", ")}`);
+      if (template.extendedKeyUsages.requiredUsages && template.extendedKeyUsages.requiredUsages.all.length > 0) {
+        const missingRequired = template.extendedKeyUsages.requiredUsages.all.filter(
+          (usage) => !request.extendedKeyUsages?.includes(usage)
+        );
+        if (missingRequired.length > 0) {
+          errors.push(`Missing required extended key usages: ${missingRequired.join(", ")}`);
         }
       }
+
+      if (
+        request.extendedKeyUsages &&
+        (template.extendedKeyUsages.requiredUsages || template.extendedKeyUsages.optionalUsages)
+      ) {
+        const allAllowedUsages = [
+          ...(template.extendedKeyUsages.requiredUsages?.all || []),
+          ...(template.extendedKeyUsages.optionalUsages?.all || [])
+        ];
+
+        if (allAllowedUsages.length > 0) {
+          const invalidUsages = request.extendedKeyUsages.filter((usage) => !allAllowedUsages.includes(usage));
+          if (invalidUsages.length > 0) {
+            errors.push(`Invalid extended key usages: ${invalidUsages.join(", ")}`);
+          }
+        }
+      }
+    } else if (request.extendedKeyUsages && request.extendedKeyUsages.length > 0) {
+      errors.push(`Extended key usages are not allowed by template policy (not defined in template)`);
     }
 
+    const templateSanTypes = new Set(template.subjectAlternativeNames?.map((san) => san.type) || []);
+
+    const sanPoliciesByType = new Map<string, typeof template.subjectAlternativeNames>();
     template.subjectAlternativeNames?.forEach((sanPolicy) => {
-      const requestSans = request.subjectAlternativeNames?.filter((san) => san.type === sanPolicy.type) || [];
-
-      if (sanPolicy.include === "mandatory") {
-        if (requestSans.length === 0) {
-          errors.push(`${sanPolicy.type} SAN is mandatory but not provided in request`);
-        } else if (sanPolicy.value && sanPolicy.value.length > 0) {
-          const hasWildcards = sanPolicy.value.some((val) => val.includes("*"));
-          requestSans.forEach((san) => {
-            const isValidValue = sanPolicy.value!.some((allowedValue) => {
-              if (allowedValue.includes("*")) {
-                // Handle wildcard patterns - escape dots and replace * with .*
-                const pattern = allowedValue.replace(/\./g, "\\.").replace(/\*/g, ".*");
-                const regex = new RE2(`^${pattern}$`);
-                return regex.test(san.value);
-              }
-              return allowedValue === san.value;
-            });
-            if (!isValidValue) {
-              if (hasWildcards) {
-                errors.push(
-                  `${sanPolicy.type} SAN value '${san.value}' does not match allowed patterns: ${sanPolicy.value!.join(", ")}`
-                );
-              } else {
-                errors.push(`${sanPolicy.type} SAN value '${san.value}' is not in allowed values list`);
-              }
-            }
-          });
-        }
-      }
-
-      if (sanPolicy.include === "prohibit" && requestSans.length > 0) {
-        errors.push(`${sanPolicy.type} SAN is prohibited by template policy`);
-      }
-
-      if (sanPolicy.include === "optional" && sanPolicy.value && sanPolicy.value.length > 0) {
-        const hasWildcards = sanPolicy.value.some((val) => val.includes("*"));
-        requestSans.forEach((san) => {
-          const isValidValue = sanPolicy.value!.some((allowedValue) => {
-            if (allowedValue.includes("*")) {
-              // Handle wildcard patterns - escape dots and replace * with .*
-              const pattern = allowedValue.replace(/\./g, "\\.").replace(/\*/g, ".*");
-              const regex = new RE2(`^${pattern}$`);
-              return regex.test(san.value);
-            }
-            return allowedValue === san.value;
-          });
-          if (!isValidValue) {
-            if (hasWildcards) {
-              errors.push(
-                `${sanPolicy.type} SAN value '${san.value}' does not match allowed patterns: ${sanPolicy.value!.join(", ")}`
-              );
-            } else {
-              errors.push(`${sanPolicy.type} SAN value '${san.value}' is not in allowed values list`);
-            }
-          }
-        });
-      }
+      const existing = sanPoliciesByType.get(sanPolicy.type) || [];
+      sanPoliciesByType.set(sanPolicy.type, [...existing, sanPolicy]);
     });
 
-    if (request.signatureAlgorithm && template.signatureAlgorithm) {
-      if (!template.signatureAlgorithm?.allowedAlgorithms.includes(request.signatureAlgorithm)) {
-        errors.push(`Signature algorithm '${request.signatureAlgorithm}' is not allowed by template policy`);
+    for (const [sanType, policies] of sanPoliciesByType) {
+      const requestSans = request.subjectAlternativeNames?.filter((san) => san.type === sanType) || [];
+
+      const hasMandatory = policies.some((p) => p.include === CertIncludeType.MANDATORY);
+      const hasProhibit = policies.some((p) => p.include === CertIncludeType.PROHIBIT);
+
+      if (hasProhibit && requestSans.length > 0) {
+        errors.push(`${sanType} SAN is prohibited by template policy`);
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      if (hasMandatory && requestSans.length === 0) {
+        errors.push(`${sanType} SAN is mandatory but not provided in request`);
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      if (requestSans.length > 0) {
+        const policiesWithValues = policies.filter(
+          (p) =>
+            p.value &&
+            p.value.length > 0 &&
+            (p.include === CertIncludeType.MANDATORY || p.include === CertIncludeType.OPTIONAL)
+        );
+
+        if (policiesWithValues.length > 0) {
+          const allAllowedValues = policiesWithValues.flatMap((p) => p.value || []);
+
+          requestSans.forEach((san) => {
+            const validation = validateValueAgainstConstraints(san.value, allAllowedValues, `${sanType} SAN`);
+            if (!validation.isValid && validation.error) {
+              errors.push(validation.error);
+            }
+          });
+        }
       }
     }
 
-    if (request.keyAlgorithm && template.keyAlgorithm) {
-      if (!template.keyAlgorithm?.allowedKeyTypes.includes(request.keyAlgorithm)) {
-        errors.push(`Key algorithm '${request.keyAlgorithm}' is not allowed by template policy`);
+    const requestSanTypes = new Set(request.subjectAlternativeNames?.map((san) => san.type) || []);
+    for (const requestSanType of requestSanTypes) {
+      if (!templateSanTypes.has(requestSanType)) {
+        errors.push(`${requestSanType} SAN is not allowed by template policy (not defined in template)`);
+      }
+    }
+
+    if (request.signatureAlgorithm) {
+      if (template.signatureAlgorithm && template.signatureAlgorithm.allowedAlgorithms) {
+        const mappedTemplateAlgorithms = template.signatureAlgorithm.allowedAlgorithms.map(
+          mapTemplateSignatureAlgorithmToApi
+        );
+        if (!mappedTemplateAlgorithms.includes(request.signatureAlgorithm)) {
+          errors.push(`Signature algorithm '${request.signatureAlgorithm}' is not allowed by template policy`);
+        }
+      } else if (!template.signatureAlgorithm) {
+        errors.push(
+          `Signature algorithm '${request.signatureAlgorithm}' is not allowed by template policy (not defined in template)`
+        );
+      }
+    }
+
+    if (request.keyAlgorithm) {
+      if (template.keyAlgorithm && template.keyAlgorithm.allowedKeyTypes) {
+        const mappedTemplateKeyTypes = template.keyAlgorithm.allowedKeyTypes.map(mapTemplateKeyAlgorithmToApi);
+        if (!mappedTemplateKeyTypes.includes(request.keyAlgorithm)) {
+          errors.push(`Key algorithm '${request.keyAlgorithm}' is not allowed by template policy`);
+        }
+      } else if (!template.keyAlgorithm) {
+        errors.push(
+          `Key algorithm '${request.keyAlgorithm}' is not allowed by template policy (not defined in template)`
+        );
       }
     }
 
@@ -331,6 +423,44 @@ export const certificateTemplateV2ServiceFactory = ({
         );
         if (requestDuration < minDuration) {
           errors.push(`Requested validity period is below minimum required duration`);
+        }
+      }
+    }
+
+    if (request.validity?.ttl && (request.notBefore || request.notAfter)) {
+      errors.push(
+        "Cannot specify both TTL and notBefore/notAfter. Use either TTL for duration-based validity or notBefore/notAfter for explicit date range."
+      );
+    }
+
+    if (request.notBefore && request.notAfter && request.notBefore >= request.notAfter) {
+      errors.push("notBefore must be earlier than notAfter");
+    }
+
+    if ((request.notBefore || request.notAfter) && template.validity) {
+      const notBefore = request.notBefore || new Date();
+      const { notAfter } = request;
+
+      if (notAfter && notBefore && notAfter instanceof Date && notBefore instanceof Date) {
+        const requestDuration = notAfter.getTime() - notBefore.getTime();
+
+        const maxDuration = convertToMilliseconds(
+          template.validity.maxDuration.value,
+          template.validity.maxDuration.unit
+        );
+
+        if (requestDuration > maxDuration) {
+          errors.push(`Requested validity period (notBefore to notAfter) exceeds maximum allowed duration`);
+        }
+
+        if (template.validity.minDuration) {
+          const minDuration = convertToMilliseconds(
+            template.validity.minDuration.value,
+            template.validity.minDuration.unit
+          );
+          if (requestDuration < minDuration) {
+            errors.push(`Requested validity period (notBefore to notAfter) is below minimum required duration`);
+          }
         }
       }
     }
@@ -375,15 +505,9 @@ export const certificateTemplateV2ServiceFactory = ({
       throw new Error("Template data is required");
     }
 
-    validateTemplatePolicy({
-      attributes: data.attributes,
-      keyUsages: data.keyUsages,
-      extendedKeyUsages: data.extendedKeyUsages,
-      subjectAlternativeNames: data.subjectAlternativeNames,
-      validity: data.validity,
-      signatureAlgorithm: data.signatureAlgorithm,
-      keyAlgorithm: data.keyAlgorithm
-    });
+    if (data.attributes) {
+      validateSubjectAttributePolicy(data.attributes);
+    }
 
     const slug = data.slug || generateTemplateSlug();
     const uniqueSlug = await ensureUniqueSlug(projectId, slug);
@@ -431,18 +555,8 @@ export const certificateTemplateV2ServiceFactory = ({
       ProjectPermissionSub.CertificateTemplates
     );
 
-    if (hasAnyPolicyField(data)) {
-      const mergedPolicy = {
-        attributes: data.attributes || existingTemplate.attributes,
-        keyUsages: data.keyUsages || existingTemplate.keyUsages,
-        extendedKeyUsages: data.extendedKeyUsages || existingTemplate.extendedKeyUsages,
-        subjectAlternativeNames: data.subjectAlternativeNames || existingTemplate.subjectAlternativeNames,
-        validity: data.validity || existingTemplate.validity,
-        signatureAlgorithm: data.signatureAlgorithm || existingTemplate.signatureAlgorithm,
-        keyAlgorithm: data.keyAlgorithm || existingTemplate.keyAlgorithm
-      };
-
-      validateTemplatePolicy(mergedPolicy);
+    if (data.attributes) {
+      validateSubjectAttributePolicy(data.attributes);
     }
 
     const updateData = { ...data };
@@ -614,8 +728,14 @@ export const certificateTemplateV2ServiceFactory = ({
 
     const isInUse = await certificateTemplateV2DAL.isTemplateInUse(templateId);
     if (isInUse) {
+      const profilesUsingTemplate = await certificateTemplateV2DAL.getProfilesUsingTemplate(templateId);
+      const profileNames = profilesUsingTemplate.map((profile) => profile.slug || profile.id).join(", ");
+
       throw new ForbiddenRequestError({
-        message: "Cannot delete template that is in use by certificate profiles"
+        message:
+          profilesUsingTemplate.length > 0
+            ? `Cannot delete template '${template.slug}' as it is currently in use by the following certificate profiles: ${profileNames}. Please remove this template from these profiles before deleting it.`
+            : `Cannot delete template '${template.slug}' as it is currently in use by one or more certificates. Please ensure no certificates are using this template before deleting it.`
       });
     }
 

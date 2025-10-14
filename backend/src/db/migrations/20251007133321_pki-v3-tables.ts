@@ -8,7 +8,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.CertificateTemplateV2, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("projectId").notNullable();
-      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+      t.foreign("projectId").references("id").inTable(TableName.Project);
 
       t.string("slug").notNullable();
       t.string("description");
@@ -60,7 +60,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.CertificateProfile, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("projectId").notNullable();
-      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+      t.foreign("projectId").references("id").inTable(TableName.Project);
 
       t.uuid("caId").notNullable();
       t.foreign("caId").references("id").inTable(TableName.CertificateAuthority);

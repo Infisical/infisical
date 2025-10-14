@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { CertificateProfilesSchema } from "@app/db/schemas";
@@ -6,12 +7,7 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import {
-  createCertificateProfileSchema,
-  deleteCertificateProfileSchema,
-  listCertificateProfilesSchema,
-  updateCertificateProfileSchema
-} from "@app/services/certificate-profile/certificate-profile-schemas";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 
 export const registerCertificateProfilesRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -23,7 +19,57 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateProfiles],
-      body: createCertificateProfileSchema,
+      body: z
+        .object({
+          projectId: z.string().min(1),
+          caId: z.string().uuid(),
+          certificateTemplateId: z.string().uuid(),
+          slug: z
+            .string()
+            .min(1)
+            .max(255)
+            .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens"),
+          description: z.string().max(1000).optional(),
+          enrollmentType: z.nativeEnum(EnrollmentType),
+          estConfig: z
+            .object({
+              disableBootstrapCaValidation: z.boolean().default(false),
+              passphrase: z.string().min(1),
+              encryptedCaChain: z.string()
+            })
+            .optional(),
+          apiConfig: z
+            .object({
+              autoRenew: z.boolean().default(false),
+              autoRenewDays: z.number().min(1).max(365).optional()
+            })
+            .optional()
+        })
+        .refine(
+          (data) => {
+            if (data.enrollmentType === EnrollmentType.EST) {
+              if (!data.estConfig) {
+                return false;
+              }
+              if (data.apiConfig) {
+                return false;
+              }
+            }
+            if (data.enrollmentType === EnrollmentType.API) {
+              if (!data.apiConfig) {
+                return false;
+              }
+              if (data.estConfig) {
+                return false;
+              }
+            }
+            return true;
+          },
+          {
+            message:
+              "EST enrollment type requires EST configuration and cannot have API configuration. API enrollment type requires API configuration and cannot have EST configuration."
+          }
+        ),
       response: {
         200: z.object({
           certificateProfile: CertificateProfilesSchema
@@ -68,7 +114,13 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateProfiles],
-      querystring: listCertificateProfilesSchema.extend({
+      querystring: z.object({
+        projectId: z.string().min(1),
+        offset: z.coerce.number().min(0).default(0),
+        limit: z.coerce.number().min(1).max(100).default(20),
+        search: z.string().optional(),
+        enrollmentType: z.nativeEnum(EnrollmentType).optional(),
+        caId: z.string().uuid().optional(),
         includeMetrics: z.coerce.boolean().optional().default(false),
         expiringDays: z.coerce.number().min(1).max(365).optional().default(7)
       }),
@@ -209,7 +261,8 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         event: {
           type: EventType.GET_CERTIFICATE_PROFILE,
           metadata: {
-            certificateProfileId: certificateProfile.id
+            certificateProfileId: certificateProfile.id,
+            name: certificateProfile.slug
           }
         }
       });
@@ -266,7 +319,48 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       params: z.object({
         id: z.string().min(1)
       }),
-      body: updateCertificateProfileSchema,
+      body: z
+        .object({
+          slug: z
+            .string()
+            .min(1)
+            .max(255)
+            .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens")
+            .optional(),
+          description: z.string().max(1000).optional(),
+          enrollmentType: z.nativeEnum(EnrollmentType).optional(),
+          estConfig: z
+            .object({
+              disableBootstrapCaValidation: z.boolean().default(false),
+              passphrase: z.string().min(1),
+              encryptedCaChain: z.string()
+            })
+            .optional(),
+          apiConfig: z
+            .object({
+              autoRenew: z.boolean().default(false),
+              autoRenewDays: z.number().min(1).max(365).optional()
+            })
+            .optional()
+        })
+        .refine(
+          (data) => {
+            if (data.enrollmentType === EnrollmentType.EST) {
+              if (data.apiConfig) {
+                return false;
+              }
+            }
+            if (data.enrollmentType === EnrollmentType.API) {
+              if (data.estConfig) {
+                return false;
+              }
+            }
+            return true;
+          },
+          {
+            message: "Cannot have EST config with API enrollment type or API config with EST enrollment type."
+          }
+        ),
       response: {
         200: z.object({
           certificateProfile: CertificateProfilesSchema
@@ -309,7 +403,9 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateProfiles],
-      params: deleteCertificateProfileSchema,
+      params: z.object({
+        id: z.string().uuid()
+      }),
       response: {
         200: z.object({
           certificateProfile: CertificateProfilesSchema
@@ -332,7 +428,8 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         event: {
           type: EventType.DELETE_CERTIFICATE_PROFILE,
           metadata: {
-            certificateProfileId: certificateProfile.id
+            certificateProfileId: certificateProfile.id,
+            name: certificateProfile.slug
           }
         }
       });

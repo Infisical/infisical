@@ -122,7 +122,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   const certificateAuthorities = caData || [];
   const certificateTemplates = templateData?.certificateTemplates || [];
 
-  const { control, handleSubmit, reset, watch, setValue } = useForm<FormData>({
+  const { control, handleSubmit, reset, watch, setValue, formState } = useForm<FormData>({
     resolver: zodResolver(isEdit ? editSchema : createSchema),
     defaultValues: isEdit
       ? {
@@ -260,7 +260,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             name="certificateAuthorityId"
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <FormControl
-                label="Certificate Authority"
+                label="Issuing CA"
                 isRequired
                 isError={Boolean(error)}
                 errorText={error?.message}
@@ -296,7 +296,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 <Select
                   {...field}
                   onValueChange={(value) => {
-                    onChange(value);
                     if (watchedEnrollmentType === "est") {
                       setValue("estConfig", {
                         disableBootstrapCaValidation: false,
@@ -311,6 +310,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                       });
                       setValue("estConfig", undefined);
                     }
+                    onChange(value);
                   }}
                   placeholder="Select a certificate template"
                   className="w-full"
@@ -339,7 +339,23 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
               >
                 <Select
                   {...field}
-                  onValueChange={onChange}
+                  onValueChange={(value) => {
+                    if (value === "est") {
+                      setValue("apiConfig", undefined);
+                      setValue("estConfig", {
+                        disableBootstrapCaValidation: false,
+                        passphrase: "",
+                        caChain: ""
+                      });
+                    } else {
+                      setValue("estConfig", undefined);
+                      setValue("apiConfig", {
+                        autoRenew: false,
+                        autoRenewDays: 30
+                      });
+                    }
+                    onChange(value);
+                  }}
                   className="w-full"
                   position="popper"
                   isDisabled={Boolean(isEdit)}
@@ -360,17 +376,17 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   name="estConfig.disableBootstrapCaValidation"
                   render={({ field: { value, onChange }, fieldState: { error } }) => (
                     <FormControl isError={Boolean(error)} errorText={error?.message}>
-                      <div className="flex items-center gap-3 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4">
+                      <div className="border-mineshaft-600 bg-mineshaft-900 flex items-center gap-3 rounded-md border p-4">
                         <Checkbox
                           id="disableBootstrapCaValidation"
                           isChecked={value}
                           onCheckedChange={onChange}
                         />
                         <div className="space-y-1">
-                          <span className="text-sm font-medium text-mineshaft-100">
+                          <span className="text-mineshaft-100 text-sm font-medium">
                             Disable Bootstrap CA Validation
                           </span>
-                          <p className="text-xs text-bunker-300">
+                          <p className="text-bunker-300 text-xs">
                             Skip CA certificate validation during EST bootstrap phase
                           </p>
                         </div>
@@ -417,7 +433,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                             rows={6}
                             className="w-full font-mono text-xs"
                           />
-                          <p className="text-xs text-bunker-400">
+                          <p className="text-bunker-400 text-xs">
                             Paste the complete CA certificate chain in PEM format
                           </p>
                         </div>
@@ -478,6 +494,9 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
               type="submit"
               colorSchema="primary"
               isLoading={isEdit ? updateProfile.isPending : createProfile.isPending}
+              isDisabled={
+                !formState.isValid || (isEdit ? updateProfile.isPending : createProfile.isPending)
+              }
             >
               {isEdit ? "Save Changes" : "Create"}
             </Button>

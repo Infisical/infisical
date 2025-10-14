@@ -1,141 +1,152 @@
-import { Button } from "@app/components/v2";
+import { Checkbox } from "@app/components/v2";
 
 import {
-  EXTENDED_KEY_USAGES,
-  formatUsageName,
-  getUsageState,
-  KEY_USAGES,
-  toggleUsageState
-} from "./utils";
+  CertExtendedKeyUsageType,
+  CertKeyUsageType,
+  formatExtendedKeyUsage,
+  formatKeyUsage,
+  EXTENDED_KEY_USAGE_OPTIONS,
+  KEY_USAGE_OPTIONS
+} from "./certificate-constants";
 
-type UsageToggleProps = {
-  value: "required" | "optional" | undefined;
-  onChange: (value: "required" | "optional" | undefined) => void;
+type UsageState = "mandatory" | "optional" | undefined;
+
+type ThreeStateCheckboxProps = {
+  value: UsageState;
+  onChange: (newValue: UsageState) => void;
+  label: string;
+  id: string;
 };
 
-export const UsageToggle = ({ value, onChange }: UsageToggleProps) => {
+const ThreeStateCheckbox = ({ value, onChange, label, id }: ThreeStateCheckboxProps) => {
+  const handleClick = () => {
+    if (value === undefined) {
+      onChange("optional");
+    } else if (value === "optional") {
+      onChange("mandatory");
+    } else {
+      onChange(undefined);
+    }
+  };
+
+  const getCheckboxState = () => {
+    if (value) return true;
+    return false;
+  };
+
+  const getIndeterminateState = () => {
+    return value === "optional";
+  };
+
+  const getStateLabel = () => {
+    if (value === "mandatory") return " (Mandatory)";
+    if (value === "optional") return " (Optional)";
+    return "";
+  };
+
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-800 flex gap-x-0.5 rounded-md border p-1">
-      <Button
-        variant="outline_bg"
-        onClick={() => {
-          onChange(value === "required" ? undefined : "required");
-        }}
-        size="xs"
-        className={`${
-          value === "required" ? "bg-mineshaft-500" : "bg-transparent"
-        } hover:bg-mineshaft-600 min-w-[2.4rem] rounded border-none`}
+    <div className="flex items-center space-x-3">
+      <Checkbox
+        id={id}
+        isChecked={getCheckboxState()}
+        isIndeterminate={getIndeterminateState()}
+        onCheckedChange={handleClick}
+      />
+      <label
+        htmlFor={id}
+        className="text-mineshaft-200 cursor-pointer text-sm font-medium"
       >
-        Required
-      </Button>
-      <Button
-        variant="outline_bg"
-        onClick={() => {
-          onChange(value === "optional" ? undefined : "optional");
-        }}
-        size="xs"
-        className={`${
-          value === "optional" ? "bg-mineshaft-500" : "bg-transparent"
-        } hover:bg-mineshaft-600 min-w-[2.4rem] rounded border-none`}
-      >
-        Optional
-      </Button>
+        {label}
+        {value && (
+          <span className="text-mineshaft-400 text-xs ml-1">
+            {getStateLabel()}
+          </span>
+        )}
+      </label>
     </div>
   );
 };
 
 type KeyUsagesSectionProps = {
-  watchedKeyUsages?: {
-    requiredUsages?: string[];
-    optionalUsages?: string[];
-  };
-  watchedExtendedKeyUsages?: {
-    requiredUsages?: string[];
-    optionalUsages?: string[];
-  };
-  toggleKeyUsage: (usage: string, type: "required" | "optional") => void;
-  toggleExtendedKeyUsage: (usage: string, type: "required" | "optional") => void;
+  watchedKeyUsages?: { requiredUsages?: string[]; optionalUsages?: string[] };
+  watchedExtendedKeyUsages?: { requiredUsages?: string[]; optionalUsages?: string[] };
+  onKeyUsagesChange: (usages: { requiredUsages: string[]; optionalUsages: string[] }) => void;
+  onExtendedKeyUsagesChange: (usages: { requiredUsages: string[]; optionalUsages: string[] }) => void;
 };
 
 export const KeyUsagesSection = ({
-  watchedKeyUsages,
-  watchedExtendedKeyUsages,
-  toggleKeyUsage,
-  toggleExtendedKeyUsage
+  watchedKeyUsages = { requiredUsages: [], optionalUsages: [] },
+  watchedExtendedKeyUsages = { requiredUsages: [], optionalUsages: [] },
+  onKeyUsagesChange,
+  onExtendedKeyUsagesChange
 }: KeyUsagesSectionProps) => {
+  const getUsageState = (usage: string, data: { requiredUsages?: string[]; optionalUsages?: string[] }): UsageState => {
+    if (data.requiredUsages?.includes(usage)) return "mandatory";
+    if (data.optionalUsages?.includes(usage)) return "optional";
+    return undefined;
+  };
+
+  const handleKeyUsageChange = (usage: CertKeyUsageType, newState: UsageState) => {
+    const currentRequired = watchedKeyUsages.requiredUsages || [];
+    const currentOptional = watchedKeyUsages.optionalUsages || [];
+
+    let newRequired = currentRequired.filter(u => u !== usage);
+    let newOptional = currentOptional.filter(u => u !== usage);
+
+    if (newState === "mandatory") {
+      newRequired = [...newRequired, usage];
+    } else if (newState === "optional") {
+      newOptional = [...newOptional, usage];
+    }
+
+    onKeyUsagesChange({ requiredUsages: newRequired, optionalUsages: newOptional });
+  };
+
+  const handleExtendedKeyUsageChange = (usage: CertExtendedKeyUsageType, newState: UsageState) => {
+    const currentRequired = watchedExtendedKeyUsages.requiredUsages || [];
+    const currentOptional = watchedExtendedKeyUsages.optionalUsages || [];
+
+    let newRequired = currentRequired.filter(u => u !== usage);
+    let newOptional = currentOptional.filter(u => u !== usage);
+
+    if (newState === "mandatory") {
+      newRequired = [...newRequired, usage];
+    } else if (newState === "optional") {
+      newOptional = [...newOptional, usage];
+    }
+
+    onExtendedKeyUsagesChange({ requiredUsages: newRequired, optionalUsages: newOptional });
+  };
+
   return (
     <div className="space-y-6">
       <div className="space-y-3">
         <h3 className="text-mineshaft-200 text-sm font-medium">Key Usages</h3>
-        <div className="grid grid-cols-2 gap-3">
-          {KEY_USAGES.map((usage) => {
-            const requiredUsages = Array.isArray(watchedKeyUsages?.requiredUsages)
-              ? watchedKeyUsages.requiredUsages
-              : [];
-            const optionalUsages = Array.isArray(watchedKeyUsages?.optionalUsages)
-              ? watchedKeyUsages.optionalUsages
-              : [];
-
-            const currentState = getUsageState(usage, requiredUsages, optionalUsages);
-
-            return (
-              <div key={usage} className="flex items-center justify-between p-2">
-                <span className="text-mineshaft-300 text-sm capitalize">
-                  {formatUsageName(usage)}
-                </span>
-                <UsageToggle
-                  value={currentState}
-                  onChange={(newValue) => {
-                    toggleUsageState(
-                      usage,
-                      newValue,
-                      requiredUsages,
-                      optionalUsages,
-                      (u) => toggleKeyUsage(u, "required"),
-                      (u) => toggleKeyUsage(u, "optional")
-                    );
-                  }}
-                />
-              </div>
-            );
-          })}
+        <div className="grid grid-cols-2 gap-2 pl-2">
+          {KEY_USAGE_OPTIONS.map((usage) => (
+            <ThreeStateCheckbox
+              key={usage}
+              id={`key-usage-${usage}`}
+              label={formatKeyUsage(usage)}
+              value={getUsageState(usage, watchedKeyUsages)}
+              onChange={(newState) => handleKeyUsageChange(usage, newState)}
+            />
+          ))}
         </div>
       </div>
 
       <div className="space-y-3">
         <h3 className="text-mineshaft-200 text-sm font-medium">Extended Key Usages</h3>
-        <div className="grid grid-cols-2 gap-3">
-          {EXTENDED_KEY_USAGES.map((usage) => {
-            const requiredUsages = Array.isArray(watchedExtendedKeyUsages?.requiredUsages)
-              ? watchedExtendedKeyUsages.requiredUsages
-              : [];
-            const optionalUsages = Array.isArray(watchedExtendedKeyUsages?.optionalUsages)
-              ? watchedExtendedKeyUsages.optionalUsages
-              : [];
-
-            const currentState = getUsageState(usage, requiredUsages, optionalUsages);
-
-            return (
-              <div key={usage} className="flex items-center justify-between p-2">
-                <span className="text-mineshaft-300 text-sm capitalize">
-                  {formatUsageName(usage)}
-                </span>
-                <UsageToggle
-                  value={currentState}
-                  onChange={(newValue) => {
-                    toggleUsageState(
-                      usage,
-                      newValue,
-                      requiredUsages,
-                      optionalUsages,
-                      (u) => toggleExtendedKeyUsage(u, "required"),
-                      (u) => toggleExtendedKeyUsage(u, "optional")
-                    );
-                  }}
-                />
-              </div>
-            );
-          })}
+        <div className="grid grid-cols-2 gap-2 pl-2">
+          {EXTENDED_KEY_USAGE_OPTIONS.map((usage) => (
+            <ThreeStateCheckbox
+              key={usage}
+              id={`ext-key-usage-${usage}`}
+              label={formatExtendedKeyUsage(usage)}
+              value={getUsageState(usage, watchedExtendedKeyUsages)}
+              onChange={(newState) => handleExtendedKeyUsageChange(usage, newState)}
+            />
+          ))}
         </div>
       </div>
     </div>

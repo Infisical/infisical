@@ -2569,19 +2569,41 @@ interface GetCertificateTemplateEstConfig {
 
 interface CreateCertificateTemplate {
   type: EventType.CREATE_CERTIFICATE_TEMPLATE;
-  metadata: {
-    certificateTemplateId: string;
-    name: string;
-    projectId: string;
-  };
+  metadata:
+    | {
+        certificateTemplateId: string;
+        name: string;
+        projectId: string;
+      }
+    | {
+        certificateTemplateId: string;
+        caId: string;
+        pkiCollectionId: string;
+        name: string;
+        commonName: string;
+        subjectAlternativeName: string;
+        ttl: string;
+        projectId: string;
+      };
 }
 
 interface UpdateCertificateTemplate {
   type: EventType.UPDATE_CERTIFICATE_TEMPLATE;
-  metadata: {
-    certificateTemplateId: string;
-    name: string;
-  };
+  metadata:
+    | {
+        certificateTemplateId: string;
+        name: string;
+      }
+    | {
+        certificateTemplateId: string;
+        caId: string;
+        pkiCollectionId: string;
+        name: string;
+        commonName: string;
+        subjectAlternativeName: string;
+        ttl: string;
+        projectId: string;
+      };
 }
 
 interface DeleteCertificateTemplate {
@@ -2629,6 +2651,7 @@ interface DeleteCertificateProfile {
   type: EventType.DELETE_CERTIFICATE_PROFILE;
   metadata: {
     certificateProfileId: string;
+    name: string;
   };
 }
 
@@ -2636,6 +2659,7 @@ interface GetCertificateProfile {
   type: EventType.GET_CERTIFICATE_PROFILE;
   metadata: {
     certificateProfileId: string;
+    name: string;
   };
 }
 
@@ -2652,6 +2676,7 @@ interface IssueCertificateFromProfile {
     certificateProfileId: string;
     certificateId: string;
     commonName: string;
+    profileName: string;
   };
 }
 
@@ -2660,6 +2685,8 @@ interface SignCertificateFromProfile {
   metadata: {
     certificateProfileId: string;
     certificateId: string;
+    profileName: string;
+    commonName: string;
   };
 }
 
@@ -2668,7 +2695,7 @@ interface OrderCertificateFromProfile {
   metadata: {
     certificateProfileId: string;
     orderId: string;
-    subjectAlternativeNames: string[];
+    profileName: string;
   };
 }
 

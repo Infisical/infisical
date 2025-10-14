@@ -124,16 +124,7 @@ export type TListCertificateTemplatesDTO = {
 
 export type TCertificateTemplateV2Policy = {
   attributes: Array<{
-    type:
-      | "common_name"
-      | "organization_name"
-      | "organization_unit"
-      | "locality"
-      | "state"
-      | "country"
-      | "email"
-      | "street_address"
-      | "postal_code";
+    type: "common_name";
     include: "mandatory" | "optional" | "prohibit";
     value?: string[];
   }>;

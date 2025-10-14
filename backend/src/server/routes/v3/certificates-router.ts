@@ -6,12 +6,22 @@ import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
+import {
+  ACMESANType,
+  CertificateOrderStatus,
+  CertKeyAlgorithm,
+  CertSignatureAlgorithm
+} from "@app/services/certificate/certificate-types";
 import {
   validateAltNamesField,
   validateAndMapAltNameType,
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
+import {
+  CertExtendedKeyUsageType,
+  CertKeyUsageType,
+  CertSubjectAlternativeNameType
+} from "@app/services/certificate-common/certificate-constants";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 
@@ -25,18 +35,43 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
-      body: z.object({
-        profileId: z.string().uuid(),
-        commonName: validateTemplateRegexField,
-        ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
-        keyUsages: z.nativeEnum(CertKeyUsage).array().optional(),
-        extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsage).array().optional(),
-        notBefore: validateCaDateField.optional(),
-        notAfter: validateCaDateField.optional(),
-        altNames: validateAltNamesField.optional(),
-        signatureAlgorithm: z.string().optional(),
-        keyAlgorithm: z.string().optional()
-      }),
+      body: z
+        .object({
+          profileId: z.string().uuid(),
+          commonName: validateTemplateRegexField,
+          ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
+          keyUsages: z.nativeEnum(CertKeyUsageType).array().optional(),
+          extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
+          notBefore: validateCaDateField.optional(),
+          notAfter: validateCaDateField.optional(),
+          subjectAltNames: validateAltNamesField.optional(),
+          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
+          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional()
+        })
+        .refine(
+          (data) => {
+            const hasDateFields = data.notBefore || data.notAfter;
+            const hasTtl = data.ttl;
+            return !(hasDateFields && hasTtl);
+          },
+          {
+            message:
+              "Cannot specify both TTL and notBefore/notAfter. Use either TTL for duration-based validity or notBefore/notAfter for explicit date range."
+          }
+        )
+        .refine(
+          (data) => {
+            if (data.notBefore && data.notAfter) {
+              const notBefore = new Date(data.notBefore);
+              const notAfter = new Date(data.notAfter);
+              return notBefore < notAfter;
+            }
+            return true;
+          },
+          {
+            message: "notBefore must be earlier than notAfter"
+          }
+        ),
       response: {
         200: z.object({
           certificate: z.string().trim(),
@@ -54,8 +89,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         commonName: req.body.commonName,
         keyUsages: req.body.keyUsages,
         extendedKeyUsages: req.body.extendedKeyUsages,
-        subjectAlternativeNames: req.body.altNames
-          ? req.body.altNames
+        altNames: req.body.subjectAltNames
+          ? req.body.subjectAltNames
               .split(", ")
               .map((name) => name.trim())
               .map((name) => {
@@ -68,7 +103,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
                   url: "uri"
                 } as const;
                 return {
-                  type: typeMapping[mappedType.type] as "dns_name" | "ip_address" | "email" | "uri",
+                  type: typeMapping[mappedType.type] as CertSubjectAlternativeNameType,
                   value: mappedType.value
                 };
               })
@@ -94,23 +129,16 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         certificateRequest: mappedCertificateRequest
       });
 
-      const profile = await server.services.certificateProfile.getProfileById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        profileId: req.body.profileId
-      });
-
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: profile.projectId,
+        projectId: data.projectId,
         event: {
           type: EventType.ISSUE_CERTIFICATE_FROM_PROFILE,
           metadata: {
             certificateProfileId: req.body.profileId,
             certificateId: data.certificateId,
-            commonName: req.body.commonName || ""
+            commonName: req.body.commonName || "",
+            profileName: data.profileName
           }
         }
       });
@@ -128,13 +156,38 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
-      body: z.object({
-        profileId: z.string().uuid(),
-        csr: z.string().trim().min(1).max(4096),
-        ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
-        notBefore: validateCaDateField.optional(),
-        notAfter: validateCaDateField.optional()
-      }),
+      body: z
+        .object({
+          profileId: z.string().uuid(),
+          csr: z.string().trim().min(1).max(4096),
+          ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
+          notBefore: validateCaDateField.optional(),
+          notAfter: validateCaDateField.optional()
+        })
+        .refine(
+          (data) => {
+            const hasDateFields = data.notBefore || data.notAfter;
+            const hasTtl = data.ttl;
+            return !(hasDateFields && hasTtl);
+          },
+          {
+            message:
+              "Cannot specify both TTL and notBefore/notAfter. Use either TTL for duration-based validity or notBefore/notAfter for explicit date range."
+          }
+        )
+        .refine(
+          (data) => {
+            if (data.notBefore && data.notAfter) {
+              const notBefore = new Date(data.notBefore);
+              const notAfter = new Date(data.notAfter);
+              return notBefore < notAfter;
+            }
+            return true;
+          },
+          {
+            message: "notBefore must be earlier than notAfter"
+          }
+        ),
       response: {
         200: z.object({
           certificate: z.string().trim(),
@@ -161,22 +214,16 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined
       });
 
-      const profile = await server.services.certificateProfile.getProfileById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        profileId: req.body.profileId
-      });
-
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: profile.projectId,
+        projectId: data.projectId,
         event: {
           type: EventType.SIGN_CERTIFICATE_FROM_PROFILE,
           metadata: {
             certificateProfileId: req.body.profileId,
-            certificateId: data.certificateId
+            certificateId: data.certificateId,
+            profileName: data.profileName,
+            commonName: req.body.csr || ""
           }
         }
       });
@@ -194,48 +241,73 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
-      body: z.object({
-        profileId: z.string().uuid(),
-        subjectAlternativeNames: z
-          .array(
-            z.object({
-              type: z.enum(["dns", "ip"]),
-              value: z.string()
-            })
-          )
-          .min(1),
-        ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
-        keyUsages: z.nativeEnum(CertKeyUsage).array().optional(),
-        extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsage).array().optional(),
-        notBefore: validateCaDateField.optional(),
-        notAfter: validateCaDateField.optional(),
-        commonName: validateTemplateRegexField.optional(),
-        signatureAlgorithm: z.string().optional(),
-        keyAlgorithm: z.string().optional()
-      }),
+      body: z
+        .object({
+          profileId: z.string().uuid(),
+          subjectAlternativeNames: z
+            .array(
+              z.object({
+                type: z.nativeEnum(ACMESANType),
+                value: z.string()
+              })
+            )
+            .min(1),
+          ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
+          keyUsages: z.nativeEnum(CertKeyUsageType).array().optional(),
+          extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
+          notBefore: validateCaDateField.optional(),
+          notAfter: validateCaDateField.optional(),
+          commonName: validateTemplateRegexField.optional(),
+          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
+          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional()
+        })
+        .refine(
+          (data) => {
+            const hasDateFields = data.notBefore || data.notAfter;
+            const hasTtl = data.ttl;
+            return !(hasDateFields && hasTtl);
+          },
+          {
+            message:
+              "Cannot specify both TTL and notBefore/notAfter. Use either TTL for duration-based validity or notBefore/notAfter for explicit date range."
+          }
+        )
+        .refine(
+          (data) => {
+            if (data.notBefore && data.notAfter) {
+              const notBefore = new Date(data.notBefore);
+              const notAfter = new Date(data.notAfter);
+              return notBefore < notAfter;
+            }
+            return true;
+          },
+          {
+            message: "notBefore must be earlier than notAfter"
+          }
+        ),
       response: {
         200: z.object({
           orderId: z.string(),
-          status: z.enum(["pending", "processing", "valid", "invalid"]),
+          status: z.nativeEnum(CertificateOrderStatus),
           subjectAlternativeNames: z.array(
             z.object({
-              type: z.enum(["dns", "ip"]),
+              type: z.nativeEnum(ACMESANType),
               value: z.string(),
-              status: z.enum(["pending", "processing", "valid", "invalid"])
+              status: z.nativeEnum(CertificateOrderStatus)
             })
           ),
           authorizations: z.array(
             z.object({
               identifier: z.object({
-                type: z.enum(["dns", "ip"]),
+                type: z.nativeEnum(ACMESANType),
                 value: z.string()
               }),
-              status: z.enum(["pending", "processing", "valid", "invalid"]),
+              status: z.nativeEnum(CertificateOrderStatus),
               expires: z.string().optional(),
               challenges: z.array(
                 z.object({
                   type: z.string(),
-                  status: z.enum(["pending", "processing", "valid", "invalid"]),
+                  status: z.nativeEnum(CertificateOrderStatus),
                   url: z.string(),
                   token: z.string()
                 })
@@ -256,7 +328,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         actorOrgId: req.permission.orgId,
         profileId: req.body.profileId,
         certificateOrder: {
-          subjectAlternativeNames: req.body.subjectAlternativeNames,
+          altNames: req.body.subjectAlternativeNames,
           validity: {
             ttl: req.body.ttl
           },
@@ -270,23 +342,15 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         }
       });
 
-      const profile = await server.services.certificateProfile.getProfileById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        profileId: req.body.profileId
-      });
-
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: profile.projectId,
+        projectId: data.projectId,
         event: {
           type: EventType.ORDER_CERTIFICATE_FROM_PROFILE,
           metadata: {
             certificateProfileId: req.body.profileId,
             orderId: data.orderId,
-            subjectAlternativeNames: req.body.subjectAlternativeNames.map((san) => `${san.type}:${san.value}`)
+            profileName: data.profileName
           }
         }
       });

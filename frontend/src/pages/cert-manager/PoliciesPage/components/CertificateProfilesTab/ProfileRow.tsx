@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { faCircleInfo, faEdit, faEllipsis, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCircleInfo, faCopy, faEdit, faEllipsis, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
@@ -15,11 +15,16 @@ import {
 import { useProjectPermission } from "@app/context";
 import {
   ProjectPermissionActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { useGetCaById } from "@app/hooks/api/ca/queries";
 import { TCertificateProfile } from "@app/hooks/api/certificateProfiles";
 import { useGetCertificateTemplateV2ById } from "@app/hooks/api/certificateTemplates/queries";
+import { usePopUp, useToggle } from "@app/hooks";
+import { createNotification } from "@app/components/notifications";
+import { useCallback } from "react";
+import { CertificateIssuanceModal } from "@app/pages/cert-manager/CertificatesPage/components/CertificateIssuanceModal";
 
 interface Props {
   profile: TCertificateProfile;
@@ -32,6 +37,27 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
 
   const { data: caData } = useGetCaById(profile.caId);
 
+  const { popUp, handlePopUpToggle } = usePopUp([
+    "certificateIssuance"
+  ] as const);
+
+  const [isIdCopied, setIsIdCopied] = useToggle(false);
+
+  const handleCopyId = useCallback(() => {
+    setIsIdCopied.on();
+    navigator.clipboard.writeText(profile.id);
+
+    createNotification({
+      text: "Profile ID copied to clipboard",
+      type: "info"
+    });
+
+    const timer = setTimeout(() => setIsIdCopied.off(), 2000);
+
+    // eslint-disable-next-line consistent-return
+    return () => clearTimeout(timer);
+  }, [isIdCopied]);
+
   const { data: templateData } = useGetCertificateTemplateV2ById({
     templateId: profile.certificateTemplateId
   });
@@ -39,6 +65,11 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
   const canEditProfile = permission.can(
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.CertificateAuthorities
+  );
+
+  const canIssueCertificate = permission.can(
+    ProjectPermissionCertificateProfileActions.IssueCert,
+    ProjectPermissionSub.CertificateProfiles
   );
 
   const canDeleteProfile = permission.can(
@@ -128,6 +159,12 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="p-1">
+            <DropdownMenuItem
+              icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
+              onClick={() => handleCopyId()}
+            >
+              Copy Profile ID
+            </DropdownMenuItem>
             {canEditProfile && (
               <DropdownMenuItem
                 onClick={(e) => {
@@ -139,6 +176,19 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
                 Edit Profile
               </DropdownMenuItem>
             )}
+            {
+              canIssueCertificate && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePopUpToggle("certificateIssuance");
+                  }}
+                  icon={<FontAwesomeIcon icon={faPlus} />}
+                >
+                  Issue Certificate
+                </DropdownMenuItem>
+              )
+            }
             {canDeleteProfile && (
               <DropdownMenuItem
                 onClick={(e) => {
@@ -152,6 +202,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+        <CertificateIssuanceModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} profileId={profile.id}/>
       </Td>
     </Tr>
   );

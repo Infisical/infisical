@@ -18,6 +18,15 @@ export enum CertKeyAlgorithm {
   ECDSA_P384 = "EC_secp384r1"
 }
 
+export enum CertSignatureAlgorithm {
+  RSA_SHA256 = "RSA-SHA256",
+  RSA_SHA384 = "RSA-SHA384",
+  RSA_SHA512 = "RSA-SHA512",
+  ECDSA_SHA256 = "ECDSA-SHA256",
+  ECDSA_SHA384 = "ECDSA-SHA384",
+  ECDSA_SHA512 = "ECDSA-SHA512"
+}
+
 export enum CertKeyUsage {
   DIGITAL_SIGNATURE = "digitalSignature",
   KEY_ENCIPHERMENT = "keyEncipherment",
@@ -111,7 +120,26 @@ export enum TAltNameType {
   IP = "ip",
   URL = "url"
 }
+
+export enum CertSubjectAlternativeNameType {
+  DNS_NAME = "dns_name",
+  IP_ADDRESS = "ip_address",
+  EMAIL = "email",
+  URI = "uri"
+}
 export type TAltNameMapping = {
   type: TAltNameType;
   value: string;
 };
+
+export enum ACMESANType {
+  DNS = "dns",
+  IP = "ip"
+}
+
+export enum CertificateOrderStatus {
+  PENDING = "pending",
+  PROCESSING = "processing",
+  VALID = "valid",
+  INVALID = "invalid"
+}

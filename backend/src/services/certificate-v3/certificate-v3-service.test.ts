@@ -7,7 +7,13 @@ import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
+import { ACMESANType, CertificateOrderStatus } from "@app/services/certificate/certificate-types";
+import {
+  CertExtendedKeyUsageType,
+  CertIncludeType,
+  CertKeyUsageType,
+  CertSubjectAttributeType
+} from "@app/services/certificate-common/certificate-constants";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
@@ -76,8 +82,8 @@ describe("CertificateV3Service", () => {
   describe("issueCertificateFromProfile", () => {
     const mockCertificateRequest = {
       commonName: "test.example.com",
-      keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE],
-      extendedKeyUsages: [CertExtendedKeyUsage.SERVER_AUTH],
+      keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE],
+      extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
       validity: { ttl: "30d" },
       signatureAlgorithm: "RSA-SHA256",
       keyAlgorithm: "RSA_2048"
@@ -102,12 +108,19 @@ describe("CertificateV3Service", () => {
         id: "template-123",
         signatureAlgorithm: { defaultAlgorithm: "RSA-SHA256" },
         keyAlgorithm: { defaultKeyType: "RSA_2048" },
-        attributes: []
+        attributes: [
+          {
+            type: CertSubjectAttributeType.COMMON_NAME,
+            include: CertIncludeType.OPTIONAL,
+            value: ["example.com"]
+          }
+        ]
       };
 
       const mockCertificateResult = {
         certificate: Buffer.from("cert"),
         certificateChain: Buffer.from("chain"),
+        issuingCaCertificate: Buffer.from("issuing-ca"),
         privateKey: Buffer.from("key"),
         serialNumber: "123456"
       };
@@ -136,6 +149,8 @@ describe("CertificateV3Service", () => {
       });
 
       expect(result).toHaveProperty("certificate");
+      expect(result).toHaveProperty("issuingCaCertificate");
+      expect(result).toHaveProperty("certificateChain");
       expect(result).toHaveProperty("privateKey");
       expect(result).toHaveProperty("serialNumber", "123456");
       expect(result).toHaveProperty("certificateId", "cert-123");
@@ -160,12 +175,19 @@ describe("CertificateV3Service", () => {
         id: "template-123",
         signatureAlgorithm: { defaultAlgorithm: "RSA-SHA256" },
         keyAlgorithm: { defaultKeyType: "RSA_2048" },
-        attributes: []
+        attributes: [
+          {
+            type: CertSubjectAttributeType.COMMON_NAME,
+            include: CertIncludeType.OPTIONAL,
+            value: ["example.com"]
+          }
+        ]
       };
 
       const mockCertificateResult = {
         certificate: Buffer.from("cert"),
         certificateChain: Buffer.from("chain"),
+        issuingCaCertificate: Buffer.from("issuing-ca"),
         privateKey: Buffer.from("key"),
         serialNumber: "123456"
       };
@@ -178,17 +200,17 @@ describe("CertificateV3Service", () => {
       const camelCaseRequest = {
         commonName: "test.example.com",
         keyUsages: [
-          CertKeyUsage.DIGITAL_SIGNATURE,
-          CertKeyUsage.NON_REPUDIATION,
-          CertKeyUsage.KEY_AGREEMENT,
-          CertKeyUsage.CRL_SIGN,
-          CertKeyUsage.DECIPHER_ONLY
+          CertKeyUsageType.DIGITAL_SIGNATURE,
+          CertKeyUsageType.NON_REPUDIATION,
+          CertKeyUsageType.KEY_AGREEMENT,
+          CertKeyUsageType.CRL_SIGN,
+          CertKeyUsageType.DECIPHER_ONLY
         ],
         extendedKeyUsages: [
-          CertExtendedKeyUsage.CLIENT_AUTH,
-          CertExtendedKeyUsage.CODE_SIGNING,
-          CertExtendedKeyUsage.OCSP_SIGNING,
-          CertExtendedKeyUsage.SERVER_AUTH
+          CertExtendedKeyUsageType.CLIENT_AUTH,
+          CertExtendedKeyUsageType.CODE_SIGNING,
+          CertExtendedKeyUsageType.OCSP_SIGNING,
+          CertExtendedKeyUsageType.SERVER_AUTH
         ],
         validity: { ttl: "10d" }
       };
@@ -215,8 +237,19 @@ describe("CertificateV3Service", () => {
       expect(mockCertificateTemplateV2Service.validateCertificateRequest).toHaveBeenCalledWith(
         "template-123",
         expect.objectContaining({
-          keyUsages: ["digital_signature", "non_repudiation", "key_agreement", "crl_sign", "decipher_only"],
-          extendedKeyUsages: ["client_auth", "code_signing", "ocsp_signing", "server_auth"]
+          keyUsages: [
+            CertKeyUsageType.DIGITAL_SIGNATURE,
+            CertKeyUsageType.NON_REPUDIATION,
+            CertKeyUsageType.KEY_AGREEMENT,
+            CertKeyUsageType.CRL_SIGN,
+            CertKeyUsageType.DECIPHER_ONLY
+          ],
+          extendedKeyUsages: [
+            CertExtendedKeyUsageType.CLIENT_AUTH,
+            CertExtendedKeyUsageType.CODE_SIGNING,
+            CertExtendedKeyUsageType.OCSP_SIGNING,
+            CertExtendedKeyUsageType.SERVER_AUTH
+          ]
         })
       );
     });
@@ -286,6 +319,7 @@ describe("CertificateV3Service", () => {
       const mockSignResult = {
         certificate: Buffer.from("signed-cert"),
         certificateChain: Buffer.from("chain"),
+        issuingCaCertificate: Buffer.from("issuing-ca"),
         serialNumber: "789012"
       };
 
@@ -308,6 +342,8 @@ describe("CertificateV3Service", () => {
       });
 
       expect(result).toHaveProperty("certificate");
+      expect(result).toHaveProperty("issuingCaCertificate");
+      expect(result).toHaveProperty("certificateChain");
       expect(result).toHaveProperty("serialNumber", "789012");
       expect(result).toHaveProperty("certificateId", "cert-456");
       expect(result).not.toHaveProperty("privateKey");
@@ -347,11 +383,11 @@ describe("CertificateV3Service", () => {
 
   describe("orderCertificateFromProfile", () => {
     const mockCertificateOrder = {
-      subjectAlternativeNames: [{ type: "dns" as const, value: "example.com" }],
+      altNames: [{ type: ACMESANType.DNS, value: "example.com" }],
       validity: { ttl: "30d" },
       commonName: "example.com",
-      keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE],
-      extendedKeyUsages: [CertExtendedKeyUsage.SERVER_AUTH],
+      keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE],
+      extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
       signatureAlgorithm: "RSA-SHA256",
       keyAlgorithm: "RSA_2048"
     };
@@ -375,12 +411,19 @@ describe("CertificateV3Service", () => {
         id: "template-123",
         signatureAlgorithm: { defaultAlgorithm: "RSA-SHA256" },
         keyAlgorithm: { defaultKeyType: "RSA_2048" },
-        attributes: []
+        attributes: [
+          {
+            type: CertSubjectAttributeType.COMMON_NAME,
+            include: CertIncludeType.OPTIONAL,
+            value: ["example.com"]
+          }
+        ]
       };
 
       const mockCertificateResult = {
         certificate: Buffer.from("cert"),
         certificateChain: Buffer.from("chain"),
+        issuingCaCertificate: Buffer.from("issuing-ca"),
         privateKey: Buffer.from("key"),
         serialNumber: "123456"
       };
@@ -413,9 +456,9 @@ describe("CertificateV3Service", () => {
       expect(result).toHaveProperty("certificate");
       expect(result.subjectAlternativeNames).toHaveLength(1);
       expect(result.subjectAlternativeNames[0]).toEqual({
-        type: "dns",
+        type: ACMESANType.DNS,
         value: "example.com",
-        status: "valid"
+        status: CertificateOrderStatus.VALID
       });
     });
 
@@ -446,6 +489,232 @@ describe("CertificateV3Service", () => {
           ...mockActor
         })
       ).rejects.toThrow("Profile is not configured for api enrollment");
+    });
+  });
+
+  describe("algorithm compatibility (integration tests)", () => {
+    const mockProfile = {
+      id: "profile-1",
+      slug: "test-profile",
+      projectId: "project-1",
+      caId: "ca-1",
+      certificateTemplateId: "template-1",
+      enrollmentType: EnrollmentType.API
+    };
+
+    const mockCertificateRequest = {
+      commonName: "test.example.com",
+      validity: { ttl: "30d" },
+      keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE],
+      extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH]
+    };
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("should successfully process RSA algorithms with RSA CAs", async () => {
+      const rsaCa = {
+        id: "ca-1",
+        projectId: "project-1",
+        status: "active",
+        internalCa: {
+          keyAlgorithm: "RSA_2048"
+        }
+      };
+
+      const rsaTemplate = {
+        id: "template-1",
+        signatureAlgorithm: {
+          allowedAlgorithms: ["SHA256-RSA", "SHA384-RSA"]
+        },
+        attributes: [
+          {
+            type: CertSubjectAttributeType.COMMON_NAME,
+            include: CertIncludeType.OPTIONAL,
+            value: ["example.com"]
+          }
+        ]
+      };
+
+      mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue(mockProfile);
+      mockCertificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue(rsaCa);
+      mockCertificateTemplateV2Service.validateCertificateRequest.mockResolvedValue({ isValid: true, errors: [] });
+      mockCertificateTemplateV2Service.getTemplateV2ById.mockResolvedValue(rsaTemplate);
+      mockInternalCaService.issueCertFromCa.mockResolvedValue({
+        certificate: Buffer.from("cert"),
+        certificateChain: Buffer.from("chain"),
+        issuingCaCertificate: Buffer.from("ca-cert"),
+        privateKey: Buffer.from("key"),
+        serialNumber: "123456"
+      });
+      mockCertificateDAL.findOne.mockResolvedValue({ id: "cert-1" });
+      mockCertificateDAL.updateById.mockResolvedValue(undefined);
+
+      // Should not throw - RSA CA is compatible with RSA signature algorithms
+      await expect(
+        service.issueCertificateFromProfile({
+          profileId: mockProfile.id,
+          certificateRequest: {
+            ...mockCertificateRequest,
+            signatureAlgorithm: "RSA-SHA256"
+          },
+          ...mockActor
+        })
+      ).resolves.toBeDefined();
+    });
+
+    it("should successfully process ECDSA algorithms with EC CAs", async () => {
+      const ecCa = {
+        id: "ca-1",
+        projectId: "project-1",
+        status: "active",
+        internalCa: {
+          keyAlgorithm: "EC_prime256v1"
+        }
+      };
+
+      const ecdsaTemplate = {
+        id: "template-1",
+        signatureAlgorithm: {
+          allowedAlgorithms: ["SHA256-ECDSA", "SHA384-ECDSA"]
+        },
+        attributes: [
+          {
+            type: CertSubjectAttributeType.COMMON_NAME,
+            include: CertIncludeType.OPTIONAL,
+            value: ["example.com"]
+          }
+        ]
+      };
+
+      mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue(mockProfile);
+      mockCertificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue(ecCa);
+      mockCertificateTemplateV2Service.validateCertificateRequest.mockResolvedValue({ isValid: true, errors: [] });
+      mockCertificateTemplateV2Service.getTemplateV2ById.mockResolvedValue(ecdsaTemplate);
+      mockInternalCaService.issueCertFromCa.mockResolvedValue({
+        certificate: Buffer.from("cert"),
+        certificateChain: Buffer.from("chain"),
+        issuingCaCertificate: Buffer.from("ca-cert"),
+        privateKey: Buffer.from("key"),
+        serialNumber: "123456"
+      });
+      mockCertificateDAL.findOne.mockResolvedValue({ id: "cert-1" });
+      mockCertificateDAL.updateById.mockResolvedValue(undefined);
+
+      // Should not throw - EC CA is compatible with ECDSA signature algorithms
+      await expect(
+        service.issueCertificateFromProfile({
+          profileId: mockProfile.id,
+          certificateRequest: {
+            ...mockCertificateRequest,
+            signatureAlgorithm: "ECDSA-SHA256"
+          },
+          ...mockActor
+        })
+      ).resolves.toBeDefined();
+    });
+
+    it("should dynamically support new RSA key sizes", async () => {
+      const rsa8192Ca = {
+        id: "ca-1",
+        projectId: "project-1",
+        status: "active",
+        internalCa: {
+          keyAlgorithm: "RSA_8192" // Future RSA key size
+        }
+      };
+
+      const rsaTemplate = {
+        id: "template-1",
+        signatureAlgorithm: {
+          allowedAlgorithms: ["SHA256-RSA"]
+        },
+        attributes: [
+          {
+            type: CertSubjectAttributeType.COMMON_NAME,
+            include: CertIncludeType.OPTIONAL,
+            value: ["example.com"]
+          }
+        ]
+      };
+
+      mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue(mockProfile);
+      mockCertificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue(rsa8192Ca);
+      mockCertificateTemplateV2Service.validateCertificateRequest.mockResolvedValue({ isValid: true, errors: [] });
+      mockCertificateTemplateV2Service.getTemplateV2ById.mockResolvedValue(rsaTemplate);
+      mockInternalCaService.issueCertFromCa.mockResolvedValue({
+        certificate: Buffer.from("cert"),
+        certificateChain: Buffer.from("chain"),
+        issuingCaCertificate: Buffer.from("ca-cert"),
+        privateKey: Buffer.from("key"),
+        serialNumber: "123456"
+      });
+      mockCertificateDAL.findOne.mockResolvedValue({ id: "cert-1" });
+      mockCertificateDAL.updateById.mockResolvedValue(undefined);
+
+      // Should not throw - dynamic check supports new RSA key sizes
+      await expect(
+        service.issueCertificateFromProfile({
+          profileId: mockProfile.id,
+          certificateRequest: {
+            ...mockCertificateRequest,
+            signatureAlgorithm: "RSA-SHA256"
+          },
+          ...mockActor
+        })
+      ).resolves.toBeDefined();
+    });
+
+    it("should dynamically support new EC curve types", async () => {
+      const newEcCa = {
+        id: "ca-1",
+        projectId: "project-1",
+        status: "active",
+        internalCa: {
+          keyAlgorithm: "EC_secp521r1" // Future EC curve
+        }
+      };
+
+      const ecdsaTemplate = {
+        id: "template-1",
+        signatureAlgorithm: {
+          allowedAlgorithms: ["SHA384-ECDSA"]
+        },
+        attributes: [
+          {
+            type: CertSubjectAttributeType.COMMON_NAME,
+            include: CertIncludeType.OPTIONAL,
+            value: ["example.com"]
+          }
+        ]
+      };
+
+      mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue(mockProfile);
+      mockCertificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue(newEcCa);
+      mockCertificateTemplateV2Service.validateCertificateRequest.mockResolvedValue({ isValid: true, errors: [] });
+      mockCertificateTemplateV2Service.getTemplateV2ById.mockResolvedValue(ecdsaTemplate);
+      mockInternalCaService.issueCertFromCa.mockResolvedValue({
+        certificate: Buffer.from("cert"),
+        certificateChain: Buffer.from("chain"),
+        issuingCaCertificate: Buffer.from("ca-cert"),
+        privateKey: Buffer.from("key"),
+        serialNumber: "123456"
+      });
+      mockCertificateDAL.findOne.mockResolvedValue({ id: "cert-1" });
+      mockCertificateDAL.updateById.mockResolvedValue(undefined);
+
+      // Should not throw - dynamic check supports new EC curves
+      await expect(
+        service.issueCertificateFromProfile({
+          profileId: mockProfile.id,
+          certificateRequest: {
+            ...mockCertificateRequest,
+            signatureAlgorithm: "ECDSA-SHA384"
+          },
+          ...mockActor
+        })
+      ).resolves.toBeDefined();
     });
   });
 });

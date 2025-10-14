@@ -2,6 +2,7 @@ import { useState } from "react";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { useProjectPermission } from "@app/context";
 import {
@@ -54,6 +55,10 @@ export const CertificateProfilesTab = () => {
       });
       setIsDeleteModalOpen(false);
       setSelectedProfile(null);
+      createNotification({
+        text: `Certificate profile "${selectedProfile.slug}" deleted successfully`,
+        type: "success"
+      });
     } catch (error) {
       console.error("Failed to delete profile:", error);
     }

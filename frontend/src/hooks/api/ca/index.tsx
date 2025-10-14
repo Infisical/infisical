@@ -1,10 +1,12 @@
 export { AcmeDnsProvider, CaRenewalType, CaStatus, CaType, InternalCaType } from "./enums";
+export type { TOrderCertificateDTO, TOrderCertificateResponse } from "./types";
 export {
   useCreateCa,
   useCreateCertificate,
   useCreateCertificateV3,
   useDeleteCa,
   useImportCaCertificate,
+  useOrderCertificateWithProfile,
   useRenewCa,
   useSignIntermediate,
   useUpdateCa

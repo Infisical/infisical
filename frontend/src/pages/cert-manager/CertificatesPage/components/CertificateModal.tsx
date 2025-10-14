@@ -46,9 +46,8 @@ const schema = z.object({
   certificateTemplateId: z.string().optional(),
   caId: z.string(),
   collectionId: z.string().optional(),
-  friendlyName: z.string(),
   commonName: z.string().trim().min(1),
-  altNames: z.string(),
+  subjectAltNames: z.string(),
   ttl: z.string().trim(),
   keyUsages: z.object({
     [CertKeyUsage.DIGITAL_SIGNATURE]: z.boolean().optional(),
@@ -139,9 +138,8 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (cert) {
       reset({
         caId: cert.caId,
-        friendlyName: cert.friendlyName,
         commonName: cert.commonName,
-        altNames: cert.altNames,
+        subjectAltNames: cert.subjectAltNames,
         certificateTemplateId: cert.certificateTemplateId ?? CERT_TEMPLATE_NONE_VALUE,
         ttl: "",
         keyUsages: Object.fromEntries((cert.keyUsages || []).map((name) => [name, true])),
@@ -152,9 +150,8 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     } else {
       reset({
         caId: "",
-        friendlyName: "",
         commonName: "",
-        altNames: "",
+        subjectAltNames: "",
         ttl: "",
         certificateTemplateId: CERT_TEMPLATE_NONE_VALUE,
         keyUsages: {
@@ -182,10 +179,9 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const onFormSubmit = async ({
     caId,
-    friendlyName,
     collectionId,
     commonName,
-    altNames,
+    subjectAltNames,
     ttl,
     keyUsages,
     extendedKeyUsages
@@ -198,9 +194,8 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         certificateTemplateId: selectedCertTemplate ? selectedCertTemplateId : undefined,
         projectSlug: currentProject.slug,
         pkiCollectionId: collectionId,
-        friendlyName,
         commonName,
-        altNames,
+        subjectAltNames,
         ttl,
         keyUsages: Object.entries(keyUsages)
           .filter(([, value]) => value)
@@ -362,20 +357,6 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
             <Controller
               control={control}
               defaultValue=""
-              name="friendlyName"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Friendly Name"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input {...field} placeholder="My Certificate" isDisabled={Boolean(cert)} />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              defaultValue=""
               name="commonName"
               render={({ field, fieldState: { error } }) => (
                 <FormControl
@@ -391,7 +372,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
             <Controller
               control={control}
               defaultValue=""
-              name="altNames"
+              name="subjectAltNames"
               render={({ field, fieldState: { error } }) => (
                 <FormControl
                   label="Alternative Names (SANs)"
