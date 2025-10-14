@@ -43,7 +43,8 @@ import {
   TConfigureExternalMigrationDTO,
   THasCustomVaultMigrationDTO,
   TImportEnvKeyDataDTO,
-  TImportVaultDataDTO
+  TImportVaultDataDTO,
+  VaultImportStatus
 } from "./external-migration-types";
 
 type TExternalMigrationServiceFactoryDep = {
@@ -487,41 +488,49 @@ export const externalMigrationServiceFactory = ({
 
     const vaultSecrets = await getHCVaultSecretsForPath(vaultNamespace, vaultSecretPath, connection, gatewayService);
 
-    const secretOperation = await secretService.createManySecretsRaw({
-      actorId: actor.id,
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      secretPath,
-      environment,
-      projectId,
-      secrets: Object.entries(vaultSecrets).map(([secretKey, secretValue]) => ({
-        secretKey,
-        secretValue
-      }))
-    });
-
-    if (secretOperation.type === SecretProtectionType.Approval) {
-      await auditLogService.createAuditLog({
+    try {
+      const secretOperation = await secretService.createManySecretsRaw({
+        actorId: actor.id,
+        actor: actor.type,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        secretPath,
+        environment,
         projectId,
-        ...auditLogInfo,
-        event: {
-          type: EventType.SECRET_APPROVAL_REQUEST,
-          metadata: {
-            committedBy: secretOperation.approval.committerUserId,
-            secretApprovalRequestId: secretOperation.approval.id,
-            secretApprovalRequestSlug: secretOperation.approval.slug,
-            secretPath,
-            environment,
-            secrets: Object.entries(vaultSecrets).map(([secretKey]) => ({
-              secretKey
-            })),
-            eventType: SecretApprovalEvent.CreateMany
-          }
-        }
+        secrets: Object.entries(vaultSecrets).map(([secretKey, secretValue]) => ({
+          secretKey,
+          secretValue
+        }))
       });
 
-      return { approval: secretOperation.approval };
+      if (secretOperation.type === SecretProtectionType.Approval) {
+        await auditLogService.createAuditLog({
+          projectId,
+          ...auditLogInfo,
+          event: {
+            type: EventType.SECRET_APPROVAL_REQUEST,
+            metadata: {
+              committedBy: secretOperation.approval.committerUserId,
+              secretApprovalRequestId: secretOperation.approval.id,
+              secretApprovalRequestSlug: secretOperation.approval.slug,
+              secretPath,
+              environment,
+              secrets: Object.entries(vaultSecrets).map(([secretKey]) => ({
+                secretKey
+              })),
+              eventType: SecretApprovalEvent.CreateMany
+            }
+          }
+        });
+
+        return { status: VaultImportStatus.ApprovalRequired };
+      }
+
+      return { status: VaultImportStatus.Imported };
+    } catch (error) {
+      throw new BadRequestError({
+        message: `Failed to import Vault secrets. ${error instanceof Error ? error.message : "Unknown error"}`
+      });
     }
   };
 

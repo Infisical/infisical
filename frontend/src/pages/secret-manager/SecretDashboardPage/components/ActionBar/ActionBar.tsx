@@ -78,7 +78,7 @@ import {
 } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { useGetExternalMigrationConfig, useImportVaultSecrets } from "@app/hooks/api/migration";
-import { ExternalMigrationProviders } from "@app/hooks/api/migration/types";
+import { ExternalMigrationProviders, VaultImportStatus } from "@app/hooks/api/migration/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
@@ -672,7 +672,7 @@ export const ActionBar = ({
 
   const handleVaultImport = async (vaultPath: string, namespace: string) => {
     try {
-      await importVaultSecrets({
+      const result = await importVaultSecrets({
         projectId,
         environment,
         secretPath,
@@ -680,10 +680,17 @@ export const ActionBar = ({
         vaultSecretPath: vaultPath
       });
 
-      createNotification({
-        type: "success",
-        text: "Successfully imported secrets from HashiCorp Vault"
-      });
+      if (result.status === VaultImportStatus.ApprovalRequired) {
+        createNotification({
+          type: "info",
+          text: "Secret change request created successfully. Awaiting approval."
+        });
+      } else {
+        createNotification({
+          type: "success",
+          text: "Successfully imported secrets from HashiCorp Vault"
+        });
+      }
     } catch (err) {
       console.error("Vault import error:", err);
       const error = err as AxiosError<{ message?: string }>;

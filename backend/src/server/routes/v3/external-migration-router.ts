@@ -7,6 +7,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
   ExternalMigrationProviders,
+  VaultImportStatus,
   VaultMappingType
 } from "@app/services/external-migration/external-migration-types";
 
@@ -277,19 +278,19 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          message: z.string()
+          status: z.nativeEnum(VaultImportStatus)
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      await server.services.migration.importVaultSecrets({
+      const result = await server.services.migration.importVaultSecrets({
         actor: req.permission,
         auditLogInfo: req.auditLogInfo,
         ...req.body
       });
 
-      return { message: "Successfully imported vault secrets" };
+      return result;
     }
   });
 

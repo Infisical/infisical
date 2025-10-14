@@ -9,7 +9,8 @@ import { externalMigrationQueryKeys } from "./queries";
 import {
   ExternalMigrationProviders,
   TExternalMigrationConfig,
-  TImportVaultSecretsDTO
+  TImportVaultSecretsDTO,
+  VaultImportStatus
 } from "./types";
 
 export const useImportEnvKey = () => {
@@ -100,9 +101,9 @@ export const useUpdateExternalMigrationConfig = (platform: ExternalMigrationProv
 export const useImportVaultSecrets = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<{ message: string }, object, TImportVaultSecretsDTO>({
+  return useMutation<{ status: VaultImportStatus }, object, TImportVaultSecretsDTO>({
     mutationFn: async (dto) => {
-      const { data } = await apiRequest.post<{ message: string }>(
+      const { data } = await apiRequest.post<{ status: VaultImportStatus }>(
         "/api/v3/external-migration/vault/import-secrets",
         dto
       );

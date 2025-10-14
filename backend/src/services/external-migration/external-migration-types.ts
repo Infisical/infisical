@@ -122,6 +122,11 @@ export enum ExternalMigrationProviders {
   EnvKey = "env-key"
 }
 
+export enum VaultImportStatus {
+  Imported = "imported",
+  ApprovalRequired = "approval_required"
+}
+
 export type TConfigureExternalMigrationDTO = {
   platform: ExternalMigrationProviders;
   connectionId: string | null;

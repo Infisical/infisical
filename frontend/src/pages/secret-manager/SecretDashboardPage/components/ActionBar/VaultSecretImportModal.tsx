@@ -88,12 +88,8 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
             <div className="space-y-1.5 text-xs leading-relaxed">
               <p>
                 Select a Vault namespace and secret path to import secrets into the current
-                environment (<code className="text-xs">{environment}</code>) at path{" "}
+                Infisical environment (<code className="text-xs">{environment}</code>) at path{" "}
                 <code className="text-xs">{secretPath}</code>.
-              </p>
-              <p>
-                <strong>Note:</strong> Existing secrets with the same key will be overwritten.
-                Secrets will be imported from the selected Vault path.
               </p>
             </div>
           </div>
