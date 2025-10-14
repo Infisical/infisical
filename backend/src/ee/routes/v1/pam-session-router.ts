@@ -9,7 +9,6 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-// Use z.union([]) once there's multiple
 const SessionCredentialsSchema = z.union([PostgresSessionCredentialsSchema, MySQLSessionCredentialsSchema]);
 
 export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
