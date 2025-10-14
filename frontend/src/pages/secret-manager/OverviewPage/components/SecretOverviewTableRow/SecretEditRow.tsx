@@ -82,6 +82,7 @@ type Props = {
       isImported: boolean;
     }[];
   }[];
+  isSecretPresent?: boolean;
 };
 
 export const SecretEditRow = ({
@@ -101,7 +102,8 @@ export const SecretEditRow = ({
   isRotatedSecret,
   importedBy,
   importedSecret,
-  isEmpty
+  isEmpty,
+  isSecretPresent
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret"
@@ -113,7 +115,7 @@ export const SecretEditRow = ({
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
 
-  const fetchSecretValueParams = importedSecret
+  const fetchSecretValueParams = importedSecret && !isSecretPresent
     ? {
         environment: importedSecret.environment,
         secretPath: importedSecret.secretPath,
