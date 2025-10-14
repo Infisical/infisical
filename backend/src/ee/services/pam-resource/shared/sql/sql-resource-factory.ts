@@ -120,7 +120,11 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
       });
       return connectionDetails;
     } catch (error) {
-      // Hacky way to know if we successfully hit the database
+      // Hacky way to know if we successfully hit the database.
+      // TODO: potentially two approaches to solve the problem.
+      //       1. change the work flow, add account first then resource
+      //       2. modify relay to add a new endpoint for returning if the target host is healthy or not
+      //          (like being able to do an auth handshake regardless pass or not)
       if (error instanceof BadRequestError) {
         if (resourceType == PamResource.Postgres &&
           (
