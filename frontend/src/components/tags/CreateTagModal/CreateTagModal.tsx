@@ -17,6 +17,7 @@ import {
 } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { useCreateWsTag } from "@app/hooks/api";
+import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 
 export const secretTagsColors = [
@@ -85,6 +86,8 @@ const isValidHexColor = (hexColor: string) => {
 type Props = {
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
+  append: (data: WsTag) => void;
+  currentSecret?: SecretV3RawSanitized;
 };
 
 const createTagSchema = z.object({
@@ -100,7 +103,7 @@ type TagColor = {
   name: string;
 };
 
-export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
+export const CreateTagModal = ({ isOpen, onToggle, append, currentSecret }: Props): JSX.Element => {
   const {
     control,
     reset,
@@ -128,11 +131,12 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
 
   const onFormSubmit = async ({ slug, color }: FormData) => {
     try {
-      await createWsTag({
+      const data = await createWsTag({
         projectId,
         tagColor: color,
         tagSlug: slug
       });
+      append(data);
       onToggle(false);
       reset();
       createNotification({
@@ -151,8 +155,12 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onToggle}>
       <ModalContent
-        title="Create tag"
-        subTitle="Specify your tag name, and the slug will be created automatically."
+        title={currentSecret ? `Create tag for ${currentSecret.key}` : "Create tag"}
+        subTitle={
+          currentSecret
+            ? `Create a new tag, and it will be automatically linked to secret: ${currentSecret.key}.`
+            : "Specify your tag name, and the slug will be created automatically."
+        }
       >
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <Controller
@@ -253,7 +261,7 @@ export const CreateTagModal = ({ isOpen, onToggle }: Props): JSX.Element => {
               isDisabled={isSubmitting}
               isLoading={isSubmitting}
             >
-              Create
+              {currentSecret ? "Create and Add" : "Create"}
             </Button>
             <ModalClose asChild>
               <Button variant="plain" colorSchema="secondary">
