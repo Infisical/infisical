@@ -1,0 +1,1 @@
+export { LinkOrgIdentityModal } from "./LinkOrgIdentityModal";

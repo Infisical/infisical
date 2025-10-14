@@ -1,14 +1,4 @@
-import { useState } from "react";
-import {
-  faArrowDownAZ,
-  faBorderAll,
-  faCheck,
-  faCheckCircle,
-  faFolderOpen,
-  faList,
-  faMagnifyingGlass,
-  faPlus
-} from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faFolderOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
@@ -16,22 +6,8 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
-import {
-  Badge,
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-  IconButton,
-  Input,
-  Lottie,
-  Pagination,
-  Skeleton,
-  Tooltip
-} from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { Badge, Button, Lottie, Pagination, Skeleton } from "@app/components/v2";
+import { OrgPermissionSubjects } from "@app/context";
 import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
 import { getProjectHomePage, getProjectLottieIcon, getProjectTitle } from "@app/helpers/project";
 import {
@@ -42,40 +18,17 @@ import {
 import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useOrgAdminAccessProject, useSearchProjects } from "@app/hooks/api";
 import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
-import {
-  ProjectListToggle,
-  ProjectListView
-} from "@app/pages/organization/ProjectsPage/components/ProjectListToggle";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 type Props = {
-  onAddNewProject: () => void;
-  onUpgradePlan: () => void;
-  isAddingProjectsAllowed: boolean;
-  projectListView: ProjectListView;
-  onProjectListViewChange: (value: ProjectListView) => void;
+  searchValue: string;
+  orderDirection: OrderByDirection;
 };
 
-export const AllProjectView = ({
-  onAddNewProject,
-  onUpgradePlan,
-  isAddingProjectsAllowed,
-  projectListView,
-  onProjectListViewChange
-}: Props) => {
+export const AllProjectView = ({ searchValue = "", orderDirection }: Props) => {
   const navigate = useNavigate();
-  const [searchFilter, setSearchFilter] = useState("");
-  const [debouncedSearch] = useDebounce(searchFilter);
-  const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType>();
-  const {
-    setPage,
-    perPage,
-    setPerPage,
-    page,
-    offset,
-    limit,
-    toggleOrderDirection,
-    orderDirection
-  } = usePagination("name", {
+  const [debouncedSearch] = useDebounce(searchValue);
+  const { setPage, perPage, setPerPage, page, offset, limit } = usePagination("name", {
     initPerPage: getUserTablePreference("allProjectsTable", PreferenceKey.PerPage, 50)
   });
 
@@ -94,8 +47,7 @@ export const AllProjectView = ({
     limit,
     offset,
     name: debouncedSearch || undefined,
-    orderDirection,
-    type: projectTypeFilter
+    orderDirection
   });
 
   const handleAccessProject = async (
@@ -128,125 +80,8 @@ export const AllProjectView = ({
   });
   const requestedWorkspaceDetails = (popUp.requestAccessConfirmation.data || {}) as Project;
 
-  const handleToggleFilterByProjectType = (el: ProjectType) =>
-    setProjectTypeFilter((state) => (state === el ? undefined : el));
-
   return (
     <div>
-      <div className="flex w-full flex-row">
-        <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
-        <Input
-          className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-          containerClassName="w-full ml-2"
-          placeholder="Search by project name..."
-          value={searchFilter}
-          onChange={(e) => setSearchFilter(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        />
-        <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-          <Tooltip content="Toggle Sort Direction">
-            <IconButton
-              className="min-w-[2.4rem] border-none hover:bg-mineshaft-600"
-              ariaLabel="Sort asc"
-              variant="plain"
-              size="xs"
-              colorSchema="secondary"
-              onClick={toggleOrderDirection}
-            >
-              <FontAwesomeIcon icon={faArrowDownAZ} />
-            </IconButton>
-          </Tooltip>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <div
-              className={twMerge(
-                "ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1",
-                projectTypeFilter && "border-primary-400 text-primary-400"
-              )}
-            >
-              <Tooltip content="Choose visible project type" className="mb-2">
-                <IconButton
-                  ariaLabel="project-types"
-                  className={twMerge(
-                    "min-w-[2.4rem] border-none hover:bg-mineshaft-600",
-                    projectTypeFilter && "text-primary-400"
-                  )}
-                  variant="plain"
-                  size="xs"
-                  colorSchema="secondary"
-                >
-                  <FontAwesomeIcon icon={faList} />
-                </IconButton>
-              </Tooltip>
-            </div>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="thin-scrollbar overflow-y-auto" align="end">
-            <DropdownMenuLabel>Filter By Project Type</DropdownMenuLabel>
-            {Object.values(ProjectType).map((el) => (
-              <DropdownMenuItem
-                key={`filter-item-${el}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleToggleFilterByProjectType(el);
-                }}
-                icon={projectTypeFilter === el && <FontAwesomeIcon icon={faCheckCircle} />}
-                iconPos="right"
-              >
-                <div className="flex items-center gap-2">
-                  <span>{getProjectTitle(el)}</span>
-                </div>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <div className="ml-2 flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-          <Tooltip content="Disabled across All Project view.">
-            <div className="flex cursor-not-allowed items-center justify-center">
-              <IconButton
-                variant="outline_bg"
-                ariaLabel="grid"
-                size="xs"
-                isDisabled
-                className="pointer-events-none min-w-[2.4rem] border-none bg-transparent hover:bg-mineshaft-600"
-              >
-                <FontAwesomeIcon icon={faBorderAll} />
-              </IconButton>
-            </div>
-          </Tooltip>
-          <IconButton
-            variant="outline_bg"
-            ariaLabel="list"
-            size="xs"
-            className="min-w-[2.4rem] border-none bg-mineshaft-500 hover:bg-mineshaft-600"
-          >
-            <FontAwesomeIcon icon={faList} />
-          </IconButton>
-        </div>
-        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-          {(isOldProjectPermissionAllowed) => (
-            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
-              {(isAllowed) => (
-                <Button
-                  isDisabled={!isAllowed && !isOldProjectPermissionAllowed}
-                  colorSchema="secondary"
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  onClick={() => {
-                    if (isAddingProjectsAllowed) {
-                      onAddNewProject();
-                    } else {
-                      onUpgradePlan();
-                    }
-                  }}
-                  className="ml-2"
-                >
-                  Add New Project
-                </Button>
-              )}
-            </OrgPermissionCan>
-          )}
-        </OrgPermissionCan>
-      </div>
       <div className="mt-4 w-full rounded-md">
         {isProjectLoading &&
           Array.apply(0, Array(3)).map((_x, i) => (

@@ -1,37 +1,12 @@
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useMemo } from "react";
 import { faFolderOpen, faStar } from "@fortawesome/free-regular-svg-icons";
-import {
-  faArrowDownAZ,
-  faArrowUpZA,
-  faBorderAll,
-  faCheckCircle,
-  faList,
-  faMagnifyingGlass,
-  faPlus,
-  faSearch,
-  faStar as faSolidStar
-} from "@fortawesome/free-solid-svg-icons";
+import { faSearch, faStar as faSolidStar } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-  IconButton,
-  Input,
-  Lottie,
-  Pagination,
-  Skeleton,
-  Tooltip
-} from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import { Lottie, Pagination, Skeleton } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import { getProjectHomePage, getProjectLottieIcon, getProjectTitle } from "@app/helpers/project";
 import {
   getUserTablePreference,
@@ -44,68 +19,37 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import {
-  ProjectListToggle,
-  ProjectListView
-} from "@app/pages/organization/ProjectsPage/components/ProjectListToggle";
+import { ProjectOrderBy, ResourceViewMode } from "./ProjectListToggle";
 
 type Props = {
-  onAddNewProject: () => void;
-  onUpgradePlan: () => void;
-  isAddingProjectsAllowed: boolean;
-  projectListView: ProjectListView;
-  onProjectListViewChange: (value: ProjectListView) => void;
+  searchValue: string;
+  orderDirection: OrderByDirection;
+  resourceViewMode: ResourceViewMode;
+  projectTypeFilter: Partial<Record<ProjectType, boolean>>;
 };
 
-enum ProjectOrderBy {
-  Name = "name"
-}
-
-enum ProjectsViewMode {
-  GRID = "grid",
-  LIST = "list"
-}
-
 export const MyProjectView = ({
-  onAddNewProject,
-  onUpgradePlan,
-  isAddingProjectsAllowed,
-  projectListView,
-  onProjectListViewChange
+  resourceViewMode,
+  searchValue = "",
+  orderDirection,
+  projectTypeFilter = {}
 }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
-  const [projectTypeFilter, setProjectTypeFilter] = useState<Partial<Record<ProjectType, boolean>>>(
-    {}
-  );
 
   const { data: workspaces = [], isPending: isWorkspaceLoading } = useGetUserProjects();
-  const {
-    setPage,
-    perPage,
-    setPerPage,
-    page,
-    offset,
-    limit,
-    toggleOrderDirection,
-    orderDirection
-  } = usePagination(ProjectOrderBy.Name, {
+  const { setPage, perPage, setPerPage, page, offset, limit } = usePagination(ProjectOrderBy.Name, {
     initPerPage: getUserTablePreference("myProjectsTable", PreferenceKey.PerPage, 24)
   });
   const isTableFilteredByType = Boolean(Object.values(projectTypeFilter).some((el) => el));
+
+  const { data: projectFavorites, isPending: isProjectFavoritesLoading } =
+    useGetUserProjectFavorites(currentOrg?.id);
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
     setUserTablePreference("myProjectsTable", PreferenceKey.PerPage, newPerPage);
   };
-
-  const { data: projectFavorites, isPending: isProjectFavoritesLoading } =
-    useGetUserProjectFavorites(currentOrg?.id);
-
-  const [projectsViewMode, setProjectsViewMode] = useState<ProjectsViewMode>(
-    (localStorage.getItem("projectsViewMode") as ProjectsViewMode) || ProjectsViewMode.GRID
-  );
-  const [searchFilter, setSearchFilter] = useState("");
 
   const isProjectViewLoading = isWorkspaceLoading || isProjectFavoritesLoading;
   const isWorkspaceEmpty = !isProjectViewLoading && workspaces?.length === 0;
@@ -118,14 +62,14 @@ export const MyProjectView = ({
           if (isTableFilteredByType && !projectTypeFilter?.[ws.type]) {
             return false;
           }
-          return ws?.name?.toLowerCase().includes(searchFilter.toLowerCase());
+          return ws?.name?.toLowerCase().includes(searchValue.toLowerCase());
         })
         .sort((a, b) =>
           orderDirection === OrderByDirection.ASC
             ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())
             : b.name.toLowerCase().localeCompare(a.name.toLowerCase())
         ),
-    [searchFilter, orderDirection, workspaces, projectTypeFilter]
+    [searchValue, orderDirection, workspaces, projectTypeFilter]
   );
 
   useResetPageHelper({
@@ -147,15 +91,6 @@ export const MyProjectView = ({
       workspacesWithFaveProp: workspacesWithFav
     };
   }, [filteredWorkspaces, projectFavorites, offset, limit, page]);
-
-  const handleToggleFilterByProjectType = (type: ProjectType) => {
-    setProjectTypeFilter((state) => {
-      return {
-        ...(state || {}),
-        [type]: !state?.[type]
-      };
-    });
-  };
 
   const addProjectToFavorites = async (projectId: string) => {
     try {
@@ -296,8 +231,8 @@ export const MyProjectView = ({
   let projectsComponents: ReactNode;
 
   if (filteredWorkspaces.length || isProjectViewLoading) {
-    switch (projectsViewMode) {
-      case ProjectsViewMode.GRID:
+    switch (resourceViewMode) {
+      case ResourceViewMode.GRID:
         projectsComponents = (
           <div className="mt-4 grid w-full grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
             {isProjectViewLoading &&
@@ -328,7 +263,7 @@ export const MyProjectView = ({
         );
 
         break;
-      case ProjectsViewMode.LIST:
+      case ResourceViewMode.LIST:
       default:
         projectsComponents = (
           <div className="mt-4 w-full rounded-md">
@@ -351,7 +286,7 @@ export const MyProjectView = ({
         );
         break;
     }
-  } else if (workspaces.length && searchFilter) {
+  } else if (workspaces.length && searchValue) {
     projectsComponents = (
       <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
         <FontAwesomeIcon
@@ -375,136 +310,11 @@ export const MyProjectView = ({
 
   return (
     <div>
-      <div className="flex w-full flex-row">
-        <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
-        <Input
-          className="h-[2.3rem] bg-mineshaft-800 text-sm placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-          containerClassName="w-full ml-2"
-          placeholder="Search by project name..."
-          value={searchFilter}
-          onChange={(e) => setSearchFilter(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        />
-        <div className="ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-          <Tooltip content="Toggle Sort Direction">
-            <IconButton
-              className="min-w-[2.4rem] border-none hover:bg-mineshaft-600"
-              ariaLabel={`Sort ${
-                orderDirection === OrderByDirection.ASC ? "descending" : "ascending"
-              }`}
-              variant="plain"
-              size="xs"
-              colorSchema="secondary"
-              onClick={toggleOrderDirection}
-            >
-              <FontAwesomeIcon
-                icon={orderDirection === OrderByDirection.ASC ? faArrowDownAZ : faArrowUpZA}
-              />
-            </IconButton>
-          </Tooltip>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <div
-              className={twMerge(
-                "ml-2 flex rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1",
-                isTableFilteredByType && "border-primary-400 text-primary-400"
-              )}
-            >
-              <Tooltip content="Choose visible project type" className="mb-2">
-                <IconButton
-                  ariaLabel="project-types"
-                  className={twMerge(
-                    "min-w-[2.4rem] border-none hover:bg-mineshaft-600",
-                    isTableFilteredByType && "text-primary-400"
-                  )}
-                  variant="plain"
-                  size="xs"
-                  colorSchema="secondary"
-                >
-                  <FontAwesomeIcon icon={faList} />
-                </IconButton>
-              </Tooltip>
-            </div>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="thin-scrollbar overflow-y-auto" align="end">
-            <DropdownMenuLabel>Filter By Project Type</DropdownMenuLabel>
-            {Object.values(ProjectType).map((el) => (
-              <DropdownMenuItem
-                key={`filter-item-${el}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleToggleFilterByProjectType(el);
-                }}
-                icon={projectTypeFilter?.[el] && <FontAwesomeIcon icon={faCheckCircle} />}
-                iconPos="right"
-              >
-                <div className="flex items-center gap-2">
-                  <span>{getProjectTitle(el)}</span>
-                </div>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <div className="ml-2 flex gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-          <IconButton
-            variant="outline_bg"
-            onClick={() => {
-              localStorage.setItem("projectsViewMode", ProjectsViewMode.GRID);
-              setProjectsViewMode(ProjectsViewMode.GRID);
-            }}
-            ariaLabel="grid"
-            size="xs"
-            className={`${
-              projectsViewMode === ProjectsViewMode.GRID ? "bg-mineshaft-500" : "bg-transparent"
-            } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
-          >
-            <FontAwesomeIcon icon={faBorderAll} />
-          </IconButton>
-          <IconButton
-            variant="outline_bg"
-            onClick={() => {
-              localStorage.setItem("projectsViewMode", ProjectsViewMode.LIST);
-              setProjectsViewMode(ProjectsViewMode.LIST);
-            }}
-            ariaLabel="list"
-            size="xs"
-            className={`${
-              projectsViewMode === ProjectsViewMode.LIST ? "bg-mineshaft-500" : "bg-transparent"
-            } min-w-[2.4rem] border-none hover:bg-mineshaft-600`}
-          >
-            <FontAwesomeIcon icon={faList} />
-          </IconButton>
-        </div>
-        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-          {(isOldProjectV1Allowed) => (
-            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
-              {(isAllowed) => (
-                <Button
-                  isDisabled={!isAllowed && !isOldProjectV1Allowed}
-                  colorSchema="secondary"
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  onClick={() => {
-                    if (isAddingProjectsAllowed) {
-                      onAddNewProject();
-                    } else {
-                      onUpgradePlan();
-                    }
-                  }}
-                  className="ml-2"
-                >
-                  Add New Project
-                </Button>
-              )}
-            </OrgPermissionCan>
-          )}
-        </OrgPermissionCan>
-      </div>
       {projectsComponents}
       {!isProjectViewLoading && Boolean(filteredWorkspaces.length) && (
         <Pagination
           className={
-            projectsViewMode === ProjectsViewMode.GRID
+            resourceViewMode === ResourceViewMode.GRID
               ? "col-span-full justify-start! border-transparent bg-transparent pl-2"
               : "rounded-b-md border border-mineshaft-600"
           }

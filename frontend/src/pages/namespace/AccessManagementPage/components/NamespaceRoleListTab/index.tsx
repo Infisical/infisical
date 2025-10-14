@@ -1,0 +1,1 @@
+export { NamespaceRoleListTab } from "./NamespaceRoleListTab";

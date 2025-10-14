@@ -9,7 +9,9 @@ export const useCreateNamespace = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: TCreateNamespaceDTO) => {
-      return apiRequest.post<{ namespace: TNamespace }>("/api/v1/namespaces", data);
+      return apiRequest
+        .post<{ namespace: TNamespace }>("/api/v1/namespaces", data)
+        .then((el) => el.data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

@@ -30,6 +30,8 @@ export type TListNamespacesDTO = {
   offset?: number;
   limit?: number;
   search?: string;
+  orderBy?: SearchNamespaceSortBy;
+  orderDirection?: "asc" | "desc";
 };
 
 export enum SearchNamespaceSortBy {
