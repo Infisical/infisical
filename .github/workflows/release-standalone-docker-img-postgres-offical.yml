@@ -135,7 +135,9 @@ jobs:
             TAG_NAME="${{ github.ref_name }}"
             echo "Checking for tag: $TAG_NAME"
 
-            if gh api repos/Infisical/infisical-omnibus/git/refs/tags/$TAG_NAME --silent 2>/dev/null; then
+            EXACT_MATCH=$(gh api repos/Infisical/infisical-omnibus/git/refs/tags/$TAG_NAME | jq -r 'if type == "array" then .[].ref else .ref end' | grep -x "refs/tags/$TAG_NAME")
+
+            if [ "$EXACT_MATCH" == "refs/tags/$TAG_NAME" ]; then
             echo "Tag $TAG_NAME already exists, skipping..."
             else
               echo "Creating tag in Infisical/infisical-omnibus: $TAG_NAME"
