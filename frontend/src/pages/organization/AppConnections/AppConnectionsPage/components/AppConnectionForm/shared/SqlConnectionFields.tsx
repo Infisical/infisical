@@ -152,7 +152,7 @@ export const SqlConnectionFields = ({
                   errorText={error?.message}
                   isError={Boolean(error?.message)}
                   className={sslEnabled ? "" : "opacity-50"}
-                  label="Trusted CA SSL Certificate"
+                  label="SSL Certificate"
                   isOptional
                 >
                   <TextArea

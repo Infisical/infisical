@@ -110,7 +110,7 @@ export const SqlResourceFields = ({ setSelectedTabIndex, selectedTabIndex }: Pro
                 errorText={error?.message}
                 isError={Boolean(error?.message)}
                 className={sslEnabled ? "" : "opacity-50"}
-                label="SSL Certificate"
+                label="Trusted CA SSL Certificate"
                 isOptional
               >
                 <TextArea className="h-14 resize-none!" {...field} isDisabled={!sslEnabled} />
