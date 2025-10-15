@@ -31,6 +31,12 @@ import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { TServiceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import {
+  namespaceAdminPermissions,
+  namespaceMemberPermissions,
+  namespaceNoAccessPermissions,
+  NamespacePermissionSet
+} from "./namespace-permission";
 import { orgAdminPermissions, orgMemberPermissions, orgNoAccessPermissions, OrgPermissionSet } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
 import { escapeHandlebarsMissingDict, validateOrgSSO } from "./permission-fns";
@@ -41,12 +47,6 @@ import {
   TPermissionServiceFactory
 } from "./permission-service-types";
 import { buildServiceTokenProjectPermission, ProjectPermissionSet } from "./project-permission";
-import {
-  namespaceAdminPermissions,
-  namespaceMemberPermissions,
-  namespaceNoAccessPermissions,
-  NamespacePermissionSet
-} from "./namespace-permission";
 
 const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
   const rules = orgUserRoles

@@ -40,6 +40,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       body: z
         .object({
           projectSlug: z.string().trim(),
+          namespaceId: z.string().trim().optional(),
           name: z.string().optional(),
           secretPath: z
             .string()
@@ -129,7 +130,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     },
     schema: {
       querystring: z.object({
-        projectSlug: z.string().trim()
+        projectSlug: z.string().trim(),
+        namespaceId: z.string().trim().optional()
       }),
       response: {
         200: z.object({
@@ -174,6 +176,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     schema: {
       querystring: z.object({
         projectSlug: z.string(),
+        namespaceId: z.string().optional(),
         envSlug: z.string()
       }),
       response: {
@@ -190,6 +193,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         projectSlug: req.query.projectSlug,
+        namespaceId: req.query.namespaceId,
         actorOrgId: req.permission.orgId,
         envSlug: req.query.envSlug
       });

@@ -61,6 +61,8 @@ import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-conf
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
+import { namespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
+import { namespaceServiceFactory } from "@app/ee/services/namespace/namespace-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
@@ -285,6 +287,8 @@ import { dailyResourceCleanUpQueueServiceFactory } from "@app/services/resource-
 import { resourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { roleDALFactory } from "@app/services/role/role-dal";
 import { roleServiceFactory } from "@app/services/role/role-service";
+import { scopedIdentityDALFactory } from "@app/services/scoped-identity/scoped-identity-dal";
+import { scopedIdentityServiceFactory } from "@app/services/scoped-identity/scoped-identity-service";
 import { secretDALFactory } from "@app/services/secret/secret-dal";
 import { secretQueueFactory } from "@app/services/secret/secret-queue";
 import { secretServiceFactory } from "@app/services/secret/secret-service";
@@ -344,10 +348,6 @@ import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
 import { registerV4Routes } from "./v4";
-import { namespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
-import { namespaceServiceFactory } from "@app/ee/services/namespace/namespace-service";
-import { scopedIdentityServiceFactory } from "@app/services/scoped-identity/scoped-identity-service";
-import { scopedIdentityDALFactory } from "@app/services/scoped-identity/scoped-identity-dal";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();

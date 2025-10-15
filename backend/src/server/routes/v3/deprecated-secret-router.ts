@@ -60,6 +60,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       }),
       body: z.object({
         projectSlug: z.string().trim().describe(SECRETS.ATTACH_TAGS.projectSlug),
+        namespaceId: z.string().trim().describe(SECRETS.ATTACH_TAGS.namespaceId),
         environment: z.string().trim().describe(SECRETS.ATTACH_TAGS.environment),
         secretPath: z
           .string()
@@ -87,6 +88,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         environment: req.body.environment,
         type: req.body.type,
         projectSlug: req.body.projectSlug,
+        namespaceId: req.body.namespaceId,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
@@ -117,6 +119,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       }),
       body: z.object({
         projectSlug: z.string().trim().describe(SECRETS.DETACH_TAGS.projectSlug),
+        namespaceId: z.string().trim().optional().describe(SECRETS.DETACH_TAGS.namespaceId),
         environment: z.string().trim().describe(SECRETS.DETACH_TAGS.environment),
         secretPath: z
           .string()
@@ -144,6 +147,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         environment: req.body.environment,
         type: req.body.type,
         projectSlug: req.body.projectSlug,
+        namespaceId: req.body.namespaceId,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
@@ -232,6 +236,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           .describe(RAW_SECRETS.LIST.metadataFilter),
         workspaceId: z.string().trim().optional().describe(RAW_SECRETS.LIST.projectId),
         workspaceSlug: z.string().trim().optional().describe(RAW_SECRETS.LIST.workspaceSlug),
+        namespaceId: z.string().trim().optional().describe(RAW_SECRETS.LIST.namespaceId),
         environment: z.string().trim().optional().describe(RAW_SECRETS.LIST.environment),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash).describe(RAW_SECRETS.LIST.secretPath),
         viewSecretValue: convertStringBoolean(true).describe(RAW_SECRETS.LIST.viewSecretValue),
@@ -288,6 +293,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       } else {
         const projectId = await server.services.project.extractProjectIdFromSlug({
           projectSlug: req.query.workspaceSlug,
+          namespaceId: req.query.namespaceId,
           projectId: workspaceId,
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
@@ -406,6 +412,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       }),
       querystring: z.object({
         workspaceId: z.string().trim().optional().describe(RAW_SECRETS.GET.projectId),
+        namespaceId: z.string().trim().optional().describe(RAW_SECRETS.GET.namespaceId),
         workspaceSlug: z.string().trim().optional().describe(RAW_SECRETS.GET.workspaceSlug),
         environment: z.string().trim().optional().describe(RAW_SECRETS.GET.environment),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash).describe(RAW_SECRETS.GET.secretPath),
@@ -441,6 +448,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       } else {
         const projectId = await server.services.project.extractProjectIdFromSlug({
           projectSlug: workspaceSlug,
+          namespaceId: req.query.namespaceId,
           projectId: workspaceId,
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
@@ -528,6 +536,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       body: z.object({
         workspaceId: z.string().trim().optional().describe(RAW_SECRETS.CREATE.projectId),
         projectSlug: z.string().trim().optional().describe(RAW_SECRETS.CREATE.projectSlug),
+        namespaceId: z.string().trim().optional().describe(RAW_SECRETS.CREATE.namespaceId),
         environment: z.string().trim().describe(RAW_SECRETS.CREATE.environment),
         secretPath: z
           .string()
@@ -569,6 +578,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const projectId = await server.services.project.extractProjectIdFromSlug({
         projectSlug: req.body.projectSlug,
+        namespaceId: req.body.namespaceId,
         projectId: req.body.workspaceId,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -672,6 +682,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       body: z.object({
         workspaceId: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.projectId),
         projectSlug: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.projectSlug),
+        namespaceId: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.namespaceId),
         environment: z.string().trim().describe(RAW_SECRETS.UPDATE.environment),
         secretValue: z
           .string()
@@ -719,6 +730,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const projectId = await server.services.project.extractProjectIdFromSlug({
         projectSlug: req.body.projectSlug,
+        namespaceId: req.body.namespaceId,
         projectId: req.body.workspaceId,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -825,6 +837,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       body: z.object({
         workspaceId: z.string().trim().optional().describe(RAW_SECRETS.DELETE.projectId),
         projectSlug: z.string().trim().optional().describe(RAW_SECRETS.DELETE.projectSlug),
+        namespaceId: z.string().trim().optional().describe(RAW_SECRETS.DELETE.namespaceId),
         environment: z.string().trim().describe(RAW_SECRETS.DELETE.environment),
         secretPath: z
           .string()
@@ -849,6 +862,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const projectId = await server.services.project.extractProjectIdFromSlug({
         projectSlug: req.body.projectSlug,
+        namespaceId: req.body.namespaceId,
         projectId: req.body.workspaceId,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -1618,6 +1632,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       tags: [ApiDocsTags.Secrets],
       body: z.object({
         projectSlug: z.string().trim(),
+        namespaceId: z.string().trim().optional(),
         sourceEnvironment: z.string().trim(),
         sourceSecretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         destinationEnvironment: z.string().trim(),
@@ -2069,6 +2084,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       ],
       body: z.object({
         projectSlug: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.projectSlug),
+        namespaceId: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.namespaceId),
         workspaceId: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.projectId),
         environment: z.string().trim().describe(RAW_SECRETS.CREATE.environment),
         secretPath: z
@@ -2114,6 +2130,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         secretPath,
         environment,
         projectSlug,
+        namespaceId: req.body.namespaceId,
         projectId: req.body.workspaceId,
         secrets: inputSecrets
       });
@@ -2197,6 +2214,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       ],
       body: z.object({
         projectSlug: z.string().trim().optional().describe(RAW_SECRETS.DELETE.projectSlug),
+        namespaceId: z.string().trim().optional().describe(RAW_SECRETS.DELETE.namespaceId),
         workspaceId: z.string().trim().optional().describe(RAW_SECRETS.DELETE.projectId),
         environment: z.string().trim().describe(RAW_SECRETS.UPDATE.environment),
         secretPath: z
@@ -2264,6 +2282,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         secretPath,
         environment,
         projectSlug,
+        namespaceId: req.body.namespaceId,
         projectId: req.body.workspaceId,
         secrets: inputSecrets,
         mode: req.body.mode
@@ -2373,6 +2392,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       ],
       body: z.object({
         projectSlug: z.string().trim().optional().describe(RAW_SECRETS.DELETE.projectSlug),
+        namespaceId: z.string().trim().optional().describe(RAW_SECRETS.DELETE.namespaceId),
         workspaceId: z.string().trim().optional().describe(RAW_SECRETS.DELETE.projectId),
         environment: z.string().trim().describe(RAW_SECRETS.DELETE.environment),
         secretPath: z

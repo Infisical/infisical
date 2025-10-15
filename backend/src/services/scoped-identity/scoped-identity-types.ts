@@ -1,6 +1,7 @@
+import { Knex } from "knex";
+
 import { AccessScopeData } from "@app/db/schemas";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
-import { Knex } from "knex";
 
 export interface TIdentityScopeFactory {
   onCreateIdentityGuard: (arg: TCreateIdentityDTO) => Promise<void>;

@@ -345,6 +345,7 @@ export const certificateServiceFactory = ({
    */
   const importCert = async ({
     projectSlug,
+    namespaceId,
     pkiCollectionId,
     actorId,
     actorAuthMethod,
@@ -357,7 +358,7 @@ export const certificateServiceFactory = ({
   }: TImportCertDTO) => {
     const collectionId = pkiCollectionId;
 
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
     const projectId = project.id;
 

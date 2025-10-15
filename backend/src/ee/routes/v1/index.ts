@@ -21,6 +21,11 @@ import { registerKmipRouter } from "./kmip-router";
 import { registerKmipSpecRouter } from "./kmip-spec-router";
 import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
+import { registerNamespaceIdentityMembershipRouter } from "./namespace-identity-membership-router";
+import { registerNamespaceIdentityRouter } from "./namespace-identity-router";
+import { registerNamespaceRoleRouter } from "./namespace-role-router";
+import { registerNamespaceRouter } from "./namespace-router";
+import { registerNamespaceUserMembershipRouter } from "./namespace-user-membership-router";
 import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
 import { PAM_ACCOUNT_REGISTER_ROUTER_MAP } from "./pam-account-routers";
@@ -50,11 +55,6 @@ import { registerSshHostGroupRouter } from "./ssh-host-group-router";
 import { registerSshHostRouter } from "./ssh-host-router";
 import { registerTrustedIpRouter } from "./trusted-ip-router";
 import { registerUserAdditionalPrivilegeRouter } from "./user-additional-privilege-router";
-import { registerNamespaceRouter } from "./namespace-router";
-import { registerNamespaceUserMembershipRouter } from "./namespace-user-membership-router";
-import { registerNamespaceIdentityMembershipRouter } from "./namespace-identity-membership-router";
-import { registerNamespaceIdentityRouter } from "./namespace-identity-router";
-import { registerNamespaceRoleRouter } from "./namespace-role-router";
 
 export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   // org role starts with organization

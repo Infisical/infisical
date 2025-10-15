@@ -22,6 +22,7 @@ export type TCreateDynamicSecretDTO = {
   environmentSlug: string;
   name: string;
   projectSlug: string;
+  namespaceId?: string;
   metadata?: ResourceMetadataDTO;
   usernameTemplate?: string | null;
 } & Omit<TProjectPermission, "projectId">;
@@ -34,6 +35,7 @@ export type TUpdateDynamicSecretDTO = {
   path: string;
   environmentSlug: string;
   inputs?: TProvider["inputs"];
+  namespaceId?: string;
   projectSlug: string;
   metadata?: ResourceMetadataDTO;
   usernameTemplate?: string | null;
@@ -42,6 +44,7 @@ export type TUpdateDynamicSecretDTO = {
 export type TDeleteDynamicSecretDTO = {
   name: string;
   path: string;
+  namespaceId?: string;
   environmentSlug: string;
   projectSlug: string;
   isForced?: boolean;
@@ -51,6 +54,7 @@ export type TDetailsDynamicSecretDTO = {
   name: string;
   path: string;
   environmentSlug: string;
+  namespaceId?: string;
   projectSlug: string;
 } & Omit<TProjectPermission, "projectId">;
 
@@ -65,6 +69,7 @@ export type ListDynamicSecretsFilters = {
 export type TListDynamicSecretsDTO = {
   path: string;
   environmentSlug: string;
+  namespaceId?: string;
   projectSlug?: string;
   projectId?: string;
 } & ListDynamicSecretsFilters &

@@ -1,23 +1,24 @@
-import { AccessScope, NamespaceMembershipRole } from "@app/db/schemas";
-import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
-
-import { TMembershipUserScopeFactory } from "../membership-user-types";
-import {
-  NamespacePermissionMemberActions,
-  NamespacePermissionSubjects,
-  isCustomNamespaceRole
-} from "@app/ee/services/permission/namespace-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ForbiddenError } from "@casl/ability";
+
+import { AccessScope, NamespaceMembershipRole } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TNamespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
+import {
+  isCustomNamespaceRole,
+  NamespacePermissionMemberActions,
+  NamespacePermissionSubjects
+} from "@app/ee/services/permission/namespace-permission";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
-import { TMembershipUserDALFactory } from "../membership-user-dal";
-import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
-import { TNamespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
+import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+
+import { TMembershipUserDALFactory } from "../membership-user-dal";
+import { TMembershipUserScopeFactory } from "../membership-user-types";
 
 type TNamespaceMembershipUserScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getNamespacePermission" | "getNamespacePermissionByRoles">;

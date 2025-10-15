@@ -23,7 +23,17 @@ export type TProjectDALFactory = ReturnType<typeof projectDALFactory>;
 export const projectDALFactory = (db: TDbClient) => {
   const projectOrm = ormify(db, TableName.Project);
 
-  const findIdentityProjects = async (identityId: string, orgId: string, projectType?: ProjectType) => {
+  const findIdentityProjects = async ({
+    identityId,
+    orgId,
+    projectType,
+    namespaceId
+  }: {
+    identityId: string;
+    orgId: string;
+    projectType?: ProjectType;
+    namespaceId?: string;
+  }) => {
     try {
       const workspaces = await db
         .replicaNode()(TableName.Membership)
@@ -31,6 +41,11 @@ export const projectDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.actorIdentityId`, identityId)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .where((qb) => {
+          if (namespaceId) {
+            void qb.where(`${TableName.Project}.namespaceId`, namespaceId);
+          }
+        })
         .andWhere((qb) => {
           if (projectType) {
             void qb.where(`${TableName.Project}.type`, projectType);
@@ -75,7 +90,17 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findUserProjects = async (userId: string, orgId: string, projectType?: ProjectType) => {
+  const findUserProjects = async ({
+    userId,
+    orgId,
+    projectType,
+    namespaceId
+  }: {
+    userId: string;
+    orgId: string;
+    projectType?: ProjectType;
+    namespaceId?: string;
+  }) => {
     try {
       const userGroupSubquery = db
         .replicaNode()(TableName.Groups)
@@ -89,6 +114,11 @@ export const projectDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
+        .where((qb) => {
+          if (namespaceId) {
+            void qb.where(`${TableName.Project}.namespaceId`, namespaceId);
+          }
+        })
         .andWhere((qb) => {
           void qb
             .where(`${TableName.Membership}.actorUserId`, userId)
@@ -213,16 +243,21 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectBySlug = async (slug: string, orgId: string | undefined) => {
+  const findProjectBySlug = async (dto: { slug: string; orgId: string | undefined; namespaceId?: string }) => {
     try {
-      if (!orgId) {
+      if (!dto.orgId) {
         throw new UnauthorizedError({ message: "Organization ID is required when querying with slugs" });
       }
 
       const projects = await db
         .replicaNode()(TableName.Project)
-        .where(`${TableName.Project}.slug`, slug)
-        .where(`${TableName.Project}.orgId`, orgId)
+        .where(`${TableName.Project}.slug`, dto.slug)
+        .where(`${TableName.Project}.orgId`, dto.orgId)
+        .where((qb) => {
+          if (dto.namespaceId) {
+            void qb.where(`${TableName.Project}.namespaceId`, dto.namespaceId);
+          }
+        })
         .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),
@@ -253,7 +288,7 @@ export const projectDALFactory = (db: TDbClient) => {
       })?.[0];
 
       if (!project) {
-        throw new NotFoundError({ message: `Project with slug '${slug}' not found` });
+        throw new NotFoundError({ message: `Project with slug '${dto.slug}' not found` });
       }
 
       return project;
@@ -278,7 +313,7 @@ export const projectDALFactory = (db: TDbClient) => {
           });
         }
 
-        return await findProjectBySlug(filter.slug, filter.orgId);
+        return await findProjectBySlug(filter);
       }
       throw new BadRequestError({ message: "Invalid filter type" });
     } catch (error) {
@@ -331,6 +366,7 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const searchProjects = async (dto: {
     orgId: string;
+    namespaceId?: string;
     actor: ActorType;
     actorId: string;
     type?: ProjectType;
@@ -342,11 +378,14 @@ export const projectDALFactory = (db: TDbClient) => {
     projectIds?: string[];
   }) => {
     const { limit = 20, offset = 0, sortBy = SearchProjectSortBy.NAME, sortDir = SortDirection.ASC } = dto;
+
+    // TODO(namespace-group): check this part again
     const groupMembershipSubquery = db(TableName.Groups)
       .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
       .where(`${TableName.Groups}.orgId`, dto.orgId)
       .where(`${TableName.UserGroupMembership}.userId`, dto.actorId)
       .select(db.ref("id").withSchema(TableName.Groups));
+
     const membershipSubQuery = db(TableName.Membership)
       .where(`${TableName.Membership}.scope`, AccessScope.Project)
       .where((qb) => {
@@ -367,6 +406,11 @@ export const projectDALFactory = (db: TDbClient) => {
     const query = db
       .replicaNode()(TableName.Project)
       .where(`${TableName.Project}.orgId`, dto.orgId)
+      .where((qb) => {
+        if (dto.namespaceId) {
+          void qb.where(`${TableName.Project}.namespaceId`, dto.namespaceId);
+        }
+      })
       .select(selectAllTableCols(TableName.Project))
       .select(db.raw("COUNT(*) OVER() AS count"))
       .select<(TProjects & { isMember: boolean; count: number })[]>(

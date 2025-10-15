@@ -1,17 +1,18 @@
+import { ForbiddenError } from "@casl/ability";
+
 import { AccessScope } from "@app/db/schemas";
+import {
+  isCustomNamespaceRole,
+  namespaceAdminPermissions,
+  namespaceMemberPermissions,
+  namespaceNoAccessPermissions,
+  NamespacePermissionActions,
+  NamespacePermissionSubjects
+} from "@app/ee/services/permission/namespace-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TRoleScopeFactory } from "../role-types";
-import {
-  NamespacePermissionActions,
-  NamespacePermissionSubjects,
-  isCustomNamespaceRole,
-  namespaceAdminPermissions,
-  namespaceMemberPermissions,
-  namespaceNoAccessPermissions
-} from "@app/ee/services/permission/namespace-permission";
-import { ForbiddenError } from "@casl/ability";
 
 type TNamespaceRoleScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getNamespacePermission">;

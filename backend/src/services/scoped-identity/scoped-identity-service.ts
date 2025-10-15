@@ -1,4 +1,15 @@
 import { AccessScope, OrgMembershipRole } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+
+import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { TProjectDALFactory } from "../project/project-dal";
+import { newNamespaceScopedIdentityFactory } from "./namespace/namespace-scoped-identity-factory";
+import { newOrgScopedIdentityFactory } from "./org/org-scoped-identity-factory";
+import { newProjectScopedIdentityFactory } from "./project/project-scoped-identity-factory";
 import { TScopedIdentityDALFactory } from "./scoped-identity-dal";
 import {
   TCreateIdentityDTO,
@@ -7,16 +18,6 @@ import {
   TListIdentityDTO,
   TUpdateIdentityDTO
 } from "./scoped-identity-types";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
-import { TProjectDALFactory } from "../project/project-dal";
-import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
-import { newOrgScopedIdentityFactory } from "./org/org-scoped-identity-factory";
-import { newProjectScopedIdentityFactory } from "./project/project-scoped-identity-factory";
-import { newNamespaceScopedIdentityFactory } from "./namespace/namespace-scoped-identity-factory";
 
 type TScopedIdentityServiceFactoryDep = {
   identityDAL: TScopedIdentityDALFactory;

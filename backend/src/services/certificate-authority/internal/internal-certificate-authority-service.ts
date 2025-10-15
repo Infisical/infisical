@@ -141,7 +141,11 @@ export const internalCertificateAuthorityServiceFactory = ({
   }: TCreateCaDTO) => {
     let projectId: string;
     if (!dto.isInternal) {
-      const project = await projectDAL.findProjectBySlug(dto.projectSlug, dto.actorOrgId);
+      const project = await projectDAL.findProjectBySlug({
+        slug: dto.projectSlug,
+        orgId: dto.actorOrgId,
+        namespaceId: dto.namespaceId
+      });
       if (!project) throw new NotFoundError({ message: `Project with slug '${dto.projectSlug}' not found` });
       projectId = project.id;
 

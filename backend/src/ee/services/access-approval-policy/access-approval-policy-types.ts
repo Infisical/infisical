@@ -37,6 +37,7 @@ export type TCreateAccessApprovalPolicy = {
     | { type: BypasserType.User; id?: string; username?: string }
   )[];
   projectSlug: string;
+  namespaceId?: string;
   name: string;
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
@@ -71,6 +72,7 @@ export type TDeleteAccessApprovalPolicy = {
 export type TGetAccessPolicyCountByEnvironmentDTO = {
   envSlug: string;
   projectSlug: string;
+  namespaceId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetAccessApprovalPolicyByIdDTO = {
@@ -79,6 +81,7 @@ export type TGetAccessApprovalPolicyByIdDTO = {
 
 export type TListAccessApprovalPoliciesDTO = {
   projectSlug: string;
+  namespaceId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export interface TAccessApprovalPolicyServiceFactory {

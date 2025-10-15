@@ -154,6 +154,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       ],
       body: z.object({
         projectName: z.string().trim().describe(PROJECTS.CREATE.projectName),
+        namespaceId: z.string().optional().describe(PROJECTS.CREATE.namespaceId),
         projectDescription: z.string().trim().optional().describe(PROJECTS.CREATE.projectDescription),
         slug: slugSchema({ min: 5, max: 36 }).optional().describe(PROJECTS.CREATE.slug),
         kmsKeyId: z.string().optional(),
@@ -183,6 +184,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         kmsKeyId: req.body.kmsKeyId,
         template: req.body.template,
         type: req.body.type,
+        namespaceId: req.body.namespaceId,
         createDefaultEnvs: req.body.shouldCreateDefaultEnvs
       });
 
@@ -230,6 +232,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
+        namespaceId: z.string().optional(),
         includeRoles: z
           .enum(["true", "false"])
           .default("false")
@@ -254,7 +257,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
-        type: req.query.type
+        type: req.query.type,
+        namespaceId: req.query.namespaceId
       });
       return { projects };
     }
@@ -318,6 +322,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         slug: slugSchema({ max: 64 }).describe("The slug of the project to get.")
       }),
+      querystring: z.object({
+        namespaceId: z.string().optional().describe("The ID of the namespace in which to create the project.")
+      }),
       response: {
         200: projectWithEnv
       }
@@ -328,7 +335,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         filter: {
           slug: req.params.slug,
           orgId: req.permission.orgId,
-          type: ProjectFilterType.SLUG
+          type: ProjectFilterType.SLUG,
+          namespaceId: req.query.namespaceId
         },
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
@@ -986,6 +994,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         orderBy: z.nativeEnum(SearchProjectSortBy).optional().default(SearchProjectSortBy.NAME),
         orderDirection: z.nativeEnum(SortDirection).optional().default(SortDirection.ASC),
         projectIds: z.string().trim().array().optional(),
+        namespaceId: z.string().optional(),
         name: z
           .string()
           .trim()

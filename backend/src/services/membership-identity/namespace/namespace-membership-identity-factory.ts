@@ -1,20 +1,21 @@
-import { AccessScope, NamespaceMembershipRole } from "@app/db/schemas";
-import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
-
-import { TMembershipIdentityScopeFactory } from "../membership-identity-types";
-import {
-  NamespacePermissionIdentityActions,
-  NamespacePermissionSubjects,
-  isCustomNamespaceRole
-} from "@app/ee/services/permission/namespace-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ForbiddenError } from "@casl/ability";
+
+import { AccessScope, NamespaceMembershipRole } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  isCustomNamespaceRole,
+  NamespacePermissionIdentityActions,
+  NamespacePermissionSubjects
+} from "@app/ee/services/permission/namespace-permission";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+
 import { TMembershipIdentityDALFactory } from "../membership-identity-dal";
+import { TMembershipIdentityScopeFactory } from "../membership-identity-types";
 
 type TNamespaceMembershipIdentityScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getNamespacePermission" | "getNamespacePermissionByRoles">;

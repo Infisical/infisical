@@ -5,9 +5,9 @@ import { Knex } from "knex";
 import { ActionProjectType, TMemberships } from "@app/db/schemas";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
+import { NamespacePermissionSet } from "./namespace-permission";
 import { OrgPermissionSet } from "./org-permission";
 import { ProjectPermissionSet } from "./project-permission";
-import { NamespacePermissionSet } from "./namespace-permission";
 
 export type TBuildProjectPermissionDTO = {
   permissions?: unknown;

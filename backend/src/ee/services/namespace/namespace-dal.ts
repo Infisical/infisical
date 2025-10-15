@@ -53,7 +53,7 @@ export const namespaceDALFactory = (db: TDbClient): TNamespaceDALFactory => {
       .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
       .where(`${TableName.Membership}.scope`, AccessScope.Namespace)
       .select(selectAllTableCols(TableName.Namespace))
-      .select<(TNamespaces & { count: number })[]>(
+      .select<(TNamespaces & { total: number })[]>(
         db.raw(
           // TODO(namespace-group): consider group counting here
           `count(${TableName.Membership}."actorUserId") OVER(PARTITION BY ${TableName.Membership}."scopeOrgId") as total`
@@ -71,7 +71,7 @@ export const namespaceDALFactory = (db: TDbClient): TNamespaceDALFactory => {
         }
       });
 
-    return { docs, totalCount: Number(docs?.[0]?.count ?? 0) };
+    return { docs, totalCount: Number(docs?.[0]?.total ?? 0) };
   };
 
   const searchNamespaces: TNamespaceDALFactory["searchNamespaces"] = async (dto) => {
@@ -132,9 +132,7 @@ export const namespaceDALFactory = (db: TDbClient): TNamespaceDALFactory => {
     }
 
     const docs = await query;
-
     return { docs, totalCount: Number(docs?.[0]?.count ?? 0) };
   };
-
   return { ...orm, searchNamespaces, listActorNamespaces };
 };

@@ -11,6 +11,7 @@ export type TCreateDynamicSecretLeaseDTO = {
   environmentSlug: string;
   ttl?: string;
   projectSlug: string;
+  namespaceId?: string;
   config?: TDynamicSecretLeaseConfig;
 } & Omit<TProjectPermission, "projectId">;
 
@@ -19,6 +20,7 @@ export type TDetailsDynamicSecretLeaseDTO = {
   path: string;
   environmentSlug: string;
   projectSlug: string;
+  namespaceId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TListDynamicSecretLeasesDTO = {
@@ -26,6 +28,7 @@ export type TListDynamicSecretLeasesDTO = {
   path: string;
   environmentSlug: string;
   projectSlug: string;
+  namespaceId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteDynamicSecretLeaseDTO = {
@@ -33,6 +36,7 @@ export type TDeleteDynamicSecretLeaseDTO = {
   path: string;
   environmentSlug: string;
   projectSlug: string;
+  namespaceId?: string;
   isForced?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
@@ -42,6 +46,7 @@ export type TRenewDynamicSecretLeaseDTO = {
   environmentSlug: string;
   ttl?: string;
   projectSlug: string;
+  namespaceId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDynamicSecretKubernetesLeaseConfig = {

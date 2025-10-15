@@ -723,6 +723,7 @@ export const PROJECTS = {
   CREATE: {
     organizationSlug: "The slug of the organization to create the project in.",
     projectName: "The name of the project to create.",
+    namespaceId: "The id of the namespace to create project.",
     projectDescription: "An optional description label for the project.",
     slug: "An optional slug for the project.",
     template: "The name of the project template, if specified, to apply to this project."
@@ -1037,6 +1038,7 @@ export const FOLDERS = {
     path: "The path of the folder to update.",
     directory: "The new directory of the folder to update. (Deprecated in favor of path)",
     projectSlug: "The slug of the project where the folder is located.",
+    namespaceId: "The id of the namespace to which project belong to.",
     projectId: "The ID of the project where the folder is located.",
     description: "An optional description label for the folder."
   },
@@ -1057,6 +1059,7 @@ export const SECRETS = {
     environment: "The slug of the environment where the secret is located",
     viewSecretValue: "Whether or not to retrieve the secret value.",
     projectSlug: "The slug of the project where the secret is located.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     tagSlugs: "An array of existing tag slugs to attach to the secret."
   },
   DETACH_TAGS: {
@@ -1065,6 +1068,7 @@ export const SECRETS = {
     type: "The type of the secret to attach tags to. (shared/personal)",
     environment: "The slug of the environment where the secret is located.",
     projectSlug: "The slug of the project where the secret is located.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     tagSlugs: "An array of existing tag slugs to detach from the secret."
   }
 } as const;
@@ -1077,6 +1081,7 @@ export const RAW_SECRETS = {
     projectId: "The ID of the project to list secrets from.",
     workspaceSlug:
       "The slug of the project to list secrets from. This parameter is only applicable by machine identities.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
     viewSecretValue: "Whether or not to retrieve the secret value.",
@@ -1088,6 +1093,7 @@ export const RAW_SECRETS = {
   CREATE: {
     secretName: "The name of the secret to create.",
     projectSlug: "The slug of the project to create the secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environment: "The slug of the environment to create the secret in.",
     secretComment: "Attach a comment to the secret.",
     secretPath: "The path to create the secret in.",
@@ -1104,6 +1110,7 @@ export const RAW_SECRETS = {
     secretName: "The name of the secret to get.",
     projectId: "The ID of the project to get the secret from.",
     workspaceSlug: "The slug of the project to get the secret from.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environment: "The slug of the environment to get the secret from.",
     secretPath: "The path of the secret to get.",
     version: "The version of the secret to get.",
@@ -1121,6 +1128,7 @@ export const RAW_SECRETS = {
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to update.",
     projectSlug: "The slug of the project to update the secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     projectId: "The ID of the project to update the secret in.",
     tagIds: "The ID of the tags to be attached to the updated secret.",
     secretReminderRepeatDays: "Interval for secret rotation notifications, measured in days.",
@@ -1135,6 +1143,7 @@ export const RAW_SECRETS = {
     secretPath: "The path of the secret.",
     type: "The type of the secret to delete.",
     projectSlug: "The slug of the project to delete the secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     projectId: "The ID of the project where the secret is located."
   },
   GET_REFERENCE_TREE: {
@@ -1250,23 +1259,27 @@ export const AUDIT_LOGS = {
 export const DYNAMIC_SECRETS = {
   LIST: {
     projectSlug: "The slug of the project to create dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment to list folders from.",
     path: "The path to list folders from."
   },
   LIST_LEASES_BY_NAME: {
     projectSlug: "The slug of the project to create dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
     name: "The name of the dynamic secret."
   },
   GET_BY_NAME: {
     projectSlug: "The slug of the project to create dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
     name: "The name of the dynamic secret."
   },
   CREATE: {
     projectSlug: "The slug of the project to create dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment to create the dynamic secret in.",
     path: "The path to create the dynamic secret in.",
     name: "The name of the dynamic secret.",
@@ -1276,6 +1289,7 @@ export const DYNAMIC_SECRETS = {
   },
   UPDATE: {
     projectSlug: "The slug of the project to update dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment to update the dynamic secret in.",
     path: "The path to update the dynamic secret in.",
     name: "The name of the dynamic secret.",
@@ -1286,6 +1300,7 @@ export const DYNAMIC_SECRETS = {
   },
   DELETE: {
     projectSlug: "The slug of the project to delete dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment to delete the dynamic secret in.",
     path: "The path to delete the dynamic secret in.",
     name: "The name of the dynamic secret.",
@@ -1297,12 +1312,14 @@ export const DYNAMIC_SECRETS = {
 export const DYNAMIC_SECRET_LEASES = {
   GET_BY_LEASEID: {
     projectSlug: "The slug of the project to create dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
     leaseId: "The ID of the dynamic secret lease."
   },
   CREATE: {
     projectSlug: "The slug of the project of the dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment of the dynamic secret in.",
     path: "The path of the dynamic secret in.",
     dynamicSecretName: "The name of the dynamic secret.",
@@ -1310,6 +1327,7 @@ export const DYNAMIC_SECRET_LEASES = {
   },
   RENEW: {
     projectSlug: "The slug of the project of the dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment of the dynamic secret in.",
     path: "The path of the dynamic secret in.",
     leaseId: "The ID of the dynamic secret lease.",
@@ -1317,6 +1335,7 @@ export const DYNAMIC_SECRET_LEASES = {
   },
   DELETE: {
     projectSlug: "The slug of the project of the dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment of the dynamic secret in.",
     path: "The path of the dynamic secret in.",
     leaseId: "The ID of the dynamic secret lease.",
@@ -1803,6 +1822,7 @@ export const SSH_HOSTS = {
 export const CERTIFICATE_AUTHORITIES = {
   CREATE: {
     projectSlug: "Slug of the project to create the CA in.",
+    namespaceId: "The id of the namespace to which project belong to.",
     type: "The type of CA to create.",
     friendlyName: "A friendly name for the CA.",
     organization: "The organization (O) for the CA.",
@@ -1945,6 +1965,7 @@ export const CERTIFICATES = {
   },
   IMPORT: {
     projectSlug: "Slug of the project to import the certificate into.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     certificatePem: "The PEM-encoded leaf certificate.",
     privateKeyPem: "The PEM-encoded private key corresponding to the certificate.",
     chainPem: "The PEM-encoded chain of intermediate certificates.",

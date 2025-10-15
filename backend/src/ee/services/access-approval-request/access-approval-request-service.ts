@@ -115,10 +115,11 @@ export const accessApprovalRequestServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     projectSlug,
-    note
+    note,
+    namespaceId
   }) => {
     const cfg = getConfig();
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     // Anyone can create an access approval request.
@@ -476,6 +477,7 @@ export const accessApprovalRequestServiceFactory = ({
 
   const listApprovalRequests: TAccessApprovalRequestServiceFactory["listApprovalRequests"] = async ({
     projectSlug,
+    namespaceId,
     authorUserId,
     envSlug,
     actor,
@@ -483,7 +485,7 @@ export const accessApprovalRequestServiceFactory = ({
     actorId,
     actorAuthMethod
   }) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     await permissionService.getProjectPermission({
@@ -804,13 +806,14 @@ export const accessApprovalRequestServiceFactory = ({
 
   const getCount: TAccessApprovalRequestServiceFactory["getCount"] = async ({
     projectSlug,
+    namespaceId,
     policyId,
     actor,
     actorAuthMethod,
     actorId,
     actorOrgId
   }) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     await permissionService.getProjectPermission({

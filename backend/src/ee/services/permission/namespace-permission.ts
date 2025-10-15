@@ -1,13 +1,13 @@
 import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
 import { z } from "zod";
 
+import { NamespaceMembershipRole } from "@app/db/schemas";
 import {
   CASL_ACTION_SCHEMA_ENUM,
   CASL_ACTION_SCHEMA_NATIVE_ENUM
 } from "@app/ee/services/permission/permission-schemas";
 import { PermissionConditionSchema } from "@app/ee/services/permission/permission-types";
 import { PermissionConditionOperators } from "@app/lib/casl";
-import { NamespaceMembershipRole } from "@app/db/schemas";
 
 export const isCustomNamespaceRole = (slug: string) =>
   !Object.values(NamespaceMembershipRole).includes(slug as NamespaceMembershipRole);

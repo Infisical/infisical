@@ -5,6 +5,8 @@ import { OrgPermissionNamespaceActions, OrgPermissionSubjects } from "@app/ee/se
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { NamespacePermissionNamespaceActions, NamespacePermissionSubjects } from "../permission/namespace-permission";
@@ -18,8 +20,6 @@ import {
   TSearchNamespaceDTO,
   TUpdateNamespaceDTO
 } from "./namespace-types";
-import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 type TNamespaceServiceFactoryDep = {
   namespaceDAL: TNamespaceDALFactory;

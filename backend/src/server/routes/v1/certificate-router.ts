@@ -298,6 +298,7 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       description: "Import certificate",
       body: z.object({
         projectSlug: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.projectSlug),
+        namespaceId: z.string().trim().optional().describe(CERTIFICATES.IMPORT.namespaceId),
 
         certificatePem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.certificatePem),
         privateKeyPem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.privateKeyPem),

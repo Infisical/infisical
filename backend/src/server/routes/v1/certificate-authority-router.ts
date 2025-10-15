@@ -38,6 +38,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           projectSlug: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.projectSlug),
+          namespaceId: z.string().trim().optional().describe(CERTIFICATE_AUTHORITIES.CREATE.namespaceId),
           type: z.nativeEnum(InternalCaType).describe(CERTIFICATE_AUTHORITIES.CREATE.type),
           friendlyName: z.string().optional().describe(CERTIFICATE_AUTHORITIES.CREATE.friendlyName),
           commonName: z.string().trim().describe(CERTIFICATE_AUTHORITIES.CREATE.commonName),

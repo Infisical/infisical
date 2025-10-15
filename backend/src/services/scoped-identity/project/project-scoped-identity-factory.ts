@@ -5,9 +5,9 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { InternalServerError } from "@app/lib/errors";
 import { TMembershipIdentityDALFactory } from "@app/services/membership-identity/membership-identity-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TIdentityScopeFactory } from "../scoped-identity-types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 type TProjectScopedIdentityFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;

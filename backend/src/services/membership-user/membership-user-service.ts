@@ -7,6 +7,7 @@ import {
 } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TNamespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -36,7 +37,6 @@ import {
 import { newNamespaceMembershipUserFactory } from "./namespace/namespace-membership-user-factory";
 import { newOrgMembershipUserFactory } from "./org/org-membership-user-factory";
 import { newProjectMembershipUserFactory } from "./project/project-membership-user-factory";
-import { TNamespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
 
 type TMembershipUserServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;

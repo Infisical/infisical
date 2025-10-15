@@ -5,6 +5,7 @@ import {
   TIdentities,
   TMembershipRolesInsert
 } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -12,6 +13,7 @@ import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TMembershipIdentityDALFactory } from "./membership-identity-dal";
@@ -25,8 +27,6 @@ import {
 import { newNamespaceMembershipIdentityFactory } from "./namespace/namespace-membership-identity-factory";
 import { newOrgMembershipIdentityFactory } from "./org/org-membership-identity-factory";
 import { newProjectMembershipIdentityFactory } from "./project/project-membership-identity-factory";
-import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 
 type TMembershipIdentityServiceFactoryDep = {
   identityDAL: TIdentityDALFactory;

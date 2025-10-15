@@ -3,12 +3,12 @@ import { z } from "zod";
 
 import { AccessScope, NamespaceMembershipRole } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { NamespacePermissionSchema } from "@app/ee/services/permission/namespace-permission";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
-import { NamespacePermissionSchema } from "@app/ee/services/permission/namespace-permission";
 import { SanitizedNamespaceRoleSchema } from "@app/server/routes/sanitizedSchemas";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerNamespaceRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
