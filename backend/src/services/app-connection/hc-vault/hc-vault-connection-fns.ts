@@ -25,6 +25,44 @@ import {
   THCVaultMountResponse
 } from "./hc-vault-connection-types";
 
+// Concurrency limit for HC Vault API requests to avoid rate limiting
+const HC_VAULT_CONCURRENCY_LIMIT = 20;
+
+/**
+ * Creates a concurrency limiter that restricts the number of concurrent async operations
+ * @param limit - Maximum number of concurrent operations
+ * @returns A function that takes an async function and executes it with concurrency control
+ */
+const createConcurrencyLimiter = (limit: number) => {
+  let activeCount = 0;
+  const queue: Array<() => void> = [];
+
+  const next = () => {
+    activeCount -= 1;
+    if (queue.length > 0) {
+      const resolve = queue.shift();
+      resolve?.();
+    }
+  };
+
+  return async <T>(fn: () => Promise<T>): Promise<T> => {
+    // If we're at the limit, wait in queue
+    if (activeCount >= limit) {
+      await new Promise<void>((resolve) => {
+        queue.push(resolve);
+      });
+    }
+
+    activeCount += 1;
+
+    try {
+      return await fn();
+    } finally {
+      next();
+    }
+  };
+};
+
 export const getHCVaultInstanceUrl = async (config: THCVaultConnectionConfig) => {
   const instanceUrl = removeTrailingSlash(config.credentials.instanceUrl);
 
@@ -215,35 +253,39 @@ export const listHCVaultPolicies = async (
 
     const policyNames = listData.data.policies || [];
 
-    const policies = await Promise.all(
-      policyNames.map(async (policyName) => {
-        try {
-          const { data: policyData } = await requestWithHCVaultGateway<{
-            data: {
-              name: string;
-              rules: string;
-            };
-          }>(connection, gatewayService, {
-            url: `${instanceUrl}/v1/sys/policy/${policyName}`,
-            method: "GET",
-            headers: {
-              "X-Vault-Token": accessToken,
-              "X-Vault-Namespace": namespace
-            }
-          });
+    const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
 
-          return {
-            name: policyData.data.name,
-            rules: policyData.data.rules
-          };
-        } catch (error: unknown) {
-          logger.error(error, `Unable to fetch policy details for ${policyName}`);
-          return {
-            name: policyName,
-            rules: ""
-          };
-        }
-      })
+    const policies = await Promise.all(
+      policyNames.map((policyName) =>
+        limiter(async () => {
+          try {
+            const { data: policyData } = await requestWithHCVaultGateway<{
+              data: {
+                name: string;
+                rules: string;
+              };
+            }>(connection, gatewayService, {
+              url: `${instanceUrl}/v1/sys/policy/${policyName}`,
+              method: "GET",
+              headers: {
+                "X-Vault-Token": accessToken,
+                "X-Vault-Namespace": namespace
+              }
+            });
+
+            return {
+              name: policyData.data.name,
+              rules: policyData.data.rules
+            };
+          } catch (error: unknown) {
+            logger.error(error, `Unable to fetch policy details for ${policyName}`);
+            return {
+              name: policyName,
+              rules: ""
+            };
+          }
+        })
+      )
     );
 
     return policies;
@@ -304,45 +346,51 @@ export const listHCVaultNamespaces = async (
     }
   };
 
-  // Recursive function to get all namespaces at all depths
-  const recursivelyGetAllNamespaces = async (parentPath: string): Promise<string[]> => {
+  // Recursive function to get all namespaces at all depths with controlled parallelization
+  const recursivelyGetAllNamespaces = async (
+    parentPath: string,
+    limiter: ReturnType<typeof createConcurrencyLimiter>
+  ): Promise<string[]> => {
     const childKeys = await fetchNamespacesAtPath(parentPath);
 
     if (childKeys === null || childKeys.length === 0) {
       return [];
     }
 
-    const allNamespaces: string[] = [];
+    // Process namespaces in parallel with concurrency control
+    const namespacesArrays = await Promise.all(
+      childKeys.map((namespaceKey) =>
+        limiter(async () => {
+          // Remove trailing slash from the key
+          const cleanNamespaceKey = namespaceKey.replace(/\/$/, "");
 
-    // Process namespaces sequentially to maintain order
-    // eslint-disable-next-line no-restricted-syntax
-    for (const namespaceKey of childKeys) {
-      // Remove trailing slash from the key
-      const cleanNamespaceKey = namespaceKey.replace(/\/$/, "");
+          // Build the full path
+          let fullNamespacePath: string;
+          if (parentPath === "/") {
+            fullNamespacePath = cleanNamespaceKey;
+          } else {
+            fullNamespacePath = `${parentPath}/${cleanNamespaceKey}`;
+          }
 
-      // Build the full path
-      let fullNamespacePath: string;
-      if (parentPath === "/") {
-        fullNamespacePath = cleanNamespaceKey;
-      } else {
-        fullNamespacePath = `${parentPath}/${cleanNamespaceKey}`;
-      }
+          // Recursively fetch child namespaces
+          const childNamespaces = await recursivelyGetAllNamespaces(fullNamespacePath, limiter);
 
-      // Add this namespace to our results
-      allNamespaces.push(fullNamespacePath);
+          // Return this namespace and all its children
+          return [fullNamespacePath, ...childNamespaces];
+        })
+      )
+    );
 
-      // Recursively fetch child namespaces
-      // eslint-disable-next-line no-await-in-loop
-      const childNamespaces = await recursivelyGetAllNamespaces(fullNamespacePath);
-      allNamespaces.push(...childNamespaces);
-    }
-
-    return allNamespaces;
+    // Flatten the arrays into a single array
+    return namespacesArrays.flat();
   };
 
   try {
+    // Create concurrency limiter to avoid overwhelming the Vault instance
+    const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
+
     // Get all namespaces starting from currentNamespace
-    const childNamespaces = await recursivelyGetAllNamespaces(currentNamespace);
+    const childNamespaces = await recursivelyGetAllNamespaces(currentNamespace, limiter);
 
     // Build the result array with full paths
     const namespaces = childNamespaces.map((path) => ({
@@ -446,10 +494,11 @@ export const listHCVaultSecretPaths = async (
     }
   };
 
-  // Recursive function to get all secret paths in a mount
+  // Recursive function to get all secret paths in a mount with controlled parallelization
   const recursivelyGetAllPaths = async (
     mountPath: string,
     kvVersion: "1" | "2",
+    limiter: ReturnType<typeof createConcurrencyLimiter>,
     currentPath: string = ""
   ): Promise<string[]> => {
     const paths = await getPaths(mountPath, currentPath, kvVersion);
@@ -458,26 +507,25 @@ export const listHCVaultSecretPaths = async (
       return [];
     }
 
-    const allSecrets: string[] = [];
+    // Process paths in parallel with concurrency control
+    const secretPathsArrays = await Promise.all(
+      paths.map((path) =>
+        limiter(async () => {
+          const cleanPath = path.endsWith("/") ? path.slice(0, -1) : path;
+          const fullItemPath = currentPath ? `${currentPath}/${cleanPath}` : cleanPath;
 
-    // Process paths sequentially to maintain tree traversal order
-    // eslint-disable-next-line no-restricted-syntax
-    for (const path of paths) {
-      const cleanPath = path.endsWith("/") ? path.slice(0, -1) : path;
-      const fullItemPath = currentPath ? `${currentPath}/${cleanPath}` : cleanPath;
+          if (path.endsWith("/")) {
+            // it's a folder so we recurse into it
+            return recursivelyGetAllPaths(mountPath, kvVersion, limiter, fullItemPath);
+          }
+          // it's a secret so we return it
+          return [`${mountPath}/${fullItemPath}`];
+        })
+      )
+    );
 
-      if (path.endsWith("/")) {
-        // it's a folder so we recurse into it
-        // eslint-disable-next-line no-await-in-loop
-        const subSecrets = await recursivelyGetAllPaths(mountPath, kvVersion, fullItemPath);
-        allSecrets.push(...subSecrets);
-      } else {
-        // it's a secret so we add it to our results
-        allSecrets.push(`${mountPath}/${fullItemPath}`);
-      }
-    }
-
-    return allSecrets;
+    // Flatten the arrays into a single array
+    return secretPathsArrays.flat();
   };
 
   // Get all mounts
@@ -486,12 +534,15 @@ export const listHCVaultSecretPaths = async (
   // Filter for KV mounts (kv, kv-v1, kv-v2)
   const kvMounts = mounts.filter((mount) => mount.type === "kv" || mount.type.startsWith("kv"));
 
+  // Create concurrency limiter to avoid overwhelming the Vault instance
+  const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
+
   // Collect all secret paths from all KV mounts in parallel
   const allSecretPathsArrays = await Promise.all(
     kvMounts.map(async (mount) => {
       const kvVersion = mount.version === "2" ? "2" : "1";
       const cleanMountPath = mount.path.replace(/\/$/, ""); // Remove trailing slash
-      return recursivelyGetAllPaths(cleanMountPath, kvVersion);
+      return recursivelyGetAllPaths(cleanMountPath, kvVersion, limiter);
     })
   );
 
@@ -692,29 +743,33 @@ export const getHCVaultKubernetesAuthRoles = async (
       return [];
     }
 
-    // 3. Fetch details for each role
-    const roleDetailsPromises = roleNames.map(async (roleName) => {
-      const { data: roleResponse } = await requestWithHCVaultGateway<{ data: THCVaultKubernetesAuthRole }>(
-        connection,
-        gatewayService,
-        {
-          url: `${instanceUrl}/v1/auth/${cleanMountPath}/role/${roleName}`,
-          method: "GET",
-          headers: {
-            "X-Vault-Token": accessToken,
-            "X-Vault-Namespace": namespace
-          }
-        }
-      );
+    // 3. Fetch details for each role with concurrency control
+    const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
 
-      // 4. Merge the role with the config
-      return {
-        ...roleResponse.data,
-        name: roleName,
-        config: kubernetesConfig,
-        mountPath: cleanMountPath
-      } as THCVaultKubernetesAuthRoleWithConfig;
-    });
+    const roleDetailsPromises = roleNames.map((roleName) =>
+      limiter(async () => {
+        const { data: roleResponse } = await requestWithHCVaultGateway<{ data: THCVaultKubernetesAuthRole }>(
+          connection,
+          gatewayService,
+          {
+            url: `${instanceUrl}/v1/auth/${cleanMountPath}/role/${roleName}`,
+            method: "GET",
+            headers: {
+              "X-Vault-Token": accessToken,
+              "X-Vault-Namespace": namespace
+            }
+          }
+        );
+
+        // 4. Merge the role with the config
+        return {
+          ...roleResponse.data,
+          name: roleName,
+          config: kubernetesConfig,
+          mountPath: cleanMountPath
+        } as THCVaultKubernetesAuthRoleWithConfig;
+      })
+    );
 
     const roles = await Promise.all(roleDetailsPromises);
 

@@ -282,8 +282,8 @@ export const IdentityKubernetesAuthForm = ({
       }
 
       createNotification({
-        type: "success",
-        text: `Successfully imported Kubernetes auth configuration from Vault role: ${role.name}`
+        type: "info",
+        text: `Successfully prefilled values from Kubernetes auth role: ${role.name}`
       });
     } catch (err) {
       console.error("Import error:", err);
