@@ -88,7 +88,8 @@ export const VaultConnectionSection = () => {
           <div>
             <h3 className="text-lg font-medium text-mineshaft-100">HashiCorp Vault</h3>
             <p className="text-sm text-gray-400">
-              Enable in-platform migration tooling for policy imports and secret engine migrations
+              Enable in-platform migration tooling for policy imports, auth methods, and secret
+              engine migrations
             </p>
           </div>
         </div>
