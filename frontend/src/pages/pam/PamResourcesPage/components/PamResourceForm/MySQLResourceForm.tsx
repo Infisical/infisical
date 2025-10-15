@@ -36,9 +36,7 @@ export const MySQLResourceForm = ({ resource, onSubmit }: Props) => {
         host: "",
         port: 3306,
         database: "",
-        // TODO: SSL not supported for now
-        sslEnabled: false,
-        // TODO: maybe need to modify these
+        sslEnabled: true,
         sslRejectUnauthorized: true,
         sslCertificate: undefined
       }
