@@ -73,13 +73,13 @@ export const computeImportedSecretRows = (
     isEmpty?: boolean;
   }[] = [];
 
-  importedSec.secrets.forEach(({ key, value, env, path, isEmpty }) => {
+  importedSec.secrets.forEach(({ key, value, isEmpty }) => {
     if (!importedEntry[key]) {
       importedSecretEntries.push({
         key,
         value,
-        environment: env,
-        secretPath: path,
+        environment: importedSec.environmentInfo.slug,
+        secretPath: importedSec.secretPath,
         overridden: overridenSec?.[key],
         isEmpty
       });
@@ -124,6 +124,12 @@ export const SecretImportListView = ({
   );
 
   const [items, setItems] = useState(secretImports ?? []);
+
+  const getImportReplicatedFolder = (importPath: string) => {
+    const cleanImportPath = importPath.replace("/__reserve_replication_", "");
+    const replicatedFolder = items?.find(({ id }) => id === cleanImportPath);
+    return replicatedFolder;
+  };
 
   useEffect(() => {
     if (!isFetching) {
@@ -204,6 +210,7 @@ export const SecretImportListView = ({
         <SortableContext items={items} strategy={verticalListSortingStrategy}>
           {items?.map((item) => {
             // TODO(akhilmhdh): change this and pass this whole object instead of one by one
+            const replicatedFolder = item.isReserved ? getImportReplicatedFolder(item.importPath) : undefined;
             return (
               <SecretImportItem
                 searchTerm={searchTerm}
@@ -212,8 +219,8 @@ export const SecretImportListView = ({
                 onExpandReplicateSecrets={handleOpenReplicationSecrets}
                 secretImport={item}
                 importedSecrets={computeImportedSecretRows(
-                  item.importEnv.slug,
-                  item.importPath,
+                  replicatedFolder?.importEnv.slug ?? item.importEnv.slug,
+                  replicatedFolder?.importPath ?? item.importPath,
                   importedSecrets
                   // secrets scott - now that secrets are paginated we are not showing if they are overridden (yet?)
                 )}
