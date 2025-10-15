@@ -268,7 +268,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const namespaces = await server.services.migration.getVaultNamespaces({
         actor: req.permission
@@ -294,7 +294,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const policies = await server.services.migration.getVaultPolicies({
         actor: req.permission,
@@ -321,7 +321,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const mounts = await server.services.migration.getVaultMounts({
         actor: req.permission,
@@ -352,7 +352,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const result = await server.services.migration.importVaultSecrets({
         actor: req.permission,
@@ -380,7 +380,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const secretPaths = await server.services.migration.getVaultSecretPaths({
         actor: req.permission,
@@ -433,7 +433,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const roles = await server.services.migration.getVaultKubernetesAuthRoles({
         actor: req.permission,
