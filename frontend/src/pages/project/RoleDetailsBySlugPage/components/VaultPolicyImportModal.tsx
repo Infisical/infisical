@@ -13,11 +13,7 @@ import {
   ModalContent,
   TextArea
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
-import {
-  PermissionConditionOperators,
-  ProjectPermissionSecretActions
-} from "@app/context/ProjectPermissionContext/types";
+import { ProjectPermissionSub } from "@app/context";
 import {
   useGetVaultMounts,
   useGetVaultNamespaces,
@@ -25,6 +21,7 @@ import {
 } from "@app/hooks/api/migration/queries";
 
 import { TFormSchema } from "./ProjectRoleModifySection.utils";
+import { parseVaultPolicyToInfisical } from "./VaultPolicyImportModal.utils";
 
 type Props = {
   isOpen: boolean;
@@ -33,335 +30,6 @@ type Props = {
 
 type ContentProps = {
   onClose: () => void;
-};
-
-type VaultMount = { path: string; type: string; version: string | null };
-
-// Extract array element type helper
-type ArrayElement<T> = T extends (infer U)[] ? U : never;
-
-// Extract permission rule types from the form schema
-type SecretPermissionRule = ArrayElement<
-  NonNullable<TFormSchema["permissions"]>[ProjectPermissionSub.Secrets]
->;
-type FolderPermissionRule = ArrayElement<
-  NonNullable<TFormSchema["permissions"]>[ProjectPermissionSub.SecretFolders]
->;
-
-// Helper to parse Vault path and extract environment and secret path
-const parseVaultPath = (
-  vaultPath: string,
-  mounts: VaultMount[]
-): {
-  environment: string | null;
-  secretPath: string | null;
-  mount: VaultMount | null;
-  isWildcardMount: boolean;
-} => {
-  // Check if path starts with wildcard mount (e.g., "*/data/*")
-  const isWildcardMount = vaultPath.startsWith("*/") || vaultPath.startsWith("+/");
-
-  if (isWildcardMount) {
-    // For wildcard mounts, extract everything after the wildcard prefix
-    let remainingPath = vaultPath.slice(2); // Remove "*/" or "+/"
-    if (remainingPath.startsWith("/")) remainingPath = remainingPath.slice(1);
-
-    let environment: string | null = null;
-    let secretPath: string | null = null;
-    let isDataPath = false;
-    let isMetadataPath = false;
-
-    // Check for KV v2 data/ or metadata/ prefix
-    if (remainingPath.startsWith("data/")) {
-      isDataPath = true;
-      remainingPath = remainingPath.slice(5); // Remove "data/"
-    } else if (remainingPath.startsWith("metadata/")) {
-      isMetadataPath = true;
-      remainingPath = remainingPath.slice(9); // Remove "metadata/"
-    }
-
-    // Split remaining path into segments
-    const segments = remainingPath.split("/").filter(Boolean);
-
-    if (segments.length > 0) {
-      // Special case: if the only segment is a wildcard, treat it as matching everything
-      if (segments.length === 1 && (segments[0] === "*" || segments[0] === "+")) {
-        environment = "*"; // Match all environments
-        secretPath = "/*"; // Match all paths
-      } else {
-        // First segment is the environment
-        [environment] = segments;
-
-        // Remaining segments form the secret path
-        if (segments.length > 1) {
-          secretPath = `/${segments.slice(1).join("/")}`;
-        } else {
-          secretPath = "/";
-        }
-      }
-    }
-
-    // For wildcard mounts, return a synthetic mount object
-    // We'll use this to determine if it's KV v2 (has data/metadata paths)
-    const syntheticMount: VaultMount = {
-      path: "*",
-      type: "kv",
-      version: isDataPath || isMetadataPath ? "2" : "1"
-    };
-
-    return { environment, secretPath, mount: syntheticMount, isWildcardMount: true };
-  }
-
-  // Original logic for non-wildcard paths
-  // Find the matching mount for this path
-  // Sort by path length (longest first) to match most specific mount
-  const sortedMounts = [...mounts].sort((a, b) => b.path.length - a.path.length);
-  const mount = sortedMounts.find((m) => vaultPath.startsWith(m.path));
-  if (!mount) {
-    return { environment: null, secretPath: null, mount: null, isWildcardMount: false };
-  }
-
-  // Remove mount prefix and any trailing slash
-  let remainingPath = vaultPath.slice(mount.path.length);
-  if (remainingPath.startsWith("/")) remainingPath = remainingPath.slice(1);
-
-  // For KV v2, paths have format: data/{environment}/{path} or metadata/{environment}/{path}
-  // For KV v1, paths have format: {environment}/{path}
-  const isKvV2 = mount.version === "2" || mount.type === "kv";
-
-  let environment: string | null = null;
-  let secretPath: string | null = null;
-
-  if (isKvV2) {
-    // Remove data/ or metadata/ prefix for KV v2
-    if (remainingPath.startsWith("data/")) {
-      remainingPath = remainingPath.slice(5);
-    } else if (remainingPath.startsWith("metadata/")) {
-      remainingPath = remainingPath.slice(9);
-    }
-  }
-
-  // Split remaining path into segments
-  const segments = remainingPath.split("/").filter(Boolean);
-
-  if (segments.length > 0) {
-    // Special case: if the only segment is a wildcard, treat it as a path wildcard
-    if (segments.length === 1 && (segments[0] === "*" || segments[0] === "+")) {
-      environment = null; // No specific environment
-      secretPath = "/*"; // Match all paths
-    } else {
-      // First segment is treated as the environment
-      // (wildcards in environment will be handled with $GLOB operator later)
-      [environment] = segments;
-
-      // Remaining segments form the secret path
-      if (segments.length > 1) {
-        secretPath = `/${segments.slice(1).join("/")}`;
-      } else {
-        secretPath = "/";
-      }
-    }
-  }
-
-  return { environment, secretPath, mount, isWildcardMount: false };
-};
-
-// Helper to create a unique key for deduplication of permission rules
-const createPermissionRuleKey = (rule: SecretPermissionRule | FolderPermissionRule): string => {
-  const actions = Object.entries(rule)
-    .filter(([key]) => key !== "conditions")
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => `${key}:${value}`)
-    .join("|");
-
-  const conditions = (rule.conditions || [])
-    .map((c) => `${c.lhs}${c.operator}${c.rhs}`)
-    .sort()
-    .join("|");
-
-  return `${actions}::${conditions}`;
-};
-
-// HCL parser for Vault policies - converts Vault HCL to Infisical permissions
-const parseVaultPolicyToInfisical = (
-  hclPolicy: string,
-  mounts: VaultMount[]
-): Partial<TFormSchema["permissions"]> => {
-  const permissions: Partial<TFormSchema["permissions"]> = {};
-  const secretsPermissions: SecretPermissionRule[] = [];
-  const foldersPermissions: FolderPermissionRule[] = [];
-
-  const seenSecretRules = new Set<string>();
-  const seenFolderRules = new Set<string>();
-
-  try {
-    // Remove comments from HCL before parsing
-    const cleanedPolicy = hclPolicy
-      .split("\n")
-      .map((line) => line.replace(/#.*$/, "").trim()) // Remove # comments
-      .filter((line) => line.length > 0) // Remove empty lines
-      .join(" "); // Join into single line for easier parsing
-
-    // Match path blocks with flexible whitespace handling
-    const pathRegex = /path\s+"([^"]+)"\s*\{[^}]*capabilities\s*=\s*\[([^\]]+)\][^}]*\}/gi;
-    let match = pathRegex.exec(cleanedPolicy);
-
-    while (match !== null) {
-      const [, path, capabilitiesStr] = match;
-      // Split by comma and clean up each capability (handles newlines, extra spaces, quotes)
-      const capabilities = capabilitiesStr
-        .split(",")
-        .map((c) => c.trim().replace(/["'\s]/g, "")) // Remove quotes, spaces, newlines
-        .filter((c) => c.length > 0); // Filter out empty strings
-
-      // Parse the Vault path - handles both regular and wildcard mount paths
-      const { environment, secretPath, mount } = parseVaultPath(path, mounts);
-
-      // Only process KV (Key-Value) mounts
-      if (mount && (mount.type === "kv" || mount.type === "generic")) {
-        const isKvV2 = mount.version === "2";
-        // For KV v2: explicit metadata paths are metadata, explicit data paths or paths without prefix are data
-        // For KV v1: no metadata endpoint exists, everything is data
-        const isMetadataPath = isKvV2 ? path.includes("/metadata/") : false;
-        const isDataPath = !isMetadataPath; // Everything that's not metadata is a data path
-
-        if (isDataPath && !isMetadataPath) {
-          // Data paths map to secret permissions
-          const actions: { [key: string]: boolean } = {};
-
-          if (capabilities.includes("create"))
-            actions[ProjectPermissionSecretActions.Create] = true;
-          if (capabilities.includes("read")) {
-            actions[ProjectPermissionSecretActions.DescribeSecret] = true;
-            actions[ProjectPermissionSecretActions.ReadValue] = true;
-          }
-          if (capabilities.includes("update") || capabilities.includes("patch"))
-            actions[ProjectPermissionSecretActions.Edit] = true;
-          if (capabilities.includes("delete"))
-            actions[ProjectPermissionSecretActions.Delete] = true;
-
-          if (Object.keys(actions).length > 0) {
-            const conditions: Array<{ lhs: string; operator: string; rhs: string }> = [];
-
-            // Add environment condition with glob support if it contains wildcards
-            if (environment) {
-              // Convert Vault '+' to glob '*' for environment matching
-              const globEnv = environment.replace(/\+/g, "*");
-              // Skip condition if it's just '*' (matches everything = no restriction)
-              if (globEnv !== "*") {
-                const hasWildcard = globEnv.includes("*");
-                conditions.push({
-                  lhs: "environment",
-                  operator: hasWildcard
-                    ? PermissionConditionOperators.$GLOB
-                    : PermissionConditionOperators.$EQ,
-                  rhs: globEnv
-                });
-              }
-            }
-
-            // Add secret path condition with glob support
-            if (secretPath && secretPath !== "/*") {
-              // Convert Vault wildcards to picomatch glob patterns
-              // Vault '*' = match within segment, picomatch '**' = match across segments
-              // Vault '+' = single segment, convert to '*' (note: slightly more permissive)
-              const globPath = secretPath.replace(/\+/g, "*");
-              // Check if we need glob operator
-              const hasWildcard = globPath.includes("*");
-              conditions.push({
-                lhs: "secretPath",
-                operator: hasWildcard
-                  ? PermissionConditionOperators.$GLOB
-                  : PermissionConditionOperators.$EQ,
-                rhs: globPath
-              });
-            }
-
-            const newRule = {
-              ...actions,
-              conditions
-            };
-
-            // Check for duplicates before adding
-            const ruleKey = createPermissionRuleKey(newRule);
-            if (!seenSecretRules.has(ruleKey)) {
-              seenSecretRules.add(ruleKey);
-              secretsPermissions.push(newRule);
-            }
-          }
-        } else if (isMetadataPath) {
-          // Metadata paths map to folder permissions
-          const actions: { [key: string]: boolean } = {};
-
-          if (capabilities.includes("create")) actions[ProjectPermissionActions.Create] = true;
-          if (capabilities.includes("update") || capabilities.includes("patch"))
-            actions[ProjectPermissionActions.Edit] = true;
-          if (capabilities.includes("delete")) actions[ProjectPermissionActions.Delete] = true;
-
-          if (Object.keys(actions).length > 0) {
-            const conditions: Array<{ lhs: string; operator: string; rhs: string }> = [];
-
-            // Add environment condition with glob support if it contains wildcards
-            if (environment) {
-              // Convert Vault '+' to glob '*' for environment matching
-              const globEnv = environment.replace(/\+/g, "*");
-              // Skip condition if it's just '*' (matches everything = no restriction)
-              if (globEnv !== "*") {
-                const hasWildcard = globEnv.includes("*");
-                conditions.push({
-                  lhs: "environment",
-                  operator: hasWildcard
-                    ? PermissionConditionOperators.$GLOB
-                    : PermissionConditionOperators.$EQ,
-                  rhs: globEnv
-                });
-              }
-            }
-
-            // Add secret path condition for folders with glob support
-            if (secretPath && secretPath !== "/*") {
-              // Convert Vault '+' wildcard to glob '*'
-              const globPath = secretPath.replace(/\+/g, "*");
-              const hasWildcard = globPath.includes("*");
-              conditions.push({
-                lhs: "secretPath",
-                operator: hasWildcard
-                  ? PermissionConditionOperators.$GLOB
-                  : PermissionConditionOperators.$EQ,
-                rhs: globPath
-              });
-            }
-
-            const newRule = {
-              ...actions,
-              conditions
-            };
-
-            // Check for duplicates before adding
-            const ruleKey = createPermissionRuleKey(newRule);
-            if (!seenFolderRules.has(ruleKey)) {
-              seenFolderRules.add(ruleKey);
-              foldersPermissions.push(newRule);
-            }
-          }
-        }
-      }
-
-      match = pathRegex.exec(cleanedPolicy);
-    }
-
-    if (secretsPermissions.length > 0) {
-      permissions[ProjectPermissionSub.Secrets] = secretsPermissions;
-    }
-
-    if (foldersPermissions.length > 0) {
-      permissions[ProjectPermissionSub.SecretFolders] = foldersPermissions;
-    }
-  } catch (err) {
-    console.error("Error parsing HCL policy:", err);
-  }
-
-  return permissions;
 };
 
 const Content = ({ onClose }: ContentProps) => {
@@ -462,8 +130,8 @@ const Content = ({ onClose }: ContentProps) => {
       });
 
       createNotification({
-        type: "success",
-        text: "Policy translated and applied successfully"
+        type: "info",
+        text: "Vault policy translated and prefilled"
       });
 
       onClose();
@@ -505,7 +173,7 @@ const Content = ({ onClose }: ContentProps) => {
       <FormControl
         label="Namespace"
         className="mb-4"
-        tooltipText="Required to fetch mount information. Policies will be intelligently translated using your Vault's KV secret engine mounts to extract environments and secret paths."
+        tooltipText="Required to fetch mount information. Policies will be translated using your Vault's KV secret engine mounts to extract environments and secret paths."
       >
         <>
           <FilterableSelect
