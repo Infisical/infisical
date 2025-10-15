@@ -121,24 +121,20 @@ const makeSqlConnection = (
               database: connectionDetails.database,
               ssl: sslEnabled
                 ? {
-                    // Due to no custom checkServerIdentity available, we can only pass in false here and perform custom
-                    // validation as we need to
-                    rejectUnauthorized: false
+                    rejectUnauthorized: sslRejectUnauthorized,
+                    ca: sslCertificate,
                   }
-                : undefined
+                : undefined,
             });
-            if (sslEnabled && sslRejectUnauthorized) {
-              const secureSocket = (client as any).stream as TLSSocket;
-              const serverCert = secureSocket.getPeerCertificate();
-              console.info("XXXX: secureSocket", secureSocket, serverCert);
-              // TODO: perform custom check here
-            }
             client.query(SIMPLE_QUERY);
           } catch (error) {
             console.error("!!!! validate error", error);
             if (connectOnly) {
               // Hacky way to know if we successfully hit the database.
-              if (error instanceof Error && error.message.startsWith(`Access denied for user '${TEST_CONNECTION_USERNAME}'@`)) {
+              if (
+                error instanceof Error &&
+                error.message.startsWith(`Access denied for user '${TEST_CONNECTION_USERNAME}'@`)
+              ) {
                 return;
               }
             }
