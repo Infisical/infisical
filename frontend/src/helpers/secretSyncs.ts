@@ -8,10 +8,7 @@ import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
 
-export const SECRET_SYNC_MAP: Record<
-  SecretSync,
-  { name: string; image: string; imageClassName?: string }
-> = {
+export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }> = {
   [SecretSync.AWSParameterStore]: { name: "AWS Parameter Store", image: "Amazon Web Services.png" },
   [SecretSync.AWSSecretsManager]: { name: "AWS Secrets Manager", image: "Amazon Web Services.png" },
   [SecretSync.GitHub]: { name: "GitHub", image: "GitHub.png" },
@@ -119,8 +116,7 @@ export const SECRET_SYNC_MAP: Record<
   },
   [SecretSync.LaravelForge]: {
     name: "Laravel Forge",
-    image: "Laravel Forge.png",
-    imageClassName: "object-contain"
+    image: "Laravel Forge.png"
   }
 };
 

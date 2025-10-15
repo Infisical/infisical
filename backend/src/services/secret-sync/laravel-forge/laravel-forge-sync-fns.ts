@@ -29,27 +29,65 @@ const parseEnv = (str: string) => {
   const lines = str.split("\n");
   const parsed: { key: string; value: string }[] = [];
 
-  lines.forEach((line) => {
-    const trimmed = line.trim();
+  let i = 0;
+  while (i < lines.length) {
+    const trimmed = lines[i].trim();
 
-    const isInvalidLine = trimmed === "" || trimmed.startsWith("#");
+    // Skip empty lines and comments
+    if (trimmed === "" || trimmed.startsWith("#")) {
+      i += 1;
+      // eslint-disable-next-line no-continue
+      continue;
+    }
 
-    if (!isInvalidLine && trimmed.includes("=")) {
+    if (trimmed.includes("=")) {
       const equalIndex = trimmed.indexOf("=");
       const key = trimmed.substring(0, equalIndex).trim();
       const valueRaw = trimmed.substring(equalIndex + 1).trim();
-      let value = valueRaw;
 
-      if ((value.startsWith(`"`) && value.endsWith(`"`)) || (value.startsWith(`'`) && value.endsWith(`'`))) {
-        value = value.slice(1, -1);
+      // Check if value starts with a quote
+      const startsWithDoubleQuote = valueRaw.startsWith('"');
+      const startsWithSingleQuote = valueRaw.startsWith("'");
+
+      if (startsWithDoubleQuote || startsWithSingleQuote) {
+        const quoteChar = startsWithDoubleQuote ? '"' : "'";
+
+        const closingQuoteIndex = valueRaw.indexOf(quoteChar, 1);
+
+        if (closingQuoteIndex !== -1) {
+          // Single-line quoted value
+          const value = valueRaw.slice(1, closingQuoteIndex);
+          parsed.push({ key, value });
+          i += 1;
+        } else {
+          // Multiline quoted value - collect lines until closing quote
+          let value = valueRaw.slice(1);
+          i += 1;
+
+          while (i < lines.length) {
+            const nextLine = lines[i];
+            const closingIndex = nextLine.indexOf(quoteChar);
+
+            if (closingIndex !== -1) {
+              value += `\n${nextLine.substring(0, closingIndex)}`;
+              parsed.push({ key, value });
+              i += 1;
+              break;
+            } else {
+              value += `\n${nextLine}`;
+              i += 1;
+            }
+          }
+        }
+      } else {
+        // Unquoted value
+        parsed.push({ key, value: valueRaw });
+        i += 1;
       }
-
-      parsed.push({
-        key,
-        value
-      });
+    } else {
+      i += 1;
     }
-  });
+  }
 
   return parsed;
 };
@@ -70,12 +108,22 @@ const getLaravelForgeSecrets = async (secretSync: TLaravelForgeSyncWithCredentia
 };
 
 const buildEnvString = (secrets: LaravelForgeSecret[]) => {
+  if (secrets.length === 0) {
+    return "# .env";
+  }
+
   return secrets
     .map((secret) => {
-      if (secret.value.includes(" ")) {
-        return `${secret.key}="${secret.value}"`;
+      const { value } = secret;
+
+      if (value.includes(`"`)) {
+        return `${secret.key}='${value}'`;
       }
-      return `${secret.key}=${secret.value}`;
+
+      if (value.includes(" ") || value.includes("\n") || value.includes(`'`)) {
+        return `${secret.key}="${value}"`;
+      }
+      return `${secret.key}=${value}`;
     })
     .join("\n");
 };
