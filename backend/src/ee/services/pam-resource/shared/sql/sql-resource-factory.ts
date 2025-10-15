@@ -21,30 +21,91 @@ const SQL_CONNECTION_CLIENT_MAP = {
   [PamResource.MySQL]: "mysql2",
 };
 
-const getConnectionConfig = (
-  resourceType: PamResource,
-  { host, sslEnabled, sslRejectUnauthorized, sslCertificate }: TSqlResourceConnectionDetails
-) => {
-  switch (resourceType) {
+export interface SqlResourceConnection {
+  /**
+   * Check and see if the connection is good or not.
+   * 
+   * @param connectOnly when true, if we only want to know that making the connection is possible or not,
+   *                    we don't care about authentication failures
+   * @returns Promise to be resolved when the connection is good, otherwise an error will be errbacked
+   */
+  validate: (connectOnly: boolean) => Promise<void>;
+
+  /**
+   * Close the connection.
+   * 
+   * @returns Promise for closing the connection
+   */
+  close: () => Promise<void>;
+}
+
+const makeSqlConnection = (
+  proxyPort: number,
+  config: {
+    connectionDetails: TSqlResourceConnectionDetails;
+    resourceType: PamResource;
+    username?: string;
+    password?: string;
+  },
+): SqlResourceConnection => {
+  const { connectionDetails, resourceType, username, password } = config;
+  const { host, sslEnabled, sslRejectUnauthorized, sslCertificate } = connectionDetails;
+  switch (config.resourceType) {
     case PamResource.Postgres: {
+      const client = knex({
+        client: SQL_CONNECTION_CLIENT_MAP[resourceType],
+        connection: {
+          database: connectionDetails.database,
+          port: proxyPort,
+          host: "localhost",
+          user: username ?? TEST_CONNECTION_USERNAME, // Use provided username or fallback
+          password: password ?? TEST_CONNECTION_PASSWORD, // Use provided password or fallback
+          connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
+          ssl: sslEnabled
+              ? {
+                  rejectUnauthorized: sslRejectUnauthorized,
+                  ca: sslCertificate,
+                  servername: host,
+                  // When using proxy, we need to bypass hostname validation since we connect to localhost
+                  // but validate the certificate against the actual hostname
+                  checkServerIdentity: (hostname: string, cert: PeerCertificate) => {
+                    return tls.checkServerIdentity(host, cert);
+                  }
+                }
+              : false
+          }
+        });
       return {
-        ssl: sslEnabled
-          ? {
-              rejectUnauthorized: sslRejectUnauthorized,
-              ca: sslCertificate,
-              servername: host,
-              // When using proxy, we need to bypass hostname validation since we connect to localhost
-              // but validate the certificate against the actual hostname
-              checkServerIdentity: (hostname: string, cert: PeerCertificate) => {
-                return tls.checkServerIdentity(host, cert);
-              }
+        validate: async (connectOnly) => {
+          try {
+            await client.raw("select 1");
+          } catch (error) {
+            if (error instanceof BadRequestError) {
+              // Hacky way to know if we successfully hit the database.
+              // TODO: potentially two approaches to solve the problem.
+              //       1. change the work flow, add account first then resource
+              //       2. modify relay to add a new endpoint for returning if the target host is healthy or not
+              //          (like being able to do an auth handshake regardless pass or not)
+              if (connectOnly &&
+                (
+                  error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"` ||
+                  error.message.includes("no pg_hba.conf entry for host")
+                )
+              ) {
+                return;
+              }            
             }
-          : false
+            throw new BadRequestError({
+              message: `Unable to validate connection to ${resourceType}: ${(error as Error).message || String(error)}`
+            });
+          }
+        },
+        close: async () => await client.destroy()
       };
     }
     case PamResource.MySQL: {
       return {
-        // TODO: support SSL connections
+        // TODO:
       };
     }
     default:
@@ -52,7 +113,7 @@ const getConnectionConfig = (
         message: `Unhandled SQL Resource Connection Config: ${resourceType as PamResource}`
       });
   }
-};
+}
 
 export const executeWithGateway = async <T>(
   config: {
@@ -63,10 +124,9 @@ export const executeWithGateway = async <T>(
     password?: string;
   },
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  operation: (client: Knex) => Promise<T>
+  operation: (connection: SqlResourceConnection) => Promise<T>
 ): Promise<T> => {
-  const { connectionDetails, resourceType, gatewayId, username, password } = config;
-
+  const { connectionDetails, gatewayId } = config;
   const [targetHost] = await verifyHostInputValidity(connectionDetails.host, true);
   const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
     gatewayId,
@@ -80,22 +140,11 @@ export const executeWithGateway = async <T>(
 
   return withGatewayV2Proxy(
     async (proxyPort) => {
-      const client = knex({
-        client: SQL_CONNECTION_CLIENT_MAP[resourceType],
-        connection: {
-          database: connectionDetails.database,
-          port: proxyPort,
-          host: "localhost",
-          user: username ?? TEST_CONNECTION_USERNAME, // Use provided username or fallback
-          password: password ?? TEST_CONNECTION_PASSWORD, // Use provided password or fallback
-          connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
-          ...getConnectionConfig(resourceType, connectionDetails)
-        }
-      });
+      const connection = makeSqlConnection(proxyPort, config);
       try {
-        return await operation(client);
+        return await operation(connection);
       } finally {
-        await client.destroy();
+        await connection.close();
       }
     },
     {
