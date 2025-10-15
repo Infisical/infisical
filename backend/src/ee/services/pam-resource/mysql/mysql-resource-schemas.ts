@@ -18,7 +18,7 @@ import {
 // Resources
 export const MySQLResourceConnectionDetailsSchema = BaseSqlResourceConnectionDetailsSchema.extend({
   // MySQL db in many cases the db will not be provided when making connection
-  database: z.string().trim().optional().default(""),
+  database: z.string().trim().default(""),
 });
 
 const BaseMySQLResourceSchema = BasePamResourceSchema.extend({ resourceType: z.literal(PamResource.MySQL) });
