@@ -1,4 +1,5 @@
-import knex, { Knex } from "knex";
+import knex from "knex";
+import mysql, { Connection } from "mysql2/promise"
 import tls, { PeerCertificate } from "tls";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
@@ -55,11 +56,11 @@ const makeSqlConnection = (
       const client = knex({
         client: SQL_CONNECTION_CLIENT_MAP[resourceType],
         connection: {
-          database: connectionDetails.database,
-          port: proxyPort,
           host: "localhost",
+          port: proxyPort,
           user: username ?? TEST_CONNECTION_USERNAME, // Use provided username or fallback
           password: password ?? TEST_CONNECTION_PASSWORD, // Use provided password or fallback
+          database: connectionDetails.database,
           connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
           ssl: sslEnabled
               ? {
@@ -93,7 +94,7 @@ const makeSqlConnection = (
                 )
               ) {
                 return;
-              }            
+              }
             }
             throw new BadRequestError({
               message: `Unable to validate connection to ${resourceType}: ${(error as Error).message || String(error)}`
@@ -104,8 +105,40 @@ const makeSqlConnection = (
       };
     }
     case PamResource.MySQL: {
+      let client: Connection | null = null;
       return {
-        // TODO:
+        validate: async (connectOnly) => {
+          try {
+            if (client === null) {
+              // Notice: the reason we are not using Knex for mysql2 is because we don't need any fancy feature from Knex. 
+              //         mysql2 doesn't provide custom ssl verification function pass in.
+              //         ref: https://github.com/sidorares/node-mysql2/blob/2543272a2ada8d8a07f74582549d7dd3fe948e2d/lib/base/connection.js#L358-L362
+              //         and then even I tried to workaround it with Knex's pool afterCreate hook, but then encounter a bug:
+              //         ref: https://github.com/knex/knex/issues/5352
+              //         It appears that using Knex causing more troubles than not, we are just checking the connections,
+              //         so it's much easier to create raw connection with the driver lib directly
+              client = await mysql.createConnection({
+                host: "localhost",
+                port: proxyPort,
+                user: username ?? TEST_CONNECTION_USERNAME, // Use provided username or fallback
+                password: password ?? TEST_CONNECTION_PASSWORD, // Use provided password or fallback
+                database: connectionDetails.database,
+                ssl: {
+                  // Due to no custom checkServerIdentity available, we can only pass in false here and perform custom
+                  // validation as we need to
+                  rejectUnauthorized: false
+                },
+              });
+            }
+          } catch (error) {
+            console.error("!!!! validate error", error)
+            // TODO:
+            throw error;
+          } finally {
+            await client?.end()
+          }
+        },
+        close: async () => {},
       };
     }
     default:
