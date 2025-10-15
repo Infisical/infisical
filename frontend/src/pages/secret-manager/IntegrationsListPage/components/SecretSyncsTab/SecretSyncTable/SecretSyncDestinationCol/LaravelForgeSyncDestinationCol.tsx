@@ -10,6 +10,5 @@ type Props = {
 export const LaravelForgeSyncDestinationCol = ({ secretSync }: Props) => {
   const { primaryText, secondaryText } = getSecretSyncDestinationColValues(secretSync);
 
-  console.log({ secretSync });
   return <SecretSyncTableCell primaryText={primaryText} secondaryText={secondaryText} />;
 };

@@ -9,9 +9,9 @@ const laravelForgeConnectionKeys = {
   all: [...appConnectionKeys.all, "laravel-forge"] as const,
   listOrganizations: (connectionId: string) =>
     [...laravelForgeConnectionKeys.all, "organizations", connectionId] as const,
-  listServers: (connectionId: string, organizationSlug?: string) =>
+  listServers: (connectionId: string, organizationSlug: string) =>
     [...laravelForgeConnectionKeys.all, "servers", connectionId, organizationSlug] as const,
-  listSites: (connectionId: string, organizationSlug?: string, serverId?: string) =>
+  listSites: (connectionId: string, organizationSlug: string, serverId: number) =>
     [...laravelForgeConnectionKeys.all, "sites", connectionId, organizationSlug, serverId] as const
 };
 
@@ -56,7 +56,7 @@ export const useLaravelForgeConnectionListServers = (
   return useQuery({
     queryKey: laravelForgeConnectionKeys.listServers(connectionId, organizationSlug),
     queryFn: async () => {
-      const params = organizationSlug ? { organizationSlug } : {};
+      const params = { organizationSlug };
       const { data } = await apiRequest.get<TLaravelForgeServer[]>(
         `/api/v1/app-connections/laravel-forge/${connectionId}/servers`,
         { params }
@@ -64,15 +64,15 @@ export const useLaravelForgeConnectionListServers = (
 
       return data;
     },
-    enabled: Boolean(connectionId),
+    enabled: Boolean(connectionId && organizationSlug),
     ...options
   });
 };
 
 export const useLaravelForgeConnectionListSites = (
   connectionId: string,
-  organizationSlug?: string,
-  serverId?: string,
+  organizationSlug: string,
+  serverId: number,
   options?: Omit<
     UseQueryOptions<
       TLaravelForgeSite[],
@@ -86,9 +86,10 @@ export const useLaravelForgeConnectionListSites = (
   return useQuery({
     queryKey: laravelForgeConnectionKeys.listSites(connectionId, organizationSlug, serverId),
     queryFn: async () => {
-      const params: Record<string, string> = {};
-      if (organizationSlug) params.organizationSlug = organizationSlug;
-      if (serverId) params.serverId = serverId;
+      const params = {
+        organizationSlug,
+        serverId
+      };
 
       const { data } = await apiRequest.get<TLaravelForgeSite[]>(
         `/api/v1/app-connections/laravel-forge/${connectionId}/sites`,
@@ -97,7 +98,7 @@ export const useLaravelForgeConnectionListSites = (
 
       return data;
     },
-    enabled: Boolean(connectionId),
+    enabled: Boolean(connectionId && organizationSlug && serverId),
     ...options
   });
 };

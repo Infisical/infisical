@@ -21,7 +21,7 @@ export type TLaravelForgeSyncWithCredentials = TLaravelForgeSync & {
 export type TGetLaravelForgeSecrets = {
   apiToken: string;
   orgSlug: string;
-  serverId: string;
+  serverId: number;
   siteId: string;
 };
 

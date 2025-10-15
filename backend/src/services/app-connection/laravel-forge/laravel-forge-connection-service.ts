@@ -54,7 +54,7 @@ export const laravelForgeConnectionService = (getAppConnection: TGetAppConnectio
     connectionId: string,
     actor: OrgServiceActor,
     organizationSlug: string,
-    serverId: string
+    serverId: number
   ): Promise<TLaravelForgeSite[]> => {
     const appConnection = await getAppConnection(AppConnection.LaravelForge, connectionId, actor);
     try {

@@ -7,7 +7,7 @@ export type TLaravelForgeSync = TRootSecretSync & {
   destinationConfig: {
     orgSlug: string;
     orgName: string;
-    serverId: string;
+    serverId: number;
     serverName: string;
     siteId: string;
     siteName: string;
