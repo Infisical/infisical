@@ -37,11 +37,8 @@ import {
   IdentityKubernetesAuthTokenReviewMode,
   IdentityTrustedIp
 } from "@app/hooks/api/identities/types";
-import { useGetExternalMigrationConfig } from "@app/hooks/api/migration/queries";
-import {
-  ExternalMigrationProviders,
-  VaultKubernetesAuthRole
-} from "@app/hooks/api/migration/types";
+import { useGetVaultExternalMigrationConfigs } from "@app/hooks/api/migration/queries";
+import { VaultKubernetesAuthRole } from "@app/hooks/api/migration/types";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
@@ -130,8 +127,8 @@ export const IdentityKubernetesAuthForm = ({
   const { popUp, handlePopUpToggle: handleImportPopUpToggle } = usePopUp([
     "importFromVault"
   ] as const);
-  const { data: vaultConfig } = useGetExternalMigrationConfig(ExternalMigrationProviders.Vault);
-  const hasVaultConnection = Boolean(vaultConfig?.connectionId);
+  const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
+  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
 
   const {
     control,

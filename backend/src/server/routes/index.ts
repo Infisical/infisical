@@ -174,9 +174,9 @@ import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { convertorServiceFactory } from "@app/services/convertor/convertor-service";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
-import { externalMigrationConfigDALFactory } from "@app/services/external-migration/external-migration-config-dal";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
 import { externalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
+import { vaultExternalMigrationConfigDALFactory } from "@app/services/external-migration/vault-external-migration-config-dal";
 import { folderCheckpointDALFactory } from "@app/services/folder-checkpoint/folder-checkpoint-dal";
 import { folderCheckpointResourcesDALFactory } from "@app/services/folder-checkpoint-resources/folder-checkpoint-resources-dal";
 import { folderCommitDALFactory } from "@app/services/folder-commit/folder-commit-dal";
@@ -534,7 +534,7 @@ export const registerRoutes = async (
   const membershipRoleDAL = membershipRoleDALFactory(db);
   const roleDAL = roleDALFactory(db);
 
-  const externalMigrationConfigDAL = externalMigrationConfigDALFactory(db);
+  const vaultExternalMigrationConfigDAL = vaultExternalMigrationConfigDALFactory(db);
 
   const eventBusService = eventBusFactory(server.redis);
   const sseService = sseServiceFactory(eventBusService, server.redis);
@@ -2199,7 +2199,7 @@ export const registerRoutes = async (
     gatewayService,
     kmsService,
     appConnectionService,
-    externalMigrationConfigDAL,
+    vaultExternalMigrationConfigDAL,
     secretService,
     auditLogService
   });

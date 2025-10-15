@@ -205,7 +205,7 @@ export enum TableName {
   PamAccount = "pam_accounts",
   PamSession = "pam_sessions",
 
-  ExternalMigrationConfig = "external_migration_configs"
+  VaultExternalMigrationConfig = "vault_external_migration_configs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

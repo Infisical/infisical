@@ -83,9 +83,6 @@ import {
   TExternalKms,
   TExternalKmsInsert,
   TExternalKmsUpdate,
-  TExternalMigrationConfigs,
-  TExternalMigrationConfigsInsert,
-  TExternalMigrationConfigsUpdate,
   TFolderCheckpointResources,
   TFolderCheckpointResourcesInsert,
   TFolderCheckpointResourcesUpdate,
@@ -521,6 +518,9 @@ import {
   TUsers,
   TUsersInsert,
   TUsersUpdate,
+  TVaultExternalMigrationConfigs,
+  TVaultExternalMigrationConfigsInsert,
+  TVaultExternalMigrationConfigsUpdate,
   TWebhooks,
   TWebhooksInsert,
   TWebhooksUpdate,
@@ -1348,10 +1348,10 @@ declare module "knex/types/tables" {
       TAdditionalPrivilegesInsert,
       TAdditionalPrivilegesUpdate
     >;
-    [TableName.ExternalMigrationConfig]: KnexOriginal.CompositeTableType<
-      TExternalMigrationConfigs,
-      TExternalMigrationConfigsInsert,
-      TExternalMigrationConfigsUpdate
+    [TableName.VaultExternalMigrationConfig]: KnexOriginal.CompositeTableType<
+      TVaultExternalMigrationConfigs,
+      TVaultExternalMigrationConfigsInsert,
+      TVaultExternalMigrationConfigsUpdate
     >;
   }
 }

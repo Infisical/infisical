@@ -4,7 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import {
   ExternalMigrationProviders,
-  TExternalMigrationConfig,
+  TVaultExternalMigrationConfig,
   VaultKubernetesAuthRole
 } from "./types";
 
@@ -13,7 +13,7 @@ export const externalMigrationQueryKeys = {
     "custom-migration-available",
     provider
   ],
-  config: (platform: string) => ["external-migration-config", { platform }],
+  vaultConfigs: () => ["vault-external-migration-configs"],
   vaultNamespaces: () => ["vault-namespaces"],
   vaultPolicies: (namespace?: string) => ["vault-policies", namespace],
   vaultMounts: (namespace?: string) => ["vault-mounts", namespace],
@@ -31,19 +31,15 @@ export const useHasCustomMigrationAvailable = (provider: ExternalMigrationProvid
   });
 };
 
-export const useGetExternalMigrationConfig = (platform: string) => {
+export const useGetVaultExternalMigrationConfigs = () => {
   return useQuery({
-    queryKey: externalMigrationQueryKeys.config(platform),
+    queryKey: externalMigrationQueryKeys.vaultConfigs(),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ config: TExternalMigrationConfig | null }>(
-        "/api/v3/external-migration/config",
-        {
-          params: { platform }
-        }
+      const { data } = await apiRequest.get<{ configs: TVaultExternalMigrationConfig[] }>(
+        "/api/v3/external-migration/vault/configs"
       );
-      return data.config;
-    },
-    enabled: Boolean(platform)
+      return data.configs;
+    }
   });
 };
 

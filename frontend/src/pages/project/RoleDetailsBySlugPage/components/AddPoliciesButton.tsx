@@ -12,8 +12,7 @@ import {
 import { useOrgPermission } from "@app/context";
 import { OrgMembershipRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
-import { useGetExternalMigrationConfig } from "@app/hooks/api/migration";
-import { ExternalMigrationProviders } from "@app/hooks/api/migration/types";
+import { useGetVaultExternalMigrationConfigs } from "@app/hooks/api/migration";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { PolicySelectionModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicySelectionModal";
 import { PolicyTemplateModal } from "@app/pages/project/RoleDetailsBySlugPage/components/PolicyTemplateModal";
@@ -33,9 +32,8 @@ export const AddPoliciesButton = ({ isDisabled, projectType }: Props) => {
   ] as const);
 
   const { hasOrgRole } = useOrgPermission();
-  const { data: vaultConfig } = useGetExternalMigrationConfig(ExternalMigrationProviders.Vault);
-
-  const hasVaultConnection = Boolean(vaultConfig?.connectionId);
+  const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
+  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
   const isVaultImportDisabled = isDisabled || !isOrgAdmin;
 

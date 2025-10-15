@@ -8,10 +8,10 @@ export enum VaultImportStatus {
   ApprovalRequired = "approval_required"
 }
 
-export type TExternalMigrationConfig = {
+export type TVaultExternalMigrationConfig = {
   id: string;
   orgId: string;
-  platform: string;
+  namespace: string;
   connectionId: string | null;
   createdAt: string;
   updatedAt: string;

@@ -127,8 +127,20 @@ export enum VaultImportStatus {
   ApprovalRequired = "approval_required"
 }
 
-export type TConfigureExternalMigrationDTO = {
-  platform: ExternalMigrationProviders;
+export type TCreateVaultExternalMigrationDTO = {
+  namespace: string;
+  connectionId: string;
+  actor: OrgServiceActor;
+};
+
+export type TUpdateVaultExternalMigrationDTO = {
+  id: string;
+  namespace: string;
   connectionId: string | null;
+  actor: OrgServiceActor;
+};
+
+export type TDeleteVaultExternalMigrationDTO = {
+  id: string;
   actor: OrgServiceActor;
 };

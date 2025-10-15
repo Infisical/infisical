@@ -20,7 +20,6 @@ import {
   getHCVaultSecretsForPath,
   HCVaultAuthType,
   listHCVaultMounts,
-  listHCVaultNamespaces,
   listHCVaultPolicies,
   listHCVaultSecretPaths,
   THCVaultConnection
@@ -29,7 +28,6 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { TSecretServiceFactory } from "../secret/secret-service";
 import { SecretProtectionType } from "../secret/secret-types";
 import { TUserDALFactory } from "../user/user-dal";
-import { TExternalMigrationConfigDALFactory } from "./external-migration-config-dal";
 import {
   decryptEnvKeyDataFn,
   importVaultDataFn,
@@ -40,12 +38,15 @@ import { TExternalMigrationQueueFactory } from "./external-migration-queue";
 import {
   ExternalMigrationProviders,
   ExternalPlatforms,
-  TConfigureExternalMigrationDTO,
+  TCreateVaultExternalMigrationDTO,
+  TDeleteVaultExternalMigrationDTO,
   THasCustomVaultMigrationDTO,
   TImportEnvKeyDataDTO,
   TImportVaultDataDTO,
+  TUpdateVaultExternalMigrationDTO,
   VaultImportStatus
 } from "./external-migration-types";
+import { TVaultExternalMigrationConfigDALFactory } from "./vault-external-migration-config-dal";
 
 type TExternalMigrationServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
@@ -53,7 +54,10 @@ type TExternalMigrationServiceFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   externalMigrationQueue: TExternalMigrationQueueFactory;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
-  externalMigrationConfigDAL: Pick<TExternalMigrationConfigDALFactory, "create" | "upsert" | "findOne" | "transaction">;
+  vaultExternalMigrationConfigDAL: Pick<
+    TVaultExternalMigrationConfigDALFactory,
+    "create" | "findOne" | "transaction" | "find" | "updateById" | "deleteById" | "findById"
+  >;
   userDAL: Pick<TUserDALFactory, "findById">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -69,7 +73,7 @@ export const externalMigrationServiceFactory = ({
   secretService,
   auditLogService,
   appConnectionService,
-  externalMigrationConfigDAL,
+  vaultExternalMigrationConfigDAL,
   kmsService
 }: TExternalMigrationServiceFactoryDep) => {
   const importEnvKeyData = async ({
@@ -208,7 +212,35 @@ export const externalMigrationServiceFactory = ({
     return actorOrgId in vaultMigrationTransformMappings;
   };
 
-  const configureExternalMigration = async ({ platform, connectionId, actor }: TConfigureExternalMigrationDTO) => {
+  const validateVaultExternalMigrationConnection = async ({
+    connection,
+    namespace
+  }: {
+    connection: THCVaultConnection;
+    namespace: string;
+  }) => {
+    // Allow root namespace access when no namespace is configured on the connection
+    const isRootAccess = namespace === "root" || namespace === "/";
+    const hasNoNamespace = connection.credentials.namespace === undefined;
+
+    if (hasNoNamespace && isRootAccess) {
+      // Skip validation for root access with no configured namespace
+    } else if (connection.credentials.namespace !== namespace) {
+      throw new BadRequestError({ message: "Namespace value does not match the namespace of the connection" });
+    }
+
+    try {
+      await listHCVaultPolicies(namespace, connection, gatewayService);
+      await listHCVaultSecretPaths(namespace, connection, gatewayService);
+      await listHCVaultMounts(connection, gatewayService);
+    } catch (error) {
+      throw new BadRequestError({
+        message: `Failed to establish namespace confiugration. ${error instanceof Error ? error.message : "Unknown error"}`
+      });
+    }
+  };
+
+  const createVaultExternalMigration = async ({ namespace, connectionId, actor }: TCreateVaultExternalMigrationDTO) => {
     const { hasRole } = await permissionService.getOrgPermission(
       actor.type,
       actor.id,
@@ -218,19 +250,22 @@ export const externalMigrationServiceFactory = ({
     );
 
     if (!hasRole(OrgMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({ message: "Only admins can configure external migration" });
+      throw new ForbiddenRequestError({ message: "Only admins can configure vault external migration" });
     }
 
-    if (connectionId) {
-      if (platform === ExternalMigrationProviders.Vault) {
-        await appConnectionService.connectAppConnectionById(AppConnection.HCVault, connectionId, actor);
-      } else {
-        throw new BadRequestError({ message: "Invalid platform" });
-      }
-    }
+    const connection = await appConnectionService.connectAppConnectionById<THCVaultConnection>(
+      AppConnection.HCVault,
+      connectionId,
+      actor
+    );
 
-    const config = await externalMigrationConfigDAL.upsert({
-      platform,
+    await validateVaultExternalMigrationConnection({
+      connection,
+      namespace
+    });
+
+    const config = await vaultExternalMigrationConfigDAL.create({
+      namespace,
       connectionId,
       orgId: actor.orgId
     });
@@ -238,7 +273,12 @@ export const externalMigrationServiceFactory = ({
     return config;
   };
 
-  const getExternalMigrationConfig = async ({ platform, actor }: { platform: string; actor: OrgServiceActor }) => {
+  const updateVaultExternalMigration = async ({
+    id,
+    namespace,
+    connectionId,
+    actor
+  }: TUpdateVaultExternalMigrationDTO) => {
     const { hasRole } = await permissionService.getOrgPermission(
       actor.type,
       actor.id,
@@ -248,19 +288,48 @@ export const externalMigrationServiceFactory = ({
     );
 
     if (!hasRole(OrgMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({ message: "Only admins can view external migration config" });
+      throw new ForbiddenRequestError({ message: "Only admins can update vault external migration" });
     }
 
-    const config = await externalMigrationConfigDAL.findOne({
-      orgId: actor.orgId,
-      platform
+    if (connectionId) {
+      const connection = await appConnectionService.connectAppConnectionById<THCVaultConnection>(
+        AppConnection.HCVault,
+        connectionId,
+        actor
+      );
+
+      await validateVaultExternalMigrationConnection({
+        connection,
+        namespace
+      });
+    }
+
+    const config = await vaultExternalMigrationConfigDAL.updateById(id, {
+      namespace,
+      connectionId
     });
 
-    if (!config) {
-      throw new NotFoundError({ message: "External migration config not found" });
+    return config;
+  };
+
+  const getVaultExternalMigrationConfigs = async ({ actor }: { actor: OrgServiceActor }) => {
+    const { hasRole } = await permissionService.getOrgPermission(
+      actor.type,
+      actor.id,
+      actor.orgId,
+      actor.authMethod,
+      actor.orgId
+    );
+
+    if (!hasRole(OrgMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({ message: "Only admins can view vault external migration configs" });
     }
 
-    return config;
+    const configs = await vaultExternalMigrationConfigDAL.find({
+      orgId: actor.orgId
+    });
+
+    return configs;
   };
 
   const getVaultNamespaces = async ({ actor }: { actor: OrgServiceActor }) => {
@@ -276,32 +345,18 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can view vault namespaces" });
     }
 
-    const vaultConfig = await externalMigrationConfigDAL.findOne({
-      orgId: actor.orgId,
-      platform: ExternalMigrationProviders.Vault
+    // Get all configured namespaces for this org
+    const vaultConfigs = await vaultExternalMigrationConfigDAL.find({
+      orgId: actor.orgId
     });
 
-    if (!vaultConfig) {
-      throw new BadRequestError({ message: "Vault migration config not found" });
-    }
+    // Return the configured namespaces as an array of objects with id and name
+    // where both id and name are the namespace path
+    const namespaces = vaultConfigs.map((config) => ({
+      id: config.namespace,
+      name: config.namespace
+    }));
 
-    if (!vaultConfig.connection) {
-      throw new BadRequestError({ message: "Vault migration connection is not configured" });
-    }
-
-    const credentials = await decryptAppConnectionCredentials({
-      orgId: vaultConfig.orgId,
-      encryptedCredentials: vaultConfig.connection.encryptedCredentials,
-      kmsService,
-      projectId: null
-    });
-
-    const connection = {
-      ...vaultConfig.connection,
-      credentials
-    } as THCVaultConnection;
-
-    const namespaces = await listHCVaultNamespaces(connection, gatewayService);
     return namespaces;
   };
 
@@ -318,17 +373,17 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can view vault policies" });
     }
 
-    const vaultConfig = await externalMigrationConfigDAL.findOne({
+    const vaultConfig = await vaultExternalMigrationConfigDAL.findOne({
       orgId: actor.orgId,
-      platform: ExternalMigrationProviders.Vault
+      namespace
     });
 
     if (!vaultConfig) {
-      throw new NotFoundError({ message: "Vault migration config not found" });
+      throw new NotFoundError({ message: "Vault migration config not found for this namespace" });
     }
 
     if (!vaultConfig.connection) {
-      throw new BadRequestError({ message: "Vault migration connection is not configured" });
+      throw new BadRequestError({ message: "Vault migration connection is not configured for this namespace" });
     }
 
     const credentials = await decryptAppConnectionCredentials({
@@ -347,7 +402,7 @@ export const externalMigrationServiceFactory = ({
     return policies;
   };
 
-  const getVaultMounts = async ({ actor, namespace }: { actor: OrgServiceActor; namespace?: string }) => {
+  const getVaultMounts = async ({ actor, namespace }: { actor: OrgServiceActor; namespace: string }) => {
     const { hasRole } = await permissionService.getOrgPermission(
       actor.type,
       actor.id,
@@ -360,17 +415,17 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can view vault mounts" });
     }
 
-    const vaultConfig = await externalMigrationConfigDAL.findOne({
+    const vaultConfig = await vaultExternalMigrationConfigDAL.findOne({
       orgId: actor.orgId,
-      platform: ExternalMigrationProviders.Vault
+      namespace
     });
 
     if (!vaultConfig) {
-      throw new NotFoundError({ message: "Vault migration config not found" });
+      throw new NotFoundError({ message: "Vault migration config not found for this namespace" });
     }
 
     if (!vaultConfig.connection) {
-      throw new BadRequestError({ message: "Vault migration connection is not configured" });
+      throw new BadRequestError({ message: "Vault migration connection is not configured for this namespace" });
     }
 
     const credentials = await decryptAppConnectionCredentials({
@@ -402,17 +457,17 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can view vault secret paths" });
     }
 
-    const vaultConfig = await externalMigrationConfigDAL.findOne({
+    const vaultConfig = await vaultExternalMigrationConfigDAL.findOne({
       orgId: actor.orgId,
-      platform: ExternalMigrationProviders.Vault
+      namespace
     });
 
     if (!vaultConfig) {
-      throw new NotFoundError({ message: "Vault migration config not found" });
+      throw new NotFoundError({ message: "Vault migration config not found for this namespace" });
     }
 
     if (!vaultConfig.connection) {
-      throw new BadRequestError({ message: "Vault migration connection is not configured" });
+      throw new BadRequestError({ message: "Vault migration connection is not configured for this namespace" });
     }
 
     const credentials = await decryptAppConnectionCredentials({
@@ -461,17 +516,17 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can import vault secrets" });
     }
 
-    const vaultConfig = await externalMigrationConfigDAL.findOne({
+    const vaultConfig = await vaultExternalMigrationConfigDAL.findOne({
       orgId: actor.orgId,
-      platform: ExternalMigrationProviders.Vault
+      namespace: vaultNamespace
     });
 
     if (!vaultConfig) {
-      throw new NotFoundError({ message: "Vault migration config not found" });
+      throw new NotFoundError({ message: "Vault migration config not found for this namespace" });
     }
 
     if (!vaultConfig.connection) {
-      throw new BadRequestError({ message: "Vault migration connection is not configured" });
+      throw new BadRequestError({ message: "Vault migration connection is not configured for this namespace" });
     }
 
     const credentials = await decryptAppConnectionCredentials({
@@ -534,6 +589,34 @@ export const externalMigrationServiceFactory = ({
     }
   };
 
+  const deleteVaultExternalMigration = async ({ id, actor }: TDeleteVaultExternalMigrationDTO) => {
+    const { hasRole } = await permissionService.getOrgPermission(
+      actor.type,
+      actor.id,
+      actor.orgId,
+      actor.authMethod,
+      actor.orgId
+    );
+
+    if (!hasRole(OrgMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({ message: "Only admins can delete vault external migration configs" });
+    }
+
+    const config = await vaultExternalMigrationConfigDAL.findById(id);
+
+    if (!config) {
+      throw new NotFoundError({ message: "Vault migration config not found" });
+    }
+
+    if (config.orgId !== actor.orgId) {
+      throw new ForbiddenRequestError({ message: "Config does not belong to this organization" });
+    }
+
+    const deletedConfig = await vaultExternalMigrationConfigDAL.deleteById(id);
+
+    return deletedConfig;
+  };
+
   const getVaultKubernetesAuthRoles = async ({ actor, namespace }: { actor: OrgServiceActor; namespace: string }) => {
     const { hasRole } = await permissionService.getOrgPermission(
       actor.type,
@@ -547,17 +630,17 @@ export const externalMigrationServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only admins can view vault Kubernetes auth roles" });
     }
 
-    const vaultConfig = await externalMigrationConfigDAL.findOne({
+    const vaultConfig = await vaultExternalMigrationConfigDAL.findOne({
       orgId: actor.orgId,
-      platform: ExternalMigrationProviders.Vault
+      namespace
     });
 
     if (!vaultConfig) {
-      throw new NotFoundError({ message: "Vault migration config not found" });
+      throw new NotFoundError({ message: "Vault migration config not found for this namespace" });
     }
 
     if (!vaultConfig.connection) {
-      throw new BadRequestError({ message: "Vault migration connection is not configured" });
+      throw new BadRequestError({ message: "Vault migration connection is not configured for this namespace" });
     }
 
     const credentials = await decryptAppConnectionCredentials({
@@ -590,8 +673,10 @@ export const externalMigrationServiceFactory = ({
     importEnvKeyData,
     importVaultData,
     hasCustomVaultMigration,
-    configureExternalMigration,
-    getExternalMigrationConfig,
+    createVaultExternalMigration,
+    getVaultExternalMigrationConfigs,
+    updateVaultExternalMigration,
+    deleteVaultExternalMigration,
     getVaultNamespaces,
     getVaultPolicies,
     getVaultMounts,

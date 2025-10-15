@@ -117,33 +117,64 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "GET",
-    url: "/config",
+    url: "/vault/configs",
     config: {
       rateLimit: readLimit
     },
     schema: {
-      querystring: z.object({
-        platform: z.nativeEnum(ExternalMigrationProviders)
-      }),
       response: {
         200: z.object({
-          config: z
+          configs: z
             .object({
               id: z.string(),
               orgId: z.string(),
-              platform: z.string(),
+              namespace: z.string(),
               connectionId: z.string().nullable().optional(),
               createdAt: z.date(),
               updatedAt: z.date()
             })
-            .nullable()
+            .array()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const config = await server.services.migration.getExternalMigrationConfig({
-        platform: req.query.platform,
+      const configs = await server.services.migration.getVaultExternalMigrationConfigs({
+        actor: req.permission
+      });
+
+      return { configs };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/vault/configs",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        connectionId: z.string(),
+        namespace: z.string()
+      }),
+      response: {
+        200: z.object({
+          config: z.object({
+            id: z.string(),
+            orgId: z.string(),
+            namespace: z.string(),
+            connectionId: z.string().nullable().optional(),
+            createdAt: z.date(),
+            updatedAt: z.date()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const config = await server.services.migration.createVaultExternalMigration({
+        ...req.body,
         actor: req.permission
       });
 
@@ -153,21 +184,24 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "PUT",
-    url: "/config",
+    url: "/vault/configs/:id",
     config: {
       rateLimit: writeLimit
     },
     schema: {
+      params: z.object({
+        id: z.string()
+      }),
       body: z.object({
-        connectionId: z.string().nullable(),
-        platform: z.nativeEnum(ExternalMigrationProviders)
+        connectionId: z.string(),
+        namespace: z.string()
       }),
       response: {
         200: z.object({
           config: z.object({
             id: z.string(),
             orgId: z.string(),
-            platform: z.string(),
+            namespace: z.string(),
             connectionId: z.string().nullable().optional(),
             createdAt: z.date(),
             updatedAt: z.date()
@@ -175,12 +209,48 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const config = await server.services.migration.configureExternalMigration({
+      const config = await server.services.migration.updateVaultExternalMigration({
+        id: req.params.id,
         ...req.body,
         actor: req.permission
       });
+
+      return { config };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/vault/configs/:id",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        id: z.string()
+      }),
+      response: {
+        200: z.object({
+          config: z.object({
+            id: z.string(),
+            orgId: z.string(),
+            namespace: z.string(),
+            connectionId: z.string().nullable().optional(),
+            createdAt: z.date(),
+            updatedAt: z.date()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const config = await server.services.migration.deleteVaultExternalMigration({
+        id: req.params.id,
+        actor: req.permission
+      });
+
       return { config };
     }
   });
@@ -243,7 +313,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     },
     schema: {
       querystring: z.object({
-        namespace: z.string().optional()
+        namespace: z.string()
       }),
       response: {
         200: z.object({

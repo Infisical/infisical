@@ -1,39 +1,26 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TExternalMigrationConfigsInsert } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
 
-export type TExternalMigrationConfigDALFactory = ReturnType<typeof externalMigrationConfigDALFactory>;
+export type TVaultExternalMigrationConfigDALFactory = ReturnType<typeof vaultExternalMigrationConfigDALFactory>;
 
-export const externalMigrationConfigDALFactory = (db: TDbClient) => {
-  const orm = ormify(db, TableName.ExternalMigrationConfig);
+export const vaultExternalMigrationConfigDALFactory = (db: TDbClient) => {
+  const orm = ormify(db, TableName.VaultExternalMigrationConfig);
 
-  const upsert = async (data: TExternalMigrationConfigsInsert, tx?: Knex) => {
+  const findOne = async (filter: { orgId: string; namespace: string }, tx?: Knex) => {
     try {
-      const [doc] = await (tx || db)(TableName.ExternalMigrationConfig)
-        .insert(data)
-        .onConflict(["orgId", "platform"])
-        .merge()
-        .returning("*");
-      return doc;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "UpsertExternalMigrationConfig" });
-    }
-  };
-
-  const findOne = async (filter: { orgId: string; platform: string }, tx?: Knex) => {
-    try {
-      const result = await (tx || db?.replicaNode?.() || db)(TableName.ExternalMigrationConfig)
+      const result = await (tx || db?.replicaNode?.() || db)(TableName.VaultExternalMigrationConfig)
         .leftJoin(
           TableName.AppConnection,
           `${TableName.AppConnection}.id`,
-          `${TableName.ExternalMigrationConfig}.connectionId`
+          `${TableName.VaultExternalMigrationConfig}.connectionId`
         )
         /* eslint-disable @typescript-eslint/no-misused-promises */
-        .where(buildFindFilter(prependTableNameToFindFilter(TableName.ExternalMigrationConfig, filter)))
-        .select(selectAllTableCols(TableName.ExternalMigrationConfig))
+        .where(buildFindFilter(prependTableNameToFindFilter(TableName.VaultExternalMigrationConfig, filter)))
+        .select(selectAllTableCols(TableName.VaultExternalMigrationConfig))
         .select(
           db.ref("id").withSchema(TableName.AppConnection).as("appConnectionId"),
           db.ref("name").withSchema(TableName.AppConnection).as("appConnectionName"),
@@ -76,5 +63,5 @@ export const externalMigrationConfigDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, upsert, findOne };
+  return { ...orm, findOne };
 };

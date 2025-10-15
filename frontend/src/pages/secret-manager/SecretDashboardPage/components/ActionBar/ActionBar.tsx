@@ -77,8 +77,11 @@ import {
   fetchDashboardProjectSecretsByKeys
 } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
-import { useGetExternalMigrationConfig, useImportVaultSecrets } from "@app/hooks/api/migration";
-import { ExternalMigrationProviders, VaultImportStatus } from "@app/hooks/api/migration/types";
+import {
+  useGetVaultExternalMigrationConfigs,
+  useImportVaultSecrets
+} from "@app/hooks/api/migration";
+import { VaultImportStatus } from "@app/hooks/api/migration/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
@@ -198,8 +201,8 @@ export const ActionBar = ({
   const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
 
   const { permission } = useProjectPermission();
-  const { data: vaultConfig } = useGetExternalMigrationConfig(ExternalMigrationProviders.Vault);
-  const hasVaultConnection = Boolean(vaultConfig?.connectionId);
+  const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
+  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
     try {
