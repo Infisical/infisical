@@ -15,9 +15,9 @@ export const externalMigrationQueryKeys = {
   ],
   config: (platform: string) => ["external-migration-config", { platform }],
   vaultNamespaces: () => ["vault-namespaces"],
-  vaultPolicies: () => ["vault-policies"],
-  vaultMounts: () => ["vault-mounts"],
-  vaultSecretPaths: () => ["vault-secret-paths"],
+  vaultPolicies: (namespace?: string) => ["vault-policies", namespace],
+  vaultMounts: (namespace?: string) => ["vault-mounts", namespace],
+  vaultSecretPaths: (namespace?: string) => ["vault-secret-paths", namespace],
   vaultKubernetesAuthRoles: (namespace?: string) => ["vault-kubernetes-auth-roles", namespace]
 };
 
@@ -61,7 +61,7 @@ export const useGetVaultNamespaces = () => {
 
 export const useGetVaultPolicies = (enabled = true, namespace?: string) => {
   return useQuery({
-    queryKey: externalMigrationQueryKeys.vaultPolicies(),
+    queryKey: externalMigrationQueryKeys.vaultPolicies(namespace),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         policies: Array<{ name: string; rules: string }>;
@@ -79,7 +79,7 @@ export const useGetVaultPolicies = (enabled = true, namespace?: string) => {
 
 export const useGetVaultMounts = (enabled = true, namespace?: string) => {
   return useQuery({
-    queryKey: externalMigrationQueryKeys.vaultMounts(),
+    queryKey: externalMigrationQueryKeys.vaultMounts(namespace),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         mounts: Array<{ path: string; type: string; version: string | null }>;
@@ -97,7 +97,7 @@ export const useGetVaultMounts = (enabled = true, namespace?: string) => {
 
 export const useGetVaultSecretPaths = (enabled = true, namespace?: string) => {
   return useQuery({
-    queryKey: externalMigrationQueryKeys.vaultSecretPaths(),
+    queryKey: externalMigrationQueryKeys.vaultSecretPaths(namespace),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         secretPaths: string[];

@@ -212,13 +212,6 @@ export const IdentityKubernetesAuthForm = ({
         shouldValidate: true
       });
 
-      if (role.config.token_reviewer_jwt) {
-        setValue("tokenReviewerJwt", role.config.token_reviewer_jwt, {
-          shouldDirty: true,
-          shouldTouch: true
-        });
-      }
-
       if (role.bound_service_account_names?.length > 0) {
         // In Vault, "*" means allow all; in Infisical, empty field means allow any
         const allowedNames = role.bound_service_account_names.includes("*")

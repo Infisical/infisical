@@ -27,16 +27,15 @@ type ContentProps = {
 };
 
 const Content = ({ onClose, onImport }: ContentProps) => {
-  const [selectedNamespace, setSelectedNamespace] = useState<string>("default");
+  const [selectedNamespace, setSelectedNamespace] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState<VaultKubernetesAuthRole | null>(null);
   const [shouldFetchRoles, setShouldFetchRoles] = useState(false);
 
   const { data: namespaces, isLoading: isLoadingNamespaces } = useGetVaultNamespaces();
-  const {
-    data: roles,
-    isLoading: isLoadingRoles,
-    refetch: refetchRoles
-  } = useGetVaultKubernetesAuthRoles(shouldFetchRoles, selectedNamespace);
+  const { data: roles, isLoading: isLoadingRoles } = useGetVaultKubernetesAuthRoles(
+    shouldFetchRoles,
+    selectedNamespace ?? undefined
+  );
 
   useEffect(() => {
     if (selectedNamespace) {
@@ -72,13 +71,11 @@ const Content = ({ onClose, onImport }: ContentProps) => {
                 const namespace = value as { id: string; name: string };
                 setSelectedNamespace(namespace.name);
                 setSelectedRole(null);
-                // Refetch roles when namespace changes
-                refetchRoles();
               }
             }}
             options={namespaces || []}
             getOptionValue={(option) => option.name}
-            getOptionLabel={(option) => option.name}
+            getOptionLabel={(option) => (option.name === "/" ? "root" : option.name)}
             isDisabled={isLoadingNamespaces}
             placeholder="Select namespace..."
             className="w-full"
@@ -132,6 +129,7 @@ export const VaultKubernetesAuthImportModal = ({ isOpen, onOpenChange, onImport 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
+        bodyClassName="overflow-visible"
         title="Load Kubernetes Auth from HashiCorp Vault"
         subTitle="Load Kubernetes authentication configuration from your Vault instance. The auth method and role settings will be automatically translated and prefilled in the form."
         className="max-w-2xl"

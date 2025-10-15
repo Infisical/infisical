@@ -33,22 +33,20 @@ type ContentProps = {
 };
 
 const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) => {
-  const [selectedNamespace, setSelectedNamespace] = useState<string>("default");
+  const [selectedNamespace, setSelectedNamespace] = useState<string | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [shouldFetchPaths, setShouldFetchPaths] = useState(false);
   const [shouldFetchMounts, setShouldFetchMounts] = useState(false);
 
   const { data: namespaces, isLoading: isLoadingNamespaces } = useGetVaultNamespaces();
-  const {
-    data: secretPaths,
-    isLoading: isLoadingPaths,
-    refetch: refetchPaths
-  } = useGetVaultSecretPaths(shouldFetchPaths, selectedNamespace);
-  const {
-    data: mounts,
-    isLoading: isLoadingMounts,
-    refetch: refetchMounts
-  } = useGetVaultMounts(shouldFetchMounts, selectedNamespace);
+  const { data: secretPaths, isLoading: isLoadingPaths } = useGetVaultSecretPaths(
+    shouldFetchPaths,
+    selectedNamespace ?? undefined
+  );
+  const { data: mounts, isLoading: isLoadingMounts } = useGetVaultMounts(
+    shouldFetchMounts,
+    selectedNamespace ?? undefined
+  );
 
   // Enable fetching paths and mounts when namespace is selected
   useEffect(() => {
@@ -61,6 +59,11 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
   const handleImport = () => {
     if (!selectedPath) {
       createNotification({ type: "error", text: "Please select a Vault secret path to import" });
+      return;
+    }
+
+    if (!selectedNamespace) {
+      createNotification({ type: "error", text: "Please select a namespace" });
       return;
     }
 
@@ -109,14 +112,11 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
                 const namespace = value as { id: string; name: string };
                 setSelectedNamespace(namespace.name);
                 setSelectedPath(null);
-                // Refetch paths and mounts when namespace changes
-                refetchPaths();
-                refetchMounts();
               }
             }}
             options={namespaces || []}
             getOptionValue={(option) => option.name}
-            getOptionLabel={(option) => option.name}
+            getOptionLabel={(option) => (option.name === "/" ? "root" : option.name)}
             isDisabled={isLoadingNamespaces}
             placeholder="Select namespace..."
             className="w-full"
@@ -179,6 +179,7 @@ export const VaultSecretImportModal = ({
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
+        bodyClassName="overflow-visible"
         title="Import from HashiCorp Vault"
         subTitle="Select a Vault namespace and secret path to import secrets into the current environment and folder."
         className="max-w-2xl"

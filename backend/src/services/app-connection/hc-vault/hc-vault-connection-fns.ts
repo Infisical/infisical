@@ -199,15 +199,11 @@ export const listHCVaultPolicies = async (
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService);
 
-  if (connection.credentials.namespace && connection.credentials.namespace !== namespace) {
-    throw new BadRequestError({
-      message: "Specified namespace does not match the namespace in the connection credentials"
-    });
-  }
-
   try {
     const { data: listData } = await requestWithHCVaultGateway<{
-      policies: string[];
+      data: {
+        policies: string[];
+      };
     }>(connection, gatewayService, {
       url: `${instanceUrl}/v1/sys/policy`,
       method: "GET",
@@ -217,14 +213,16 @@ export const listHCVaultPolicies = async (
       }
     });
 
-    const policyNames = listData.policies || [];
+    const policyNames = listData.data.policies || [];
 
     const policies = await Promise.all(
       policyNames.map(async (policyName) => {
         try {
           const { data: policyData } = await requestWithHCVaultGateway<{
-            name: string;
-            rules: string;
+            data: {
+              name: string;
+              rules: string;
+            };
           }>(connection, gatewayService, {
             url: `${instanceUrl}/v1/sys/policy/${policyName}`,
             method: "GET",
@@ -235,8 +233,8 @@ export const listHCVaultPolicies = async (
           });
 
           return {
-            name: policyData.name,
-            rules: policyData.rules
+            name: policyData.data.name,
+            rules: policyData.data.rules
           };
         } catch (error: unknown) {
           logger.error(error, `Unable to fetch policy details for ${policyName}`);
@@ -271,50 +269,95 @@ export const listHCVaultNamespaces = async (
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService);
 
-  try {
-    const { data } = await requestWithHCVaultGateway<{
-      data: {
-        keys: string[];
-        key_info?: {
-          [key: string]: {
-            id: string;
-            path: string;
-            custom_metadata?: Record<string, unknown>;
+  const currentNamespace = connection.credentials.namespace || "/";
+
+  // Helper function to fetch namespaces at a specific path
+  const fetchNamespacesAtPath = async (namespacePath: string): Promise<string[] | null> => {
+    try {
+      const { data } = await requestWithHCVaultGateway<{
+        data: {
+          keys: string[];
+          key_info?: {
+            [key: string]: {
+              id: string;
+              path: string;
+              custom_metadata?: Record<string, unknown>;
+            };
           };
         };
-      };
-    }>(connection, gatewayService, {
-      url: `${instanceUrl}/v1/sys/namespaces`,
-      method: "LIST",
-      headers: {
-        "X-Vault-Token": accessToken,
-        ...(connection.credentials.namespace ? { "X-Vault-Namespace": connection.credentials.namespace } : {})
-      }
-    });
+      }>(connection, gatewayService, {
+        url: `${instanceUrl}/v1/sys/namespaces?list=true`,
+        method: "GET",
+        headers: {
+          "X-Vault-Token": accessToken,
+          "X-Vault-Namespace": namespacePath
+        }
+      });
 
-    // Transform using key_info if available, otherwise fall back to keys array
-    const namespaces = (data.data.keys || []).map((namespaceKey) => {
-      const keyInfo = data.data.key_info?.[namespaceKey];
-      return {
-        id: keyInfo?.id || namespaceKey.replace(/\/$/, ""), // Use Vault's ID if available, otherwise use the key
-        name: namespaceKey.replace(/\/$/, "") // Remove trailing slash for display
-      };
+      return data.data.keys || [];
+    } catch (error: unknown) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        // No child namespaces at this path
+        return null;
+      }
+      throw error;
+    }
+  };
+
+  // Recursive function to get all namespaces at all depths
+  const recursivelyGetAllNamespaces = async (parentPath: string): Promise<string[]> => {
+    const childKeys = await fetchNamespacesAtPath(parentPath);
+
+    if (childKeys === null || childKeys.length === 0) {
+      return [];
+    }
+
+    const allNamespaces: string[] = [];
+
+    // Process namespaces sequentially to maintain order
+    // eslint-disable-next-line no-restricted-syntax
+    for (const namespaceKey of childKeys) {
+      // Remove trailing slash from the key
+      const cleanNamespaceKey = namespaceKey.replace(/\/$/, "");
+
+      // Build the full path
+      let fullNamespacePath: string;
+      if (parentPath === "/") {
+        fullNamespacePath = cleanNamespaceKey;
+      } else {
+        fullNamespacePath = `${parentPath}/${cleanNamespaceKey}`;
+      }
+
+      // Add this namespace to our results
+      allNamespaces.push(fullNamespacePath);
+
+      // Recursively fetch child namespaces
+      // eslint-disable-next-line no-await-in-loop
+      const childNamespaces = await recursivelyGetAllNamespaces(fullNamespacePath);
+      allNamespaces.push(...childNamespaces);
+    }
+
+    return allNamespaces;
+  };
+
+  try {
+    // Get all namespaces starting from currentNamespace
+    const childNamespaces = await recursivelyGetAllNamespaces(currentNamespace);
+
+    // Build the result array with full paths
+    const namespaces = childNamespaces.map((path) => ({
+      id: path,
+      name: path
+    }));
+
+    // Always include the current/root namespace
+    namespaces.unshift({
+      id: currentNamespace,
+      name: currentNamespace
     });
 
     return namespaces;
   } catch (error: unknown) {
-    // 404 means namespaces endpoint doesn't exist (Vault Community Edition)
-    // Return empty array to gracefully degrade
-    if (error instanceof AxiosError && error.response?.status === 404) {
-      logger.info("Namespaces endpoint not available (likely Vault Community Edition). Returning empty list.");
-      return [
-        {
-          id: "default",
-          name: "default"
-        }
-      ];
-    }
-
     logger.error(error, "Unable to list HC Vault namespaces");
 
     if (error instanceof AxiosError) {
@@ -336,12 +379,6 @@ export const listHCVaultMounts = async (
 ) => {
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService);
-
-  if (namespace && connection.credentials.namespace) {
-    throw new BadRequestError({
-      message: "Namespace cannot be specified when namespace is already set in the connection credentials"
-    });
-  }
 
   const targetNamespace = namespace || connection.credentials.namespace;
 
@@ -374,12 +411,6 @@ export const listHCVaultSecretPaths = async (
 ) => {
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService);
-
-  if (connection.credentials.namespace && connection.credentials.namespace !== namespace) {
-    throw new BadRequestError({
-      message: "Specified namespace does not match the namespace in the connection credentials"
-    });
-  }
 
   const getPaths = async (mountPath: string, secretPath: string, kvVersion: "1" | "2"): Promise<string[] | null> => {
     try {
@@ -479,12 +510,6 @@ export const getHCVaultSecretsForPath = async (
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService);
 
-  if (connection.credentials.namespace && connection.credentials.namespace !== namespace) {
-    throw new BadRequestError({
-      message: "Specified namespace does not match the namespace in the connection credentials"
-    });
-  }
-
   try {
     // Extract mount and path from the secretPath
     // secretPath format: {mount}/{path}
@@ -579,12 +604,6 @@ export const getHCVaultAuthMounts = async (
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService);
 
-  if (connection.credentials.namespace && connection.credentials.namespace !== namespace) {
-    throw new BadRequestError({
-      message: "Specified namespace does not match the namespace in the connection credentials"
-    });
-  }
-
   try {
     const { data } = await requestWithHCVaultGateway<THCVaultAuthMountResponse>(connection, gatewayService, {
       url: `${instanceUrl}/v1/sys/auth`,
@@ -632,12 +651,6 @@ export const getHCVaultKubernetesAuthRoles = async (
 ): Promise<THCVaultKubernetesAuthRoleWithConfig[]> => {
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService);
-
-  if (connection.credentials.namespace && connection.credentials.namespace !== namespace) {
-    throw new BadRequestError({
-      message: "Specified namespace does not match the namespace in the connection credentials"
-    });
-  }
 
   // Remove trailing slash from mount path
   const cleanMountPath = mountPath.endsWith("/") ? mountPath.slice(0, -1) : mountPath;

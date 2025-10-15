@@ -52,13 +52,73 @@ type FolderPermissionRule = ArrayElement<
 const parseVaultPath = (
   vaultPath: string,
   mounts: VaultMount[]
-): { environment: string | null; secretPath: string | null; mount: VaultMount | null } => {
+): {
+  environment: string | null;
+  secretPath: string | null;
+  mount: VaultMount | null;
+  isWildcardMount: boolean;
+} => {
+  // Check if path starts with wildcard mount (e.g., "*/data/*")
+  const isWildcardMount = vaultPath.startsWith("*/") || vaultPath.startsWith("+/");
+
+  if (isWildcardMount) {
+    // For wildcard mounts, extract everything after the wildcard prefix
+    let remainingPath = vaultPath.slice(2); // Remove "*/" or "+/"
+    if (remainingPath.startsWith("/")) remainingPath = remainingPath.slice(1);
+
+    let environment: string | null = null;
+    let secretPath: string | null = null;
+    let isDataPath = false;
+    let isMetadataPath = false;
+
+    // Check for KV v2 data/ or metadata/ prefix
+    if (remainingPath.startsWith("data/")) {
+      isDataPath = true;
+      remainingPath = remainingPath.slice(5); // Remove "data/"
+    } else if (remainingPath.startsWith("metadata/")) {
+      isMetadataPath = true;
+      remainingPath = remainingPath.slice(9); // Remove "metadata/"
+    }
+
+    // Split remaining path into segments
+    const segments = remainingPath.split("/").filter(Boolean);
+
+    if (segments.length > 0) {
+      // Special case: if the only segment is a wildcard, treat it as matching everything
+      if (segments.length === 1 && (segments[0] === "*" || segments[0] === "+")) {
+        environment = "*"; // Match all environments
+        secretPath = "/*"; // Match all paths
+      } else {
+        // First segment is the environment
+        [environment] = segments;
+
+        // Remaining segments form the secret path
+        if (segments.length > 1) {
+          secretPath = `/${segments.slice(1).join("/")}`;
+        } else {
+          secretPath = "/";
+        }
+      }
+    }
+
+    // For wildcard mounts, return a synthetic mount object
+    // We'll use this to determine if it's KV v2 (has data/metadata paths)
+    const syntheticMount: VaultMount = {
+      path: "*",
+      type: "kv",
+      version: isDataPath || isMetadataPath ? "2" : "1"
+    };
+
+    return { environment, secretPath, mount: syntheticMount, isWildcardMount: true };
+  }
+
+  // Original logic for non-wildcard paths
   // Find the matching mount for this path
   // Sort by path length (longest first) to match most specific mount
   const sortedMounts = [...mounts].sort((a, b) => b.path.length - a.path.length);
   const mount = sortedMounts.find((m) => vaultPath.startsWith(m.path));
   if (!mount) {
-    return { environment: null, secretPath: null, mount: null };
+    return { environment: null, secretPath: null, mount: null, isWildcardMount: false };
   }
 
   // Remove mount prefix and any trailing slash
@@ -103,7 +163,23 @@ const parseVaultPath = (
     }
   }
 
-  return { environment, secretPath, mount };
+  return { environment, secretPath, mount, isWildcardMount: false };
+};
+
+// Helper to create a unique key for deduplication of permission rules
+const createPermissionRuleKey = (rule: SecretPermissionRule | FolderPermissionRule): string => {
+  const actions = Object.entries(rule)
+    .filter(([key]) => key !== "conditions")
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}:${value}`)
+    .join("|");
+
+  const conditions = (rule.conditions || [])
+    .map((c) => `${c.lhs}${c.operator}${c.rhs}`)
+    .sort()
+    .join("|");
+
+  return `${actions}::${conditions}`;
 };
 
 // HCL parser for Vault policies - converts Vault HCL to Infisical permissions
@@ -114,6 +190,9 @@ const parseVaultPolicyToInfisical = (
   const permissions: Partial<TFormSchema["permissions"]> = {};
   const secretsPermissions: SecretPermissionRule[] = [];
   const foldersPermissions: FolderPermissionRule[] = [];
+
+  const seenSecretRules = new Set<string>();
+  const seenFolderRules = new Set<string>();
 
   try {
     // Remove comments from HCL before parsing
@@ -135,14 +214,16 @@ const parseVaultPolicyToInfisical = (
         .map((c) => c.trim().replace(/["'\s]/g, "")) // Remove quotes, spaces, newlines
         .filter((c) => c.length > 0); // Filter out empty strings
 
-      // Parse the Vault path using mount information
+      // Parse the Vault path - handles both regular and wildcard mount paths
       const { environment, secretPath, mount } = parseVaultPath(path, mounts);
 
       // Only process KV (Key-Value) mounts
       if (mount && (mount.type === "kv" || mount.type === "generic")) {
         const isKvV2 = mount.version === "2";
-        const isDataPath = isKvV2 ? path.includes("/data/") : true; // KV v1 = all paths are data paths
-        const isMetadataPath = isKvV2 ? path.includes("/metadata/") : false; // KV v1 has no metadata endpoint
+        // For KV v2: explicit metadata paths are metadata, explicit data paths or paths without prefix are data
+        // For KV v1: no metadata endpoint exists, everything is data
+        const isMetadataPath = isKvV2 ? path.includes("/metadata/") : false;
+        const isDataPath = !isMetadataPath; // Everything that's not metadata is a data path
 
         if (isDataPath && !isMetadataPath) {
           // Data paths map to secret permissions
@@ -154,7 +235,8 @@ const parseVaultPolicyToInfisical = (
             actions[ProjectPermissionSecretActions.DescribeSecret] = true;
             actions[ProjectPermissionSecretActions.ReadValue] = true;
           }
-          if (capabilities.includes("update")) actions[ProjectPermissionSecretActions.Edit] = true;
+          if (capabilities.includes("update") || capabilities.includes("patch"))
+            actions[ProjectPermissionSecretActions.Edit] = true;
           if (capabilities.includes("delete"))
             actions[ProjectPermissionSecretActions.Delete] = true;
 
@@ -179,7 +261,7 @@ const parseVaultPolicyToInfisical = (
             }
 
             // Add secret path condition with glob support
-            if (secretPath) {
+            if (secretPath && secretPath !== "/*") {
               // Convert Vault wildcards to picomatch glob patterns
               // Vault '*' = match within segment, picomatch '**' = match across segments
               // Vault '+' = single segment, convert to '*' (note: slightly more permissive)
@@ -195,17 +277,25 @@ const parseVaultPolicyToInfisical = (
               });
             }
 
-            secretsPermissions.push({
+            const newRule = {
               ...actions,
               conditions
-            });
+            };
+
+            // Check for duplicates before adding
+            const ruleKey = createPermissionRuleKey(newRule);
+            if (!seenSecretRules.has(ruleKey)) {
+              seenSecretRules.add(ruleKey);
+              secretsPermissions.push(newRule);
+            }
           }
         } else if (isMetadataPath) {
           // Metadata paths map to folder permissions
           const actions: { [key: string]: boolean } = {};
 
           if (capabilities.includes("create")) actions[ProjectPermissionActions.Create] = true;
-          if (capabilities.includes("update")) actions[ProjectPermissionActions.Edit] = true;
+          if (capabilities.includes("update") || capabilities.includes("patch"))
+            actions[ProjectPermissionActions.Edit] = true;
           if (capabilities.includes("delete")) actions[ProjectPermissionActions.Delete] = true;
 
           if (Object.keys(actions).length > 0) {
@@ -229,7 +319,7 @@ const parseVaultPolicyToInfisical = (
             }
 
             // Add secret path condition for folders with glob support
-            if (secretPath) {
+            if (secretPath && secretPath !== "/*") {
               // Convert Vault '+' wildcard to glob '*'
               const globPath = secretPath.replace(/\+/g, "*");
               const hasWildcard = globPath.includes("*");
@@ -242,10 +332,17 @@ const parseVaultPolicyToInfisical = (
               });
             }
 
-            foldersPermissions.push({
+            const newRule = {
               ...actions,
               conditions
-            });
+            };
+
+            // Check for duplicates before adding
+            const ruleKey = createPermissionRuleKey(newRule);
+            if (!seenFolderRules.has(ruleKey)) {
+              seenFolderRules.add(ruleKey);
+              foldersPermissions.push(newRule);
+            }
           }
         }
       }
@@ -269,23 +366,21 @@ const parseVaultPolicyToInfisical = (
 
 const Content = ({ onClose }: ContentProps) => {
   const rootForm = useFormContext<TFormSchema>();
-  const [selectedNamespace, setSelectedNamespace] = useState<string>("default");
+  const [selectedNamespace, setSelectedNamespace] = useState<string | null>(null);
   const [selectedPolicy, setSelectedPolicy] = useState<string | null>(null);
   const [hclPolicy, setHclPolicy] = useState<string>("");
   const [shouldFetchPolicies, setShouldFetchPolicies] = useState(false);
   const [shouldFetchMounts, setShouldFetchMounts] = useState(false);
 
   const { data: namespaces, isLoading: isLoadingNamespaces } = useGetVaultNamespaces();
-  const {
-    data: policies,
-    isLoading: isLoadingPolicies,
-    refetch: refetchPolicies
-  } = useGetVaultPolicies(shouldFetchPolicies, selectedNamespace);
-  const {
-    data: mounts,
-    isLoading: isLoadingMounts,
-    refetch: refetchMounts
-  } = useGetVaultMounts(shouldFetchMounts, selectedNamespace);
+  const { data: policies, isLoading: isLoadingPolicies } = useGetVaultPolicies(
+    shouldFetchPolicies,
+    selectedNamespace ?? undefined
+  );
+  const { data: mounts, isLoading: isLoadingMounts } = useGetVaultMounts(
+    shouldFetchMounts,
+    selectedNamespace ?? undefined
+  );
 
   // Enable fetching policies and mounts when namespace is selected
   useEffect(() => {
@@ -414,19 +509,17 @@ const Content = ({ onClose }: ContentProps) => {
       >
         <>
           <FilterableSelect
-            value={namespaces?.find((ns) => ns.name === selectedNamespace)}
+            value={namespaces?.find((ns) => ns.id === selectedNamespace)}
             onChange={(value) => {
               if (value && !Array.isArray(value)) {
                 const namespace = value as { id: string; name: string };
                 setSelectedNamespace(namespace.name);
-                // Refetch policies and mounts when namespace changes
-                refetchPolicies();
-                refetchMounts();
+                setSelectedPolicy(null);
               }
             }}
             options={namespaces || []}
             getOptionValue={(option) => option.name}
-            getOptionLabel={(option) => option.name}
+            getOptionLabel={(option) => (option.name === "/" ? "root" : option.name)}
             isDisabled={isLoadingNamespaces}
             placeholder="Select namespace..."
             className="w-full"
