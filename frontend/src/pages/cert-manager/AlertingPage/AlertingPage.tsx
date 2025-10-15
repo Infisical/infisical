@@ -16,6 +16,7 @@ export const AlertingPage = () => {
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-7xl">
         <PageHeader
+          scope="project"
           title="Alerting"
           description="Configure alerts for expiring certificates and CAs to maintain security and compliance."
         />

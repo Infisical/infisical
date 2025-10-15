@@ -22,6 +22,7 @@ export const AppConnectionsPage = withPermission(
         <div className="flex w-full justify-center bg-bunker-800 text-white">
           <div className="w-full max-w-7xl">
             <PageHeader
+              scope="org"
               className="w-full"
               title="App Connections"
               description="Manage organization App Connections"

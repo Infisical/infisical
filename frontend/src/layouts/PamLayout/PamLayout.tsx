@@ -59,7 +59,7 @@ export const PamLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
+                        <MenuItem variant="project" isSelected={isActive}>
                           <div className="mx-1 flex gap-2">
                             <div className="w-6">
                               <FontAwesomeIcon icon={faUser} />
@@ -76,7 +76,7 @@ export const PamLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
+                        <MenuItem variant="project" isSelected={isActive}>
                           <div className="mx-1 flex gap-2">
                             <div className="w-6">
                               <FontAwesomeIcon icon={faBoxOpen} />
@@ -93,7 +93,7 @@ export const PamLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
+                        <MenuItem variant="project" isSelected={isActive}>
                           <div className="mx-1 flex gap-2">
                             <div className="w-6">
                               <FontAwesomeIcon icon={faDisplay} />
@@ -112,12 +112,12 @@ export const PamLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
+                        <MenuItem variant="project" isSelected={isActive}>
                           <div className="mx-1 flex gap-2">
                             <div className="w-6">
                               <FontAwesomeIcon icon={faUsers} />
                             </div>
-                            Access Management
+                            Project Access
                           </div>
                         </MenuItem>
                       )}
@@ -129,7 +129,7 @@ export const PamLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
+                        <MenuItem variant="project" isSelected={isActive}>
                           <div className="mx-1 flex gap-2">
                             <div className="w-6">
                               <FontAwesomeIcon icon={faBook} />
@@ -146,12 +146,12 @@ export const PamLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
+                        <MenuItem variant="project" isSelected={isActive}>
                           <div className="mx-1 flex gap-2">
                             <div className="w-6">
                               <FontAwesomeIcon icon={faCog} />
                             </div>
-                            Settings
+                            Project Settings
                           </div>
                         </MenuItem>
                       )}

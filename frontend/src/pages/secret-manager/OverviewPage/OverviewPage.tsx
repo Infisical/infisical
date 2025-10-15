@@ -914,6 +914,7 @@ export const OverviewPage = () => {
       <div className="relative mx-auto max-w-7xl text-mineshaft-50 dark:scheme-dark">
         <div className="flex w-full items-baseline justify-between">
           <PageHeader
+            scope="project"
             title="Secrets Overview"
             description={
               <p className="text-md text-bunker-300">

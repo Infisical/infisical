@@ -90,6 +90,7 @@ const Page = () => {
       {data && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
           <PageHeader
+            scope="project"
             title={
               <div className="flex flex-col">
                 <div>

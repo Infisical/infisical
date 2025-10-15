@@ -106,6 +106,7 @@ export const PkiTemplateListPage = () => {
         <div className="container mx-auto flex flex-col justify-between text-white">
           <div className="mx-auto mb-6 w-full max-w-7xl">
             <PageHeader
+              scope="project"
               title="Certificate Templates"
               description="Manage certificate template to request and issue dynamic certificates following a strict format."
             />

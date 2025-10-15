@@ -22,10 +22,18 @@ export const TabList = ({ className, children, ...props }: TabListProps) => (
 
 export type TabProps = TabsPrimitive.TabsTriggerProps;
 
-export const Tab = ({ className, children, ...props }: TabProps) => (
+export const Tab = ({
+  className,
+  children,
+  variant = "project",
+  ...props
+}: TabProps & { variant?: "project" | "namespace" | "org" }) => (
   <TabsPrimitive.Trigger
     className={twMerge(
-      "flex h-10 items-center justify-center px-3 text-sm font-medium text-mineshaft-400 transition-all select-none first:rounded-tl-md last:rounded-tr-md hover:text-mineshaft-200 data-[state=active]:border-b data-[state=active]:border-primary data-[state=active]:text-white",
+      "flex h-10 items-center justify-center px-3 text-sm font-medium text-mineshaft-400 transition-all select-none first:rounded-tl-md last:rounded-tr-md hover:text-mineshaft-200 data-[state=active]:border-b data-[state=active]:text-white",
+      variant === "project" && "data-[state=active]:border-primary",
+      variant === "namespace" && "data-[state=active]:border-namespace-v1",
+      variant === "org" && "data-[state=active]:border-org-v1",
       className
     )}
     {...props}

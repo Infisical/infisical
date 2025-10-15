@@ -19,6 +19,7 @@ export const SettingsPage = () => {
       </Helmet>
       <div className="w-full max-w-7xl">
         <PageHeader
+          scope="project"
           title="Settings"
           description="Configure your Secret Scanning product's configurations."
         />

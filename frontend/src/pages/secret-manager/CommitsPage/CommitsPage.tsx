@@ -49,6 +49,7 @@ export const CommitsPage = () => {
     <div className="mx-auto flex h-full w-full max-w-7xl justify-center bg-bunker-800 py-4 text-white">
       <div className="w-full max-w-[75vw]">
         <PageHeader
+          scope="project"
           title="Commits"
           description="Track, inspect, and restore your secrets and folders with confidence. View the complete history of changes made to your environment, examine specific modifications at each commit point, and preview the exact impact before rolling back to previous states."
         />

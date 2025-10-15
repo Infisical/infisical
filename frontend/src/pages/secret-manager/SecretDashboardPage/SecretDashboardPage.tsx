@@ -762,6 +762,7 @@ const Page = () => {
   return (
     <div className="container mx-auto flex max-w-7xl flex-col text-mineshaft-50 dark:scheme-dark">
       <PageHeader
+        scope="project"
         title="Secrets Management"
         description={
           <p className="text-md text-bunker-300">

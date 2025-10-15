@@ -44,7 +44,7 @@ export const licenseDALFactory = (db: TDbClient) => {
 
       // count org identities
       const identityDoc = await (tx || db.replicaNode())(TableName.Membership)
-        .where({ status: OrgMembershipStatus.Accepted, scope: AccessScope.Organization })
+        .where({ scope: AccessScope.Organization })
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .where((bd) => {
           if (orgId) {

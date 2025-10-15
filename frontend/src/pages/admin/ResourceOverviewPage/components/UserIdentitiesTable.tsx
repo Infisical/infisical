@@ -153,7 +153,7 @@ const UserPanelTable = ({
               icon={adminsOnly && <FontAwesomeIcon icon={faCheckCircle} />}
               iconPos="right"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-x-2">
                 <FontAwesomeIcon icon={faUserShield} className="text-yellow-700" />
                 <span>Server Admins</span>
               </div>

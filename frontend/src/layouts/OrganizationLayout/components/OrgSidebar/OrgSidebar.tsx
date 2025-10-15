@@ -52,31 +52,31 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                 <MenuGroup title="Overview">
                   <Link to="/organization/projects">
                     {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
+                      <MenuItem variant="org" isSelected={isActive}>
                         <div className="mx-1 flex gap-2">
                           <div className="w-6">
                             <FontAwesomeIcon icon={faTable} />
                           </div>
-                          Projects
+                          Overview
                         </div>
                       </MenuItem>
                     )}
                   </Link>
                   <Link to="/organization/access-management">
                     {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
+                      <MenuItem variant="org" isSelected={isActive}>
                         <div className="mx-1 flex gap-2">
                           <div className="w-6">
                             <FontAwesomeIcon icon={faUsers} />
                           </div>
-                          Access Control
+                          Organization Access
                         </div>
                       </MenuItem>
                     )}
                   </Link>
                   <Link to="/organization/billing">
                     {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
+                      <MenuItem variant="org" isSelected={isActive}>
                         <div className="mx-1 flex gap-2">
                           <div className="w-6">
                             <FontAwesomeIcon icon={faMoneyBill} className="mr-4" />
@@ -88,7 +88,7 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                   </Link>
                   <Link to="/organization/audit-logs">
                     {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
+                      <MenuItem variant="org" isSelected={isActive}>
                         <div className="mx-1 flex gap-2">
                           <div className="w-6">
                             <FontAwesomeIcon icon={faBook} className="mr-4" />
@@ -100,7 +100,7 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                   </Link>
                   <Link to="/organization/settings">
                     {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
+                      <MenuItem variant="org" isSelected={isActive}>
                         <div className="mx-1 flex gap-2">
                           <div className="w-6">
                             <FontAwesomeIcon icon={faCog} className="mr-4" />
@@ -114,7 +114,7 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                 <MenuGroup title="Resources">
                   <Link to="/organization/app-connections">
                     {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
+                      <MenuItem variant="org" isSelected={isActive}>
                         <div className="mx-1 flex gap-2">
                           <div className="w-6">
                             <FontAwesomeIcon icon={faPlug} className="mr-4" />
@@ -126,7 +126,7 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                   </Link>
                   <Link to="/organization/networking">
                     {({ isActive }) => (
-                      <MenuItem isSelected={isActive}>
+                      <MenuItem variant="org" isSelected={isActive}>
                         <div className="mx-1 flex gap-2">
                           <div className="w-6">
                             <FontAwesomeIcon icon={faNetworkWired} className="mr-4" />
@@ -145,6 +145,7 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                   !subscription.has_used_trial && (
                     <Tooltip content="Start Free Pro Trial">
                       <MenuItem
+                        variant="org"
                         className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
                         leftIcon={
                           <FontAwesomeIcon
@@ -170,6 +171,7 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                   )}
                 <Link to="/organization/secret-sharing">
                   <MenuItem
+                    variant="org"
                     className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
                     leftIcon={
                       <div className="w-6">
@@ -183,6 +185,7 @@ export const OrgSidebar = ({ isHidden }: Props) => {
                 {user.superAdmin && (
                   <Link to="/admin">
                     <MenuItem
+                      variant="org"
                       className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
                       leftIcon={
                         <div className="w-6">

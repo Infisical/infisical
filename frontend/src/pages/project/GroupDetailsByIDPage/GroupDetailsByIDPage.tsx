@@ -34,7 +34,7 @@ const Page = () => {
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {groupMembership ? (
         <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={groupMembership.group.name} />
+          <PageHeader scope="project" title={groupMembership.group.name} />
           <div className="flex">
             <div className="mr-4 w-96">
               <GroupDetailsSection groupMembership={groupMembership} />
