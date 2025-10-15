@@ -1,6 +1,6 @@
 import knex from "knex";
-import mysql, { Connection } from "mysql2/promise"
-import tls, { PeerCertificate } from "tls";
+import mysql, { Connection } from "mysql2/promise";
+import tls, { PeerCertificate, TLSSocket } from "tls";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -16,16 +16,12 @@ const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
 const TEST_CONNECTION_USERNAME = "infisical-gateway-connection-test";
 const TEST_CONNECTION_PASSWORD = "infisical-gateway-connection-test-password";
-
-const SQL_CONNECTION_CLIENT_MAP = {
-  [PamResource.Postgres]: "pg",
-  [PamResource.MySQL]: "mysql2",
-};
+const SIMPLE_QUERY = "select 1"
 
 export interface SqlResourceConnection {
   /**
    * Check and see if the connection is good or not.
-   * 
+   *
    * @param connectOnly when true, if we only want to know that making the connection is possible or not,
    *                    we don't care about authentication failures
    * @returns Promise to be resolved when the connection is good, otherwise an error will be errbacked
@@ -34,7 +30,7 @@ export interface SqlResourceConnection {
 
   /**
    * Close the connection.
-   * 
+   *
    * @returns Promise for closing the connection
    */
   close: () => Promise<void>;
@@ -47,14 +43,14 @@ const makeSqlConnection = (
     resourceType: PamResource;
     username?: string;
     password?: string;
-  },
+  }
 ): SqlResourceConnection => {
   const { connectionDetails, resourceType, username, password } = config;
   const { host, sslEnabled, sslRejectUnauthorized, sslCertificate } = connectionDetails;
   switch (config.resourceType) {
     case PamResource.Postgres: {
       const client = knex({
-        client: SQL_CONNECTION_CLIENT_MAP[resourceType],
+        client: "pg",
         connection: {
           host: "localhost",
           port: proxyPort,
@@ -63,23 +59,23 @@ const makeSqlConnection = (
           database: connectionDetails.database,
           connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
           ssl: sslEnabled
-              ? {
-                  rejectUnauthorized: sslRejectUnauthorized,
-                  ca: sslCertificate,
-                  servername: host,
-                  // When using proxy, we need to bypass hostname validation since we connect to localhost
-                  // but validate the certificate against the actual hostname
-                  checkServerIdentity: (hostname: string, cert: PeerCertificate) => {
-                    return tls.checkServerIdentity(host, cert);
-                  }
+            ? {
+                rejectUnauthorized: sslRejectUnauthorized,
+                ca: sslCertificate,
+                servername: host,
+                // When using proxy, we need to bypass hostname validation since we connect to localhost
+                // but validate the certificate against the actual hostname
+                checkServerIdentity: (hostname: string, cert: PeerCertificate) => {
+                  return tls.checkServerIdentity(host, cert);
                 }
-              : false
-          }
-        });
+              }
+            : false
+        }
+      });
       return {
         validate: async (connectOnly) => {
           try {
-            await client.raw("select 1");
+            await client.raw(SIMPLE_QUERY);
           } catch (error) {
             if (error instanceof BadRequestError) {
               // Hacky way to know if we successfully hit the database.
@@ -87,11 +83,10 @@ const makeSqlConnection = (
               //       1. change the work flow, add account first then resource
               //       2. modify relay to add a new endpoint for returning if the target host is healthy or not
               //          (like being able to do an auth handshake regardless pass or not)
-              if (connectOnly &&
-                (
-                  error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"` ||
-                  error.message.includes("no pg_hba.conf entry for host")
-                )
+              if (
+                connectOnly &&
+                (error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"` ||
+                  error.message.includes("no pg_hba.conf entry for host"))
               ) {
                 return;
               }
@@ -105,40 +100,45 @@ const makeSqlConnection = (
       };
     }
     case PamResource.MySQL: {
-      let client: Connection | null = null;
       return {
         validate: async (connectOnly) => {
+          let client: Connection | null = null;
           try {
-            if (client === null) {
-              // Notice: the reason we are not using Knex for mysql2 is because we don't need any fancy feature from Knex. 
-              //         mysql2 doesn't provide custom ssl verification function pass in.
-              //         ref: https://github.com/sidorares/node-mysql2/blob/2543272a2ada8d8a07f74582549d7dd3fe948e2d/lib/base/connection.js#L358-L362
-              //         and then even I tried to workaround it with Knex's pool afterCreate hook, but then encounter a bug:
-              //         ref: https://github.com/knex/knex/issues/5352
-              //         It appears that using Knex causing more troubles than not, we are just checking the connections,
-              //         so it's much easier to create raw connection with the driver lib directly
-              client = await mysql.createConnection({
-                host: "localhost",
-                port: proxyPort,
-                user: username ?? TEST_CONNECTION_USERNAME, // Use provided username or fallback
-                password: password ?? TEST_CONNECTION_PASSWORD, // Use provided password or fallback
-                database: connectionDetails.database,
-                ssl: {
-                  // Due to no custom checkServerIdentity available, we can only pass in false here and perform custom
-                  // validation as we need to
-                  rejectUnauthorized: false
-                },
-              });
+            // Notice: the reason we are not using Knex for mysql2 is because we don't need any fancy feature from Knex.
+            //         mysql2 doesn't provide custom ssl verification function pass in.
+            //         ref: https://github.com/sidorares/node-mysql2/blob/2543272a2ada8d8a07f74582549d7dd3fe948e2d/lib/base/connection.js#L358-L362
+            //         and then even I tried to workaround it with Knex's pool afterCreate hook, but then encounter a bug:
+            //         ref: https://github.com/knex/knex/issues/5352
+            //         It appears that using Knex causing more troubles than not, we are just checking the connections,
+            //         so it's much easier to create raw connection with the driver lib directly
+            client = await mysql.createConnection({
+              host: "localhost",
+              port: proxyPort,
+              user: username ?? TEST_CONNECTION_USERNAME, // Use provided username or fallback
+              password: password ?? TEST_CONNECTION_PASSWORD, // Use provided password or fallback
+              database: connectionDetails.database,
+              ssl: sslEnabled ? {
+                // Due to no custom checkServerIdentity available, we can only pass in false here and perform custom
+                // validation as we need to
+                rejectUnauthorized: false
+              } : undefined,
+            });
+            if (sslEnabled && sslRejectUnauthorized) {
+              const secureSocket = (client as any).stream as TLSSocket;
+              const serverCert = secureSocket.getPeerCertificate();
+              console.info("XXXX: secureSocket", secureSocket, serverCert);
+              // TODO: perform custom check here
             }
+            client.query(SIMPLE_QUERY)
           } catch (error) {
-            console.error("!!!! validate error", error)
+            console.error("!!!! validate error", error);
             // TODO:
             throw error;
           } finally {
-            await client?.end()
+            await client?.end();
           }
         },
-        close: async () => {},
+        close: async () => {}
       };
     }
     default:
@@ -146,7 +146,7 @@ const makeSqlConnection = (
         message: `Unhandled SQL Resource Connection Config: ${resourceType as PamResource}`
       });
   }
-}
+};
 
 export const executeWithGateway = async <T>(
   config: {
@@ -198,27 +198,31 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
   const validateConnection = async () => {
     try {
       await executeWithGateway({ connectionDetails, gatewayId, resourceType }, gatewayV2Service, async (client) => {
-        await client.raw("Select 1");
+        await client.validate(true)
       });
       return connectionDetails;
     } catch (error) {
+      // TODO: FIXME, handle other error types
+
       // Hacky way to know if we successfully hit the database.
       // TODO: potentially two approaches to solve the problem.
       //       1. change the work flow, add account first then resource
       //       2. modify relay to add a new endpoint for returning if the target host is healthy or not
       //          (like being able to do an auth handshake regardless pass or not)
       if (error instanceof BadRequestError) {
-        if (resourceType == PamResource.Postgres &&
-          (
-            error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"` ||
-            error.message.includes("no pg_hba.conf entry for host")
-          )
+        if (
+          resourceType == PamResource.Postgres &&
+          (error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"` ||
+            error.message.includes("no pg_hba.conf entry for host"))
         ) {
           return connectionDetails;
         }
 
         // For mysql
-        if (resourceType === PamResource.MySQL && error.message.startsWith(`Access denied for user '${TEST_CONNECTION_USERNAME}'@`)) {
+        if (
+          resourceType === PamResource.MySQL &&
+          error.message.startsWith(`Access denied for user '${TEST_CONNECTION_USERNAME}'@`)
+        ) {
           return connectionDetails;
         }
 
@@ -249,11 +253,13 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
         },
         gatewayV2Service,
         async (client) => {
-          await client.raw("Select 1");
+          await client.validate(false);
         }
       );
       return credentials;
     } catch (error) {
+      // TODO: FIXME, handle other error types
+
       if (error instanceof BadRequestError) {
         if (error.message === `password authentication failed for user "${credentials.username}"`) {
           throw new BadRequestError({
