@@ -11,7 +11,7 @@ const laravelForgeConnectionKeys = {
     [...laravelForgeConnectionKeys.all, "organizations", connectionId] as const,
   listServers: (connectionId: string, organizationSlug: string) =>
     [...laravelForgeConnectionKeys.all, "servers", connectionId, organizationSlug] as const,
-  listSites: (connectionId: string, organizationSlug: string, serverId: number) =>
+  listSites: (connectionId: string, organizationSlug: string, serverId: string) =>
     [...laravelForgeConnectionKeys.all, "sites", connectionId, organizationSlug, serverId] as const
 };
 
@@ -72,7 +72,7 @@ export const useLaravelForgeConnectionListServers = (
 export const useLaravelForgeConnectionListSites = (
   connectionId: string,
   organizationSlug: string,
-  serverId: number,
+  serverId: string,
   options?: Omit<
     UseQueryOptions<
       TLaravelForgeSite[],

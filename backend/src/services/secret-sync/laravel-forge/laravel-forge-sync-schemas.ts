@@ -26,9 +26,10 @@ const LaravelForgeSyncDestinationConfigSchema = z.object({
     )
     .describe(SecretSyncs.DESTINATION_CONFIG.LARAVEL_FORGE.orgSlug),
   orgName: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.LARAVEL_FORGE.orgName),
-  serverId: z.coerce
-    .number()
-    .int("Server ID must be a valid integer")
+  serverId: z
+    .string()
+    .min(1, "Server ID is required")
+    .regex(/^\d+$/, "Server ID must be a valid integer")
     .describe(SecretSyncs.DESTINATION_CONFIG.LARAVEL_FORGE.serverId),
   serverName: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.LARAVEL_FORGE.serverName),
   siteId: z.string().min(1, "Site ID is required").describe(SecretSyncs.DESTINATION_CONFIG.LARAVEL_FORGE.siteId),

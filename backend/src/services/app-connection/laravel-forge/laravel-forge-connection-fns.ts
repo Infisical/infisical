@@ -148,7 +148,7 @@ export const listLaravelForgeServers = async (
 export const listLaravelForgeSites = async (
   appConnection: TLaravelForgeConnection,
   organizationSlug: string,
-  serverId: number
+  serverId: string
 ): Promise<TLaravelForgeSite[]> => {
   const { credentials } = appConnection;
   const { apiToken } = credentials;
