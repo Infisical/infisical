@@ -7,8 +7,6 @@ import {
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { NamespacePermissionCan } from "@app/components/permissions";
@@ -22,111 +20,110 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
-import { useNamespace } from "@app/context";
 import {
   NamespacePermissionIdentityActions,
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
 import { useTimedReset } from "@app/hooks";
-import { identityAuthToNameMap } from "@app/hooks/api";
-import { namespaceIdentityQueryKeys } from "@app/hooks/api/namespaceIdentity";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
-  identityId: string;
+  identity?: {
+    id: string;
+    name: string;
+    hasDeleteProtection?: boolean;
+    metadata?: Array<{ key: string; value: string; id: string }>;
+  };
+  isNamespaceScope?: boolean;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["identity", "identityAuthMethod", "deleteIdentity"]>,
     data?: object
   ) => void;
 };
 
-export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) => {
+export const IdentityDetailsSection = ({ identity, handlePopUpOpen, isNamespaceScope }: Props) => {
   const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
-  const { namespaceId } = useNamespace();
-  const { data } = useQuery(
-    namespaceIdentityQueryKeys.detail({
-      identityId,
-      namespaceId
-    })
-  );
-  return data ? (
+
+  return identity ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">Identity Details</h3>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="xs"
-              rightIcon={
-                <FontAwesomeIcon
-                  className="ml-1 transition-transform duration-200 group-data-[state=open]:rotate-180"
-                  icon={faChevronDown}
-                />
-              }
-              colorSchema="secondary"
-              className="group select-none"
-            >
-              Options
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="mt-3 min-w-[120px]" align="end">
-            <NamespacePermissionCan
-              I={NamespacePermissionIdentityActions.Edit}
-              a={NamespacePermissionSubjects.Identity}
-            >
-              {(isAllowed) => (
-                <DropdownMenuItem
-                  className={twMerge(
-                    !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                  )}
-                  icon={<FontAwesomeIcon icon={faEdit} />}
-                  onClick={async () => {
-                    handlePopUpOpen("identity", {
-                      identityId,
-                      name: data.identity.name,
-                      hasDeleteProtection: data.identity.hasDeleteProtection
-                    });
-                  }}
-                  disabled={!isAllowed}
-                >
-                  Edit Identity
-                </DropdownMenuItem>
-              )}
-            </NamespacePermissionCan>
-            <NamespacePermissionCan
-              I={NamespacePermissionIdentityActions.Delete}
-              a={NamespacePermissionSubjects.Identity}
-            >
-              {(isAllowed) => (
-                <DropdownMenuItem
-                  className={twMerge(
-                    isAllowed
-                      ? "hover:!bg-red-500 hover:!text-white"
-                      : "pointer-events-none cursor-not-allowed opacity-50"
-                  )}
-                  onClick={async () => {
-                    handlePopUpOpen("deleteIdentity", {
-                      identityId,
-                      name: data.identity.name
-                    });
-                  }}
-                  icon={<FontAwesomeIcon icon={faTrash} />}
-                  disabled={!isAllowed}
-                >
-                  Delete Identity
-                </DropdownMenuItem>
-              )}
-            </NamespacePermissionCan>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {isNamespaceScope && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="xs"
+                rightIcon={
+                  <FontAwesomeIcon
+                    className="ml-1 transition-transform duration-200 group-data-[state=open]:rotate-180"
+                    icon={faChevronDown}
+                  />
+                }
+                colorSchema="secondary"
+                className="group select-none"
+              >
+                Options
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="mt-3 min-w-[120px]" align="end">
+              <NamespacePermissionCan
+                I={NamespacePermissionIdentityActions.Edit}
+                a={NamespacePermissionSubjects.Identity}
+              >
+                {(isAllowed) => (
+                  <DropdownMenuItem
+                    className={twMerge(
+                      !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                    )}
+                    icon={<FontAwesomeIcon icon={faEdit} />}
+                    onClick={async () => {
+                      handlePopUpOpen("identity", {
+                        identityId: identity.id,
+                        name: identity.name,
+                        hasDeleteProtection: identity.hasDeleteProtection
+                      });
+                    }}
+                    disabled={!isAllowed}
+                  >
+                    Edit Identity
+                  </DropdownMenuItem>
+                )}
+              </NamespacePermissionCan>
+              <NamespacePermissionCan
+                I={NamespacePermissionIdentityActions.Delete}
+                a={NamespacePermissionSubjects.Identity}
+              >
+                {(isAllowed) => (
+                  <DropdownMenuItem
+                    className={twMerge(
+                      isAllowed
+                        ? "hover:!bg-red-500 hover:!text-white"
+                        : "pointer-events-none cursor-not-allowed opacity-50"
+                    )}
+                    onClick={async () => {
+                      handlePopUpOpen("deleteIdentity", {
+                        identityId: identity.id,
+                        name: identity.name
+                      });
+                    }}
+                    icon={<FontAwesomeIcon icon={faTrash} />}
+                    disabled={!isAllowed}
+                  >
+                    Delete Identity
+                  </DropdownMenuItem>
+                )}
+              </NamespacePermissionCan>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
       <div className="pt-4">
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Identity ID</p>
           <div className="group flex align-top">
-            <p className="text-sm text-mineshaft-300">{data.identity.id}</p>
+            <p className="text-sm text-mineshaft-300">{identity.id}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
               <Tooltip content={copyTextId}>
                 <IconButton
@@ -134,7 +131,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
                   variant="plain"
                   className="group relative ml-2"
                   onClick={() => {
-                    navigator.clipboard.writeText(data.identity.id);
+                    navigator.clipboard.writeText(identity.id);
                     setCopyTextId("Copied");
                   }}
                 >
@@ -146,31 +143,27 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Name</p>
-          <p className="text-sm text-mineshaft-300">{data.identity.name}</p>
+          <p className="text-sm text-mineshaft-300">{identity.name}</p>
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Last Login Auth Method</p>
-          <p className="text-sm text-mineshaft-300">
-            {data.lastLoginAuthMethod ? identityAuthToNameMap[data.lastLoginAuthMethod] : "-"}
-          </p>
+          <p className="text-sm text-mineshaft-300">-</p>
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Last Login Time</p>
-          <p className="text-sm text-mineshaft-300">
-            {data.lastLoginTime ? format(data.lastLoginTime, "PPpp") : "-"}
-          </p>
+          <p className="text-sm text-mineshaft-300">-</p>
         </div>
         <div className="mb-4">
           <p className="text-sm font-semibold text-mineshaft-300">Delete Protection</p>
           <p className="text-sm text-mineshaft-300">
-            {data.identity.hasDeleteProtection ? "On" : "Off"}
+            {identity.hasDeleteProtection ? "On" : "Off"}
           </p>
         </div>
         <div>
           <p className="text-sm font-semibold text-mineshaft-300">Metadata</p>
-          {data?.metadata?.length ? (
+          {identity?.metadata?.length ? (
             <div className="mt-1 flex flex-wrap gap-2 text-sm text-mineshaft-300">
-              {data.metadata?.map((el) => (
+              {identity.metadata?.map((el) => (
                 <div key={el.id} className="flex items-center">
                   <Tag
                     size="xs"

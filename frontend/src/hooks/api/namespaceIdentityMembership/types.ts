@@ -1,3 +1,5 @@
+import { IdentityAuthMethod } from "../identities";
+
 export enum NamespaceIdentityMembershipOrderBy {
   Name = "name"
 }
@@ -14,7 +16,7 @@ export enum OrderByDirection {
 export type TNamespaceIdentityBasic = {
   id: string;
   name: string;
-  authMethods: string[];
+  authMethods: IdentityAuthMethod[];
   hasDeleteProtection: boolean;
   scopeNamespaceId?: string;
   scopeProjectId?: string;

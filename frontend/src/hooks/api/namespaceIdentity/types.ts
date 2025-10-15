@@ -9,14 +9,6 @@ export enum NamespaceIdentityMembershipOrderBy {
   Name = "name"
 }
 
-export type TNamespaceIdentity = {
-  id: string;
-  name: string;
-  authMethods: IdentityAuthMethod[];
-  activeLockoutAuthMethods: IdentityAuthMethod[];
-  hasDeleteProtection: boolean;
-};
-
 export type TNamespaceIdentityMembershipRole = {
   id: string;
   role: string;
@@ -30,12 +22,12 @@ export type TNamespaceIdentityMembershipRole = {
   temporaryAccessEndTime?: string | null;
 };
 
-export type TNamespaceIdentityMembership = {
+export type TNamespaceIdentity = {
   id: string;
-  identity: TNamespaceIdentity;
-  roles: TNamespaceIdentityMembershipRole[];
-  lastLoginAuthMethod?: IdentityAuthMethod;
-  lastLoginTime?: string;
+  name: string;
+  authMethods: IdentityAuthMethod[];
+  activeLockoutAuthMethods: IdentityAuthMethod[];
+  hasDeleteProtection: boolean;
   metadata: Array<{ key: string; value: string; id: string }>;
   createdAt: string;
   updatedAt: string;

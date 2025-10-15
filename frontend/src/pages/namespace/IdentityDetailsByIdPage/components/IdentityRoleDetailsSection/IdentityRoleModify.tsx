@@ -32,9 +32,9 @@ import {
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
 import { NamespaceMembershipRole } from "@app/helpers/roles";
-import { TNamespaceIdentityMembership } from "@app/hooks/api/namespaceIdentity";
 import {
   NamespaceIdentityMembershipTemporaryMode,
+  TNamespaceIdentityMembership,
   useUpdateNamespaceIdentityMembership
 } from "@app/hooks/api/namespaceIdentityMembership";
 import { namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles";

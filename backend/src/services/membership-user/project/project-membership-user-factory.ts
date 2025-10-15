@@ -63,19 +63,36 @@ export const newProjectMembershipUserFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
 
-    // TODO(namespace): this would change to check for namespace membership exist or org membership exist accordingly
-    const orgMemberships = await membershipUserDAL.find({
-      scope: AccessScope.Organization,
-      scopeOrgId: dto.permission.orgId,
-      $in: {
-        actorUserId: newUsers.map((el) => el.id)
+    const project = await projectDAL.findById(scope.value);
+    if (project.namespaceId) {
+      const namespaceMemberships = await membershipUserDAL.find({
+        scope: AccessScope.Namespace,
+        scopeOrgId: dto.permission.orgId,
+        scopeNamespaceId: project.namespaceId,
+        $in: {
+          actorUserId: newUsers.map((el) => el.id)
+        }
+      });
+      if (namespaceMemberships.length !== newUsers.length) {
+        const missingUsers = newUsers
+          .filter((el) => !namespaceMemberships.find((memb) => memb.actorUserId === el.id))
+          .map((el) => el.email);
+        throw new BadRequestError({ message: `Users ${missingUsers.join(",")} not part of organization` });
       }
-    });
-    if (orgMemberships.length !== newUsers.length) {
-      const missingUsers = newUsers
-        .filter((el) => !orgMemberships.find((memb) => memb.actorUserId === el.id))
-        .map((el) => el.email);
-      throw new BadRequestError({ message: `Users ${missingUsers.join(",")} not part of organization` });
+    } else {
+      const orgMemberships = await membershipUserDAL.find({
+        scope: AccessScope.Organization,
+        scopeOrgId: dto.permission.orgId,
+        $in: {
+          actorUserId: newUsers.map((el) => el.id)
+        }
+      });
+      if (orgMemberships.length !== newUsers.length) {
+        const missingUsers = newUsers
+          .filter((el) => !orgMemberships.find((memb) => memb.actorUserId === el.id))
+          .map((el) => el.email);
+        throw new BadRequestError({ message: `Users ${missingUsers.join(",")} not part of organization` });
+      }
     }
 
     const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);

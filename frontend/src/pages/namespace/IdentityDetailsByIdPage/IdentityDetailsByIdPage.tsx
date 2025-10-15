@@ -6,7 +6,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { NamespacePermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Modal, ModalContent, PageHeader } from "@app/components/v2";
+import { DeleteActionModal, Modal, ModalContent, PageHeader, Spinner } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   NamespacePermissionIdentityActions,
@@ -17,6 +17,7 @@ import {
   namespaceIdentityQueryKeys,
   useDeleteNamespaceIdentity
 } from "@app/hooks/api/namespaceIdentity";
+import { namespaceIdentityMembershipQueryKeys } from "@app/hooks/api/namespaceIdentityMembership";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
 import {
@@ -37,14 +38,25 @@ const Page = () => {
   });
   const identityId = params.identityId as string;
   const { namespaceId } = useNamespace();
-  const { data, isPending: isMembershipDetailsLoading } = useQuery(
-    namespaceIdentityQueryKeys.detail({
-      identityId,
-      namespaceId
+
+  const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } = useQuery(
+    namespaceIdentityMembershipQueryKeys.detail({
+      namespaceId,
+      identityId
     })
   );
+
+  const { data: namespaceIdentity } = useQuery({
+    ...namespaceIdentityQueryKeys.detail({
+      identityId: identityMembershipDetails?.identity?.id || "",
+      namespaceId
+    }),
+    enabled:
+      !isMembershipDetailsLoading && Boolean(identityMembershipDetails?.identity?.scopeNamespaceId)
+  });
   const { mutateAsync: deleteIdentity } = useDeleteNamespaceIdentity();
 
+  const isNamespaceScope = Boolean(identityMembershipDetails?.identity?.scopeNamespaceId);
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "identity",
     "deleteIdentity",
@@ -90,22 +102,36 @@ const Page = () => {
     }
   };
 
+  if (isMembershipDetailsLoading) {
+    return <Spinner />;
+  }
+
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
-      {data && (
+      {identityMembershipDetails && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader scope="namespace" title={data.identity.name} />
+          <PageHeader scope="namespace" title={identityMembershipDetails?.identity?.name} />
           <div className="flex">
             <div className="mr-4 w-96">
-              <IdentityDetailsSection identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
-              <IdentityAuthenticationSection
-                identity={data.identity}
+              <IdentityDetailsSection
+                identity={
+                  identityMembershipDetails?.identity?.scopeNamespaceId
+                    ? namespaceIdentity
+                    : identityMembershipDetails?.identity
+                }
+                isNamespaceScope={isNamespaceScope}
                 handlePopUpOpen={handlePopUpOpen}
               />
+              {isNamespaceScope && (
+                <IdentityAuthenticationSection
+                  identity={identityMembershipDetails?.identity}
+                  handlePopUpOpen={handlePopUpOpen}
+                />
+              )}
             </div>
             <div className="flex-1">
               <IdentityRoleDetailsSection
-                identityMembershipDetails={data}
+                identityMembershipDetails={identityMembershipDetails!}
                 isMembershipDetailsLoading={isMembershipDetailsLoading}
               />
               <IdentityProjectsSection identityId={identityId} />

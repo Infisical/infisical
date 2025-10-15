@@ -15,6 +15,7 @@ import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TMembershipIdentityDALFactory } from "./membership-identity-dal";
 import {
@@ -36,6 +37,7 @@ type TMembershipIdentityServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -47,7 +49,8 @@ export const membershipIdentityServiceFactory = ({
   permissionService,
   additionalPrivilegeDAL,
   identityDAL,
-  licenseService
+  licenseService,
+  projectDAL
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
@@ -55,7 +58,8 @@ export const membershipIdentityServiceFactory = ({
     }),
     [AccessScope.Project]: newProjectMembershipIdentityFactory({
       membershipIdentityDAL,
-      permissionService
+      permissionService,
+      projectDAL
     }),
     [AccessScope.Namespace]: newNamespaceMembershipIdentityFactory({
       membershipIdentityDAL,

@@ -84,9 +84,9 @@ export const NamespaceIdentityForm = ({ handlePopUpToggle, identityId }: Props) 
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     values: {
-      hasDeleteProtection: Boolean(identityDetails?.identity?.hasDeleteProtection),
+      hasDeleteProtection: Boolean(identityDetails?.hasDeleteProtection),
       role: { name: "No Access", slug: NamespaceMembershipRole.NoAccess },
-      name: identityDetails?.identity?.name || "",
+      name: identityDetails?.name || "",
       metadata: identityDetails?.metadata || []
     }
   });

@@ -10,7 +10,6 @@ export type {
   TGetNamespaceIdentityMembershipByIdDTO,
   TListNamespaceIdentityMembershipsDTO,
   TNamespaceIdentity,
-  TNamespaceIdentityMembership,
   TNamespaceIdentityMembershipRole,
   TSearchNamespaceIdentitiesDTO,
   TUpdateNamespaceIdentityDTO

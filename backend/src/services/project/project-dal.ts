@@ -41,11 +41,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.actorIdentityId`, identityId)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
-        .where((qb) => {
-          if (namespaceId) {
-            void qb.where(`${TableName.Project}.namespaceId`, namespaceId);
-          }
-        })
+        .where(`${TableName.Project}.namespaceId`, namespaceId || null)
         .andWhere((qb) => {
           if (projectType) {
             void qb.where(`${TableName.Project}.type`, projectType);
@@ -99,7 +95,7 @@ export const projectDALFactory = (db: TDbClient) => {
     userId: string;
     orgId: string;
     projectType?: ProjectType;
-    namespaceId?: string;
+    namespaceId?: string | null;
   }) => {
     try {
       const userGroupSubquery = db
@@ -114,11 +110,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
-        .where((qb) => {
-          if (namespaceId) {
-            void qb.where(`${TableName.Project}.namespaceId`, namespaceId);
-          }
-        })
+        .where(`${TableName.Project}.namespaceId`, namespaceId || null)
         .andWhere((qb) => {
           void qb
             .where(`${TableName.Membership}.actorUserId`, userId)
@@ -253,11 +245,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.Project)
         .where(`${TableName.Project}.slug`, dto.slug)
         .where(`${TableName.Project}.orgId`, dto.orgId)
-        .where((qb) => {
-          if (dto.namespaceId) {
-            void qb.where(`${TableName.Project}.namespaceId`, dto.namespaceId);
-          }
-        })
+        .where(`${TableName.Project}.namespaceId`, dto.namespaceId || null)
         .leftJoin(TableName.Environment, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .select(
           selectAllTableCols(TableName.Project),
@@ -406,11 +394,7 @@ export const projectDALFactory = (db: TDbClient) => {
     const query = db
       .replicaNode()(TableName.Project)
       .where(`${TableName.Project}.orgId`, dto.orgId)
-      .where((qb) => {
-        if (dto.namespaceId) {
-          void qb.where(`${TableName.Project}.namespaceId`, dto.namespaceId);
-        }
-      })
+      .where(`${TableName.Project}.namespaceId`, dto.namespaceId || null)
       .select(selectAllTableCols(TableName.Project))
       .select(db.raw("COUNT(*) OVER() AS count"))
       .select<(TProjects & { isMember: boolean; count: number })[]>(

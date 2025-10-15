@@ -5,7 +5,7 @@ import { apiRequest } from "@app/config/request";
 import {
   TGetNamespaceIdentityMembershipByIdDTO,
   TListNamespaceIdentityMembershipsDTO,
-  TNamespaceIdentityMembership,
+  TNamespaceIdentity,
   TSearchNamespaceIdentitiesDTO
 } from "./types";
 
@@ -34,7 +34,7 @@ export const namespaceIdentityQueryKeys = {
       queryKey: namespaceIdentityQueryKeys.searchKey({ namespaceId, ...body }),
       queryFn: async () => {
         const { data } = await apiRequest.post<{
-          identities: TNamespaceIdentityMembership[];
+          identities: TNamespaceIdentity[];
           totalCount: number;
         }>(`/api/v1/namespaces/${namespaceId}/identities/search`, body);
         return data;
@@ -45,7 +45,7 @@ export const namespaceIdentityQueryKeys = {
       queryKey: namespaceIdentityQueryKeys.listKey({ namespaceId, ...params }),
       queryFn: async () => {
         const { data } = await apiRequest.get<{
-          identityMemberships: TNamespaceIdentityMembership[];
+          identity: TNamespaceIdentity[];
           totalCount: number;
         }>(`/api/v1/namespaces/${namespaceId}/identities`, {
           params
@@ -57,10 +57,10 @@ export const namespaceIdentityQueryKeys = {
     queryOptions({
       queryKey: namespaceIdentityQueryKeys.detailKey(namespaceId, identityId),
       queryFn: async () => {
-        const { data } = await apiRequest.get<{ identityMembership: TNamespaceIdentityMembership }>(
+        const { data } = await apiRequest.get<{ identity: TNamespaceIdentity }>(
           `/api/v1/namespaces/${namespaceId}/identities/${identityId}`
         );
-        return data.identityMembership;
+        return data.identity;
       }
     })
 };

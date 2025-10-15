@@ -245,7 +245,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          identity: SanitizedNamespaceIdentitySchema
+          identity: SanitizedNamespaceIdentitySchema.extend({ authMethods: z.string().array().optional() })
         })
       }
     },

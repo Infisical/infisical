@@ -28,8 +28,10 @@ import {
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
 import { usePopUp } from "@app/hooks";
-import { TNamespaceIdentityMembership } from "@app/hooks/api/namespaceIdentity";
-import { useUpdateNamespaceIdentityMembership } from "@app/hooks/api/namespaceIdentityMembership";
+import {
+  TNamespaceIdentityMembership,
+  useUpdateNamespaceIdentityMembership
+} from "@app/hooks/api/namespaceIdentityMembership";
 import { TNamespaceRole } from "@app/hooks/api/namespaceRoles";
 
 import { IdentityRoleModify } from "./IdentityRoleModify";
@@ -49,7 +51,6 @@ export const IdentityRoleDetailsSection = ({
     "modifyRole"
   ] as const);
   const { mutateAsync: updateIdentityWorkspaceRole } = useUpdateNamespaceIdentityMembership();
-
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TNamespaceRole;
     try {

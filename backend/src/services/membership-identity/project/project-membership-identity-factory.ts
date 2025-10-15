@@ -12,6 +12,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TMembershipIdentityDALFactory } from "../membership-identity-dal";
 import { TMembershipIdentityScopeFactory } from "../membership-identity-types";
@@ -19,11 +20,13 @@ import { TMembershipIdentityScopeFactory } from "../membership-identity-types";
 type TProjectMembershipIdentityScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export const newProjectMembershipIdentityFactory = ({
   permissionService,
-  membershipIdentityDAL
+  membershipIdentityDAL,
+  projectDAL
 }: TProjectMembershipIdentityScopeFactoryDep): TMembershipIdentityScopeFactory => {
   const getScopeField: TMembershipIdentityScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Project) {
@@ -57,15 +60,27 @@ export const newProjectMembershipIdentityFactory = ({
       ProjectPermissionIdentityActions.Create,
       ProjectPermissionSub.Identity
     );
-    // TODO(namespace): conditionally switch to namespace check
-    const orgMembership = await membershipIdentityDAL.findOne({
-      actorIdentityId: dto.data.identityId,
-      scopeOrgId: dto.permission.orgId,
-      scope: AccessScope.Organization
-    });
-    if (!orgMembership)
-      throw new BadRequestError({ message: `Identity ${dto.data.identityId} is missing organization membership` });
 
+    const project = await projectDAL.findById(scope.value);
+    if (project.namespaceId) {
+      const namespaceMembership = await membershipIdentityDAL.findOne({
+        actorIdentityId: dto.data.identityId,
+        scopeOrgId: dto.permission.orgId,
+        scopeNamespaceId: project.namespaceId,
+        scope: AccessScope.Namespace
+      });
+      if (!namespaceMembership)
+        throw new BadRequestError({ message: `Identity ${dto.data.identityId} is missing organization membership` });
+    } else {
+      const orgMembership = await membershipIdentityDAL.findOne({
+        actorIdentityId: dto.data.identityId,
+        scopeOrgId: dto.permission.orgId,
+        scope: AccessScope.Organization
+      });
+      if (!orgMembership)
+        throw new BadRequestError({ message: `Identity ${dto.data.identityId} is missing organization membership` });
+    }
+    // TODO(namespace): conditionally switch to namespace check
     const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.map((el) => el.role),

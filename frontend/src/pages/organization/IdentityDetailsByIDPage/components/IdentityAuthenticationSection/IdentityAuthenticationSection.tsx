@@ -17,7 +17,7 @@ type Props = {
     name: string;
     id: string;
     authMethods: IdentityAuthMethod[];
-    activeLockoutAuthMethods: IdentityAuthMethod[];
+    activeLockoutAuthMethods?: IdentityAuthMethod[];
     namespaceId?: string;
   };
   handlePopUpOpen: (
@@ -32,7 +32,7 @@ export const IdentityAuthenticationSection = ({ handlePopUpOpen, identity }: Pro
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-semibold text-mineshaft-100">Authentication</h3>
       </div>
-      {identity.authMethods.length > 0 ? (
+      {identity?.authMethods?.length > 0 ? (
         <div className="flex flex-col divide-y divide-mineshaft-400/50">
           {identity.authMethods.map((authMethod) => (
             <button
@@ -48,7 +48,7 @@ export const IdentityAuthenticationSection = ({ handlePopUpOpen, identity }: Pro
             >
               <span>{identityAuthToNameMap?.[authMethod]}</span>
               <div className="flex gap-2">
-                {identity.activeLockoutAuthMethods.includes(authMethod) && (
+                {identity?.activeLockoutAuthMethods?.includes(authMethod) && (
                   <Tooltip content="Auth method has active lockouts">
                     <FontAwesomeIcon icon={faLock} size="xs" className="text-red-400/50" />
                   </Tooltip>
@@ -66,7 +66,7 @@ export const IdentityAuthenticationSection = ({ handlePopUpOpen, identity }: Pro
         </div>
       )}
       {!Object.values(IdentityAuthMethod).every((method) =>
-        identity.authMethods.includes(method)
+        identity?.authMethods?.includes(method)
       ) && (
         <VariablePermissionCan
           type={identity?.namespaceId ? "namespace" : "org"}
@@ -96,7 +96,7 @@ export const IdentityAuthenticationSection = ({ handlePopUpOpen, identity }: Pro
               size="xs"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
             >
-              {identity.authMethods.length ? "Add" : "Create"} Auth Method
+              {identity?.authMethods?.length ? "Add" : "Create"} Auth Method
             </Button>
           )}
         </VariablePermissionCan>
