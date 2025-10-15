@@ -83,10 +83,10 @@ export const VaultConnectionSection = () => {
           <img
             src="/images/integrations/Vault.png"
             alt="HashiCorp Vault logo"
-            className="bg-bunker-500 h-10 w-10 rounded-md p-2"
+            className="h-10 w-10 rounded-md bg-bunker-500 p-2"
           />
           <div>
-            <h3 className="text-mineshaft-100 text-lg font-medium">HashiCorp Vault</h3>
+            <h3 className="text-lg font-medium text-mineshaft-100">HashiCorp Vault</h3>
             <p className="text-sm text-gray-400">
               Enable in-platform migration tooling for policy imports and secret engine migrations
             </p>
@@ -119,7 +119,7 @@ export const VaultConnectionSection = () => {
               <Tr>
                 <Td colSpan={3}>
                   <EmptyState title="No namespace configurations" icon={faPlus} className="py-8">
-                    <p className="text-mineshaft-400 mb-4 text-sm">
+                    <p className="mb-4 text-sm text-mineshaft-400">
                       Add a namespace configuration to enable in-platform migration features.
                     </p>
                   </EmptyState>
@@ -159,7 +159,7 @@ export const VaultConnectionSection = () => {
         </Table>
       </TableContainer>
 
-      <p className="text-mineshaft-400 mt-4 text-xs">
+      <p className="mt-4 text-xs text-mineshaft-400">
         Configure namespace-specific connections to enable in-platform migration features. Manage
         connections in the App Connections section.
       </p>

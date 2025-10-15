@@ -404,9 +404,9 @@ export const IdentityKubernetesAuthForm = ({
         </TabList>
         <TabPanel value={IdentityFormTab.Configuration}>
           {hasVaultConnection && !isUpdate && (
-            <div className="bg-primary/10 border-primary/30 mb-4 flex items-center justify-between rounded-md border p-3">
+            <div className="mb-4 flex items-center justify-between rounded-md border border-primary/30 bg-primary/10 p-3">
               <div className="flex items-start gap-2 text-sm">
-                <FontAwesomeIcon icon={faInfoCircle} className="text-primary mt-0.5" />
+                <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-primary" />
                 <span className="text-mineshaft-200">Load values from HashiCorp Vault</span>
               </div>
               <Button
@@ -467,7 +467,7 @@ export const IdentityKubernetesAuthForm = ({
                                   );
                                 }
                               }}
-                              className="border-mineshaft-500 w-full border"
+                              className="w-full border border-mineshaft-500"
                               dropdownContainerClassName="max-w-none"
                               isLoading={isGatewayLoading}
                               placeholder="Default: Internet Gateway"

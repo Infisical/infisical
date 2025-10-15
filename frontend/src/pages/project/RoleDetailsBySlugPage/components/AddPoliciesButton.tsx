@@ -56,7 +56,7 @@ export const AddPoliciesButton = ({ isDisabled, projectType }: Props) => {
           <IconButton
             ariaLabel="Open policy template options"
             variant="outline_bg"
-            className="bg-mineshaft-600 rounded-l-none p-3"
+            className="rounded-l-none bg-mineshaft-600 p-3"
           >
             <FontAwesomeIcon icon={faAngleDown} />
           </IconButton>

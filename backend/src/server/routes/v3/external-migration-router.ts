@@ -129,7 +129,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
               id: z.string(),
               orgId: z.string(),
               namespace: z.string(),
-              connectionId: z.string().nullable().optional(),
+              connectionId: z.string().nullish(),
               createdAt: z.date(),
               updatedAt: z.date()
             })

@@ -17,10 +17,10 @@ export const ExternalMigrationsTab = () => {
   return (
     <div className="flex flex-col gap-6">
       {/* In-Platform Migration Tooling Section */}
-      <div className="border-mineshaft-600 bg-mineshaft-900 rounded-lg border p-4">
+      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4">
-          <h2 className="text-mineshaft-100 text-xl font-medium">In-Platform Migration Tooling</h2>
-          <p className="mb-6 mt-1 text-sm text-gray-400">
+          <h2 className="text-xl font-medium text-mineshaft-100">In-Platform Migration Tooling</h2>
+          <p className="mt-1 mb-6 text-sm text-gray-400">
             Configure platform connections to enable migration features throughout Infisical, such
             as importing policies and resources directly within the UI.
           </p>
@@ -29,10 +29,10 @@ export const ExternalMigrationsTab = () => {
       </div>
 
       {/* Bulk Data Import Section */}
-      <div className="border-mineshaft-600 bg-mineshaft-900 rounded-lg border p-4">
+      <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4">
-          <h2 className="text-mineshaft-100 text-xl font-medium">Bulk Data Import</h2>
-          <p className="mb-6 mt-1 text-sm text-gray-400">
+          <h2 className="text-xl font-medium text-mineshaft-100">Bulk Data Import</h2>
+          <p className="mt-1 mb-6 text-sm text-gray-400">
             Perform one-time bulk imports of data from external platforms.
           </p>
         </div>
@@ -40,7 +40,7 @@ export const ExternalMigrationsTab = () => {
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <p className="text-mineshaft-100 text-base font-medium">
+              <p className="text-base font-medium text-mineshaft-100">
                 Import from external source
               </p>
               <a
@@ -48,7 +48,7 @@ export const ExternalMigrationsTab = () => {
                 rel="noopener noreferrer"
                 href="https://infisical.com/docs/documentation/platform/external-migrations/overview"
               >
-                <div className="bg-yellow/20 text-yellow inline-block rounded-md px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm opacity-80 hover:opacity-100">
+                <div className="inline-block rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   Docs
                   <FontAwesomeIcon

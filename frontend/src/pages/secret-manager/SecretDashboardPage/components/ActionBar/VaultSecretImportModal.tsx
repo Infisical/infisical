@@ -81,9 +81,9 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
 
   return (
     <>
-      <div className="bg-primary/10 text-mineshaft-200 mb-4 rounded-md p-3 text-sm">
+      <div className="mb-4 rounded-md bg-primary/10 p-3 text-sm text-mineshaft-200">
         <div className="flex items-start gap-2">
-          <FontAwesomeIcon icon={faInfoCircle} className="text-primary mt-0.5" />
+          <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-primary" />
           <div>
             <div className="mb-2">
               <strong>Import Secrets from HashiCorp Vault</strong>
@@ -121,7 +121,7 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
             placeholder="Select namespace..."
             className="w-full"
           />
-          <p className="text-mineshaft-400 mt-1 text-xs">
+          <p className="mt-1 text-xs text-mineshaft-400">
             Select the Vault namespace to fetch available secret paths
           </p>
         </>
@@ -146,7 +146,7 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
             isClearable
             className="w-full"
           />
-          <p className="text-mineshaft-400 mt-1 text-xs">
+          <p className="mt-1 text-xs text-mineshaft-400">
             Choose a secret path from your Vault namespace to import into Infisical
           </p>
         </>

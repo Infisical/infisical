@@ -146,9 +146,9 @@ const Content = ({ onClose }: ContentProps) => {
 
   return (
     <>
-      <div className="bg-primary/10 text-mineshaft-200 mb-4 rounded-md p-3 text-sm">
+      <div className="mb-4 rounded-md bg-primary/10 p-3 text-sm text-mineshaft-200">
         <div className="flex items-start gap-2">
-          <FontAwesomeIcon icon={faInfoCircle} className="text-primary mt-0.5" />
+          <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-primary" />
           <div>
             <div className="mb-2">
               <strong>How Policy Translation Works</strong>
@@ -192,7 +192,7 @@ const Content = ({ onClose }: ContentProps) => {
             placeholder="Select namespace..."
             className="w-full"
           />
-          <p className="text-mineshaft-400 mt-1 text-xs">
+          <p className="mt-1 text-xs text-mineshaft-400">
             Select the Vault namespace to fetch policies and mount information
           </p>
         </>
@@ -218,7 +218,7 @@ const Content = ({ onClose }: ContentProps) => {
             isClearable
             className="w-full"
           />
-          <p className="text-mineshaft-400 mt-1 text-xs">
+          <p className="mt-1 text-xs text-mineshaft-400">
             Select a policy to auto-populate the HCL editor below, or skip to paste your own
           </p>
         </>
@@ -239,7 +239,7 @@ path "secret/metadata/prod/*" {
             rows={12}
             className="font-mono text-sm"
           />
-          <p className="text-mineshaft-400 mt-1 text-xs">
+          <p className="mt-1 text-xs text-mineshaft-400">
             Paste your HCL policy here or select one from the dropdown above. The translator will
             extract environments and paths automatically.
           </p>

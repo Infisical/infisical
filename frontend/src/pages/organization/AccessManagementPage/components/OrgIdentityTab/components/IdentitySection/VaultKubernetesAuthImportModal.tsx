@@ -80,7 +80,7 @@ const Content = ({ onClose, onImport }: ContentProps) => {
             placeholder="Select namespace..."
             className="w-full"
           />
-          <p className="text-mineshaft-400 mt-1 text-xs">
+          <p className="mt-1 text-xs text-mineshaft-400">
             Select the Vault namespace to fetch available Kubernetes auth roles
           </p>
         </>
@@ -105,7 +105,7 @@ const Content = ({ onClose, onImport }: ContentProps) => {
             isClearable
             className="w-full"
           />
-          <p className="text-mineshaft-400 mt-1 text-xs">
+          <p className="mt-1 text-xs text-mineshaft-400">
             Select the Kubernetes role to load configuration from
           </p>
         </>
