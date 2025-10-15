@@ -126,7 +126,7 @@ const makeSqlConnection = (
                   }
                 : undefined
             });
-            client.query(SIMPLE_QUERY);
+            await client.query(SIMPLE_QUERY);
           } catch (error) {
             if (connectOnly) {
               // Hacky way to know if we successfully hit the database.
