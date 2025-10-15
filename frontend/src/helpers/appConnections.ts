@@ -125,7 +125,8 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Redis]: { name: "Redis", image: "Redis.png" },
   [AppConnection.LaravelForge]: {
     name: "Laravel Forge",
-    image: "Laravel Forge.png"
+    image: "Laravel Forge.png",
+    size: 65
   }
 };
 
