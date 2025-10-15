@@ -596,6 +596,7 @@ export const registerRoutes = async (
   });
 
   const membershipIdentityService = membershipIdentityServiceFactory({
+    projectDAL,
     membershipIdentityDAL,
     membershipRoleDAL,
     permissionService,
