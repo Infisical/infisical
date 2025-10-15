@@ -29,7 +29,7 @@ export const MyNamespaceView = ({ resourceViewMode, orderDirection, searchValue 
   const { setPage, perPage, setPerPage, page, offset, limit } = usePagination(
     SearchNamespaceSortBy.NAME,
     {
-      initPerPage: getUserTablePreference("myNamespacesTable", PreferenceKey.PerPage, 1)
+      initPerPage: getUserTablePreference("myNamespacesTable", PreferenceKey.PerPage, 24)
     }
   );
 

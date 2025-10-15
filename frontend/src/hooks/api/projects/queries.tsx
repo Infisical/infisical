@@ -98,12 +98,13 @@ export const useGetUpgradeProjectStatus = ({
   });
 };
 
-const fetchUserWorkspaces = async (includeRoles?: boolean, type?: ProjectType | "all") => {
+const fetchUserWorkspaces = async (dto: {
+  includeRoles?: boolean;
+  type?: ProjectType | "all";
+  namespaceId?: string;
+}) => {
   const { data } = await apiRequest.get<{ projects: Project[] }>("/api/v1/projects", {
-    params: {
-      includeRoles,
-      type
-    }
+    params: dto
   });
   return data.projects;
 };
@@ -130,14 +131,16 @@ export const useGetWorkspaceById = (
 
 export const useGetUserProjects = ({
   includeRoles,
+  namespaceId,
   options = {}
 }: {
   includeRoles?: boolean;
+  namespaceId?: string;
   options?: { enabled?: boolean };
 } = {}) =>
   useQuery({
-    queryKey: projectKeys.getAllUserProjects(),
-    queryFn: () => fetchUserWorkspaces(includeRoles),
+    queryKey: projectKeys.getAllUserProjects(namespaceId),
+    queryFn: () => fetchUserWorkspaces({ includeRoles, namespaceId }),
     ...options
   });
 
@@ -215,10 +218,18 @@ export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{ data: { project: Project } }, object, CreateWorkspaceDTO>({
-    mutationFn: async ({ projectName, projectDescription, kmsKeyId, template, type }) =>
+    mutationFn: async ({
+      projectName,
+      projectDescription,
+      kmsKeyId,
+      template,
+      type,
+      namespaceId
+    }) =>
       createWorkspace({
         projectName,
         projectDescription,
+        namespaceId,
         kmsKeyId,
         template,
         type

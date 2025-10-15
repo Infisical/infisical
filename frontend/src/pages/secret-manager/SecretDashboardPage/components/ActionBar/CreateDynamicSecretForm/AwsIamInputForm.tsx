@@ -14,6 +14,7 @@ import {
   SelectItem,
   TextArea
 } from "@app/components/v2";
+import { useProject } from "@app/context";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { useGetServerConfig } from "@app/hooks/api/admin";
 import {
@@ -121,7 +122,6 @@ type Props = {
   onCompleted: () => void;
   onCancel: () => void;
   secretPath: string;
-  projectSlug: string;
   environments: ProjectEnv[];
   isSingleEnvironmentMode?: boolean;
 };
@@ -131,10 +131,10 @@ export const AwsIamInputForm = ({
   onCancel,
   environments,
   secretPath,
-  projectSlug,
   isSingleEnvironmentMode
 }: Props) => {
   const { data: serverConfig } = useGetServerConfig();
+  const { currentProject } = useProject();
 
   const {
     control,
@@ -176,7 +176,8 @@ export const AwsIamInputForm = ({
         name,
         path: secretPath,
         defaultTTL,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         environmentSlug: environment.slug,
         usernameTemplate:
           !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate

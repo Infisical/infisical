@@ -16,6 +16,7 @@ import {
   SecretInput,
   TextArea
 } from "@app/components/v2";
+import { useProject } from "@app/context";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { slugSchema } from "@app/lib/schemas";
@@ -66,16 +67,16 @@ type Props = {
   dynamicSecret: TDynamicSecret & { inputs: unknown };
   secretPath: string;
   environment: string;
-  projectSlug: string;
 };
 
 export const EditDynamicSecretCassandraForm = ({
   onClose,
   dynamicSecret,
   environment,
-  secretPath,
-  projectSlug
+  secretPath
 }: Props) => {
+  const { currentProject } = useProject();
+
   const {
     control,
     formState: { isSubmitting },
@@ -109,7 +110,8 @@ export const EditDynamicSecretCassandraForm = ({
       await updateDynamicSecret.mutateAsync({
         name: dynamicSecret.name,
         path: secretPath,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         environmentSlug: environment,
         data: {
           maxTTL: maxTTL || undefined,

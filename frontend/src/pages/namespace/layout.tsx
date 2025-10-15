@@ -1,6 +1,8 @@
-import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
+import { BreadcrumbTypes } from "@app/components/v2";
 import { NamespaceLayout } from "@app/layouts/NamespaceLayout";
+import { NamespaceSelect } from "@app/layouts/NamespaceLayout/components/NamespaceSelect";
 
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceId/_namespace-layout"
@@ -10,11 +12,8 @@ export const Route = createFileRoute(
     return {
       breadcrumbs: [
         {
-          label: "Namespaces",
-          link: linkOptions({ to: "/organization/projects" })
-        },
-        {
-          label: params.namespaceName
+          type: BreadcrumbTypes.Component,
+          component: () => <NamespaceSelect namespaceId={params.namespaceId} />
         }
       ]
     };

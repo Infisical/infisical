@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, FormLabel, Input, SecretInput, Tooltip } from "@app/components/v2";
+import { useProject } from "@app/context";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
@@ -34,15 +35,14 @@ type Props = {
   dynamicSecret: TDynamicSecret & { inputs: unknown };
   secretPath: string;
   environment: string;
-  projectSlug: string;
 };
 export const EditDynamicSecretGithubForm = ({
   onClose,
   dynamicSecret,
   secretPath,
-  environment,
-  projectSlug
+  environment
 }: Props) => {
+  const { currentProject } = useProject();
   const {
     control,
     formState: { isSubmitting },
@@ -65,7 +65,8 @@ export const EditDynamicSecretGithubForm = ({
       await updateDynamicSecret.mutateAsync({
         name: dynamicSecret.name,
         path: secretPath,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         environmentSlug: environment,
         data: {
           inputs,

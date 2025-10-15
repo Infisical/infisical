@@ -145,7 +145,6 @@ const Page = () => {
 
   // env slug
   const projectId = currentProject?.id || "";
-  const projectSlug = currentProject?.slug || "";
   const secretPath = (routerQueryParams.secretPath as string) || "/";
 
   useEffect(() => {
@@ -992,7 +991,6 @@ const Page = () => {
               {canReadDynamicSecret && Boolean(dynamicSecrets?.length) && (
                 <DynamicSecretListView
                   environment={environment}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   dynamicSecrets={dynamicSecrets}
                 />

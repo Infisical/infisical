@@ -26,9 +26,9 @@ import {
 import { ViewIdentityAuthModal } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityAuthModal";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
+import { NamespaceIdentityForm } from "../AccessManagementPage/components/IdentityTab/components/NamespaceIdentityForm";
 import { IdentityDetailsSection } from "./components/IdentityDetailsSection";
 import { IdentityRoleDetailsSection } from "./components/IdentityRoleDetailsSection";
-import { NamespaceIdentityForm } from "../AccessManagementPage/components/IdentityTab/components/NamespaceIdentityForm";
 
 const Page = () => {
   const navigate = useNavigate();

@@ -194,6 +194,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
       if (!currentProject?.slug) return;
 
       const { serialNumber, certificate, certificateChain, privateKey } = await createCertificate({
+        namespaceId: currentProject.namespaceId,
         caId: !selectedCertTemplate ? caId : undefined,
         certificateTemplateId: selectedCertTemplate ? selectedCertTemplateId : undefined,
         projectSlug: currentProject.slug,

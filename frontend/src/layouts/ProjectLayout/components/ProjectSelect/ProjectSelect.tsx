@@ -13,7 +13,7 @@ import { Link, linkOptions } from "@tanstack/react-router";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
+import { NamespacePermissionCan, OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import {
   Badge,
@@ -26,6 +26,8 @@ import {
   Tooltip
 } from "@app/components/v2";
 import {
+  NamespacePermissionActions,
+  NamespacePermissionSubjects,
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
@@ -41,9 +43,9 @@ import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 
 export const ProjectSelect = () => {
   const [searchProject, setSearchProject] = useState("");
-  const { currentProject: currentWorkspace } = useProject();
+  const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
-  const { data: projects = [] } = useGetUserProjects();
+  const { data: projects = [] } = useGetUserProjects({ namespaceId: currentProject.namespaceId });
   const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg.id);
 
   const { subscription } = useSubscription();
@@ -96,26 +98,26 @@ export const ProjectSelect = () => {
       .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite));
 
     return projectOptions;
-  }, [projects, projectFavorites, currentWorkspace]);
+  }, [projects, projectFavorites, currentProject]);
 
   return (
     <div className="-mr-2 flex w-full items-center gap-1">
       <DropdownMenu modal={false}>
         <Link
-          to={getProjectHomePage(currentWorkspace.type, currentWorkspace.environments)}
+          to={getProjectHomePage(currentProject.type, currentProject.environments)}
           params={{
-            projectId: currentWorkspace.id
+            projectId: currentProject.id
           }}
         >
           <div className="relative flex cursor-pointer items-center gap-2 text-sm text-white duration-100 hover:text-primary">
-            <Tooltip content={currentWorkspace.name} className="max-w-96 break-words">
+            <Tooltip content={currentProject.name} className="max-w-96 break-words">
               <Badge
                 variant="project"
                 className="max-w-44 overflow-hidden text-sm text-ellipsis whitespace-nowrap"
               >
                 <FontAwesomeIcon icon={faCube} />
 
-                {currentWorkspace?.name}
+                {currentProject?.name}
               </Badge>
             </Tooltip>
           </div>
@@ -169,7 +171,7 @@ export const ProjectSelect = () => {
                       window.location.assign(url.to.replaceAll("$projectId", workspace.id));
                     }}
                     icon={
-                      currentWorkspace?.id === workspace.id && (
+                      currentProject?.id === workspace.id && (
                         <FontAwesomeIcon icon={faCheck} className="mr-3 text-primary" />
                       )
                     }
@@ -202,23 +204,42 @@ export const ProjectSelect = () => {
               })}
           </div>
           <div className="mt-1 h-1 border-t border-mineshaft-600" />
-          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
-            {(isOldProjectPermissionAllowed) => (
-              <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Project}>
-                {(isAllowed) => (
-                  <DropdownMenuItem
-                    isDisabled={!isAllowed && !isOldProjectPermissionAllowed}
-                    icon={<FontAwesomeIcon icon={faPlus} />}
-                    onClick={() =>
-                      handlePopUpOpen(isAddingProjectsAllowed ? "addNewWs" : "upgradePlan")
-                    }
-                  >
-                    New Project
-                  </DropdownMenuItem>
-                )}
-              </OrgPermissionCan>
-            )}
-          </OrgPermissionCan>
+          {currentProject.namespaceId ? (
+            <NamespacePermissionCan
+              I={NamespacePermissionActions.Create}
+              a={NamespacePermissionSubjects.Project}
+            >
+              {(isAllowed) => (
+                <DropdownMenuItem
+                  isDisabled={!isAllowed}
+                  icon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={() =>
+                    handlePopUpOpen(isAddingProjectsAllowed ? "addNewWs" : "upgradePlan")
+                  }
+                >
+                  New Project
+                </DropdownMenuItem>
+              )}
+            </NamespacePermissionCan>
+          ) : (
+            <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
+              {(isOldProjectPermissionAllowed) => (
+                <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Project}>
+                  {(isAllowed) => (
+                    <DropdownMenuItem
+                      isDisabled={!isAllowed && !isOldProjectPermissionAllowed}
+                      icon={<FontAwesomeIcon icon={faPlus} />}
+                      onClick={() =>
+                        handlePopUpOpen(isAddingProjectsAllowed ? "addNewWs" : "upgradePlan")
+                      }
+                    >
+                      New Project
+                    </DropdownMenuItem>
+                  )}
+                </OrgPermissionCan>
+              )}
+            </OrgPermissionCan>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       <UpgradePlanModal
@@ -228,6 +249,7 @@ export const ProjectSelect = () => {
       />
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
+        namespaceId={currentProject.namespaceId}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
       />
     </div>

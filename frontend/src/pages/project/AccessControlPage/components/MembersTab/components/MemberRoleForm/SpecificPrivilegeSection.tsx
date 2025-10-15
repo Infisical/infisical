@@ -254,6 +254,7 @@ export const SpecificPrivilegeSecretForm = ({
         temporaryRange: data.temporaryAccess.temporaryRange
       }),
       projectSlug: currentProject.slug,
+      namespaceId: currentProject.namespaceId,
       isTemporary: data.temporaryAccess.isTemporary,
       permissions: actions
         .filter(({ allowed }) => allowed)

@@ -69,6 +69,7 @@ import {
   useDeleteNamespaceIdentityMembership
 } from "@app/hooks/api/namespaceIdentityMembership";
 import { usePopUp } from "@app/hooks/usePopUp";
+
 import { AddIdentityNamespaceModal } from "./components";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;

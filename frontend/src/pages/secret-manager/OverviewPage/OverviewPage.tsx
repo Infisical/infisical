@@ -170,7 +170,6 @@ export const OverviewPage = () => {
   const tableRef = useRef<HTMLDivElement>(null);
   const { currentProject, projectId } = useProject();
   const isProjectV3 = currentProject?.version === ProjectVersion.V3;
-  const projectSlug = currentProject?.slug as string;
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearchFilter, setDebouncedSearchFilter] = useDebounce(searchFilter);
   const secretPath = (routerSearch?.secretPath as string) || "/";
@@ -1653,7 +1652,6 @@ export const OverviewPage = () => {
       <CreateDynamicSecretForm
         isOpen={popUp.addDynamicSecret.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("addDynamicSecret", isOpen)}
-        projectSlug={projectSlug}
         environments={userAvailableDynamicSecretEnvs}
         secretPath={secretPath}
       />

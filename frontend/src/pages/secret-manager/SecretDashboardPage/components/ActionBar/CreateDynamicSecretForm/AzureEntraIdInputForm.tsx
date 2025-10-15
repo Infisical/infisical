@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger
 } from "@app/components/v2/Dropdown/Dropdown";
 import { Tooltip } from "@app/components/v2/Tooltip";
+import { useProject } from "@app/context";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { useGetDynamicSecretProviderData } from "@app/hooks/api/dynamicSecret/queries";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
@@ -65,7 +66,6 @@ type Props = {
   onCompleted: () => void;
   onCancel: () => void;
   secretPath: string;
-  projectSlug: string;
   environments: ProjectEnv[];
   isSingleEnvironmentMode?: boolean;
 };
@@ -75,9 +75,10 @@ export const AzureEntraIdInputForm = ({
   onCancel,
   environments,
   secretPath,
-  projectSlug,
   isSingleEnvironmentMode
 }: Props) => {
+  const { currentProject } = useProject();
+
   const {
     control,
     formState: { isSubmitting },
@@ -131,7 +132,8 @@ export const AzureEntraIdInputForm = ({
           name: `${name}-${user.name}`,
           path: secretPath,
           defaultTTL,
-          projectSlug,
+          projectSlug: currentProject.slug,
+          namespaceId: currentProject.namespaceId,
           environmentSlug: environment.slug
         });
       });

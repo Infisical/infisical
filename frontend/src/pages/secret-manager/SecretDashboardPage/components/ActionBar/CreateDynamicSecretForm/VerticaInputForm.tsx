@@ -21,6 +21,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { useProject } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -90,7 +91,6 @@ type Props = {
   onCompleted: () => void;
   onCancel: () => void;
   secretPath: string;
-  projectSlug: string;
   environments: ProjectEnv[];
   isSingleEnvironmentMode?: boolean;
 };
@@ -100,9 +100,9 @@ export const VerticaInputForm = ({
   onCancel,
   environments,
   secretPath,
-  projectSlug,
   isSingleEnvironmentMode
 }: Props) => {
+  const { currentProject } = useProject();
   const {
     control,
     watch,
@@ -153,7 +153,8 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
         name,
         path: secretPath,
         defaultTTL,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         environmentSlug: environment.slug,
         usernameTemplate:
           !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate

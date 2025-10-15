@@ -14,6 +14,7 @@ import {
   SelectItem,
   TextArea
 } from "@app/components/v2";
+import { useProject } from "@app/context";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { ProjectEnv } from "@app/hooks/api/types";
@@ -88,7 +89,6 @@ type Props = {
   onCompleted: () => void;
   onCancel: () => void;
   secretPath: string;
-  projectSlug: string;
   environments: ProjectEnv[];
   isSingleEnvironmentMode?: boolean;
 };
@@ -97,10 +97,10 @@ export const LdapInputForm = ({
   onCompleted,
   onCancel,
   secretPath,
-  projectSlug,
   environments,
   isSingleEnvironmentMode
 }: Props) => {
+  const { currentProject } = useProject();
   const {
     control,
     formState: { isSubmitting },
@@ -148,7 +148,8 @@ export const LdapInputForm = ({
         name,
         path: secretPath,
         defaultTTL,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         usernameTemplate:
           !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate,
         environmentSlug: environment.slug

@@ -26,7 +26,11 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionDynamicSecretActions, ProjectPermissionSub } from "@app/context";
+import {
+  ProjectPermissionDynamicSecretActions,
+  ProjectPermissionSub,
+  useProject
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useGetDynamicSecretLeases, useRevokeDynamicSecretLease } from "@app/hooks/api";
 import { DynamicSecretProviders, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
@@ -37,7 +41,6 @@ import { RenewDynamicSecretLease } from "./RenewDynamicSecretLease";
 type Props = {
   dynamicSecret: TDynamicSecret;
   dynamicSecretName: string;
-  projectSlug: string;
   environment: string;
   secretPath: string;
   onClickNewLease: () => void;
@@ -47,7 +50,6 @@ type Props = {
 const DYNAMIC_SECRETS_WITHOUT_RENEWAL = [DynamicSecretProviders.Github];
 
 export const DynamicSecretLease = ({
-  projectSlug,
   dynamicSecretName,
   environment,
   secretPath,
@@ -55,12 +57,14 @@ export const DynamicSecretLease = ({
   onClose,
   dynamicSecret
 }: Props) => {
+  const { currentProject } = useProject();
   const { handlePopUpOpen, popUp, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteSecret",
     "renewSecret"
   ] as const);
   const { data: leases, isPending: isLeaseLoading } = useGetDynamicSecretLeases({
-    projectSlug,
+    projectSlug: currentProject.slug,
+    namespaceId: currentProject.namespaceId,
     environmentSlug: environment,
     path: secretPath,
     dynamicSecretName
@@ -76,7 +80,8 @@ export const DynamicSecretLease = ({
       };
       await deleteDynamicSecretLease.mutateAsync({
         environmentSlug: environment,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         path: secretPath,
         dynamicSecretName,
         leaseId,
@@ -255,7 +260,6 @@ export const DynamicSecretLease = ({
         <ModalContent title="Renew Lease">
           <RenewDynamicSecretLease
             onClose={() => handlePopUpClose("renewSecret")}
-            projectSlug={projectSlug}
             leaseId={(popUp.renewSecret?.data as { leaseId: string })?.leaseId}
             dynamicSecretName={dynamicSecretName}
             dynamicSecret={dynamicSecret}

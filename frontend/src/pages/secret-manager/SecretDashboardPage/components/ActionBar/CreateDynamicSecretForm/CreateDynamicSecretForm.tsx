@@ -51,7 +51,6 @@ import { VerticaInputForm } from "./VerticaInputForm";
 type Props = {
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
-  projectSlug: string;
   environments: ProjectEnv[];
   secretPath: string;
   isSingleEnvironmentMode?: boolean;
@@ -182,7 +181,6 @@ const UniqueLinks: Record<string, string> = {
 export const CreateDynamicSecretForm = ({
   isOpen,
   onToggle,
-  projectSlug,
   environments,
   secretPath,
   isSingleEnvironmentMode
@@ -271,7 +269,6 @@ export const CreateDynamicSecretForm = ({
                 <SqlDatabaseInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -290,7 +287,6 @@ export const CreateDynamicSecretForm = ({
                 <RedisInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -309,7 +305,6 @@ export const CreateDynamicSecretForm = ({
                 <AwsElastiCacheInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -328,7 +323,6 @@ export const CreateDynamicSecretForm = ({
                 <CassandraInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -347,7 +341,6 @@ export const CreateDynamicSecretForm = ({
                 <AwsIamInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -366,7 +359,6 @@ export const CreateDynamicSecretForm = ({
                 <MongoAtlasInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -385,7 +377,6 @@ export const CreateDynamicSecretForm = ({
                 <ElasticSearchInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -404,7 +395,6 @@ export const CreateDynamicSecretForm = ({
                 <MongoDBDatabaseInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -423,7 +413,6 @@ export const CreateDynamicSecretForm = ({
                 <RabbitMqInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -442,7 +431,6 @@ export const CreateDynamicSecretForm = ({
                 <AzureEntraIdInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -461,7 +449,6 @@ export const CreateDynamicSecretForm = ({
                 <AzureSqlDatabaseInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -480,7 +467,6 @@ export const CreateDynamicSecretForm = ({
                 <LdapInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -499,7 +485,6 @@ export const CreateDynamicSecretForm = ({
                 <SapHanaInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -518,7 +503,6 @@ export const CreateDynamicSecretForm = ({
                 <SapAseInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -538,7 +522,6 @@ export const CreateDynamicSecretForm = ({
                 <SnowflakeInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -557,7 +540,6 @@ export const CreateDynamicSecretForm = ({
                 <TotpInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -576,7 +558,6 @@ export const CreateDynamicSecretForm = ({
                 <KubernetesInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -595,7 +576,6 @@ export const CreateDynamicSecretForm = ({
                 <VerticaInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -614,7 +594,6 @@ export const CreateDynamicSecretForm = ({
                 <GcpIamInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -633,7 +612,6 @@ export const CreateDynamicSecretForm = ({
                 <GithubInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}
@@ -652,7 +630,6 @@ export const CreateDynamicSecretForm = ({
                 <CouchbaseInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
-                  projectSlug={projectSlug}
                   secretPath={secretPath}
                   environments={environments}
                   isSingleEnvironmentMode={isSingleEnvironmentMode}

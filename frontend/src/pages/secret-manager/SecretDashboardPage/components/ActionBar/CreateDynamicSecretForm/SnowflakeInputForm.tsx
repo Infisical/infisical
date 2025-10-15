@@ -16,6 +16,7 @@ import {
   Input,
   TextArea
 } from "@app/components/v2";
+import { useProject } from "@app/context";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { ProjectEnv } from "@app/hooks/api/types";
@@ -61,7 +62,6 @@ type Props = {
   onCompleted: () => void;
   onCancel: () => void;
   secretPath: string;
-  projectSlug: string;
   environments: ProjectEnv[];
   isSingleEnvironmentMode?: boolean;
 };
@@ -71,9 +71,9 @@ export const SnowflakeInputForm = ({
   onCancel,
   environments,
   secretPath,
-  projectSlug,
   isSingleEnvironmentMode
 }: Props) => {
+  const { currentProject } = useProject();
   const {
     control,
     formState: { isSubmitting },
@@ -112,7 +112,8 @@ export const SnowflakeInputForm = ({
         name,
         path: secretPath,
         defaultTTL,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         environmentSlug: environment.slug,
         usernameTemplate:
           !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate

@@ -84,13 +84,7 @@ const generateRequestText = (request: TAccessApprovalRequest) => {
   );
 };
 
-export const AccessApprovalRequest = ({
-  projectSlug,
-  projectId
-}: {
-  projectSlug: string;
-  projectId: string;
-}) => {
+export const AccessApprovalRequest = () => {
   const [selectedRequest, setSelectedRequest] = useState<
     | (TAccessApprovalRequest & {
         user: { firstName?: string | null; lastName?: string | null; email?: string | null } | null;
@@ -112,7 +106,7 @@ export const AccessApprovalRequest = ({
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
 
-  const { data: members } = useGetWorkspaceUsers(projectId, true);
+  const { data: members } = useGetWorkspaceUsers(currentProject.id, true);
   const membersGroupById = members?.reduce<Record<string, TWorkspaceUser>>(
     (prev, curr) => ({ ...prev, [curr.user.id]: curr }),
     {}
@@ -123,11 +117,13 @@ export const AccessApprovalRequest = ({
   const [envFilter, setEnvFilter] = useState<string | undefined>(undefined);
 
   const { data: requestCount } = useGetAccessRequestsCount({
-    projectSlug
+    projectSlug: currentProject.slug,
+    namespaceId: currentProject.namespaceId
   });
 
   const { data: policies, isPending: policiesLoading } = useGetAccessApprovalPolicies({
-    projectSlug
+    projectSlug: currentProject.slug,
+    namespaceId: currentProject.namespaceId
   });
 
   const {
@@ -135,7 +131,8 @@ export const AccessApprovalRequest = ({
     refetch: refetchRequests,
     isPending: areRequestsPending
   } = useGetAccessApprovalRequests({
-    projectSlug,
+    projectSlug: currentProject.slug,
+    namespaceId: currentProject.namespaceId,
     authorUserId: requestedByFilter,
     envSlug: envFilter
   });
@@ -567,11 +564,12 @@ export const AccessApprovalRequest = ({
             isOpen={popUp.requestAccess.isOpen}
             onOpenChange={() => {
               queryClient.invalidateQueries({
-                queryKey: accessApprovalKeys.getAccessApprovalRequests(
-                  projectSlug,
-                  envFilter,
-                  requestedByFilter
-                )
+                queryKey: accessApprovalKeys.getAccessApprovalRequests({
+                  projectSlug: currentProject.slug,
+                  namespaceId: currentProject.namespaceId,
+                  envSlug: envFilter,
+                  authorUserId: requestedByFilter
+                })
               });
               handlePopUpClose("requestAccess");
             }}
@@ -583,7 +581,6 @@ export const AccessApprovalRequest = ({
             selectedEnvSlug={envFilter}
             policies={policies || []}
             selectedRequester={requestedByFilter}
-            projectSlug={projectSlug}
             request={selectedRequest}
             members={members || []}
             isOpen={popUp.reviewRequest.isOpen}

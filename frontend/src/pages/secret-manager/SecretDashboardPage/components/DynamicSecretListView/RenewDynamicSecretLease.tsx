@@ -6,6 +6,7 @@ import { z } from "zod";
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
+import { useProject } from "@app/context";
 import { useRenewDynamicSecretLease } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 
@@ -14,20 +15,19 @@ type Props = {
   leaseId: string;
   dynamicSecretName: string;
   dynamicSecret: TDynamicSecret;
-  projectSlug: string;
   environment: string;
   secretPath: string;
 };
 
 export const RenewDynamicSecretLease = ({
   onClose,
-  projectSlug,
   dynamicSecretName,
   leaseId,
   secretPath,
   environment,
   dynamicSecret
 }: Props) => {
+  const { currentProject } = useProject();
   const maxTtlMs = dynamicSecret.maxTTL ? ms(dynamicSecret.maxTTL) : undefined;
 
   const formSchema = z.object({
@@ -67,7 +67,8 @@ export const RenewDynamicSecretLease = ({
     try {
       await renewDynamicSecretLease.mutateAsync({
         environmentSlug: environment,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         path: secretPath,
         ttl,
         dynamicSecretName,

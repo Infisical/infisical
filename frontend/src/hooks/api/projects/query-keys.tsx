@@ -10,7 +10,8 @@ export const projectKeys = {
   getProjectMemberships: (orgId: string) => [{ orgId }, "project-memberships"],
   getProjectAuthorization: (projectId: string) => [{ projectId }, "project-authorizations"],
   getProjectIntegrations: (projectId: string) => [{ projectId }, "project-integrations"],
-  getAllUserProjects: () => ["projects"] as const,
+  getAllUserProjects: (namespaceId?: string) =>
+    namespaceId ? (["projects", { namespaceId }] as const) : ["projects"],
   getProjectAuditLogs: (projectId: string) => [{ projectId }, "project-audit-logs"] as const,
   getProjectUsers: (
     projectId: string,

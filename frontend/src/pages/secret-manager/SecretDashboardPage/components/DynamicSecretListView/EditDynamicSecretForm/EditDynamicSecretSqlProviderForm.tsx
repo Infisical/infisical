@@ -22,7 +22,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionSubjects, useProject } from "@app/context";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys, useUpdateDynamicSecret } from "@app/hooks/api";
 import { SqlProviders, TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
@@ -107,15 +107,13 @@ type Props = {
   dynamicSecret: TDynamicSecret & { inputs: unknown };
   secretPath: string;
   environment: string;
-  projectSlug: string;
 };
 
 export const EditDynamicSecretSqlProviderForm = ({
   onClose,
   dynamicSecret,
   environment,
-  secretPath,
-  projectSlug
+  secretPath
 }: Props) => {
   const getDefaultPasswordRequirements = (provider: SqlProviders) => ({
     length: provider === SqlProviders.Oracle ? 30 : 48,
@@ -127,6 +125,7 @@ export const EditDynamicSecretSqlProviderForm = ({
     },
     allowedSymbols: "-_.~!*"
   });
+  const { currentProject } = useProject();
 
   const {
     control,
@@ -174,7 +173,8 @@ export const EditDynamicSecretSqlProviderForm = ({
       await updateDynamicSecret.mutateAsync({
         name: dynamicSecret.name,
         path: secretPath,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         environmentSlug: environment,
         data: {
           maxTTL: maxTTL || undefined,

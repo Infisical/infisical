@@ -89,6 +89,7 @@ export const CaRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
 
       await renewCa({
         projectSlug,
+        namespaceId: currentProject.namespaceId,
         caId: popUpData.caId,
         notAfter,
         type

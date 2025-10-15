@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faLink, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { NamespaceIdentityForm } from "./NamespaceIdentityForm";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { AnimatePresence, motion } from "framer-motion";
+
 import { LinkOrgIdentityForm } from "./LinkOrgIdentityForm";
+import { NamespaceIdentityForm } from "./NamespaceIdentityForm";
 
 type Props = {
   handlePopUpToggle: () => void;

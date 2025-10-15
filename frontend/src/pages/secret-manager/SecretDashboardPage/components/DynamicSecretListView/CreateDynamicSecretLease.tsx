@@ -18,6 +18,7 @@ import {
   Spinner,
   Tooltip
 } from "@app/components/v2";
+import { useProject } from "@app/context";
 import { useTimedReset, useToggle } from "@app/hooks";
 import { useCreateDynamicSecretLease } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
@@ -420,12 +421,12 @@ type TKubernetesForm = z.infer<typeof kubernetesFormSchema>;
 
 export const CreateKubernetesDynamicSecretLease = ({
   onClose,
-  projectSlug,
   dynamicSecretName,
   provider,
   secretPath,
   environment
 }: Props) => {
+  const { currentProject } = useProject();
   const {
     control,
     formState: { isSubmitting },
@@ -444,7 +445,8 @@ export const CreateKubernetesDynamicSecretLease = ({
     try {
       await createDynamicSecretLease.mutateAsync({
         environmentSlug: environment,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         path: secretPath,
         ttl,
         dynamicSecretName,
@@ -557,7 +559,6 @@ type Props = {
   onClose: () => void;
   dynamicSecretName: string;
   provider: DynamicSecretProviders;
-  projectSlug: string;
   environment: string;
   secretPath: string;
 };
@@ -566,7 +567,6 @@ const PROVIDERS_WITH_AUTOGENERATE_SUPPORT = [DynamicSecretProviders.Totp];
 
 export const CreateDynamicSecretLease = ({
   onClose,
-  projectSlug,
   dynamicSecretName,
   provider,
   secretPath,
@@ -587,13 +587,14 @@ export const CreateDynamicSecretLease = ({
   );
 
   const createDynamicSecretLease = useCreateDynamicSecretLease();
-
+  const { currentProject } = useProject();
   const handleDynamicSecretLeaseCreate = async ({ ttl }: TForm) => {
     if (createDynamicSecretLease.isPending) return;
     try {
       await createDynamicSecretLease.mutateAsync({
         environmentSlug: environment,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         path: secretPath,
         ttl,
         dynamicSecretName,
@@ -630,7 +631,6 @@ export const CreateDynamicSecretLease = ({
     return (
       <CreateKubernetesDynamicSecretLease
         onClose={onClose}
-        projectSlug={projectSlug}
         dynamicSecretName={dynamicSecretName}
         provider={provider}
         secretPath={secretPath}

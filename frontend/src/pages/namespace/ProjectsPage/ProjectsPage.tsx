@@ -12,6 +12,7 @@ import { Button, PageHeader } from "@app/components/v2";
 import {
   NamespacePermissionActions,
   NamespacePermissionSubjects,
+  useNamespace,
   useSubscription
 } from "@app/context";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -27,6 +28,7 @@ import {
 
 export const ProjectsPage = () => {
   const { t } = useTranslation();
+  const { namespaceId } = useNamespace();
 
   const [searchFilter, setSearchFilter] = useState("");
   const [orderDirection, setOrderDirection] = useState(OrderByDirection.ASC);
@@ -141,14 +143,20 @@ export const ProjectsPage = () => {
             searchValue={searchFilter}
             projectTypeFilter={projectTypeFilter}
             orderDirection={orderDirection}
+            namespaceId={namespaceId}
           />
         ) : (
-          <AllProjectView searchValue={searchFilter} orderDirection={orderDirection} />
+          <AllProjectView
+            searchValue={searchFilter}
+            orderDirection={orderDirection}
+            namespaceId={namespaceId}
+          />
         )}
       </div>
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
+        namespaceId={namespaceId}
       />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}

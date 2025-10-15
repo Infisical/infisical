@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Spinner } from "@app/components/v2";
+import { useProject } from "@app/context";
 import { useGetDynamicSecretDetails } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
@@ -29,7 +30,6 @@ import { EditDynamicSecretVerticaForm } from "./EditDynamicSecretVertica";
 type Props = {
   onClose: () => void;
   dynamicSecretName: string;
-  projectSlug: string;
   environment: string;
   secretPath: string;
 };
@@ -37,13 +37,15 @@ type Props = {
 export const EditDynamicSecretForm = ({
   dynamicSecretName,
   environment,
-  projectSlug,
   onClose,
   secretPath
 }: Props) => {
+  const { currentProject } = useProject();
+
   const { data: dynamicSecretDetails, isPending: isDynamicSecretLoading } =
     useGetDynamicSecretDetails({
-      projectSlug,
+      projectSlug: currentProject.slug,
+      namespaceId: currentProject.namespaceId,
       environmentSlug: environment,
       name: dynamicSecretName,
       path: secretPath
@@ -69,7 +71,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretSqlProviderForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -86,7 +87,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretCassandraForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -103,7 +103,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretAwsIamForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -120,7 +119,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretRedisProviderForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -137,7 +135,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretAwsElastiCacheProviderForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -154,7 +151,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretMongoAtlasForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -172,7 +168,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretElasticSearchForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -189,7 +184,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretMongoDBForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -207,7 +201,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretRabbitMqForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -225,7 +218,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretAzureEntraIdForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -243,7 +235,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretAzureSqlDatabaseForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -261,7 +252,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretLdapForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -278,7 +268,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretSapHanaForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -295,7 +284,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretSapAseForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -312,7 +300,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretSnowflakeForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -329,7 +316,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretTotpForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -346,7 +332,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretKubernetesForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -363,7 +348,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretVerticaForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -380,7 +364,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretGcpIamForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -397,7 +380,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretGithubForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}
@@ -414,7 +396,6 @@ export const EditDynamicSecretForm = ({
         >
           <EditDynamicSecretCouchbaseForm
             onClose={onClose}
-            projectSlug={projectSlug}
             secretPath={secretPath}
             dynamicSecret={dynamicSecretDetails}
             environment={environment}

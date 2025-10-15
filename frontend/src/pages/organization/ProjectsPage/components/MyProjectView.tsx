@@ -27,18 +27,22 @@ type Props = {
   orderDirection: OrderByDirection;
   resourceViewMode: ResourceViewMode;
   projectTypeFilter: Partial<Record<ProjectType, boolean>>;
+  namespaceId?: string;
 };
 
 export const MyProjectView = ({
   resourceViewMode,
   searchValue = "",
   orderDirection,
-  projectTypeFilter = {}
+  projectTypeFilter = {},
+  namespaceId
 }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
 
-  const { data: workspaces = [], isPending: isWorkspaceLoading } = useGetUserProjects();
+  const { data: projects = [], isPending: isProjectsLoading } = useGetUserProjects({
+    namespaceId
+  });
   const { setPage, perPage, setPerPage, page, offset, limit } = usePagination(ProjectOrderBy.Name, {
     initPerPage: getUserTablePreference("myProjectsTable", PreferenceKey.PerPage, 24)
   });
@@ -52,13 +56,13 @@ export const MyProjectView = ({
     setUserTablePreference("myProjectsTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const isProjectViewLoading = isWorkspaceLoading || isProjectFavoritesLoading;
-  const isWorkspaceEmpty = !isProjectViewLoading && workspaces?.length === 0;
+  const isProjectViewLoading = isProjectsLoading || isProjectFavoritesLoading;
+  const isWorkspaceEmpty = !isProjectViewLoading && projects?.length === 0;
   const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
 
   const filteredWorkspaces = useMemo(
     () =>
-      workspaces
+      projects
         .filter((ws) => {
           if (isTableFilteredByType && !projectTypeFilter?.[ws.type]) {
             return false;
@@ -70,7 +74,7 @@ export const MyProjectView = ({
             ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())
             : b.name.toLowerCase().localeCompare(a.name.toLowerCase())
         ),
-    [searchValue, orderDirection, workspaces, projectTypeFilter]
+    [searchValue, orderDirection, projects, projectTypeFilter]
   );
 
   useResetPageHelper({
@@ -287,7 +291,7 @@ export const MyProjectView = ({
         );
         break;
     }
-  } else if (workspaces.length && searchValue) {
+  } else if (projects.length && searchValue) {
     projectsComponents = (
       <div className="mt-4 w-full rounded-md border border-mineshaft-700 bg-mineshaft-800 px-4 py-6 text-base text-mineshaft-300">
         <FontAwesomeIcon

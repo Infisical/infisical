@@ -148,6 +148,7 @@ export type TProjectUserPrivilege = {
 
 export type TCreateAccessRequestDTO = {
   projectSlug: string;
+  namespaceId?: string;
   note?: string;
 } & Omit<TProjectUserPrivilege, "id" | "createdAt" | "updatedAt" | "slug" | "projectMembershipId">;
 
@@ -156,10 +157,12 @@ export type TUpdateAccessRequestDTO = {
   editNote: string;
   temporaryRange: string;
   projectSlug: string;
+  namespaceId?: string;
 };
 
 export type TGetAccessApprovalRequestsDTO = {
   projectSlug: string;
+  namespaceId?: string;
   policyId?: string;
   envSlug?: string;
   authorUserId?: string;
@@ -167,6 +170,7 @@ export type TGetAccessApprovalRequestsDTO = {
 
 export type TGetAccessPolicyApprovalCountDTO = {
   projectSlug: string;
+  namespaceId?: string;
   envSlug: string;
 };
 
@@ -178,6 +182,7 @@ export type TGetSecretApprovalPolicyOfBoardDTO = {
 
 export type TCreateAccessPolicyDTO = {
   projectSlug: string;
+  namespaceId?: string;
   name?: string;
   environments: string[];
   approvers?: Omit<Approver, "isOrgMembershipActive">[];
@@ -202,6 +207,7 @@ export type TUpdateAccessPolicyDTO = {
   allowedSelfApprovals: boolean;
   // for invalidating list
   projectSlug: string;
+  namespaceId?: string;
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
 };
@@ -210,4 +216,5 @@ export type TDeleteSecretPolicyDTO = {
   id: string;
   // for invalidating list
   projectSlug: string;
+  namespaceId?: string;
 };

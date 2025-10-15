@@ -24,6 +24,7 @@ import {
   useOrganization,
   useOrgPermission
 } from "@app/context";
+import { OrgMembershipRole } from "@app/helpers/roles";
 import { useAddUsersToOrg, useGetOrgUsers } from "@app/hooks/api";
 import { namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles";
 import {
@@ -31,7 +32,6 @@ import {
   useAddUsersToNamespace
 } from "@app/hooks/api/namespaceUserMembership";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { OrgMembershipRole } from "@app/helpers/roles";
 
 const addMemberFormSchema = z.object({
   orgMemberships: z

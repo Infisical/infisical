@@ -37,7 +37,8 @@ export const SecretManagerLayout = () => {
     projectId
   });
   const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({
-    projectSlug
+    projectSlug,
+    namespaceId: currentProject.namespaceId
   });
 
   // we only show the secret rotations v1 tab if they have existing rotations

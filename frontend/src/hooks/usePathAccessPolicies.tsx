@@ -41,6 +41,7 @@ export const usePathAccessPolicies = ({ secretPath, environment }: Params) => {
   const { subscription } = useSubscription();
   const { data: policies } = useGetAccessApprovalPolicies({
     projectSlug: currentProject.slug,
+    namespaceId: currentProject.namespaceId,
     options: {
       enabled: subscription.secretApproval
     }

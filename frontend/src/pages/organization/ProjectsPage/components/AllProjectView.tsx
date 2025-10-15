@@ -23,9 +23,10 @@ import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types"
 type Props = {
   searchValue: string;
   orderDirection: OrderByDirection;
+  namespaceId?: string;
 };
 
-export const AllProjectView = ({ searchValue = "", orderDirection }: Props) => {
+export const AllProjectView = ({ searchValue = "", orderDirection, namespaceId }: Props) => {
   const navigate = useNavigate();
   const [debouncedSearch] = useDebounce(searchValue);
   const { setPage, perPage, setPerPage, page, offset, limit } = usePagination("name", {
@@ -47,7 +48,8 @@ export const AllProjectView = ({ searchValue = "", orderDirection }: Props) => {
     limit,
     offset,
     name: debouncedSearch || undefined,
-    orderDirection
+    orderDirection,
+    namespaceId
   });
 
   const handleAccessProject = async (

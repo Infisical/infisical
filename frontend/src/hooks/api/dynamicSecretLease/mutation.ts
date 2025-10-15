@@ -34,9 +34,10 @@ export const useCreateDynamicSecretLease = () => {
       );
       return data;
     },
-    onSuccess: (_, { path, environmentSlug, projectSlug, dynamicSecretName }) => {
+    onSuccess: (_, { path, environmentSlug, projectSlug, dynamicSecretName, namespaceId }) => {
       queryClient.invalidateQueries({
         queryKey: dynamicSecretLeaseKeys.list({
+          namespaceId,
           path,
           projectSlug,
           environmentSlug,
@@ -58,13 +59,14 @@ export const useRenewDynamicSecretLease = () => {
       );
       return data.lease;
     },
-    onSuccess: (_, { path, environmentSlug, projectSlug, dynamicSecretName }) => {
+    onSuccess: (_, { path, environmentSlug, projectSlug, namespaceId, dynamicSecretName }) => {
       queryClient.invalidateQueries({
         queryKey: dynamicSecretLeaseKeys.list({
           path,
           projectSlug,
           environmentSlug,
-          dynamicSecretName
+          dynamicSecretName,
+          namespaceId
         })
       });
     }
@@ -82,13 +84,14 @@ export const useRevokeDynamicSecretLease = () => {
       );
       return data.lease;
     },
-    onSuccess: (_, { path, environmentSlug, projectSlug, dynamicSecretName }) => {
+    onSuccess: (_, { path, environmentSlug, projectSlug, dynamicSecretName, namespaceId }) => {
       queryClient.invalidateQueries({
         queryKey: dynamicSecretLeaseKeys.list({
           path,
           projectSlug,
           environmentSlug,
-          dynamicSecretName
+          dynamicSecretName,
+          namespaceId
         })
       });
     }
