@@ -20,7 +20,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     schema: {
       hide: false,
       tags: [ApiDocsTags.AzureAuth],
-      description: "Login with Azure Auth",
+      description: "Login with Azure Auth for machine identity",
       body: z.object({
         identityId: z.string().trim().describe(AZURE_AUTH.LOGIN.identityId),
         jwt: z.string()
@@ -70,7 +70,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     schema: {
       hide: false,
       tags: [ApiDocsTags.AzureAuth],
-      description: "Attach Azure Auth configuration onto identity",
+      description: "Attach Azure Auth configuration onto machine identity",
       security: [
         {
           bearerAuth: []
@@ -165,7 +165,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     schema: {
       hide: false,
       tags: [ApiDocsTags.AzureAuth],
-      description: "Update Azure Auth configuration on identity",
+      description: "Update Azure Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -255,7 +255,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     schema: {
       hide: false,
       tags: [ApiDocsTags.AzureAuth],
-      description: "Retrieve Azure Auth configuration on identity",
+      description: "Retrieve Azure Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -304,7 +304,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     schema: {
       hide: false,
       tags: [ApiDocsTags.AzureAuth],
-      description: "Delete Azure Auth configuration on identity",
+      description: "Delete Azure Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []

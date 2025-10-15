@@ -32,7 +32,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.UniversalAuth],
-      description: "Login with Universal Auth",
+      description: "Login with Universal Auth for machine identity",
       body: z.object({
         clientId: z.string().trim().describe(UNIVERSAL_AUTH.LOGIN.clientId),
         clientSecret: z.string().trim().describe(UNIVERSAL_AUTH.LOGIN.clientSecret)
@@ -90,7 +90,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.UniversalAuth],
-      description: "Attach Universal Auth configuration onto identity",
+      description: "Attach Universal Auth configuration onto machine identity",
       security: [
         {
           bearerAuth: []
@@ -208,7 +208,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.UniversalAuth],
-      description: "Update Universal Auth configuration on identity",
+      description: "Update Universal Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -331,7 +331,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.UniversalAuth],
-      description: "Retrieve Universal Auth configuration on identity",
+      description: "Retrieve Universal Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -380,7 +380,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.UniversalAuth],
-      description: "Delete Universal Auth configuration on identity",
+      description: "Delete Universal Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -429,7 +429,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.UniversalAuth],
-      description: "Create Universal Auth Client Secret for identity",
+      description: "Create Universal Auth Client Secret for machine identity",
       security: [
         {
           bearerAuth: []
@@ -487,7 +487,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.UniversalAuth],
-      description: "List Universal Auth Client Secrets for identity",
+      description: "List Universal Auth Client Secrets for machine identity",
       security: [
         {
           bearerAuth: []
@@ -537,7 +537,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.UniversalAuth],
-      description: "Get Universal Auth Client Secret for identity",
+      description: "Get Universal Auth Client Secret for machine identity",
       security: [
         {
           bearerAuth: []
@@ -589,7 +589,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.UniversalAuth],
-      description: "Revoke Universal Auth Client Secrets for identity",
+      description: "Revoke Universal Auth Client Secrets for machine identity",
       security: [
         {
           bearerAuth: []
@@ -641,7 +641,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.UniversalAuth],
-      description: "Clear Universal Auth Lockouts for identity",
+      description: "Clear Universal Auth Lockouts for machine identity",
       security: [
         {
           bearerAuth: []
