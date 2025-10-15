@@ -567,7 +567,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         orgId: clientSecretData.orgId,
         event: {
-          type: EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET,
+          type: EventType.GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID,
           metadata: {
             identityId: clientSecretData.identityId,
             clientSecretId: clientSecretData.id
