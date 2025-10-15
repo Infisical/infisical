@@ -16,7 +16,7 @@ const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
 const TEST_CONNECTION_USERNAME = "infisical-gateway-connection-test";
 const TEST_CONNECTION_PASSWORD = "infisical-gateway-connection-test-password";
-const SIMPLE_QUERY = "select 1"
+const SIMPLE_QUERY = "select 1";
 
 export interface SqlResourceConnection {
   /**
@@ -119,11 +119,13 @@ const makeSqlConnection = (
               user: actualUsername, // Use provided username or fallback
               password: actualPassword, // Use provided password or fallback
               database: connectionDetails.database,
-              ssl: sslEnabled ? {
-                // Due to no custom checkServerIdentity available, we can only pass in false here and perform custom
-                // validation as we need to
-                rejectUnauthorized: false
-              } : undefined,
+              ssl: sslEnabled
+                ? {
+                    // Due to no custom checkServerIdentity available, we can only pass in false here and perform custom
+                    // validation as we need to
+                    rejectUnauthorized: false
+                  }
+                : undefined
             });
             if (sslEnabled && sslRejectUnauthorized) {
               const secureSocket = (client as any).stream as TLSSocket;
@@ -131,11 +133,14 @@ const makeSqlConnection = (
               console.info("XXXX: secureSocket", secureSocket, serverCert);
               // TODO: perform custom check here
             }
-            client.query(SIMPLE_QUERY)
+            client.query(SIMPLE_QUERY);
           } catch (error) {
             console.error("!!!! validate error", error);
             if (connectOnly) {
-              // TODO: handle connect only errors
+              // Hacky way to know if we successfully hit the database.
+              if (error instanceof Error && error.message.startsWith(`Access denied for user '${TEST_CONNECTION_USERNAME}'@`)) {
+                return;
+              }
             }
             // TODO:
             throw error;
@@ -203,7 +208,7 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
   const validateConnection = async () => {
     try {
       await executeWithGateway({ connectionDetails, gatewayId, resourceType }, gatewayV2Service, async (client) => {
-        await client.validate(true)
+        await client.validate(true);
       });
       return connectionDetails;
     } catch (error) {
