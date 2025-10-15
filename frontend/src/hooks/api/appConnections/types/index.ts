@@ -22,6 +22,7 @@ import { TGitLabConnection } from "./gitlab-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THumanitecConnection } from "./humanitec-connection";
+import { TLaravelForgeConnection } from "./laravel-forge-connection";
 import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TMySqlConnection } from "./mysql-connection";
@@ -61,6 +62,7 @@ export * from "./gitlab-connection";
 export * from "./hc-vault-connection";
 export * from "./heroku-connection";
 export * from "./humanitec-connection";
+export * from "./laravel-forge-connection";
 export * from "./ldap-connection";
 export * from "./mssql-connection";
 export * from "./mysql-connection";
@@ -105,6 +107,7 @@ export type TAppConnection =
   | TOCIConnection
   | TOnePassConnection
   | THerokuConnection
+  | TLaravelForgeConnection
   | TRenderConnection
   | TFlyioConnection
   | TGitLabConnection

@@ -48,6 +48,7 @@ import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/b
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
+import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
@@ -56,7 +57,13 @@ import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/su
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
-  { name: string; image: string; size?: number; icon?: IconDefinition; enterprise?: boolean }
+  {
+    name: string;
+    image: string;
+    size?: number;
+    icon?: IconDefinition;
+    enterprise?: boolean;
+  }
 > = {
   [AppConnection.AWS]: { name: "AWS", image: "Amazon Web Services.png" },
   [AppConnection.GitHub]: { name: "GitHub", image: "GitHub.png" },
@@ -115,7 +122,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "Netlify.png"
   },
   [AppConnection.Okta]: { name: "Okta", image: "Okta.png" },
-  [AppConnection.Redis]: { name: "Redis", image: "Redis.png" }
+  [AppConnection.Redis]: { name: "Redis", image: "Redis.png" },
+  [AppConnection.LaravelForge]: {
+    name: "Laravel Forge",
+    image: "Laravel Forge.png",
+    size: 65
+  }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -151,6 +163,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case ZabbixConnectionMethod.ApiToken:
     case DigitalOceanConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
+    case LaravelForgeConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:

@@ -2355,6 +2355,9 @@ export const AppConnections = {
       sslRejectUnauthorized:
         "Whether or not to reject unauthorized SSL certificates (true/false). Set to false only in test environments with self-signed certificates.",
       sslCertificate: "The SSL certificate (PEM format) to use for secure connection."
+    },
+    LARAVEL_FORGE: {
+      apiToken: "The API token used to authenticate with Laravel Forge."
     }
   }
 };
@@ -2506,6 +2509,14 @@ export const SecretSyncs = {
       env: "The ID of the Vercel environment to sync secrets to.",
       branch: "The branch to sync preview secrets to.",
       teamId: "The ID of the Vercel team to sync secrets to."
+    },
+    LARAVEL_FORGE: {
+      orgSlug: "The slug of the Laravel Forge org to sync secrets to.",
+      orgName: "The name of the Laravel Forge org to sync secrets to.",
+      serverId: "The ID of the Laravel Forge server to sync secrets to.",
+      serverName: "The name of the Laravel Forge server to sync secrets to.",
+      siteId: "The ID of the Laravel Forge site to sync secrets to.",
+      siteName: "The name of the Laravel Forge site to sync secrets to."
     },
     WINDMILL: {
       workspace: "The Windmill workspace to sync secrets to.",

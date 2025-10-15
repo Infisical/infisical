@@ -80,7 +80,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
               }
               className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
             >
-              <div className="relative">
+              {image && (
                 <img
                   src={`/images/integrations/${image}`}
                   style={{
@@ -89,14 +89,16 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
                   className="mt-auto"
                   alt={`${name} logo`}
                 />
-                {icon && (
+              )}
+              {icon && (
+                <div className="relative">
                   <FontAwesomeIcon
                     className="absolute -right-1.5 -bottom-1.5 text-primary-700"
                     size="xl"
                     icon={icon}
                   />
-                )}
-              </div>
+                </div>
+              )}
               <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
                 {name}
               </div>

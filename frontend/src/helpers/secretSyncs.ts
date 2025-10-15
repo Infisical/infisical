@@ -113,6 +113,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
   [SecretSync.Bitbucket]: {
     name: "Bitbucket",
     image: "Bitbucket.png"
+  },
+  [SecretSync.LaravelForge]: {
+    name: "Laravel Forge",
+    image: "Laravel Forge.png"
   }
 };
 
@@ -146,7 +150,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Checkly]: AppConnection.Checkly,
   [SecretSync.DigitalOceanAppPlatform]: AppConnection.DigitalOcean,
   [SecretSync.Netlify]: AppConnection.Netlify,
-  [SecretSync.Bitbucket]: AppConnection.Bitbucket
+  [SecretSync.Bitbucket]: AppConnection.Bitbucket,
+  [SecretSync.LaravelForge]: AppConnection.LaravelForge
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

@@ -19,7 +19,7 @@ export const AppConnectionHeader = ({ app, isConnected, onBack }: Props) => {
         <img
           alt={`${appDetails.name} logo`}
           src={`/images/integrations/${appDetails.image}`}
-          className="h-12 w-12 rounded-md bg-bunker-500 p-2"
+          className="h-12 w-12 rounded-md bg-bunker-500 object-contain p-2"
         />
         {appDetails.icon && (
           <FontAwesomeIcon

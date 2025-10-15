@@ -23,6 +23,7 @@ import { GitLabSyncFields } from "./GitLabSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HerokuSyncFields } from "./HerokuSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
+import { LaravelForgeSyncFields } from "./LaravelForgeSyncFields";
 import { NetlifySyncFields } from "./NetlifySyncFields";
 import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
 import { RailwaySyncFields } from "./RailwaySyncFields";
@@ -100,6 +101,8 @@ export const SecretSyncDestinationFields = () => {
       return <NetlifySyncFields />;
     case SecretSync.Bitbucket:
       return <BitbucketSyncFields />;
+    case SecretSync.LaravelForge:
+      return <LaravelForgeSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }
