@@ -1,6 +1,6 @@
 import knex from "knex";
 import mysql, { Connection } from "mysql2/promise";
-import tls, { PeerCertificate, TLSSocket } from "tls";
+import tls, { PeerCertificate } from "tls";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -122,9 +122,9 @@ const makeSqlConnection = (
               ssl: sslEnabled
                 ? {
                     rejectUnauthorized: sslRejectUnauthorized,
-                    ca: sslCertificate,
+                    ca: sslCertificate
                   }
-                : undefined,
+                : undefined
             });
             client.query(SIMPLE_QUERY);
           } catch (error) {
@@ -208,35 +208,10 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
       });
       return connectionDetails;
     } catch (error) {
-      // TODO: FIXME, handle other error types
-
-      // Hacky way to know if we successfully hit the database.
-      // TODO: potentially two approaches to solve the problem.
-      //       1. change the work flow, add account first then resource
-      //       2. modify relay to add a new endpoint for returning if the target host is healthy or not
-      //          (like being able to do an auth handshake regardless pass or not)
-      if (error instanceof BadRequestError) {
-        if (
-          resourceType == PamResource.Postgres &&
-          (error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"` ||
-            error.message.includes("no pg_hba.conf entry for host"))
-        ) {
-          return connectionDetails;
-        }
-
-        // For mysql
-        if (
-          resourceType === PamResource.MySQL &&
-          error.message.startsWith(`Access denied for user '${TEST_CONNECTION_USERNAME}'@`)
-        ) {
-          return connectionDetails;
-        }
-
-        if (error.message === "Connection terminated unexpectedly") {
-          throw new BadRequestError({
-            message: "Connection terminated unexpectedly. Verify that host and port are correct"
-          });
-        }
+      if (error instanceof BadRequestError && error.message === "Connection terminated unexpectedly") {
+        throw new BadRequestError({
+          message: "Connection terminated unexpectedly. Verify that host and port are correct"
+        });
       }
 
       throw new BadRequestError({
@@ -264,8 +239,7 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
       );
       return credentials;
     } catch (error) {
-      // TODO: FIXME, handle other error types
-
+      // TODO: extract these logic into each SQL connection
       if (error instanceof BadRequestError) {
         if (error.message === `password authentication failed for user "${credentials.username}"`) {
           throw new BadRequestError({
