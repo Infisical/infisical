@@ -137,7 +137,7 @@ const makeSqlConnection = (
                 return;
               }
             }
-            // TODO: handle other errors, and throw standardlized errors
+            // TODO: handle other errors, and throw standardlized errors providing user-friendly msg
             throw error;
           } finally {
             await client?.end();
