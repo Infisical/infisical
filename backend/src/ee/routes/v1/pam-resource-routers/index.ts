@@ -22,7 +22,7 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       updateResourceSchema: UpdatePostgresResourceSchema
     });
   },
-    [PamResource.MySQL]: async (server: FastifyZodProvider) => {
+  [PamResource.MySQL]: async (server: FastifyZodProvider) => {
     registerPamResourceEndpoints({
       server,
       resourceType: PamResource.MySQL,
@@ -30,5 +30,5 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       createResourceSchema: CreateMySQLResourceSchema,
       updateResourceSchema: UpdateMySQLResourceSchema
     });
-  },
+  }
 };
