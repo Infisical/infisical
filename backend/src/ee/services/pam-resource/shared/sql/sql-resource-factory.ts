@@ -47,6 +47,8 @@ const makeSqlConnection = (
 ): SqlResourceConnection => {
   const { connectionDetails, resourceType, username, password } = config;
   const { host, sslEnabled, sslRejectUnauthorized, sslCertificate } = connectionDetails;
+  const actualUsername = username ?? TEST_CONNECTION_USERNAME; // Use provided username or fallback
+  const actualPassword = password ?? TEST_CONNECTION_PASSWORD; // Use provided password or fallback
   switch (config.resourceType) {
     case PamResource.Postgres: {
       const client = knex({
@@ -54,8 +56,8 @@ const makeSqlConnection = (
         connection: {
           host: "localhost",
           port: proxyPort,
-          user: username ?? TEST_CONNECTION_USERNAME, // Use provided username or fallback
-          password: password ?? TEST_CONNECTION_PASSWORD, // Use provided password or fallback
+          user: actualUsername,
+          password: actualPassword,
           database: connectionDetails.database,
           connectionTimeoutMillis: EXTERNAL_REQUEST_TIMEOUT,
           ssl: sslEnabled
@@ -114,8 +116,8 @@ const makeSqlConnection = (
             client = await mysql.createConnection({
               host: "localhost",
               port: proxyPort,
-              user: username ?? TEST_CONNECTION_USERNAME, // Use provided username or fallback
-              password: password ?? TEST_CONNECTION_PASSWORD, // Use provided password or fallback
+              user: actualUsername, // Use provided username or fallback
+              password: actualPassword, // Use provided password or fallback
               database: connectionDetails.database,
               ssl: sslEnabled ? {
                 // Due to no custom checkServerIdentity available, we can only pass in false here and perform custom
@@ -132,6 +134,9 @@ const makeSqlConnection = (
             client.query(SIMPLE_QUERY)
           } catch (error) {
             console.error("!!!! validate error", error);
+            if (connectOnly) {
+              // TODO: handle connect only errors
+            }
             // TODO:
             throw error;
           } finally {
