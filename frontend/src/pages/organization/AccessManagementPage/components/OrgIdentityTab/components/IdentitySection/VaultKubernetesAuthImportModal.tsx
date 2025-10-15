@@ -10,6 +10,7 @@ import {
   ModalContent
 } from "@app/components/v2";
 import {
+  useGetVaultAuthMounts,
   useGetVaultKubernetesAuthRoles,
   useGetVaultNamespaces
 } from "@app/hooks/api/migration/queries";
@@ -28,20 +29,38 @@ type ContentProps = {
 
 const Content = ({ onClose, onImport }: ContentProps) => {
   const [selectedNamespace, setSelectedNamespace] = useState<string | null>(null);
+  const [selectedMountPath, setSelectedMountPath] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState<VaultKubernetesAuthRole | null>(null);
   const [shouldFetchRoles, setShouldFetchRoles] = useState(false);
+  const [shouldFetchMounts, setShouldFetchMounts] = useState(false);
 
   const { data: namespaces, isLoading: isLoadingNamespaces } = useGetVaultNamespaces();
+  const { data: authMounts, isLoading: isLoadingMounts } = useGetVaultAuthMounts(
+    shouldFetchMounts,
+    selectedNamespace ?? undefined,
+    "kubernetes"
+  );
   const { data: roles, isLoading: isLoadingRoles } = useGetVaultKubernetesAuthRoles(
     shouldFetchRoles,
-    selectedNamespace ?? undefined
+    selectedNamespace ?? undefined,
+    selectedMountPath ?? undefined
   );
 
+  // Enable fetching mounts when namespace is selected
   useEffect(() => {
     if (selectedNamespace) {
-      setShouldFetchRoles(true);
+      setShouldFetchMounts(true);
     }
   }, [selectedNamespace]);
+
+  // Enable fetching roles when both namespace and mount path are selected
+  useEffect(() => {
+    if (selectedNamespace && selectedMountPath) {
+      setShouldFetchRoles(true);
+    } else {
+      setShouldFetchRoles(false);
+    }
+  }, [selectedNamespace, selectedMountPath]);
 
   const handleImportAndApply = () => {
     if (!selectedRole) {
@@ -70,6 +89,7 @@ const Content = ({ onClose, onImport }: ContentProps) => {
               if (value && !Array.isArray(value)) {
                 const namespace = value as { id: string; name: string };
                 setSelectedNamespace(namespace.name);
+                setSelectedMountPath(null);
                 setSelectedRole(null);
               }
             }}
@@ -81,7 +101,42 @@ const Content = ({ onClose, onImport }: ContentProps) => {
             className="w-full"
           />
           <p className="mt-1 text-xs text-mineshaft-400">
-            Select the Vault namespace to fetch available Kubernetes auth roles
+            Select the Vault namespace to fetch available auth mounts
+          </p>
+        </>
+      </FormControl>
+
+      <FormControl
+        label="Auth Engine"
+        className="mb-4"
+        tooltipText="Select the Kubernetes auth engine to narrow down available roles."
+      >
+        <>
+          <FilterableSelect
+            value={
+              selectedMountPath
+                ? authMounts?.find((mount) => mount.path === selectedMountPath)
+                : null
+            }
+            onChange={(value) => {
+              if (value && !Array.isArray(value)) {
+                const mount = value as { path: string; type: string };
+                setSelectedMountPath(mount.path.replace(/\/$/, "")); // Remove trailing slash
+                setSelectedRole(null);
+              } else {
+                setSelectedMountPath(null);
+              }
+            }}
+            options={authMounts || []}
+            getOptionValue={(option) => option.path}
+            getOptionLabel={(option) => option.path.replace(/\/$/, "")}
+            isDisabled={isLoadingMounts || !authMounts?.length}
+            placeholder="Select auth engine..."
+            isClearable
+            className="w-full"
+          />
+          <p className="mt-1 text-xs text-mineshaft-400">
+            Choose a Kubernetes auth engine to filter available roles
           </p>
         </>
       </FormControl>
@@ -99,9 +154,13 @@ const Content = ({ onClose, onImport }: ContentProps) => {
             }}
             options={roles || []}
             getOptionValue={(option) => option.name}
-            getOptionLabel={(option) => `${option.name} (${option.mountPath})`}
-            isDisabled={isLoadingRoles || !roles?.length}
-            placeholder="Select a Kubernetes role to load..."
+            getOptionLabel={(option) => option.name}
+            isDisabled={isLoadingRoles || !roles?.length || !selectedMountPath}
+            placeholder={
+              !selectedMountPath
+                ? "Select an auth engine first..."
+                : "Select a Kubernetes role to load..."
+            }
             isClearable
             className="w-full"
           />

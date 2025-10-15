@@ -333,6 +333,35 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
   });
 
   server.route({
+    method: "GET",
+    url: "/vault/auth-mounts",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        namespace: z.string(),
+        authType: z.string().optional()
+      }),
+      response: {
+        200: z.object({
+          mounts: z.array(z.object({ path: z.string(), type: z.string() }))
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const mounts = await server.services.migration.getVaultAuthMounts({
+        actor: req.permission,
+        namespace: req.query.namespace,
+        authType: req.query.authType
+      });
+
+      return { mounts };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/vault/import-secrets",
     config: {
@@ -372,7 +401,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     },
     schema: {
       querystring: z.object({
-        namespace: z.string()
+        namespace: z.string(),
+        mountPath: z.string()
       }),
       response: {
         200: z.object({
@@ -384,7 +414,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const secretPaths = await server.services.migration.getVaultSecretPaths({
         actor: req.permission,
-        namespace: req.query.namespace
+        namespace: req.query.namespace,
+        mountPath: req.query.mountPath
       });
 
       return { secretPaths };
@@ -399,7 +430,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     },
     schema: {
       querystring: z.object({
-        namespace: z.string()
+        namespace: z.string(),
+        mountPath: z.string()
       }),
 
       response: {
@@ -437,7 +469,8 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const roles = await server.services.migration.getVaultKubernetesAuthRoles({
         actor: req.permission,
-        namespace: req.query.namespace
+        namespace: req.query.namespace,
+        mountPath: req.query.mountPath
       });
 
       return { roles };

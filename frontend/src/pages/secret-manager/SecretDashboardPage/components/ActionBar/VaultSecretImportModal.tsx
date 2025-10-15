@@ -34,6 +34,7 @@ type ContentProps = {
 
 const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) => {
   const [selectedNamespace, setSelectedNamespace] = useState<string | null>(null);
+  const [selectedMountPath, setSelectedMountPath] = useState<string | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [shouldFetchPaths, setShouldFetchPaths] = useState(false);
   const [shouldFetchMounts, setShouldFetchMounts] = useState(false);
@@ -41,20 +42,32 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
   const { data: namespaces, isLoading: isLoadingNamespaces } = useGetVaultNamespaces();
   const { data: secretPaths, isLoading: isLoadingPaths } = useGetVaultSecretPaths(
     shouldFetchPaths,
-    selectedNamespace ?? undefined
+    selectedNamespace ?? undefined,
+    selectedMountPath ?? undefined
   );
   const { data: mounts, isLoading: isLoadingMounts } = useGetVaultMounts(
     shouldFetchMounts,
     selectedNamespace ?? undefined
   );
 
-  // Enable fetching paths and mounts when namespace is selected
+  // Filter to only show KV mounts
+  const kvMounts = mounts?.filter((mount) => mount.type === "kv" || mount.type.startsWith("kv"));
+
+  // Enable fetching mounts when namespace is selected
   useEffect(() => {
     if (selectedNamespace) {
-      setShouldFetchPaths(true);
       setShouldFetchMounts(true);
     }
   }, [selectedNamespace]);
+
+  // Enable fetching paths when both namespace and mount path are selected
+  useEffect(() => {
+    if (selectedNamespace && selectedMountPath) {
+      setShouldFetchPaths(true);
+    } else {
+      setShouldFetchPaths(false);
+    }
+  }, [selectedNamespace, selectedMountPath]);
 
   const handleImport = () => {
     if (!selectedPath) {
@@ -111,6 +124,7 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
               if (value && !Array.isArray(value)) {
                 const namespace = value as { id: string; name: string };
                 setSelectedNamespace(namespace.name);
+                setSelectedMountPath(null);
                 setSelectedPath(null);
               }
             }}
@@ -122,7 +136,35 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
             className="w-full"
           />
           <p className="mt-1 text-xs text-mineshaft-400">
-            Select the Vault namespace to fetch available secret paths
+            Select the Vault namespace to fetch available mounts
+          </p>
+        </>
+      </FormControl>
+
+      <FormControl
+        label="Secrets Engine"
+        className="mb-4"
+        tooltipText="Select the KV secrets engine to narrow down secret paths."
+      >
+        <>
+          <FilterableSelect
+            value={kvMounts?.find((mount) => mount.path === selectedMountPath)}
+            onChange={(value) => {
+              if (value && !Array.isArray(value)) {
+                const mount = value as { path: string; type: string; version: string | null };
+                setSelectedMountPath(mount.path.replace(/\/$/, "")); // Remove trailing slash
+                setSelectedPath(null);
+              }
+            }}
+            options={kvMounts || []}
+            getOptionValue={(option) => option.path}
+            getOptionLabel={(option) => option.path.replace(/\/$/, "")}
+            isDisabled={isLoadingMounts || !kvMounts?.length}
+            placeholder="Select secrets engine..."
+            className="w-full"
+          />
+          <p className="mt-1 text-xs text-mineshaft-400">
+            Choose a KV secrets engine to filter available secret paths
           </p>
         </>
       </FormControl>
@@ -141,13 +183,17 @@ const Content = ({ onClose, environment, secretPath, onImport }: ContentProps) =
             options={(secretPaths || []).map((path) => ({ path }))}
             getOptionValue={(option) => option.path}
             getOptionLabel={(option) => option.path}
-            isDisabled={isLoadingPaths || !secretPaths?.length}
-            placeholder="Select a Vault path to import..."
+            isDisabled={isLoadingPaths || !secretPaths?.length || !selectedMountPath}
+            placeholder={
+              !selectedMountPath
+                ? "Select a mount path first..."
+                : "Select a Vault path to import..."
+            }
             isClearable
             className="w-full"
           />
           <p className="mt-1 text-xs text-mineshaft-400">
-            Choose a secret path from your Vault namespace to import into Infisical
+            Choose a secret path from the selected mount to import into Infisical
           </p>
         </>
       </FormControl>

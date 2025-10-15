@@ -455,7 +455,8 @@ export const listHCVaultMounts = async (
 export const listHCVaultSecretPaths = async (
   namespace: string,
   connection: THCVaultConnection,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  filterMountPath?: string
 ) => {
   const instanceUrl = await getHCVaultInstanceUrl(connection);
   const accessToken = await getHCVaultAccessToken(connection, gatewayService);
@@ -532,7 +533,13 @@ export const listHCVaultSecretPaths = async (
   const mounts = await listHCVaultMounts(connection, gatewayService, namespace);
 
   // Filter for KV mounts (kv, kv-v1, kv-v2)
-  const kvMounts = mounts.filter((mount) => mount.type === "kv" || mount.type.startsWith("kv"));
+  let kvMounts = mounts.filter((mount) => mount.type === "kv" || mount.type.startsWith("kv"));
+
+  // If filterMountPath is provided, filter to only that mount
+  if (filterMountPath) {
+    const normalizedFilterPath = filterMountPath.replace(/\/$/, ""); // Remove trailing slash
+    kvMounts = kvMounts.filter((mount) => mount.path.replace(/\/$/, "") === normalizedFilterPath);
+  }
 
   // Create concurrency limiter to avoid overwhelming the Vault instance
   const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
@@ -648,7 +655,7 @@ export const getHCVaultSecretsForPath = async (
 
 export const getHCVaultAuthMounts = async (
   namespace: string,
-  authType: HCVaultAuthType,
+  authType: HCVaultAuthType | undefined,
   connection: THCVaultConnection,
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
 ): Promise<THCVaultAuthMount[]> => {
@@ -668,7 +675,8 @@ export const getHCVaultAuthMounts = async (
     const authMounts: THCVaultAuthMount[] = [];
 
     Object.entries(data.data).forEach(([path, authMethod]) => {
-      if (authMethod.type === authType) {
+      // If authType is specified, filter by it; otherwise, include all
+      if (!authType || authMethod.type === authType) {
         authMounts.push({
           path,
           type: authMethod.type,
@@ -680,16 +688,17 @@ export const getHCVaultAuthMounts = async (
 
     return authMounts;
   } catch (error: unknown) {
-    logger.error(error, `Unable to list HC Vault ${authType} auth mounts`);
+    const authTypeStr = authType || "all";
+    logger.error(error, `Unable to list HC Vault ${authTypeStr} auth mounts`);
 
     if (error instanceof AxiosError) {
       throw new BadRequestError({
-        message: `Failed to list ${authType} auth mounts: ${error.message || "Unknown error"}`
+        message: `Failed to list ${authTypeStr} auth mounts: ${error.message || "Unknown error"}`
       });
     }
 
     throw new BadRequestError({
-      message: `Unable to list ${authType} auth mounts from HashiCorp Vault`
+      message: `Unable to list ${authTypeStr} auth mounts from HashiCorp Vault`
     });
   }
 };

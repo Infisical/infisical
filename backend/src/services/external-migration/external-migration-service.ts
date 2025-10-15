@@ -444,7 +444,15 @@ export const externalMigrationServiceFactory = ({
     return mounts;
   };
 
-  const getVaultSecretPaths = async ({ actor, namespace }: { actor: OrgServiceActor; namespace: string }) => {
+  const getVaultSecretPaths = async ({
+    actor,
+    namespace,
+    mountPath
+  }: {
+    actor: OrgServiceActor;
+    namespace: string;
+    mountPath: string;
+  }) => {
     const { hasRole } = await permissionService.getOrgPermission(
       actor.type,
       actor.id,
@@ -482,7 +490,7 @@ export const externalMigrationServiceFactory = ({
       credentials
     } as THCVaultConnection;
 
-    const secretPaths = await listHCVaultSecretPaths(namespace, connection, gatewayService);
+    const secretPaths = await listHCVaultSecretPaths(namespace, connection, gatewayService, mountPath);
 
     return secretPaths;
   };
@@ -617,7 +625,66 @@ export const externalMigrationServiceFactory = ({
     return deletedConfig;
   };
 
-  const getVaultKubernetesAuthRoles = async ({ actor, namespace }: { actor: OrgServiceActor; namespace: string }) => {
+  const getVaultAuthMounts = async ({
+    actor,
+    namespace,
+    authType
+  }: {
+    actor: OrgServiceActor;
+    namespace: string;
+    authType?: string;
+  }) => {
+    const { hasRole } = await permissionService.getOrgPermission(
+      actor.type,
+      actor.id,
+      actor.orgId,
+      actor.authMethod,
+      actor.orgId
+    );
+
+    if (!hasRole(OrgMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({ message: "Only admins can view vault auth mounts" });
+    }
+
+    const vaultConfig = await vaultExternalMigrationConfigDAL.findOne({
+      orgId: actor.orgId,
+      namespace
+    });
+
+    if (!vaultConfig) {
+      throw new NotFoundError({ message: "Vault migration config not found for this namespace" });
+    }
+
+    if (!vaultConfig.connection) {
+      throw new BadRequestError({ message: "Vault migration connection is not configured for this namespace" });
+    }
+
+    const credentials = await decryptAppConnectionCredentials({
+      orgId: vaultConfig.orgId,
+      encryptedCredentials: vaultConfig.connection.encryptedCredentials,
+      kmsService,
+      projectId: null
+    });
+
+    const connection = {
+      ...vaultConfig.connection,
+      credentials
+    } as THCVaultConnection;
+
+    const authMounts = await getHCVaultAuthMounts(namespace, authType as HCVaultAuthType, connection, gatewayService);
+
+    return authMounts;
+  };
+
+  const getVaultKubernetesAuthRoles = async ({
+    actor,
+    namespace,
+    mountPath
+  }: {
+    actor: OrgServiceActor;
+    namespace: string;
+    mountPath: string;
+  }) => {
     const { hasRole } = await permissionService.getOrgPermission(
       actor.type,
       actor.id,
@@ -655,18 +722,10 @@ export const externalMigrationServiceFactory = ({
       credentials
     } as THCVaultConnection;
 
-    // Get all Kubernetes auth mounts for this namespace
-    const authMounts = await getHCVaultAuthMounts(namespace, HCVaultAuthType.Kubernetes, connection, gatewayService);
+    // Get roles for the specified mount path only
+    const roles = await getHCVaultKubernetesAuthRoles(namespace, mountPath, connection, gatewayService);
 
-    // For each mount, get all roles with their configuration
-    const allRolesPromises = authMounts.map(async (mount) => {
-      const roles = await getHCVaultKubernetesAuthRoles(namespace, mount.path, connection, gatewayService);
-      return roles;
-    });
-
-    const rolesPerMount = await Promise.all(allRolesPromises);
-
-    return rolesPerMount.flat();
+    return roles;
   };
 
   return {
@@ -680,6 +739,7 @@ export const externalMigrationServiceFactory = ({
     getVaultNamespaces,
     getVaultPolicies,
     getVaultMounts,
+    getVaultAuthMounts,
     getVaultSecretPaths,
     importVaultSecrets,
     getVaultKubernetesAuthRoles

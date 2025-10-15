@@ -17,8 +17,21 @@ export const externalMigrationQueryKeys = {
   vaultNamespaces: () => ["vault-namespaces"],
   vaultPolicies: (namespace?: string) => ["vault-policies", namespace],
   vaultMounts: (namespace?: string) => ["vault-mounts", namespace],
-  vaultSecretPaths: (namespace?: string) => ["vault-secret-paths", namespace],
-  vaultKubernetesAuthRoles: (namespace?: string) => ["vault-kubernetes-auth-roles", namespace]
+  vaultAuthMounts: (namespace?: string, authType?: string) => [
+    "vault-auth-mounts",
+    namespace,
+    authType
+  ],
+  vaultSecretPaths: (namespace?: string, mountPath?: string) => [
+    "vault-secret-paths",
+    namespace,
+    mountPath
+  ],
+  vaultKubernetesAuthRoles: (namespace?: string, mountPath?: string) => [
+    "vault-kubernetes-auth-roles",
+    namespace,
+    mountPath
+  ]
 };
 
 export const useHasCustomMigrationAvailable = (provider: ExternalMigrationProviders) => {
@@ -91,38 +104,71 @@ export const useGetVaultMounts = (enabled = true, namespace?: string) => {
   });
 };
 
-export const useGetVaultSecretPaths = (enabled = true, namespace?: string) => {
+export const useGetVaultSecretPaths = (enabled = true, namespace?: string, mountPath?: string) => {
   return useQuery({
-    queryKey: externalMigrationQueryKeys.vaultSecretPaths(namespace),
+    queryKey: externalMigrationQueryKeys.vaultSecretPaths(namespace, mountPath),
     queryFn: async () => {
+      if (!namespace || !mountPath) {
+        throw new Error("Both namespace and mountPath are required");
+      }
+
       const { data } = await apiRequest.get<{
         secretPaths: string[];
       }>("/api/v3/external-migration/vault/secret-paths", {
         params: {
-          namespace
+          namespace,
+          mountPath
         }
       });
 
       return data.secretPaths;
     },
+    enabled: enabled && !!namespace && !!mountPath
+  });
+};
+
+export const useGetVaultAuthMounts = (enabled = true, namespace?: string, authType?: string) => {
+  return useQuery({
+    queryKey: externalMigrationQueryKeys.vaultAuthMounts(namespace, authType),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        mounts: Array<{ path: string; type: string }>;
+      }>("/api/v3/external-migration/vault/auth-mounts", {
+        params: {
+          namespace,
+          ...(authType && { authType })
+        }
+      });
+
+      return data.mounts;
+    },
     enabled
   });
 };
 
-export const useGetVaultKubernetesAuthRoles = (enabled = true, namespace?: string) => {
+export const useGetVaultKubernetesAuthRoles = (
+  enabled = true,
+  namespace?: string,
+  mountPath?: string
+) => {
   return useQuery({
-    queryKey: externalMigrationQueryKeys.vaultKubernetesAuthRoles(namespace),
+    queryKey: externalMigrationQueryKeys.vaultKubernetesAuthRoles(namespace, mountPath),
     queryFn: async () => {
+      if (!namespace || !mountPath) {
+        throw new Error("Both namespace and mountPath are required");
+      }
+
       const { data } = await apiRequest.get<{
         roles: VaultKubernetesAuthRole[];
       }>("/api/v3/external-migration/vault/auth-roles/kubernetes", {
         params: {
-          namespace
+          namespace,
+          mountPath
         }
       });
 
       return data.roles;
     },
-    enabled
+    enabled: enabled && !!namespace && !!mountPath
   });
 };
