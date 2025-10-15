@@ -284,6 +284,7 @@ export const SecretOverviewTableRow = ({
                               environment={slug}
                               isRotatedSecret={secret?.isRotatedSecret}
                               importedBy={importedBy}
+                              isSecretPresent={Boolean(secret)}
                             />
                           </td>
                         </tr>
