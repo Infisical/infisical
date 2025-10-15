@@ -29,7 +29,7 @@ const LaravelForgeSyncDestinationConfigSchema = z.object({
   serverId: z
     .string()
     .min(1, "Server ID is required")
-    .regex(/^\d+$/, "Server ID must be a valid integer")
+    .refine((val) => !Number.isNaN(Number(val)), "Server ID must be a valid integer")
     .describe(SecretSyncs.DESTINATION_CONFIG.LARAVEL_FORGE.serverId),
   serverName: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.LARAVEL_FORGE.serverName),
   siteId: z.string().min(1, "Site ID is required").describe(SecretSyncs.DESTINATION_CONFIG.LARAVEL_FORGE.siteId),
