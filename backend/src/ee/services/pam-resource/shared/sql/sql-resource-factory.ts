@@ -128,7 +128,6 @@ const makeSqlConnection = (
             });
             client.query(SIMPLE_QUERY);
           } catch (error) {
-            console.error("!!!! validate error", error);
             if (connectOnly) {
               // Hacky way to know if we successfully hit the database.
               if (
@@ -138,7 +137,7 @@ const makeSqlConnection = (
                 return;
               }
             }
-            // TODO:
+            // TODO: handle other errors, and throw standardlized errors
             throw error;
           } finally {
             await client?.end();
