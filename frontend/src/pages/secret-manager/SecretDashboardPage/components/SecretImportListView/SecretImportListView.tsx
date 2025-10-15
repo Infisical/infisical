@@ -33,11 +33,15 @@ type TImportedSecrets = Array<{
 }>;
 
 export const computeImportedSecretRows = (
-  importedSecEnv: string,
-  importedSecPath: string,
+  secretImport: TSecretImport,
   importSecrets: TImportedSecrets = [],
-  secrets: SecretV3RawSanitized[] = []
+  secrets: SecretV3RawSanitized[] = [],
+  replicatedFolder?: TSecretImport
 ) => {
+  const importedSecEnv = replicatedFolder?.importEnv.slug ?? secretImport.importEnv.slug;
+  const importedSecPath = replicatedFolder?.importPath ?? secretImport.importPath;
+  const overrideEnv = secretImport.isReserved ? secretImport.importEnv.slug : undefined;
+  const overridePath = secretImport.isReserved ? secretImport.importPath : undefined;
   const importedSecIndex = importSecrets.findIndex(
     ({ secretPath, environmentInfo }) =>
       secretPath === importedSecPath && importedSecEnv === environmentInfo.slug
@@ -78,8 +82,8 @@ export const computeImportedSecretRows = (
       importedSecretEntries.push({
         key,
         value,
-        environment: importedSec.environmentInfo.slug,
-        secretPath: importedSec.secretPath,
+        environment: overrideEnv ?? importedSec.environmentInfo.slug,
+        secretPath: overridePath ?? importedSec.secretPath,
         overridden: overridenSec?.[key],
         isEmpty
       });
@@ -210,7 +214,9 @@ export const SecretImportListView = ({
         <SortableContext items={items} strategy={verticalListSortingStrategy}>
           {items?.map((item) => {
             // TODO(akhilmhdh): change this and pass this whole object instead of one by one
-            const replicatedFolder = item.isReserved ? getImportReplicatedFolder(item.importPath) : undefined;
+            const replicatedFolder = item.isReserved
+              ? getImportReplicatedFolder(item.importPath)
+              : undefined;
             return (
               <SecretImportItem
                 searchTerm={searchTerm}
@@ -219,10 +225,11 @@ export const SecretImportListView = ({
                 onExpandReplicateSecrets={handleOpenReplicationSecrets}
                 secretImport={item}
                 importedSecrets={computeImportedSecretRows(
-                  replicatedFolder?.importEnv.slug ?? item.importEnv.slug,
-                  replicatedFolder?.importPath ?? item.importPath,
-                  importedSecrets
+                  item,
+                  importedSecrets,
+                  [],
                   // secrets scott - now that secrets are paginated we are not showing if they are overridden (yet?)
+                  replicatedFolder
                 )}
                 secretPath={secretPath}
                 environment={environment}
