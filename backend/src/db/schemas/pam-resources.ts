@@ -18,7 +18,6 @@ export const PamResourcesSchema = z.object({
   encryptedConnectionDetails: zodBuffer,
   createdAt: z.date(),
   updatedAt: z.date(),
-  encryptedRotationAccountDetails: zodBuffer.nullable().optional(),
   encryptedRotationAccountCredentials: zodBuffer.nullable().optional()
 });
 
