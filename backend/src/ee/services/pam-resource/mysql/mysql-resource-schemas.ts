@@ -62,6 +62,4 @@ export const SanitizedMySQLAccountWithResourceSchema = BasePamAccountSchemaWithR
 });
 
 // Sessions
-export const MySQLSessionCredentialsSchema = MySQLResourceConnectionDetailsSchema.and(
-  MySQLAccountCredentialsSchema
-);
+export const MySQLSessionCredentialsSchema = MySQLResourceConnectionDetailsSchema.and(MySQLAccountCredentialsSchema);
