@@ -131,7 +131,7 @@ kubectl get secrets -n default | grep infisical
   </Step>
   <Step title="Create the InfisicalSecret CRD">
 
-The [InfisicalSecret](https://infisical.com/docs/integrations/platforms/kubernetes/infisical-secret-crd) CRD tells the operator the sync secrets from Infisical to Kubernetes. By referencing your ```identityID```, ```projectSlug```, and ```envSlug```, this CRD tells the Infisical Operator which Infisical secrets to fetch and how to format them into a Kubernetes Secret. Make sure to edit the provided CRD to match your specific Machine Identity ID, Project ID, and which environment your secrets are being pulled from (default is prod).
+The [InfisicalSecret](https://infisical.com/docs/integrations/platforms/kubernetes/infisical-secret-crd) CRD tells the operator to sync secrets from Infisical to Kubernetes. By referencing your ```identityID```, ```projectSlug```, and ```envSlug```, this CRD tells the Infisical Operator which Infisical secrets to fetch and how to format them into a Kubernetes Secret. Make sure to edit the provided CRD to match your specific Machine Identity ID, Project ID, and which environment your secrets are being pulled from (default is prod).
     - **Project Slug**: Can be found when you select your project and navigate to settings
     - **Identity ID**: Can be found when you select your machine identity from your organization's access control
 
@@ -208,14 +208,14 @@ The [InfisicalDynamicSecret](https://infisical.com/docs/integrations/platforms/k
 
     1. Navigate to your Infisical **Project** and click on the dropdown next to **Add Secret**. From here you will select **Add Dynamic Secret**
         - Select **SQL Database** as the service you would like to connect to.
-        - Make sure to select **PostegreSQL** as the service. Enter in the connection details for your database, specifically the **Host**, **Port**, **User**, **Password**, and **Database Name**.
+        - Select **PostegreSQL** as the database service. Enter in the connection details for your database, specifically the **Host**, **Port**, **User**, **Password**, and **Database Name**.
         - For the **Secret Name**, if you want to use the same name as the one in the cloned **InfisicalDynamicSecret** CRD, use the name **dynamic-secret-lease**. Otherwise you will need to change the **dynamicSecret.secretName** config in the InfisicalDynamicSecret CRD to whatever you name the secret here.
         - In the CA (SSL) section, make sure to upload the **CA Certificate** for your database.
-        - Finally, make sure you select **Prod** as the environment (we are keeping this configuration as part of the demonstration).
+        - Finally, select **Prod** as the environment (we are keeping this configuration as part of the demonstration).
 
 ![secrets dashboard dynamic](../../images/dynamic-secret.png)
 
-    2. Make sure you edit the ```dynamic-secret-crd``` with the proper machine **Identity ID**, **Project Slug**, **dynamicSecret.secretName** (same as the **Secret Name** you gave to the dynamic secret in Infisical), and managedSecretReference.secretName (name of the kubernetes secret that Infisical Operator will create/populate in the cluster).
+    2. Edit the ```dynamic-secret-crd``` with the proper machine **Identity ID**, **Project Slug**, **dynamicSecret.secretName** (same as the **Secret Name** you gave to the dynamic secret in Infisical), and managedSecretReference.secretName (name of the kubernetes secret that Infisical Operator will create/populate in the cluster).
         - If you want to keep the **managedSecretReference.secretName** then you can leave it as **dynamic-secret-test**
 
     3.  Once the changes have been saved, apply the yaml:
