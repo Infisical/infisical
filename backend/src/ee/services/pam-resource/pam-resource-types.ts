@@ -1,4 +1,10 @@
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import {
+  TMySQLAccount,
+  TMySQLAccountCredentials,
+  TMySQLResource,
+  TMySQLResourceConnectionDetails
+} from "./mysql/mysql-resource-types";
 import { PamResource } from "./pam-resource-enums";
 import {
   TPostgresAccount,
@@ -8,12 +14,12 @@ import {
 } from "./postgres/postgres-resource-types";
 
 // Resource types
-export type TPamResource = TPostgresResource;
-export type TPamResourceConnectionDetails = TPostgresResourceConnectionDetails;
+export type TPamResource = TPostgresResource | TMySQLResource;
+export type TPamResourceConnectionDetails = TPostgresResourceConnectionDetails | TMySQLResourceConnectionDetails;
 
 // Account types
-export type TPamAccount = TPostgresAccount;
-export type TPamAccountCredentials = TPostgresAccountCredentials;
+export type TPamAccount = TPostgresAccount | TMySQLAccount;
+export type TPamAccountCredentials = TPostgresAccountCredentials | TMySQLAccountCredentials;
 
 // Resource DTOs
 export type TCreateResourceDTO = Pick<
