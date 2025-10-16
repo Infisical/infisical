@@ -43,7 +43,7 @@ export const pamAccountRotationServiceFactory = ({
       {
         batchSize: 1,
         workerCount: 1,
-        pollingIntervalSeconds: 1 // 5 * 60
+        pollingIntervalSeconds: 5 * 60
       }
     );
 

@@ -26,7 +26,7 @@ export const RotateAccountFields = () => {
           <FormControl isError={Boolean(error)} errorText={error?.message} className="mb-0">
             <Switch
               className="ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-              id="can-remove-certificates"
+              id="rotation-enabled"
               thumbClassName="bg-mineshaft-800"
               onCheckedChange={onChange}
               isChecked={value}

@@ -34,8 +34,6 @@ const CreateForm = ({
 }: CreateFormProps) => {
   const createPamAccount = useCreatePamAccount();
 
-  console.log({ folderId });
-
   const onSubmit = async (
     formData: DiscriminativePick<
       TPamAccount,

@@ -177,11 +177,13 @@ export const pamResourceServiceFactory = ({
       updateDoc.encryptedRotationAccountCredentials = null;
 
       if (rotationAccountCredentials) {
-        const decryptedConnectionDetails = await decryptResourceConnectionDetails({
-          encryptedConnectionDetails: resource.encryptedConnectionDetails,
-          projectId: resource.projectId,
-          kmsService
-        });
+        const decryptedConnectionDetails =
+          connectionDetails ??
+          (await decryptResourceConnectionDetails({
+            encryptedConnectionDetails: resource.encryptedConnectionDetails,
+            projectId: resource.projectId,
+            kmsService
+          }));
 
         const factory = PAM_RESOURCE_FACTORY_MAP[resource.resourceType as PamResource](
           resource.resourceType as PamResource,
