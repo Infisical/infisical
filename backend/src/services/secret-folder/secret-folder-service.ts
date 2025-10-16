@@ -709,7 +709,7 @@ export const secretFolderServiceFactory = ({
         const dynamicSecret = await dynamicSecretDAL.findOne({ folderId: folderToDelete.id }).catch(() => null);
         if (dynamicSecret) throw error;
 
-        const subfolder = await folderDAL.findByParentId(folderToDelete.id).catch(() => null);
+        const subfolder = await folderDAL.findOne({ parentId: folderToDelete.id }).catch(() => null);
         if (subfolder) throw error;
       }
 
