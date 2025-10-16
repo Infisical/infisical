@@ -8,8 +8,8 @@ import {
 import { DiscriminativePick } from "@app/types";
 
 import { PamAccountHeader } from "../PamAccountHeader";
-import { PostgresAccountForm } from "./PostgresAccountForm";
 import { MySQLAccountForm } from "./MySQLAccountForm";
+import { PostgresAccountForm } from "./PostgresAccountForm";
 
 type FormProps = {
   onComplete: (account: TPamAccount) => void;

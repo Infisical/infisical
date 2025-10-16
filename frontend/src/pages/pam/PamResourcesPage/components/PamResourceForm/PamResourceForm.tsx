@@ -9,8 +9,8 @@ import {
 import { DiscriminativePick } from "@app/types";
 
 import { PamResourceHeader } from "../PamResourceHeader";
-import { PostgresResourceForm } from "./PostgresResourceForm";
 import { MySQLResourceForm } from "./MySQLResourceForm";
+import { PostgresResourceForm } from "./PostgresResourceForm";
 
 type FormProps = {
   onComplete: (resource: TPamResource) => void;

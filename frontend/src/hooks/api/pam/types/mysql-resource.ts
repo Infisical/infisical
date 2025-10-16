@@ -4,7 +4,7 @@ import { TBasePamAccount } from "./base-account";
 import { TBasePamResource } from "./base-resource";
 
 // Resources
-export type TMySQLResource = TBasePamResource & { resourceType: PamResourceType.MySQL} & {
+export type TMySQLResource = TBasePamResource & { resourceType: PamResourceType.MySQL } & {
   connectionDetails: TBaseSqlConnectionDetails;
 };
 
