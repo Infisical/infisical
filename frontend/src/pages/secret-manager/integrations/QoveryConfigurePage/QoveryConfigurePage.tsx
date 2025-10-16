@@ -19,7 +19,7 @@ import {
   Tabs
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthById } from "@app/hooks/api/integrationAuth";
 import {
@@ -55,7 +55,7 @@ enum TabSections {
 export const QoveryConfigurePage = () => {
   const navigate = useNavigate();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { mutateAsync } = useCreateIntegration();
 
   const integrationAuthId = useSearch({
@@ -67,7 +67,7 @@ export const QoveryConfigurePage = () => {
 
   const [scope, setScope] = useState("application");
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState(
-    currentWorkspace.environments[0].slug
+    currentProject.environments[0].slug
   );
   const [secretPath, setSecretPath] = useState("/");
 
@@ -178,7 +178,7 @@ export const QoveryConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -190,7 +190,7 @@ export const QoveryConfigurePage = () => {
   };
 
   return integrationAuth && selectedSourceEnvironment ? (
-    <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-tr from-mineshaft-900 to-bunker-900">
+    <div className="flex h-full w-full flex-col items-center justify-center bg-linear-to-tr from-mineshaft-900 to-bunker-900">
       <Helmet>
         <title>Set Up Qovery Integration</title>
       </Helmet>
@@ -209,12 +209,12 @@ export const QoveryConfigurePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-xxs"
+                  className="text-xxs mb-[0.07rem] ml-1.5"
                 />
               </div>
             </a>
@@ -241,7 +241,7 @@ export const QoveryConfigurePage = () => {
                   onValueChange={(val) => setSelectedSourceEnvironment(val)}
                   className="w-full border border-mineshaft-500"
                 >
-                  {currentWorkspace?.environments.map((sourceEnvironment) => (
+                  {currentProject?.environments.map((sourceEnvironment) => (
                     <SelectItem
                       value={sourceEnvironment.slug}
                       key={`source-environment-${sourceEnvironment.slug}`}
@@ -388,7 +388,7 @@ export const QoveryConfigurePage = () => {
           onClick={handleButtonClick}
           color="mineshaft"
           variant="outline_bg"
-          className="mb-6 ml-auto mr-6"
+          className="mr-6 mb-6 ml-auto"
           isFullWidth={false}
           isLoading={isLoading}
         >

@@ -5,7 +5,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { CaStatus, CaType, useDeleteCa, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -15,7 +15,7 @@ import { CaModal } from "./CaModal";
 import { CaTable } from "./CaTable";
 
 export const CaSection = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { mutateAsync: deleteCa } = useDeleteCa();
   const { mutateAsync: updateCa } = useUpdateCa();
 
@@ -30,9 +30,9 @@ export const CaSection = () => {
 
   const onRemoveCaSubmit = async (caName: string) => {
     try {
-      if (!currentWorkspace?.slug) return;
+      if (!currentProject?.slug) return;
 
-      await deleteCa({ caName, projectId: currentWorkspace.id, type: CaType.INTERNAL });
+      await deleteCa({ caName, projectId: currentProject.id, type: CaType.INTERNAL });
 
       createNotification({
         text: "Successfully deleted CA",
@@ -50,9 +50,9 @@ export const CaSection = () => {
 
   const onUpdateCaStatus = async ({ caName, status }: { caName: string; status: CaStatus }) => {
     try {
-      if (!currentWorkspace?.slug) return;
+      if (!currentProject?.slug) return;
 
-      await updateCa({ caName, projectId: currentWorkspace.id, type: CaType.INTERNAL, status });
+      await updateCa({ caName, projectId: currentProject.id, type: CaType.INTERNAL, status });
 
       createNotification({
         text: `Successfully ${status === CaStatus.ACTIVE ? "enabled" : "disabled"} CA`,
@@ -72,7 +72,7 @@ export const CaSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-xl font-semibold text-mineshaft-100">Internal Certificate Authorities</p>
+        <p className="text-xl font-medium text-mineshaft-100">Internal Certificate Authorities</p>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Create}
           a={ProjectPermissionSub.CertificateAuthorities}

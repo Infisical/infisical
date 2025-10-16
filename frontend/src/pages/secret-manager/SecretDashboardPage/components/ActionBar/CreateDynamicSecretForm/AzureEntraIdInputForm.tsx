@@ -18,7 +18,7 @@ import { Tooltip } from "@app/components/v2/Tooltip";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { useGetDynamicSecretProviderData } from "@app/hooks/api/dynamicSecret/queries";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
-import { WorkspaceEnv } from "@app/hooks/api/types";
+import { ProjectEnv } from "@app/hooks/api/types";
 
 const formSchema = z.object({
   selectedUsers: z.array(
@@ -66,7 +66,7 @@ type Props = {
   onCancel: () => void;
   secretPath: string;
   projectSlug: string;
-  environments: WorkspaceEnv[];
+  environments: ProjectEnv[];
   isSingleEnvironmentMode?: boolean;
 };
 
@@ -149,7 +149,7 @@ export const AzureEntraIdInputForm = ({
       <form onSubmit={handleSubmit(handleCreateDynamicSecret)} autoComplete="off">
         <div>
           <div className="flex items-center space-x-2">
-            <div className="flex-grow">
+            <div className="grow">
               <Controller
                 control={control}
                 defaultValue=""
@@ -199,11 +199,11 @@ export const AzureEntraIdInputForm = ({
             </div>
           </div>
           <div>
-            <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
               Configuration
             </div>
             <div className="flex flex-col">
-              <div className="flex-grow">
+              <div className="grow">
                 <Controller
                   control={control}
                   defaultValue=""
@@ -224,7 +224,7 @@ export const AzureEntraIdInputForm = ({
               </div>
             </div>
             <div className="flex flex-col">
-              <div className="flex-grow">
+              <div className="grow">
                 <Controller
                   control={control}
                   defaultValue=""
@@ -245,7 +245,7 @@ export const AzureEntraIdInputForm = ({
               </div>
             </div>
             <div className="flex flex-col">
-              <div className="flex-grow">
+              <div className="grow">
                 <Controller
                   control={control}
                   defaultValue=""
@@ -267,7 +267,7 @@ export const AzureEntraIdInputForm = ({
             </div>
           </div>
           <div>
-            <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
               Select Users
             </div>
             <div className="mb-4 flex items-center text-sm font-normal text-mineshaft-400">

@@ -1,24 +1,17 @@
 import { Helmet } from "react-helmet";
-import { faArrowUpRightFromSquare, faBookOpen, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 import {
   OrgPermissionAppConnectionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
-import { usePopUp } from "@app/hooks";
-import {
-  AddAppConnectionModal,
-  AppConnectionsTable
-} from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
+import { AppConnectionsTable } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 export const AppConnectionsPage = withPermission(
   () => {
-    const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["addConnection"] as const);
-
     return (
       <div className="bg-bunker-800">
         <Helmet>
@@ -29,55 +22,20 @@ export const AppConnectionsPage = withPermission(
         <div className="flex w-full justify-center bg-bunker-800 text-white">
           <div className="w-full max-w-7xl">
             <PageHeader
+              scope="org"
               className="w-full"
-              title={
-                <div className="flex w-full items-center">
-                  <span>App Connections</span>
-                  <a
-                    className="-mt-1.5"
-                    href="https://infisical.com/docs/integrations/app-connections/overview"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <div className="ml-2 inline-block rounded-md bg-yellow/20 px-1.5 text-sm font-normal text-yellow opacity-80 hover:opacity-100">
-                      <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                      <span>Docs</span>
-                      <FontAwesomeIcon
-                        icon={faArrowUpRightFromSquare}
-                        className="mb-[0.07rem] ml-1.5 text-[10px]"
-                      />
-                    </div>
-                  </a>
-                  <OrgPermissionCan
-                    I={OrgPermissionAppConnectionActions.Create}
-                    a={OrgPermissionSubjects.AppConnections}
-                  >
-                    {(isAllowed) => (
-                      <Button
-                        colorSchema="secondary"
-                        type="submit"
-                        leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                        onClick={() => {
-                          handlePopUpOpen("addConnection");
-                        }}
-                        isDisabled={!isAllowed}
-                        className="ml-auto"
-                      >
-                        Add Connection
-                      </Button>
-                    )}
-                  </OrgPermissionCan>
-                </div>
-              }
-              description="Create and configure connections with third-party apps for re-use across Infisical projects"
+              title="App Connections"
+              description="Manage organization App Connections"
             />
-            <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-              <AppConnectionsTable />
-              <AddAppConnectionModal
-                isOpen={popUp.addConnection.isOpen}
-                onOpenChange={(isOpen) => handlePopUpToggle("addConnection", isOpen)}
-              />
+            <div className="mb-4 flex w-full flex-col rounded-md border border-blue-500/50 bg-blue-500/30 px-4 py-2 text-sm text-blue-200">
+              <div className="flex items-center">
+                <FontAwesomeIcon icon={faInfoCircle} className="mr-2 mb-0.5 text-sm" />
+                <span className="text-sm text-blue-200">
+                  App connections can also be created and managed independently in projects now.
+                </span>
+              </div>
             </div>
+            <AppConnectionsTable />
           </div>
         </div>
       </div>

@@ -1,4 +1,3 @@
-import { packRules } from "@casl/ability/extra";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
@@ -22,7 +21,7 @@ export const useCreateProjectRole = () => {
     mutationFn: async ({ projectId, ...dto }: TCreateProjectRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.post(`/api/v2/workspace/${projectId}/roles`, dto);
+      } = await apiRequest.post(`/api/v1/projects/${projectId}/roles`, dto);
       return role;
     },
     onSuccess: (_, { projectId }) => {
@@ -38,7 +37,7 @@ export const useUpdateProjectRole = () => {
     mutationFn: async ({ id, projectId, ...dto }: TUpdateProjectRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.patch(`/api/v2/workspace/${projectId}/roles/${id}`, dto);
+      } = await apiRequest.patch(`/api/v1/projects/${projectId}/roles/${id}`, dto);
       return role;
     },
     onSuccess: (_, { projectId, slug }) => {
@@ -58,7 +57,7 @@ export const useDeleteProjectRole = () => {
     mutationFn: async ({ projectId, id }: TDeleteProjectRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.delete(`/api/v2/workspace/${projectId}/roles/${id}`);
+      } = await apiRequest.delete(`/api/v1/projects/${projectId}/roles/${id}`);
       return role;
     },
     onSuccess: (_, { projectId }) => {
@@ -71,13 +70,10 @@ export const useCreateOrgRole = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TOrgRole, object, TCreateOrgRoleDTO>({
-    mutationFn: async ({ orgId, permissions, ...dto }: TCreateOrgRoleDTO) => {
+    mutationFn: async ({ orgId, ...dto }: TCreateOrgRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.post(`/api/v1/organization/${orgId}/roles`, {
-        ...dto,
-        permissions: permissions.length ? packRules(permissions) : []
-      });
+      } = await apiRequest.post(`/api/v1/organization/${orgId}/roles`, dto);
 
       return role;
     },
@@ -91,13 +87,10 @@ export const useUpdateOrgRole = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TOrgRole, object, TUpdateOrgRoleDTO>({
-    mutationFn: async ({ id, orgId, permissions, ...dto }: TUpdateOrgRoleDTO) => {
+    mutationFn: async ({ id, orgId, ...dto }: TUpdateOrgRoleDTO) => {
       const {
         data: { role }
-      } = await apiRequest.patch(`/api/v1/organization/${orgId}/roles/${id}`, {
-        ...dto,
-        permissions: permissions ? packRules(permissions) : undefined
-      });
+      } = await apiRequest.patch(`/api/v1/organization/${orgId}/roles/${id}`, dto);
 
       return role;
     },

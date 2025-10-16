@@ -5,7 +5,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretScanningDataSourceModal } from "@app/components/secret-scanning";
 import { Button, Spinner } from "@app/components/v2";
-import { ProjectPermissionSub, useSubscription, useWorkspace } from "@app/context";
+import { ProjectPermissionSub, useProject, useSubscription } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useListSecretScanningDataSources } from "@app/hooks/api/secretScanningV2";
@@ -20,10 +20,10 @@ export const SecretScanningDataSourcesSection = () => {
 
   const { subscription } = useSubscription();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { data: dataSources = [], isPending: isDataSourcesPending } =
-    useListSecretScanningDataSources(currentWorkspace.id, {
+    useListSecretScanningDataSources(currentProject.id, {
       refetchInterval: 30000,
       enabled: subscription.secretScanning
     });
@@ -41,13 +41,13 @@ export const SecretScanningDataSourcesSection = () => {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1">
-              <p className="text-xl font-semibold text-mineshaft-100">Data Sources</p>
+              <p className="text-xl font-medium text-mineshaft-100">Data Sources</p>
               <a
                 href="https://infisical.com/docs/documentation/platform/secret-scanning/overview"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="ml-1 mt-[0.32rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   <span>Docs</span>
                   <FontAwesomeIcon

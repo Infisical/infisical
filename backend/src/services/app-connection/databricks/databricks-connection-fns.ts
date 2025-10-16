@@ -47,7 +47,7 @@ const authorizeDatabricksConnection = async ({
 };
 
 export const getDatabricksConnectionAccessToken = async (
-  { id, orgId, credentials }: TDatabricksConnection,
+  { id, orgId, credentials, projectId }: TDatabricksConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
@@ -68,7 +68,8 @@ export const getDatabricksConnectionAccessToken = async (
   const encryptedCredentials = await encryptAppConnectionCredentials({
     credentials: updatedCredentials,
     orgId,
-    kmsService
+    kmsService,
+    projectId
   });
 
   await appConnectionDAL.updateById(id, { encryptedCredentials });
@@ -89,7 +90,7 @@ export const validateDatabricksConnectionCredentials = async (appConnection: TDa
     };
   } catch (e: unknown) {
     throw new BadRequestError({
-      message: `Unable to validate connection: verify credentials`
+      message: "Unable to validate connection: verify credentials"
     });
   }
 };

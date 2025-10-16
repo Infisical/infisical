@@ -12,10 +12,11 @@ type Props = {
   isReadOnly?: boolean;
   autoCapitalization?: boolean;
   containerClassName?: string;
+  warning?: ReactNode;
 };
 
 const inputVariants = cva(
-  "input w-full py-[0.375rem] text-gray-400 placeholder:text-sm placeholder-gray-500 placeholder-opacity-50 outline-none focus:ring-2 hover:ring-bunker-400/60 duration-100",
+  "input w-full py-1.5 text-gray-400 placeholder:text-sm placeholder-gray-500/50  outline-hidden focus:ring-2 hover:ring-bunker-400/60 duration-100",
   {
     variants: {
       size: {
@@ -31,7 +32,7 @@ const inputVariants = cva(
       variant: {
         filled: ["bg-mineshaft-900", "text-gray-400"],
         outline: ["bg-transparent"],
-        plain: "bg-transparent outline-none"
+        plain: "bg-transparent outline-hidden"
       },
       isError: {
         true: "focus:ring-red/50 placeholder-red-300",
@@ -84,6 +85,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       size = "md",
       isReadOnly,
       autoCapitalization,
+      warning,
       ...props
     },
     ref
@@ -116,10 +118,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           onInput={handleInput}
           className={twMerge(
             leftIcon ? "pl-10" : "pl-2.5",
-            rightIcon ? "pr-10" : "pr-2.5",
+            rightIcon || warning ? "pr-10" : "pr-2.5",
             inputVariants({ className, isError, size, isRounded, variant })
           )}
         />
+        {Boolean(warning) && !rightIcon && warning}
         {rightIcon && <span className="absolute right-0 mr-3">{rightIcon}</span>}
       </div>
     );

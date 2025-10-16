@@ -37,6 +37,8 @@ const envSchema = z
       .default("false")
       .transform((el) => el === "true"),
     REDIS_URL: zpStr(z.string().optional()),
+    REDIS_USERNAME: zpStr(z.string().optional()),
+    REDIS_PASSWORD: zpStr(z.string().optional()),
     REDIS_SENTINEL_HOSTS: zpStr(
       z
         .string()
@@ -49,6 +51,28 @@ const envSchema = z
     REDIS_SENTINEL_ENABLE_TLS: zodStrBool.optional().describe("Whether to use TLS/SSL for Redis Sentinel connection"),
     REDIS_SENTINEL_USERNAME: zpStr(z.string().optional().describe("Authentication username for Redis Sentinel")),
     REDIS_SENTINEL_PASSWORD: zpStr(z.string().optional().describe("Authentication password for Redis Sentinel")),
+    REDIS_CLUSTER_HOSTS: zpStr(
+      z
+        .string()
+        .optional()
+        .describe("Comma-separated list of Redis Cluster host:port pairs. Eg: 192.168.65.254:6379,192.168.65.254:6380")
+    ),
+    REDIS_READ_REPLICAS: zpStr(
+      z
+        .string()
+        .optional()
+        .describe(
+          "Comma-separated list of Redis read replicas host:port pairs. Eg: 192.168.65.254:6379,192.168.65.254:6380"
+        )
+    ),
+    REDIS_CLUSTER_ENABLE_TLS: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((el) => el === "true"),
+    REDIS_CLUSTER_AWS_ELASTICACHE_DNS_LOOKUP_MODE: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((el) => el === "true"),
     HOST: zpStr(z.string().default("localhost")),
     DB_CONNECTION_URI: zpStr(z.string().describe("Postgres database connection string")).default(
       `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
@@ -105,6 +129,8 @@ const envSchema = z
     POSTHOG_HOST: zpStr(z.string().optional().default("https://app.posthog.com")),
     POSTHOG_PROJECT_API_KEY: zpStr(z.string().optional().default("phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE")),
     LOOPS_API_KEY: zpStr(z.string().optional()),
+    // GitHub API token for upgrade path tool
+    GITHUB_API_TOKEN: zpStr(z.string().optional()),
     // jwt options
     AUTH_SECRET: zpStr(z.string()).default(process.env.JWT_AUTH_SECRET), // for those still using old JWT_AUTH_SECRET
     JWT_AUTH_LIFETIME: zpStr(z.string().default("10d")),
@@ -218,6 +244,8 @@ const envSchema = z
     ),
     PARAMS_FOLDER_SECRET_DETECTION_ENTROPY: z.coerce.number().optional().default(3.7),
 
+    INFISICAL_PRIMARY_INSTANCE_URL: zpStr(z.string().optional()),
+
     // HSM
     HSM_LIB_PATH: zpStr(z.string().optional()),
     HSM_PIN: zpStr(z.string().optional()),
@@ -232,6 +260,8 @@ const envSchema = z
     GATEWAY_RELAY_ADDRESS: zpStr(z.string().optional()),
     GATEWAY_RELAY_REALM: zpStr(z.string().optional()),
     GATEWAY_RELAY_AUTH_SECRET: zpStr(z.string().optional()),
+
+    RELAY_AUTH_SECRET: zpStr(z.string().optional()),
 
     DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
     DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).default(
@@ -295,6 +325,10 @@ const envSchema = z
     INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_SECRET: zpStr(z.string().optional()),
 
+    // Heroku App Connection
+    INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET: zpStr(z.string().optional()),
+
     // datadog
     SHOULD_USE_DATADOG_TRACER: zodStrBool.default("false"),
     DATADOG_PROFILING_ENABLED: zodStrBool.default("false"),
@@ -335,8 +369,8 @@ const envSchema = z
     "Either ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY must be defined."
   )
   .refine(
-    (data) => Boolean(data.REDIS_URL) || Boolean(data.REDIS_SENTINEL_HOSTS),
-    "Either REDIS_URL or REDIS_SENTINEL_HOSTS must be defined."
+    (data) => Boolean(data.REDIS_URL) || Boolean(data.REDIS_SENTINEL_HOSTS) || Boolean(data.REDIS_CLUSTER_HOSTS),
+    "Either REDIS_URL, REDIS_SENTINEL_HOSTS or REDIS_CLUSTER_HOSTS  must be defined."
   )
   .transform((data) => ({
     ...data,
@@ -346,7 +380,7 @@ const envSchema = z
       : undefined,
     isCloud: Boolean(data.LICENSE_SERVER_KEY),
     isSmtpConfigured: Boolean(data.SMTP_HOST),
-    isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS),
+    isRedisConfigured: Boolean(data.REDIS_URL || data.REDIS_SENTINEL_HOSTS || data.REDIS_CLUSTER_HOSTS),
     isDevelopmentMode: data.NODE_ENV === "development",
     isTestMode: data.NODE_ENV === "test",
     isRotationDevelopmentMode:
@@ -356,6 +390,18 @@ const envSchema = z
     isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
     isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
     REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.trim()
+      ?.split(",")
+      .map((el) => {
+        const [host, port] = el.trim().split(":");
+        return { host: host.trim(), port: Number(port.trim()) };
+      }),
+    REDIS_CLUSTER_HOSTS: data.REDIS_CLUSTER_HOSTS?.trim()
+      ?.split(",")
+      .map((el) => {
+        const [host, port] = el.trim().split(":");
+        return { host: host.trim(), port: Number(port.trim()) };
+      }),
+    REDIS_READ_REPLICAS: data.REDIS_READ_REPLICAS?.trim()
       ?.split(",")
       .map((el) => {
         const [host, port] = el.trim().split(":");
@@ -372,6 +418,7 @@ const envSchema = z
       Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_ID) &&
       Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_CLIENT_SECRET) &&
       Boolean(data.INF_APP_CONNECTION_GITHUB_RADAR_APP_WEBHOOK_SECRET),
+    isSecondaryInstance: Boolean(data.INFISICAL_PRIMARY_INSTANCE_URL),
     isHsmConfigured:
       Boolean(data.HSM_LIB_PATH) && Boolean(data.HSM_PIN) && Boolean(data.HSM_KEY_LABEL) && data.HSM_SLOT !== undefined,
     samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
@@ -392,7 +439,10 @@ const envSchema = z
     INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID:
       data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID || data.INF_APP_CONNECTION_AZURE_CLIENT_ID,
     INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET:
-      data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET
+      data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
+    INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID || data.CLIENT_ID_HEROKU,
+    INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET:
+      data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET || data.CLIENT_SECRET_HEROKU
   }));
 
 export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
@@ -693,6 +743,19 @@ export const overwriteSchema: {
       {
         key: "CLIENT_SECRET_GOOGLE_LOGIN",
         description: "The Client Secret of your GCP OAuth2 application."
+      }
+    ]
+  },
+  heroku: {
+    name: "Heroku",
+    fields: [
+      {
+        key: "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID",
+        description: "The Client ID of your Heroku application."
+      },
+      {
+        key: "INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET",
+        description: "The Client Secret of your Heroku application."
       }
     ]
   }

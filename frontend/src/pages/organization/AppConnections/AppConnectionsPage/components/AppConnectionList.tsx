@@ -9,14 +9,16 @@ import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useAppConnectionOptions } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 type Props = {
   onSelect: (app: AppConnection) => void;
+  projectType?: ProjectType;
 };
 
-export const AppConnectionsSelect = ({ onSelect }: Props) => {
+export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
   const { subscription } = useSubscription();
-  const { isPending, data: appConnectionOptions } = useAppConnectionOptions();
+  const { isPending, data: appConnectionOptions } = useAppConnectionOptions(projectType);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
@@ -58,7 +60,7 @@ export const AppConnectionsSelect = ({ onSelect }: Props) => {
         placeholder="Search options..."
         className="bg-mineshaft-800 placeholder:text-mineshaft-400"
       />
-      <div className="grid h-[29.5rem] grid-cols-4 content-start gap-2">
+      <div className="grid h-118 grid-cols-4 content-start gap-2">
         {filteredOptions.slice(offset, perPage * page)?.map((option) => {
           const {
             image,
@@ -78,7 +80,7 @@ export const AppConnectionsSelect = ({ onSelect }: Props) => {
               }
               className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
             >
-              <div className="relative">
+              {image && (
                 <img
                   src={`/images/integrations/${image}`}
                   style={{
@@ -87,14 +89,16 @@ export const AppConnectionsSelect = ({ onSelect }: Props) => {
                   className="mt-auto"
                   alt={`${name} logo`}
                 />
-                {icon && (
+              )}
+              {icon && (
+                <div className="relative">
                   <FontAwesomeIcon
-                    className="absolute -bottom-1.5 -right-1.5 text-primary-700"
+                    className="absolute -right-1.5 -bottom-1.5 text-primary-700"
                     size="xl"
                     icon={icon}
                   />
-                )}
-              </div>
+                </div>
+              )}
               <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
                 {name}
               </div>

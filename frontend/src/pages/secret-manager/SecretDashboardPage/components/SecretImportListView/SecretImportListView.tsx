@@ -18,7 +18,7 @@ import { usePopUp } from "@app/hooks";
 import { useDeleteSecretImport, useUpdateSecretImport } from "@app/hooks/api";
 import { ReservedFolders } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
-import { SecretV3RawSanitized, WorkspaceEnv } from "@app/hooks/api/types";
+import { ProjectEnv, SecretV3RawSanitized } from "@app/hooks/api/types";
 import { formatReservedPaths } from "@app/lib/fn/string";
 
 import { SecretImportItem } from "./SecretImportItem";
@@ -26,18 +26,22 @@ import { SecretImportItem } from "./SecretImportItem";
 const SECRET_IN_DASHBOARD = "Present In Dashboard";
 
 type TImportedSecrets = Array<{
-  environmentInfo: WorkspaceEnv;
+  environmentInfo: ProjectEnv;
   secretPath: string;
   folderId: string;
   secrets: SecretV3RawSanitized[];
 }>;
 
 export const computeImportedSecretRows = (
-  importedSecEnv: string,
-  importedSecPath: string,
+  secretImport: TSecretImport,
   importSecrets: TImportedSecrets = [],
-  secrets: SecretV3RawSanitized[] = []
+  secrets: SecretV3RawSanitized[] = [],
+  replicatedFolder?: TSecretImport
 ) => {
+  const importedSecEnv = replicatedFolder?.importEnv.slug ?? secretImport.importEnv.slug;
+  const importedSecPath = replicatedFolder?.importPath ?? secretImport.importPath;
+  const overrideEnv = secretImport.isReserved ? secretImport.importEnv.slug : undefined;
+  const overridePath = secretImport.isReserved ? secretImport.importPath : undefined;
   const importedSecIndex = importSecrets.findIndex(
     ({ secretPath, environmentInfo }) =>
       secretPath === importedSecPath && importedSecEnv === environmentInfo.slug
@@ -64,18 +68,24 @@ export const computeImportedSecretRows = (
   const importedSecretEntries: {
     key: string;
     value?: string;
-    overriden: {
+    environment: string;
+    secretPath?: string;
+    overridden: {
       env: string;
       secretPath: string;
     };
+    isEmpty?: boolean;
   }[] = [];
 
-  importedSec.secrets.forEach(({ key, value }) => {
+  importedSec.secrets.forEach(({ key, value, isEmpty }) => {
     if (!importedEntry[key]) {
       importedSecretEntries.push({
         key,
         value,
-        overriden: overridenSec?.[key]
+        environment: overrideEnv ?? importedSec.environmentInfo.slug,
+        secretPath: overridePath ?? importedSec.secretPath,
+        overridden: overridenSec?.[key],
+        isEmpty
       });
       importedEntry[key] = true;
     }
@@ -86,7 +96,7 @@ export const computeImportedSecretRows = (
 
 type Props = {
   environment: string;
-  workspaceId: string;
+  projectId: string;
   secretPath?: string;
   secretImports?: TSecretImport[];
   isFetching?: boolean;
@@ -98,7 +108,7 @@ type Props = {
 export const SecretImportListView = ({
   secretImports,
   environment,
-  workspaceId,
+  projectId,
   secretPath,
   importedSecrets,
   // secrets = [],
@@ -119,6 +129,12 @@ export const SecretImportListView = ({
 
   const [items, setItems] = useState(secretImports ?? []);
 
+  const getImportReplicatedFolder = (importPath: string) => {
+    const cleanImportPath = importPath.replace("/__reserve_replication_", "");
+    const replicatedFolder = items?.find(({ id }) => id === cleanImportPath);
+    return replicatedFolder;
+  };
+
   useEffect(() => {
     if (!isFetching) {
       setItems(secretImports ?? []);
@@ -132,7 +148,7 @@ export const SecretImportListView = ({
     const { id: secretImportId } = popUp.deleteSecretImport?.data as { id: string };
     try {
       await deleteSecretImport({
-        projectId: workspaceId,
+        projectId,
         environment,
         path: secretPath,
         id: secretImportId
@@ -158,7 +174,7 @@ export const SecretImportListView = ({
       const newImportOrder = arrayMove(items, oldIndex, newIndex);
       setItems(newImportOrder);
       updateSecretImport({
-        projectId: workspaceId,
+        projectId,
         environment,
         path: secretPath,
         id: active.id as string,
@@ -198,6 +214,9 @@ export const SecretImportListView = ({
         <SortableContext items={items} strategy={verticalListSortingStrategy}>
           {items?.map((item) => {
             // TODO(akhilmhdh): change this and pass this whole object instead of one by one
+            const replicatedFolder = item.isReserved
+              ? getImportReplicatedFolder(item.importPath)
+              : undefined;
             return (
               <SecretImportItem
                 searchTerm={searchTerm}
@@ -206,10 +225,11 @@ export const SecretImportListView = ({
                 onExpandReplicateSecrets={handleOpenReplicationSecrets}
                 secretImport={item}
                 importedSecrets={computeImportedSecretRows(
-                  item.importEnv.slug,
-                  item.importPath,
-                  importedSecrets
+                  item,
+                  importedSecrets,
+                  [],
                   // secrets scott - now that secrets are paginated we are not showing if they are overridden (yet?)
+                  replicatedFolder
                 )}
                 secretPath={secretPath}
                 environment={environment}

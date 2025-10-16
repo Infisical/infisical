@@ -17,7 +17,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   useCreateSshHostGroup,
   useGetSshHostGroupById,
@@ -56,8 +56,8 @@ const schema = z
 export type FormData = z.infer<typeof schema>;
 
 export const SshHostGroupModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace.id;
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const { data: sshHostGroups } = useListWorkspaceSshHostGroups(projectId);
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
@@ -272,7 +272,7 @@ export const SshHostGroupModal = ({ popUp, handlePopUpToggle }: Props) => {
                       control={control}
                       name={`loginMappings.${i}.loginUser`}
                       render={({ field }) => (
-                        <span className="text-sm font-medium leading-tight">
+                        <span className="text-sm leading-tight font-medium">
                           {field.value || "New Login Mapping"}
                         </span>
                       )}
@@ -326,7 +326,7 @@ export const SshHostGroupModal = ({ popUp, handlePopUpToggle }: Props) => {
                       />
                     </div>
                     <div className="flex flex-col space-y-2">
-                      <div className="mb-2 mt-4 flex items-center justify-between">
+                      <div className="mt-4 mb-2 flex items-center justify-between">
                         <FormLabel
                           label="Allowed Principals"
                           className="text-xs text-mineshaft-400"

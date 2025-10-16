@@ -38,7 +38,7 @@ export const SecretScanningDataSourceDetailsFields = () => {
               value={value ?? ""}
               onChange={onChange}
               placeholder="Provide a description for this data source..."
-              className="!resize-none"
+              className="resize-none!"
               rows={4}
             />
           </FormControl>

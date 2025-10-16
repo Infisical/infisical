@@ -1,19 +1,19 @@
-import { OrgMembershipRole, TOrgRoles } from "@app/db/schemas";
+import { OrgMembershipRole, TRoles } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { TOrgRoleDALFactory } from "@app/services/org/org-role-dal";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
+import { TRoleDALFactory } from "../role/role-dal";
 import { TExternalGroupOrgMembershipRoleMappingDTO } from "./external-group-org-role-mapping-types";
 
 export const constructGroupOrgMembershipRoleMappings = async ({
   mappingsDTO,
   orgId,
-  orgRoleDAL,
+  roleDAL,
   licenseService
 }: {
   mappingsDTO: TExternalGroupOrgMembershipRoleMappingDTO[];
-  orgRoleDAL: TOrgRoleDALFactory;
+  roleDAL: TRoleDALFactory;
   licenseService: TLicenseServiceFactory;
   orgId: string;
 }) => {
@@ -30,9 +30,10 @@ export const constructGroupOrgMembershipRoleMappings = async ({
     .filter((mapping) => isCustomOrgRole(mapping.roleSlug))
     .map((mapping) => mapping.roleSlug);
 
-  let customRolesMap: Map<string, TOrgRoles> = new Map();
+  let customRolesMap: Map<string, TRoles> = new Map();
   if (customRoleSlugs.length > 0) {
-    const customRoles = await orgRoleDAL.find({
+    const customRoles = await roleDAL.find({
+      orgId,
       $in: {
         slug: customRoleSlugs
       }

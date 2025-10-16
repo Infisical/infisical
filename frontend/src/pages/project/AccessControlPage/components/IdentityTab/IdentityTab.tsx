@@ -45,7 +45,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
@@ -57,7 +57,7 @@ import { withProjectPermission } from "@app/hoc";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useDeleteIdentityFromWorkspace, useGetWorkspaceIdentityMemberships } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectIdentityOrderBy } from "@app/hooks/api/workspace/types";
+import { ProjectIdentityOrderBy } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityModal } from "./components/IdentityModal";
@@ -66,7 +66,7 @@ const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
 export const IdentityTab = withProjectPermission(
   () => {
-    const { currentWorkspace } = useWorkspace();
+    const { currentProject, projectId } = useProject();
     const navigate = useNavigate();
 
     const {
@@ -92,11 +92,9 @@ export const IdentityTab = withProjectPermission(
       setUserTablePreference("projectIdentityTable", PreferenceKey.PerPage, newPerPage);
     };
 
-    const workspaceId = currentWorkspace?.id ?? "";
-
     const { data, isPending, isFetching } = useGetWorkspaceIdentityMemberships(
       {
-        workspaceId: currentWorkspace?.id || "",
+        projectId,
         offset,
         limit,
         orderDirection,
@@ -126,7 +124,7 @@ export const IdentityTab = withProjectPermission(
       try {
         await deleteMutateAsync({
           identityId,
-          workspaceId
+          projectId
         });
 
         createNotification({
@@ -170,13 +168,13 @@ export const IdentityTab = withProjectPermission(
         <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-1">
-              <p className="text-xl font-semibold text-mineshaft-100">Identities</p>
+              <p className="text-xl font-medium text-mineshaft-100">Identities</p>
               <a
                 href="https://infisical.com/docs/documentation/platform/identities/overview"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="ml-1 mt-[0.16rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                <div className="mt-[0.16rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   <span>Docs</span>
                   <FontAwesomeIcon
@@ -261,9 +259,9 @@ export const IdentityTab = withProjectPermission(
                         onKeyDown={(evt) => {
                           if (evt.key === "Enter") {
                             navigate({
-                              to: `${getProjectBaseURL(currentWorkspace.type)}/identities/$identityId` as const,
+                              to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId` as const,
                               params: {
-                                projectId: currentWorkspace.id,
+                                projectId: currentProject.id,
                                 identityId: id
                               }
                             });
@@ -271,9 +269,9 @@ export const IdentityTab = withProjectPermission(
                         }}
                         onClick={() =>
                           navigate({
-                            to: `${getProjectBaseURL(currentWorkspace.type)}/identities/$identityId` as const,
+                            to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId` as const,
                             params: {
-                              projectId: currentWorkspace.id,
+                              projectId: currentProject.id,
                               identityId: id
                             }
                           })

@@ -31,6 +31,7 @@ import { GitLabSyncDestinationSection } from "./GitLabSyncDestinationSection";
 import { HCVaultSyncDestinationSection } from "./HCVaultSyncDestinationSection";
 import { HerokuSyncDestinationSection } from "./HerokuSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
+import { LaravelForgeSyncDestinationSection } from "./LaravelForgeSyncDestinationSection";
 import { NetlifySyncDestinationSection } from "./NetlifySyncDestinationSection";
 import { OCIVaultSyncDestinationSection } from "./OCIVaultSyncDestinationSection";
 import { RailwaySyncDestinationSection } from "./RailwaySyncDestinationSection";
@@ -148,6 +149,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
     case SecretSync.Bitbucket:
       DestinationComponents = <BitbucketSyncDestinationSection secretSync={secretSync} />;
       break;
+    case SecretSync.LaravelForge:
+      DestinationComponents = <LaravelForgeSyncDestinationSection secretSync={secretSync} />;
+      break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);
   }
@@ -163,7 +167,7 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-        <h3 className="font-semibold text-mineshaft-100">Destination Configuration</h3>
+        <h3 className="font-medium text-mineshaft-100">Destination Configuration</h3>
         <ProjectPermissionCan I={ProjectPermissionSecretSyncActions.Edit} a={permissionSubject}>
           {(isAllowed) => (
             <IconButton

@@ -2,8 +2,8 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
-import { ProjectVersion } from "@app/hooks/api/workspace/types";
+import { useProject } from "@app/context";
+import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
 import { EncryptionTab } from "./components/EncryptionTab";
@@ -13,14 +13,14 @@ import { WorkflowIntegrationTab } from "./components/WorkflowIntegrationSection"
 
 export const SettingsPage = () => {
   const { t } = useTranslation();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const tabs = [
     { name: "General", key: "tab-project-general", Component: ProjectGeneralTab },
     { name: "Secrets Management", key: "tab-secret-general", Component: SecretSettingsTab },
     {
       name: "Encryption",
       key: "tab-project-encryption",
-      isHidden: currentWorkspace?.version !== ProjectVersion.V3,
+      isHidden: currentProject?.version !== ProjectVersion.V3,
       Component: EncryptionTab
     },
     {
@@ -42,6 +42,7 @@ export const SettingsPage = () => {
       </Helmet>
       <div className="w-full max-w-7xl">
         <PageHeader
+          scope="project"
           title="Settings"
           description="Configure your secret manager's encryption, environments, webhooks and other configurations."
         />

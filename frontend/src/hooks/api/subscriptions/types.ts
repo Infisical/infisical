@@ -53,6 +53,10 @@ export type SubscriptionPlan = {
   kmip: boolean;
   secretScanning: boolean;
   enterpriseSecretSyncs: boolean;
+  enterpriseCertificateSyncs: boolean;
   enterpriseAppConnections: boolean;
+  cardDeclined?: boolean;
+  cardDeclinedReason?: string;
   machineIdentityAuthTemplates: boolean;
+  pam: boolean;
 };

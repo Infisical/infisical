@@ -1,25 +1,27 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ProjectMembershipRole, ProjectVersion } from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, ProjectVersion } from "@app/db/schemas";
 import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TNotificationServiceFactory } from "../notification/notification-service";
+import { NotificationType } from "../notification/notification-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
-import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TAccessProjectDTO, TListOrgProjectsDTO } from "./org-admin-types";
 
 type TOrgAdminServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   projectDAL: Pick<TProjectDALFactory, "find" | "findById" | "findProjectGhostUser" | "findOne">;
-  projectMembershipDAL: Pick<
-    TProjectMembershipDALFactory,
-    "findOne" | "create" | "transaction" | "delete" | "findAllProjectMembers"
-  >;
-  projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create" | "delete">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
+  membershipUserDAL: TMembershipUserDALFactory;
+  membershipRoleDAL: TMembershipRoleDALFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 export type TOrgAdminServiceFactory = ReturnType<typeof orgAdminServiceFactory>;
@@ -28,8 +30,10 @@ export const orgAdminServiceFactory = ({
   permissionService,
   projectDAL,
   projectMembershipDAL,
-  projectUserMembershipRoleDAL,
-  smtpService
+  smtpService,
+  notificationService,
+  membershipUserDAL,
+  membershipRoleDAL
 }: TOrgAdminServiceFactoryDep) => {
   const listOrgProjects = async ({
     actor,
@@ -94,17 +98,18 @@ export const orgAdminServiceFactory = ({
     }
 
     // check already there exist a membership if there return it
-    const projectMembership = await projectMembershipDAL.findOne({
-      projectId,
-      userId: actorId
+    const projectMembership = await membershipUserDAL.findOne({
+      scopeProjectId: projectId,
+      scope: AccessScope.Project,
+      actorUserId: actorId
     });
     if (projectMembership) {
       // reset and make the user admin
-      await projectMembershipDAL.transaction(async (tx) => {
-        await projectUserMembershipRoleDAL.delete({ projectMembershipId: projectMembership.id }, tx);
-        await projectUserMembershipRoleDAL.create(
+      await membershipUserDAL.transaction(async (tx) => {
+        await membershipRoleDAL.delete({ membershipId: projectMembership.id }, tx);
+        await membershipRoleDAL.create(
           {
-            projectMembershipId: projectMembership.id,
+            membershipId: projectMembership.id,
             role: ProjectMembershipRole.Admin
           },
           tx
@@ -113,40 +118,50 @@ export const orgAdminServiceFactory = ({
       return { isExistingMember: true, membership: projectMembership };
     }
 
-    const updatedMembership = await projectMembershipDAL.transaction(async (tx) => {
-      const newProjectMembership = await projectMembershipDAL.create(
+    const updatedMembership = await membershipUserDAL.transaction(async (tx) => {
+      const newProjectMembership = await membershipUserDAL.create(
         {
-          projectId,
-          userId: actorId
+          scopeProjectId: projectId,
+          actorUserId: actorId,
+          scope: AccessScope.Project,
+          scopeOrgId: actorOrgId
         },
         tx
       );
-      await projectUserMembershipRoleDAL.create(
-        { projectMembershipId: newProjectMembership.id, role: ProjectMembershipRole.Admin },
-        tx
-      );
+      await membershipRoleDAL.create({ membershipId: newProjectMembership.id, role: ProjectMembershipRole.Admin }, tx);
 
       return newProjectMembership;
     });
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
-    const filteredProjectMembers = projectMembers
-      .filter(
-        (member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin) && member.userId !== actorId
-      )
-      .map((el) => el.user.email!)
-      .filter(Boolean);
+    const projectAdmins = projectMembers.filter(
+      (member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin) && member.userId !== actorId
+    );
+    const mappedProjectAdmins = projectAdmins.map((el) => el.user.email!).filter(Boolean);
+    const actorEmail = projectMembers.find((el) => el.userId === actorId)?.user?.username;
 
-    if (filteredProjectMembers.length) {
-      await smtpService.sendMail({
-        template: SmtpTemplates.OrgAdminProjectDirectAccess,
-        recipients: filteredProjectMembers,
-        subjectLine: "Organization Admin Project Direct Access Issued",
-        substitutions: {
-          projectName: project.name,
-          email: projectMembers.find((el) => el.userId === actorId)?.user?.username
-        }
-      });
+    if (actorEmail) {
+      await notificationService.createUserNotifications(
+        projectAdmins.map((member) => ({
+          userId: member.userId,
+          orgId: project.orgId,
+          type: NotificationType.DIRECT_PROJECT_ACCESS_ISSUED_TO_ADMIN,
+          title: "Direct Project Access Issued",
+          body: `The organization admin **${actorEmail}** has self-issued direct access to the project **${project.name}**.`
+        }))
+      );
+
+      if (mappedProjectAdmins.length) {
+        await smtpService.sendMail({
+          template: SmtpTemplates.OrgAdminProjectDirectAccess,
+          recipients: mappedProjectAdmins,
+          subjectLine: "Organization Admin Project Direct Access Issued",
+          substitutions: {
+            projectName: project.name,
+            email: actorEmail
+          }
+        });
+      }
     }
     return { isExistingMember: false, membership: updatedMembership };
   };

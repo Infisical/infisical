@@ -8,20 +8,23 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createNotification } from "@app/components/notifications";
 import { AccessTree } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
-import { ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
 import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { AddPoliciesButton } from "./AddPoliciesButton";
+import { AppConnectionPermissionConditions } from "./AppConnectionPermissionConditions";
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
 import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
 import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
+import { PamAccountPermissionConditions } from "./PamAccountPermissionConditions";
 import { PermissionEmptyState } from "./PermissionEmptyState";
 import { PkiSubscriberPermissionConditions } from "./PkiSubscriberPermissionConditions";
+import { PkiSyncPermissionConditions } from "./PkiSyncPermissionConditions";
 import { PkiTemplatePermissionConditions } from "./PkiTemplatePermissionConditions";
 import {
   EXCLUDED_PERMISSION_SUBS,
@@ -73,8 +76,20 @@ export const renderConditionalComponents = (
       return <SecretSyncPermissionConditions isDisabled={isDisabled} />;
     }
 
+    if (subject === ProjectPermissionSub.PkiSyncs) {
+      return <PkiSyncPermissionConditions isDisabled={isDisabled} />;
+    }
+
     if (subject === ProjectPermissionSub.SecretEvents) {
       return <SecretEventPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.AppConnections) {
+      return <AppConnectionPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.PamAccounts) {
+      return <PamAccountPermissionConditions isDisabled={isDisabled} />;
     }
 
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
@@ -84,10 +99,10 @@ export const renderConditionalComponents = (
 };
 
 export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id || "";
   const { data: role, isPending } = useGetProjectRoleBySlug(
-    currentWorkspace?.id ?? "",
+    currentProject?.id ?? "",
     roleSlug as string
   );
 
@@ -126,7 +141,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     (role?.slug ?? "") as ProjectMembershipRole
   );
 
-  const isSecretManagerProject = currentWorkspace.type === ProjectType.SecretManager;
+  const isSecretManagerProject = currentProject.type === ProjectType.SecretManager;
 
   const permissions = form.watch("permissions");
 
@@ -149,7 +164,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
         <FormProvider {...form}>
           <div className="mx-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
             <div>
-              <h3 className="text-lg font-semibold text-mineshaft-100">Policies</h3>
+              <h3 className="text-lg font-medium text-mineshaft-100">Policies</h3>
               <p className="text-sm leading-3 text-mineshaft-400">
                 Configure granular access policies
               </p>
@@ -178,12 +193,12 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                   Save
                 </Button>
                 <div className="ml-2 border-l border-mineshaft-500 pl-4">
-                  <AddPoliciesButton isDisabled={isDisabled} projectType={currentWorkspace.type} />
+                  <AddPoliciesButton isDisabled={isDisabled} projectType={currentProject.type} />
                 </div>
               </div>
             )}
           </div>
-          <div className="flex flex-1 flex-col overflow-hidden pl-4 pr-1">
+          <div className="flex flex-1 flex-col overflow-hidden pr-1 pl-4">
             <div className="thin-scrollbar flex-1 overflow-y-scroll py-4">
               {!isPending && <PermissionEmptyState />}
               {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])

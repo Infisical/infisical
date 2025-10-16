@@ -1386,7 +1386,7 @@ export const folderCommitServiceFactory = ({
     );
 
     // Invalidate cache to reflect the changes
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
 
     return {
       secretChangesCount: secretChanges.length,

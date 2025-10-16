@@ -1,12 +1,12 @@
 import { Knex } from "knex";
 
-import { TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
+import { AccessScope, TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
-import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 
 import { AuthModeJwtTokenPayload, AuthModeRefreshJwtTokenPayload, AuthTokenType } from "../auth/auth-type";
+import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TTokenDALFactory } from "./auth-token-dal";
 import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenForUserDTO } from "./auth-token-types";
@@ -14,7 +14,7 @@ import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenFo
 type TAuthTokenServiceFactoryDep = {
   tokenDAL: TTokenDALFactory;
   userDAL: Pick<TUserDALFactory, "findById" | "transaction">;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOne">;
+  membershipUserDAL: Pick<TMembershipUserDALFactory, "findOne">;
 };
 
 export type TAuthTokenServiceFactory = ReturnType<typeof tokenServiceFactory>;
@@ -34,6 +34,12 @@ export const getTokenConfig = (tokenType: TokenType) => {
       const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
       const triesLeft = 3;
       const expiresAt = new Date(new Date().getTime() + 86400000);
+      return { token, triesLeft, expiresAt };
+    }
+    case TokenType.TOKEN_EMAIL_CHANGE_OTP: {
+      const token = String(crypto.randomInt(10 ** 5, 10 ** 6 - 1));
+      const triesLeft = 1;
+      const expiresAt = new Date(new Date().getTime() + 600000);
       return { token, triesLeft, expiresAt };
     }
     case TokenType.TOKEN_EMAIL_MFA: {
@@ -74,8 +80,8 @@ export const getTokenConfig = (tokenType: TokenType) => {
   }
 };
 
-export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAuthTokenServiceFactoryDep) => {
-  const createTokenForUser = async ({ type, userId, orgId, aliasId }: TCreateTokenForUserDTO) => {
+export const tokenServiceFactory = ({ tokenDAL, userDAL, membershipUserDAL }: TAuthTokenServiceFactoryDep) => {
+  const createTokenForUser = async ({ type, userId, orgId, aliasId, payload }: TCreateTokenForUserDTO) => {
     const { token, ...tkCfg } = getTokenConfig(type);
     const appCfg = getConfig();
     const tokenHash = await crypto.hashing().createHash(token, appCfg.SALT_ROUNDS);
@@ -89,7 +95,8 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
           userId,
           orgId,
           triesLeft: tkCfg?.triesLeft,
-          aliasId
+          aliasId,
+          payload
         },
         tx
       );
@@ -201,9 +208,10 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgMembershipDAL }: TAu
     if (!user || !user.isAccepted) throw new NotFoundError({ message: `User with ID '${session.userId}' not found` });
 
     if (token.organizationId) {
-      const orgMembership = await orgMembershipDAL.findOne({
-        userId: user.id,
-        orgId: token.organizationId
+      const orgMembership = await membershipUserDAL.findOne({
+        actorUserId: user.id,
+        scopeOrgId: token.organizationId,
+        scope: AccessScope.Organization
       });
 
       if (!orgMembership) {

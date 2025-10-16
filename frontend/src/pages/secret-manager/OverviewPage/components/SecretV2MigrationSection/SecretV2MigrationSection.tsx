@@ -8,11 +8,11 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Checkbox, Modal, ModalContent, Spinner } from "@app/components/v2";
-import { useProjectPermission, useWorkspace } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useGetWorkspaceById, useMigrateProjectToV3, workspaceKeys } from "@app/hooks/api";
+import { projectKeys, useGetWorkspaceById, useMigrateProjectToV3 } from "@app/hooks/api";
+import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { ProjectVersion } from "@app/hooks/api/workspace/types";
 
 enum ProjectUpgradeStatus {
   InProgress = "IN_PROGRESS",
@@ -28,17 +28,17 @@ const formSchema = z.object({
 
 export const SecretV2MigrationSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["migrationInfo"] as const);
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const queryClient = useQueryClient();
   const { data: workspaceDetails, refetch } = useGetWorkspaceById(
     // if v3 no need to fetch
-    currentWorkspace?.version === ProjectVersion.V3 ? "" : currentWorkspace?.id || "",
+    currentProject?.version === ProjectVersion.V3 ? "" : currentProject?.id || "",
     {
       refetchInterval:
-        currentWorkspace?.upgradeStatus === ProjectUpgradeStatus.InProgress ? 2000 : false
+        currentProject?.upgradeStatus === ProjectUpgradeStatus.InProgress ? 2000 : false
     }
   );
-  const { membership } = useProjectPermission();
+  const { hasProjectRole } = useProjectPermission();
   const migrateProjectToV3 = useMigrateProjectToV3();
   const { handleSubmit, control, reset } = useForm({ resolver: zodResolver(formSchema) });
   useEffect(() => {
@@ -54,12 +54,12 @@ export const SecretV2MigrationSection = () => {
       createNotification({ type: "success", text: "Project upgrade completed successfully" });
       migrateProjectToV3.reset();
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace()
+        queryKey: projectKeys.getAllUserProjects()
       });
     }
   }, [isProjectUpgraded, Boolean(migrateProjectToV3.data)]);
 
-  if (isProjectUpgraded || currentWorkspace?.version === ProjectVersion.V3) return null;
+  if (isProjectUpgraded || currentProject?.version === ProjectVersion.V3) return null;
 
   const isUpgrading = workspaceDetails?.upgradeStatus === ProjectUpgradeStatus.InProgress;
   const didProjectUpgradeFailed = workspaceDetails?.upgradeStatus === ProjectUpgradeStatus.Failed;
@@ -67,7 +67,7 @@ export const SecretV2MigrationSection = () => {
   const handleMigrationSecretV2 = async () => {
     try {
       handlePopUpToggle("migrationInfo");
-      await migrateProjectToV3.mutateAsync({ workspaceId: currentWorkspace?.id || "" });
+      await migrateProjectToV3.mutateAsync({ projectId: currentProject?.id || "" });
       refetch();
       createNotification({
         text: "Project upgrade started",
@@ -81,11 +81,11 @@ export const SecretV2MigrationSection = () => {
     }
   };
 
-  const isAdmin = membership?.roles.includes(ProjectMembershipRole.Admin);
+  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   return (
     <div className="mt-4 flex max-w-2xl flex-col rounded-lg border border-primary/50 bg-primary/10 px-6 py-5">
       {isUpgrading && (
-        <div className="absolute left-0 top-0 z-50 flex h-screen w-screen items-center justify-center bg-bunker-500 bg-opacity-80">
+        <div className="bg-opacity-80 absolute top-0 left-0 z-50 flex h-screen w-screen items-center justify-center bg-bunker-500">
           <Spinner size="lg" className="text-primary" />
           <div className="ml-4 flex flex-col space-y-1">
             <div className="text-3xl font-medium">Please wait</div>
@@ -95,7 +95,7 @@ export const SecretV2MigrationSection = () => {
       )}
       <div className="mb-4 flex items-start gap-2">
         <FontAwesomeIcon icon={faWarning} size="xl" className="mt-1 text-primary" />
-        <p className="text-xl font-semibold">Upgrade secrets engine version</p>
+        <p className="text-xl font-medium">Upgrade secrets engine version</p>
       </div>
       <p className="mx-1 mb-4 leading-7 text-mineshaft-100">
         Your existing workflows to fetch secrets will continue to work. However, viewing secrets on

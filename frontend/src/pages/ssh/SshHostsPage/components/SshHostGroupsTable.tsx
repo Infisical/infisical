@@ -28,7 +28,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useListWorkspaceSshHostGroups } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -41,8 +41,8 @@ type Props = {
 
 export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
-  const { currentWorkspace } = useWorkspace();
-  const { data, isPending } = useListWorkspaceSshHostGroups(currentWorkspace?.id || "");
+  const { currentProject } = useProject();
+  const { data, isPending } = useListWorkspaceSshHostGroups(currentProject?.id || "");
   return (
     <div>
       <TableContainer>
@@ -69,7 +69,7 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                       navigate({
                         to: "/projects/ssh/$projectId/ssh-host-groups/$sshHostGroupId",
                         params: {
-                          projectId: currentWorkspace.id,
+                          projectId: currentProject.id,
                           sshHostGroupId: group.id
                         }
                       })
@@ -79,7 +79,7 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                     <Td>{group.hostCount}</Td>
                     <Td>
                       {group.loginMappings.length === 0 ? (
-                        <span className="italic text-mineshaft-400">None</span>
+                        <span className="text-mineshaft-400 italic">None</span>
                       ) : (
                         group.loginMappings.map(({ loginUser, allowedPrincipals }) => (
                           <div key={`${group.id}-${loginUser}`} className="mb-2">
@@ -170,7 +170,7 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                                   navigate({
                                     to: "/projects/ssh/$projectId/ssh-host-groups/$sshHostGroupId",
                                     params: {
-                                      projectId: currentWorkspace.id,
+                                      projectId: currentProject.id,
                                       sshHostGroupId: group.id
                                     }
                                   });

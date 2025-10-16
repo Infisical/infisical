@@ -30,7 +30,7 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthById } from "@app/hooks/api/integrationAuth";
 import { useGetIntegrationAuthAwsKmsKeys } from "@app/hooks/api/integrationAuth/queries";
@@ -150,7 +150,7 @@ export const AwsSecretManagerConfigurePage = () => {
     select: (el) => el.integrationAuthId
   });
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { data: integrationAuth, isPending: isintegrationAuthLoading } = useGetIntegrationAuthById(
     (integrationAuthId as string) ?? ""
   );
@@ -162,11 +162,11 @@ export const AwsSecretManagerConfigurePage = () => {
     });
 
   useEffect(() => {
-    if (currentWorkspace) {
-      setValue("sourceEnvironment", currentWorkspace.environments[0].slug);
+    if (currentProject) {
+      setValue("sourceEnvironment", currentProject.environments[0].slug);
       setValue("awsRegion", awsRegions[0].slug);
     }
-  }, [currentWorkspace]);
+  }, [currentProject]);
 
   const handleButtonClick = async ({
     secretName,
@@ -206,7 +206,7 @@ export const AwsSecretManagerConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -243,12 +243,12 @@ export const AwsSecretManagerConfigurePage = () => {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   Docs
                   <FontAwesomeIcon
                     icon={faArrowUpRightFromSquare}
-                    className="mb-[0.07rem] ml-1.5 text-xxs"
+                    className="text-xxs mb-[0.07rem] ml-1.5"
                   />
                 </div>
               </a>
@@ -286,7 +286,7 @@ export const AwsSecretManagerConfigurePage = () => {
                           field.onChange(val);
                         }}
                       >
-                        {currentWorkspace?.environments.map((sourceEnvironment) => (
+                        {currentProject?.environments.map((sourceEnvironment) => (
                           <SelectItem
                             value={sourceEnvironment.slug}
                             key={`source-environment-${sourceEnvironment.slug}`}
@@ -383,7 +383,7 @@ export const AwsSecretManagerConfigurePage = () => {
                         isError={Boolean(error)}
                       >
                         <Input
-                          placeholder={`${currentWorkspace.name
+                          placeholder={`${currentProject.name
                             .toLowerCase()
                             .replace(/ /g, "-")}/${selectedSourceEnvironment}`}
                           {...field}
@@ -402,7 +402,7 @@ export const AwsSecretManagerConfigurePage = () => {
                 animate={{ opacity: 1, translateX: 0 }}
                 exit={{ opacity: 0, translateX: 30 }}
               >
-                <div className="mb-3 ml-1 mt-2">
+                <div className="mt-2 mb-3 ml-1">
                   <Controller
                     control={control}
                     name="shouldTag"
@@ -556,7 +556,7 @@ export const AwsSecretManagerConfigurePage = () => {
             color="mineshaft"
             variant="outline_bg"
             type="submit"
-            className="mb-6 ml-auto mr-6 mt-2"
+            className="mt-2 mr-6 mb-6 ml-auto"
             isLoading={isSubmitting}
           >
             Create Integration

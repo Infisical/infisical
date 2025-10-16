@@ -30,7 +30,7 @@ export const SecretTableResourceCount = ({
         <Tooltip
           className="max-w-sm"
           content={
-            <p className="whitespace-nowrap text-center">
+            <p className="text-center whitespace-nowrap">
               Total import count{" "}
               <span className="text-center text-mineshaft-400">(matching filters)</span>
             </p>
@@ -46,7 +46,7 @@ export const SecretTableResourceCount = ({
         <Tooltip
           className="max-w-sm"
           content={
-            <p className="whitespace-nowrap text-center">
+            <p className="text-center whitespace-nowrap">
               Total folder count{" "}
               <span className="text-center text-mineshaft-400">(matching filters)</span>
             </p>
@@ -62,7 +62,7 @@ export const SecretTableResourceCount = ({
         <Tooltip
           className="max-w-sm"
           content={
-            <p className="whitespace-nowrap text-center">
+            <p className="text-center whitespace-nowrap">
               Total dynamic secret count{" "}
               <span className="text-center text-mineshaft-400">(matching filters)</span>
             </p>
@@ -78,7 +78,7 @@ export const SecretTableResourceCount = ({
         <Tooltip
           className="max-w-sm"
           content={
-            <p className="whitespace-nowrap text-center">
+            <p className="text-center whitespace-nowrap">
               Total secret rotation count{" "}
               <span className="text-center text-mineshaft-400">(matching filters)</span>
             </p>
@@ -94,7 +94,7 @@ export const SecretTableResourceCount = ({
         <Tooltip
           className="max-w-sm"
           content={
-            <p className="whitespace-nowrap text-center">
+            <p className="text-center whitespace-nowrap">
               Total secret count{" "}
               <span className="text-center text-mineshaft-400">(matching filters)</span>
             </p>

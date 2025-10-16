@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import {
+  AccessScope,
   TableName,
   TUserActionsInsert,
   TUserActionsUpdate,
@@ -19,12 +20,16 @@ export type TUserDALFactory = ReturnType<typeof userDALFactory>;
 export const userDALFactory = (db: TDbClient) => {
   const userOrm = ormify(db, TableName.Users);
   const findUserByUsername = async (username: string, tx?: Knex) =>
-    (tx || db)(TableName.Users).whereRaw('lower("username") = :username', { username: username.toLowerCase() });
+    (tx || db.replicaNode())(TableName.Users).whereRaw('lower("username") = :username', {
+      username: username.toLowerCase()
+    });
 
   const findUserByEmail = async (email: string, tx?: Knex) =>
-    (tx || db)(TableName.Users).whereRaw('lower("email") = :email', { email: email.toLowerCase() }).where({
-      isEmailVerified: true
-    });
+    (tx || db.replicaNode())(TableName.Users)
+      .whereRaw('lower("email") = :email', { email: email.toLowerCase() })
+      .where({
+        isEmailVerified: true
+      });
 
   const getUsersByFilter = async ({
     limit,
@@ -56,11 +61,20 @@ export const userDALFactory = (db: TDbClient) => {
         query = query.where("superAdmin", true);
       }
 
+      const countQuery = query.clone();
+
       if (sortBy) {
         query = query.orderBy(sortBy);
       }
 
-      return await query.limit(limit).offset(offset).select(selectAllTableCols(TableName.Users));
+      const [users, totalResult] = await Promise.all([
+        query.limit(limit).offset(offset).select(selectAllTableCols(TableName.Users)),
+        countQuery.count("*", { as: "count" }).first()
+      ]);
+
+      const total = Number(totalResult?.count || 0);
+
+      return { users, total };
     } catch (error) {
       throw new DatabaseError({ error, name: "Get users by filter" });
     }
@@ -114,9 +128,13 @@ export const userDALFactory = (db: TDbClient) => {
   const findUserByProjectMembershipId = async (projectMembershipId: string) => {
     try {
       return await db
-        .replicaNode()(TableName.ProjectMembership)
-        .where({ [`${TableName.ProjectMembership}.id` as "id"]: projectMembershipId })
-        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .replicaNode()(TableName.Membership)
+        .where({
+          [`${TableName.Membership}.id` as "id"]: projectMembershipId,
+          [`${TableName.Membership}.scope` as "scope"]: AccessScope.Project
+        })
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .first();
     } catch (error) {
       throw new DatabaseError({ error, name: "Find user by project membership id" });
@@ -126,9 +144,11 @@ export const userDALFactory = (db: TDbClient) => {
   const findUsersByProjectMembershipIds = async (projectMembershipIds: string[]) => {
     try {
       return await db
-        .replicaNode()(TableName.ProjectMembership)
-        .whereIn(`${TableName.ProjectMembership}.id`, projectMembershipIds)
-        .join(TableName.Users, `${TableName.ProjectMembership}.userId`, `${TableName.Users}.id`)
+        .replicaNode()(TableName.Membership)
+        .whereIn(`${TableName.Membership}.id`, projectMembershipIds)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .select("*");
     } catch (error) {
       throw new DatabaseError({ error, name: "Find users by project membership ids" });
@@ -178,8 +198,10 @@ export const userDALFactory = (db: TDbClient) => {
     try {
       const doc = await db(TableName.Users)
         .where({ email })
-        .leftJoin(TableName.OrgMembership, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
-        .leftJoin(TableName.Organization, `${TableName.Organization}.id`, `${TableName.OrgMembership}.orgId`)
+        .leftJoin(TableName.Membership, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .leftJoin(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
         .select(selectAllTableCols(TableName.Users))
         .select(
           db.ref("name").withSchema(TableName.Organization).as("orgName"),

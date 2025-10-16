@@ -1,5 +1,6 @@
 import { useCallback } from "react";
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import {
@@ -9,13 +10,15 @@ import {
   DashboardProjectSecretsOverview,
   DashboardProjectSecretsOverviewResponse,
   DashboardSecretsOrderBy,
+  DashboardSecretValue,
   TDashboardProjectSecretsQuickSearch,
   TDashboardProjectSecretsQuickSearchResponse,
   TGetAccessibleSecretsDTO,
   TGetDashboardProjectSecretsByKeys,
   TGetDashboardProjectSecretsDetailsDTO,
   TGetDashboardProjectSecretsOverviewDTO,
-  TGetDashboardProjectSecretsQuickSearchDTO
+  TGetDashboardProjectSecretsQuickSearchDTO,
+  TGetSecretValueDTO
 } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
@@ -72,6 +75,15 @@ export const dashboardKeys = {
       ...dashboardKeys.all(),
       "accessible-secrets",
       { projectId, secretPath, environment, filterByAction }
+    ] as const,
+  getSecretValuesRoot: () => [...dashboardKeys.all(), "secrets-values"] as const,
+  getSecretValue: ({ environment, secretPath, secretKey, isOverride }: TGetSecretValueDTO) =>
+    [
+      ...dashboardKeys.getSecretValuesRoot(),
+      environment,
+      secretPath,
+      secretKey,
+      isOverride
     ] as const
 };
 
@@ -173,6 +185,8 @@ export const useGetProjectSecretsOverview = (
     "queryKey" | "queryFn"
   >
 ) => {
+  const queryClient = useQueryClient();
+
   return useQuery({
     ...options,
     // wait for all values to be available
@@ -192,8 +206,8 @@ export const useGetProjectSecretsOverview = (
       includeSecretRotations,
       environments
     }),
-    queryFn: () =>
-      fetchProjectSecretsOverview({
+    queryFn: async () => {
+      const resp = fetchProjectSecretsOverview({
         secretPath,
         search,
         limit,
@@ -207,7 +221,14 @@ export const useGetProjectSecretsOverview = (
         includeDynamicSecrets,
         includeSecretRotations,
         environments
-      }),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getSecretValuesRoot()
+      });
+
+      return resp;
+    },
     select: useCallback((data: Awaited<ReturnType<typeof fetchProjectSecretsOverview>>) => {
       const { secrets, secretRotations, ...select } = data;
       const uniqueSecrets = secrets ? unique(secrets, (i) => i.secretKey) : [];
@@ -253,7 +274,6 @@ export const useGetProjectSecretsDetails = (
     search = "",
     includeSecrets,
     includeFolders,
-    viewSecretValue,
     includeImports,
     includeDynamicSecrets,
     includeSecretRotations,
@@ -269,17 +289,24 @@ export const useGetProjectSecretsDetails = (
     "queryKey" | "queryFn"
   >
 ) => {
+  const queryClient = useQueryClient();
+
   return useQuery({
     ...options,
     // wait for all values to be available
     enabled: Boolean(projectId) && (options?.enabled ?? true),
+    retry: (count, error) => {
+      // don't retry 404s
+      if (error instanceof AxiosError && error.status === 404) return false;
+
+      return count <= 5;
+    },
     queryKey: dashboardKeys.getProjectSecretsDetails({
       secretPath,
       search,
       limit,
       orderBy,
       orderDirection,
-      viewSecretValue,
       offset,
       projectId,
       environment,
@@ -290,14 +317,13 @@ export const useGetProjectSecretsDetails = (
       includeSecretRotations,
       tags
     }),
-    queryFn: () =>
-      fetchProjectSecretsDetails({
+    queryFn: async () => {
+      const resp = await fetchProjectSecretsDetails({
         secretPath,
         search,
         limit,
         orderBy,
         orderDirection,
-        viewSecretValue,
         offset,
         projectId,
         environment,
@@ -307,7 +333,14 @@ export const useGetProjectSecretsDetails = (
         includeDynamicSecrets,
         includeSecretRotations,
         tags
-      }),
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getSecretValuesRoot()
+      });
+
+      return resp;
+    },
     select: useCallback(
       (data: Awaited<ReturnType<typeof fetchProjectSecretsDetails>>) => ({
         ...data,
@@ -462,5 +495,33 @@ export const useGetAccessibleSecrets = ({
     }),
     queryFn: () =>
       fetchAccessibleSecrets({ projectId, secretPath, environment, filterByAction, recursive })
+  });
+};
+
+export const fetchSecretValue = async (params: TGetSecretValueDTO) => {
+  const { data } = await apiRequest.get<DashboardSecretValue>("/api/v1/dashboard/secret-value", {
+    params
+  });
+
+  return data;
+};
+
+export const useGetSecretValue = (
+  params: TGetSecretValueDTO,
+  options?: Omit<
+    UseQueryOptions<
+      DashboardSecretValue,
+      unknown,
+      DashboardSecretValue,
+      ReturnType<typeof dashboardKeys.getSecretValue>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: dashboardKeys.getSecretValue(params),
+    queryFn: async () => fetchSecretValue(params),
+    staleTime: 1000 * 60,
+    ...options
   });
 };

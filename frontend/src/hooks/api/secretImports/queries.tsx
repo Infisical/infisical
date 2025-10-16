@@ -30,10 +30,10 @@ export const secretImportKeys = {
 
 const fetchSecretImport = async ({ projectId, environment, path = "/" }: TGetSecretImports) => {
   const { data } = await apiRequest.get<{ secretImports: TSecretImport[] }>(
-    "/api/v1/secret-imports",
+    "/api/v2/secret-imports",
     {
       params: {
-        workspaceId: projectId,
+        projectId,
         environment,
         path
       }
@@ -65,16 +65,12 @@ export const useGetSecretImports = ({
     queryFn: () => fetchSecretImport({ path, projectId, environment })
   });
 
-const fetchImportedSecrets = async (
-  workspaceId: string,
-  environment: string,
-  directory?: string
-) => {
+const fetchImportedSecrets = async (projectId: string, environment: string, directory?: string) => {
   const { data } = await apiRequest.get<{ secrets: TImportedSecrets[] }>(
-    "/api/v1/secret-imports/secrets/raw",
+    "/api/v1/dashboard/secret-imports",
     {
       params: {
-        workspaceId,
+        projectId,
         environment,
         path: directory
       }
@@ -89,10 +85,10 @@ const fetchImportedFolders = async ({
   path
 }: TGetImportedFoldersByEnvDTO) => {
   const { data } = await apiRequest.get<{ secretImports: TSecretImport[] }>(
-    "/api/v1/secret-imports",
+    "/api/v2/secret-imports",
     {
       params: {
-        workspaceId: projectId,
+        projectId,
         environment,
         path
       }
@@ -136,13 +132,13 @@ export const useGetImportedSecretsSingleEnv = ({
             id: encSecret.id,
             env: encSecret.environment,
             key: encSecret.secretKey,
-            value: encSecret.secretValue,
             secretValueHidden: encSecret.secretValueHidden,
             tags: encSecret.tags,
             comment: encSecret.secretComment,
             createdAt: encSecret.createdAt,
             updatedAt: encSecret.updatedAt,
-            version: encSecret.version
+            version: encSecret.version,
+            isEmpty: encSecret.isEmpty
           };
         })
       }));
@@ -176,7 +172,6 @@ export const useGetImportedSecretsAllEnvs = ({
                 id: encSecret.id,
                 env: encSecret.environment,
                 key: encSecret.secretKey,
-                value: encSecret.secretValue,
                 secretValueHidden: encSecret.secretValueHidden,
                 tags: encSecret.tags,
                 comment: encSecret.secretComment,
@@ -237,7 +232,9 @@ export const useGetImportedSecretsAllEnvs = ({
 
         return {
           secret: secret?.secrets.find((s) => s.key === secretName),
-          environmentInfo: secret?.environmentInfo
+          environmentInfo: secret?.environmentInfo,
+          secretPath: secret?.secretPath,
+          environment: secret?.environment
         };
       }
       return undefined;

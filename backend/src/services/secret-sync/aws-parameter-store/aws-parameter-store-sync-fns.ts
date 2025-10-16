@@ -12,7 +12,7 @@ type TAWSParameterStoreRecord = Record<string, AWS.SSM.Parameter>;
 type TAWSParameterStoreMetadataRecord = Record<string, AWS.SSM.ParameterMetadata>;
 type TAWSParameterStoreTagsRecord = Record<string, Record<string, string>>;
 
-const MAX_RETRIES = 5;
+const MAX_RETRIES = 10;
 const BATCH_SIZE = 10;
 
 const getSSM = async (secretSync: TAwsParameterStoreSyncWithCredentials) => {

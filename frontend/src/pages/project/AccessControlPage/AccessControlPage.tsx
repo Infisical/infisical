@@ -3,9 +3,9 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import {
@@ -18,7 +18,7 @@ import {
 
 const Page = () => {
   const navigate = useNavigate();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const selectedTab = useSearch({
     strict: false,
     select: (el) => el.selectedTab
@@ -26,20 +26,21 @@ const Page = () => {
 
   const updateSelectedTab = (tab: string) => {
     navigate({
-      to: `${getProjectBaseURL(currentWorkspace.type)}/access-management` as const,
+      to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
       search: (prev) => ({ ...prev, selectedTab: tab }),
       params: {
-        projectId: currentWorkspace.id
+        projectId: currentProject.id
       }
     });
   };
 
-  const isSecretManager = currentWorkspace.type === ProjectType.SecretManager;
+  const isSecretManager = currentProject.type === ProjectType.SecretManager;
 
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       <div className="mx-auto mb-6 w-full max-w-7xl">
         <PageHeader
+          scope="project"
           title="Access Control"
           description="Manage fine-grained access for users, groups, roles, and identities within your project resources."
         />

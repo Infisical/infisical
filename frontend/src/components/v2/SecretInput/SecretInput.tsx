@@ -6,20 +6,21 @@ import { useToggle } from "@app/hooks";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 const REGEX = /(\${([a-zA-Z0-9-_.]+)})/g;
-const replaceContentWithDot = (str: string) => {
-  let finalStr = "";
-  for (let i = 0; i < str.length; i += 1) {
-    const char = str.at(i);
-    finalStr += char === "\n" ? "\n" : "*";
-  }
-  return finalStr;
-};
 
-const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?: boolean) => {
+const syntaxHighlight = (
+  content?: string | null,
+  isVisible?: boolean,
+  isImport?: boolean,
+  isLoadingValue?: boolean,
+  isErrorLoadingValue?: boolean
+) => {
+  if (isLoadingValue) return HIDDEN_SECRET_VALUE;
+  if (isErrorLoadingValue)
+    return <span className="ph-no-capture text-red/75">Error loading secret value.</span>;
   if (isImport && !content) return "IMPORTED";
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";
-  if (!isVisible) return replaceContentWithDot(content);
+  if (!isVisible) return HIDDEN_SECRET_VALUE;
 
   let skipNext = false;
   const formattedContent = content.split(REGEX).flatMap((el, i) => {
@@ -28,7 +29,8 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?
       skipNext = true;
       return (
         <span className="ph-no-capture text-yellow" key={`secret-value-${i + 1}`}>
-          &#36;&#123;<span className="ph-no-capture text-yellow-200/80">{el.slice(2, -1)}</span>
+          &#36;&#123;
+          <span className="ph-no-capture text-yellow-200/80">{el.slice(2, -1)}</span>
           &#125;
         </span>
       );
@@ -42,7 +44,9 @@ const syntaxHighlight = (content?: string | null, isVisible?: boolean, isImport?
 
   // akhilmhdh: Dont remove this br. I am still clueless how this works but weirdly enough
   // when break is added a line break works properly
-  return formattedContent.concat(<br key={`secret-value-${formattedContent.length + 1}`} />);
+  return formattedContent.concat(
+    <br key={`secret-value-linebreak-${formattedContent.length + 1}`} />
+  );
 };
 
 type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
@@ -54,9 +58,11 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   isDisabled?: boolean;
   containerClassName?: string;
   canEditButNotView?: boolean;
+  isLoadingValue?: boolean;
+  isErrorLoadingValue?: boolean;
 };
 
-const commonClassName = "font-mono text-sm caret-white border-none outline-none w-full break-all";
+const commonClassName = "font-mono text-sm caret-white border-none outline-hidden w-full break-all";
 
 export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
   (
@@ -71,6 +77,8 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       isReadOnly,
       onFocus,
       canEditButNotView,
+      isLoadingValue,
+      isErrorLoadingValue,
       ...props
     },
     ref
@@ -79,7 +87,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     return (
       <div
-        className={twMerge("w-full overflow-auto rounded-md no-scrollbar", containerClassName)}
+        className={twMerge("no-scrollbar w-full overflow-auto rounded-md", containerClassName)}
         style={{ maxHeight: `${21 * 7}px` }}
       >
         <div className="relative overflow-hidden">
@@ -89,7 +97,9 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
                 {syntaxHighlight(
                   value,
                   isVisible || (isSecretFocused && !valueAlwaysHidden),
-                  isImport
+                  isImport,
+                  isLoadingValue,
+                  isErrorLoadingValue
                 )}
               </span>
             </code>
@@ -98,7 +108,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             style={{ whiteSpace: "break-spaces" }}
             aria-label="secret value"
             ref={ref}
-            className={`absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent no-scrollbar focus:border-0 ${commonClassName}`}
+            className={`no-scrollbar absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent focus:border-0 ${commonClassName}`}
             onFocus={(evt) => {
               onFocus?.(evt);
               setIsSecretFocused.on();
@@ -120,7 +130,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             }}
             value={value || ""}
             {...props}
-            readOnly={isReadOnly}
+            readOnly={isReadOnly || isLoadingValue || isErrorLoadingValue}
           />
         </div>
       </div>

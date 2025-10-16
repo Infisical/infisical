@@ -12,6 +12,7 @@ import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import { ActorType } from "@app/services/auth/auth-type";
 import { buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 
 import {
@@ -30,6 +31,7 @@ import {
   TDeleteFolderDTO,
   TDeleteManyFoldersDTO,
   TGetFolderByIdDTO,
+  TGetFolderByPathDTO,
   TGetFolderDTO,
   TGetFoldersDeepByEnvsDTO,
   TUpdateFolderDTO,
@@ -46,7 +48,7 @@ type TSecretFolderServiceFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderIds">;
+  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderIds" | "invalidateSecretCacheByProjectId">;
 };
 
 export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceFactory>;
@@ -397,6 +399,7 @@ export const secretFolderServiceFactory = ({
 
     await Promise.all(result.map(async (res) => snapshotService.performSnapshot(res.newFolder.parentId as string)));
 
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     return {
       projectId,
       newFolders: result.map((res) => res.newFolder),
@@ -521,6 +524,7 @@ export const secretFolderServiceFactory = ({
     }
 
     await snapshotService.performSnapshot(newFolder.parentId as string);
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     return {
       folder: { ...newFolder, path: newFolderWithFullPath.path },
       old: { ...folder, path: folderWithFullPath.path }
@@ -531,13 +535,19 @@ export const secretFolderServiceFactory = ({
     projectId,
     env,
     parentId,
-    idOrName
+    idOrName,
+    actor
   }: {
     projectId: string;
     env: TProjectEnvironments;
     parentId: string;
     idOrName: string;
+    actor: ActorType;
   }) => {
+    if (actor === ActorType.IDENTITY) {
+      return;
+    }
+
     let targetFolder = await folderDAL
       .findOne({
         envId: env.id,
@@ -661,7 +671,7 @@ export const secretFolderServiceFactory = ({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
         });
 
-      await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName });
+      await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor });
 
       let folderToDelete = await folderDAL
         .findOne({
@@ -723,6 +733,7 @@ export const secretFolderServiceFactory = ({
     });
 
     await snapshotService.performSnapshot(folder.parentId as string);
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     return folder;
   };
 
@@ -1311,7 +1322,7 @@ export const secretFolderServiceFactory = ({
             });
           }
 
-          await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName });
+          await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor });
 
           let folderToDelete = await folderDAL
             .findOne({
@@ -1398,6 +1409,31 @@ export const secretFolderServiceFactory = ({
     };
   };
 
+  const getFolderByPath = async (
+    { projectId, environment, secretPath }: TGetFolderByPathDTO,
+    actor: OrgServiceActor
+  ) => {
+    // folder check is allowed to be read by anyone
+    // permission is to check if user has access
+    await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
+
+    if (!folder)
+      throw new NotFoundError({
+        message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
+      });
+
+    return folder;
+  };
+
   return {
     createFolder,
     updateFolder,
@@ -1405,6 +1441,7 @@ export const secretFolderServiceFactory = ({
     deleteFolder,
     getFolders,
     getFolderById,
+    getFolderByPath,
     getProjectFolderCount,
     getFoldersMultiEnv,
     getFoldersDeepByEnvs,

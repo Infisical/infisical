@@ -16,6 +16,7 @@ export type TooltipProps = Omit<TooltipPrimitive.TooltipContentProps, "open" | "
   center?: boolean;
   size?: "sm" | "md";
   rootProps?: RootProps;
+  delayDuration?: number;
 };
 
 export const Tooltip = ({
@@ -31,12 +32,13 @@ export const Tooltip = ({
   position = "top",
   size = "md",
   rootProps,
+  delayDuration = 50,
   ...props
 }: TooltipProps) =>
   // just render children if tooltip content is empty
   content ? (
     <TooltipPrimitive.Root
-      delayDuration={50}
+      delayDuration={delayDuration}
       {...rootProps}
       open={isOpen}
       defaultOpen={defaultOpen}
@@ -50,10 +52,10 @@ export const Tooltip = ({
           sideOffset={5}
           {...props}
           className={twMerge(
-            "z-50 max-w-[15rem] select-none border border-mineshaft-600 bg-mineshaft-800 font-light text-bunker-200 shadow-md data-[state=delayed-open]:data-[side=bottom]:animate-slideUpAndFade data-[state=delayed-open]:data-[side=left]:animate-slideRightAndFade data-[state=delayed-open]:data-[side=right]:animate-slideLeftAndFade data-[state=delayed-open]:data-[side=top]:animate-slideDownAndFade",
-            isDisabled && "!hidden",
+            "data-[state=delayed-open]:data-[side=bottom]:animate-slide-up-and-fade data-[state=delayed-open]:data-[side=left]:animate-slide-right-and-fade data-[state=delayed-open]:data-[side=right]:animate-slide-left-and-fade data-[state=delayed-open]:data-[side=top]:animate-slide-down-and-fade z-50 max-w-60 border border-mineshaft-600 bg-mineshaft-800 font-light text-bunker-200 shadow-md select-none",
+            isDisabled && "hidden!",
             center && "text-center",
-            size === "sm" && "rounded-sm px-2 py-1 text-xs",
+            size === "sm" && "rounded-xs px-2 py-1 text-xs",
             size === "md" && "rounded-md px-4 py-2 text-sm",
             className
           )}

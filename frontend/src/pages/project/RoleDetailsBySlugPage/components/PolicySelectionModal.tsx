@@ -19,7 +19,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import {
   EXCLUDED_PERMISSION_SUBS,
@@ -119,8 +119,8 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
           ) : null
         }
       />
-      <TableContainer className="thin-scrollbar mt-4 max-h-[28rem]">
-        <div className="sticky top-0 z-30 flex justify-between border-b border-b-mineshaft-600 bg-mineshaft-800 py-3 pl-5 pr-4 font-inter text-sm font-medium text-bunker-300">
+      <TableContainer className="mt-4 max-h-112 thin-scrollbar">
+        <div className="sticky top-0 z-30 flex justify-between border-b border-b-mineshaft-600 bg-mineshaft-800 py-3 pr-4 pl-5 font-inter text-sm font-medium text-bunker-300">
           <span>Resource</span>
           <div className="flex gap-2">
             <Button
@@ -182,7 +182,7 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
           <EmptyState
             iconSize="2x"
             icon={faSearch}
-            className="!pb-4 !pt-8"
+            className="pt-8! pb-4!"
             title="No policies match search"
           />
         )}

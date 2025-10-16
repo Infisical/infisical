@@ -17,7 +17,7 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthById } from "@app/hooks/api/integrationAuth";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
@@ -44,7 +44,7 @@ export const RundeckConfigurePage = () => {
   });
   const navigate = useNavigate();
   const { mutateAsync } = useCreateIntegration();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.RundeckConfigurePage.id,
@@ -73,7 +73,7 @@ export const RundeckConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -109,12 +109,12 @@ export const RundeckConfigurePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-xxs"
+                  className="text-xxs mb-[0.07rem] ml-1.5"
                 />
               </div>
             </a>
@@ -138,7 +138,7 @@ export const RundeckConfigurePage = () => {
                     field.onChange(val);
                   }}
                 >
-                  {currentWorkspace?.environments.map((sourceEnvironment) => (
+                  {currentProject?.environments.map((sourceEnvironment) => (
                     <SelectItem
                       value={sourceEnvironment.slug}
                       key={`source-environment-${sourceEnvironment.slug}`}
@@ -171,7 +171,7 @@ export const RundeckConfigurePage = () => {
                 isError={Boolean(error)}
               >
                 <Input
-                  placeholder={`keys/project/${currentWorkspace.name
+                  placeholder={`keys/project/${currentProject.name
                     .toLowerCase()
                     .replace(/ /g, "-")}/${selectedSourceEnvironment}`}
                   {...field}
@@ -184,7 +184,7 @@ export const RundeckConfigurePage = () => {
             type="submit"
             color="mineshaft"
             variant="outline_bg"
-            className="mb-6 ml-auto mt-2"
+            className="mt-2 mb-6 ml-auto"
             isLoading={isSubmitting}
           >
             Create Integration

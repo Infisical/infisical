@@ -35,9 +35,9 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
-  useUser,
-  useWorkspace
+  useUser
 } from "@app/context";
 import {
   getUserTablePreference,
@@ -58,8 +58,7 @@ import {
 } from "./components/SecretApprovalRequestChanges";
 
 export const SecretApprovalRequest = () => {
-  const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?.id || "";
+  const { currentProject, projectId } = useProject();
   const [selectedApprovalId, setSelectedApprovalId] = useState<string | null>(null);
 
   // filters
@@ -92,7 +91,7 @@ export const SecretApprovalRequest = () => {
     isPending: isApprovalRequestLoading,
     refetch
   } = useGetSecretApprovalRequests({
-    workspaceId,
+    projectId,
     status: statusFilter,
     environment: envFilter,
     committer: committerFilter,
@@ -105,14 +104,14 @@ export const SecretApprovalRequest = () => {
   const secretApprovalRequests = data?.approvals ?? [];
 
   const { data: secretApprovalRequestCount, isSuccess: isSecretApprovalReqCountSuccess } =
-    useGetSecretApprovalRequestCount({ workspaceId });
+    useGetSecretApprovalRequestCount({ projectId });
   const { user: userSession } = useUser();
   const search = useSearch({
     from: ROUTE_PATHS.SecretManager.ApprovalPage.id
   });
 
   const { permission } = useProjectPermission();
-  const { data: members } = useGetWorkspaceUsers(workspaceId);
+  const { data: members } = useGetWorkspaceUsers(projectId);
   const isSecretApprovalScreen = Boolean(selectedApprovalId);
   const { requestId } = search;
 
@@ -143,7 +142,6 @@ export const SecretApprovalRequest = () => {
           exit={{ opacity: 0, translateX: 30 }}
         >
           <SecretApprovalRequestChanges
-            workspaceId={workspaceId}
             approvalRequestId={selectedApprovalId || ""}
             onGoBack={handleGoBackSecretRequestDetail}
           />
@@ -161,13 +159,13 @@ export const SecretApprovalRequest = () => {
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <div className="flex items-start gap-1">
-                  <p className="text-xl font-semibold text-mineshaft-100">Change Requests</p>
+                  <p className="text-xl font-medium text-mineshaft-100">Change Requests</p>
                   <a
                     href="https://infisical.com/docs/documentation/platform/pr-workflows"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <div className="ml-1 mt-[0.32rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                    <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                       <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                       <span>Docs</span>
                       <FontAwesomeIcon
@@ -219,7 +217,7 @@ export const SecretApprovalRequest = () => {
                 <FontAwesomeIcon icon={faCheck} className="mr-2" />
                 {isSecretApprovalReqCountSuccess && secretApprovalRequestCount.closed} Closed
               </div>
-              <div className="flex flex-grow justify-end space-x-8">
+              <div className="flex grow justify-end space-x-8">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -236,12 +234,12 @@ export const SecretApprovalRequest = () => {
                   <DropdownMenuContent
                     align="end"
                     sideOffset={1}
-                    className="thin-scrollbar max-h-[20rem] overflow-y-auto"
+                    className="max-h-80 thin-scrollbar overflow-y-auto"
                   >
                     <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
                       Select an Environment
                     </DropdownMenuLabel>
-                    {currentWorkspace?.environments.map(({ slug, name }) => (
+                    {currentProject?.environments.map(({ slug, name }) => (
                       <DropdownMenuItem
                         onClick={() => setEnvFilter((state) => (state === slug ? undefined : slug))}
                         key={`request-filter-${slug}`}
@@ -273,7 +271,7 @@ export const SecretApprovalRequest = () => {
                     <DropdownMenuContent
                       align="end"
                       sideOffset={1}
-                      className="thin-scrollbar max-h-[20rem] overflow-y-auto"
+                      className="max-h-80 thin-scrollbar overflow-y-auto"
                     >
                       <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
                         Select an Author
@@ -297,7 +295,7 @@ export const SecretApprovalRequest = () => {
                 )}
               </div>
             </div>
-            <div className="flex flex-col rounded-b-md border-x border-b border-t border-mineshaft-600 bg-mineshaft-800">
+            <div className="flex flex-col rounded-b-md border-x border-t border-b border-mineshaft-600 bg-mineshaft-800">
               {isRequestListEmpty && !isFiltered && (
                 <div className="py-12">
                   <EmptyState

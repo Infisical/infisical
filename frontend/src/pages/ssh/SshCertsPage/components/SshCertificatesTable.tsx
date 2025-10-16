@@ -15,7 +15,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useListWorkspaceSshCertificates } from "@app/hooks/api";
 
 import { getSshCertStatusBadgeDetails } from "./SshCertificatesTable.utils";
@@ -23,12 +23,12 @@ import { getSshCertStatusBadgeDetails } from "./SshCertificatesTable.utils";
 const PER_PAGE_INIT = 25;
 
 export const SshCertificatesTable = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
 
   const { data, isPending } = useListWorkspaceSshCertificates({
-    projectId: currentWorkspace?.id || "",
+    projectId: currentProject?.id || "",
     offset: (page - 1) * perPage,
     limit: perPage
   });

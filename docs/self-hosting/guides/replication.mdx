@@ -1,0 +1,162 @@
+---
+
+title: "Replication"
+description: "Learn how Infisical supports multi-region replication"
+
+---
+
+<Info>
+    Infisical replication is a paid feature.
+
+    If you're using Infisical Cloud, then it is available under the **Enterprise Tier**. If you're self-hosting Infisical,
+    then you should contact team@infisical.com to purchase an enterprise license to use it.
+</Info>
+
+Multi-region replication is available in Infisical Enterprise to support globally distributed deployments. Understanding the architecture, use cases, and operational considerations is essential before implementing this feature in production environments.
+
+Infisical uses a primary/secondary (1:N) architecture with asynchronous PostgreSQL replication. This design prioritizes high availability and minimal read latency for applications deployed across multiple geographic regions.
+
+## Use cases
+
+- **Multi-Region Deployments**: Serving secrets to applications distributed across continents from a single region introduces unacceptable latency. A centralized deployment also creates a single point of failure: regional outages can render secrets inaccessible globally, and network connectivity issues impact availability.
+
+- **Geographic Data Locality**: Global organizations need to minimize the time it takes for applications to retrieve secrets and configurations. Regional replicas enable applications to fetch data from nearby instances rather than making cross-continental requests.
+
+- **Disaster Recovery**: Organizations need resilience against primary region failures. Secondary regions with read replicas can be promoted to primary status when needed, maintaining operations during outages or disasters.
+
+## Design Goals
+
+In order to address the common use cases, the implementation reflects several core goals:
+
+- **Optimized Read Performance**: Applications need fast access to secrets regardless of their location. Regional instances use Redis for aggressive caching and read from local PostgreSQL replicas, eliminating cross-region round trips for most read operations.
+
+- **Conflict-Free Architecture**: All mutations flow through the primary instance exclusively. This prevents write conflicts and split-brain scenarios that plague multi-master systems. The trade-off ensures data integrity without requiring conflict resolution strategies.
+
+- **Zero Client Changes**: Existing Infisical integrations, SDKs, and CLI tools work without modification. Regional instances route write operations to the primary while handling reads locally. Authentication tokens and API keys function identically across all instances.
+
+- **Operational Simplicity**: Deploying additional regions requires minimal configuration. PostgreSQL handles replication complexity, and the stateless application tier scales horizontally without coordination overhead.
+
+# Architecture
+
+Infisical distinguishes between _primary_ and _secondary_ instances. The primary holds write authority and is the sole instance permitted to modify the PostgreSQL database. Secondary instances handle read traffic locally and proxy write operations to the primary.
+
+## Infrastructure components
+
+Two data stores form Infisical's persistence layer:
+
+- **PostgreSQL** maintains the authoritative dataset including secrets with their version history, authentication credentials, user identities, project configurations, access policies, audit trails, and integration settings. All persistent state lives in PostgreSQL.
+
+- **Redis** accelerates read operations through caching and manages asynchronous job queues. Each regional deployment maintains an independent Redis instance optimized for local access patterns.
+
+The Infisical application servers are stateless and therefore hold no persistent data internally. This design simplifies regional deployment and horizontal scaling.
+
+
+<Tabs>
+  <Tab title="Primary region configuration">
+   A primary deployment consists of three core components:
+
+   - **Application Servers**: Process all API requests directly, handling both read and write operations without forwarding
+   - **PostgreSQL Primary Database**: Accepts read and write queries, serving as the authoritative source of truth
+   - **Redis Cache**: Stores frequently accessed data and executes all background jobs including secret synchronization, scheduled tasks, and audit log processing
+
+  </Tab>
+  <Tab title="Secondary region configuration">
+   Each secondary deployment mirrors the primary structure with key differences:
+
+   - **Application Servers**: Service read requests from local infrastructure but forward any write requests to the primary region
+   - **PostgreSQL Read Replica**: Continuously streams changes from the primary database via PostgreSQL replication
+   - **PostgreSQL Primary Database**: Connection string to the primary database for write forwarding
+   - **Redis Cache**: Maintains a local cache but processes only audit logs (other background jobs remain disabled)
+
+   Configuring a secondary region requires four main environment variables:
+
+   1. `INFISICAL_PRIMARY_INSTANCE_URL`: The primary region's Infisical API endpoint
+   2. Postgres primary instance connection details. View related [environment variables](/self-hosting/configuration/envars#postgresql).
+   3. Postgres read replica connection details. View related [environment variables](/self-hosting/configuration/envars#postgresql).
+   4. Redis connection details. View related [environment variables](/self-hosting/configuration/envars#redis).
+
+  </Tab>
+</Tabs>
+
+## How requests are processed
+
+When a client sends a read request to a secondary instance, the application first checks the local Redis cache for the requested data. If the data exists in cache, it's returned immediately to the client. Otherwise, the application queries the local PostgreSQL read replica, caches the result in Redis for future requests, and returns the response to the client.
+
+Write operations follow a different path. When a secondary receives a write request, it forwards the complete request to the primary instance URL. The primary processes the mutation against the authoritative database and returns a response, which the secondary then forwards back to the client. PostgreSQL subsequently streams these changes to all replicas asynchronously.
+
+Operations against the primary instance are more straightforward, as both reads and writes execute directly against local infrastructure without any forwarding.
+
+## Replication mechanism
+
+PostgreSQL streaming replication handles all data synchronization. When transactions commit on the primary, changes are written to the write-ahead log (WAL) and streamed to all configured replicas, which apply the entries to maintain consistency. Replication lag typically remains under one second.
+
+This approach replicates all data stored in PostgreSQL: secrets and their version histories, user accounts and permissions, authentication tokens, project configurations, access policies, audit logs, integration settings, and all other application metadata. Replicas are eventually consistent. This means that all replicas eventually converge to the same state, typically under 1 second. The application layer remains unaware of replication mechanics and operates identically across all instances.
+
+## Caching behavior
+
+Redis caches are regional and independent (no coordination occurs between instances):
+
+- Secondary instances populate caches on demand from read requests
+- Cache hits serve data without touching PostgreSQL
+- Cache misses fetch from the local replica and populate the cache
+- Each region maintains its own hot dataset based on local access patterns
+
+Secrets use versioned caching. When a secret changes, its version identifier changes, causing automatic cache misses. This ensures subsequent reads fetch the updated value from PostgreSQL without requiring active cache invalidation.
+
+# Technical Details 
+
+Understanding the implementation details can help evaluate whether Infisical's replication characteristics align with your requirements. 
+The following sections provide deeper insight into performance behavior, failure modes, and the underlying mechanisms that drive the replication system.
+
+### PostgreSQL streaming replication
+
+Infisical relies on PostgreSQL's native replication, which provides:
+
+- **Asynchronous operation**: The primary commits transactions immediately without waiting for replicas to confirm receipt. Replicas receive and apply changes continuously with typical lag measured in milliseconds to low seconds, depending on network conditions and write volume.
+
+- **Binary-level consistency**: Replication occurs at the storage layer using write-ahead logs, guaranteeing replicas are byte-for-byte identical to the primary at the block level.
+
+- **Promotion capability**: Read replicas can be promoted to primary during disaster recovery. Promotion requires updating Infisical configuration to designate the promoted instance as primary and reconfiguring other secondaries.
+
+Consult PostgreSQL's official documentation for replication setup instructions specific to your hosting environment (RDS, Cloud SQL, self-managed, etc.).
+
+### Version management
+
+All Infisical instances must run identical versions (mixing versions risks database schema mismatches or incompatible API behavior). Database migrations execute only on the primary and replicate to secondaries through standard PostgreSQL mechanisms.
+
+During upgrades:
+1. Upgrade the primary instance (migrations run automatically)
+2. Upgrade secondary instances to match
+3. All instances can continue running during the upgrade process since database migrations don't immediately drop tables/columns
+
+### Request proxying
+
+When a secondary receives a mutation request (POST, PUT, PATCH, DELETE), it functions as a transparent proxy:
+
+1. Preserve the original request completely (headers, authentication context, request body)
+2. Forward to the primary instance URL specified in configuration
+3. Primary processes the request as a direct client request
+4. Return the primary's response unmodified to the client
+
+### Cache management
+
+Infisical uses versioned caching rather than active invalidation:
+
+1. Secrets and other cached entities include version identifiers
+2. When data mutates, its version changes in the database
+3. Cache lookups include the version in the cache key
+4. Version changes cause automatic cache misses
+5. Cache misses fetch updated data from PostgreSQL
+6. Fresh data populates the cache with the new version
+
+This strategy ensures correctness without requiring cross-region cache invalidation protocols. 
+
+### Background job processing
+
+Secondary instances run with restricted background job capabilities:
+
+**Active**: Audit log processing  
+**Disabled**: Secret synchronization to third-party systems, scheduled tasks, cron jobs, time-triggered operations
+
+Limiting background jobs to the primary prevents duplicate processing and ensures integrations execute once.
+

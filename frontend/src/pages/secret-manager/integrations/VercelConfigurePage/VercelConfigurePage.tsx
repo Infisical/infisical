@@ -20,7 +20,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import {
   useGetIntegrationAuthApps,
@@ -52,9 +52,9 @@ export const VercelConfigurePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useCreateIntegration();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState(
-    currentWorkspace.environments[0].slug
+    currentProject.environments[0].slug
   );
   const [secretPath, setSecretPath] = useState("/");
   const [initialSyncBehavior, setInitialSyncBehavior] = useState<IntegrationSyncBehavior>(
@@ -134,7 +134,7 @@ export const VercelConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -189,12 +189,12 @@ export const VercelConfigurePage = () => {
               href="https://infisical.com/docs/integrations/cloud/vercel"
               rel="noopener noreferrer"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-xxs"
+                  className="text-xxs mb-[0.07rem] ml-1.5"
                 />
               </div>
             </a>
@@ -206,7 +206,7 @@ export const VercelConfigurePage = () => {
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
             className="w-full border border-mineshaft-500"
           >
-            {currentWorkspace?.environments.map((sourceEnvironment) => (
+            {currentProject?.environments.map((sourceEnvironment) => (
               <SelectItem
                 value={sourceEnvironment.slug}
                 key={`azure-key-vault-environment-${sourceEnvironment.slug}`}
@@ -316,7 +316,7 @@ export const VercelConfigurePage = () => {
           onClick={handleButtonClick}
           color="mineshaft"
           variant="outline_bg"
-          className="mb-6 ml-auto mr-6 mt-2"
+          className="mt-2 mr-6 mb-6 ml-auto"
           isLoading={isLoading}
           isDisabled={integrationAuthApps.length === 0}
         >

@@ -6,6 +6,7 @@ import axios from "axios";
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 import { useToggle } from "@app/hooks/useToggle";
+import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 import { ERROR_NOT_ALLOWED_READ_SECRETS } from "./constants";
 import {
@@ -21,41 +22,45 @@ import {
   TGetProjectSecretsKey,
   TGetSecretAccessListDTO,
   TGetSecretReferenceTreeDTO,
-  TSecretReferenceTraceNode
+  TGetSecretVersionValue,
+  TSecretReferenceTraceNode,
+  TSecretVersionValue
 } from "./types";
 
 export const secretKeys = {
   // this is also used in secretSnapshot part
   getProjectSecret: ({
-    workspaceId,
+    projectId,
     environment,
     secretPath,
     viewSecretValue
   }: TGetProjectSecretsKey) =>
-    [{ workspaceId, environment, secretPath, viewSecretValue }, "secrets"] as const,
+    [{ projectId, environment, secretPath, viewSecretValue }, "secrets"] as const,
   getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"] as const,
+  getSecretVersionValue: (secretId: string, version: number) =>
+    ["secret-versions", secretId, version] as const,
   getSecretAccessList: ({
-    workspaceId,
+    projectId,
     environment,
     secretPath,
     secretKey
   }: TGetSecretAccessListDTO) =>
-    ["secret-access-list", { workspaceId, environment, secretPath, secretKey }] as const,
+    ["secret-access-list", { projectId, environment, secretPath, secretKey }] as const,
   getSecretReferenceTree: (dto: TGetSecretReferenceTreeDTO) => ["secret-reference-tree", dto]
 };
 
 export const fetchProjectSecrets = async ({
-  workspaceId,
+  projectId,
   environment,
   secretPath,
   includeImports,
   expandSecretReferences,
   viewSecretValue
 }: TGetProjectSecretsKey) => {
-  const { data } = await apiRequest.get<SecretV3RawResponse>("/api/v3/secrets/raw", {
+  const { data } = await apiRequest.get<SecretV3RawResponse>("/api/v4/secrets", {
     params: {
       environment,
-      workspaceId,
+      projectId,
       secretPath,
       viewSecretValue,
       expandSecretReferences,
@@ -67,14 +72,17 @@ export const fetchProjectSecrets = async ({
 };
 
 export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
-  const personalSecrets: Record<string, { id: string; value?: string; env: string }> = {};
+  const personalSecrets: Record<
+    string,
+    { id: string; value?: string; env: string; isEmpty?: boolean }
+  > = {};
   const secrets: SecretV3RawSanitized[] = [];
   rawSecrets.forEach((el) => {
     const decryptedSecret: SecretV3RawSanitized = {
       id: el.id,
       env: el.environment,
       key: el.secretKey,
-      value: el.secretValue,
+      value: el.secretValueHidden ? HIDDEN_SECRET_VALUE : el.secretValue,
       secretValueHidden: el.secretValueHidden,
       tags: el.tags || [],
       comment: el.secretComment || "",
@@ -89,14 +97,16 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       secretMetadata: el.secretMetadata,
       isRotatedSecret: el.isRotatedSecret,
       rotationId: el.rotationId,
-      reminder: el.reminder
+      reminder: el.reminder,
+      isEmpty: el.isEmpty
     };
 
     if (el.type === SecretType.Personal) {
       personalSecrets[decryptedSecret.key] = {
         id: el.id,
         value: el.secretValue,
-        env: el.environment
+        env: el.environment,
+        isEmpty: el.isEmpty
       };
     } else {
       secrets.push(decryptedSecret);
@@ -109,6 +119,8 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       sec.idOverride = personalSecret.id;
       sec.valueOverride = personalSecret.value;
       sec.overrideAction = "modified";
+      sec.isEmpty = personalSecret.isEmpty;
+      sec.secretValueHidden = false;
     }
   });
 
@@ -116,7 +128,7 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
 };
 
 export const useGetProjectSecrets = ({
-  workspaceId,
+  projectId,
   environment,
   secretPath,
   viewSecretValue,
@@ -135,14 +147,14 @@ export const useGetProjectSecrets = ({
   useQuery({
     ...options,
     // wait for all values to be available
-    enabled: Boolean(workspaceId && environment) && (options?.enabled ?? true),
+    enabled: Boolean(projectId && environment) && (options?.enabled ?? true),
     queryKey: secretKeys.getProjectSecret({
-      workspaceId,
+      projectId,
       environment,
       secretPath,
       viewSecretValue
     }),
-    queryFn: () => fetchProjectSecrets({ workspaceId, environment, secretPath, viewSecretValue }),
+    queryFn: () => fetchProjectSecrets({ projectId, environment, secretPath, viewSecretValue }),
     select: useCallback(
       (data: Awaited<ReturnType<typeof fetchProjectSecrets>>) => mergePersonalSecrets(data.secrets),
       []
@@ -150,7 +162,7 @@ export const useGetProjectSecrets = ({
   });
 
 export const useGetProjectSecretsAllEnv = ({
-  workspaceId,
+  projectId,
   envs,
   secretPath
 }: TGetProjectSecretsAllEnvDTO) => {
@@ -159,11 +171,11 @@ export const useGetProjectSecretsAllEnv = ({
   const secrets = useQueries({
     queries: envs.map((environment) => ({
       queryKey: secretKeys.getProjectSecret({
-        workspaceId,
+        projectId,
         environment,
         secretPath
       }),
-      enabled: Boolean(workspaceId && environment),
+      enabled: Boolean(projectId && environment),
       onError: (error: unknown) => {
         if (axios.isAxiosError(error) && !isErrorHandled) {
           const { message, requestId } = error.response?.data as {
@@ -187,7 +199,7 @@ export const useGetProjectSecretsAllEnv = ({
           setIsErrorHandled.on();
         }
       },
-      queryFn: () => fetchProjectSecrets({ workspaceId, environment, secretPath }),
+      queryFn: () => fetchProjectSecrets({ projectId, environment, secretPath }),
       staleTime: 60 * 1000,
       // eslint-disable-next-line react-hooks/rules-of-hooks
       select: useCallback(
@@ -238,7 +250,7 @@ export const useGetProjectSecretsAllEnv = ({
 
 const fetchEncryptedSecretVersion = async (secretId: string, offset: number, limit: number) => {
   const { data } = await apiRequest.get<{ secretVersions: SecretVersions[] }>(
-    `/api/v1/secret/${secretId}/secret-versions`,
+    `/api/v1/dashboard/secret-versions/${secretId}`,
     {
       params: {
         limit,
@@ -259,6 +271,26 @@ export const useGetSecretVersion = (dto: GetSecretVersionsDTO) =>
     }, [])
   });
 
+export const fetchSecretVersionValue = async (secretId: string, version: number) => {
+  const { data } = await apiRequest.get<TSecretVersionValue>(
+    `/api/v1/dashboard/secret-versions/${secretId}/value/${version}`
+  );
+  return data.value;
+};
+
+export const useGetSecretVersionValue = (
+  dto: TGetSecretVersionValue,
+  options?: Omit<
+    UseQueryOptions<string, unknown, string, ReturnType<typeof secretKeys.getSecretVersionValue>>,
+    "queryKey" | "queryFn"
+  >
+) =>
+  useQuery({
+    queryKey: secretKeys.getSecretVersionValue(dto.secretId, dto.version),
+    queryFn: () => fetchSecretVersionValue(dto.secretId, dto.version),
+    ...options
+  });
+
 export const useGetSecretAccessList = (dto: TGetSecretAccessListDTO) =>
   useQuery({
     enabled: Boolean(dto.secretKey),
@@ -270,7 +302,7 @@ export const useGetSecretAccessList = (dto: TGetSecretAccessListDTO) =>
         users: SecretAccessListEntry[];
       }>(`/api/v1/secrets/${dto.secretKey}/access-list`, {
         params: {
-          workspaceId: dto.workspaceId,
+          projectId: dto.projectId,
           environment: dto.environment,
           secretPath: dto.secretPath
         }
@@ -287,11 +319,11 @@ const fetchSecretReferenceTree = async ({
   environmentSlug
 }: TGetSecretReferenceTreeDTO) => {
   const { data } = await apiRequest.get<{ tree: TSecretReferenceTraceNode; value: string }>(
-    `/api/v3/secrets/raw/${secretKey}/secret-reference-tree`,
+    `/api/v4/secrets/${secretKey}/secret-reference-tree`,
     {
       params: {
         secretPath,
-        workspaceId: projectId,
+        projectId,
         environment: environmentSlug
       }
     }

@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
@@ -15,13 +17,15 @@ import {
   useGetOrgPlanBillingInfo,
   useGetOrgTrialUrl
 } from "@app/hooks/api";
+import { subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { ManagePlansModal } from "./ManagePlansModal";
 
 export const PreviewSection = () => {
   const { currentOrg } = useOrganization();
-  const { subscription } = useSubscription();
+  const { subscription } = useSubscription(true);
+  const queryClient = useQueryClient();
   const { data, isPending } = useGetOrgPlanBillingInfo(currentOrg?.id ?? "");
   const getOrgTrialUrl = useGetOrgTrialUrl();
   const createCustomerPortalSession = useCreateCustomerPortalSession();
@@ -36,6 +40,12 @@ export const PreviewSection = () => {
 
     return formattedTotal;
   };
+
+  useEffect(() => {
+    queryClient.invalidateQueries({
+      queryKey: subscriptionQueryKeys.getOrgSubsription(currentOrg?.id ?? "")
+    });
+  }, []);
 
   const formatDate = (date: number) => {
     const createdDate = new Date(date * 1000);
@@ -104,7 +114,7 @@ export const PreviewSection = () => {
               <div className="flex-1">
                 <h2 className="text-xl font-medium text-mineshaft-100">
                   Unleash the full power of{" "}
-                  <span className="bg-gradient-to-r from-primary-500 to-yellow bg-clip-text font-semibold text-transparent">
+                  <span className="bg-linear-to-r from-primary-500 to-yellow bg-clip-text font-medium text-transparent">
                     Infisical
                   </span>
                 </h2>
@@ -127,8 +137,8 @@ export const PreviewSection = () => {
                 )}
               </OrgPermissionCan>
             </div>
-            <div className="mb-6 flex w-full max-w-[12rem] flex-col items-center rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
-              <div className="mb-4 flex w-full justify-center font-semibold text-mineshaft-200">
+            <div className="mb-6 flex w-full max-w-48 flex-col items-center rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
+              <div className="mb-4 flex w-full justify-center font-medium text-mineshaft-200">
                 Want to learn more?{" "}
               </div>
               <div className="flex w-full justify-center">
@@ -153,7 +163,7 @@ export const PreviewSection = () => {
         <div className="mb-6 flex">
           <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
             <p className="mb-2 text-gray-400">Current plan</p>
-            <p className="mb-8 text-2xl font-semibold text-mineshaft-50">
+            <p className="mb-8 text-2xl font-medium text-mineshaft-50">
               {`${formatPlanSlug(subscription.slug)} ${
                 subscription.status === "trialing" ? "(Trial)" : ""
               }`}
@@ -182,7 +192,7 @@ export const PreviewSection = () => {
           </div>
           <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
             <p className="mb-2 text-gray-400">Price</p>
-            <p className="mb-8 text-2xl font-semibold text-mineshaft-50">
+            <p className="mb-8 text-2xl font-medium text-mineshaft-50">
               {subscription.status === "trialing"
                 ? "$0.00 / month"
                 : `${formatAmount(data.amount)} / ${data.interval}`}
@@ -190,7 +200,7 @@ export const PreviewSection = () => {
           </div>
           <div className="flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
             <p className="mb-2 text-gray-400">Subscription renews on</p>
-            <p className="mb-8 text-2xl font-semibold text-mineshaft-50">
+            <p className="mb-8 text-2xl font-medium text-mineshaft-50">
               {data.currentPeriodEnd ? formatDate(data.currentPeriodEnd) : "-"}
             </p>
           </div>

@@ -86,7 +86,7 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
         });
       }
 
-      return { membership };
+      return { membership: { ...membership, userId: req.permission.id, projectId: req.params.projectId } };
     }
   });
 };

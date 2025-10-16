@@ -18,7 +18,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   useCreateSshHost,
   useGetSshHostById,
@@ -68,9 +68,9 @@ const schema = z
 export type FormData = z.infer<typeof schema>;
 
 export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
-  const { data: sshHosts } = useListWorkspaceSshHosts(currentWorkspace.id);
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id || "";
+  const { data: sshHosts } = useListWorkspaceSshHosts(currentProject.id);
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
   const [expandedMappings, setExpandedMappings] = useState<Record<number, boolean>>({});
@@ -343,7 +343,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                       control={control}
                       name={`loginMappings.${i}.loginUser`}
                       render={({ field }) => (
-                        <span className="text-sm font-medium leading-tight">
+                        <span className="text-sm leading-tight font-medium">
                           {field.value || "New Login Mapping"}
                           {loginMappingsFormFields.fields[i].source ===
                             LoginMappingSource.HOST_GROUP && (
@@ -419,7 +419,7 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
                       />
                     </div>
                     <div className="flex flex-col space-y-2">
-                      <div className="mb-2 mt-4 flex items-center justify-between">
+                      <div className="mt-4 mb-2 flex items-center justify-between">
                         <FormLabel
                           label="Allowed Principals"
                           className="text-xs text-mineshaft-400"

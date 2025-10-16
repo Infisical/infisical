@@ -7,8 +7,8 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useWorkspace
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteWsTag } from "@app/hooks/api";
@@ -23,7 +23,7 @@ export const SecretTagsSection = (): JSX.Element => {
     "CreateSecretTag",
     "deleteTagConfirmation"
   ] as const);
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { permission } = useProjectPermission();
 
   const deleteWsTag = useDeleteWsTag();
@@ -31,7 +31,7 @@ export const SecretTagsSection = (): JSX.Element => {
   const onDeleteApproved = async () => {
     try {
       await deleteWsTag.mutateAsync({
-        projectId: currentWorkspace?.id || "",
+        projectId: currentProject?.id || "",
         tagID: (popUp?.deleteTagConfirmation?.data as DeleteModalData)?.id
       });
 
@@ -53,7 +53,7 @@ export const SecretTagsSection = (): JSX.Element => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-8 flex justify-between">
-        <p className="mb-3 text-xl font-semibold">Secret Tags</p>
+        <p className="mb-3 text-xl font-medium">Secret Tags</p>
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Tags}>
           {(isAllowed) => (
             <Button

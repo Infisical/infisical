@@ -22,7 +22,7 @@ import { renderIcon, SecretItem, TDiffModes, TDiffView } from "./SecretItem";
 type Props = {
   snapshotId: string;
   environment: string;
-  workspaceId: string;
+  projectId: string;
   secretPath?: string;
   secrets?: SecretV3RawSanitized[];
   folders?: TSecretFolder[];
@@ -43,7 +43,7 @@ const deepCompareSecrets = (lhs: SecretV3RawSanitized, rhs: SecretV3RawSanitized
 export const SnapshotView = ({
   snapshotId,
   environment,
-  workspaceId,
+  projectId,
   secretPath,
   secrets = [],
   folders = [],
@@ -130,7 +130,7 @@ export const SnapshotView = ({
     }
     try {
       await performRollback({
-        workspaceId,
+        projectId,
         snapshotId: snapshotData.id,
         environment,
         directory: secretPath
@@ -183,7 +183,7 @@ export const SnapshotView = ({
             onChange={(evt) => setSearch(evt.target.value)}
           />
         </div>
-        <div className="flex-grow" />
+        <div className="grow" />
         {isAllowedRollback && (
           <div>
             <Button
@@ -230,9 +230,9 @@ export const SnapshotView = ({
       <div className="mt-4 rounded-md bg-mineshaft-800 text-left text-sm text-bunker-300">
         <div className="flex flex-col">
           <div className="flex border-b border-mineshaft-600 font-medium">
-            <div className="w-12 flex-shrink-0" />
-            <div className="w-12 flex-shrink-0" />
-            <div className="flex flex-grow items-center px-4 py-2">Changes</div>
+            <div className="w-12 shrink-0" />
+            <div className="w-12 shrink-0" />
+            <div className="flex grow items-center px-4 py-2">Changes</div>
           </div>
           {folderDiffView
             .sort((a, b) => a.post.name.toLowerCase().localeCompare(b.post.name.toLowerCase()))
@@ -242,13 +242,13 @@ export const SnapshotView = ({
                 className="group flex cursor-pointer border-b border-mineshaft-600 hover:bg-mineshaft-700"
                 key={`folder-${mode}-${index + 1}`}
               >
-                <div className="w-12 flex-shrink-0 px-4 py-3">
+                <div className="w-12 shrink-0 px-4 py-3">
                   <Tooltip content={mode}>{renderIcon(mode)}</Tooltip>
                 </div>
-                <div className="w-12 flex-shrink-0 px-4 py-3">
+                <div className="w-12 shrink-0 px-4 py-3">
                   <FontAwesomeIcon icon={faFolder} />
                 </div>
-                <div className="flex flex-grow items-center space-x-4 px-4 py-3">
+                <div className="flex grow items-center space-x-4 px-4 py-3">
                   {mode === "modified" ? (
                     <>
                       <div>{pre?.name}</div>

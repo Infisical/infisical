@@ -22,12 +22,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useUser,
-  useWorkspace
-} from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject, useUser } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
@@ -49,7 +44,7 @@ export const MemberRoleDetailsSection = ({
 }: Props) => {
   const { user } = useUser();
   const userId = user?.id;
-  const { currentWorkspace } = useWorkspace();
+  const { projectId } = useProject();
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deleteRole",
     "modifyRole"
@@ -63,7 +58,7 @@ export const MemberRoleDetailsSection = ({
     try {
       const updatedRoles = membershipDetails?.roles?.filter((el) => el.id !== id);
       await updateUserWorkspaceRole({
-        workspaceId: currentWorkspace?.id || "",
+        projectId,
         roles: updatedRoles.map(
           ({
             role,
@@ -101,7 +96,7 @@ export const MemberRoleDetailsSection = ({
   return (
     <div className="mb-4 w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-semibold text-mineshaft-100">Project Roles</h3>
+        <h3 className="text-lg font-medium text-mineshaft-100">Project Roles</h3>
         {!isOwnProjectMembershipDetails && membershipDetails?.status !== "invited" && (
           <ProjectPermissionCan
             I={ProjectPermissionActions.Edit}

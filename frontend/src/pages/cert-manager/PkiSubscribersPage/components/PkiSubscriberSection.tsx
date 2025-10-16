@@ -7,7 +7,7 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { useDeletePkiSubscriber, useUpdatePkiSubscriber } from "@app/hooks/api";
 import { PkiSubscriberStatus } from "@app/hooks/api/pkiSubscriber/types";
@@ -17,8 +17,8 @@ import { PkiSubscriberModal } from "./PkiSubscriberModal";
 import { PkiSubscribersTable } from "./PkiSubscribersTable";
 
 export const PkiSubscriberSection = () => {
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace.id;
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const { mutateAsync: deletePkiSubscriber } = useDeletePkiSubscriber();
   const { mutateAsync: updatePkiSubscriber } = useUpdatePkiSubscriber();
 
@@ -55,7 +55,7 @@ export const PkiSubscriberSection = () => {
     status: PkiSubscriberStatus;
   }) => {
     try {
-      if (!currentWorkspace?.slug) return;
+      if (!currentProject?.slug) return;
 
       await updatePkiSubscriber({ subscriberName, projectId, status });
 
@@ -85,7 +85,7 @@ export const PkiSubscriberSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-xl font-semibold text-mineshaft-100">Subscribers</p>
+        <p className="text-xl font-medium text-mineshaft-100">Subscribers</p>
         <div className="flex w-full justify-end">
           <a
             target="_blank"

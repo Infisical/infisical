@@ -41,4 +41,12 @@ spec:
           envFrom:
           - secretRef:
               name: {{ $infisicalValues.kubeSecretRef }}
+          {{- with $infisicalValues.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 10 }}
+          {{- end }}
+      {{- with $infisicalValues.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 {{- end }}

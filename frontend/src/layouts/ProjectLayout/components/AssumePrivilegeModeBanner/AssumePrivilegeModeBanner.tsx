@@ -2,20 +2,20 @@ import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button } from "@app/components/v2";
-import { useProjectPermission, useWorkspace } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
 import { useRemoveAssumeProjectPrivilege } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 
 export const AssumePrivilegeModeBanner = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const exitAssumePrivilegeMode = useRemoveAssumeProjectPrivilege();
   const { assumedPrivilegeDetails } = useProjectPermission();
 
   if (!assumedPrivilegeDetails) return null;
 
   return (
-    <div className="z-10 -mx-4 flex items-center justify-center gap-2 rounded border border-mineshaft-600 bg-primary-400 p-2 text-mineshaft-800 shadow">
+    <div className="z-10 -mx-4 flex items-center justify-center gap-2 rounded-sm border border-mineshaft-600 bg-primary-400 p-2 text-mineshaft-800 shadow-sm">
       <div>
         <FontAwesomeIcon icon={faInfoCircle} className="mr-2" />
         You are currently viewing the project with privileges of{" "}
@@ -32,12 +32,12 @@ export const AssumePrivilegeModeBanner = () => {
           onClick={() => {
             exitAssumePrivilegeMode.mutate(
               {
-                projectId: currentWorkspace.id
+                projectId: currentProject.id
               },
               {
                 onSuccess: () => {
-                  const url = getProjectHomePage(currentWorkspace.type);
-                  window.location.href = url.replace("$projectId", currentWorkspace.id);
+                  const url = getProjectHomePage(currentProject.type, currentProject.environments);
+                  window.location.href = url.replace("$projectId", currentProject.id);
                 }
               }
             );

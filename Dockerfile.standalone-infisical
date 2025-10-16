@@ -3,7 +3,10 @@ ARG POSTHOG_API_KEY=posthog-api-key
 ARG INTERCOM_ID=intercom-id
 ARG CAPTCHA_SITE_KEY=captcha-site-key
 
-FROM node:20-slim AS base
+FROM node:20.19.5-trixie-slim AS base
+
+# Fixes NPM vulnerability: https://security.snyk.io/vuln/SNYK-JS-CROSSSPAWN-8303230
+RUN npm install -g npm@10.9.0
 
 FROM base AS frontend-dependencies
 
@@ -139,7 +142,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install Infisical CLI
 RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y infisical=0.41.89 \
+    && apt-get update && apt-get install -y infisical=0.42.6 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
@@ -172,6 +175,12 @@ COPY --from=frontend-runner /app ./backend/frontend-build
 
 ARG INFISICAL_PLATFORM_VERSION
 ENV INFISICAL_PLATFORM_VERSION $INFISICAL_PLATFORM_VERSION
+
+ARG DD_GIT_REPOSITORY_URL
+ENV DD_GIT_REPOSITORY_URL $DD_GIT_REPOSITORY_URL
+
+ARG DD_GIT_COMMIT_SHA
+ENV DD_GIT_COMMIT_SHA $DD_GIT_COMMIT_SHA
 
 ENV PORT 8080
 ENV HOST=0.0.0.0

@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
-import { useOrganization, useWorkspace } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useToggle } from "@app/hooks";
 
 import { createNotification } from "../notifications";
@@ -51,7 +51,7 @@ export default function NavHeader({
   isProtectedBranch = false,
   protectionPolicyName
 }: Props): JSX.Element {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
 
   const [isCopied, { timedToggle: toggleIsCopied }] = useToggle(false);
@@ -66,35 +66,33 @@ export default function NavHeader({
 
   return (
     <div className="flex flex-row items-center pt-6">
-      <div className="mr-2 flex h-5 w-5 min-w-[1.25rem] items-center justify-center rounded-md bg-primary text-sm text-black">
+      <div className="mr-2 flex h-5 w-5 min-w-5 items-center justify-center rounded-md bg-primary text-sm text-black">
         {currentOrg?.name?.charAt(0)}
       </div>
       <Link
         to="/organization/projects"
-        className="truncate pl-0.5 text-sm font-semibold text-primary/80 hover:text-primary"
+        className="truncate pl-0.5 text-sm font-medium text-primary/80 hover:text-primary"
       >
         {currentOrg?.name}
       </Link>
       {isProjectRelated && (
         <>
-          <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-xs text-gray-400" />
-          <div className="truncate text-sm font-semibold text-bunker-300">
-            {currentWorkspace?.name}
-          </div>
+          <FontAwesomeIcon icon={faAngleRight} className="mr-3 ml-3 text-xs text-gray-400" />
+          <div className="truncate text-sm font-medium text-bunker-300">{currentProject?.name}</div>
         </>
       )}
       {isOrganizationRelated && (
         <>
-          <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-xs text-gray-400" />
-          <div className="text-sm font-semibold text-bunker-300">Organization Settings</div>
+          <FontAwesomeIcon icon={faAngleRight} className="mr-3 ml-3 text-xs text-gray-400" />
+          <div className="text-sm font-medium text-bunker-300">Organization Settings</div>
         </>
       )}
-      <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-sm text-gray-400" />
+      <FontAwesomeIcon icon={faAngleRight} className="mr-3 ml-3 text-sm text-gray-400" />
       {pageName === "Secrets" ? (
         <Link
           to="/projects/secret-management/$projectId/overview"
-          params={{ projectId: currentWorkspace.id }}
-          className="text-sm font-semibold text-primary/80 hover:text-primary"
+          params={{ projectId: currentProject.id }}
+          className="text-sm font-medium text-primary/80 hover:text-primary"
         >
           {pageName}
         </Link>
@@ -103,7 +101,7 @@ export default function NavHeader({
       )}
       {currentEnv && secretPath === "/" && (
         <>
-          <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
+          <FontAwesomeIcon icon={faAngleRight} className="mr-1.5 ml-3 text-xs text-gray-400" />
           <div className="rounded-md pl-3 hover:bg-bunker-100/10">
             <Tooltip content="Select environment">
               <Select
@@ -126,11 +124,11 @@ export default function NavHeader({
       )}
       {isFolderMode && routerEnvSlug && Boolean(secretPathSegments.length) && (
         <div className="flex items-center space-x-3">
-          <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
+          <FontAwesomeIcon icon={faAngleRight} className="mr-1.5 ml-3 text-xs text-gray-400" />
           <Link
             to="/projects/secret-management/$projectId/secrets/$envSlug"
-            params={{ projectId: currentWorkspace.id, envSlug: routerEnvSlug }}
-            className="text-sm font-semibold text-primary/80 hover:text-primary"
+            params={{ projectId: currentProject.id, envSlug: routerEnvSlug }}
+            className="text-sm font-medium text-primary/80 hover:text-primary"
           >
             {userAvailableEnvs?.find(({ slug }) => slug === currentEnv)?.name}
           </Link>
@@ -145,7 +143,7 @@ export default function NavHeader({
               className="flex items-center space-x-3"
               key={`breadcrumb-secret-path-${folderName}`}
             >
-              <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
+              <FontAwesomeIcon icon={faAngleRight} className="mr-1.5 ml-3 text-xs text-gray-400" />
               {index + 1 === secretPathSegments?.length ? (
                 <div className="flex items-center space-x-2">
                   <span
@@ -192,7 +190,7 @@ export default function NavHeader({
                 <Link
                   to="/projects/secret-management/$projectId/secrets/$envSlug"
                   params={{
-                    projectId: currentWorkspace.id,
+                    projectId: currentProject.id,
                     envSlug: routerEnvSlug || ""
                   }}
                   search={(query) => ({ ...query, secretPath: newSecretPath })}

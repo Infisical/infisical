@@ -13,6 +13,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Badge, Button, Input, Modal, ModalContent } from "@app/components/v2";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretVersionDiffView } from "@app/pages/secret-manager/CommitDetailsPage/components/SecretVersionDiffView";
+import { HIDDEN_SECRET_VALUE_API_MASK } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 import {
   PendingChange,
@@ -25,14 +26,14 @@ interface CommitFormProps {
   onCommit: (changes: PendingChanges, commitMessage: string) => Promise<void>;
   isCommitting?: boolean;
   environment: string;
-  workspaceId: string;
+  projectId: string;
   secretPath: string;
 }
 
 interface ResourceChangeProps {
   change: PendingChange;
   environment: string;
-  workspaceId: string;
+  projectId: string;
   secretPath: string;
 }
 
@@ -105,7 +106,12 @@ const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
               version: 1, // placeholder, not used
               secretKey: change.newSecretName ? existingSecret.key : undefined,
               secretValue:
-                change.secretValue !== undefined ? (existingSecret.value ?? "") : undefined,
+                // eslint-disable-next-line no-nested-ternary
+                change.secretValue !== undefined
+                  ? change.existingSecret.secretValueHidden
+                    ? HIDDEN_SECRET_VALUE_API_MASK
+                    : (change.originalValue ?? "")
+                  : undefined,
               tags: change.tags ? (existingSecret.tags?.map((tag) => tag.slug) ?? []) : undefined,
               secretMetadata: change.secretMetadata ? existingSecret.secretMetadata : undefined,
               skipMultilineEncoding:
@@ -130,7 +136,7 @@ const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
   }
 
   if (change.type === PendingAction.Delete) {
-    const { secretKey, secretValue } = change;
+    const { secretKey, secretValue, secretValueHidden } = change;
     return (
       <SecretVersionDiffView
         onDiscard={onDiscard}
@@ -143,7 +149,12 @@ const RenderSecretChanges = ({ onDiscard, change }: RenderResourceProps) => {
             {
               version: 1, // placeholder, not used
               secretKey,
-              secretValue
+              // eslint-disable-next-line no-nested-ternary
+              secretValue: secretValue
+                ? secretValueHidden
+                  ? HIDDEN_SECRET_VALUE_API_MASK
+                  : secretValue
+                : undefined
             }
           ]
         }}
@@ -237,7 +248,7 @@ const RenderFolderChanges = ({ onDiscard, change }: RenderResourceProps) => {
 const ResourceChange: React.FC<ResourceChangeProps> = ({
   change,
   environment,
-  workspaceId,
+  projectId,
   secretPath
 }) => {
   const { removePendingChange } = useBatchModeActions();
@@ -245,7 +256,7 @@ const ResourceChange: React.FC<ResourceChangeProps> = ({
   const handleDeletePending = useCallback(
     (changeType: string, id: string) => {
       removePendingChange(id, changeType, {
-        workspaceId,
+        projectId,
         environment,
         secretPath
       });
@@ -272,7 +283,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
   onCommit,
   isCommitting = false,
   environment,
-  workspaceId,
+  projectId,
   secretPath
 }) => {
   const { isBatchMode, pendingChanges, totalChangesCount } = useBatchMode();
@@ -291,7 +302,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     }
     await onCommit(pendingChanges, commitMessage);
     clearAllPendingChanges({
-      workspaceId,
+      projectId,
       environment,
       secretPath
     });
@@ -332,15 +343,13 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                   </div>
 
                   {/* Right Buttons */}
-                  <div className="ml-6 mt-0.5 flex items-center gap-3">
+                  <div className="mt-0.5 ml-6 flex items-center gap-3">
                     <Button
                       size="sm"
-                      onClick={() =>
-                        clearAllPendingChanges({ workspaceId, environment, secretPath })
-                      }
+                      onClick={() => clearAllPendingChanges({ projectId, environment, secretPath })}
                       isDisabled={totalChangesCount === 0}
                       variant="outline_bg"
-                      className="px-4 hover:border-red/40 hover:bg-red/[0.1]"
+                      className="px-4 hover:border-red/40 hover:bg-red/10"
                     >
                       Discard
                     </Button>
@@ -383,7 +392,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 {/* Folder Changes */}
                 {pendingChanges.folders.length > 0 && (
                   <div>
-                    <h4 className="mb-4 flex items-center gap-2 border-b border-mineshaft-700 pb-2 text-sm font-semibold text-mineshaft-200">
+                    <h4 className="mb-4 flex items-center gap-2 border-b border-mineshaft-700 pb-2 text-sm font-medium text-mineshaft-200">
                       <FontAwesomeIcon icon={faFolder} className="text-mineshaft-300" />
                       Folders ({pendingChanges.folders.length})
                     </h4>
@@ -393,7 +402,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                           key={change.id}
                           change={change}
                           environment={environment}
-                          workspaceId={workspaceId}
+                          projectId={projectId}
                           secretPath={secretPath}
                         />
                       ))}
@@ -404,7 +413,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 {/* Secret Changes */}
                 {pendingChanges.secrets.length > 0 && (
                   <div>
-                    <h4 className="mb-4 flex items-center gap-2 border-b border-mineshaft-700 pb-2 text-sm font-semibold text-mineshaft-200">
+                    <h4 className="mb-4 flex items-center gap-2 border-b border-mineshaft-700 pb-2 text-sm font-medium text-mineshaft-200">
                       <FontAwesomeIcon icon={faKey} className="mr-1 text-mineshaft-300" />
                       Secrets ({pendingChanges.secrets.length})
                     </h4>
@@ -414,7 +423,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                           key={change.id}
                           change={change}
                           environment={environment}
-                          workspaceId={workspaceId}
+                          projectId={projectId}
                           secretPath={secretPath}
                         />
                       ))}

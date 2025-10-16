@@ -27,7 +27,7 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
-import { WorkspaceEnv } from "@app/hooks/api/types";
+import { ProjectEnv } from "@app/hooks/api/types";
 
 const passwordRequirementsSchema = z
   .object({
@@ -91,7 +91,7 @@ type Props = {
   onCancel: () => void;
   secretPath: string;
   projectSlug: string;
-  environments: WorkspaceEnv[];
+  environments: ProjectEnv[];
   isSingleEnvironmentMode?: boolean;
 };
 
@@ -172,7 +172,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
       <form onSubmit={handleSubmit(handleCreateDynamicSecret)} autoComplete="off">
         <div>
           <div className="flex items-center space-x-2">
-            <div className="flex-grow">
+            <div className="grow">
               <Controller
                 control={control}
                 defaultValue=""
@@ -222,7 +222,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
             </div>
           </div>
           <div>
-            <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
               Configuration
             </div>
             <div>
@@ -285,7 +285,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="Host"
-                      className="flex-grow"
+                      className="grow"
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                     >
@@ -415,7 +415,7 @@ GRANT CREATE ON SCHEMA public TO {{username}};`,
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
-                <Accordion type="multiple" className="mb-2 mt-4 w-full bg-mineshaft-700">
+                <Accordion type="multiple" className="mt-4 mb-2 w-full bg-mineshaft-700">
                   <AccordionItem value="password-config">
                     <AccordionTrigger>Password Configuration (optional)</AccordionTrigger>
                     <AccordionContent>

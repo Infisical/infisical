@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 import msFn from "ms";
 
-import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -10,30 +10,30 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { EnforcementLevel } from "@app/lib/types";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
-import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TNotificationServiceFactory } from "../../../services/notification/notification-service";
+import { NotificationType } from "../../../services/notification/notification-types";
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
-import { ProjectUserAdditionalPrivilegeTemporaryMode } from "../project-user-additional-privilege/project-user-additional-privilege-types";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
 import { verifyRequestedPermissions } from "./access-approval-request-fns";
 import { TAccessApprovalRequestReviewerDALFactory } from "./access-approval-request-reviewer-dal";
 import { ApprovalStatus, TAccessApprovalRequestServiceFactory } from "./access-approval-request-types";
 
 type TSecretApprovalRequestServiceFactoryDep = {
-  additionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "create" | "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create" | "findById">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectPermissionCache">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<
@@ -57,7 +57,6 @@ type TSecretApprovalRequestServiceFactoryDep = {
     "create" | "find" | "findOne" | "transaction" | "delete"
   >;
   groupDAL: Pick<TGroupDALFactory, "findAllGroupPossibleMembers">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findById">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<
     TUserDALFactory,
@@ -67,6 +66,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 export const accessApprovalRequestServiceFactory = ({
@@ -84,7 +84,8 @@ export const accessApprovalRequestServiceFactory = ({
   kmsService,
   microsoftTeamsService,
   projectMicrosoftTeamsConfigDAL,
-  projectSlackConfigDAL
+  projectSlackConfigDAL,
+  notificationService
 }: TSecretApprovalRequestServiceFactoryDep): TAccessApprovalRequestServiceFactory => {
   const $getEnvironmentFromPermissions = (permissions: unknown): string | null => {
     if (!Array.isArray(permissions) || permissions.length === 0) {
@@ -121,7 +122,7 @@ export const accessApprovalRequestServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     // Anyone can create an access approval request.
-    const { membership } = await permissionService.getProjectPermission({
+    await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: project.id,
@@ -129,9 +130,6 @@ export const accessApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    if (!membership) {
-      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
-    }
 
     const requestedByUser = await userDAL.findById(actorId);
     if (!requestedByUser) throw new ForbiddenRequestError({ message: "User not found" });
@@ -245,7 +243,8 @@ export const accessApprovalRequestServiceFactory = ({
       );
 
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
-      const approvalUrl = `${cfg.SITE_URL}/projects/secret-management/${project.id}/approval`;
+      const approvalPath = `/projects/secret-management/${project.id}/approval`;
+      const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
 
       await triggerWorkflowIntegrationNotification({
         input: {
@@ -273,6 +272,17 @@ export const accessApprovalRequestServiceFactory = ({
           projectMicrosoftTeamsConfigDAL
         }
       });
+
+      await notificationService.createUserNotifications(
+        approverUsers.map((approver) => ({
+          userId: approver.id,
+          orgId: actorOrgId,
+          type: NotificationType.ACCESS_APPROVAL_REQUEST,
+          title: "Access Approval Request",
+          body: `**${requesterFullName}** (${requestedByUser.email}) has requested ${isTemporary ? "temporary" : "permanent"} access to **${secretPath}** in the **${envSlug}** environment for project **${project.name}**.`,
+          link: approvalPath
+        }))
+      );
 
       await smtpService.sendMail({
         recipients: approverUsers.filter((approver) => approver.email).map((approver) => approver.email!),
@@ -324,7 +334,7 @@ export const accessApprovalRequestServiceFactory = ({
       });
     }
 
-    const { membership, hasRole } = await permissionService.getProjectPermission({
+    const { hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: accessApprovalRequest.projectId,
@@ -332,10 +342,6 @@ export const accessApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-
-    if (!membership) {
-      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
-    }
 
     const isApprover = policy.approvers.find((approver) => approver.userId === actorId);
 
@@ -391,7 +397,8 @@ export const accessApprovalRequestServiceFactory = ({
 
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
       const editorFullName = `${editedByUser.firstName} ${editedByUser.lastName}`;
-      const approvalUrl = `${cfg.SITE_URL}/projects/secret-management/${project.id}/approval`;
+      const approvalPath = `/projects/secret-management/${project.id}/approval`;
+      const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
 
       await triggerWorkflowIntegrationNotification({
         input: {
@@ -422,27 +429,44 @@ export const accessApprovalRequestServiceFactory = ({
         }
       });
 
-      await smtpService.sendMail({
-        recipients: policy.approvers
-          .filter((approver) => Boolean(approver.email) && approver.userId !== editedByUser.id)
-          .map((approver) => approver.email!),
-        subjectLine: "Access Approval Request Updated",
-        substitutions: {
-          projectName: project.name,
-          requesterFullName,
-          requesterEmail: requestedByUser.email,
-          isTemporary: true,
-          expiresIn: msFn(ms(temporaryRange || ""), { long: true }),
-          secretPath,
-          environment: envSlug,
-          permissions: accessTypes,
-          approvalUrl,
-          editNote,
-          editorFullName,
-          editorEmail: editedByUser.email
-        },
-        template: SmtpTemplates.AccessApprovalRequestUpdated
-      });
+      await notificationService.createUserNotifications(
+        policy.approvers
+          .filter((approver) => Boolean(approver.userId) && approver.userId !== editedByUser.id)
+          .map((approver) => ({
+            userId: approver.userId!,
+            orgId: actorOrgId,
+            type: NotificationType.ACCESS_APPROVAL_REQUEST_UPDATED,
+            title: "Access Approval Request Updated",
+            body: `**${editorFullName}** (${editedByUser.email}) has updated the access request submitted by **${requesterFullName}** (${requestedByUser.email}) for **${secretPath}** in the **${envSlug}** environment for project **${project.name}**.`,
+            link: approvalPath
+          }))
+      );
+
+      const recipients = policy.approvers
+        .filter((approver) => Boolean(approver.email) && approver.userId !== editedByUser.id)
+        .map((approver) => approver.email!);
+
+      if (recipients.length > 0) {
+        await smtpService.sendMail({
+          recipients,
+          subjectLine: "Access Approval Request Updated",
+          substitutions: {
+            projectName: project.name,
+            requesterFullName,
+            requesterEmail: requestedByUser.email,
+            isTemporary: true,
+            expiresIn: msFn(ms(temporaryRange || ""), { long: true }),
+            secretPath,
+            environment: envSlug,
+            permissions: accessTypes,
+            approvalUrl,
+            editNote,
+            editorFullName,
+            editorEmail: editedByUser.email
+          },
+          template: SmtpTemplates.AccessApprovalRequestUpdated
+        });
+      }
 
       return approvalRequest;
     });
@@ -462,7 +486,7 @@ export const accessApprovalRequestServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    const { membership } = await permissionService.getProjectPermission({
+    await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: project.id,
@@ -470,9 +494,6 @@ export const accessApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    if (!membership) {
-      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
-    }
 
     const policies = await accessApprovalPolicyDAL.find({ projectId: project.id });
     let requests = await accessApprovalRequestDAL.findRequestsWithPrivilegeByPolicyIds(policies.map((p) => p.id));
@@ -532,7 +553,7 @@ export const accessApprovalRequestServiceFactory = ({
       slug: permissionEnvironment
     });
 
-    const { membership, hasRole } = await permissionService.getProjectPermission({
+    const { hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: accessApprovalRequest.projectId,
@@ -540,10 +561,6 @@ export const accessApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-
-    if (!membership) {
-      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
-    }
 
     const isSelfApproval = actorId === accessApprovalRequest.requestedByUserId;
     const isSoftEnforcement = policy.enforcementLevel === EnforcementLevel.Soft;
@@ -690,9 +707,9 @@ export const accessApprovalRequestServiceFactory = ({
             // Permanent access
             const privilege = await additionalPrivilegeDAL.create(
               {
-                userId: accessApprovalRequest.requestedByUserId,
+                actorUserId: accessApprovalRequest.requestedByUserId,
                 projectId: accessApprovalRequest.projectId,
-                slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+                name: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
                 permissions: JSON.stringify(accessApprovalRequest.permissions)
               },
               tx
@@ -705,12 +722,12 @@ export const accessApprovalRequestServiceFactory = ({
 
             const privilege = await additionalPrivilegeDAL.create(
               {
-                userId: accessApprovalRequest.requestedByUserId,
+                actorUserId: accessApprovalRequest.requestedByUserId,
                 projectId: accessApprovalRequest.projectId,
-                slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+                name: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
                 permissions: JSON.stringify(accessApprovalRequest.permissions),
                 isTemporary: true, // Explicitly set to true for the privilege
-                temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative,
+                temporaryMode: TemporaryPermissionMode.Relative,
                 temporaryRange: accessApprovalRequest.temporaryRange!,
                 temporaryAccessStartTime: startTime,
                 temporaryAccessEndTime: new Date(startTime.getTime() + relativeTempAllocatedTimeInMs)
@@ -724,6 +741,8 @@ export const accessApprovalRequestServiceFactory = ({
             { privilegeId: privilegeIdToSet, status: ApprovalStatus.APPROVED },
             tx
           );
+
+          await permissionService.invalidateProjectPermissionCache(accessApprovalRequest.projectId, tx);
         }
       }
 
@@ -743,6 +762,20 @@ export const accessApprovalRequestServiceFactory = ({
               .map((appUser) => appUser.email)
               .filter((email): email is string => !!email);
 
+            const approvalPath = `/projects/secret-management/${project.id}/approval`;
+            const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
+
+            await notificationService.createUserNotifications(
+              approverUsersForEmail.map((approver) => ({
+                userId: approver.id,
+                orgId: actorOrgId,
+                type: NotificationType.ACCESS_POLICY_BYPASSED,
+                title: "Secret Access Policy Bypassed",
+                body: `**${actingUser.firstName} ${actingUser.lastName}** (${actingUser.email}) has accessed a secret in **${policy.secretPath || "/"}** in the **${environment?.name || permissionEnvironment}** environment for project **${project.name}** without obtaining the required approval.`,
+                link: approvalPath
+              }))
+            );
+
             if (recipientEmails.length > 0) {
               await smtpService.sendMail({
                 recipients: recipientEmails,
@@ -754,7 +787,7 @@ export const accessApprovalRequestServiceFactory = ({
                   bypassReason: bypassReason || "No reason provided",
                   secretPath: policy.secretPath || "/",
                   environment: environment?.name || permissionEnvironment,
-                  approvalUrl: `${cfg.SITE_URL}/projects/secret-management/${project.id}/approval`,
+                  approvalUrl,
                   requestType: "access"
                 },
                 template: SmtpTemplates.AccessSecretRequestBypassed
@@ -780,7 +813,7 @@ export const accessApprovalRequestServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    const { membership } = await permissionService.getProjectPermission({
+    await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: project.id,
@@ -788,9 +821,6 @@ export const accessApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    if (!membership) {
-      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
-    }
 
     const count = await accessApprovalRequestDAL.getCount({ projectId: project.id, policyId });
 

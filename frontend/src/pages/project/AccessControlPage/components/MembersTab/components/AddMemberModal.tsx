@@ -22,16 +22,17 @@ import {
   OrgPermissionSubjects,
   useOrganization,
   useOrgPermission,
-  useWorkspace
+  useProject
 } from "@app/context";
 import {
   useAddUsersToOrg,
+  useAddUserToWsNonE2EE,
   useGetOrgUsers,
   useGetProjectRoles,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
+import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { ProjectVersion } from "@app/hooks/api/workspace/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const addMemberFormSchema = z.object({
@@ -57,7 +58,7 @@ type Props = {
 export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const navigate = useNavigate({ from: "" });
   const { permission } = useOrgPermission();
   const requesterEmail = useSearch({
@@ -66,12 +67,12 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   const orgId = currentOrg?.id || "";
-  const workspaceId = currentWorkspace?.id || "";
+  const projectId = currentProject?.id || "";
 
-  const { data: members } = useGetWorkspaceUsers(workspaceId);
+  const { data: members } = useGetWorkspaceUsers(projectId);
   const { data: orgUsers } = useGetOrgUsers(orgId);
 
-  const { data: roles } = useGetProjectRoles(currentWorkspace?.id || "");
+  const { data: roles } = useGetProjectRoles(currentProject?.id || "");
 
   const {
     control,
@@ -85,7 +86,8 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     defaultValues: { orgMemberships: [], projectRoleSlugs: [] }
   });
 
-  const { mutateAsync: addMembersToProject } = useAddUsersToOrg();
+  const { mutateAsync: addMemberToOrg } = useAddUsersToOrg();
+  const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
 
   useEffect(() => {
     if (requesterEmail) {
@@ -94,7 +96,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
   }, [requesterEmail]);
 
   const onAddMembers = async ({ orgMemberships, projectRoleSlugs }: TAddMemberForm) => {
-    if (!currentWorkspace) return;
+    if (!currentProject) return;
     if (!currentOrg?.id) return;
 
     const existingMembers = orgMemberships.filter((membership) => !membership.isNewInvitee);
@@ -109,7 +111,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (!selectedMembers) return;
 
     try {
-      if (currentWorkspace.version === ProjectVersion.V1) {
+      if (currentProject.version === ProjectVersion.V1) {
         createNotification({
           type: "error",
           text: "Please upgrade your project to invite new members to the project."
@@ -119,12 +121,12 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
           .map((member) => {
             if (!member) return null;
 
-            if (member.user.email) {
-              return member.user.email;
-            }
-
             if (member.user.username) {
               return member.user.username;
+            }
+
+            if (member.user.email) {
+              return member.user.email;
             }
 
             return null;
@@ -139,18 +141,19 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
           return;
         }
 
-        if (inviteeEmails.length || newInvitees.length) {
-          await addMembersToProject({
-            inviteeEmails: [...inviteeEmails, ...newInvitees],
+        if (newInvitees.length) {
+          await addMemberToOrg({
+            inviteeEmails: newInvitees,
             organizationId: orgId,
-            organizationRoleSlug: ProjectMembershipRole.Member, // only applies to new invites
-            projects: [
-              {
-                slug: currentWorkspace.slug,
-                id: currentWorkspace.id,
-                projectRoleSlug: projectRoleSlugs.map((role) => role.slug)
-              }
-            ]
+            organizationRoleSlug: ProjectMembershipRole.Member // only applies to new invites
+          });
+        }
+        if (newInvitees.length || inviteeEmails.length) {
+          await addUserToProject({
+            usernames: [...inviteeEmails, ...newInvitees],
+            orgId,
+            projectId: currentProject.id,
+            roleSlugs: projectRoleSlugs.map((role) => role.slug)
           });
         }
       }

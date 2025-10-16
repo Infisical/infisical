@@ -5,7 +5,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { CaStatus, CaType, useDeleteCa, useUpdateCa } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -13,7 +13,7 @@ import { ExternalCaModal } from "./ExternalCaModal";
 import { ExternalCaTable } from "./ExternalCaTable";
 
 export const ExternalCaSection = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { mutateAsync: deleteCa } = useDeleteCa();
   const { mutateAsync: updateCa } = useUpdateCa();
 
@@ -26,9 +26,9 @@ export const ExternalCaSection = () => {
 
   const onRemoveCaSubmit = async (caName: string, type: CaType) => {
     try {
-      if (!currentWorkspace?.id) return;
+      if (!currentProject?.id) return;
 
-      await deleteCa({ caName, type, projectId: currentWorkspace.id });
+      await deleteCa({ caName, type, projectId: currentProject.id });
 
       createNotification({
         text: "Successfully deleted CA",
@@ -54,9 +54,9 @@ export const ExternalCaSection = () => {
     status: CaStatus;
   }) => {
     try {
-      if (!currentWorkspace?.slug) return;
+      if (!currentProject?.slug) return;
 
-      await updateCa({ caName: name, type, status, projectId: currentWorkspace.id });
+      await updateCa({ caName: name, type, status, projectId: currentProject.id });
 
       createNotification({
         text: `Successfully ${status === CaStatus.ACTIVE ? "enabled" : "disabled"} CA`,
@@ -76,7 +76,7 @@ export const ExternalCaSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-xl font-semibold text-mineshaft-100">External Certificate Authorities</p>
+        <p className="text-xl font-medium text-mineshaft-100">External Certificate Authorities</p>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Create}
           a={ProjectPermissionSub.CertificateAuthorities}

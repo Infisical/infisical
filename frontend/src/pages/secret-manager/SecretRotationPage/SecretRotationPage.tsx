@@ -40,9 +40,9 @@ import {
 import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import {
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
-  useSubscription,
-  useWorkspace
+  useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretRotationActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
@@ -56,7 +56,7 @@ import { TSecretRotationProviderTemplate } from "@app/hooks/api/secretRotation/t
 import { CreateRotationForm } from "@app/pages/secret-manager/SecretRotationPage/components/CreateRotationForm";
 
 const Page = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { permission } = useProjectPermission();
 
   const navigate = useNavigate();
@@ -68,7 +68,7 @@ const Page = () => {
     "upgradePlan",
     "secretRotationV2"
   ] as const);
-  const workspaceId = currentWorkspace?.id || "";
+  const workspaceId = currentProject?.id || "";
   const canCreateRotation = permission.can(
     ProjectPermissionSecretRotationActions.Create,
     ProjectPermissionSub.SecretRotation
@@ -147,6 +147,7 @@ const Page = () => {
   return (
     <div className="container mx-auto w-full max-w-7xl bg-bunker-800 text-white">
       <PageHeader
+        scope="project"
         title="Secret Rotation"
         description="Stop manually rotating secrets and automate credential rotation."
       >
@@ -173,7 +174,7 @@ const Page = () => {
           <Link
             className="text-mineshaft-100 underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
             to="/projects/secret-management/$projectId/overview"
-            params={{ projectId: currentWorkspace.id }}
+            params={{ projectId: currentProject.id }}
           >
             Secret Manager Dashboard
           </Link>{" "}
@@ -181,7 +182,7 @@ const Page = () => {
         </p>
       </NoticeBannerV2>
       <div className="mb-6">
-        <div className="mb-2 mt-6 text-xl font-semibold text-gray-200">Rotated Secrets</div>
+        <div className="mt-6 mb-2 text-xl font-medium text-gray-200">Rotated Secrets</div>
         <div className="flex flex-col space-y-2">
           <TableContainer>
             <Table>
@@ -233,7 +234,7 @@ const Page = () => {
                             .toUpperCase()}
                         </Td>
                         <Td>
-                          <div className="flex w-min items-center rounded border border-bunker-400 p-1 px-2">
+                          <div className="flex w-min items-center rounded-sm border border-bunker-400 p-1 px-2">
                             <div>{environment.slug}</div>
                             <div className="ml-1 flex items-center border-l border-bunker-400 pl-1 text-xs">
                               <FontAwesomeIcon icon={faFolder} className="mr-1" />
@@ -318,7 +319,7 @@ const Page = () => {
           </TableContainer>
         </div>
       </div>
-      <div className="mb-2 mt-12 text-xl font-semibold text-gray-200">
+      <div className="mt-12 mb-2 text-xl font-medium text-gray-200">
         Infisical Rotation Providers
       </div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-4">
@@ -355,10 +356,10 @@ const Page = () => {
                 style={{ maxWidth: "6rem" }}
                 alt="rotation provider logo"
               />
-              <div className="ml-4 max-w-xs text-xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
+              <div className="ml-4 max-w-xs text-xl font-medium text-gray-300 duration-200 group-hover:text-gray-200">
                 {provider.title}
               </div>
-              <div className="absolute right-1.5 top-1 opacity-0 transition-all group-hover:opacity-100">
+              <div className="absolute top-1 right-1.5 opacity-0 transition-all group-hover:opacity-100">
                 <Tooltip content={provider.description} sideOffset={10}>
                   <FontAwesomeIcon icon={faInfoCircle} className="text-primary" />
                 </Tooltip>
@@ -371,8 +372,8 @@ const Page = () => {
           href="https://github.com/Infisical/infisical/issues"
         >
           <div className="group relative flex h-32 cursor-pointer flex-row items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 hover:border-primary/40 hover:bg-primary/10">
-            <FontAwesomeIcon icon={faPlus} className="pl-3 pr-2 text-3xl text-gray-300" />
-            <div className="ml-4 max-w-xs text-xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
+            <FontAwesomeIcon icon={faPlus} className="pr-2 pl-3 text-3xl text-gray-300" />
+            <div className="ml-4 max-w-xs text-xl font-medium text-gray-300 duration-200 group-hover:text-gray-200">
               Request or create your own template
             </div>
           </div>
@@ -408,13 +409,13 @@ const Page = () => {
               <Link
                 className="text-mineshaft-100 underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
                 to="/projects/secret-management/$projectId/overview"
-                params={{ projectId: currentWorkspace.id }}
+                params={{ projectId: currentProject.id }}
               >
                 Secret Manager Dashboard
               </Link>{" "}
               to create a {popUp.secretRotationV2.data} Rotation.
             </p>
-            <div className="overflow-clip rounded border border-mineshaft-600">
+            <div className="overflow-clip rounded-sm border border-mineshaft-600">
               <img
                 src="/images/secretRotation/secret-rotations-v2-location.png"
                 alt="Secret Rotation V2 location"
@@ -425,7 +426,7 @@ const Page = () => {
                 onClick={() =>
                   navigate({
                     to: "/projects/secret-management/$projectId/overview",
-                    params: { projectId: currentWorkspace.id }
+                    params: { projectId: currentProject.id }
                   })
                 }
                 colorSchema="secondary"

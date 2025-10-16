@@ -23,8 +23,8 @@ import {
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useWorkspace
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import {
   useCreateProjectUserAdditionalPrivilege,
@@ -77,8 +77,8 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
   isDisabled
 }: Props) => {
   const isCreate = !privilegeId;
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id || "";
   const { data: privilegeDetails, isPending } = useGetProjectUserPrivilegeDetails(
     privilegeId || ""
   );
@@ -189,7 +189,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
         <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
           <Button
             leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-            className="text-lg font-semibold text-mineshaft-100"
+            className="text-lg font-medium text-mineshaft-100"
             variant="link"
             onClick={onGoBack}
           >
@@ -221,7 +221,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
               >
                 Save
               </Button>
-              <AddPoliciesButton isDisabled={isDisabled} projectType={currentWorkspace.type} />
+              <AddPoliciesButton isDisabled={isDisabled} projectType={currentProject.type} />
             </div>
           </div>
         </div>
@@ -245,7 +245,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
             <div>
               <Popover>
                 <PopoverTrigger disabled={isMemberEditDisabled} asChild>
-                  <div className="w-full max-w-md flex-grow">
+                  <div className="w-full max-w-md grow">
                     <FormLabel label="Duration" />
                     <Tooltip content={toolTipText}>
                       <Button

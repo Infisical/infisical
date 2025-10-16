@@ -8,7 +8,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 const schema = z.object({
@@ -19,7 +19,7 @@ type FormData = z.infer<typeof schema>;
 
 export const FlyioAuthorizePage = () => {
   const navigate = useNavigate();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { control, handleSubmit } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -37,7 +37,7 @@ export const FlyioAuthorizePage = () => {
       setIsLoading(true);
 
       const integrationAuth = await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         integration: "flyio",
         accessToken
       });
@@ -46,7 +46,7 @@ export const FlyioAuthorizePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations/flyio/create",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           integrationAuthId: integrationAuth.id
@@ -78,12 +78,12 @@ export const FlyioAuthorizePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-xxs"
+                  className="text-xxs mb-[0.07rem] ml-1.5"
                 />
               </div>
             </a>

@@ -17,7 +17,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   ProjectPermissionCommitsActions,
   ProjectPermissionSub
@@ -79,7 +79,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
   const [deepRollback, setDeepRollback] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const envSlug = useParams({
     from: ROUTE_PATHS.SecretManager.RollbackPreviewPage.id,
     select: (el) => el.environment
@@ -104,7 +104,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
     navigate({
       to: "/projects/secret-management/$projectId/commits/$environment/$folderId",
       params: {
-        projectId: currentWorkspace.id,
+        projectId: currentProject.id,
         folderId,
         environment: envSlug
       },
@@ -120,7 +120,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
   ] as const);
 
   const { mutateAsync: rollback } = useCommitRollback({
-    workspaceId: currentWorkspace.id,
+    projectId: currentProject.id,
     commitId: selectedCommitId,
     folderId,
     deepRollback,
@@ -133,7 +133,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
     folderId,
     selectedCommitId,
     envSlug,
-    currentWorkspace.id,
+    currentProject.id,
     deepRollback,
     secretPath
   );
@@ -221,7 +221,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
         {deepRollback && nestedFolderChanges.length > 0 && (
           <>
             <div className="border-b border-mineshaft-600 bg-mineshaft-800 px-4 py-2">
-              <span className="text-sm font-semibold text-white">Child folders to be restored</span>
+              <span className="text-sm font-medium text-white">Child folders to be restored</span>
             </div>
             {nestedFolderChanges.map((folder) => (
               <div
@@ -297,7 +297,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl justify-center bg-bunker-800 pb-4 pt-2 text-white">
+    <div className="mx-auto flex w-full max-w-7xl justify-center bg-bunker-800 pt-2 pb-4 text-white">
       <ProjectPermissionCan
         renderGuardBanner
         I={ProjectPermissionCommitsActions.PerformRollback}
@@ -307,6 +307,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
           <div className="h-full w-full">
             <div>
               <PageHeader
+                scope="project"
                 title={`Restore folder at commit ${selectedCommitId.substring(0, 8)}`}
                 description={`Will return all changes in this folder to how they appeared at the point of commit ${selectedCommitId.substring(0, 8)}. Any modifications made after this commit will be undone.`}
               />

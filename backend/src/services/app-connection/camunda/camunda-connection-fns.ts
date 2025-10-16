@@ -40,7 +40,7 @@ const authorizeCamundaConnection = async ({
 };
 
 export const getCamundaConnectionAccessToken = async (
-  { id, orgId, credentials }: TCamundaConnection,
+  { id, orgId, credentials, projectId }: TCamundaConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">
 ) => {
@@ -61,7 +61,8 @@ export const getCamundaConnectionAccessToken = async (
   const encryptedCredentials = await encryptAppConnectionCredentials({
     credentials: updatedCredentials,
     orgId,
-    kmsService
+    kmsService,
+    projectId
   });
 
   await appConnectionDAL.updateById(id, { encryptedCredentials });
@@ -82,7 +83,7 @@ export const validateCamundaConnectionCredentials = async (appConnection: TCamun
     };
   } catch (e: unknown) {
     throw new BadRequestError({
-      message: `Unable to validate connection: verify credentials`
+      message: "Unable to validate connection: verify credentials"
     });
   }
 };

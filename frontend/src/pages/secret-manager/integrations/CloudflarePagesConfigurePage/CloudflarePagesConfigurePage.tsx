@@ -14,7 +14,7 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateIntegration, useGetWorkspaceById } from "@app/hooks/api";
 import {
   useGetIntegrationAuthApps,
@@ -31,7 +31,7 @@ export const CloudflarePagesConfigurePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useCreateIntegration();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.CloudflarePagesConfigurePage.id,
@@ -39,7 +39,7 @@ export const CloudflarePagesConfigurePage = () => {
   });
 
   const [secretPath, setSecretPath] = useState("/");
-  const { data: workspace } = useGetWorkspaceById(currentWorkspace.id);
+  const { data: workspace } = useGetWorkspaceById(currentProject.id);
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
   const { data: integrationAuthApps } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? ""
@@ -96,7 +96,7 @@ export const CloudflarePagesConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -125,7 +125,7 @@ export const CloudflarePagesConfigurePage = () => {
     integrationAuthApps &&
     targetEnvironment &&
     targetApp ? (
-    <div className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-mineshaft-900 to-bunker-900">
+    <div className="flex h-full w-full items-center justify-center bg-linear-to-tr from-mineshaft-900 to-bunker-900">
       <Card className="max-w-lg rounded-md border border-mineshaft-600 p-0">
         <CardTitle
           className="px-6 text-left"
@@ -211,7 +211,7 @@ export const CloudflarePagesConfigurePage = () => {
           onClick={handleButtonClick}
           color="mineshaft"
           variant="outline_bg"
-          className="mb-6 ml-auto mr-6 mt-2"
+          className="mt-2 mr-6 mb-6 ml-auto"
           isFullWidth={false}
           isLoading={isLoading}
         >

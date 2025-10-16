@@ -32,6 +32,11 @@ export enum AwsIamAuthType {
   IRSA = "irsa"
 }
 
+export enum AwsIamCredentialType {
+  IamUser = "iam-user",
+  TemporaryCredentials = "temporary-credentials"
+}
+
 export enum ElasticSearchAuthTypes {
   User = "user",
   ApiKey = "api-key"
@@ -165,6 +170,7 @@ export const DynamicSecretSqlDBSchema = z.object({
   revocationStatement: z.string().trim(),
   renewStatement: z.string().trim().optional(),
   ca: z.string().optional(),
+  sslEnabled: z.boolean().optional(),
   gatewayId: z.string().nullable().optional()
 });
 
@@ -202,6 +208,7 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
   z.discriminatedUnion("method", [
     z.object({
       method: z.literal(AwsIamAuthType.AccessKey),
+      credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
       accessKey: z.string().trim().min(1),
       secretAccessKey: z.string().trim().min(1),
       region: z.string().trim().min(1),
@@ -214,6 +221,7 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
     }),
     z.object({
       method: z.literal(AwsIamAuthType.AssumeRole),
+      credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
       roleArn: z.string().trim().min(1, "Role ARN required"),
       region: z.string().trim().min(1),
       awsPath: z.string().trim().optional(),
@@ -225,6 +233,7 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
     }),
     z.object({
       method: z.literal(AwsIamAuthType.IRSA),
+      credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
       region: z.string().trim().min(1),
       awsPath: z.string().trim().optional(),
       permissionBoundaryPolicyArn: z.string().trim().optional(),
@@ -275,11 +284,11 @@ export const DynamicSecretMongoAtlasSchema = z.object({
 
 export const DynamicSecretMongoDBSchema = z.object({
   host: z.string().min(1).trim().toLowerCase(),
-  port: z.number().optional(),
+  port: z.number().optional().nullable(),
   username: z.string().min(1).trim(),
   password: z.string().min(1).trim(),
   database: z.string().min(1).trim(),
-  ca: z.string().min(1).optional(),
+  ca: z.string().trim().optional().nullable(),
   roles: z
     .string()
     .array()
@@ -316,6 +325,44 @@ export const AzureEntraIDSchema = z.object({
   email: z.string().trim().min(1),
   applicationId: z.string().trim().min(1),
   clientSecret: z.string().trim().min(1)
+});
+
+export const DynamicSecretAzureSqlDBSchema = z.object({
+  host: z.string().trim().toLowerCase(),
+  port: z.number(),
+  database: z.string().trim(),
+  masterDatabase: z.string().trim().optional().default("master"),
+  username: z.string().trim(),
+  password: z.string().trim(),
+  passwordRequirements: z
+    .object({
+      length: z.number().min(1).max(250),
+      required: z
+        .object({
+          lowercase: z.number().min(0),
+          uppercase: z.number().min(0),
+          digits: z.number().min(0),
+          symbols: z.number().min(0)
+        })
+        .refine((data) => {
+          const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+          return total <= 250;
+        }, "Sum of required characters cannot exceed 250"),
+      allowedSymbols: z.string().optional()
+    })
+    .refine((data) => {
+      const total = Object.values(data.required).reduce((sum, count) => sum + count, 0);
+      return total <= data.length;
+    }, "Sum of required characters cannot exceed the total length")
+    .optional()
+    .describe("Password generation requirements"),
+  masterCreationStatement: z.string().trim(),
+  creationStatement: z.string().trim(),
+  revocationStatement: z.string().trim(),
+  renewStatement: z.string().trim().optional(),
+  ca: z.string().optional(),
+  sslEnabled: z.boolean().optional(),
+  gatewayId: z.string().nullable().optional()
 });
 
 export const LdapSchema = z.union([
@@ -601,6 +648,7 @@ export enum DynamicSecretProviders {
   MongoDB = "mongo-db",
   RabbitMq = "rabbit-mq",
   AzureEntraID = "azure-entra-id",
+  AzureSqlDatabase = "azure-sql-database",
   Ldap = "ldap",
   SapHana = "sap-hana",
   Snowflake = "snowflake",
@@ -626,6 +674,7 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.MongoDB), inputs: DynamicSecretMongoDBSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.RabbitMq), inputs: DynamicSecretRabbitMqSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.AzureEntraID), inputs: AzureEntraIDSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.AzureSqlDatabase), inputs: DynamicSecretAzureSqlDBSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Ldap), inputs: LdapSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Snowflake), inputs: DynamicSecretSnowflakeSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.Totp), inputs: DynamicSecretTotpSchema }),

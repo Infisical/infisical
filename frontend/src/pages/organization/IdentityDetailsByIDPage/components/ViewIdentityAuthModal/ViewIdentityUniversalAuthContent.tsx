@@ -4,12 +4,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { EmptyState, IconButton, Spinner, Tooltip } from "@app/components/v2";
 import { useTimedReset } from "@app/hooks";
 import {
+  useClearIdentityUniversalAuthLockouts,
   useGetIdentityUniversalAuth,
   useGetIdentityUniversalAuthClientSecrets
 } from "@app/hooks/api";
 import { IdentityUniversalAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityUniversalAuthForm";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
+import { LockoutFields } from "./IdentityAuthLockoutFields";
 import { IdentityUniversalAuthClientSecretsTable } from "./IdentityUniversalAuthClientSecretsTable";
 import { ViewAuthMethodProps } from "./types";
 import { ViewIdentityContentWrapper } from "./ViewIdentityContentWrapper";
@@ -19,11 +21,14 @@ export const ViewIdentityUniversalAuthContent = ({
   handlePopUpToggle,
   handlePopUpOpen,
   onDelete,
-  popUp
+  popUp,
+  lockedOut,
+  onResetAllLockouts
 }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityUniversalAuth(identityId);
   const { data: clientSecrets = [], isPending: clientSecretsPending } =
     useGetIdentityUniversalAuthClientSecrets(identityId);
+  const clearLockoutsResult = useClearIdentityUniversalAuthLockouts();
 
   const [copyTextClientId, isCopyingClientId, setCopyTextClientId] = useTimedReset<string>({
     initialState: "Copy Client ID to clipboard"
@@ -85,6 +90,18 @@ export const ViewIdentityUniversalAuthContent = ({
       <IdentityAuthFieldDisplay label="Client Secret Trusted IPs">
         {data.clientSecretTrustedIps.map((ip) => ip.ipAddress).join(", ")}
       </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay label="Lockout">
+        {data.lockoutEnabled ? "Enabled" : "Disabled"}
+      </IdentityAuthFieldDisplay>
+      {data.lockoutEnabled && (
+        <LockoutFields
+          identityId={identityId}
+          lockedOut={lockedOut}
+          clearLockoutsResult={clearLockoutsResult}
+          data={data}
+          onResetAllLockouts={onResetAllLockouts}
+        />
+      )}
       <div className="col-span-2 my-3">
         <div className="mb-3 border-b border-mineshaft-500 pb-2">
           <span className="text-bunker-300">Client ID</span>

@@ -5,7 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Checkbox, DeleteActionModal, Spinner } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
   useDeleteIntegration,
@@ -27,8 +27,8 @@ enum IntegrationView {
 }
 
 export const NativeIntegrationsTab = () => {
-  const { currentWorkspace } = useWorkspace();
-  const { environments, id: workspaceId } = currentWorkspace;
+  const { currentProject } = useProject();
+  const { environments, id: workspaceId } = currentProject;
   const navigate = useNavigate();
 
   const { data: cloudIntegrations, isPending: isCloudIntegrationsLoading } =
@@ -91,7 +91,7 @@ export const NativeIntegrationsTab = () => {
     if (!selectedCloudIntegration) return;
 
     try {
-      redirectForProviderAuth(currentWorkspace.id, navigate, selectedCloudIntegration);
+      redirectForProviderAuth(currentProject.id, navigate, selectedCloudIntegration);
     } catch (error) {
       console.error(error);
     }
@@ -168,7 +168,7 @@ export const NativeIntegrationsTab = () => {
       {view === IntegrationView.List ? (
         <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-xl font-semibold text-mineshaft-100">Native Integrations</p>
+            <p className="text-xl font-medium text-mineshaft-100">Native Integrations</p>
             <Button
               colorSchema="secondary"
               type="submit"

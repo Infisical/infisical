@@ -4,8 +4,8 @@ import { useParams } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { EmptyState, PageHeader, Spinner } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
-import { useGetWorkspaceGroupMembershipDetails } from "@app/hooks/api/workspace/queries";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { useGetWorkspaceGroupMembershipDetails } from "@app/hooks/api/projects/queries";
 
 import { GroupDetailsSection } from "./components/GroupDetailsSection";
 import { GroupMembersSection } from "./components/GroupMembersSection";
@@ -16,10 +16,10 @@ const Page = () => {
     select: (el) => el.groupId as string
   });
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { data: groupMembership, isPending } = useGetWorkspaceGroupMembershipDetails(
-    currentWorkspace.id,
+    currentProject.id,
     groupId
   );
 
@@ -34,7 +34,7 @@ const Page = () => {
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {groupMembership ? (
         <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={groupMembership.group.name} />
+          <PageHeader scope="project" title={groupMembership.group.name} />
           <div className="flex">
             <div className="mr-4 w-96">
               <GroupDetailsSection groupMembership={groupMembership} />

@@ -1,7 +1,7 @@
 import { OrderByDirection } from "../generic/types";
 import { OrgIdentityOrderBy } from "../organization/types";
+import { Project, ProjectUserMembershipTemporaryMode } from "../projects/types";
 import { TOrgRole } from "../roles/types";
-import { ProjectUserMembershipTemporaryMode, Workspace } from "../workspace/types";
 import { IdentityAuthMethod, IdentityJwtConfigurationType } from "./enums";
 
 export type IdentityTrustedIp = {
@@ -16,6 +16,7 @@ export type Identity = {
   name: string;
   hasDeleteProtection: boolean;
   authMethods: IdentityAuthMethod[];
+  activeLockoutAuthMethods: IdentityAuthMethod[];
   createdAt: string;
   updatedAt: string;
   isInstanceAdmin?: boolean;
@@ -53,7 +54,7 @@ export type IdentityMembershipOrg = {
 export type IdentityMembership = {
   id: string;
   identity: Identity;
-  project: Pick<Workspace, "id" | "name" | "type">;
+  project: Pick<Project, "id" | "name" | "type">;
   roles: Array<
     {
       id: string;
@@ -113,6 +114,10 @@ export type IdentityUniversalAuth = {
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: IdentityTrustedIp[];
   accessTokenPeriod: number;
+  lockoutEnabled: boolean;
+  lockoutThreshold: number;
+  lockoutDurationSeconds: number;
+  lockoutCounterResetSeconds: number;
 };
 
 export type AddIdentityUniversalAuthDTO = {
@@ -128,6 +133,10 @@ export type AddIdentityUniversalAuthDTO = {
   accessTokenTrustedIps: {
     ipAddress: string;
   }[];
+  lockoutEnabled: boolean;
+  lockoutThreshold: number;
+  lockoutDurationSeconds: number;
+  lockoutCounterResetSeconds: number;
 };
 
 export type UpdateIdentityUniversalAuthDTO = {
@@ -143,6 +152,10 @@ export type UpdateIdentityUniversalAuthDTO = {
   accessTokenTrustedIps?: {
     ipAddress: string;
   }[];
+  lockoutEnabled?: boolean;
+  lockoutThreshold?: number;
+  lockoutDurationSeconds?: number;
+  lockoutCounterResetSeconds?: number;
 };
 
 export type DeleteIdentityUniversalAuthDTO = {
@@ -558,6 +571,10 @@ export type DeleteIdentityUniversalAuthClientSecretDTO = {
   clientSecretId: string;
 };
 
+export type ClearIdentityUniversalAuthLockoutsDTO = {
+  identityId: string;
+};
+
 export type IdentityTokenAuth = {
   identityId: string;
   accessTokenTTL: number;
@@ -586,6 +603,11 @@ export type AddIdentityLdapAuthDTO = {
   accessTokenTrustedIps: {
     ipAddress: string;
   }[];
+
+  lockoutEnabled: boolean;
+  lockoutThreshold: number;
+  lockoutDurationSeconds: number;
+  lockoutCounterResetSeconds: number;
 };
 
 export type UpdateIdentityLdapAuthDTO = {
@@ -608,6 +630,11 @@ export type UpdateIdentityLdapAuthDTO = {
   accessTokenTrustedIps?: {
     ipAddress: string;
   }[];
+
+  lockoutEnabled?: boolean;
+  lockoutThreshold?: number;
+  lockoutDurationSeconds?: number;
+  lockoutCounterResetSeconds?: number;
 };
 
 export type DeleteIdentityLdapAuthDTO = {
@@ -633,6 +660,15 @@ export type IdentityLdapAuth = {
   accessTokenMaxTTL: number;
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: IdentityTrustedIp[];
+
+  lockoutEnabled: boolean;
+  lockoutThreshold: number;
+  lockoutDurationSeconds: number;
+  lockoutCounterResetSeconds: number;
+};
+
+export type ClearIdentityLdapAuthLockoutsDTO = {
+  identityId: string;
 };
 
 export type AddIdentityTokenAuthDTO = {

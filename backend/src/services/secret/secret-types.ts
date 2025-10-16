@@ -331,6 +331,7 @@ export type TGetSecretVersionsDTO = Omit<TProjectPermission, "projectId"> & {
   limit?: number;
   offset?: number;
   secretId: string;
+  secretVersions?: string[];
 };
 
 export type TSecretReference = { environment: string; secretPath: string };
@@ -534,7 +535,8 @@ export type TSyncSecretsDTO<T extends boolean = false> = {
     });
 
 export type TMoveSecretsDTO = {
-  projectSlug: string;
+  projectId?: string;
+  projectSlug?: string;
   sourceEnvironment: string;
   sourceSecretPath: string;
   destinationEnvironment: string;

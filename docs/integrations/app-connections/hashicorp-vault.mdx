@@ -131,7 +131,7 @@ Infisical supports two methods for connecting to Hashicorp Vault.
     <Tab title="Infisical UI">
         <Steps>
             <Step title="Navigate to App Connections">
-                In your Infisical dashboard, go to **Organization Settings** and select the **App Connections** tab.
+                In your Infisical dashboard, navigate to the **App Connections** page in the desired project.
 
                 ![App Connections Tab](/images/app-connections/general/add-connection.png)
             </Step>
@@ -149,6 +149,7 @@ Infisical supports two methods for connecting to Hashicorp Vault.
                     <Tab title="App Role">
                         - **Name**: The name of the connection being created. Must be slug-friendly.
                         - **Description**: An optional description to provide details about this connection.
+                        - **Gateway (optional):** The gateway connected to your private network. All requests made to your Vault instance will be made through the configured gateway.
                         - **Instance URL**: The URL of your Hashicorp Vault instance.
                         - **Namespace (optional)**: The namespace within your vault. Self-hosted and enterprise clusters may not use namespaces.
                         - **Role ID**: The Role ID generated in the steps above.
@@ -157,6 +158,7 @@ Infisical supports two methods for connecting to Hashicorp Vault.
                     <Tab title="Access Token">
                         - **Name**: The name of the connection being created. Must be slug-friendly.
                         - **Description**: An optional description to provide details about this connection.
+                        - **Gateway (optional):** The gateway connected to your private network. All requests made to your Vault instance will be made through the configured gateway.
                         - **Instance URL**: The URL of your Hashicorp Vault instance.
                         - **Namespace (optional)**: The namespace within your vault. Self-hosted and enterprise clusters may not use namespaces.
                         - **Access Token**: The Access Token generated in the steps above.
@@ -182,6 +184,7 @@ Infisical supports two methods for connecting to Hashicorp Vault.
                 --data '{
                     "name": "my-vault-connection",
                     "method": "app-role",
+                    "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
                     "credentials": {
                         "instanceUrl": "https://vault.example.com",
                         "roleId": "4797c4fa-7794-71f0-c8b1-7c87759df5bf",
@@ -197,6 +200,7 @@ Infisical supports two methods for connecting to Hashicorp Vault.
             "appConnection": {
                 "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                 "name": "my-vault-connection",
+                "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
                 "version": 1,
                 "orgId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                 "createdAt": "2025-04-01T05:31:56Z",

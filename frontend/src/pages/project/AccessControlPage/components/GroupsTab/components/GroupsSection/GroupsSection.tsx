@@ -8,8 +8,8 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useSubscription,
-  useWorkspace
+  useProject,
+  useSubscription
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
@@ -19,7 +19,7 @@ import { GroupTable } from "./GroupsTable";
 
 export const GroupsSection = () => {
   const { subscription } = useSubscription();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { mutateAsync: deleteMutateAsync } = useDeleteGroupFromWorkspace();
 
@@ -44,7 +44,7 @@ export const GroupsSection = () => {
     try {
       await deleteMutateAsync({
         groupId,
-        projectId: currentWorkspace?.id || ""
+        projectId: currentProject?.id || ""
       });
 
       createNotification({
@@ -68,7 +68,7 @@ export const GroupsSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xl font-semibold text-mineshaft-100">User Groups</p>
+        <p className="text-xl font-medium text-mineshaft-100">User Groups</p>
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Groups}>
           {(isAllowed) => (
             <Button

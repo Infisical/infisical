@@ -9,14 +9,14 @@ import {
   IS_ROTATION_DUAL_CREDENTIALS,
   SECRET_ROTATION_MAP
 } from "@app/helpers/secretRotationsV2";
-import { WorkspaceEnv } from "@app/hooks/api/workspace/types";
+import { ProjectEnv } from "@app/hooks/api/projects/types";
 
 import { TSecretRotationV2Form } from "./schemas";
 import { SecretRotationV2ConnectionField } from "./SecretRotationV2ConnectionField";
 
 type Props = {
   isUpdate: boolean;
-  environments?: WorkspaceEnv[];
+  environments?: ProjectEnv[];
 };
 
 export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: Props) => {
@@ -90,7 +90,7 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
                     });
                   }
                 }}
-                className="bg-mineshaft-700 text-white [color-scheme:dark]"
+                className="bg-mineshaft-700 text-white scheme-dark"
               />
             </FormControl>
           );
@@ -126,7 +126,7 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
         }}
       />
       {!IS_ROTATION_DUAL_CREDENTIALS[type] && isAutoRotationEnabled && (
-        <div className="rounded border border-yellow bg-yellow/10 p-2 px-3 text-xs text-yellow">
+        <div className="rounded-sm border border-yellow bg-yellow/10 p-2 px-3 text-xs text-yellow">
           <FontAwesomeIcon icon={faWarning} className="mr-1" /> Due to{" "}
           {SECRET_ROTATION_MAP[type].name} Rotations rotating a single credential set, auto-rotation
           may result in service interruptions. If you need to ensure service continuity, we

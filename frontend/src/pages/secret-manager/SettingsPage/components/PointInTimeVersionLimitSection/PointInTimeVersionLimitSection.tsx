@@ -4,9 +4,9 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { useProjectPermission, useWorkspace } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
+import { useUpdateProject } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { useUpdateWorkspaceVersionLimit } from "@app/hooks/api/workspace/queries";
 
 const formSchema = z.object({
   pitVersionLimit: z.coerce.number().min(1).max(100)
@@ -15,10 +15,10 @@ const formSchema = z.object({
 type TForm = z.infer<typeof formSchema>;
 
 export const PointInTimeVersionLimitSection = () => {
-  const { mutateAsync: updatePitVersion } = useUpdateWorkspaceVersionLimit();
+  const { mutateAsync: updateProject } = useUpdateProject();
 
-  const { currentWorkspace } = useWorkspace();
-  const { membership } = useProjectPermission();
+  const { currentProject, projectId } = useProject();
+  const { hasProjectRole } = useProjectPermission();
 
   const {
     control,
@@ -27,17 +27,17 @@ export const PointInTimeVersionLimitSection = () => {
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     values: {
-      pitVersionLimit: currentWorkspace?.pitVersionLimit || 10
+      pitVersionLimit: currentProject?.pitVersionLimit || 10
     }
   });
 
-  if (!currentWorkspace) return null;
+  if (!currentProject) return null;
 
   const handleVersionLimitSubmit = async ({ pitVersionLimit }: TForm) => {
     try {
-      await updatePitVersion({
+      await updateProject({
         pitVersionLimit,
-        projectSlug: currentWorkspace.slug
+        projectId
       });
 
       createNotification({
@@ -52,13 +52,13 @@ export const PointInTimeVersionLimitSection = () => {
     }
   };
 
-  const isAdmin = membership.roles.includes(ProjectMembershipRole.Admin);
+  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex w-full items-center justify-between">
-        <p className="text-xl font-semibold">Version Retention</p>
+        <p className="text-xl font-medium">Version Retention</p>
       </div>
-      <p className="mb-4 mt-2 max-w-2xl text-sm text-gray-400">
+      <p className="mt-2 mb-4 max-w-2xl text-sm text-gray-400">
         This defines the maximum number of recent secret versions to keep per folder. Excess
         versions will be removed at midnight (UTC) each day.
       </p>

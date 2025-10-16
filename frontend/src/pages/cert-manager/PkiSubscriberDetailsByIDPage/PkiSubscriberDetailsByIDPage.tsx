@@ -19,7 +19,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
-  useWorkspace
+  useProject
 } from "@app/context";
 import { useDeletePkiSubscriber, useGetPkiSubscriber } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -29,8 +29,8 @@ import { PkiSubscriberCertificatesSection, PkiSubscriberDetailsSection } from ".
 
 const Page = () => {
   const navigate = useNavigate();
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace.id;
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const subscriberName = useParams({
     from: ROUTE_PATHS.CertManager.PkiSubscriberDetailsByIDPage.id,
     select: (el) => el.subscriberName
@@ -78,7 +78,7 @@ const Page = () => {
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={data.name}>
+          <PageHeader scope="project" title={data.name}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
                 <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
@@ -96,7 +96,7 @@ const Page = () => {
                     <DropdownMenuItem
                       className={twMerge(
                         isAllowed
-                          ? "hover:!bg-red-500 hover:!text-white"
+                          ? "hover:bg-red-500! hover:text-white!"
                           : "pointer-events-none cursor-not-allowed opacity-50"
                       )}
                       onClick={() =>

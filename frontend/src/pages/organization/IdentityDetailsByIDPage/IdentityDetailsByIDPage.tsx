@@ -75,7 +75,7 @@ const Page = () => {
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={data.identity.name} />
+          <PageHeader scope="org" title={data.identity.name} />
           <div className="flex">
             <div className="mr-4 w-96">
               <IdentityDetailsSection identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
@@ -115,8 +115,10 @@ const Page = () => {
       <ViewIdentityAuthModal
         isOpen={popUp.viewAuthMethod.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("viewAuthMethod", isOpen)}
-        authMethod={popUp.viewAuthMethod.data}
+        authMethod={popUp.viewAuthMethod.data?.authMethod}
+        lockedOut={popUp.viewAuthMethod.data?.lockedOut || false}
         identityId={identityId}
+        onResetAllLockouts={popUp.viewAuthMethod.data?.refetchIdentity}
       />
     </div>
   );

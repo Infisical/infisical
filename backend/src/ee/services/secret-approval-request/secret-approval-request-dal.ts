@@ -2,9 +2,10 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import {
+  AccessScope,
   SecretApprovalRequestsSchema,
   TableName,
-  TOrgMemberships,
+  TMemberships,
   TSecretApprovalRequests,
   TSecretApprovalRequestsSecrets,
   TUserGroupMembership,
@@ -36,6 +37,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
       .where(filter)
       .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
       .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .join(
         TableName.SecretApprovalPolicy,
         `${TableName.SecretApprovalRequest}.policyId`,
@@ -109,24 +111,22 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         `secretApprovalReviewerUser.id`
       )
 
-      .leftJoin<TOrgMemberships>(
-        db(TableName.OrgMembership).as("approverOrgMembership"),
-        `${TableName.SecretApprovalPolicyApprover}.approverUserId`,
-        `approverOrgMembership.userId`
-      )
+      .leftJoin<TMemberships>(db(TableName.Membership).as("approverOrgMembership"), (qb) => {
+        qb.on(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, `approverOrgMembership.actorUserId`)
+          .andOn(`approverOrgMembership.scopeOrgId`, `${TableName.Project}.orgId`)
+          .andOn(`approverOrgMembership.scope`, db.raw("?", [AccessScope.Organization]));
+      })
 
-      .leftJoin<TOrgMemberships>(
-        db(TableName.OrgMembership).as("approverGroupOrgMembership"),
-        `secretApprovalPolicyGroupApproverUser.id`,
-        `approverGroupOrgMembership.userId`
-      )
-
-      .leftJoin<TOrgMemberships>(
-        db(TableName.OrgMembership).as("reviewerOrgMembership"),
-        `${TableName.SecretApprovalRequestReviewer}.reviewerUserId`,
-        `reviewerOrgMembership.userId`
-      )
-
+      .leftJoin<TMemberships>(db(TableName.Membership).as("approverGroupOrgMembership"), (qb) => {
+        qb.on(`secretApprovalPolicyGroupApproverUser.id`, `approverGroupOrgMembership.actorUserId`)
+          .andOn(`approverGroupOrgMembership.scopeOrgId`, `${TableName.Project}.orgId`)
+          .andOn(`approverGroupOrgMembership.scope`, db.raw("?", [AccessScope.Organization]));
+      })
+      .leftJoin<TMemberships>(db(TableName.Membership).as("reviewerOrgMembership"), (qb) => {
+        qb.on(`${TableName.SecretApprovalRequestReviewer}.reviewerUserId`, `reviewerOrgMembership.actorUserId`)
+          .andOn(`reviewerOrgMembership.scopeOrgId`, `${TableName.Project}.orgId`)
+          .andOn(`reviewerOrgMembership.scope`, db.raw("?", [AccessScope.Organization]));
+      })
       .select(selectAllTableCols(TableName.SecretApprovalRequest))
       .select(
         tx.ref("approverUserId").withSchema(TableName.SecretApprovalPolicyApprover),
@@ -345,7 +345,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
 
   const findProjectRequestCount = async (projectId: string, userId: string, policyId?: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db)
+      const docs = await (tx || db.replicaNode())
         .with(
           "temp",
           (tx || db.replicaNode())(TableName.SecretApprovalRequest)
@@ -494,7 +494,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .distinctOn(`${TableName.SecretApprovalRequest}.id`)
         .as("inner");
 
-      const query = (tx || db)
+      const query = (tx || db.replicaNode())
         .select("*")
         .select(db.raw("count(*) OVER() as total_count"))
         .from(innerQuery)

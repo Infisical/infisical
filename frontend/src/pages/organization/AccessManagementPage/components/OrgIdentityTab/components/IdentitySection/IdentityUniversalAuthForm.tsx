@@ -3,6 +3,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import ms from "ms";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -17,6 +18,7 @@ import {
   Tabs
 } from "@app/components/v2";
 import { useOrganization, useSubscription } from "@app/context";
+import { getObjectFromSeconds } from "@app/helpers/datetime";
 import {
   useAddIdentityUniversalAuth,
   useGetIdentityUniversalAuth,
@@ -25,6 +27,8 @@ import {
 import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { LockoutTab } from "./lockout/LockoutTab";
+import { superRefineLockout } from "./lockout/super-refine";
 import { IdentityFormTab } from "./types";
 
 const schema = z
@@ -60,9 +64,25 @@ const schema = z
         ipAddress: z.string().max(50)
       })
       .array()
-      .min(1)
+      .min(1),
+    lockoutEnabled: z.boolean().default(true),
+    lockoutThreshold: z
+      .string()
+      .refine(
+        (value) => Number(value) <= 30 && Number(value) >= 1,
+        "Lockout threshold must be between 1 and 30"
+      ),
+    lockoutDurationValue: z.string(),
+    lockoutDurationUnit: z.enum(["s", "m", "h", "d"], {
+      invalid_type_error: "Please select a valid time unit"
+    }),
+    lockoutCounterResetValue: z.string(),
+    lockoutCounterResetUnit: z.enum(["s", "m", "h"], {
+      invalid_type_error: "Please select a valid time unit"
+    })
   })
-  .required();
+  .required()
+  .superRefine(superRefineLockout);
 
 export type FormData = z.infer<typeof schema>;
 
@@ -107,11 +127,24 @@ export const IdentityUniversalAuthForm = ({
       accessTokenNumUsesLimit: "0",
       clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
       accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-      accessTokenPeriod: "0"
+      accessTokenPeriod: "0",
+      lockoutEnabled: true,
+      lockoutThreshold: "3",
+      lockoutDurationValue: "5",
+      lockoutDurationUnit: "m",
+      lockoutCounterResetValue: "30",
+      lockoutCounterResetUnit: "s"
     }
   });
 
   const accessTokenPeriodValue = Number(watch("accessTokenPeriod"));
+
+  const lockoutEnabledWatch = watch("lockoutEnabled");
+  const lockoutThresholdWatch = watch("lockoutThreshold");
+  const lockoutDurationValueWatch = watch("lockoutDurationValue");
+  const lockoutDurationUnitWatch = watch("lockoutDurationUnit");
+  const lockoutCounterResetValueWatch = watch("lockoutCounterResetValue");
+  const lockoutCounterResetUnitWatch = watch("lockoutCounterResetUnit");
 
   const {
     fields: clientSecretTrustedIpsFields,
@@ -126,6 +159,9 @@ export const IdentityUniversalAuthForm = ({
 
   useEffect(() => {
     if (data) {
+      const lockoutDurationObj = getObjectFromSeconds(data.lockoutDurationSeconds);
+      const lockoutCounterResetObj = getObjectFromSeconds(data.lockoutCounterResetSeconds);
+
       reset({
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
@@ -144,7 +180,13 @@ export const IdentityUniversalAuthForm = ({
               ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
             };
           }
-        )
+        ),
+        lockoutEnabled: data.lockoutEnabled,
+        lockoutThreshold: String(data.lockoutThreshold),
+        lockoutDurationValue: String(lockoutDurationObj.value),
+        lockoutDurationUnit: lockoutDurationObj.unit as "s" | "m" | "h" | "d",
+        lockoutCounterResetValue: String(lockoutCounterResetObj.value),
+        lockoutCounterResetUnit: lockoutCounterResetObj.unit as "s" | "m" | "h"
       });
     } else {
       reset({
@@ -153,7 +195,13 @@ export const IdentityUniversalAuthForm = ({
         accessTokenNumUsesLimit: "0",
         accessTokenPeriod: "0",
         clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-        accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
+        accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+        lockoutEnabled: true,
+        lockoutThreshold: "3",
+        lockoutDurationValue: "5",
+        lockoutDurationUnit: "m",
+        lockoutCounterResetValue: "30",
+        lockoutCounterResetUnit: "s"
       });
     }
   }, [data]);
@@ -164,10 +212,20 @@ export const IdentityUniversalAuthForm = ({
     accessTokenNumUsesLimit,
     clientSecretTrustedIps,
     accessTokenTrustedIps,
-    accessTokenPeriod
+    accessTokenPeriod,
+    lockoutEnabled,
+    lockoutThreshold,
+    lockoutDurationValue,
+    lockoutDurationUnit,
+    lockoutCounterResetValue,
+    lockoutCounterResetUnit
   }: FormData) => {
     try {
       if (!identityId) return;
+
+      const lockoutDurationSeconds = ms(`${lockoutDurationValue}${lockoutDurationUnit}`) / 1000;
+      const lockoutCounterResetSeconds =
+        ms(`${lockoutCounterResetValue}${lockoutCounterResetUnit}`) / 1000;
 
       if (data) {
         // update universal auth configuration
@@ -179,7 +237,11 @@ export const IdentityUniversalAuthForm = ({
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
           accessTokenTrustedIps,
-          accessTokenPeriod: Number(accessTokenPeriod)
+          accessTokenPeriod: Number(accessTokenPeriod),
+          lockoutEnabled,
+          lockoutThreshold: Number(lockoutThreshold),
+          lockoutDurationSeconds,
+          lockoutCounterResetSeconds
         });
       } else {
         // create new universal auth configuration
@@ -192,7 +254,11 @@ export const IdentityUniversalAuthForm = ({
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
           accessTokenTrustedIps,
-          accessTokenPeriod: Number(accessTokenPeriod)
+          accessTokenPeriod: Number(accessTokenPeriod),
+          lockoutEnabled,
+          lockoutThreshold: Number(lockoutThreshold),
+          lockoutDurationSeconds: Number(lockoutDurationSeconds),
+          lockoutCounterResetSeconds: Number(lockoutCounterResetSeconds)
         });
       }
 
@@ -217,16 +283,31 @@ export const IdentityUniversalAuthForm = ({
   return (
     <form
       onSubmit={handleSubmit(onFormSubmit, (fields) => {
-        setTabValue(
-          ["accessTokenTrustedIps", "clientSecretTrustedIps"].includes(Object.keys(fields)[0])
-            ? IdentityFormTab.Advanced
-            : IdentityFormTab.Configuration
-        );
+        const firstErrorField = Object.keys(fields)[0];
+        let tab = IdentityFormTab.Configuration;
+
+        if (["accessTokenTrustedIps", "clientSecretTrustedIps"].includes(firstErrorField)) {
+          tab = IdentityFormTab.Advanced;
+        } else if (
+          [
+            "lockoutEnabled",
+            "lockoutThreshold",
+            "lockoutDurationValue",
+            "lockoutDurationUnit",
+            "lockoutCounterResetValue",
+            "lockoutCounterResetUnit"
+          ].includes(firstErrorField)
+        ) {
+          tab = IdentityFormTab.Lockout;
+        }
+
+        setTabValue(tab);
       })}
     >
       <Tabs value={tabValue} onValueChange={(value) => setTabValue(value as IdentityFormTab)}>
         <TabList>
           <Tab value={IdentityFormTab.Configuration}>Configuration</Tab>
+          <Tab value={IdentityFormTab.Lockout}>Lockout</Tab>
           <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
         </TabList>
         <TabPanel value={IdentityFormTab.Configuration}>
@@ -296,6 +377,15 @@ export const IdentityUniversalAuthForm = ({
             )}
           />
         </TabPanel>
+        <LockoutTab
+          control={control}
+          lockoutEnabled={lockoutEnabledWatch}
+          lockoutThreshold={lockoutThresholdWatch}
+          lockoutDurationValue={lockoutDurationValueWatch}
+          lockoutDurationUnit={lockoutDurationUnitWatch}
+          lockoutCounterResetValue={lockoutCounterResetValueWatch}
+          lockoutCounterResetUnit={lockoutCounterResetUnitWatch}
+        />
         <TabPanel value={IdentityFormTab.Advanced}>
           {clientSecretTrustedIpsFields.map(({ id }, index) => (
             <div className="mb-3 flex items-end space-x-2" key={id}>
@@ -306,7 +396,7 @@ export const IdentityUniversalAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       label={index === 0 ? "Client Secret Trusted IPs" : undefined}
                       isError={Boolean(error)}
                       errorText={error?.message}
@@ -374,7 +464,7 @@ export const IdentityUniversalAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       label={index === 0 ? "Access Token Trusted IPs" : undefined}
                       isError={Boolean(error)}
                       errorText={error?.message}

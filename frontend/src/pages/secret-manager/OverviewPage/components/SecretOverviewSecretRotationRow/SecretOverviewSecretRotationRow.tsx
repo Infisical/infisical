@@ -16,8 +16,6 @@ import { twMerge } from "tailwind-merge";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretRotationV2StatusBadge } from "@app/components/secret-rotations-v2/SecretRotationV2StatusBadge";
 import { Badge, IconButton, TableContainer, Tag, Td, Tooltip, Tr } from "@app/components/v2";
-import { Blur } from "@app/components/v2/Blur";
-import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
@@ -26,6 +24,8 @@ import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import { useToggle } from "@app/hooks";
 import { SecretRotationStatus, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { getExpandedRowStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
+
+import { SecretOverviewRotationSecretRow } from "./SecretOverviewRotationSecretRow";
 
 type Props = {
   secretRotationName: string;
@@ -63,7 +63,7 @@ export const SecretOverviewSecretRotationRow = ({
     <>
       <Tr isHoverable isSelectable onClick={setIsExpanded.toggle} className="group">
         <Td className="sticky left-0 z-10 border-0 bg-mineshaft-800 bg-clip-padding p-0 group-hover:bg-mineshaft-700">
-          <div className="flex w-full items-center space-x-5 border-r border-mineshaft-600 py-2.5 pl-5 pr-2">
+          <div className="flex w-full items-center space-x-5 border-r border-mineshaft-600 py-2.5 pr-2 pl-5">
             <div className="text-mineshaft-400">
               <FontAwesomeIcon icon={faRotate} />
             </div>
@@ -123,11 +123,11 @@ export const SecretOverviewSecretRotationRow = ({
                 <div style={getExpandedRowStyle(scrollOffset)} className="ml-2 p-2">
                   <TableContainer>
                     <table className="secret-table">
-                      <thead className="!border-b">
+                      <thead className="border-b!">
                         <tr className="h-10">
                           <th
                             style={{ padding: "0.5rem 1rem" }}
-                            className="min-table-row min-w-[30vw] !border-r-0"
+                            className="min-table-row min-w-[30vw] border-r-0!"
                           >
                             <div className="flex w-full flex-wrap items-center">
                               <span>{envName}</span>
@@ -151,7 +151,7 @@ export const SecretOverviewSecretRotationRow = ({
                               )}
                             </div>
                           </th>
-                          <div className="absolute right-1 top-0.5 ml-auto mr-1 mt-1 w-min">
+                          <div className="absolute top-0.5 right-1 mt-1 mr-1 ml-auto w-min">
                             <div className="flex items-center gap-2">
                               <SecretRotationV2StatusBadge secretRotation={secretRotation} />
                               <Tooltip content={isSecretVisible ? "Hide Values" : "Reveal Values"}>
@@ -256,52 +256,13 @@ export const SecretOverviewSecretRotationRow = ({
                       <tbody className="border-t-2 border-mineshaft-600">
                         {secrets.map((secret, index) => {
                           return (
-                            <Tooltip
-                              className="max-w-sm"
-                              content={
-                                secret
-                                  ? undefined
-                                  : "You do not have permission to view this secret."
-                              }
-                            >
-                              <tr
-                                // eslint-disable-next-line react/no-array-index-key
-                                key={`rotation-secret-${secretRotation.id}-${index}`}
-                                className="!last:border-b-0 h-full hover:bg-mineshaft-700"
-                              >
-                                <td
-                                  className="flex h-full items-center"
-                                  style={{ padding: "0.5rem 1rem" }}
-                                >
-                                  <span className={twMerge(!secret && "blur")}>
-                                    {secret?.key ?? "********"}
-                                  </span>
-                                </td>
-                                <td
-                                  className="col-span-2 h-full w-full"
-                                  style={{ padding: "0.5rem 1rem" }}
-                                >
-                                  {/* eslint-disable-next-line no-nested-ternary */}
-                                  {!secret ? (
-                                    <div className="h-full pl-4 blur">********</div>
-                                  ) : secret.secretValueHidden ? (
-                                    <Blur
-                                      className="py-0"
-                                      tooltipText="You do not have permission to read the value of this secret."
-                                    />
-                                  ) : (
-                                    <InfisicalSecretInput
-                                      isReadOnly
-                                      value={secret.value}
-                                      isVisible={isSecretVisible}
-                                      secretPath={secretRotation.folder.path}
-                                      environment={secretRotation.environment.slug}
-                                      onChange={() => {}}
-                                    />
-                                  )}
-                                </td>
-                              </tr>
-                            </Tooltip>
+                            <SecretOverviewRotationSecretRow
+                              key={`rotation-secret-${secretRotation.id}-${index + 1}`}
+                              secret={secret}
+                              secretPath={secretRotation.folder.path}
+                              environment={secretRotation.environment.slug}
+                              isSecretVisible={isSecretVisible}
+                            />
                           );
                         })}
                       </tbody>

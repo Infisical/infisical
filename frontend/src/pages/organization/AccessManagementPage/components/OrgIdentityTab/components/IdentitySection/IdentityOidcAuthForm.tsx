@@ -42,7 +42,14 @@ const schema = z.object({
     message: "Access Token Max TTL cannot be greater than 315360000"
   }),
   accessTokenNumUsesLimit: z.string(),
-  oidcDiscoveryUrl: z.string().url().min(1),
+  oidcDiscoveryUrl: z
+    .string()
+    .url()
+    .min(1)
+    .refine(
+      (el) => !el.endsWith("/.well-known/openid-configuration"),
+      "Please remove /.well-known/openid-configuration."
+    ),
   caCert: z.string().trim().default(""),
   boundIssuer: z.string().min(1),
   boundAudiences: z.string().optional().default(""),
@@ -357,7 +364,7 @@ export const IdentityOidcAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       label={index === 0 ? "Claims" : undefined}
                       icon={
                         index === 0 ? (
@@ -387,7 +394,7 @@ export const IdentityOidcAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       isError={Boolean(error)}
                       errorText={error?.message}
                     >
@@ -495,7 +502,7 @@ export const IdentityOidcAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       label={index === 0 ? "Token Claim Mapping" : undefined}
                       icon={
                         index === 0 ? (
@@ -536,7 +543,7 @@ export const IdentityOidcAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       isError={Boolean(error)}
                       errorText={error?.message}
                     >
@@ -586,7 +593,7 @@ export const IdentityOidcAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       label={index === 0 ? "Access Token Trusted IPs" : undefined}
                       isError={Boolean(error)}
                       errorText={error?.message}

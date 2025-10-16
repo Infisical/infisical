@@ -63,6 +63,17 @@ jobs:
                   build-args: |
                       POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
                       INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
+                      DD_GIT_REPOSITORY_URL=${{ github.server_url }}/${{ github.repository }}
+                      DD_GIT_COMMIT_SHA=${{ github.sha }}
+            - name: Snyk to check Docker image for vulnerabilities
+              continue-on-error: true 
+              uses: snyk/actions/docker@master
+              env:
+                SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+              with:
+                image: infisical/infisical:${{ steps.extract_version.outputs.version }}
+                command: monitor
+                args: --file=Dockerfile.standalone-infisical --project-name="infisical-core-docker-image"
 
     infisical-fips-standalone:
         name: Build infisical standalone image postgres
@@ -115,3 +126,30 @@ jobs:
                   build-args: |
                       POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
                       INFISICAL_PLATFORM_VERSION=${{ steps.extract_version.outputs.version }}
+    trigger-binary-release:
+      runs-on: ubuntu-latest
+      needs: [infisical-standalone, infisical-fips-standalone]
+      steps:
+        - name: Create tag if it doesn't exist
+          run: |
+            TAG_NAME="${{ github.ref_name }}"
+            echo "Checking for tag: $TAG_NAME"
+
+            EXACT_MATCH=$(gh api repos/Infisical/infisical-omnibus/git/refs/tags/$TAG_NAME | jq -r 'if type == "array" then .[].ref else .ref end' | grep -x "refs/tags/$TAG_NAME")
+
+            if [ "$EXACT_MATCH" == "refs/tags/$TAG_NAME" ]; then
+            echo "Tag $TAG_NAME already exists, skipping..."
+            else
+              echo "Creating tag in Infisical/infisical-omnibus: $TAG_NAME"
+              LATEST_SHA=$(gh api repos/Infisical/infisical-omnibus/git/refs/heads/main --jq '.object.sha')
+              echo "Latest SHA: $LATEST_SHA"
+              
+              gh api repos/Infisical/infisical-omnibus/git/refs \
+                --method POST \
+                --field ref="refs/tags/$TAG_NAME" \
+                --field sha="$LATEST_SHA"
+              
+              echo "Successfully created tag $TAG_NAME"
+            fi
+          env:
+            GH_TOKEN: ${{ secrets.OMNIBUS_RELEASE_TOKEN }}

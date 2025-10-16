@@ -1,6 +1,9 @@
+import { packRules } from "@casl/ability/extra";
 import { z } from "zod";
 
-import { OrgMembershipRole, OrgMembershipsSchema, OrgRolesSchema } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, OrgRolesSchema } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { OrgPermissionSchema } from "@app/ee/services/permission/org-permission";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -24,8 +27,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
         ),
         name: z.string().trim(),
         description: z.string().trim().nullish(),
-        // TODO(scott): once UI refactored permissions: OrgPermissionSchema.array()
-        permissions: z.any().array()
+        permissions: OrgPermissionSchema.array()
       }),
       response: {
         200: z.object({
@@ -35,14 +37,35 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const role = await server.services.orgRole.createRole(
-        req.permission.id,
-        req.params.organizationId,
-        req.body,
-        req.permission.authMethod,
-        req.permission.orgId
-      );
-      return { role };
+      const stringifiedPermissions = JSON.stringify(packRules(req.body.permissions));
+      const role = await server.services.role.createRole({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Organization,
+          orgId: req.params.organizationId
+        },
+        data: {
+          ...req.body,
+          permissions: stringifiedPermissions
+        }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.CREATE_ORG_ROLE,
+          metadata: {
+            roleId: role.id,
+            slug: req.body.slug,
+            name: req.body.name,
+            description: req.body.description,
+            permissions: JSON.stringify(req.body.permissions)
+          }
+        }
+      });
+
+      return { role: { ...role, orgId: role.orgId as string } };
     }
   });
 
@@ -65,14 +88,17 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const role = await server.services.orgRole.getRole(
-        req.permission.id,
-        req.params.organizationId,
-        req.params.roleId,
-        req.permission.authMethod,
-        req.permission.orgId
-      );
-      return { role };
+      const role = await server.services.role.getRoleById({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Organization,
+          orgId: req.params.organizationId
+        },
+        selector: {
+          id: req.params.roleId
+        }
+      });
+      return { role: { ...role, orgId: role.orgId as string } };
     }
   });
 
@@ -97,8 +123,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
           .optional(),
         name: z.string().trim().optional(),
         description: z.string().trim().nullish(),
-        // TODO(scott): once UI refactored permissions: OrgPermissionSchema.array().optional()
-        permissions: z.any().array().optional()
+        permissions: OrgPermissionSchema.array().optional()
       }),
       response: {
         200: z.object({
@@ -108,15 +133,38 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const role = await server.services.orgRole.updateRole(
-        req.permission.id,
-        req.params.organizationId,
-        req.params.roleId,
-        req.body,
-        req.permission.authMethod,
-        req.permission.orgId
-      );
-      return { role };
+      const stringifiedPermissions = req.body.permissions ? JSON.stringify(packRules(req.body.permissions)) : undefined;
+      const role = await server.services.role.updateRole({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Organization,
+          orgId: req.params.organizationId
+        },
+        selector: {
+          id: req.params.roleId
+        },
+        data: {
+          ...req.body,
+          permissions: stringifiedPermissions
+        }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.UPDATE_ORG_ROLE,
+          metadata: {
+            roleId: role.id,
+            slug: req.body.slug,
+            name: req.body.name,
+            description: req.body.description,
+            permissions: req.body.permissions ? JSON.stringify(req.body.permissions) : undefined
+          }
+        }
+      });
+
+      return { role: { ...role, orgId: role.orgId as string } };
     }
   });
 
@@ -139,14 +187,27 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const role = await server.services.orgRole.deleteRole(
-        req.permission.id,
-        req.params.organizationId,
-        req.params.roleId,
-        req.permission.authMethod,
-        req.permission.orgId
-      );
-      return { role };
+      const role = await server.services.role.deleteRole({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Organization,
+          orgId: req.params.organizationId
+        },
+        selector: {
+          id: req.params.roleId
+        }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.DELETE_ORG_ROLE,
+          metadata: { roleId: role.id, slug: role.slug, name: role.name }
+        }
+      });
+
+      return { role: { ...role, orgId: role.orgId as string } };
     }
   });
 
@@ -163,22 +224,26 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           data: z.object({
-            roles: OrgRolesSchema.omit({ permissions: true })
-              .merge(z.object({ permissions: z.unknown() }))
-              .array()
+            roles: OrgRolesSchema.omit({ permissions: true }).array()
           })
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const roles = await server.services.orgRole.listRoles(
-        req.permission.id,
-        req.params.organizationId,
-        req.permission.authMethod,
-        req.permission.orgId
-      );
-      return { data: { roles } };
+      const { roles } = await server.services.role.listRoles({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Organization,
+          orgId: req.permission.orgId
+        },
+        data: {}
+      });
+      return {
+        data: {
+          roles: roles.map((el) => ({ ...el, orgId: el.orgId as string }))
+        }
+      };
     }
   });
 
@@ -194,20 +259,33 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          membership: OrgMembershipsSchema,
+          memberships: z
+            .object({
+              id: z.string(),
+              roles: z
+                .object({
+                  role: z.string()
+                })
+                .array()
+            })
+            .array(),
           permissions: z.any().array()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { permissions, membership } = await server.services.orgRole.getUserPermission(
-        req.permission.id,
-        req.params.organizationId,
-        req.permission.authMethod,
-        req.permission.orgId
-      );
-      return { permissions, membership };
+      const { permissions, memberships } = await server.services.role.getUserPermission({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Organization,
+          orgId: req.permission.orgId
+        }
+      });
+      return {
+        permissions,
+        memberships
+      };
     }
   });
 };

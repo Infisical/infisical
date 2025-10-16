@@ -3,10 +3,10 @@ import { faStar } from "@fortawesome/free-regular-svg-icons";
 import {
   faCaretDown,
   faCheck,
+  faCube,
   faMagnifyingGlass,
   faPlus,
-  faStar as faSolidStar,
-  faTable
+  faStar as faSolidStar
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, linkOptions } from "@tanstack/react-router";
@@ -16,6 +16,7 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -28,21 +29,21 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
-  useSubscription,
-  useWorkspace
+  useProject,
+  useSubscription
 } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
-import { useGetUserWorkspaces } from "@app/hooks/api";
+import { useGetUserProjects } from "@app/hooks/api";
+import { Project } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { Workspace } from "@app/hooks/api/workspace/types";
 
 export const ProjectSelect = () => {
   const [searchProject, setSearchProject] = useState("");
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject: currentWorkspace } = useProject();
   const { currentOrg } = useOrganization();
-  const { data: workspaces = [] } = useGetUserWorkspaces();
+  const { data: projects = [] } = useGetUserProjects();
   const { data: projectFavorites } = useGetUserProjectFavorites(currentOrg.id);
 
   const { subscription } = useSubscription();
@@ -86,34 +87,36 @@ export const ProjectSelect = () => {
     "upgradePlan"
   ] as const);
 
-  const projects = useMemo(() => {
-    const projectOptions = workspaces
-      .map((w): Workspace & { isFavorite: boolean } => ({
+  const projectsSortedByFav = useMemo(() => {
+    const projectOptions = projects
+      .map((w): Project & { isFavorite: boolean } => ({
         ...w,
         isFavorite: Boolean(projectFavorites?.includes(w.id))
       }))
       .sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite));
 
     return projectOptions;
-  }, [workspaces, projectFavorites, currentWorkspace]);
+  }, [projects, projectFavorites, currentWorkspace]);
 
   return (
     <div className="-mr-2 flex w-full items-center gap-1">
       <DropdownMenu modal={false}>
         <Link
-          to={getProjectHomePage(currentWorkspace.type)}
+          to={getProjectHomePage(currentWorkspace.type, currentWorkspace.environments)}
           params={{
             projectId: currentWorkspace.id
           }}
         >
-          <div className="flex cursor-pointer items-center gap-2 text-sm text-white duration-100 hover:text-primary">
-            <div>
-              <FontAwesomeIcon icon={faTable} className="text-xs text-bunker-300" />
-            </div>
+          <div className="relative flex cursor-pointer items-center gap-2 text-sm text-white duration-100 hover:text-primary">
             <Tooltip content={currentWorkspace.name} className="max-w-96 break-words">
-              <div className="max-w-44 overflow-hidden text-ellipsis whitespace-nowrap">
+              <Badge
+                variant="project"
+                className="max-w-44 overflow-hidden text-sm text-ellipsis whitespace-nowrap"
+              >
+                <FontAwesomeIcon icon={faCube} />
+
                 {currentWorkspace?.name}
-              </div>
+              </Badge>
             </Tooltip>
           </div>
         </Link>
@@ -135,7 +138,7 @@ export const ProjectSelect = () => {
           className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
           style={{ minWidth: "220px" }}
         >
-          <div className="px-2 py-1 text-xs capitalize text-mineshaft-400">Projects</div>
+          <div className="px-2 py-1 text-xs text-mineshaft-400 capitalize">Projects</div>
           <div className="mb-1 border-b border-b-mineshaft-600 py-1 pb-1">
             <Input
               value={searchProject}
@@ -146,8 +149,8 @@ export const ProjectSelect = () => {
               placeholder="Search projects"
             />
           </div>
-          <div className="thin-scrollbar max-h-80 overflow-auto">
-            {projects
+          <div className="max-h-80 thin-scrollbar overflow-auto">
+            {projectsSortedByFav
               ?.filter((el) => el.name?.toLowerCase().includes(searchProject.toLowerCase()))
               ?.map((workspace) => {
                 return (
@@ -158,7 +161,7 @@ export const ProjectSelect = () => {
                       // to reproduce change this back to router.push and switch between two projects with different env count
                       // look into this on dashboard revamp
                       const url = linkOptions({
-                        to: getProjectHomePage(workspace.type),
+                        to: getProjectHomePage(workspace.type, workspace.environments),
                         params: {
                           projectId: workspace.id
                         }
@@ -174,7 +177,7 @@ export const ProjectSelect = () => {
                     <div className="flex items-center">
                       <div className="flex flex-1 items-center justify-between overflow-hidden">
                         <Tooltip side="right" className="break-words" content={workspace.name}>
-                          <div className="max-w-40 overflow-hidden truncate whitespace-nowrap">
+                          <div className="max-w-40 truncate overflow-hidden whitespace-nowrap">
                             {workspace.name}
                           </div>
                         </Tooltip>
@@ -200,16 +203,20 @@ export const ProjectSelect = () => {
           </div>
           <div className="mt-1 h-1 border-t border-mineshaft-600" />
           <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
-            {(isAllowed) => (
-              <DropdownMenuItem
-                isDisabled={!isAllowed}
-                icon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() =>
-                  handlePopUpOpen(isAddingProjectsAllowed ? "addNewWs" : "upgradePlan")
-                }
-              >
-                New Project
-              </DropdownMenuItem>
+            {(isOldProjectPermissionAllowed) => (
+              <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Project}>
+                {(isAllowed) => (
+                  <DropdownMenuItem
+                    isDisabled={!isAllowed && !isOldProjectPermissionAllowed}
+                    icon={<FontAwesomeIcon icon={faPlus} />}
+                    onClick={() =>
+                      handlePopUpOpen(isAddingProjectsAllowed ? "addNewWs" : "upgradePlan")
+                    }
+                  >
+                    New Project
+                  </DropdownMenuItem>
+                )}
+              </OrgPermissionCan>
             )}
           </OrgPermissionCan>
         </DropdownMenuContent>

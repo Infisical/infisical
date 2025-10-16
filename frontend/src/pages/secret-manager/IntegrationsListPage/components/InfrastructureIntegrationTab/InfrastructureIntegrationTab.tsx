@@ -32,7 +32,7 @@ export const InfrastructureIntegrationTab = () => {
                 width={integration?.name ? 60 : 90}
                 alt="integration logo"
               />
-              <div className="ml-4 max-w-xs text-xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
+              <div className="ml-4 max-w-xs text-xl font-medium text-gray-300 duration-200 group-hover:text-gray-200">
                 {integration?.name && integration.name}
               </div>
             </div>

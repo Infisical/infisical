@@ -51,7 +51,7 @@ export const GithubOrgSyncConfigModal = ({
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    values: data ? { githubOrgName: data.githubOrgName } : undefined
+    values: data ? { githubOrgName: data.githubOrgName, githubOrgAccessToken: "" } : undefined
   });
 
   const onFormSubmit = async ({ githubOrgName, githubOrgAccessToken }: FormData) => {
@@ -123,21 +123,21 @@ export const GithubOrgSyncConfigModal = ({
             </FormControl>
           )}
         />
-        {/* <Controller
+        <Controller
           control={control}
           name="githubOrgAccessToken"
           render={({ field, fieldState: { error } }) => (
             <FormControl
-              label="GitHub Org Scoped Access Token"
+              label="GitHub Access Token"
               isError={Boolean(error)}
               isOptional
               errorText={error?.message}
-              helperText="A GitHub access token is required only for private organizations. It will not be visible after saving."
+              helperText="Required for manual sync operations. The token must have 'read:org' permissions."
             >
-              <Input {...field} placeholder="example" />
+              <Input {...field} type="password" placeholder="ghp_xxxxxxxxxxxx" />
             </FormControl>
           )}
-        /> */}
+        />
         <div className="flex gap-8 pt-4">
           <Button type="submit" isLoading={isSubmitting} isDisabled={isSubmitting}>
             {isUpdate ? "Update" : "Configure"}
@@ -149,7 +149,7 @@ export const GithubOrgSyncConfigModal = ({
           >
             Cancel
           </Button>
-          <div className="flex-grow" />
+          <div className="grow" />
           {isUpdate && (
             <Button
               onClick={() => handlePopUpOpen("deleteGithubOrgSyncConfig")}

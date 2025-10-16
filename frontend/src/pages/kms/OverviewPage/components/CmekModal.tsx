@@ -14,7 +14,7 @@ import {
   SelectItem,
   TextArea
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { keyUsageDefaultOption, kmsKeyUsageOptions } from "@app/helpers/kms";
 import {
   AllowedEncryptionKeyAlgorithms,
@@ -49,8 +49,8 @@ type FormProps = Pick<Props, "cmek"> & {
 const CmekForm = ({ onComplete, cmek }: FormProps) => {
   const createCmek = useCreateCmek();
   const updateCmek = useUpdateCmek();
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace.id;
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const isUpdate = !!cmek;
 
   const {
@@ -211,7 +211,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
         isError={Boolean(errors.description?.message)}
       >
         <TextArea
-          className="max-h-[20rem] min-h-[10rem] min-w-full max-w-full"
+          className="max-h-80 min-h-40 max-w-full min-w-full"
           {...register("description")}
         />
       </FormControl>

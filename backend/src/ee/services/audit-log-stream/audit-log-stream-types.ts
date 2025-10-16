@@ -1,48 +1,42 @@
-import { TAuditLogStreams } from "@app/db/schemas";
-import { TOrgPermission } from "@app/lib/types";
+import { TAuditLogs } from "@app/db/schemas";
 
-export type LogStreamHeaders = {
-  key: string;
-  value: string;
+import { LogProvider } from "./audit-log-stream-enums";
+import { TAzureProvider, TAzureProviderCredentials } from "./azure/azure-provider-types";
+import { TCriblProvider, TCriblProviderCredentials } from "./cribl/cribl-provider-types";
+import { TCustomProvider, TCustomProviderCredentials } from "./custom/custom-provider-types";
+import { TDatadogProvider, TDatadogProviderCredentials } from "./datadog/datadog-provider-types";
+import { TSplunkProvider, TSplunkProviderCredentials } from "./splunk/splunk-provider-types";
+
+export type TAuditLogStream = TDatadogProvider | TSplunkProvider | TCustomProvider | TAzureProvider | TCriblProvider;
+
+export type TAuditLogStreamCredentials =
+  | TDatadogProviderCredentials
+  | TSplunkProviderCredentials
+  | TCustomProviderCredentials
+  | TAzureProviderCredentials
+  | TCriblProviderCredentials;
+
+export type TCreateAuditLogStreamDTO = {
+  provider: LogProvider;
+  credentials: TAuditLogStreamCredentials;
 };
 
-export type TCreateAuditLogStreamDTO = Omit<TOrgPermission, "orgId"> & {
-  url: string;
-  headers?: LogStreamHeaders[];
+export type TUpdateAuditLogStreamDTO = {
+  logStreamId: string;
+  provider: LogProvider;
+  credentials: TAuditLogStreamCredentials;
 };
 
-export type TUpdateAuditLogStreamDTO = Omit<TOrgPermission, "orgId"> & {
-  id: string;
-  url?: string;
-  headers?: LogStreamHeaders[];
-};
+export type TLogStreamFactoryValidateCredentials<C extends TAuditLogStreamCredentials> = (input: {
+  credentials: C;
+}) => Promise<C>;
 
-export type TDeleteAuditLogStreamDTO = Omit<TOrgPermission, "orgId"> & {
-  id: string;
-};
+export type TLogStreamFactoryStreamLog<C extends TAuditLogStreamCredentials> = (input: {
+  credentials: C;
+  auditLog: TAuditLogs;
+}) => Promise<void>;
 
-export type TListAuditLogStreamDTO = Omit<TOrgPermission, "orgId">;
-
-export type TGetDetailsAuditLogStreamDTO = Omit<TOrgPermission, "orgId"> & {
-  id: string;
-};
-
-export type TAuditLogStreamServiceFactory = {
-  create: (arg: TCreateAuditLogStreamDTO) => Promise<TAuditLogStreams>;
-  updateById: (arg: TUpdateAuditLogStreamDTO) => Promise<TAuditLogStreams>;
-  deleteById: (arg: TDeleteAuditLogStreamDTO) => Promise<TAuditLogStreams>;
-  getById: (arg: TGetDetailsAuditLogStreamDTO) => Promise<{
-    headers: LogStreamHeaders[] | undefined;
-    orgId: string;
-    url: string;
-    id: string;
-    createdAt: Date;
-    updatedAt: Date;
-    encryptedHeadersCiphertext?: string | null | undefined;
-    encryptedHeadersIV?: string | null | undefined;
-    encryptedHeadersTag?: string | null | undefined;
-    encryptedHeadersAlgorithm?: string | null | undefined;
-    encryptedHeadersKeyEncoding?: string | null | undefined;
-  }>;
-  list: (arg: TListAuditLogStreamDTO) => Promise<TAuditLogStreams[]>;
+export type TLogStreamFactory<C extends TAuditLogStreamCredentials> = () => {
+  validateCredentials: TLogStreamFactoryValidateCredentials<C>;
+  streamLog: TLogStreamFactoryStreamLog<C>;
 };

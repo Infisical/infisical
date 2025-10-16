@@ -15,7 +15,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useDeleteSshCa, useGetSshCaById } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -23,9 +23,9 @@ import { SshCaModal } from "../SshCasPage/components/SshCaModal";
 import { SshCaDetailsSection, SshCertificateTemplatesSection } from "./components";
 
 const Page = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const navigate = useNavigate();
-  const projectId = currentWorkspace?.id || "";
+  const projectId = currentProject?.id || "";
   const caId = useParams({
     from: ROUTE_PATHS.Ssh.SshCaByIDPage.id,
     select: (el) => el.caId
@@ -70,7 +70,7 @@ const Page = () => {
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={data.friendlyName}>
+          <PageHeader scope="project" title={data.friendlyName}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
                 <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
@@ -88,7 +88,7 @@ const Page = () => {
                     <DropdownMenuItem
                       className={twMerge(
                         isAllowed
-                          ? "hover:!bg-red-500 hover:!text-white"
+                          ? "hover:bg-red-500! hover:text-white!"
                           : "pointer-events-none cursor-not-allowed opacity-50"
                       )}
                       onClick={() =>

@@ -98,6 +98,7 @@
               {
                 "group": "App Connections",
                 "pages": [
+                  "integrations/app-connections",
                   "integrations/app-connections/overview",
                   {
                     "group": "Connections",
@@ -124,6 +125,7 @@
                       "integrations/app-connections/hashicorp-vault",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
+                      "integrations/app-connections/laravel-forge",
                       "integrations/app-connections/ldap",
                       "integrations/app-connections/mssql",
                       "integrations/app-connections/mysql",
@@ -133,6 +135,7 @@
                       "integrations/app-connections/oracledb",
                       "integrations/app-connections/postgres",
                       "integrations/app-connections/railway",
+                      "integrations/app-connections/redis",
                       "integrations/app-connections/render",
                       "integrations/app-connections/supabase",
                       "integrations/app-connections/teamcity",
@@ -172,8 +175,17 @@
                 "group": "Gateway",
                 "pages": [
                   "documentation/platform/gateways/overview",
-                  "documentation/platform/gateways/gateway-security",
-                  "documentation/platform/gateways/networking"
+                  "documentation/platform/gateways/gateway-deployment",
+                  "documentation/platform/gateways/relay-deployment",
+                  "documentation/platform/gateways/security",
+                  {
+                    "group": "Gateway (Deprecated)",
+                    "pages": [
+                      "documentation/platform/gateways-deprecated/overview",
+                      "documentation/platform/gateways-deprecated/gateway-security",
+                      "documentation/platform/gateways-deprecated/networking"
+                    ]
+                  }
                 ]
               }
             ]
@@ -184,6 +196,7 @@
               {
                 "group": "User Authentication",
                 "pages": [
+                  "integrations/user-authentication",
                   "documentation/platform/auth-methods/email-password",
                   {
                     "group": "SSO",
@@ -209,6 +222,7 @@
                             ]
                           },
                           "documentation/platform/sso/auth0-oidc",
+                          "documentation/platform/sso/pingone-oidc",
                           {
                             "group": "General OIDC",
                             "pages": [
@@ -235,6 +249,7 @@
                       "documentation/platform/scim/okta",
                       "documentation/platform/scim/azure",
                       "documentation/platform/scim/jumpcloud",
+                      "documentation/platform/scim/pingone",
                       "documentation/platform/scim/group-mappings"
                     ]
                   }
@@ -243,6 +258,7 @@
               {
                 "group": "Machine Identities",
                 "pages": [
+                  "integrations/machine-authentication",
                   "documentation/platform/identities/alicloud-auth",
                   "documentation/platform/identities/aws-auth",
                   "documentation/platform/identities/azure-auth",
@@ -301,6 +317,7 @@
                   "self-hosting/deployment-options/linux-upgrade"
                 ]
               },
+              "self-hosting/guides/replication",
               "self-hosting/guides/upgrading-infisical",
               "self-hosting/configuration/envars",
               "self-hosting/guides/releases",
@@ -371,10 +388,6 @@
                   "contributing/platform/backend/how-to-create-a-feature",
                   "contributing/platform/backend/folder-structure"
                 ]
-              },
-              {
-                "group": "Contributing to SDK",
-                "pages": ["contributing/sdk/developing"]
               }
             ]
           }
@@ -424,6 +437,7 @@
                   {
                     "group": "Secret Rotation",
                     "pages": [
+                      "integrations/secret-rotations",
                       "documentation/platform/secret-rotation/overview",
                       "documentation/platform/secret-rotation/auth0-client-secret",
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
@@ -433,16 +447,19 @@
                       "documentation/platform/secret-rotation/mysql-credentials",
                       "documentation/platform/secret-rotation/okta-client-secret",
                       "documentation/platform/secret-rotation/oracledb-credentials",
-                      "documentation/platform/secret-rotation/postgres-credentials"
+                      "documentation/platform/secret-rotation/postgres-credentials",
+                      "documentation/platform/secret-rotation/redis-credentials"
                     ]
                   },
                   {
                     "group": "Dynamic Secrets",
                     "pages": [
+                      "integrations/dynamic-secrets",
                       "documentation/platform/dynamic-secrets/overview",
                       "documentation/platform/dynamic-secrets/aws-elasticache",
                       "documentation/platform/dynamic-secrets/aws-iam",
                       "documentation/platform/dynamic-secrets/azure-entra-id",
+                      "documentation/platform/dynamic-secrets/azure-sql-database",
                       "documentation/platform/dynamic-secrets/cassandra",
                       "documentation/platform/dynamic-secrets/couchbase",
                       "documentation/platform/dynamic-secrets/elastic-search",
@@ -509,6 +526,7 @@
               {
                 "group": "Secret Syncs",
                 "pages": [
+                  "integrations/secret-syncs",
                   "integrations/secret-syncs/overview",
                   {
                     "group": "Syncs",
@@ -533,6 +551,7 @@
                       "integrations/secret-syncs/hashicorp-vault",
                       "integrations/secret-syncs/heroku",
                       "integrations/secret-syncs/humanitec",
+                      "integrations/secret-syncs/laravel-forge",
                       "integrations/secret-syncs/netlify",
                       "integrations/secret-syncs/oci-vault",
                       "integrations/secret-syncs/railway",
@@ -617,6 +636,7 @@
               {
                 "group": "Framework Integrations",
                 "pages": [
+                  "integrations/framework-integrations",
                   "integrations/frameworks/spring-boot-maven",
                   "integrations/frameworks/react",
                   "integrations/frameworks/vue",
@@ -700,6 +720,19 @@
                       "documentation/platform/pki/pki-issuer",
                       "documentation/platform/pki/integration-guides/gloo-mesh"
                     ]
+                  },
+                  {
+                    "group": "Certificate Syncs",
+                    "pages": [
+                      "documentation/platform/pki/certificate-syncs/overview",
+                      {
+                        "group": "Syncs",
+                        "pages": [
+                          "documentation/platform/pki/certificate-syncs/aws-certificate-manager",
+                          "documentation/platform/pki/certificate-syncs/azure-key-vault"
+                        ]
+                      }
+                    ]
                   }
                 ]
               }
@@ -763,6 +796,7 @@
                   "cli/commands/dynamic-secrets",
                   "cli/commands/ssh",
                   "cli/commands/gateway",
+                  "cli/commands/relay",
                   "cli/commands/bootstrap",
                   "cli/commands/export",
                   "cli/commands/token",
@@ -997,28 +1031,55 @@
                   "api-reference/endpoints/organizations/delete-membership",
                   "api-reference/endpoints/organizations/bulk-delete-memberships",
                   "api-reference/endpoints/organizations/list-identity-memberships",
-                  "api-reference/endpoints/organizations/workspaces"
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/organizations/projects"
+                    ]
+                  }
                 ]
               },
               {
                 "group": "Projects",
                 "pages": [
-                  "api-reference/endpoints/workspaces/get-workspace-by-slug",
-                  "api-reference/endpoints/workspaces/create-workspace",
-                  "api-reference/endpoints/workspaces/delete-workspace",
-                  "api-reference/endpoints/workspaces/get-workspace",
-                  "api-reference/endpoints/workspaces/update-workspace",
-                  "api-reference/endpoints/workspaces/secret-snapshots"
+                  "api-reference/endpoints/projects/get-project-by-slug",
+                  "api-reference/endpoints/projects/create-project",
+                  "api-reference/endpoints/projects/delete-project",
+                  "api-reference/endpoints/projects/get-project",
+                  "api-reference/endpoints/projects/list-projects",
+                  "api-reference/endpoints/projects/update-project",
+                  "api-reference/endpoints/projects/secret-snapshots",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/projects/get-project-by-slug",
+                      "api-reference/endpoints/deprecated/projects/create-project",
+                      "api-reference/endpoints/deprecated/projects/delete-project",
+                      "api-reference/endpoints/deprecated/projects/get-project",
+                      "api-reference/endpoints/deprecated/projects/update-project",
+                      "api-reference/endpoints/deprecated/projects/secret-snapshots"
+                    ]
+                  }
                 ]
               },
               {
                 "group": "Project Users",
                 "pages": [
-                  "api-reference/endpoints/project-users/invite-member-to-workspace",
-                  "api-reference/endpoints/project-users/remove-member-from-workspace",
+                  "api-reference/endpoints/project-users/invite-member-to-project",
+                  "api-reference/endpoints/project-users/remove-member-from-project",
                   "api-reference/endpoints/project-users/memberships",
                   "api-reference/endpoints/project-users/get-by-username",
-                  "api-reference/endpoints/project-users/update-membership"
+                  "api-reference/endpoints/project-users/update-membership",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/project-users/invite-member-to-project",
+                      "api-reference/endpoints/deprecated/project-users/remove-member-from-project",
+                      "api-reference/endpoints/deprecated/project-users/memberships",
+                      "api-reference/endpoints/deprecated/project-users/get-by-username",
+                      "api-reference/endpoints/deprecated/project-users/update-membership"
+                    ]
+                  }
                 ]
               },
               {
@@ -1028,7 +1089,17 @@
                   "api-reference/endpoints/project-groups/delete",
                   "api-reference/endpoints/project-groups/get-by-id",
                   "api-reference/endpoints/project-groups/list",
-                  "api-reference/endpoints/project-groups/update"
+                  "api-reference/endpoints/project-groups/update",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/project-groups/create",
+                      "api-reference/endpoints/deprecated/project-groups/delete",
+                      "api-reference/endpoints/deprecated/project-groups/get-by-id",
+                      "api-reference/endpoints/deprecated/project-groups/list",
+                      "api-reference/endpoints/deprecated/project-groups/update"
+                    ]
+                  }
                 ]
               },
               {
@@ -1038,7 +1109,17 @@
                   "api-reference/endpoints/project-identities/list-identity-memberships",
                   "api-reference/endpoints/project-identities/get-by-id",
                   "api-reference/endpoints/project-identities/update-identity-membership",
-                  "api-reference/endpoints/project-identities/delete-identity-membership"
+                  "api-reference/endpoints/project-identities/delete-identity-membership",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/project-identities/add-identity-membership",
+                      "api-reference/endpoints/deprecated/project-identities/list-identity-memberships",
+                      "api-reference/endpoints/deprecated/project-identities/get-by-id",
+                      "api-reference/endpoints/deprecated/project-identities/update-identity-membership",
+                      "api-reference/endpoints/deprecated/project-identities/delete-identity-membership"
+                    ]
+                  }
                 ]
               },
               {
@@ -1048,7 +1129,17 @@
                   "api-reference/endpoints/project-roles/update",
                   "api-reference/endpoints/project-roles/delete",
                   "api-reference/endpoints/project-roles/get-by-slug",
-                  "api-reference/endpoints/project-roles/list"
+                  "api-reference/endpoints/project-roles/list",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/project-roles/create",
+                      "api-reference/endpoints/deprecated/project-roles/update",
+                      "api-reference/endpoints/deprecated/project-roles/delete",
+                      "api-reference/endpoints/deprecated/project-roles/get-by-slug",
+                      "api-reference/endpoints/deprecated/project-roles/list"
+                    ]
+                  }
                 ]
               },
               {
@@ -1066,7 +1157,15 @@
                 "pages": [
                   "api-reference/endpoints/environments/create",
                   "api-reference/endpoints/environments/update",
-                  "api-reference/endpoints/environments/delete"
+                  "api-reference/endpoints/environments/delete",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/environments/create",
+                      "api-reference/endpoints/deprecated/environments/update",
+                      "api-reference/endpoints/deprecated/environments/delete"
+                    ]
+                  }
                 ]
               },
               {
@@ -1076,7 +1175,17 @@
                   "api-reference/endpoints/folders/get-by-id",
                   "api-reference/endpoints/folders/create",
                   "api-reference/endpoints/folders/update",
-                  "api-reference/endpoints/folders/delete"
+                  "api-reference/endpoints/folders/delete",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/folders/list",
+                      "api-reference/endpoints/deprecated/folders/get-by-id",
+                      "api-reference/endpoints/deprecated/folders/create",
+                      "api-reference/endpoints/deprecated/folders/update",
+                      "api-reference/endpoints/deprecated/folders/delete"
+                    ]
+                  }
                 ]
               },
               {
@@ -1087,7 +1196,18 @@
                   "api-reference/endpoints/secret-tags/get-by-slug",
                   "api-reference/endpoints/secret-tags/create",
                   "api-reference/endpoints/secret-tags/update",
-                  "api-reference/endpoints/secret-tags/delete"
+                  "api-reference/endpoints/secret-tags/delete",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/secret-tags/list",
+                      "api-reference/endpoints/deprecated/secret-tags/get-by-id",
+                      "api-reference/endpoints/deprecated/secret-tags/get-by-slug",
+                      "api-reference/endpoints/deprecated/secret-tags/create",
+                      "api-reference/endpoints/deprecated/secret-tags/update",
+                      "api-reference/endpoints/deprecated/secret-tags/delete"
+                    ]
+                  }
                 ]
               },
               {
@@ -1101,8 +1221,21 @@
                   "api-reference/endpoints/secrets/create-many",
                   "api-reference/endpoints/secrets/update-many",
                   "api-reference/endpoints/secrets/delete-many",
-                  "api-reference/endpoints/secrets/attach-tags",
-                  "api-reference/endpoints/secrets/detach-tags"
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/secrets/list",
+                      "api-reference/endpoints/deprecated/secrets/create",
+                      "api-reference/endpoints/deprecated/secrets/read",
+                      "api-reference/endpoints/deprecated/secrets/update",
+                      "api-reference/endpoints/deprecated/secrets/delete",
+                      "api-reference/endpoints/deprecated/secrets/create-many",
+                      "api-reference/endpoints/deprecated/secrets/update-many",
+                      "api-reference/endpoints/deprecated/secrets/delete-many",
+                      "api-reference/endpoints/deprecated/secrets/attach-tags",
+                      "api-reference/endpoints/deprecated/secrets/detach-tags"
+                    ]
+                  }
                 ]
               },
               {
@@ -1132,7 +1265,16 @@
                   "api-reference/endpoints/secret-imports/list",
                   "api-reference/endpoints/secret-imports/create",
                   "api-reference/endpoints/secret-imports/update",
-                  "api-reference/endpoints/secret-imports/delete"
+                  "api-reference/endpoints/secret-imports/delete",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/secret-imports/list",
+                      "api-reference/endpoints/deprecated/secret-imports/create",
+                      "api-reference/endpoints/deprecated/secret-imports/update",
+                      "api-reference/endpoints/deprecated/secret-imports/delete"
+                    ]
+                  }
                 ]
               },
               {
@@ -1255,6 +1397,19 @@
                       "api-reference/endpoints/secret-rotations/postgres-credentials/list",
                       "api-reference/endpoints/secret-rotations/postgres-credentials/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/postgres-credentials/update"
+                    ]
+                  },
+                  {
+                    "group": "Redis Credentials",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/redis-credentials/create",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/delete",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/get-by-id",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/get-by-name",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/list",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/update"
                     ]
                   }
                 ]
@@ -1626,6 +1781,18 @@
                     ]
                   },
                   {
+                    "group": "Laravel Forge",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/laravel-forge/list",
+                      "api-reference/endpoints/app-connections/laravel-forge/available",
+                      "api-reference/endpoints/app-connections/laravel-forge/get-by-id",
+                      "api-reference/endpoints/app-connections/laravel-forge/get-by-name",
+                      "api-reference/endpoints/app-connections/laravel-forge/create",
+                      "api-reference/endpoints/app-connections/laravel-forge/update",
+                      "api-reference/endpoints/app-connections/laravel-forge/delete"
+                    ]
+                  },
+                  {
                     "group": "LDAP",
                     "pages": [
                       "api-reference/endpoints/app-connections/ldap/list",
@@ -1731,6 +1898,18 @@
                       "api-reference/endpoints/app-connections/railway/create",
                       "api-reference/endpoints/app-connections/railway/update",
                       "api-reference/endpoints/app-connections/railway/delete"
+                    ]
+                  },
+                  {
+                    "group": "Redis",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/redis/list",
+                      "api-reference/endpoints/app-connections/redis/available",
+                      "api-reference/endpoints/app-connections/redis/get-by-id",
+                      "api-reference/endpoints/app-connections/redis/get-by-name",
+                      "api-reference/endpoints/app-connections/redis/create",
+                      "api-reference/endpoints/app-connections/redis/update",
+                      "api-reference/endpoints/app-connections/redis/delete"
                     ]
                   },
                   {
@@ -2094,6 +2273,19 @@
                     ]
                   },
                   {
+                    "group": "Laravel Forge",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/laravel-forge/list",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/get-by-id",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/get-by-name",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/create",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/update",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/delete",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Netlify",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/netlify/list",
@@ -2355,6 +2547,38 @@
                   "api-reference/endpoints/pki-alerts/update",
                   "api-reference/endpoints/pki-alerts/delete"
                 ]
+              },
+              {
+                "group": "Certificate Syncs",
+                "pages": [
+                  "api-reference/endpoints/pki/syncs/list",
+                  "api-reference/endpoints/pki/syncs/get-by-id",
+                  "api-reference/endpoints/pki/syncs/options",
+                  {
+                    "group": "AWS Certificate Manager",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/list",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/get-by-id",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/create",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/update",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/delete",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/remove-certificates"
+                    ]
+                  },
+                  {
+                    "group": "Azure Key Vault",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/list",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/get-by-id",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/create",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/update",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/delete",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/azure-key-vault/remove-certificates"
+                    ]
+                  }
+                ]
               }
             ]
           },
@@ -2467,10 +2691,11 @@
               "sdks/languages/node",
               "sdks/languages/python",
               "sdks/languages/java",
-              "sdks/languages/csharp",
+              "sdks/languages/dotnet",
               "sdks/languages/cpp",
               "sdks/languages/rust",
               "sdks/languages/go",
+              "sdks/languages/php",
               "sdks/languages/ruby"
             ]
           }
@@ -2583,7 +2808,7 @@
           },
           {
             "label": "Terraform",
-            "href": "https://infisical.com/docs/integrations/frameworks/terraform"
+            "href": "https://registry.terraform.io/providers/Infisical/infisical/latest/docs"
           },
           {
             "label": "Ansible",
@@ -2695,5 +2920,11 @@
     "koala": {
       "publicApiKey": "pk_b50d7184e0e39ddd5cdb43cf6abeadd9b97d"
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/sdks/languages/csharp",
+      "destination": "/sdks/languages/dotnet"
+    }
+  ]
 }

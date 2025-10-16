@@ -16,7 +16,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useDeletePkiCollection, useGetPkiCollectionById } from "@app/hooks/api";
 import { PkiItemType } from "@app/hooks/api/pkiCollections/constants";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -30,8 +30,8 @@ export const PkiCollectionPage = () => {
     from: ROUTE_PATHS.CertManager.PkiCollectionDetailsByIDPage.id
   });
   const collectionId = params.collectionId as string;
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id || "";
 
   const { data } = useGetPkiCollectionById(collectionId);
   const { mutateAsync: deletePkiCollection } = useDeletePkiCollection();
@@ -73,7 +73,7 @@ export const PkiCollectionPage = () => {
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
         <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={data.name}>
+          <PageHeader scope="project" title={data.name}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
                 <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
@@ -111,7 +111,7 @@ export const PkiCollectionPage = () => {
                     <DropdownMenuItem
                       className={twMerge(
                         isAllowed
-                          ? "hover:!bg-red-500 hover:!text-white"
+                          ? "hover:bg-red-500! hover:text-white!"
                           : "pointer-events-none cursor-not-allowed opacity-50"
                       )}
                       onClick={() =>

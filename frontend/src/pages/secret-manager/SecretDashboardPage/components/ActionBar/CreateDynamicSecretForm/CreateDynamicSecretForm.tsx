@@ -24,11 +24,12 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { Modal, ModalContent } from "@app/components/v2";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
-import { WorkspaceEnv } from "@app/hooks/api/types";
+import { ProjectEnv } from "@app/hooks/api/types";
 
 import { AwsElastiCacheInputForm } from "./AwsElastiCacheInputForm";
 import { AwsIamInputForm } from "./AwsIamInputForm";
 import { AzureEntraIdInputForm } from "./AzureEntraIdInputForm";
+import { AzureSqlDatabaseInputForm } from "./AzureSqlDatabaseInputForm";
 import { CassandraInputForm } from "./CassandraInputForm";
 import { CouchbaseInputForm } from "./CouchbaseInputForm";
 import { ElasticSearchInputForm } from "./ElasticSearchInputForm";
@@ -51,7 +52,7 @@ type Props = {
   isOpen?: boolean;
   onToggle: (isOpen: boolean) => void;
   projectSlug: string;
-  environments: WorkspaceEnv[];
+  environments: ProjectEnv[];
   secretPath: string;
   isSingleEnvironmentMode?: boolean;
 };
@@ -111,6 +112,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: <VscAzure size="1.5rem" />,
     provider: DynamicSecretProviders.AzureEntraId,
     title: "Azure Entra ID"
+  },
+  {
+    icon: <VscAzure size="1.5rem" />,
+    provider: DynamicSecretProviders.AzureSqlDatabase,
+    title: "Azure SQL Database"
   },
   {
     icon: <SiFiles size="1.5rem" />,
@@ -205,7 +211,7 @@ export const CreateDynamicSecretForm = ({
               rel="noopener noreferrer"
             >
               <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mb-[0.03rem] mr-1 text-[12px]" />
+                <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-[0.03rem] text-[12px]" />
                 <span>Docs</span>
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
@@ -232,7 +238,7 @@ export const CreateDynamicSecretForm = ({
                 {DYNAMIC_SECRET_LIST.map(({ icon, provider, title }) => (
                   <div
                     key={`dynamic-secret-provider-${provider}`}
-                    className="flex h-32 w-32 cursor-pointer flex-col items-center space-y-4 rounded border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
+                    className="flex h-32 w-32 cursor-pointer flex-col items-center space-y-4 rounded-sm border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
                     role="button"
                     tabIndex={0}
                     onClick={() => {
@@ -247,7 +253,7 @@ export const CreateDynamicSecretForm = ({
                     }}
                   >
                     {icon}
-                    <div className="whitespace-pre-wrap text-center text-sm">{title}</div>
+                    <div className="text-center text-sm whitespace-pre-wrap">{title}</div>
                   </div>
                 ))}
               </div>
@@ -434,6 +440,25 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <AzureEntraIdInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.AzureSqlDatabase && (
+              <motion.div
+                key="dynamic-azure-sql-database-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <AzureSqlDatabaseInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}

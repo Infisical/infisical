@@ -16,7 +16,7 @@ import {
 } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
-import { WorkspaceEnv } from "@app/hooks/api/types";
+import { ProjectEnv } from "@app/hooks/api/types";
 
 const formSchema = z.object({
   provider: z.object({
@@ -44,7 +44,7 @@ type Props = {
   onCancel: () => void;
   secretPath: string;
   projectSlug: string;
-  environments: WorkspaceEnv[];
+  environments: ProjectEnv[];
   isSingleEnvironmentMode?: boolean;
 };
 
@@ -99,7 +99,7 @@ export const GithubInputForm = ({
       <form onSubmit={handleSubmit(handleCreateDynamicSecret)} autoComplete="off">
         <div>
           <div className="flex items-center space-x-2">
-            <div className="flex-grow">
+            <div className="grow">
               <Controller
                 control={control}
                 defaultValue=""
@@ -125,7 +125,7 @@ export const GithubInputForm = ({
                         <FontAwesomeIcon
                           icon={faQuestionCircle}
                           size="sm"
-                          className="relative bottom-px right-1"
+                          className="relative right-1 bottom-px"
                         />
                       </Tooltip>
                     }
@@ -137,7 +137,7 @@ export const GithubInputForm = ({
             </div>
           </div>
           <div>
-            <div className="mb-4 mt-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
+            <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
               Configuration
             </div>
 
@@ -148,7 +148,7 @@ export const GithubInputForm = ({
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     label="App ID"
-                    className="flex-grow"
+                    className="grow"
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                     isRequired
@@ -164,7 +164,7 @@ export const GithubInputForm = ({
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     label="Installation ID"
-                    className="flex-grow"
+                    className="grow"
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                     isRequired
@@ -180,14 +180,14 @@ export const GithubInputForm = ({
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     label="App Private Key PEM"
-                    className="flex-grow"
+                    className="grow"
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                     isRequired
                   >
                     <SecretInput
                       {...field}
-                      containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                      containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
                     />
                   </FormControl>
                 )}

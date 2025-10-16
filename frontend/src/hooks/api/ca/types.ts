@@ -16,6 +16,8 @@ export type TAcmeCertificateAuthority = {
     };
     directoryUrl: string;
     accountEmail: string;
+    eabKid?: string;
+    eabHmacKey?: string;
   };
 };
 
@@ -180,4 +182,5 @@ export type TRenewCaResponse = {
   certificate: string;
   certificateChain: string;
   serialNumber: string;
+  projectId: string;
 };

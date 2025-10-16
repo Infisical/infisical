@@ -2,6 +2,8 @@ import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability"
 
 import {
   ProjectPermissionActions,
+  ProjectPermissionAppConnectionActions,
+  ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCmekActions,
   ProjectPermissionCommitsActions,
@@ -10,7 +12,10 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
+  ProjectPermissionPamAccountActions,
+  ProjectPermissionPamSessionActions,
   ProjectPermissionPkiSubscriberActions,
+  ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretEventActions,
@@ -46,7 +51,9 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SshCertificateAuthorities,
     ProjectPermissionSub.SshCertificates,
     ProjectPermissionSub.SshCertificateTemplates,
-    ProjectPermissionSub.SshHostGroups
+    ProjectPermissionSub.SshHostGroups,
+    ProjectPermissionSub.PamFolders,
+    ProjectPermissionSub.PamResources
   ].forEach((el) => {
     can(
       [
@@ -209,6 +216,19 @@ const buildAdminPermissionRules = () => {
 
   can(
     [
+      ProjectPermissionPkiSyncActions.Create,
+      ProjectPermissionPkiSyncActions.Edit,
+      ProjectPermissionPkiSyncActions.Delete,
+      ProjectPermissionPkiSyncActions.Read,
+      ProjectPermissionPkiSyncActions.SyncCertificates,
+      ProjectPermissionPkiSyncActions.ImportCertificates,
+      ProjectPermissionPkiSyncActions.RemoveCertificates
+    ],
+    ProjectPermissionSub.PkiSyncs
+  );
+
+  can(
+    [
       ProjectPermissionKmipActions.CreateClients,
       ProjectPermissionKmipActions.UpdateClients,
       ProjectPermissionKmipActions.DeleteClients,
@@ -262,6 +282,30 @@ const buildAdminPermissionRules = () => {
     ],
     ProjectPermissionSub.SecretEvents
   );
+
+  can(
+    [
+      ProjectPermissionAppConnectionActions.Create,
+      ProjectPermissionAppConnectionActions.Edit,
+      ProjectPermissionAppConnectionActions.Delete,
+      ProjectPermissionAppConnectionActions.Read,
+      ProjectPermissionAppConnectionActions.Connect
+    ],
+    ProjectPermissionSub.AppConnections
+  );
+
+  can(
+    [
+      ProjectPermissionPamAccountActions.Access,
+      ProjectPermissionPamAccountActions.Read,
+      ProjectPermissionPamAccountActions.Create,
+      ProjectPermissionPamAccountActions.Edit,
+      ProjectPermissionPamAccountActions.Delete
+    ],
+    ProjectPermissionSub.PamAccounts
+  );
+
+  can([ProjectPermissionPamSessionActions.Read], ProjectPermissionSub.PamSessions);
 
   return rules;
 };
@@ -394,7 +438,7 @@ const buildMemberPermissionRules = () => {
   );
 
   can([ProjectPermissionActions.Read], ProjectPermissionSub.Role);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.AuditLogs);
+  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
   can([ProjectPermissionActions.Read], ProjectPermissionSub.IpAllowList);
 
   // double check if all CRUD are needed for CA and Certificates
@@ -451,6 +495,19 @@ const buildMemberPermissionRules = () => {
 
   can(
     [
+      ProjectPermissionPkiSyncActions.Create,
+      ProjectPermissionPkiSyncActions.Edit,
+      ProjectPermissionPkiSyncActions.Delete,
+      ProjectPermissionPkiSyncActions.Read,
+      ProjectPermissionPkiSyncActions.SyncCertificates,
+      ProjectPermissionPkiSyncActions.ImportCertificates,
+      ProjectPermissionPkiSyncActions.RemoveCertificates
+    ],
+    ProjectPermissionSub.PkiSyncs
+  );
+
+  can(
+    [
       ProjectPermissionSecretScanningDataSourceActions.Read,
       ProjectPermissionSecretScanningDataSourceActions.TriggerScans,
       ProjectPermissionSecretScanningDataSourceActions.ReadScans,
@@ -474,6 +531,17 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionSecretEventActions.SubscribeImportMutations
     ],
     ProjectPermissionSub.SecretEvents
+  );
+
+  can(ProjectPermissionAppConnectionActions.Connect, ProjectPermissionSub.AppConnections);
+
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.PamFolders);
+
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.PamResources);
+
+  can(
+    [ProjectPermissionPamAccountActions.Access, ProjectPermissionPamAccountActions.Read],
+    ProjectPermissionSub.PamAccounts
   );
 
   return rules;
@@ -502,7 +570,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.AuditLogs);
+  can(ProjectPermissionAuditLogsActions.Read, ProjectPermissionSub.AuditLogs);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
   can(ProjectPermissionCertificateActions.Read, ProjectPermissionSub.Certificates);
@@ -511,6 +579,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
   can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
+  can(ProjectPermissionPkiSyncActions.Read, ProjectPermissionSub.PkiSyncs);
   can(ProjectPermissionCommitsActions.Read, ProjectPermissionSub.Commits);
 
   can(
@@ -535,6 +604,12 @@ const buildViewerPermissionRules = () => {
     ],
     ProjectPermissionSub.SecretEvents
   );
+
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.PamFolders);
+
+  can([ProjectPermissionActions.Read], ProjectPermissionSub.PamResources);
+
+  can([ProjectPermissionPamAccountActions.Read], ProjectPermissionSub.PamAccounts);
 
   return rules;
 };

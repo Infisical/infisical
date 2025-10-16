@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { localStorageService } from "@app/helpers/localStorage";
 import { useGetCloudIntegrations } from "@app/hooks/api";
 
@@ -29,7 +29,7 @@ export const GitlabAuthorizePage = () => {
   });
 
   const { data: cloudIntegrations } = useGetCloudIntegrations();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const onFormSubmit = ({ gitLabURL }: FormData) => {
     if (!cloudIntegrations) return;
@@ -49,12 +49,12 @@ export const GitlabAuthorizePage = () => {
 
     const csrfToken = crypto.randomBytes(16).toString("hex");
     localStorage.setItem("latestCSRFToken", csrfToken);
-    localStorageService.setIntegrationProjectId(currentWorkspace.id);
+    localStorageService.setIntegrationProjectId(currentProject.id);
 
     const state = `${csrfToken}|${
       (gitLabURL as string).trim() === "" ? "" : (gitLabURL as string).trim()
     }`;
-    localStorageService.setIntegrationProjectId(currentWorkspace.id);
+    localStorageService.setIntegrationProjectId(currentProject.id);
     const link = `${baseURL}/oauth/authorize?client_id=${integrationOption.clientId}&redirect_uri=${window.location.origin}/integrations/gitlab/oauth2/callback&response_type=code&state=${state}`;
 
     window.location.assign(link);
@@ -80,12 +80,12 @@ export const GitlabAuthorizePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-xxs"
+                  className="text-xxs mb-[0.07rem] ml-1.5"
                 />
               </div>
             </a>

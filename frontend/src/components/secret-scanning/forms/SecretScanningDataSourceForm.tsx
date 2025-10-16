@@ -6,7 +6,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import {
   SecretScanningDataSource,
@@ -27,6 +27,7 @@ type Props = {
   type: SecretScanningDataSource;
   onCancel: () => void;
   dataSource?: TSecretScanningDataSource;
+  initialFormData?: Partial<TSecretScanningDataSourceForm>;
 };
 
 const FORM_TABS: { name: string; key: string; fields: (keyof TSecretScanningDataSourceForm)[] }[] =
@@ -36,10 +37,16 @@ const FORM_TABS: { name: string; key: string; fields: (keyof TSecretScanningData
     { name: "Review", key: "review", fields: [] }
   ];
 
-export const SecretScanningDataSourceForm = ({ type, onComplete, onCancel, dataSource }: Props) => {
+export const SecretScanningDataSourceForm = ({
+  type,
+  onComplete,
+  onCancel,
+  dataSource,
+  initialFormData
+}: Props) => {
   const createDataSource = useCreateSecretScanningDataSource();
   const updateDataSource = useUpdateSecretScanningDataSource();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { name: sourceType } = SECRET_SCANNING_DATA_SOURCE_MAP[type];
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
@@ -48,7 +55,8 @@ export const SecretScanningDataSourceForm = ({ type, onComplete, onCancel, dataS
     resolver: zodResolver(SecretScanningDataSourceSchema),
     defaultValues: dataSource ?? {
       type,
-      isAutoScanEnabled: true // scott: this may need to be derived from type in the future
+      isAutoScanEnabled: true, // scott: this may need to be derived from type in the future
+      ...(initialFormData as object)
     },
     reValidateMode: "onChange"
   });
@@ -63,7 +71,7 @@ export const SecretScanningDataSourceForm = ({ type, onComplete, onCancel, dataS
       : createDataSource.mutateAsync({
           ...formData,
           connectionId: connection?.id,
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         });
     try {
       const source = await mutation;
@@ -137,7 +145,7 @@ export const SecretScanningDataSourceForm = ({ type, onComplete, onCancel, dataS
                   setSelectedTabIndex((prev) => (isEnabled ? index : prev));
                 }}
                 className={({ selected }) =>
-                  `w-30 -mb-[0.14rem] ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-none disabled:opacity-60 ${
+                  `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
                     selected
                       ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
                       : "text-bunker-300"

@@ -39,7 +39,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { isCustomProjectRole } from "@app/helpers/roles";
 import {
@@ -67,8 +67,8 @@ export const ProjectRoleList = () => {
     "deleteRole",
     "duplicateRole"
   ] as const);
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const projectId = currentProject?.id || "";
 
   const { data: roles, isPending: isRolesLoading } = useGetProjectRoles(projectId);
 
@@ -167,7 +167,7 @@ export const ProjectRoleList = () => {
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-xl font-semibold text-mineshaft-100">Project Roles</p>
+        <p className="text-xl font-medium text-mineshaft-100">Project Roles</p>
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Role}>
           {(isAllowed) => (
             <Button
@@ -250,9 +250,9 @@ export const ProjectRoleList = () => {
                   className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                   onClick={() =>
                     navigate({
-                      to: `${getProjectBaseURL(currentWorkspace.type)}/roles/$roleSlug`,
+                      to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
                       params: {
-                        projectId: currentWorkspace.id,
+                        projectId: currentProject.id,
                         roleSlug: slug
                       }
                     })
@@ -261,7 +261,7 @@ export const ProjectRoleList = () => {
                   <Td>{name}</Td>
                   <Td>{slug}</Td>
                   <Td>
-                    <Badge className="w-min whitespace-nowrap bg-mineshaft-400/50 text-bunker-200">
+                    <Badge className="w-min bg-mineshaft-400/50 whitespace-nowrap text-bunker-200">
                       {isCustomProjectRole(slug) ? "Custom" : "Default"}
                     </Badge>
                   </Td>
@@ -278,7 +278,7 @@ export const ProjectRoleList = () => {
                             <FontAwesomeIcon icon={faEllipsisV} />
                           </IconButton>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="min-w-[12rem]" sideOffset={2} align="end">
+                        <DropdownMenuContent className="min-w-48" sideOffset={2} align="end">
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Edit}
                             a={ProjectPermissionSub.Role}
@@ -292,9 +292,9 @@ export const ProjectRoleList = () => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate({
-                                    to: `${getProjectBaseURL(currentWorkspace.type)}/roles/$roleSlug`,
+                                    to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
                                     params: {
-                                      projectId: currentWorkspace.id,
+                                      projectId: currentProject.id,
                                       roleSlug: slug
                                     }
                                   });
@@ -335,7 +335,7 @@ export const ProjectRoleList = () => {
                                   icon={<FontAwesomeIcon icon={faTrash} />}
                                   className={twMerge(
                                     isAllowed
-                                      ? "hover:!bg-red-500 hover:!text-white"
+                                      ? "hover:bg-red-500! hover:text-white!"
                                       : "pointer-events-none cursor-not-allowed opacity-50",
                                     "transition-colors duration-100"
                                   )}

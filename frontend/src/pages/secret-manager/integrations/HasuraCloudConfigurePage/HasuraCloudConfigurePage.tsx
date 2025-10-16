@@ -9,7 +9,7 @@ import { z } from "zod";
 import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import {
   useGetIntegrationAuthApps,
@@ -38,7 +38,7 @@ export const HasuraCloudConfigurePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useCreateIntegration();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.HasuraCloudConfigurePage.id,
     select: (el) => el.integrationAuthId
@@ -72,7 +72,7 @@ export const HasuraCloudConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -108,12 +108,12 @@ export const HasuraCloudConfigurePage = () => {
               rel="noopener noreferrer"
               href="https://infisical.com/docs/integrations/cloud/hasura-cloud"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-xxs"
+                  className="text-xxs mb-[0.07rem] ml-1.5"
                 />
               </div>
             </a>
@@ -137,7 +137,7 @@ export const HasuraCloudConfigurePage = () => {
                     field.onChange(val);
                   }}
                 >
-                  {currentWorkspace?.environments.map((sourceEnvironment) => (
+                  {currentProject?.environments.map((sourceEnvironment) => (
                     <SelectItem
                       value={sourceEnvironment.slug}
                       key={`source-environment-${sourceEnvironment.slug}`}
@@ -191,7 +191,7 @@ export const HasuraCloudConfigurePage = () => {
             type="submit"
             color="mineshaft"
             variant="outline_bg"
-            className="mb-6 ml-auto mt-2"
+            className="mt-2 mb-6 ml-auto"
             isLoading={isSubmitting}
           >
             Create Integration

@@ -25,7 +25,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
-import { ProjectPermissionActions, useUser, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useListWorkspaceGroups, useReviewAccessRequest } from "@app/hooks/api";
 import {
@@ -85,7 +85,7 @@ export const ReviewAccessRequestModal = ({
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   request: TAccessApprovalRequest & {
-    user: { firstName?: string; lastName?: string; email?: string } | null;
+    user: { firstName?: string | null; lastName?: string | null; email?: string | null } | null;
     isRequestedByCurrentUser: boolean;
     isSelfApproveAllowed: boolean;
     isApprover: boolean;
@@ -102,8 +102,8 @@ export const ReviewAccessRequestModal = ({
   const [bypassApproval, setBypassApproval] = useState(false);
 
   const [bypassReason, setBypassReason] = useState("");
-  const { currentWorkspace } = useWorkspace();
-  const { data: groupMemberships = [] } = useListWorkspaceGroups(currentWorkspace?.id || "");
+  const { currentProject } = useProject();
+  const { data: groupMemberships = [] } = useListWorkspaceGroups(currentProject?.id || "");
   const { user } = useUser();
 
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["editRequest"] as const);
@@ -300,7 +300,7 @@ export const ReviewAccessRequestModal = ({
           is requesting access to the following resource:
         </div>
         <div className="">
-          <div className="mb-2 mt-4 text-mineshaft-200">
+          <div className="mt-4 mb-2 text-mineshaft-200">
             <div className="flex flex-wrap gap-8">
               <GenericFieldLabel label="Environment">{accessDetails.env}</GenericFieldLabel>
               <GenericFieldLabel truncate label="Secret Path">
@@ -351,7 +351,7 @@ export const ReviewAccessRequestModal = ({
                 </Badge>
               )}
           </div>
-          <div className="thin-scrollbar max-h-[40vh] overflow-y-auto rounded py-2">
+          <div className="max-h-[40vh] thin-scrollbar overflow-y-auto rounded-sm py-2">
             {approverSequence?.approvers &&
               approverSequence.approvers.map((approver, index) => {
                 const isInactive =
@@ -397,7 +397,7 @@ export const ReviewAccessRequestModal = ({
                     <Badge
                       className={
                         isInactive
-                          ? "py-auto my-auto flex h-6 min-w-6 items-center justify-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-center text-bunker-200"
+                          ? "py-auto my-auto flex h-6 min-w-6 items-center justify-center gap-1.5 bg-mineshaft-400/50 text-center whitespace-nowrap text-bunker-200"
                           : ""
                       }
                     >
@@ -415,14 +415,14 @@ export const ReviewAccessRequestModal = ({
                       <div className="flex w-12 flex-col items-center gap-2 pr-4">
                         <div
                           className={twMerge(
-                            "flex-grow border-mineshaft-600",
+                            "grow border-mineshaft-600",
                             index !== 0 && "border-r"
                           )}
                         />
                         {StepComponent}
                         <div
                           className={twMerge(
-                            "flex-grow border-mineshaft-600",
+                            "grow border-mineshaft-600",
                             index < approverSequence.approvers!.length - 1 && "border-r"
                           )}
                         />
@@ -448,7 +448,7 @@ export const ReviewAccessRequestModal = ({
                                     <span className="text-xs">
                                       <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
                                         <div>
-                                          <Badge className="pointer-events-none ml-1 mr-auto flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+                                          <Badge className="pointer-events-none mr-auto ml-1 flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
                                             <FontAwesomeIcon icon={faBan} />
                                             Inactive
                                           </Badge>
@@ -480,7 +480,7 @@ export const ReviewAccessRequestModal = ({
                               content={
                                 <div>
                                   <div className="mb-1 text-sm text-bunker-300">Reviewers</div>
-                                  <div className="thin-scrollbar flex max-h-64 flex-col divide-y divide-mineshaft-500 overflow-y-auto rounded">
+                                  <div className="flex max-h-64 thin-scrollbar flex-col divide-y divide-mineshaft-500 overflow-y-auto rounded-sm">
                                     {approver.reviewers.map((el, idx) => (
                                       <div
                                         key={`reviewer-${idx + 1}`}
@@ -533,7 +533,7 @@ export const ReviewAccessRequestModal = ({
                     onCheckedChange={(checked) => setBypassApproval(checked === true)}
                     isChecked={bypassApproval}
                     id="byPassApproval"
-                    className={twMerge("mr-2", bypassApproval ? "!border-red/50 !bg-red/30" : "")}
+                    className={twMerge("mr-2", bypassApproval ? "border-red/50! bg-red/30!" : "")}
                   >
                     <span className="text-xs text-red">
                       Approve without waiting for requirements to be met (bypass policy protection)

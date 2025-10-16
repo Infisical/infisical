@@ -28,6 +28,8 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -140,6 +142,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 export type TSecretApprovalRequestServiceFactory = ReturnType<typeof secretApprovalRequestServiceFactory>;
@@ -172,7 +175,8 @@ export const secretApprovalRequestServiceFactory = ({
   resourceMetadataDAL,
   projectMicrosoftTeamsConfigDAL,
   microsoftTeamsService,
-  folderCommitService
+  folderCommitService,
+  notificationService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const requestCount = async ({
     projectId,
@@ -281,13 +285,10 @@ export const secretApprovalRequestServiceFactory = ({
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
-    const getHasSecretReadAccess = (
-      shouldCheckSecretPermission: boolean | null | undefined,
-      environment: string,
-      tags: { slug: string }[],
-      secretPath?: string
-    ) => {
-      if (shouldCheckSecretPermission) {
+    const getHasSecretReadAccess = (environment: string, tags: { slug: string }[], secretPath?: string) => {
+      const isReviewer = policy.approvers.some(({ userId }) => userId === actorId);
+
+      if (!isReviewer) {
         const canRead = hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
           environment,
           secretPath: secretPath || "/",
@@ -318,44 +319,33 @@ export const secretApprovalRequestServiceFactory = ({
         version: el.version,
         secretMetadata: el.secretMetadata as ResourceMetadataDTO,
         isRotatedSecret: el.secret?.isRotatedSecret ?? false,
-        secretValueHidden: !getHasSecretReadAccess(
-          secretApprovalRequest.policy.shouldCheckSecretPermission,
-          secretApprovalRequest.environment,
-          el.tags,
-          secretPath?.[0]?.path
-        ),
-        secretValue: !getHasSecretReadAccess(
-          secretApprovalRequest.policy.shouldCheckSecretPermission,
-          secretApprovalRequest.environment,
-          el.tags,
-          secretPath?.[0]?.path
-        )
+        secretValueHidden: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path),
+        secretValue: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path)
           ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
           : el.secret && el.secret.isRotatedSecret
             ? undefined
-            : el.encryptedValue
+            : el.encryptedValue !== undefined && el.encryptedValue !== null
               ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-              : "",
-        secretComment: el.encryptedComment
-          ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
-          : "",
+              : undefined,
+        secretComment:
+          el.encryptedComment !== undefined && el.encryptedComment !== null
+            ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
+            : undefined,
+        skipMultilineEncoding:
+          el.skipMultilineEncoding !== undefined && el.skipMultilineEncoding !== null
+            ? el.skipMultilineEncoding
+            : undefined,
         secret: el.secret
           ? {
               secretKey: el.secret.key,
               id: el.secret.id,
               version: el.secret.version,
               secretValueHidden: !getHasSecretReadAccess(
-                secretApprovalRequest.policy.shouldCheckSecretPermission,
                 secretApprovalRequest.environment,
                 el.tags,
                 secretPath?.[0]?.path
               ),
-              secretValue: !getHasSecretReadAccess(
-                secretApprovalRequest.policy.shouldCheckSecretPermission,
-                secretApprovalRequest.environment,
-                el.tags,
-                secretPath?.[0]?.path
-              )
+              secretValue: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path)
                 ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
                 : el.secret.encryptedValue
                   ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedValue }).toString()
@@ -371,17 +361,11 @@ export const secretApprovalRequestServiceFactory = ({
               id: el.secretVersion.id,
               version: el.secretVersion.version,
               secretValueHidden: !getHasSecretReadAccess(
-                secretApprovalRequest.policy.shouldCheckSecretPermission,
                 secretApprovalRequest.environment,
                 el.tags,
                 secretPath?.[0]?.path
               ),
-              secretValue: !getHasSecretReadAccess(
-                secretApprovalRequest.policy.shouldCheckSecretPermission,
-                secretApprovalRequest.environment,
-                el.tags,
-                secretPath?.[0]?.path
-              )
+              secretValue: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path)
                 ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
                 : el.secretVersion.encryptedValue
                   ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedValue }).toString()
@@ -390,7 +374,8 @@ export const secretApprovalRequestServiceFactory = ({
                 ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedComment }).toString()
                 : "",
               tags: el.secretVersion.tags,
-              secretMetadata: el.oldSecretMetadata as ResourceMetadataDTO
+              secretMetadata: el.oldSecretMetadata as ResourceMetadataDTO,
+              skipMultilineEncoding: el.secretVersion.skipMultilineEncoding
             }
           : undefined
       }));
@@ -399,12 +384,7 @@ export const secretApprovalRequestServiceFactory = ({
       const encryptedSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
       secrets = encryptedSecrets.map((el) => ({
         ...el,
-        secretValueHidden: !getHasSecretReadAccess(
-          secretApprovalRequest.policy.shouldCheckSecretPermission,
-          secretApprovalRequest.environment,
-          el.tags,
-          secretPath?.[0]?.path
-        ),
+        secretValueHidden: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path),
         ...decryptSecretWithBot(el, botKey),
         secret: el.secret
           ? {
@@ -729,9 +709,9 @@ export const secretApprovalRequestServiceFactory = ({
               tx,
               inputSecrets: secretUpdationCommits.map((el) => {
                 const encryptedValue =
-                  !el.secret?.isRotatedSecret && typeof el.encryptedValue !== "undefined"
+                  !el.secret?.isRotatedSecret && el.encryptedValue !== null && el.encryptedValue !== undefined
                     ? {
-                        encryptedValue: el.encryptedValue as Buffer,
+                        encryptedValue: el.encryptedValue,
                         references: el.encryptedValue
                           ? getAllSecretReferencesV2Bridge(
                               secretManagerDecryptor({
@@ -745,9 +725,9 @@ export const secretApprovalRequestServiceFactory = ({
                   filter: { id: el.secretId as string, type: SecretType.Shared },
                   data: {
                     reminderRepeatDays: el.reminderRepeatDays,
-                    encryptedComment: el.encryptedComment,
+                    encryptedComment: el.encryptedComment !== null ? el.encryptedComment : undefined,
                     reminderNote: el.reminderNote,
-                    skipMultilineEncoding: el.skipMultilineEncoding,
+                    skipMultilineEncoding: el.skipMultilineEncoding !== null ? el.skipMultilineEncoding : undefined,
                     key: el.key,
                     tags: el?.tags.map(({ id }) => id),
                     secretMetadata: el.secretMetadata as ResourceMetadataDTO,
@@ -787,6 +767,7 @@ export const secretApprovalRequestServiceFactory = ({
           },
           tx
         );
+        await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
         return {
           secrets: { created: newSecrets, updated: updatedSecrets, deleted: deletedSecret },
           approval: updatedSecretApproval
@@ -976,6 +957,7 @@ export const secretApprovalRequestServiceFactory = ({
           },
           tx
         );
+        await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
         return {
           secrets: { created: newSecrets, updated: updatedSecrets, deleted: deletedSecret },
           approval: updatedSecretApproval
@@ -983,7 +965,6 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     await snapshotService.performSnapshot(folderId);
     const [folder] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
     if (!folder) {
@@ -1034,6 +1015,17 @@ export const secretApprovalRequestServiceFactory = ({
         }
       });
 
+      await notificationService.createUserNotifications(
+        approverUsers.map((approver) => ({
+          userId: approver.id,
+          orgId: project.orgId,
+          type: NotificationType.SECRET_CHANGE_POLICY_BYPASSED,
+          title: "Secret Change Policy Bypassed",
+          body: `**${requestedByUser.firstName} ${requestedByUser.lastName}** (${requestedByUser.email}) has merged a secret to **${policy.secretPath}** in the **${env.name}** environment for project **${project.name}** without obtaining the required approval.`,
+          link: `/projects/secret-management/${project.id}/approval`
+        }))
+      );
+
       await smtpService.sendMail({
         recipients: approverUsers.filter((approver) => approver.email).map((approver) => approver.email!),
         subjectLine: "Infisical Secret Change Policy Bypassed",
@@ -1068,7 +1060,9 @@ export const secretApprovalRequestServiceFactory = ({
               // @ts-expect-error not present on v1 secrets
               secretKey: secret.key as string,
               // @ts-expect-error not present on v1 secrets
-              secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+              secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+              // @ts-expect-error not present on v1 secrets
+              secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
             }))
           }
         });
@@ -1084,7 +1078,9 @@ export const secretApprovalRequestServiceFactory = ({
             // @ts-expect-error not present on v1 secrets
             secretKey: secret.key as string,
             // @ts-expect-error not present on v1 secrets
-            secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+            secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+            // @ts-expect-error not present on v1 secrets
+            secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
           }
         });
       }
@@ -1103,7 +1099,9 @@ export const secretApprovalRequestServiceFactory = ({
               // @ts-expect-error not present on v1 secrets
               secretKey: secret.key as string,
               // @ts-expect-error not present on v1 secrets
-              secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+              secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+              // @ts-expect-error not present on v1 secrets
+              secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
             }))
           }
         });
@@ -1119,7 +1117,9 @@ export const secretApprovalRequestServiceFactory = ({
             // @ts-expect-error not present on v1 secrets
             secretKey: secret.key as string,
             // @ts-expect-error not present on v1 secrets
-            secretMetadata: secret.secretMetadata as ResourceMetadataDTO
+            secretMetadata: secret.secretMetadata as ResourceMetadataDTO,
+            // @ts-expect-error not present on v1 secrets
+            secretTags: (secret.tags as { name: string }[])?.map((tag) => tag.name)
           }
         });
       }
@@ -1445,7 +1445,8 @@ export const secretApprovalRequestServiceFactory = ({
       secretApprovalPolicyDAL,
       secretApprovalRequest,
       smtpService,
-      projectId
+      projectId,
+      notificationService
     });
 
     return secretApprovalRequest;
@@ -1608,11 +1609,13 @@ export const secretApprovalRequestServiceFactory = ({
               key: newSecretName || secretKey,
               encryptedComment: setKnexStringValue(
                 secretComment,
-                (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+                (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob,
+                true // scott: we need to encrypt empty string on update to differentiate not updating comment vs clearing comment
               ),
               encryptedValue: setKnexStringValue(
                 secretValue,
-                (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob
+                (value) => secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob,
+                true // scott: we need to encrypt empty string on update to differentiate not updating value vs clearing value
               ),
               reminderRepeatDays,
               reminderNote,
@@ -1812,7 +1815,8 @@ export const secretApprovalRequestServiceFactory = ({
       secretApprovalPolicyDAL,
       secretApprovalRequest,
       smtpService,
-      projectId
+      projectId,
+      notificationService
     });
     return secretApprovalRequest;
   };

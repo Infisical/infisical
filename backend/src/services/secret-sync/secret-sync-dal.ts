@@ -31,6 +31,7 @@ const baseSecretSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: Secre
       db.ref("description").withSchema(TableName.AppConnection).as("connectionDescription"),
       db.ref("version").withSchema(TableName.AppConnection).as("connectionVersion"),
       db.ref("gatewayId").withSchema(TableName.AppConnection).as("connectionGatewayId"),
+      db.ref("projectId").withSchema(TableName.AppConnection).as("connectionProjectId"),
       db.ref("createdAt").withSchema(TableName.AppConnection).as("connectionCreatedAt"),
       db.ref("updatedAt").withSchema(TableName.AppConnection).as("connectionUpdatedAt"),
       db
@@ -67,6 +68,7 @@ const expandSecretSync = (
     connectionVersion,
     connectionIsPlatformManagedCredentials,
     connectionGatewayId,
+    connectionProjectId,
     ...el
   } = secretSync;
 
@@ -86,7 +88,8 @@ const expandSecretSync = (
       updatedAt: connectionUpdatedAt,
       version: connectionVersion,
       isPlatformManagedCredentials: connectionIsPlatformManagedCredentials,
-      gatewayId: connectionGatewayId
+      gatewayId: connectionGatewayId,
+      projectId: connectionProjectId
     },
     folder: folder
       ? {
@@ -201,5 +204,19 @@ export const secretSyncDALFactory = (
     }
   };
 
-  return { ...secretSyncOrm, findById, findOne, find, create, updateById };
+  const findByDestinationAndOrgId = async (destination: string, orgId: string, tx?: Knex) => {
+    try {
+      const response = await (tx || db.replicaNode())(TableName.SecretSync)
+        .join(TableName.Project, `${TableName.SecretSync}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.SecretSync}.destination`, destination)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .select(selectAllTableCols(TableName.SecretSync));
+
+      return response;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find By Destination And Org ID - Secret Sync" });
+    }
+  };
+
+  return { ...secretSyncOrm, findById, findOne, find, create, updateById, findByDestinationAndOrgId };
 };

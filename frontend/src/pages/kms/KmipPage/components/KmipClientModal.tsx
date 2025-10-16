@@ -13,7 +13,7 @@ import {
   ModalContent,
   TextArea
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateKmipClient, useUpdateKmipClient } from "@app/hooks/api/kmip";
 import { KmipPermission, TKmipClient } from "@app/hooks/api/kmip/types";
 
@@ -60,8 +60,8 @@ type FormProps = Pick<Props, "kmipClient"> & {
 const KmipClientForm = ({ onComplete, kmipClient }: FormProps) => {
   const createKmipClient = useCreateKmipClient();
   const updateKmipClient = useUpdateKmipClient();
-  const { currentWorkspace } = useWorkspace();
-  const projectId = currentWorkspace.id;
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const isUpdate = !!kmipClient;
 
   const {
@@ -129,7 +129,7 @@ const KmipClientForm = ({ onComplete, kmipClient }: FormProps) => {
         isError={Boolean(errors.description?.message)}
       >
         <TextArea
-          className="max-h-[20rem] min-h-[10rem] min-w-full max-w-full"
+          className="max-h-80 min-h-40 max-w-full min-w-full"
           {...register("description")}
         />
       </FormControl>
@@ -139,7 +139,7 @@ const KmipClientForm = ({ onComplete, kmipClient }: FormProps) => {
         render={({ field: { onChange, value }, fieldState: { error } }) => {
           return (
             <FormControl label="Permissions" errorText={error?.message} isError={Boolean(error)}>
-              <div className="mb-7 mt-2 grid grid-cols-2 gap-2">
+              <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
                 {KMIP_PERMISSIONS_OPTIONS.map(({ label, value: optionValue }) => {
                   return (
                     <Checkbox

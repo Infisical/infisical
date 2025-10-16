@@ -78,7 +78,7 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
             initial={{ opacity: 0, translateX: 30 }}
             animate={{ opacity: 1, translateX: 0 }}
             exit={{ opacity: 0, translateX: 30 }}
-            className="absolute min-h-[10rem] w-full"
+            className="absolute min-h-40 w-full"
           >
             <ProjectTemplateEditRoleForm
               onGoBack={() => handlePopUpClose("editRole")}
@@ -106,7 +106,7 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
             <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
               <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
                 <div>
-                  <h2 className="text-lg font-semibold">Project Roles</h2>
+                  <h2 className="text-lg font-medium">Project Roles</h2>
                   <p className="text-sm text-mineshaft-400">
                     {isInfisicalTemplate
                       ? "Click a role to view the associated permissions"

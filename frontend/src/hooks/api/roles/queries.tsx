@@ -11,7 +11,7 @@ import { groupBy } from "@app/lib/fn/array";
 import { omit } from "@app/lib/fn/object";
 
 import { ActorType } from "../auditLogs/enums";
-import { OrgUser, TProjectMembership } from "../users/types";
+import { TUserMembership } from "../users/types";
 import {
   TGetUserOrgPermissionsDTO,
   TGetUserProjectPermissionDTO,
@@ -46,13 +46,13 @@ export const roleQueryKeys = {
   getOrgRole: (orgId: string, roleId: string) => [{ orgId, roleId }, "org-role"] as const,
   getUserOrgPermissions: ({ orgId }: TGetUserOrgPermissionsDTO) =>
     ["user-permissions", { orgId }] as const,
-  getUserProjectPermissions: ({ workspaceId }: TGetUserProjectPermissionDTO) =>
-    ["user-project-permissions", { workspaceId }] as const
+  getUserProjectPermissions: ({ projectId }: TGetUserProjectPermissionDTO) =>
+    ["user-project-permissions", { projectId }] as const
 };
 
 export const getProjectRoles = async (projectId: string) => {
   const { data } = await apiRequest.get<{ roles: Array<Omit<TProjectRole, "permissions">> }>(
-    `/api/v2/workspace/${projectId}/roles`
+    `/api/v1/projects/${projectId}/roles`
   );
   return data.roles;
 };
@@ -69,7 +69,7 @@ export const useGetProjectRoleBySlug = (projectId: string, roleSlug: string) =>
     queryKey: roleQueryKeys.getProjectRoleBySlug(projectId, roleSlug),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ role: TProjectRole }>(
-        `/api/v2/workspace/${projectId}/roles/slug/${roleSlug}`
+        `/api/v1/projects/${projectId}/roles/slug/${roleSlug}`
       );
       return data.role;
     },
@@ -78,12 +78,9 @@ export const useGetProjectRoleBySlug = (projectId: string, roleSlug: string) =>
 
 const getOrgRoles = async (orgId: string) => {
   const { data } = await apiRequest.get<{
-    data: { roles: Array<Omit<TOrgRole, "permissions"> & { permissions: unknown }> };
+    data: { roles: Array<Omit<TOrgRole, "permissions"> & { permissions: TPermission[] }> };
   }>(`/api/v1/organization/${orgId}/roles`);
-  return data.data.roles.map(({ permissions, ...el }) => ({
-    ...el,
-    permissions: unpackRules(permissions as PackRule<TPermission>[])
-  }));
+  return data.data.roles;
 };
 
 export const useGetOrgRoles = (orgId: string, enable = true) =>
@@ -102,18 +99,18 @@ export const useGetOrgRole = (orgId: string, roleId: string) =>
       }>(`/api/v1/organization/${orgId}/roles/${roleId}`);
       return {
         ...data.role,
-        permissions: unpackRules(data.role.permissions as PackRule<TPermission>[])
+        permissions: data.role.permissions as TPermission[]
       };
     },
     enabled: Boolean(orgId && roleId)
   });
 
 export const fetchUserOrgPermissions = async ({ orgId }: TGetUserOrgPermissionsDTO) => {
-  if (orgId === "") return { permissions: [], membership: null };
+  if (orgId === "") return { permissions: [], memberships: [] };
 
   const { data } = await apiRequest.get<{
     permissions: PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[];
-    membership: OrgUser;
+    memberships: Array<TUserMembership & { roles: { role: string }[] }>;
   }>(`/api/v1/organization/${orgId}/permissions`);
 
   return data;
@@ -127,17 +124,15 @@ export const useGetUserOrgPermissions = ({ orgId }: TGetUserOrgPermissionsDTO) =
     select: (data) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(data.permissions);
       const ability = createMongoAbility<OrgPermissionSet>(rule, { conditionsMatcher });
-      return { permission: ability, membership: data.membership };
+      return { permission: ability, memberships: data.memberships };
     }
   });
 
-export const fetchUserProjectPermissions = async ({
-  workspaceId
-}: TGetUserProjectPermissionDTO) => {
+export const fetchUserProjectPermissions = async ({ projectId }: TGetUserProjectPermissionDTO) => {
   const { data } = await apiRequest.get<{
     data: {
       permissions: PackRule<RawRuleOf<MongoAbility<OrgPermissionSet>>>[];
-      membership: Omit<TProjectMembership, "roles"> & { roles: { role: string }[] };
+      memberships: Array<TUserMembership & { roles: { role: string }[] }>;
       assumedPrivilegeDetails?: {
         actorId: string;
         actorType: ActorType;
@@ -145,16 +140,16 @@ export const fetchUserProjectPermissions = async ({
         actorName: string;
       };
     };
-  }>(`/api/v1/workspace/${workspaceId}/permissions`, {});
+  }>(`/api/v1/projects/${projectId}/permissions`, {});
 
   return data.data;
 };
 
-export const useGetUserProjectPermissions = ({ workspaceId }: TGetUserProjectPermissionDTO) =>
+export const useGetUserProjectPermissions = ({ projectId }: TGetUserProjectPermissionDTO) =>
   useQuery({
-    queryKey: roleQueryKeys.getUserProjectPermissions({ workspaceId }),
-    queryFn: () => fetchUserProjectPermissions({ workspaceId }),
-    enabled: Boolean(workspaceId),
+    queryKey: roleQueryKeys.getUserProjectPermissions({ projectId }),
+    queryFn: () => fetchUserProjectPermissions({ projectId }),
+    enabled: Boolean(projectId),
     select: (data) => {
       const rule = unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(data.permissions);
       const negatedRules = groupBy(
@@ -183,11 +178,7 @@ export const useGetUserProjectPermissions = ({ workspaceId }: TGetUserProjectPer
           };
         }
       });
-      const membership = {
-        ...data.membership,
-        roles: data.membership.roles.map(({ role }) => role)
-      };
 
-      return { permission: ability, membership };
+      return { permission: ability, memberships: data.memberships };
     }
   });

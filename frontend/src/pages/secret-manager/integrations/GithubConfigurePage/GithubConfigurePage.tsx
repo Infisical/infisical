@@ -37,7 +37,7 @@ import {
   Tabs
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import {
   useCreateIntegration,
   useGetIntegrationAuthApps,
@@ -142,7 +142,7 @@ export const GithubConfigurePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useCreateIntegration();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.GithubConfigurePage.id,
     select: (el) => el.integrationAuthId
@@ -166,7 +166,7 @@ export const GithubConfigurePage = () => {
       repoIds: [],
       visibility: "all",
       shouldEnableDelete: false,
-      selectedSourceEnvironment: currentWorkspace.environments[0].slug
+      selectedSourceEnvironment: currentProject.environments[0].slug
     }
   });
 
@@ -269,7 +269,7 @@ export const GithubConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -327,12 +327,12 @@ export const GithubConfigurePage = () => {
                 rel="noopener noreferrer"
                 href="https://infisical.com/docs/integrations/cicd/githubactions"
               >
-                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   Docs
                   <FontAwesomeIcon
                     icon={faArrowUpRightFromSquare}
-                    className="mb-[0.07rem] ml-1.5 text-xxs"
+                    className="text-xxs mb-[0.07rem] ml-1.5"
                   />
                 </div>
               </a>
@@ -367,7 +367,7 @@ export const GithubConfigurePage = () => {
                         onValueChange={onChange}
                         className="w-full border border-mineshaft-500"
                       >
-                        {currentWorkspace?.environments.map((sourceEnvironment) => (
+                        {currentProject?.environments.map((sourceEnvironment) => (
                           <SelectItem
                             value={sourceEnvironment.slug}
                             key={`source-environment-${sourceEnvironment.slug}`}
@@ -425,7 +425,7 @@ export const GithubConfigurePage = () => {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             {integrationAuthApps.length > 0 ? (
-                              <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                              <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-hidden data-placeholder:text-mineshaft-200">
                                 {repoIds?.length === 1
                                   ? integrationAuthApps?.reduce(
                                       (acc, { appId, name, owner }) =>
@@ -436,14 +436,14 @@ export const GithubConfigurePage = () => {
                                 <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
                               </div>
                             ) : (
-                              <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                              <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-hidden data-placeholder:text-mineshaft-200">
                                 No repositories found
                               </div>
                             )}
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
                             align="start"
-                            className="thin-scrollbar z-[100] max-h-80 overflow-y-scroll"
+                            className="z-100 max-h-80 thin-scrollbar overflow-y-scroll"
                           >
                             {integrationAuthApps.length > 0 ? (
                               integrationAuthApps.map((integrationAuthApp) => {
@@ -562,7 +562,7 @@ export const GithubConfigurePage = () => {
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 {integrationAuthApps.length > 0 ? (
-                                  <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                                  <div className="inline-flex w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-hidden data-placeholder:text-mineshaft-200">
                                     {repoIds?.length === 1
                                       ? integrationAuthApps?.reduce(
                                           (acc, { appId, name, owner }) =>
@@ -573,14 +573,14 @@ export const GithubConfigurePage = () => {
                                     <FontAwesomeIcon icon={faAngleDown} className="text-xs" />
                                   </div>
                                 ) : (
-                                  <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-mineshaft-200">
+                                  <div className="inline-flex w-full cursor-default items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-hidden data-placeholder:text-mineshaft-200">
                                     No repositories found
                                   </div>
                                 )}
                               </DropdownMenuTrigger>
                               <DropdownMenuContent
                                 align="start"
-                                className="thin-scrollbar z-[100] max-h-80 overflow-y-scroll"
+                                className="z-100 max-h-80 thin-scrollbar overflow-y-scroll"
                               >
                                 {selectedOrganization ? (
                                   selectedOrganization.map((integrationAuthApp) => {
@@ -748,7 +748,7 @@ export const GithubConfigurePage = () => {
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="Append Secret Names with..."
-                      className="pb-[9.75rem]"
+                      className="pb-39"
                       errorText={error?.message}
                       isError={Boolean(error)}
                     >

@@ -7,8 +7,8 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { getProjectTitle } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectTemplate, useDeleteProjectTemplate } from "@app/hooks/api/projectTemplates";
-import { ProjectType } from "@app/hooks/api/workspace/types";
 
 import { ProjectTemplateDetailsModal } from "../../ProjectTemplateDetailsModal";
 import { ProjectTemplateEnvironmentsForm } from "./ProjectTemplateEnvironmentsForm";
@@ -54,7 +54,7 @@ export const EditProjectTemplate = ({ isInfisicalTemplate, projectTemplate, onBa
     <>
       <div className="mb-4 flex items-start justify-between border-b border-bunker-400 pb-4">
         <div className="flex-col">
-          <h3 className="text-xl font-semibold">{name}</h3>
+          <h3 className="text-xl font-medium">{name}</h3>
           <h2 className="text-sm text-mineshaft-400">
             {`${getProjectTitle(type)} - `}
             {description || "Project Template"}

@@ -39,6 +39,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - gateway
+            - start
           envFrom:
             - secretRef:
                 name: {{ .Values.secret.name }}

@@ -6,7 +6,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import {
   useGetIntegrationAuthApps,
@@ -17,7 +17,7 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 export const CloudflareWorkersConfigurePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useCreateIntegration();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.CloudflareWorkersConfigurePage.id,
@@ -29,7 +29,7 @@ export const CloudflareWorkersConfigurePage = () => {
   });
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState(
-    currentWorkspace.environments[0].slug
+    currentProject.environments[0].slug
   );
   const [secretPath, setSecretPath] = useState("/");
 
@@ -69,7 +69,7 @@ export const CloudflareWorkersConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -93,7 +93,7 @@ export const CloudflareWorkersConfigurePage = () => {
   };
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps && targetApp ? (
-    <div className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-mineshaft-900 to-bunker-900">
+    <div className="flex h-full w-full items-center justify-center bg-linear-to-tr from-mineshaft-900 to-bunker-900">
       <Card className="max-w-lg rounded-md border border-mineshaft-600 p-0">
         <CardTitle
           className="px-6 text-left"
@@ -107,7 +107,7 @@ export const CloudflareWorkersConfigurePage = () => {
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
             className="w-full border border-mineshaft-500"
           >
-            {currentWorkspace?.environments.map((sourceEnvironment) => (
+            {currentProject?.environments.map((sourceEnvironment) => (
               <SelectItem
                 value={sourceEnvironment.slug}
                 key={`source-environment-${sourceEnvironment.slug}`}
@@ -152,7 +152,7 @@ export const CloudflareWorkersConfigurePage = () => {
           onClick={handleButtonClick}
           color="mineshaft"
           variant="outline_bg"
-          className="mb-6 ml-auto mr-6 mt-2"
+          className="mt-2 mr-6 mb-6 ml-auto"
           isFullWidth={false}
           isLoading={isLoading}
         >

@@ -8,8 +8,8 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
-  useSubscription,
-  useWorkspace
+  useProject,
+  useSubscription
 } from "@app/context";
 import { useDeleteTrustedIp } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -20,7 +20,7 @@ import { IPAllowlistTable } from "./IPAllowlistTable";
 export const IPAllowlistSection = () => {
   const { mutateAsync } = useDeleteTrustedIp();
   const { subscription } = useSubscription();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "trustedIp",
@@ -30,10 +30,10 @@ export const IPAllowlistSection = () => {
 
   const onDeleteTrustedIpSubmit = async (trustedIpId: string) => {
     try {
-      if (!currentWorkspace?.id) return;
+      if (!currentProject?.id) return;
 
       await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        projectId: currentProject.id,
         trustedIpId
       });
 
@@ -55,7 +55,7 @@ export const IPAllowlistSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-8 flex items-center">
-        <h2 className="flex-1 text-xl font-semibold text-white">IP Allowlist</h2>
+        <h2 className="flex-1 text-xl font-medium text-white">IP Allowlist</h2>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Create}
           a={ProjectPermissionSub.IpAllowList}

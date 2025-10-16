@@ -9,8 +9,9 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useOrganization,
+  useProject,
   useProjectPermission,
-  useWorkspace
+  useUser
 } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useDeleteWorkspace, useGetWorkspaceUsers, useLeaveProject } from "@app/hooks/api";
@@ -24,37 +25,38 @@ export const DeleteProjectSection = () => {
     "leaveWorkspace"
   ] as const);
 
+  const { user } = useUser();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole, membership } = useProjectPermission();
-  const { currentWorkspace } = useWorkspace();
+  const { hasProjectRole } = useProjectPermission();
+  const { currentProject } = useProject();
   const [isDeleting, setIsDeleting] = useToggle();
   const [isLeaving, setIsLeaving] = useToggle();
   const deleteWorkspace = useDeleteWorkspace();
   const leaveProject = useLeaveProject();
   const { data: members, isPending: isMembersLoading } = useGetWorkspaceUsers(
-    currentWorkspace?.id || ""
+    currentProject?.id || ""
   );
 
   // If isNoAccessMember is true, then the user can't read the workspace members. So we need to handle this case separately.
   const isNoAccessMember = hasProjectRole("no-access");
 
   const isOnlyAdminMember = useMemo(() => {
-    if (!members || !membership || !hasProjectRole("admin")) return false;
+    if (!members || !hasProjectRole("admin")) return false;
 
     const adminMembers = members.filter(
-      (member) => member.roles.map((r) => r.role).includes("admin") && member.id !== membership.id // exclude the current user
+      (member) => member.roles.map((r) => r.role).includes("admin") && member.user.id !== user.id // exclude the current user
     );
 
     return !adminMembers.length;
-  }, [members, membership]);
+  }, [members, user]);
 
   const handleDeleteWorkspaceSubmit = async () => {
     setIsDeleting.on();
     try {
-      if (!currentWorkspace?.id) return;
+      if (!currentProject?.id) return;
 
       await deleteWorkspace.mutateAsync({
-        workspaceID: currentWorkspace?.id
+        projectID: currentProject?.id
       });
 
       createNotification({
@@ -81,7 +83,7 @@ export const DeleteProjectSection = () => {
     try {
       setIsLeaving.on();
 
-      if (!currentWorkspace?.id || !currentOrg?.id) return;
+      if (!currentProject?.id || !currentOrg?.id) return;
 
       // If there's no members, and the user has access to read members, something went wrong.
       if (!members && !isNoAccessMember) return;
@@ -110,7 +112,7 @@ export const DeleteProjectSection = () => {
       // If it's actually a no-access member, then we don't really care about the members.
 
       await leaveProject.mutateAsync({
-        workspaceId: currentWorkspace.id
+        projectId: currentProject.id
       });
 
       navigate({
@@ -129,7 +131,7 @@ export const DeleteProjectSection = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <p className="mb-4 text-xl font-semibold text-mineshaft-100">Danger Zone</p>
+      <p className="mb-4 text-xl font-medium text-mineshaft-100">Danger Zone</p>
       <div className="space-x-4">
         <ProjectPermissionCan I={ProjectPermissionActions.Delete} a={ProjectPermissionSub.Project}>
           {(isAllowed) => (
@@ -141,7 +143,7 @@ export const DeleteProjectSection = () => {
               type="submit"
               onClick={() => handlePopUpOpen("deleteWorkspace")}
             >
-              {`Delete ${currentWorkspace?.name}`}
+              {`Delete ${currentProject?.name}`}
             </Button>
           )}
         </ProjectPermissionCan>
@@ -154,7 +156,7 @@ export const DeleteProjectSection = () => {
             type="submit"
             onClick={() => handlePopUpOpen("leaveWorkspace")}
           >
-            {`Leave ${currentWorkspace?.name}`}
+            {`Leave ${currentProject?.name}`}
           </Button>
         )}
       </div>
@@ -162,7 +164,7 @@ export const DeleteProjectSection = () => {
       <DeleteActionModal
         isOpen={popUp.deleteWorkspace.isOpen}
         title="Are you sure you want to delete this project?"
-        subTitle={`Permanently delete ${currentWorkspace?.name} and all of its data. This action is not reversible, so please be careful.`}
+        subTitle={`Permanently delete ${currentProject?.name} and all of its data. This action is not reversible, so please be careful.`}
         onChange={(isOpen) => handlePopUpToggle("deleteWorkspace", isOpen)}
         deleteKey="confirm"
         buttonText="Delete Project"
@@ -172,7 +174,7 @@ export const DeleteProjectSection = () => {
       <LeaveProjectModal
         isOpen={popUp.leaveWorkspace.isOpen}
         title="Are you sure you want to leave this project?"
-        subTitle={`If you leave ${currentWorkspace?.name} you will lose access to the project and its contents.`}
+        subTitle={`If you leave ${currentProject?.name} you will lose access to the project and its contents.`}
         onChange={(isOpen) => handlePopUpToggle("leaveWorkspace", isOpen)}
         deleteKey="confirm"
         buttonText="Leave Project"

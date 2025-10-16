@@ -58,7 +58,8 @@ export const getAzureConnectionAccessToken = async (
       const oauthCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
         kmsService,
-        encryptedCredentials: appConnection.encryptedCredentials
+        encryptedCredentials: appConnection.encryptedCredentials,
+        projectId: appConnection.projectId
       })) as TAzureKeyVaultConnectionCredentials;
 
       const { data } = await request.post<ExchangeCodeAzureResponse>(
@@ -82,7 +83,8 @@ export const getAzureConnectionAccessToken = async (
       const encryptedOAuthCredentials = await encryptAppConnectionCredentials({
         credentials: updatedOAuthCredentials,
         orgId: appConnection.orgId,
-        kmsService
+        kmsService,
+        projectId: appConnection.projectId
       });
 
       await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials: encryptedOAuthCredentials });
@@ -95,7 +97,8 @@ export const getAzureConnectionAccessToken = async (
       const clientSecretCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
         kmsService,
-        encryptedCredentials: appConnection.encryptedCredentials
+        encryptedCredentials: appConnection.encryptedCredentials,
+        projectId: appConnection.projectId
       })) as TAzureKeyVaultConnectionClientSecretCredentials;
 
       const { accessToken, expiresAt, clientId, clientSecret, tenantId } = clientSecretCredentials;
@@ -124,7 +127,8 @@ export const getAzureConnectionAccessToken = async (
       const encryptedClientCredentials = await encryptAppConnectionCredentials({
         credentials: updatedClientCredentials,
         orgId: appConnection.orgId,
-        kmsService
+        kmsService,
+        projectId: appConnection.projectId
       });
 
       await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials: encryptedClientCredentials });
@@ -186,7 +190,7 @@ export const validateAzureKeyVaultConnectionCredentials = async (config: TAzureK
           tokenError = e;
         } else {
           throw new BadRequestError({
-            message: `Unable to validate connection: verify credentials`
+            message: "Unable to validate connection: verify credentials"
           });
         }
       }

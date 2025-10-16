@@ -128,7 +128,8 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           id: z.string(),
           value: z.string(),
-          algorithm: z.string()
+          algorithm: z.string(),
+          kmipMetadata: z.record(z.any()).optional()
         })
       }
     },
@@ -433,7 +434,8 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         key: z.string(),
         name: z.string(),
-        algorithm: z.nativeEnum(SymmetricKeyAlgorithm)
+        algorithm: z.nativeEnum(SymmetricKeyAlgorithm),
+        kmipMetadata: z.record(z.any()).optional()
       }),
       response: {
         200: z.object({

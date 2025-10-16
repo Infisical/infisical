@@ -1,6 +1,6 @@
 import { apiRequest } from "@app/config/request";
-import { createWorkspace } from "@app/hooks/api/workspace/queries";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { createWorkspace } from "@app/hooks/api/projects/queries";
+import { ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
 
 const secretsToBeAdded = [
   {
@@ -47,8 +47,8 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
   });
 
   try {
-    const { data } = await apiRequest.post("/api/v3/secrets/batch/raw", {
-      workspaceId: project.id,
+    const { data } = await apiRequest.post("/api/v4/secrets/batch", {
+      projectId: project.id,
       environment: "dev",
       secretPath: "/",
       secrets: secretsToBeAdded
@@ -72,14 +72,18 @@ export const getProjectBaseURL = (type: ProjectType) => {
   }
 };
 
-export const getProjectHomePage = (type: ProjectType) => {
+// @ts-expect-error akhilmhdh: will remove this later
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]) => {
   switch (type) {
     case ProjectType.SecretManager:
-      return "/projects/secret-management/$projectId/overview";
+      return "/projects/secret-management/$projectId/overview" as const;
     case ProjectType.CertificateManager:
-      return "/projects/cert-management/$projectId/subscribers";
+      return "/projects/cert-management/$projectId/subscribers" as const;
     case ProjectType.SecretScanning:
       return `/projects/${type}/$projectId/data-sources` as const;
+    case ProjectType.PAM:
+      return `/projects/${type}/$projectId/accounts` as const;
     default:
       return `/projects/${type}/$projectId/overview` as const;
   }
@@ -91,7 +95,8 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.KMS]: "Key Management",
     [ProjectType.CertificateManager]: "Cert Management",
     [ProjectType.SSH]: "SSH",
-    [ProjectType.SecretScanning]: "Secret Scanning"
+    [ProjectType.SecretScanning]: "Secret Scanning",
+    [ProjectType.PAM]: "PAM"
   };
   return titleConvert[type];
 };
@@ -102,7 +107,8 @@ export const getProjectLottieIcon = (type: ProjectType) => {
     [ProjectType.KMS]: "unlock",
     [ProjectType.CertificateManager]: "note",
     [ProjectType.SSH]: "terminal",
-    [ProjectType.SecretScanning]: "secret-scan"
+    [ProjectType.SecretScanning]: "secret-scan",
+    [ProjectType.PAM]: "groups"
   };
   return titleConvert[type];
 };

@@ -8,19 +8,19 @@ export const queryKeys = {
   getWebhooks: (workspaceId: string) => ["webhooks", { workspaceId }]
 };
 
-const fetchWebhooks = async (workspaceId: string) => {
+const fetchWebhooks = async (projectId: string) => {
   const { data } = await apiRequest.get<{ webhooks: TWebhook[] }>("/api/v1/webhooks", {
     params: {
-      workspaceId
+      projectId
     }
   });
 
   return data.webhooks;
 };
 
-export const useGetWebhooks = (workspaceId: string) =>
+export const useGetWebhooks = (projectId: string) =>
   useQuery({
-    queryKey: queryKeys.getWebhooks(workspaceId),
-    queryFn: () => fetchWebhooks(workspaceId),
-    enabled: Boolean(workspaceId)
+    queryKey: queryKeys.getWebhooks(projectId),
+    queryFn: () => fetchWebhooks(projectId),
+    enabled: Boolean(projectId)
   });

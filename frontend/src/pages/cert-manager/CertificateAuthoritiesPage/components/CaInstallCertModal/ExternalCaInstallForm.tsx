@@ -8,7 +8,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, IconButton, TextArea, Tooltip } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { useGetCaCsr, useImportCaCertificate } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -26,7 +26,7 @@ type Props = {
 };
 
 export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const [copyTextCaCsr, isCopyingCaCsr, setCopyTextCaCsr] = useTimedReset<string>({
     initialState: "Copy to clipboard"
   });
@@ -41,7 +41,7 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
   });
 
   const { data: csr } = useGetCaCsr(caId);
-  const { mutateAsync: importCaCertificate } = useImportCaCertificate(currentWorkspace.id);
+  const { mutateAsync: importCaCertificate } = useImportCaCertificate(currentProject.id);
 
   useEffect(() => {
     reset();
@@ -49,11 +49,11 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
 
   const onFormSubmit = async ({ certificate, certificateChain }: FormData) => {
     try {
-      if (!csr || !caId || !currentWorkspace?.slug) return;
+      if (!csr || !caId || !currentProject?.slug) return;
 
       await importCaCertificate({
         caId,
-        projectSlug: currentWorkspace?.slug,
+        projectSlug: currentProject?.slug,
         certificate,
         certificateChain
       });
@@ -113,7 +113,7 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
             </div>
           </div>
           <div className="mb-8 flex items-center justify-between rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
-            <p className="mr-4 whitespace-pre-wrap break-all">{csr}</p>
+            <p className="mr-4 break-all whitespace-pre-wrap">{csr}</p>
           </div>
         </>
       )}

@@ -30,7 +30,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionSshHostActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionSshHostActions, ProjectPermissionSub, useProject } from "@app/context";
 import { fetchSshHostUserCaPublicKey, useListWorkspaceSshHosts } from "@app/hooks/api";
 import { LoginMappingSource } from "@app/hooks/api/sshHost/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -43,8 +43,8 @@ type Props = {
 };
 
 export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const { data, isPending } = useListWorkspaceSshHosts(currentWorkspace?.id || "");
+  const { currentProject } = useProject();
+  const { data, isPending } = useListWorkspaceSshHosts(currentProject?.id || "");
 
   const downloadTxtFile = (filename: string, content: string) => {
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
@@ -92,7 +92,7 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                     <Td>{host.hostname}</Td>
                     <Td>
                       {host.loginMappings.length === 0 ? (
-                        <span className="italic text-mineshaft-400">None</span>
+                        <span className="text-mineshaft-400 italic">None</span>
                       ) : (
                         (() => {
                           const hostMappings = host.loginMappings.filter(

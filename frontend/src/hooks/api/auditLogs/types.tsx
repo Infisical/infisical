@@ -129,7 +129,7 @@ interface DeleteSecretEvent {
 }
 
 interface GetWorkspaceKeyEvent {
-  type: EventType.GET_WORKSPACE_KEY;
+  type: EventType.GET_PROJECT_KEY;
   metadata: {
     keyId: string;
   };
@@ -326,6 +326,14 @@ interface RevokeIdentityUniversalAuthClientSecretEvent {
   };
 }
 
+interface ClearIdentityUniversalAuthLockoutsEvent {
+  type: EventType.CLEAR_IDENTITY_UNIVERSAL_AUTH_LOCKOUTS;
+  metadata: {
+    identityId: string;
+    clientSecretId: string;
+  };
+}
+
 interface CreateEnvironmentEvent {
   type: EventType.CREATE_ENVIRONMENT;
   metadata: {
@@ -353,7 +361,7 @@ interface DeleteEnvironmentEvent {
 }
 
 interface AddWorkspaceMemberEvent {
-  type: EventType.ADD_WORKSPACE_MEMBER;
+  type: EventType.ADD_PROJECT_MEMBER;
   metadata: {
     userId: string;
     email: string;
@@ -361,7 +369,7 @@ interface AddWorkspaceMemberEvent {
 }
 
 interface RemoveWorkspaceMemberEvent {
-  type: EventType.REMOVE_WORKSPACE_MEMBER;
+  type: EventType.REMOVE_PROJECT_MEMBER;
   metadata: {
     userId: string;
     email: string;
@@ -492,7 +500,7 @@ interface DeleteSecretImportEvent {
 }
 
 interface UpdateUserRole {
-  type: EventType.UPDATE_USER_WORKSPACE_ROLE;
+  type: EventType.UPDATE_USER_PROJECT_ROLE;
   metadata: {
     userId: string;
     email: string;
@@ -502,7 +510,7 @@ interface UpdateUserRole {
 }
 
 interface UpdateUserDeniedPermissions {
-  type: EventType.UPDATE_USER_WORKSPACE_DENIED_PERMISSIONS;
+  type: EventType.UPDATE_USER_PROJECT_DENIED_PERMISSIONS;
   metadata: {
     userId: string;
     email: string;
@@ -866,6 +874,13 @@ interface IntegrationSyncedEvent {
   };
 }
 
+interface ClearIdentityLdapAuthLockoutsEvent {
+  type: EventType.CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS;
+  metadata: {
+    identityId: string;
+  };
+}
+
 export type Event =
   | GetSecretsEvent
   | GetSecretEvent
@@ -892,6 +907,7 @@ export type Event =
   | CreateIdentityUniversalAuthClientSecretEvent
   | GetIdentityUniversalAuthClientSecretsEvent
   | RevokeIdentityUniversalAuthClientSecretEvent
+  | ClearIdentityUniversalAuthLockoutsEvent
   | CreateEnvironmentEvent
   | UpdateEnvironmentEvent
   | DeleteEnvironmentEvent
@@ -949,7 +965,8 @@ export type Event =
   | GetCertificateTemplateEstConfig
   | UpdateProjectWorkflowIntegrationConfig
   | GetProjectWorkflowIntegrationConfig
-  | IntegrationSyncedEvent;
+  | IntegrationSyncedEvent
+  | ClearIdentityLdapAuthLockoutsEvent;
 
 export type AuditLog = {
   id: string;

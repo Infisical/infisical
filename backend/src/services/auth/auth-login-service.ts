@@ -1,6 +1,13 @@
 import { Knex } from "knex";
 
-import { OrgMembershipRole, OrgMembershipStatus, TableName, TUsers, UserDeviceSchema } from "@app/db/schemas";
+import {
+  AccessScope,
+  OrgMembershipRole,
+  OrgMembershipStatus,
+  TableName,
+  TUsers,
+  UserDeviceSchema
+} from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
@@ -14,9 +21,12 @@ import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TNotificationServiceFactory } from "../notification/notification-service";
+import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { getDefaultOrgMembershipRole } from "../org/org-role-fns";
-import { TOrgMembershipDALFactory } from "../org-membership/org-membership-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { LoginMethod } from "../super-admin/super-admin-types";
 import { TTotpServiceFactory } from "../totp/totp-service";
@@ -46,7 +56,9 @@ type TAuthLoginServiceFactoryDep = {
   smtpService: TSmtpService;
   totpService: Pick<TTotpServiceFactory, "verifyUserTotp" | "verifyWithUserRecoveryCode">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  orgMembershipDAL: TOrgMembershipDALFactory;
+  membershipUserDAL: TMembershipUserDALFactory;
+  membershipRoleDAL: TMembershipRoleDALFactory;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
@@ -55,9 +67,11 @@ export const authLoginServiceFactory = ({
   tokenService,
   smtpService,
   orgDAL,
-  orgMembershipDAL,
   totpService,
-  auditLogService
+  auditLogService,
+  notificationService,
+  membershipUserDAL,
+  membershipRoleDAL
 }: TAuthLoginServiceFactoryDep) => {
   /*
    * Private
@@ -71,6 +85,16 @@ export const authLoginServiceFactory = ({
     if (!isDeviceSeen) {
       const newDeviceList = devices.concat([{ ip, userAgent }]);
       await userDAL.updateById(user.id, { devices: JSON.stringify(newDeviceList) }, tx);
+
+      await notificationService.createUserNotifications([
+        {
+          userId: user.id,
+          type: NotificationType.LOGIN_FROM_NEW_DEVICE,
+          title: "Login From New Device",
+          body: `A new device with IP **${ip}** and User Agent **${userAgent}** has logged into your account.`
+        }
+      ]);
+
       if (user.email) {
         await smtpService.sendMail({
           template: SmtpTemplates.NewDeviceJoin,
@@ -149,8 +173,8 @@ export const authLoginServiceFactory = ({
     if (organizationId) {
       const org = await orgDAL.findById(organizationId);
       if (org) {
-        await orgMembershipDAL.update(
-          { userId: user.id, orgId: org.id },
+        await membershipUserDAL.update(
+          { actorUserId: user.id, scopeOrgId: org.id, scope: AccessScope.Organization },
           { lastLoginAuthMethod: authMethod, lastLoginTime: new Date() }
         );
         if (org.userTokenExpiration) {
@@ -453,16 +477,21 @@ export const authLoginServiceFactory = ({
 
     const selectedOrg = await orgDAL.findById(organizationId);
 
-    // Check if authEnforced is true, if that's the case, throw an error
-    if (selectedOrg.authEnforced) {
-      throw new BadRequestError({
-        message: "Authentication is required by your organization before you can log in."
-      });
-    }
-
     if (!selectedOrgMembership) {
       throw new ForbiddenRequestError({
         message: `User does not have access to the organization named ${selectedOrg?.name}`
+      });
+    }
+
+    // Check if authEnforced is true and the current auth method is not an enforced method
+    if (
+      selectedOrg.authEnforced &&
+      !isAuthMethodSaml(decodedToken.authMethod) &&
+      decodedToken.authMethod !== AuthMethod.OIDC &&
+      !(selectedOrg.bypassOrgAuthEnabled && selectedOrgMembership.userRole === OrgMembershipRole.Admin)
+    ) {
+      throw new BadRequestError({
+        message: "Login with the auth method required by your organization."
       });
     }
 
@@ -558,6 +587,18 @@ export const authLoginServiceFactory = ({
         .filter(Boolean) as string[];
 
       if (adminEmails.length > 0) {
+        await notificationService.createUserNotifications(
+          orgAdmins
+            .filter((admin) => admin.user.id !== user.id)
+            .map((admin) => ({
+              userId: admin.user.id,
+              orgId: organizationId,
+              type: NotificationType.ADMIN_SSO_BYPASS,
+              title: "Security Alert: Admin SSO Bypass",
+              body: `The org admin **${user.email}** has bypassed enforced SSO login.`
+            }))
+        );
+
         await smtpService.sendMail({
           recipients: adminEmails,
           subjectLine: "Security Alert: Admin SSO Bypass",
@@ -653,7 +694,8 @@ export const authLoginServiceFactory = ({
     mfaJwtToken,
     ip,
     userAgent,
-    orgId
+    orgId,
+    isRecoveryCode = false
   }: TVerifyMfaTokenDTO) => {
     const appCfg = getConfig();
     const user = await userDAL.findById(userId);
@@ -667,15 +709,20 @@ export const authLoginServiceFactory = ({
           code: mfaToken
         });
       } else if (mfaMethod === MfaMethod.TOTP) {
-        if (mfaToken.length === 6) {
-          await totpService.verifyUserTotp({
-            userId,
-            totp: mfaToken
-          });
-        } else {
+        if (isRecoveryCode) {
           await totpService.verifyWithUserRecoveryCode({
             userId,
             recoveryCode: mfaToken
+          });
+        } else {
+          if (mfaToken.length !== 6) {
+            throw new BadRequestError({
+              message: "Please use a valid TOTP code."
+            });
+          }
+          await totpService.verifyUserTotp({
+            userId,
+            totp: mfaToken
           });
         }
       }
@@ -821,21 +868,34 @@ export const authLoginServiceFactory = ({
         }
         orgId = defaultOrg.id;
         const [orgMembership] = await orgDAL.findMembership({
-          [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
-          [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+          [`${TableName.Membership}.actorUserId` as "actorUserId"]: user.id,
+          [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+          [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
         });
 
         if (!orgMembership) {
           const { role, roleId } = await getDefaultOrgMembershipRole(defaultOrg.defaultMembershipRole);
 
-          await orgMembershipDAL.create({
-            userId: user.id,
-            inviteEmail: email,
-            orgId,
-            role,
-            roleId,
-            status: OrgMembershipStatus.Accepted,
-            isActive: true
+          await membershipUserDAL.transaction(async (tx) => {
+            const membership = await membershipUserDAL.create(
+              {
+                actorUserId: user?.id,
+                inviteEmail: email,
+                scopeOrgId: orgId,
+                scope: AccessScope.Organization,
+                status: OrgMembershipStatus.Accepted,
+                isActive: true
+              },
+              tx
+            );
+            await membershipRoleDAL.create(
+              {
+                membershipId: membership.id,
+                role,
+                customRoleId: roleId
+              },
+              tx
+            );
           });
         }
       }
@@ -858,10 +918,11 @@ export const authLoginServiceFactory = ({
       if (org) {
         // checks for the membership and only sets the orgId / orgName if the user is a member of the specified org
         const orgMembership = await orgDAL.findMembership({
-          [`${TableName.OrgMembership}.userId` as "userId"]: user.id,
-          [`${TableName.OrgMembership}.orgId` as "orgId"]: org.id,
-          [`${TableName.OrgMembership}.isActive` as "isActive"]: true,
-          [`${TableName.OrgMembership}.status` as "status"]: OrgMembershipStatus.Accepted
+          [`${TableName.Membership}.actorUserId` as "actorUserId"]: user.id,
+          [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: org.id,
+          [`${TableName.Membership}.isActive` as "isActive"]: true,
+          [`${TableName.Membership}.status` as "status"]: OrgMembershipStatus.Accepted,
+          [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
         });
 
         if (orgMembership) {

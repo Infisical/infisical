@@ -8,7 +8,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Switch } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import {
   SecretSync,
@@ -29,6 +29,7 @@ type Props = {
   onComplete: (secretSync: TSecretSync) => void;
   destination: SecretSync;
   onCancel: () => void;
+  initialFormData?: Partial<TSecretSyncForm>;
 };
 
 const FORM_TABS: { name: string; key: string; fields: (keyof TSecretSyncForm)[] }[] = [
@@ -39,14 +40,20 @@ const FORM_TABS: { name: string; key: string; fields: (keyof TSecretSyncForm)[] 
   { name: "Review", key: "review", fields: [] }
 ];
 
-export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Props) => {
+export const CreateSecretSyncForm = ({
+  destination,
+  onComplete,
+  onCancel,
+  initialFormData
+}: Props) => {
   const createSecretSync = useCreateSecretSync();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { name: destinationName } = SECRET_SYNC_MAP[destination];
 
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+  // scoot: right now we only do this when creating a connection so we know index 1
+  const [selectedTabIndex, setSelectedTabIndex] = useState(initialFormData ? 1 : 0);
 
   const { syncOption } = useSecretSyncOption(destination);
 
@@ -59,7 +66,8 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
         initialSyncBehavior: syncOption?.canImportSecrets
           ? undefined
           : SecretSyncInitialSyncBehavior.OverwriteDestination
-      }
+      },
+      ...initialFormData
     } as Partial<TSecretSyncForm>,
     reValidateMode: "onChange"
   });
@@ -70,7 +78,7 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
         ...formData,
         connectionId: connection.id,
         environment: environment.slug,
-        projectId: currentWorkspace.id
+        projectId: currentProject.id
       });
 
       createNotification({
@@ -130,7 +138,7 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
   if (showConfirmation)
     return (
       <>
-        <div className="flex flex-col rounded-sm border border-l-[2px] border-mineshaft-600 border-l-primary bg-mineshaft-700/80 px-4 py-3">
+        <div className="flex flex-col rounded-xs border border-l-2 border-mineshaft-600 border-l-primary bg-mineshaft-700/80 px-4 py-3">
           <div className="mb-1 flex items-center text-sm">
             <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
             Secret Sync Behavior
@@ -177,7 +185,7 @@ export const CreateSecretSyncForm = ({ destination, onComplete, onCancel }: Prop
                   setSelectedTabIndex((prev) => (isEnabled ? index : prev));
                 }}
                 className={({ selected }) =>
-                  `w-30 -mb-[0.14rem] ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-none disabled:opacity-60 ${
+                  `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
                     selected
                       ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
                       : "text-bunker-300"

@@ -7,14 +7,16 @@ import {
   SECRET_SCANNING_REGISTER_ROUTER_MAP
 } from "@app/ee/routes/v2/secret-scanning-v2-routers";
 
+import { registerDeprecatedProjectRoleRouter } from "./deprecated-project-role-router";
+import { registerGatewayV2Router } from "./gateway-router";
 import { registerIdentityProjectAdditionalPrivilegeRouter } from "./identity-project-additional-privilege-router";
-import { registerProjectRoleRouter } from "./project-role-router";
+import { registerSecretApprovalPolicyRouter } from "./secret-approval-policy-router";
 
 export const registerV2EERoutes = async (server: FastifyZodProvider) => {
-  // org role starts with organization
   await server.register(
     async (projectRouter) => {
-      await projectRouter.register(registerProjectRoleRouter);
+      // this has been depreciated and moved to /api/v1/projects
+      await projectRouter.register(registerDeprecatedProjectRoleRouter);
     },
     { prefix: "/workspace" }
   );
@@ -22,6 +24,10 @@ export const registerV2EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerIdentityProjectAdditionalPrivilegeRouter, {
     prefix: "/identity-project-additional-privilege"
   });
+
+  await server.register(registerGatewayV2Router, { prefix: "/gateways" });
+
+  await server.register(registerSecretApprovalPolicyRouter, { prefix: "/secret-approvals" });
 
   await server.register(
     async (secretRotationV2Router) => {

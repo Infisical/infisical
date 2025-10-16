@@ -82,13 +82,15 @@ import {
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 
+import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { awsIamUserSecretRotationFactory } from "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns";
 import { oktaClientSecretRotationFactory } from "./okta-client-secret/okta-client-secret-rotation-fns";
+import { redisCredentialsRotationFactory } from "./redis-credentials/redis-credentials-rotation-fns";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 
 export type TSecretRotationV2ServiceFactoryDep = {
   secretRotationV2DAL: TSecretRotationV2DALFactory;
-  appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -110,6 +112,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 };
 
 export type TSecretRotationV2ServiceFactory = ReturnType<typeof secretRotationV2ServiceFactory>;
@@ -130,7 +133,8 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.AzureClientSecret]: azureClientSecretRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.AwsIamUserSecret]: awsIamUserSecretRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.LdapPassword]: ldapPasswordRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.OktaClientSecret]: oktaClientSecretRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.OktaClientSecret]: oktaClientSecretRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.RedisCredentials]: redisCredentialsRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -153,7 +157,8 @@ export const secretRotationV2ServiceFactory = ({
   queueService,
   folderCommitService,
   appConnectionDAL,
-  gatewayService
+  gatewayService,
+  gatewayV2Service
 }: TSecretRotationV2ServiceFactoryDep) => {
   const $queueSendSecretRotationStatusNotification = async (secretRotation: TSecretRotationV2Raw) => {
     const appCfg = getConfig();
@@ -456,7 +461,11 @@ export const secretRotationV2ServiceFactory = ({
     const typeApp = SECRET_ROTATION_CONNECTION_MAP[payload.type];
 
     // validates permission to connect and app is valid for rotation type
-    const connection = await appConnectionService.connectAppConnectionById(typeApp, payload.connectionId, actor);
+    const connection = await appConnectionService.validateAppConnectionUsageById(
+      typeApp,
+      { connectionId: payload.connectionId, projectId },
+      actor
+    );
 
     const rotationFactory = SECRET_ROTATION_FACTORY_MAP[payload.type](
       {
@@ -467,7 +476,8 @@ export const secretRotationV2ServiceFactory = ({
       } as TSecretRotationV2WithConnection,
       appConnectionDAL,
       kmsService,
-      gatewayService
+      gatewayService,
+      gatewayV2Service
     );
 
     // even though we have a db constraint we want to check before any rotation of credentials is attempted
@@ -831,7 +841,8 @@ export const secretRotationV2ServiceFactory = ({
         } as TSecretRotationV2WithConnection,
         appConnectionDAL,
         kmsService,
-        gatewayService
+        gatewayService,
+        gatewayV2Service
       );
 
       const generatedCredentials = await decryptSecretRotationCredentials({
@@ -915,7 +926,8 @@ export const secretRotationV2ServiceFactory = ({
         } as TSecretRotationV2WithConnection,
         appConnectionDAL,
         kmsService,
-        gatewayService
+        gatewayService,
+        gatewayV2Service
       );
 
       const updatedRotation = await rotationFactory.rotateCredentials(

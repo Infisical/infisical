@@ -26,7 +26,7 @@ export const SqlConnectionFields = ({
         <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
           <Tab
             className={({ selected }) =>
-              `w-30 -mb-[0.14rem] px-4 py-2 text-sm font-medium outline-none disabled:opacity-60 ${
+              `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
                 selected ? "border-b-2 border-mineshaft-300 text-mineshaft-200" : "text-bunker-300"
               }`
             }
@@ -35,7 +35,7 @@ export const SqlConnectionFields = ({
           </Tab>
           <Tab
             className={({ selected }) =>
-              `w-30 -mb-[0.14rem] px-4 py-2 text-sm font-medium outline-none disabled:opacity-60 ${
+              `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
                 selected ? "border-b-2 border-mineshaft-300 text-mineshaft-200" : "text-bunker-300"
               }`
             }
@@ -43,7 +43,7 @@ export const SqlConnectionFields = ({
             SSL ({sslEnabled ? "Enabled" : "Disabled"})
           </Tab>
         </Tab.List>
-        <Tab.Panels className="mb-4 rounded border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
+        <Tab.Panels className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
           <Tab.Panel>
             <div className="mt-[0.675rem] flex items-start gap-2">
               <Controller
@@ -115,7 +115,7 @@ export const SqlConnectionFields = ({
                     className="flex-1"
                   >
                     <SecretInput
-                      containerClassName="text-gray-400 w-full group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                      containerClassName="text-gray-400 w-full group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
                       value={value}
                       onChange={(e) => onChange(e.target.value)}
                       isDisabled={isPlatformManagedCredentials}
@@ -156,7 +156,7 @@ export const SqlConnectionFields = ({
                   isOptional
                 >
                   <TextArea
-                    className="h-[3.5rem] !resize-none"
+                    className="h-14 resize-none!"
                     {...field}
                     isDisabled={isPlatformManagedCredentials || !sslEnabled}
                   />
@@ -180,7 +180,7 @@ export const SqlConnectionFields = ({
                     onCheckedChange={onChange}
                     isDisabled={isPlatformManagedCredentials || !sslEnabled}
                   >
-                    <p className="w-[9.5rem]">
+                    <p className="w-38">
                       Reject Unauthorized
                       <Tooltip
                         className="max-w-md"

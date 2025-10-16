@@ -5,12 +5,14 @@ import { OrgPermissionSubjects } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionAppConnectionActions,
+  OrgPermissionAuditLogsActions,
   OrgPermissionBillingActions,
   OrgPermissionGroupActions,
   OrgPermissionIdentityActions,
   OrgPermissionKmipActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
-  OrgPermissionSecretShareAction
+  OrgPermissionSecretShareAction,
+  OrgRelayPermissionActions
 } from "@app/context/OrgPermissionContext/types";
 import { TPermission } from "@app/hooks/api/roles/types";
 
@@ -20,6 +22,12 @@ const generalPermissionSchema = z
     edit: z.boolean().optional(),
     delete: z.boolean().optional(),
     create: z.boolean().optional()
+  })
+  .optional();
+
+const auditLogsPermissionSchema = z
+  .object({
+    [OrgPermissionAuditLogsActions.Read]: z.boolean().optional()
   })
   .optional();
 
@@ -83,6 +91,15 @@ const orgGatewayPermissionSchema = z
   })
   .optional();
 
+const orgRelayPermissionSchema = z
+  .object({
+    [OrgRelayPermissionActions.ListRelays]: z.boolean().optional(),
+    [OrgRelayPermissionActions.EditRelays]: z.boolean().optional(),
+    [OrgRelayPermissionActions.DeleteRelays]: z.boolean().optional(),
+    [OrgRelayPermissionActions.CreateRelays]: z.boolean().optional()
+  })
+  .optional();
+
 const machineIdentityAuthTemplatePermissionSchema = z
   .object({
     [OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates]: z.boolean().optional(),
@@ -115,13 +132,12 @@ export const formSchema = z.object({
     .refine((val) => val !== "custom", { message: "Cannot use custom as its a keyword" }),
   permissions: z
     .object({
-      workspace: z
+      project: z
         .object({
           create: z.boolean().optional()
         })
         .optional(),
-
-      "audit-logs": generalPermissionSchema,
+      "audit-logs": auditLogsPermissionSchema,
       member: generalPermissionSchema,
       groups: groupPermissionSchema,
       role: generalPermissionSchema,
@@ -141,6 +157,7 @@ export const formSchema = z.object({
       "app-connections": appConnectionsPermissionSchema,
       kmip: kmipPermissionSchema,
       gateway: orgGatewayPermissionSchema,
+      relay: orgRelayPermissionSchema,
       "machine-identity-auth-template": machineIdentityAuthTemplatePermissionSchema,
       "secret-share": secretSharingPermissionSchema
     })
@@ -155,7 +172,11 @@ export const rolePermission2Form = (permissions: TPermission[] = []) => {
   // i would have to write a if loop with both conditions same
   const formVal: Record<string, any> = {};
   permissions.forEach((permission) => {
-    const { subject, action } = permission;
+    const { action } = permission;
+    let { subject } = permission;
+    if (subject === OrgPermissionSubjects.Workspace) {
+      subject = OrgPermissionSubjects.Project;
+    }
     if (!formVal?.[subject]) formVal[subject] = {};
     formVal[subject][action] = true;
   });

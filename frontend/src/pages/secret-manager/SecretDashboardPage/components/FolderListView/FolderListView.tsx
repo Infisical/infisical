@@ -33,17 +33,19 @@ import { FolderForm } from "../ActionBar/FolderForm";
 type Props = {
   folders?: TSecretFolder[];
   environment: string;
-  workspaceId: string;
+  projectId: string;
   secretPath?: string;
   onNavigateToFolder: (path: string) => void;
+  canNavigate: boolean;
 };
 
 export const FolderListView = ({
   folders = [],
   environment,
-  workspaceId,
+  projectId,
   secretPath = "/",
-  onNavigateToFolder
+  onNavigateToFolder,
+  canNavigate
 }: Props) => {
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "updateFolder",
@@ -87,7 +89,7 @@ export const FolderListView = ({
           };
 
           addPendingChange(updatedCreate, {
-            workspaceId,
+            projectId,
             environment,
             secretPath
           });
@@ -104,7 +106,7 @@ export const FolderListView = ({
           };
 
           addPendingChange(updateChange, {
-            workspaceId,
+            projectId,
             environment,
             secretPath
           });
@@ -119,7 +121,7 @@ export const FolderListView = ({
         name: newFolderName,
         path: secretPath,
         environment,
-        projectId: workspaceId,
+        projectId,
         description: newFolderDescription
       });
       handlePopUpClose("updateFolder");
@@ -138,7 +140,7 @@ export const FolderListView = ({
 
   const handleDeletePending = (id: string) => {
     removePendingChange(id, "folder", {
-      workspaceId,
+      projectId,
       environment,
       secretPath
     });
@@ -159,7 +161,7 @@ export const FolderListView = ({
         };
 
         addPendingChange(pendingFolderDelete, {
-          workspaceId,
+          projectId,
           environment,
           secretPath
         });
@@ -172,7 +174,7 @@ export const FolderListView = ({
         folderId: folderData.id,
         path: secretPath,
         environment,
-        projectId: workspaceId
+        projectId
       });
 
       handlePopUpClose("deleteFolder");
@@ -190,7 +192,7 @@ export const FolderListView = ({
   };
 
   const handleFolderClick = (name: string, isPending?: boolean) => {
-    if (isPending) {
+    if (isPending || !canNavigate) {
       return;
     }
     const path = `${secretPathQueryparam === "/" ? "" : secretPathQueryparam}/${name}`;
@@ -216,7 +218,7 @@ export const FolderListView = ({
             <FontAwesomeIcon icon={faFolder} />
           </div>
           <div
-            className="flex flex-grow items-center px-4 py-3"
+            className="flex grow items-center px-4 py-3"
             role="button"
             tabIndex={0}
             onKeyDown={(evt) => {
@@ -228,7 +230,7 @@ export const FolderListView = ({
             {description && (
               <Tooltip
                 position="right"
-                className="flex max-w-lg items-center space-x-4 whitespace-pre-wrap py-4"
+                className="flex max-w-lg items-center space-x-4 py-4 whitespace-pre-wrap"
                 content={description}
               >
                 <FontAwesomeIcon icon={faInfoCircle} className="ml-1 text-mineshaft-400" />

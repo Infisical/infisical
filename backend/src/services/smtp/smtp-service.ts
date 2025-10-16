@@ -9,15 +9,19 @@ import { logger } from "@app/lib/logger";
 import {
   AccessApprovalRequestTemplate,
   AccessApprovalRequestUpdatedTemplate,
+  AccountDeletionConfirmationTemplate,
   EmailMfaTemplate,
   EmailVerificationTemplate,
   ExternalImportFailedTemplate,
   ExternalImportStartedTemplate,
   ExternalImportSucceededTemplate,
+  HealthAlertTemplate,
   IntegrationSyncFailedTemplate,
   NewDeviceLoginTemplate,
+  OAuthPasswordResetTemplate,
   OrgAdminBreakglassAccessTemplate,
   OrgAdminProjectGrantAccessTemplate,
+  OrganizationAssignmentTemplate,
   OrganizationInvitationTemplate,
   PasswordResetTemplate,
   PasswordSetupTemplate,
@@ -61,6 +65,8 @@ export enum SmtpTemplates {
   // HistoricalSecretList = "historicalSecretLeakIncident", not used anymore?
   NewDeviceJoin = "newDevice",
   OrgInvite = "organizationInvitation",
+  OrgAssignment = "organizationAssignment",
+  OAuthPasswordReset = "oAuthPasswordReset",
   ResetPassword = "passwordReset",
   SetupPassword = "passwordSetup",
   SecretLeakIncident = "secretLeakIncident",
@@ -79,7 +85,9 @@ export enum SmtpTemplates {
   OrgAdminBreakglassAccess = "orgAdminBreakglassAccess",
   ServiceTokenExpired = "serviceTokenExpired",
   SecretScanningV2ScanFailed = "secretScanningV2ScanFailed",
-  SecretScanningV2SecretsDetected = "secretScanningV2SecretsDetected"
+  SecretScanningV2SecretsDetected = "secretScanningV2SecretsDetected",
+  AccountDeletionConfirmation = "accountDeletionConfirmation",
+  HealthAlert = "healthAlert"
 }
 
 export enum SmtpHost {
@@ -94,6 +102,7 @@ export enum SmtpHost {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.OrgInvite]: OrganizationInvitationTemplate,
+  [SmtpTemplates.OrgAssignment]: OrganizationAssignmentTemplate,
   [SmtpTemplates.NewDeviceJoin]: NewDeviceLoginTemplate,
   [SmtpTemplates.SignupEmailVerification]: SignupEmailVerificationTemplate,
   [SmtpTemplates.EmailMfa]: EmailMfaTemplate,
@@ -118,11 +127,14 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.OrgAdminProjectDirectAccess]: OrgAdminProjectGrantAccessTemplate,
   [SmtpTemplates.ProjectAccessRequest]: ProjectAccessRequestTemplate,
   [SmtpTemplates.SecretApprovalRequestNeedsReview]: SecretApprovalRequestNeedsReviewTemplate,
+  [SmtpTemplates.OAuthPasswordReset]: OAuthPasswordResetTemplate,
   [SmtpTemplates.ResetPassword]: PasswordResetTemplate,
   [SmtpTemplates.SetupPassword]: PasswordSetupTemplate,
   [SmtpTemplates.PkiExpirationAlert]: PkiExpirationAlertTemplate,
   [SmtpTemplates.SecretScanningV2ScanFailed]: SecretScanningScanFailedTemplate,
-  [SmtpTemplates.SecretScanningV2SecretsDetected]: SecretScanningSecretsDetectedTemplate
+  [SmtpTemplates.SecretScanningV2SecretsDetected]: SecretScanningSecretsDetectedTemplate,
+  [SmtpTemplates.AccountDeletionConfirmation]: AccountDeletionConfirmationTemplate,
+  [SmtpTemplates.HealthAlert]: HealthAlertTemplate
 };
 
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {

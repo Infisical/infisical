@@ -13,7 +13,7 @@ import {
   ModalContent
 } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
-import { ProjectType } from "@app/hooks/api/workspace/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import {
   PROJECT_PERMISSION_OBJECT,
@@ -137,14 +137,14 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
             value={id}
             className="m-0 border border-mineshaft-600 first:rounded-t last:rounded-b data-[state=open]:border-primary/40 data-[state=open]:bg-mineshaft-600/30"
           >
-            <AccordionTrigger className="w-full justify-start p-4 py-8 text-mineshaft-100 hover:bg-mineshaft-700 hover:text-mineshaft-100 data-[state=open]:bg-primary/[3%] data-[state=open]:text-mineshaft-100">
+            <AccordionTrigger className="w-full justify-start p-4 py-8 text-mineshaft-100 hover:bg-mineshaft-700 hover:text-mineshaft-100 data-[state=open]:bg-primary/3 data-[state=open]:text-mineshaft-100">
               <div className="mr-auto flex flex-col py-2 text-left">
                 <span>{name}</span>
                 <span className="text-sm leading-3 text-mineshaft-400">{description}</span>
               </div>
             </AccordionTrigger>
             <AccordionContent className="border-t border-mineshaft-600">
-              <div className="thin-scrollbar max-h-[20rem] overflow-y-auto">
+              <div className="max-h-80 thin-scrollbar overflow-y-auto">
                 <span className="text-mineshaft-300">Grants the following permissions:</span>
                 <div className="grid grid-cols-2 gap-4 py-2">
                   {permissions

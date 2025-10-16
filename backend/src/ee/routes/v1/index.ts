@@ -3,8 +3,11 @@ import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-templat
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
-import { registerAuditLogStreamRouter } from "./audit-log-stream-router";
+import { AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP, registerAuditLogStreamRouter } from "./audit-log-stream-routers";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
+import { registerDeprecatedProjectRoleRouter } from "./deprecated-project-role-router";
+import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
+import { registerDeprecatedSecretApprovalPolicyRouter } from "./deprecated-secret-approval-policy-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerKubernetesDynamicSecretLeaseRouter } from "./dynamic-secret-lease-routers/kubernetes-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
@@ -20,13 +23,19 @@ import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
 import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
+import { PAM_ACCOUNT_REGISTER_ROUTER_MAP } from "./pam-account-routers";
+import { registerPamAccountRouter } from "./pam-account-routers/pam-account-router";
+import { registerPamFolderRouter } from "./pam-folder-router";
+import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
+import { registerPamResourceRouter } from "./pam-resource-routers/pam-resource-router";
+import { registerPamSessionRouter } from "./pam-session-router";
 import { registerPITRouter } from "./pit-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
 import { registerRateLimitRouter } from "./rate-limit-router";
+import { registerRelayRouter } from "./relay-router";
 import { registerSamlRouter } from "./saml-router";
 import { registerScimRouter } from "./scim-router";
-import { registerSecretApprovalPolicyRouter } from "./secret-approval-policy-router";
 import { registerSecretApprovalRequestRouter } from "./secret-approval-request-router";
 import { registerSecretRotationProviderRouter } from "./secret-rotation-provider-router";
 import { registerSecretRotationRouter } from "./secret-rotation-router";
@@ -46,18 +55,29 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   // org role starts with organization
   await server.register(registerOrgRoleRouter, { prefix: "/organization" });
   await server.register(registerLicenseRouter, { prefix: "/organizations" });
+
+  // depreciated in favour of infisical workspace
   await server.register(
     async (projectRouter) => {
-      await projectRouter.register(registerProjectRoleRouter);
-      await projectRouter.register(registerProjectRouter);
-      await projectRouter.register(registerTrustedIpRouter);
-      await projectRouter.register(registerAssumePrivilegeRouter);
+      await projectRouter.register(registerDeprecatedProjectRoleRouter);
+      await projectRouter.register(registerDeprecatedProjectRouter);
     },
     { prefix: "/workspace" }
   );
+
+  await server.register(
+    async (projectRouter) => {
+      await projectRouter.register(registerProjectRoleRouter);
+      await projectRouter.register(registerTrustedIpRouter);
+      await projectRouter.register(registerAssumePrivilegeRouter);
+      await projectRouter.register(registerProjectRouter);
+    },
+    { prefix: "/projects" }
+  );
+
   await server.register(registerSnapshotRouter, { prefix: "/secret-snapshot" });
   await server.register(registerPITRouter, { prefix: "/pit" });
-  await server.register(registerSecretApprovalPolicyRouter, { prefix: "/secret-approvals" });
+  await server.register(registerDeprecatedSecretApprovalPolicyRouter, { prefix: "/secret-approvals" });
   await server.register(registerSecretApprovalRequestRouter, {
     prefix: "/secret-approval-requests"
   });
@@ -79,6 +99,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   );
 
   await server.register(registerGatewayRouter, { prefix: "/gateways" });
+  await server.register(registerRelayRouter, { prefix: "/relays" });
   await server.register(registerGithubOrgSyncRouter, { prefix: "/github-org-sync-config" });
 
   await server.register(
@@ -114,7 +135,21 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerSecretRouter, { prefix: "/secrets" });
   await server.register(registerSecretVersionRouter, { prefix: "/secret" });
   await server.register(registerGroupRouter, { prefix: "/groups" });
-  await server.register(registerAuditLogStreamRouter, { prefix: "/audit-log-streams" });
+
+  await server.register(
+    async (auditLogStreamRouter) => {
+      await auditLogStreamRouter.register(registerAuditLogStreamRouter);
+
+      // Provider-specific endpoints
+      await Promise.all(
+        Object.entries(AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP).map(([provider, router]) =>
+          auditLogStreamRouter.register(router, { prefix: `/${provider}` })
+        )
+      );
+    },
+    { prefix: "/audit-log-streams" }
+  );
+
   await server.register(registerUserAdditionalPrivilegeRouter, { prefix: "/user-project-additional-privilege" });
   await server.register(
     async (privilegeRouter) => {
@@ -136,5 +171,41 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await kmipRouter.register(registerKmipSpecRouter, { prefix: "/spec" });
     },
     { prefix: "/kmip" }
+  );
+
+  await server.register(
+    async (pamRouter) => {
+      await pamRouter.register(registerPamFolderRouter, { prefix: "/folders" });
+      await pamRouter.register(registerPamSessionRouter, { prefix: "/sessions" });
+
+      await pamRouter.register(
+        async (pamAccountRouter) => {
+          await pamAccountRouter.register(registerPamAccountRouter);
+
+          // Provider-specific endpoints
+          await Promise.all(
+            Object.entries(PAM_ACCOUNT_REGISTER_ROUTER_MAP).map(([provider, router]) =>
+              pamAccountRouter.register(router, { prefix: `/${provider}` })
+            )
+          );
+        },
+        { prefix: "/accounts" }
+      );
+
+      await pamRouter.register(
+        async (pamResourceRouter) => {
+          await pamResourceRouter.register(registerPamResourceRouter);
+
+          // Provider-specific endpoints
+          await Promise.all(
+            Object.entries(PAM_RESOURCE_REGISTER_ROUTER_MAP).map(([provider, router]) =>
+              pamResourceRouter.register(router, { prefix: `/${provider}` })
+            )
+          );
+        },
+        { prefix: "/resources" }
+      );
+    },
+    { prefix: "/pam" }
   );
 };

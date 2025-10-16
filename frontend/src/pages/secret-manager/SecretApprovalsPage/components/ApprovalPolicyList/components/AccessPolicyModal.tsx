@@ -22,7 +22,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
 import {
@@ -207,10 +207,10 @@ const Form = ({
     name: "sequenceApprovers"
   });
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { data: groups } = useListWorkspaceGroups(projectId);
 
-  const availableEnvironments = currentWorkspace?.environments || [];
+  const availableEnvironments = currentProject?.environments || [];
   const isAccessPolicyType = watch("policyType") === PolicyType.AccessPolicy;
 
   const { mutateAsync: createAccessApprovalPolicy } = useCreateAccessApprovalPolicy();
@@ -246,7 +246,7 @@ const Form = ({
           approvers: [...userApprovers, ...groupApprovers],
           bypassers: bypassers.length > 0 ? bypassers : undefined,
           environments: environments.map((env) => env.slug),
-          workspaceId: currentWorkspace?.id || ""
+          projectId: currentProject?.id || ""
         });
       } else {
         await createAccessApprovalPolicy({
@@ -302,7 +302,7 @@ const Form = ({
           ...data,
           approvers: [...userApprovers, ...groupApprovers],
           bypassers: bypassers.length > 0 ? bypassers : undefined,
-          workspaceId: currentWorkspace?.id || "",
+          projectId: currentProject?.id || "",
           environments: environments.map((env) => env.slug)
         });
       } else {
@@ -476,7 +476,7 @@ const Form = ({
                   tooltipText="The maximum amount of time someone can request access for. Ex: 1h, 3w, 30d"
                   isError={Boolean(error)}
                   errorText={error?.message}
-                  className="flex-shrink"
+                  className="shrink"
                 >
                   <Input {...field} value={field.value || ""} placeholder="permanent" />
                 </FormControl>
@@ -494,7 +494,7 @@ const Form = ({
                   label="Min. Approvals Required"
                   isError={Boolean(error)}
                   errorText={error?.message}
-                  className="flex-shrink"
+                  className="shrink"
                 >
                   <Input
                     {...field}
@@ -561,11 +561,11 @@ const Form = ({
         </div>
         {isAccessPolicyType ? (
           <>
-            <div className="thin-scrollbar max-h-64 space-y-2 overflow-y-auto rounded border border-mineshaft-600 bg-mineshaft-900 p-2">
+            <div className="max-h-64 thin-scrollbar space-y-2 overflow-y-auto rounded-sm border border-mineshaft-600 bg-mineshaft-900 p-2">
               {sequenceApproversFieldArray.fields.map((el, index) => (
                 <div
                   className={twMerge(
-                    "rounded border border-mineshaft-500 bg-mineshaft-700 p-3 pb-0 shadow-inner",
+                    "rounded-sm border border-mineshaft-500 bg-mineshaft-700 p-3 pb-0 shadow-inner",
                     dragOverItem === index ? "border-2 border-blue-400" : "",
                     draggedItem === index ? "opacity-50" : ""
                   )}

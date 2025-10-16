@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const DatabricksAuthorizePage = () => {
@@ -17,7 +17,7 @@ export const DatabricksAuthorizePage = () => {
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
   const [instanceURLErrorText, setInstanceURLErrorText] = useState("");
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const handleButtonClick = async () => {
     try {
@@ -33,7 +33,7 @@ export const DatabricksAuthorizePage = () => {
       }
 
       const integrationAuth = await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         integration: "databricks",
         url: instanceURL.replace(/\/$/, ""),
         accessToken: apiKey
@@ -42,7 +42,7 @@ export const DatabricksAuthorizePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations/databricks/create",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           integrationAuthId: integrationAuth.id
@@ -78,12 +78,12 @@ export const DatabricksAuthorizePage = () => {
               rel="noopener noreferrer"
               href="https://infisical.com/docs/integrations/cloud/databricks"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-xxs"
+                  className="text-xxs mb-[0.07rem] ml-1.5"
                 />
               </div>
             </a>
@@ -118,7 +118,7 @@ export const DatabricksAuthorizePage = () => {
           onClick={handleButtonClick}
           colorSchema="primary"
           variant="outline_bg"
-          className="mb-6 ml-auto mr-6 mt-2 w-min"
+          className="mt-2 mr-6 mb-6 ml-auto w-min"
           isLoading={isPending}
           isDisabled={isPending}
         >

@@ -53,7 +53,7 @@ type TSecOverwriteOpt = { update: TParsedEnv; create: TParsedEnv };
 type Props = {
   isSmaller: boolean;
   environments?: { name: string; slug: string }[];
-  workspaceId: string;
+  projectId: string;
   environment: string;
   secretPath: string;
   isProtectedBranch?: boolean;
@@ -104,14 +104,14 @@ const MatrixImportModalTableRow = ({
           })}
         </Select>
       </td>
-      <td className="whitespace-nowrap pl-5 pr-5">
+      <td className="pr-5 pl-5 whitespace-nowrap">
         <div className="flex items-center justify-center">
           <FontAwesomeIcon className="text-mineshaft-400" icon={faArrowRight} />
         </div>
       </td>
       <td className="whitespace-nowrap">
         <div className="flex h-full items-start justify-center">
-          <Badge className="pointer-events-none flex h-[36px] w-full items-center justify-center gap-1.5 whitespace-nowrap border border-mineshaft-600 bg-mineshaft-600 text-bunker-200">
+          <Badge className="pointer-events-none flex h-[36px] w-full items-center justify-center gap-1.5 border border-mineshaft-600 bg-mineshaft-600 whitespace-nowrap text-bunker-200">
             {mapKey === "key" && (
               <>
                 <FontAwesomeIcon icon={faKey} />
@@ -140,7 +140,7 @@ const MatrixImportModalTableRow = ({
 export const SecretDropzone = ({
   isSmaller,
   environments = [],
-  workspaceId,
+  projectId,
   environment,
   secretPath,
   isProtectedBranch = false
@@ -196,7 +196,7 @@ export const SecretDropzone = ({
       const { secrets: existingSecrets } = await fetchDashboardProjectSecretsByKeys({
         secretPath,
         environment,
-        projectId: workspaceId,
+        projectId,
         keys: envSecretKeys
       });
 
@@ -334,7 +334,7 @@ export const SecretDropzone = ({
       if (Object.keys(create || {}).length) {
         await createSecretBatch({
           secretPath,
-          workspaceId,
+          projectId,
           environment,
           secrets: Object.entries(create).map(([secretKey, secData]) => ({
             type: SecretType.Shared,
@@ -347,7 +347,7 @@ export const SecretDropzone = ({
       if (Object.keys(update || {}).length) {
         await updateSecretBatch({
           secretPath,
-          workspaceId,
+          projectId,
           environment,
           secrets: Object.entries(update).map(([secretKey, secData]) => ({
             type: SecretType.Shared,
@@ -358,13 +358,13 @@ export const SecretDropzone = ({
         });
       }
       queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({ workspaceId, environment, secretPath })
+        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId: workspaceId, secretPath })
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretApprovalRequestKeys.count({ workspaceId })
+        queryKey: secretApprovalRequestKeys.count({ projectId })
       });
       handlePopUpClose("confirmUpload");
       createNotification({
@@ -400,7 +400,7 @@ export const SecretDropzone = ({
         onDragOver={handleDrag}
         onDrop={handleDrop}
         className={twMerge(
-          "relative mx-0.5 mb-4 mt-4 flex cursor-pointer items-center justify-center rounded-md bg-mineshaft-900 px-2 py-4 text-sm text-mineshaft-200 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100",
+          "relative mx-0.5 mt-4 mb-4 flex cursor-pointer items-center justify-center rounded-md bg-mineshaft-900 px-2 py-4 text-sm text-mineshaft-200 opacity-60 outline-2 outline-chicago-600 duration-200 outline-dashed hover:opacity-100",
           isDragActive && "opacity-100",
           !isSmaller && "mx-auto mt-40 w-full max-w-3xl flex-col space-y-4 py-20",
           isLoading && "bg-bunker-800"
@@ -464,7 +464,7 @@ export const SecretDropzone = ({
                   onParsedEnv={handleParsedEnv}
                   environment={environment}
                   environments={environments}
-                  workspaceId={workspaceId}
+                  projectId={projectId}
                   secretPath={secretPath}
                   isSmaller={isSmaller}
                 />

@@ -42,8 +42,8 @@ import {
 import {
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub,
-  useSubscription,
-  useWorkspace
+  useProject,
+  useSubscription
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteCertTemplateV2 } from "@app/hooks/api";
@@ -55,7 +55,7 @@ import { PkiTemplateForm } from "./components/PkiTemplateForm";
 const PER_PAGE_INIT = 25;
 export const PkiTemplateListPage = () => {
   const { t } = useTranslation();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -68,7 +68,7 @@ export const PkiTemplateListPage = () => {
   const { subscription } = useSubscription();
 
   const { data, isPending } = useListCertificateTemplates({
-    projectId: currentWorkspace.id,
+    projectId: currentProject.id,
     offset: (page - 1) * perPage,
     limit: perPage
   });
@@ -78,7 +78,7 @@ export const PkiTemplateListPage = () => {
   const onRemovePkiSubscriberSubmit = async () => {
     try {
       const pkiTemplate = await deleteCertTemplate.mutateAsync({
-        projectId: currentWorkspace.id,
+        projectId: currentProject.id,
         templateName: popUp?.deleteTemplate?.data?.name
       });
 
@@ -106,13 +106,14 @@ export const PkiTemplateListPage = () => {
         <div className="container mx-auto flex flex-col justify-between text-white">
           <div className="mx-auto mb-6 w-full max-w-7xl">
             <PageHeader
+              scope="project"
               title="Certificate Templates"
               description="Manage certificate template to request and issue dynamic certificates following a strict format."
             />
           </div>
           <div className="container mx-auto mb-6 max-w-7xl rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
             <div className="mb-4 flex justify-between">
-              <p className="text-xl font-semibold text-mineshaft-100">Templates</p>
+              <p className="text-xl font-medium text-mineshaft-100">Templates</p>
               <div className="flex w-full justify-end">
                 <ProjectPermissionCan
                   I={ProjectPermissionPkiTemplateActions.Create}

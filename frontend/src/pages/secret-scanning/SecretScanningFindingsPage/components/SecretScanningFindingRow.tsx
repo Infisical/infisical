@@ -102,7 +102,7 @@ export const SecretScanningFindingRow = ({
             }}
           />
         </Td>
-        <Td className="!min-w-[4rem] max-w-0">
+        <Td className="max-w-0 min-w-16!">
           <div className="flex w-full items-center">
             <img
               alt={`${sourceDetails.name} Data Source`}
@@ -118,7 +118,7 @@ export const SecretScanningFindingRow = ({
             <p className="text-mineshaft-300">{format(createdAt, "h:mm aa")}</p>
           </div>
         </Td>
-        <Td className="!min-w-[8rem] max-w-0">
+        <Td className="max-w-0 min-w-32!">
           <div className="w-full items-center">
             <p className="truncate">{resourceName}</p>
             <p className="truncate text-xs text-mineshaft-400">{dataSourceName}</p>
@@ -172,10 +172,10 @@ export const SecretScanningFindingRow = ({
         </Td>
       </Tr>
       <Tr>
-        <Td colSpan={6} className="!border-none p-0">
+        <Td colSpan={6} className="border-none! p-0">
           <div
             className={`w-full overflow-hidden bg-mineshaft-900/75 transition-all duration-500 ${
-              isExpanded ? "max-h-[50rem] opacity-100" : "max-h-0"
+              isExpanded ? "max-h-200 opacity-100" : "max-h-0"
             }`}
           >
             <div className="grid gap-4 p-4 2xl:grid-cols-6">

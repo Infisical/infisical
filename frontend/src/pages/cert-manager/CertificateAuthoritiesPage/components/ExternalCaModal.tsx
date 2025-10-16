@@ -4,6 +4,7 @@ import { SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+import { AppConnectionOption } from "@app/components/app-connections";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -16,7 +17,7 @@ import {
   SelectItem,
   Switch
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   TAvailableAppConnection,
@@ -42,6 +43,17 @@ import {
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { slugSchema } from "@app/lib/schemas";
 
+const REQUIRED_EAB_DIRECTORIES = [
+  "https://acme.digicert.com/v2/acme/directory",
+  "https://acme.zerossl.com/v2/DV90",
+  "https://acme.ssl.com/sslcom-dv-rsa",
+  "https://acme.ssl.com/sslcom-dv-ecc",
+  "https://dv.acme-v02.api.pki.goog/directory",
+  "https://acme.sectigo.com/v2/OV",
+  "https://acme.sectigo.com/v2/EV",
+  "https://acme.cisco.com/ACMEv2/directory"
+];
+
 const baseSchema = z.object({
   type: z.nativeEnum(CaType),
   name: slugSchema({
@@ -51,18 +63,39 @@ const baseSchema = z.object({
   status: z.nativeEnum(CaStatus)
 });
 
-const acmeConfigurationSchema = z.object({
-  dnsAppConnection: z.object({
-    id: z.string(),
-    name: z.string()
-  }),
-  dnsProviderConfig: z.object({
-    provider: z.nativeEnum(AcmeDnsProvider),
-    hostedZoneId: z.string()
-  }),
-  directoryUrl: z.string(),
-  accountEmail: z.string()
-});
+const acmeConfigurationSchema = z
+  .object({
+    dnsAppConnection: z.object({
+      id: z.string(),
+      name: z.string()
+    }),
+    dnsProviderConfig: z.object({
+      provider: z.nativeEnum(AcmeDnsProvider),
+      hostedZoneId: z.string()
+    }),
+    directoryUrl: z.string(),
+    accountEmail: z.string(),
+    eabKid: z.string().optional(),
+    eabHmacKey: z.string().optional()
+  })
+  .superRefine((data, ctx) => {
+    if (REQUIRED_EAB_DIRECTORIES.includes(data.directoryUrl)) {
+      if (!data.eabKid || data.eabKid.trim() === "") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "EAB Key Identifier (KID) is required for this directory URL",
+          path: ["eabKid"]
+        });
+      }
+      if (!data.eabHmacKey || data.eabHmacKey.trim() === "") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "EAB HMAC Key is required for this directory URL",
+          path: ["eabHmacKey"]
+        });
+      }
+    }
+  });
 
 const azureAdCsConfigurationSchema = z.object({
   azureAdcsConnection: z.object({
@@ -95,11 +128,11 @@ const caTypes = [
 ];
 
 export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { data: ca, isLoading: isCaLoading } = useGetCa({
     caName: (popUp?.ca?.data as { name: string })?.name || "",
-    projectId: currentWorkspace?.id || "",
+    projectId: currentProject?.id || "",
     type: (popUp?.ca?.data as { type: CaType })?.type || ""
   });
 
@@ -121,6 +154,10 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const dnsProvider =
     caType === CaType.ACME && configuration && "dnsProviderConfig" in configuration
       ? configuration.dnsProviderConfig.provider
+      : undefined;
+  const directoryUrl =
+    caType === CaType.ACME && configuration && "directoryUrl" in configuration
+      ? configuration.directoryUrl
       : undefined;
 
   useEffect(() => {
@@ -155,7 +192,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               hostedZoneId: ""
             },
             directoryUrl: "",
-            accountEmail: ""
+            accountEmail: "",
+            eabKid: "",
+            eabHmacKey: ""
           }
         });
       }
@@ -163,28 +202,25 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   }, [popUp?.ca?.isOpen, popUp?.ca?.data, reset, ca]);
 
   const { data: availableRoute53Connections, isPending: isRoute53Pending } =
-    useListAvailableAppConnections(AppConnection.AWS, {
+    useListAvailableAppConnections(AppConnection.AWS, currentProject.id, {
       enabled: caType === CaType.ACME
     });
 
   const { data: availableCloudflareConnections, isPending: isCloudflarePending } =
-    useListAvailableAppConnections(AppConnection.Cloudflare, {
+    useListAvailableAppConnections(AppConnection.Cloudflare, currentProject.id, {
       enabled: caType === CaType.ACME
     });
 
   const { data: availableAzureConnections, isPending: isAzurePending } =
-    useListAvailableAppConnections(AppConnection.AzureADCS, {
+    useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id, {
       enabled: caType === CaType.AZURE_AD_CS
     });
 
   const availableConnections: TAvailableAppConnection[] = useMemo(() => {
-    if (caType === CaType.ACME) {
-      return [...(availableRoute53Connections || []), ...(availableCloudflareConnections || [])];
-    }
     if (caType === CaType.AZURE_AD_CS) {
       return availableAzureConnections || [];
     }
-    return [];
+    return [...(availableRoute53Connections || []), ...(availableCloudflareConnections || [])];
   }, [
     caType,
     availableRoute53Connections,
@@ -192,7 +228,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableAzureConnections
   ]);
 
-  const isPending = isRoute53Pending || isCloudflarePending || isAzurePending;
+  const isPending =
+    isRoute53Pending || isCloudflarePending || (isAzurePending && caType === CaType.AZURE_AD_CS);
 
   const dnsAppConnection =
     caType === CaType.ACME && configuration && "dnsAppConnection" in configuration
@@ -227,7 +264,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               hostedZoneId: ca.configuration.dnsProviderConfig.hostedZoneId
             },
             directoryUrl: ca.configuration.directoryUrl,
-            accountEmail: ca.configuration.accountEmail
+            accountEmail: ca.configuration.accountEmail,
+            eabKid: ca.configuration.eabKid,
+            eabHmacKey: ca.configuration.eabHmacKey
           }
         });
       } else if (ca.type === CaType.AZURE_AD_CS && availableConnections?.length) {
@@ -259,7 +298,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     configuration: formConfiguration
   }: FormData) => {
     try {
-      if (!currentWorkspace?.slug) return;
+      if (!currentProject?.slug) return;
 
       let configPayload: any;
 
@@ -268,7 +307,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           dnsProviderConfig: formConfiguration.dnsProviderConfig,
           directoryUrl: formConfiguration.directoryUrl,
           accountEmail: formConfiguration.accountEmail,
-          dnsAppConnectionId: formConfiguration.dnsAppConnection.id
+          dnsAppConnectionId: formConfiguration.dnsAppConnection.id,
+          eabKid: formConfiguration.eabKid,
+          eabHmacKey: formConfiguration.eabHmacKey
         };
       } else if (type === CaType.AZURE_AD_CS && "azureAdcsConnection" in formConfiguration) {
         configPayload = {
@@ -281,7 +322,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       if (ca) {
         await updateMutateAsync({
           caName: ca.name,
-          projectId: currentWorkspace.id,
+          projectId: currentProject.id,
           name,
           type,
           status,
@@ -290,7 +331,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
       } else {
         await createMutateAsync({
-          projectId: currentWorkspace.id,
+          projectId: currentProject.id,
           name,
           type,
           status,
@@ -417,6 +458,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                       placeholder="Select connection..."
                       getOptionLabel={(option) => option.name}
                       getOptionValue={(option) => option.id}
+                      components={{ Option: AppConnectionOption }}
                     />
                   </FormControl>
                 )}
@@ -499,6 +541,44 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                   </FormControl>
                 )}
               />
+              <Controller
+                control={control}
+                defaultValue=""
+                name="configuration.eabKid"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="EAB Key Identifier (KID)"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    isOptional={!REQUIRED_EAB_DIRECTORIES.includes(directoryUrl || "")}
+                    isRequired={REQUIRED_EAB_DIRECTORIES.includes(directoryUrl || "")}
+                  >
+                    <Input
+                      {...field}
+                      placeholder="abc123def456ghi789jkl012mno345pqr678stu901vwx234yz"
+                    />
+                  </FormControl>
+                )}
+              />
+              <Controller
+                control={control}
+                defaultValue=""
+                name="configuration.eabHmacKey"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="EAB HMAC Key"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    isOptional={!REQUIRED_EAB_DIRECTORIES.includes(directoryUrl || "")}
+                    isRequired={REQUIRED_EAB_DIRECTORIES.includes(directoryUrl || "")}
+                  >
+                    <Input
+                      {...field}
+                      placeholder="dGhpc2lzYW5leGFtcGxlaG1hY2tleWZvcmRpZ2ljZXJ0YWNtZXRlc3RpbmcxMjM0NTY3ODkw"
+                    />
+                  </FormControl>
+                )}
+              />
             </>
           )}
           {caType === CaType.AZURE_AD_CS && (
@@ -521,6 +601,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                     placeholder="Select connection..."
                     getOptionLabel={(option) => option.name}
                     getOptionValue={(option) => option.id}
+                    components={{ Option: AppConnectionOption }}
                   />
                 </FormControl>
               )}

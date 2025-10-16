@@ -117,6 +117,12 @@ import {
   THumanitecSyncListItem,
   THumanitecSyncWithCredentials
 } from "./humanitec";
+import {
+  TLaravelForgeSync,
+  TLaravelForgeSyncInput,
+  TLaravelForgeSyncListItem,
+  TLaravelForgeSyncWithCredentials
+} from "./laravel-forge";
 import { TNetlifySync, TNetlifySyncInput, TNetlifySyncListItem, TNetlifySyncWithCredentials } from "./netlify";
 import {
   TRailwaySync,
@@ -164,6 +170,7 @@ export type TSecretSync =
   | TTerraformCloudSync
   | TCamundaSync
   | TVercelSync
+  | TLaravelForgeSync
   | TWindmillSync
   | THCVaultSync
   | TTeamCitySync
@@ -212,7 +219,8 @@ export type TSecretSyncWithCredentials =
   | TSupabaseSyncWithCredentials
   | TDigitalOceanAppPlatformSyncWithCredentials
   | TNetlifySyncWithCredentials
-  | TBitbucketSyncWithCredentials;
+  | TBitbucketSyncWithCredentials
+  | TLaravelForgeSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -244,7 +252,8 @@ export type TSecretSyncInput =
   | TSupabaseSyncInput
   | TDigitalOceanAppPlatformSyncInput
   | TNetlifySyncInput
-  | TBitbucketSyncInput;
+  | TBitbucketSyncInput
+  | TLaravelForgeSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -259,6 +268,7 @@ export type TSecretSyncListItem =
   | TTerraformCloudSyncListItem
   | TCamundaSyncListItem
   | TVercelSyncListItem
+  | TLaravelForgeSyncListItem
   | TWindmillSyncListItem
   | THCVaultSyncListItem
   | TTeamCitySyncListItem
@@ -322,6 +332,13 @@ export type TDeleteSecretSyncDTO = {
   destination: SecretSync;
   syncId: string;
   removeSecrets: boolean;
+};
+
+export type TCheckDuplicateDestinationDTO = {
+  destination: SecretSync;
+  destinationConfig: Record<string, unknown>;
+  excludeSyncId?: string;
+  projectId: string;
 };
 
 export enum SecretSyncStatus {
@@ -408,3 +425,8 @@ export type TSecretMap = Record<
     secretMetadata?: ResourceMetadataDTO;
   }
 >;
+
+export type DestinationDuplicateCheckFn = (
+  existingConfig: Record<string, unknown>,
+  newConfig: Record<string, unknown>
+) => boolean;

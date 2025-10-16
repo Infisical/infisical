@@ -33,7 +33,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useWorkspace } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -63,9 +63,9 @@ enum TokensOrderBy {
 }
 
 export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { data, isPending } = useGetUserWsServiceTokens({
-    workspaceID: currentWorkspace?.id || ""
+    workspaceID: currentProject?.id || ""
   });
 
   const {
@@ -236,7 +236,7 @@ export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
                             <FontAwesomeIcon icon={faEllipsisV} />
                           </IconButton>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="min-w-[12rem]" sideOffset={2} align="end">
+                        <DropdownMenuContent className="min-w-48" sideOffset={2} align="end">
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Delete}
                             a={ProjectPermissionSub.ServiceTokens}

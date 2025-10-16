@@ -5,10 +5,10 @@ import { z } from "zod";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { useProjectPermission, useSubscription, useWorkspace } from "@app/context";
+import { useProject, useProjectPermission, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
+import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/projects/queries";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/workspace/queries";
 
 const formSchema = z.object({
   auditLogsRetentionDays: z.coerce.number().min(0)
@@ -19,8 +19,8 @@ type TForm = z.infer<typeof formSchema>;
 export const AuditLogsRetentionSection = () => {
   const { mutateAsync: updateAuditLogsRetention } = useUpdateWorkspaceAuditLogsRetention();
 
-  const { currentWorkspace } = useWorkspace();
-  const { membership } = useProjectPermission();
+  const { currentProject } = useProject();
+  const { hasProjectRole } = useProjectPermission();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
@@ -32,11 +32,11 @@ export const AuditLogsRetentionSection = () => {
     resolver: zodResolver(formSchema),
     values: {
       auditLogsRetentionDays:
-        currentWorkspace?.auditLogsRetentionDays ?? subscription?.auditLogsRetentionDays ?? 0
+        currentProject?.auditLogsRetentionDays ?? subscription?.auditLogsRetentionDays ?? 0
     }
   });
 
-  if (!currentWorkspace) return null;
+  if (!currentProject) return null;
 
   const handleAuditLogsRetentionSubmit = async ({ auditLogsRetentionDays }: TForm) => {
     try {
@@ -59,7 +59,7 @@ export const AuditLogsRetentionSection = () => {
 
       await updateAuditLogsRetention({
         auditLogsRetentionDays,
-        projectSlug: currentWorkspace.slug
+        projectSlug: currentProject.slug
       });
 
       createNotification({
@@ -82,14 +82,14 @@ export const AuditLogsRetentionSection = () => {
     return null;
   }
 
-  const isAdmin = membership.roles.includes(ProjectMembershipRole.Admin);
+  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   return (
     <>
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="flex w-full items-center justify-between">
-          <p className="text-xl font-semibold">Audit Logs Retention</p>
+          <p className="text-xl font-medium">Audit Logs Retention</p>
         </div>
-        <p className="mb-4 mt-2 max-w-2xl text-sm text-gray-400">
+        <p className="mt-2 mb-4 max-w-2xl text-sm text-gray-400">
           Set the number of days to keep your project audit logs.
         </p>
         <form onSubmit={handleSubmit(handleAuditLogsRetentionSubmit)} autoComplete="off">

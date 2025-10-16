@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { faKey, faVault } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Modal, ModalContent } from "@app/components/v2";
@@ -20,14 +18,16 @@ enum WizardSteps {
 
 const PLATFORM_LIST = [
   {
-    icon: faKey,
+    image: "/images/integrations/EnvKey.png",
     platform: "env-key",
-    title: "Env Key"
+    title: "EnvKey",
+    size: 34
   },
   {
-    icon: faVault,
+    image: "/images/integrations/Vault.png",
     platform: "vault",
-    title: "Vault"
+    title: "HCP Vault",
+    size: 40
   }
 ] as const;
 
@@ -67,7 +67,7 @@ export const SelectImportFromPlatformModal = ({ isOpen, onToggle }: Props) => {
                 {PLATFORM_LIST.map((platform, idx) => (
                   <div
                     key={`platform-${idx + 1}`}
-                    className="flex h-28 w-32 cursor-pointer flex-col items-center space-y-4 rounded border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
+                    className="flex h-28 w-32 cursor-pointer flex-col items-center justify-between rounded-sm border border-mineshaft-500 bg-mineshaft-700 p-6 py-5 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
                     role="button"
                     tabIndex={0}
                     onClick={() => {
@@ -81,8 +81,12 @@ export const SelectImportFromPlatformModal = ({ isOpen, onToggle }: Props) => {
                       }
                     }}
                   >
-                    <FontAwesomeIcon icon={platform.icon} size="lg" />
-                    <div className="whitespace-pre-wrap text-center text-sm">{platform.title}</div>
+                    <img
+                      src={platform.image}
+                      alt={`${platform.title} logo`}
+                      style={{ width: platform.size }}
+                    />
+                    <div className="text-center text-sm whitespace-pre-wrap">{platform.title}</div>
                   </div>
                 ))}
               </div>

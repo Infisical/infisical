@@ -136,7 +136,7 @@ export const EditDynamicSecretCassandraForm = ({
     <div>
       <form onSubmit={handleSubmit(handleUpdateDynamicSecret)} autoComplete="off">
         <div className="flex items-center space-x-2">
-          <div className="flex-grow">
+          <div className="grow">
             <Controller
               control={control}
               name="newName"
@@ -193,7 +193,7 @@ export const EditDynamicSecretCassandraForm = ({
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     label="Host"
-                    className="flex-grow"
+                    className="grow"
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >

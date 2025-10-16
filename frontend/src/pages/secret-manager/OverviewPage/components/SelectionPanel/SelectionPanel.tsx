@@ -9,9 +9,9 @@ import { Button, DeleteActionModal, Tooltip } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission,
-  useSubscription,
-  useWorkspace
+  useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
@@ -66,9 +66,8 @@ export const SelectionPanel = ({
   );
   const selectedCount = selectedFolderCount + selectedKeysCount;
 
-  const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?.id || "";
-  const userAvailableEnvs = currentWorkspace?.environments || [];
+  const { currentProject, projectId } = useProject();
+  const userAvailableEnvs = currentProject?.environments || [];
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
   const { mutateAsync: deleteFolder } = useDeleteFolder();
 
@@ -134,7 +133,7 @@ export const SelectionPanel = ({
                 folderId: folder?.id,
                 path: secretPath,
                 environment: env.slug,
-                projectId: workspaceId
+                projectId
               });
             }
           })
@@ -173,7 +172,7 @@ export const SelectionPanel = ({
         processedEntries += secretsToDelete.length;
         await deleteBatchSecretV3({
           secretPath,
-          workspaceId,
+          projectId,
           environment: env.slug,
           secrets: secretsToDelete
         });
@@ -228,7 +227,7 @@ export const SelectionPanel = ({
     <>
       <div
         className={twMerge(
-          "h-0 flex-shrink-0 overflow-hidden transition-all",
+          "h-0 shrink-0 overflow-hidden transition-all",
           isMultiSelectActive && "h-16"
         )}
       >
@@ -281,8 +280,8 @@ export const SelectionPanel = ({
         isOpen={popUp.bulkMoveSecrets.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("bulkMoveSecrets", isOpen)}
         environments={userAvailableEnvs}
-        projectId={workspaceId}
-        projectSlug={currentWorkspace.slug}
+        projectId={projectId}
+        projectSlug={currentProject.slug}
         sourceSecretPath={secretPath}
         secrets={selectedEntries[EntryType.SECRET]}
         onComplete={resetSelectedEntries}

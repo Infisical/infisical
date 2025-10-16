@@ -1,3 +1,5 @@
+import RE2 from "re2";
+
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
 import { groupBy, unique } from "@app/lib/fn";
 
@@ -54,6 +56,74 @@ type TSecretImportSecretsV2 = {
 
 const LEVEL_BREAK = 10;
 const getImportUniqKey = (envSlug: string, path: string) => `${envSlug}=${path}`;
+const RESERVED_IMPORT_REGEX = new RE2("/__reserve_replication_([a-f0-9-]{36})");
+
+/**
+ * Processes reserved imports by resolving them to their replication source.
+ */
+const processReservedImports = async <
+  T extends {
+    isReserved?: boolean | null;
+    importPath: string;
+    importEnv: { id: string; slug: string; name: string };
+    folderId: string;
+  }
+>(
+  imports: T[],
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByIds">
+): Promise<T[]> => {
+  const reservedImportIds: string[] = [];
+
+  imports.forEach((secretImport) => {
+    if (secretImport.isReserved) {
+      const reservedMatch = RESERVED_IMPORT_REGEX.exec(secretImport.importPath);
+      if (reservedMatch) {
+        const referencedImportId = reservedMatch[1];
+        reservedImportIds.push(referencedImportId);
+      }
+    }
+  });
+
+  if (reservedImportIds.length === 0) {
+    return imports;
+  }
+
+  try {
+    const importDetailsMap = new Map<
+      string,
+      { importPath: string; importEnv: { id: string; slug: string; name: string } }
+    >();
+
+    const referencedImports = await secretImportDAL.findByIds(reservedImportIds);
+    referencedImports.forEach((referencedImport) => {
+      importDetailsMap.set(referencedImport.id, {
+        importPath: referencedImport.importPath,
+        importEnv: referencedImport.importEnv
+      });
+    });
+
+    return imports.map((secretImport) => {
+      if (secretImport.isReserved) {
+        const reservedMatch = RESERVED_IMPORT_REGEX.exec(secretImport.importPath);
+        if (reservedMatch) {
+          const referencedImportId = reservedMatch[1];
+          const referencedDetails = importDetailsMap.get(referencedImportId);
+
+          if (referencedDetails) {
+            return {
+              ...secretImport,
+              importPath: referencedDetails.importPath,
+              importEnv: referencedDetails.importEnv
+            };
+          }
+        }
+      }
+      return secretImport;
+    });
+  } catch (error) {
+    return imports;
+  }
+};
 export const fnSecretsFromImports = async ({
   allowedImports: possibleCyclicImports,
   folderDAL,
@@ -167,7 +237,7 @@ export const fnSecretsV2FromImports = async ({
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath">;
   viewSecretValue: boolean;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "find">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
   decryptor: (value?: Buffer | null) => string;
   expandSecretReferences?: (inputSecret: {
     value?: string;
@@ -225,7 +295,9 @@ export const fnSecretsV2FromImports = async ({
     );
     const importedSecretsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
 
-    sanitizedImports.forEach(({ importPath, importEnv }) => {
+    const processedBatchImports = await processReservedImports(sanitizedImports, secretImportDAL);
+
+    processedBatchImports.forEach(({ importPath, importEnv }) => {
       cyclicDetector.add(getImportUniqKey(importEnv.slug, importPath));
     });
     // now we need to check recursively deeper imports made inside other imports
@@ -234,7 +306,7 @@ export const fnSecretsV2FromImports = async ({
     const deeperImportsGroupByFolderId = groupBy(deeperImports, (i) => i.folderId);
 
     const isFirstIteration = !processedImports.length;
-    sanitizedImports.forEach(({ importPath, importEnv, id, folderId }, i) => {
+    processedBatchImports.forEach(({ importPath, importEnv, id, folderId }, i) => {
       const sourceImportFolder = importedFolderGroupBySourceImport[`${importEnv.id}-${importPath}`]?.[0];
       const secretsWithDuplicate = (importedSecretsGroupByFolderId?.[importedFolders?.[i]?.id as string] || [])
         .filter((item) =>

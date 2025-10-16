@@ -18,7 +18,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useToggle } from "@app/hooks";
 import {
   SecretScanningScanStatus,
@@ -41,7 +41,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
     resolvedFindings,
     type
   } = scan;
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const totalFindings = resolvedFindings + unresolvedFindings;
   const navigate = useNavigate();
 
@@ -76,7 +76,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
           <span className="text-mineshaft-300">{format(createdAt, "h:mm aa")}</span>
         </p>
       </Td>
-      <Td className="!min-w-[8rem] max-w-0">
+      <Td className="max-w-0 min-w-32!">
         <div className="flex flex-col">
           <p className="truncate">{resourceName}</p>
         </div>
@@ -97,7 +97,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
                   navigate({
                     to: "/projects/secret-scanning/$projectId/findings",
                     params: {
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     },
                     search: {
                       search: `scanId:${id}`

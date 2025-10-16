@@ -27,7 +27,7 @@ const BreadcrumbList = React.forwardRef<HTMLOListElement, React.ComponentPropsWi
     <ol
       ref={ref}
       className={twMerge(
-        "flex flex-wrap items-center break-words text-sm text-bunker-100",
+        "flex flex-wrap items-center text-sm break-words text-bunker-100",
         className
       )}
       {...props}

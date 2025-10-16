@@ -13,6 +13,8 @@ import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
+import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
+import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { TProjectDALFactory } from "../project/project-dal";
 import {
   AcmeCertificateAuthorityFns,
@@ -43,7 +45,7 @@ import { TCreateInternalCertificateAuthorityDTO } from "./internal/internal-cert
 
 type TCertificateAuthorityServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
-  appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
     | "transaction"
@@ -68,6 +70,8 @@ type TCertificateAuthorityServiceFactoryDep = {
     "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
   >;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
+  pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -84,7 +88,9 @@ export const certificateAuthorityServiceFactory = ({
   certificateBodyDAL,
   certificateSecretDAL,
   kmsService,
-  pkiSubscriberDAL
+  pkiSubscriberDAL,
+  pkiSyncDAL,
+  pkiSyncQueue
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -96,7 +102,9 @@ export const certificateAuthorityServiceFactory = ({
     certificateSecretDAL,
     kmsService,
     pkiSubscriberDAL,
-    projectDAL
+    projectDAL,
+    pkiSyncDAL,
+    pkiSyncQueue
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({
@@ -109,7 +117,9 @@ export const certificateAuthorityServiceFactory = ({
     certificateSecretDAL,
     kmsService,
     pkiSubscriberDAL,
-    projectDAL
+    projectDAL,
+    pkiSyncDAL,
+    pkiSyncQueue
   });
 
   const createCertificateAuthority = async (

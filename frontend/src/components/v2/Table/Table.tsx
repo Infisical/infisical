@@ -1,4 +1,4 @@
-import { DetailedHTMLProps, HTMLAttributes, ReactNode, TdHTMLAttributes } from "react";
+import { DetailedHTMLProps, forwardRef, HTMLAttributes, ReactNode, TdHTMLAttributes } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { Skeleton } from "../Skeleton";
@@ -9,22 +9,20 @@ export type TableContainerProps = {
   className?: string;
 } & DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>;
 
-export const TableContainer = ({
-  children,
-  className,
-  isRounded = true,
-  ...props
-}: TableContainerProps): JSX.Element => (
-  <div
-    className={twMerge(
-      "relative w-full overflow-x-auto border border-solid border-mineshaft-700 bg-mineshaft-800 font-inter",
-      isRounded && "rounded-lg",
-      className
-    )}
-    {...props}
-  >
-    {children}
-  </div>
+export const TableContainer = forwardRef<HTMLDivElement, TableContainerProps>(
+  ({ children, className, isRounded = true, ...props }, ref): JSX.Element => (
+    <div
+      ref={ref}
+      className={twMerge(
+        "relative w-full overflow-x-auto border border-solid border-mineshaft-700 bg-mineshaft-800 font-inter",
+        isRounded && "rounded-lg",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  )
 );
 
 // main parent table
@@ -50,7 +48,7 @@ export type THeadProps = {
 
 export const THead = ({ children, className, style }: THeadProps): JSX.Element => (
   <thead
-    className={twMerge("bg-mineshaft-800 text-xs uppercase text-bunker-300", className)}
+    className={twMerge("bg-mineshaft-800 text-xs text-bunker-300 uppercase", className)}
     style={style}
   >
     {children}
@@ -63,7 +61,7 @@ export type TFootProps = {
 };
 
 export const TFoot = ({ children, className }: TFootProps): JSX.Element => (
-  <tfoot className={twMerge("bg-mineshaft-800 text-xs uppercase text-bunker-300", className)}>
+  <tfoot className={twMerge("bg-mineshaft-800 text-xs text-bunker-300 uppercase", className)}>
     {children}
   </tfoot>
 );
@@ -106,7 +104,7 @@ export type ThProps = {
 export const Th = ({ children, className, style }: ThProps): JSX.Element => (
   <th
     className={twMerge(
-      "border-b-2 border-mineshaft-600 bg-mineshaft-800 px-5 pb-3.5 pt-4 font-semibold",
+      "border-b-2 border-mineshaft-600 bg-mineshaft-800 px-5 pt-4 pb-3.5 font-medium",
       className
     )}
     style={style}

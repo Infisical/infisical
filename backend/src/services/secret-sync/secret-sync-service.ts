@@ -12,6 +12,7 @@ import {
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { deepEqualSkipFields } from "@app/lib/fn/object";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -20,6 +21,7 @@ import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { enterpriseSyncCheck, listSecretSyncOptions } from "@app/services/secret-sync/secret-sync-fns";
 import {
   SecretSyncStatus,
+  TCheckDuplicateDestinationDTO,
   TCreateSecretSyncDTO,
   TDeleteSecretSyncDTO,
   TFindSecretSyncByIdDTO,
@@ -35,13 +37,18 @@ import {
 
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretSyncDALFactory } from "./secret-sync-dal";
-import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "./secret-sync-maps";
+import {
+  DESTINATION_DUPLICATE_CHECK_MAP,
+  SECRET_SYNC_CONNECTION_MAP,
+  SECRET_SYNC_NAME_MAP,
+  SECRET_SYNC_SKIP_FIELDS_MAP
+} from "./secret-sync-maps";
 import { TSecretSyncQueueFactory } from "./secret-sync-queue";
 
 type TSecretSyncServiceFactoryDep = {
   secretSyncDAL: TSecretSyncDALFactory;
   secretImportDAL: TSecretImportDALFactory;
-  appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId" | "findById" | "findBySecretPath">;
@@ -267,7 +274,11 @@ export const secretSyncServiceFactory = ({
     const destinationApp = SECRET_SYNC_CONNECTION_MAP[params.destination];
 
     // validates permission to connect and app is valid for sync destination
-    await appConnectionService.connectAppConnectionById(destinationApp, params.connectionId, actor);
+    await appConnectionService.validateAppConnectionUsageById(
+      destinationApp,
+      { connectionId: params.connectionId, projectId },
+      actor
+    );
 
     try {
       const secretSync = await secretSyncDAL.create({
@@ -362,7 +373,11 @@ export const secretSyncServiceFactory = ({
       const destinationApp = SECRET_SYNC_CONNECTION_MAP[secretSync.destination as SecretSync];
 
       // validates permission to connect and app is valid for sync destination
-      await appConnectionService.connectAppConnectionById(destinationApp, params.connectionId, actor);
+      await appConnectionService.validateAppConnectionUsageById(
+        destinationApp,
+        { connectionId: params.connectionId, projectId: secretSync.projectId },
+        actor
+      );
     }
 
     if (
@@ -688,6 +703,61 @@ export const secretSyncServiceFactory = ({
     return updatedSecretSync as TSecretSync;
   };
 
+  const checkDuplicateDestination = async (
+    { destination, destinationConfig, excludeSyncId, projectId }: TCheckDuplicateDestinationDTO,
+    actor: OrgServiceActor
+  ) => {
+    const skipFields = SECRET_SYNC_SKIP_FIELDS_MAP[destination];
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.Read,
+      ProjectPermissionSub.SecretSyncs
+    );
+
+    if (!destinationConfig || Object.keys(destinationConfig).length === 0) {
+      return { hasDuplicate: false, duplicateProjectId: undefined };
+    }
+
+    try {
+      const existingSyncs = await secretSyncDAL.findByDestinationAndOrgId(destination, actor.orgId);
+
+      const duplicates = existingSyncs.filter((sync) => {
+        if (sync.id === excludeSyncId) {
+          return false;
+        }
+
+        try {
+          const baseFieldsMatch = deepEqualSkipFields(sync.destinationConfig, destinationConfig, skipFields);
+          if (baseFieldsMatch) {
+            return DESTINATION_DUPLICATE_CHECK_MAP[destination](
+              sync.destinationConfig as Record<string, unknown>,
+              destinationConfig
+            );
+          }
+          return false;
+        } catch {
+          return false;
+        }
+      });
+
+      const hasDuplicate = duplicates.length > 0;
+      return {
+        hasDuplicate,
+        duplicateProjectId: hasDuplicate ? duplicates[0].projectId : undefined
+      };
+    } catch (error) {
+      return { hasDuplicate: false, duplicateProjectId: undefined };
+    }
+  };
+
   return {
     listSecretSyncOptions,
     listSecretSyncsByProjectId,
@@ -699,6 +769,7 @@ export const secretSyncServiceFactory = ({
     deleteSecretSync,
     triggerSecretSyncSyncSecretsById,
     triggerSecretSyncImportSecretsById,
-    triggerSecretSyncRemoveSecretsById
+    triggerSecretSyncRemoveSecretsById,
+    checkDuplicateDestination
   };
 };

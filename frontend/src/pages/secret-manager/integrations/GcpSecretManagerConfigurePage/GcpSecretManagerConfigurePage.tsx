@@ -26,7 +26,7 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useCreateIntegration } from "@app/hooks/api";
 import {
@@ -59,7 +59,7 @@ export const GcpSecretManagerConfigurePage = () => {
     "confirmIntegration"
   ] as const);
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { control, handleSubmit, setValue, watch } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -69,7 +69,7 @@ export const GcpSecretManagerConfigurePage = () => {
       shouldLabel: false,
       labelName: "managed-by",
       labelValue: "infisical",
-      selectedSourceEnvironment: currentWorkspace.environments[0].slug
+      selectedSourceEnvironment: currentProject.environments[0].slug
     }
   });
 
@@ -153,7 +153,7 @@ export const GcpSecretManagerConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -200,12 +200,12 @@ export const GcpSecretManagerConfigurePage = () => {
               rel="noopener noreferrer"
               href="https://infisical.com/docs/integrations/cloud/gcp-secret-manager"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-xxs"
+                  className="text-xxs mb-[0.07rem] ml-1.5"
                 />
               </div>
             </a>
@@ -241,7 +241,7 @@ export const GcpSecretManagerConfigurePage = () => {
                       onValueChange={(e) => onChange(e)}
                       className="w-full"
                     >
-                      {currentWorkspace?.environments.map((sourceEnvironment) => (
+                      {currentProject?.environments.map((sourceEnvironment) => (
                         <SelectItem
                           value={sourceEnvironment.slug}
                           key={`source-environment-${sourceEnvironment.slug}`}
@@ -344,7 +344,7 @@ export const GcpSecretManagerConfigurePage = () => {
                   </FormControl>
                 )}
               />
-              <div className="mb-[2.36rem] mt-8">
+              <div className="mt-8 mb-[2.36rem]">
                 <Controller
                   control={control}
                   name="shouldLabel"
@@ -395,7 +395,7 @@ export const GcpSecretManagerConfigurePage = () => {
         <Button
           colorSchema="primary"
           variant="outline_bg"
-          className="mb-8 ml-auto mr-6 w-min"
+          className="mr-6 mb-8 ml-auto w-min"
           size="sm"
           type="submit"
           isLoading={isLoading}

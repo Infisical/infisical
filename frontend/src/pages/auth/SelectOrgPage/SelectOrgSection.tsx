@@ -88,7 +88,15 @@ export const SelectOrganizationSection = () => {
         // org has an org-level auth method enabled (e.g. SAML)
         // -> logout + redirect to SAML SSO
         let url = "";
-        if (organization.orgAuthMethod === AuthMethod.OIDC) {
+        if (organization.googleSsoAuthEnforced) {
+          if (authToken.authMethod !== AuthMethod.GOOGLE) {
+            url = `/api/v1/sso/redirect/google?org_slug=${organization.slug}`;
+
+            if (callbackPort) {
+              url += `&callback_port=${callbackPort}`;
+            }
+          }
+        } else if (organization.orgAuthMethod === AuthMethod.OIDC) {
           url = `/api/v1/sso/oidc/login?orgSlug=${organization.slug}${
             callbackPort ? `&callbackPort=${callbackPort}` : ""
           }`;
@@ -97,15 +105,6 @@ export const SelectOrganizationSection = () => {
 
           if (callbackPort) {
             url += `?callback_port=${callbackPort}`;
-          }
-        } else if (
-          organization.googleSsoAuthEnforced &&
-          authToken.authMethod !== AuthMethod.GOOGLE
-        ) {
-          url = `/api/v1/sso/redirect/google?org_slug=${organization.slug}`;
-
-          if (callbackPort) {
-            url += `&callback_port=${callbackPort}`;
           }
         }
 
@@ -118,12 +117,28 @@ export const SelectOrganizationSection = () => {
         }
       }
 
-      const { token, isMfaEnabled, mfaMethod } = await selectOrg
-        .mutateAsync({
+      let token;
+      let isMfaEnabled;
+      let mfaMethod;
+
+      try {
+        const result = await selectOrg.mutateAsync({
           organizationId: organization.id,
           userAgent: callbackPort ? UserAgentType.CLI : undefined
-        })
-        .finally(() => setIsInitialOrgCheckLoading(false));
+        });
+        token = result.token;
+        isMfaEnabled = result.isMfaEnabled;
+        mfaMethod = result.mfaMethod;
+      } catch (error: any) {
+        setIsInitialOrgCheckLoading(false);
+        if (error?.response?.status === 403) {
+          await handleLogout();
+          return;
+        }
+        throw error;
+      } finally {
+        setIsInitialOrgCheckLoading(false);
+      }
 
       await router.invalidate();
 
@@ -239,7 +254,7 @@ export const SelectOrganizationSection = () => {
   }
 
   return (
-    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
       <Helmet>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -269,7 +284,7 @@ export const SelectOrganizationSection = () => {
           </Link>
           <form className="mx-auto flex w-full flex-col items-center justify-center">
             <div className="mb-8 space-y-2">
-              <h1 className="bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-2xl font-medium text-transparent">
+              <h1 className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-2xl font-medium text-transparent">
                 Choose your organization
               </h1>
               <div className="space-y-1">
@@ -278,7 +293,7 @@ export const SelectOrganizationSection = () => {
                 </p>
                 <p className="text-md text-center text-gray-500">
                   Not you?{" "}
-                  <Button variant="link" onClick={handleLogout} className="font-semibold">
+                  <Button variant="link" onClick={handleLogout} className="font-medium">
                     Change account
                   </Button>
                 </p>
@@ -293,7 +308,7 @@ export const SelectOrganizationSection = () => {
                   <div
                     onClick={() => handleSelectOrganization(org)}
                     key={org.id}
-                    className="group flex cursor-pointer items-center justify-between rounded-md bg-mineshaft-700 px-4 py-3 capitalize text-gray-200 shadow-md transition-colors hover:bg-mineshaft-600"
+                    className="group flex cursor-pointer items-center justify-between rounded-md bg-mineshaft-700 px-4 py-3 text-gray-200 capitalize shadow-md transition-colors hover:bg-mineshaft-600"
                   >
                     <p className="truncate transition-colors">{org.name}</p>
 

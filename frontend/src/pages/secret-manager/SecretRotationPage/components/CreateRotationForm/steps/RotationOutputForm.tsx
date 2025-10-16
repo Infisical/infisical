@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { Button, FormControl, Input, Select, SelectItem, Spinner } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useGetProjectSecrets } from "@app/hooks/api";
 
 const formSchema = z.object({
@@ -22,9 +22,9 @@ type Props = {
 };
 
 export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Props) => {
-  const { currentWorkspace } = useWorkspace();
-  const environments = currentWorkspace?.environments || [];
-  const workspaceId = currentWorkspace?.id || "";
+  const { currentProject } = useProject();
+  const environments = currentProject?.environments || [];
+  const projectId = currentProject?.id || "";
   const {
     control,
     handleSubmit,
@@ -39,7 +39,7 @@ export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Pr
   const selectedSecrets = watch("secrets");
 
   const { data: secrets, isPending: isSecretsLoading } = useGetProjectSecrets({
-    workspaceId,
+    projectId,
     environment,
     secretPath
   });
@@ -96,7 +96,7 @@ export const RotationOutputForm = ({ onSubmit, onCancel, outputSchema = {} }: Pr
           </FormControl>
         )}
       />
-      <div className="mb-2 mt-4 flex flex-col border-t border-bunker-300/30 pt-4">
+      <div className="mt-4 mb-2 flex flex-col border-t border-bunker-300/30 pt-4">
         <div>Mapping</div>
         <div className="text-sm text-bunker-300">Select keys for rotated value to get saved</div>
       </div>

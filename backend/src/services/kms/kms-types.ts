@@ -99,4 +99,5 @@ export type TImportKeyMaterialDTO = {
   projectId: string;
   orgId: string;
   keyUsage: KmsKeyUsage;
+  kmipMetadata?: Record<string, unknown>;
 };

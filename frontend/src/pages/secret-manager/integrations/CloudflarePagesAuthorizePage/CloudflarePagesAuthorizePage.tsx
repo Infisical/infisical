@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const CloudflarePagesAuthorizePage = () => {
@@ -14,7 +14,7 @@ export const CloudflarePagesAuthorizePage = () => {
   const [accountIdErrorText, setAccountIdErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const navigate = useNavigate();
 
   const handleButtonClick = async () => {
@@ -30,7 +30,7 @@ export const CloudflarePagesAuthorizePage = () => {
       setIsLoading(true);
 
       const integrationAuth = await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         integration: "cloudflare-pages",
         accessId: accountId,
         accessToken: accessKey
@@ -43,7 +43,7 @@ export const CloudflarePagesAuthorizePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations/cloudflare-pages/create",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           integrationAuthId: integrationAuth.id
@@ -89,7 +89,7 @@ export const CloudflarePagesAuthorizePage = () => {
           onClick={handleButtonClick}
           color="mineshaft"
           variant="outline_bg"
-          className="mb-6 ml-auto mr-6 mt-2 w-min"
+          className="mt-2 mr-6 mb-6 ml-auto w-min"
           isFullWidth={false}
           isLoading={isLoading}
         >

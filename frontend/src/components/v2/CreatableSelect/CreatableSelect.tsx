@@ -42,9 +42,9 @@ export const CreatableSelect = <T,>({
           ),
         placeholder: () => "text-mineshaft-400 text-sm pl-1 py-0.5",
         input: () => "pl-1 py-0.5",
-        valueContainer: () => `p-1 max-h-[14rem] ${isMulti ? "!overflow-y-scroll" : ""} gap-1`,
+        valueContainer: () => `p-1 max-h-56 ${isMulti ? "overflow-y-scroll!" : ""} gap-1`,
         singleValue: () => "leading-7 ml-1",
-        multiValue: () => "bg-mineshaft-600 rounded items-center py-0.5 px-2 gap-1.5",
+        multiValue: () => "bg-mineshaft-600 rounded-sm items-center py-0.5 px-2 gap-1.5",
         multiValueLabel: () => "leading-6 text-sm",
         multiValueRemove: () => "hover:text-red text-bunker-400",
         indicatorsContainer: () => "p-1 gap-1",
@@ -60,7 +60,8 @@ export const CreatableSelect = <T,>({
             isSelected && "text-mineshaft-200",
             "px-3 py-2 text-xs hover:cursor-pointer"
           ),
-        noOptionsMessage: () => "text-mineshaft-400 p-2 rounded-md"
+        noOptionsMessage: () => "text-mineshaft-400 p-2 rounded-md",
+        loadingMessage: () => "text-mineshaft-400 p-2 rounded-md"
       }}
       {...props}
     />

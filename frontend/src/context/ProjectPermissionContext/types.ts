@@ -62,6 +62,16 @@ export enum ProjectPermissionSecretSyncActions {
   RemoveSecrets = "remove-secrets"
 }
 
+export enum ProjectPermissionPkiSyncActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  SyncCertificates = "sync-certificates",
+  ImportCertificates = "import-certificates",
+  RemoveCertificates = "remove-certificates"
+}
+
 export enum ProjectPermissionIdentityActions {
   Read = "read",
   Create = "create",
@@ -150,6 +160,18 @@ export enum ProjectPermissionSecretEventActions {
   SubscribeImportMutations = "subscribe-on-import-mutations"
 }
 
+export enum ProjectPermissionAuditLogsActions {
+  Read = "read"
+}
+
+export enum ProjectPermissionAppConnectionActions {
+  Read = "read-app-connections",
+  Create = "create-app-connections",
+  Edit = "edit-app-connections",
+  Delete = "delete-app-connections",
+  Connect = "connect-app-connections"
+}
+
 export enum PermissionConditionOperators {
   $IN = "$in",
   $ALL = "$all",
@@ -165,12 +187,30 @@ export enum ProjectPermissionCommitsActions {
   PerformRollback = "perform-rollback"
 }
 
+export enum ProjectPermissionPamAccountActions {
+  Access = "access",
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
+export enum ProjectPermissionPamSessionActions {
+  Read = "read"
+  // Terminate = "terminate"
+}
+
 export type IdentityManagementSubjectFields = {
   identityId: string;
 };
 
+export type AppConnectionSubjectFields = {
+  connectionId: string;
+};
+
 export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SecretSyncs
+  | ProjectPermissionSub.PkiSyncs
   | ProjectPermissionSub.Secrets
   | ProjectPermissionSub.DynamicSecrets
   | ProjectPermissionSub.Identity
@@ -180,7 +220,9 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SecretFolders
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.SecretRotation
-  | ProjectPermissionSub.SecretEvents;
+  | ProjectPermissionSub.SecretEvents
+  | ProjectPermissionSub.AppConnections
+  | ProjectPermissionSub.PamAccounts;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
@@ -254,12 +296,18 @@ export enum ProjectPermissionSub {
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
+  PkiSyncs = "pki-syncs",
   Kmip = "kmip",
   Commits = "commits",
   SecretScanningDataSources = "secret-scanning-data-sources",
   SecretScanningFindings = "secret-scanning-findings",
   SecretScanningConfigs = "secret-scanning-configs",
-  SecretEvents = "secret-events"
+  SecretEvents = "secret-events",
+  AppConnections = "app-connections",
+  PamFolders = "pam-folders",
+  PamResources = "pam-resources",
+  PamAccounts = "pam-accounts",
+  PamSessions = "pam-sessions"
 }
 
 export type SecretSubjectFields = {
@@ -298,6 +346,10 @@ export type SecretSyncSubjectFields = {
   secretPath: string;
 };
 
+export type PkiSyncSubjectFields = {
+  subscriberId: string;
+};
+
 export type SecretRotationSubjectFields = {
   environment: string;
   secretPath: string;
@@ -314,6 +366,12 @@ export type PkiSubscriberSubjectFields = {
 export type PkiTemplateSubjectFields = {
   name: string;
   // (dangtony98): consider adding [commonName] as a subject field in the future
+};
+
+export type PamAccountSubjectFields = {
+  resourceName: string;
+  accountName: string;
+  accountPath: string;
 };
 
 export type ProjectPermissionSet =
@@ -346,6 +404,13 @@ export type ProjectPermissionSet =
       )
     ]
   | [
+      ProjectPermissionPkiSyncActions,
+      (
+        | ProjectPermissionSub.PkiSyncs
+        | (ForcedSubject<ProjectPermissionSub.PkiSyncs> & PkiSyncSubjectFields)
+      )
+    ]
+  | [
       ProjectPermissionActions,
       (
         | ProjectPermissionSub.SecretImports
@@ -365,7 +430,7 @@ export type ProjectPermissionSet =
   | [ProjectPermissionActions, ProjectPermissionSub.Groups]
   | [ProjectPermissionActions, ProjectPermissionSub.Integrations]
   | [ProjectPermissionActions, ProjectPermissionSub.Webhooks]
-  | [ProjectPermissionActions, ProjectPermissionSub.AuditLogs]
+  | [ProjectPermissionAuditLogsActions, ProjectPermissionSub.AuditLogs]
   | [ProjectPermissionActions, ProjectPermissionSub.Environments]
   | [ProjectPermissionActions, ProjectPermissionSub.IpAllowList]
   | [ProjectPermissionActions, ProjectPermissionSub.Settings]
@@ -427,6 +492,23 @@ export type ProjectPermissionSet =
         | ProjectPermissionSub.SecretEvents
         | (ForcedSubject<ProjectPermissionSub.SecretEvents> & SecretEventSubjectFields)
       )
-    ];
+    ]
+  | [
+      ProjectPermissionAppConnectionActions,
+      (
+        | ProjectPermissionSub.AppConnections
+        | (ForcedSubject<ProjectPermissionSub.AppConnections> & AppConnectionSubjectFields)
+      )
+    ]
+  | [ProjectPermissionActions, ProjectPermissionSub.PamFolders]
+  | [ProjectPermissionActions, ProjectPermissionSub.PamResources]
+  | [
+      ProjectPermissionPamAccountActions,
+      (
+        | ProjectPermissionSub.PamAccounts
+        | (ForcedSubject<ProjectPermissionSub.PamAccounts> & PamAccountSubjectFields)
+      )
+    ]
+  | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

@@ -392,7 +392,7 @@ export const kmsServiceFactory = ({
   };
 
   const importKeyMaterial = async (
-    { key, algorithm, name, isReserved, projectId, orgId, keyUsage }: TImportKeyMaterialDTO,
+    { key, algorithm, name, isReserved, projectId, orgId, keyUsage, kmipMetadata }: TImportKeyMaterialDTO,
     tx?: Knex
   ) => {
     // daniel: currently we only support imports for encrypt/decrypt keys
@@ -416,7 +416,8 @@ export const kmsServiceFactory = ({
           keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
           orgId,
           isReserved,
-          projectId
+          projectId,
+          kmipMetadata
         },
         db
       );
@@ -741,23 +742,27 @@ export const kmsServiceFactory = ({
     if (!project.kmsSecretManagerEncryptedDataKey) {
       const lock = await keyStore
         .acquireLock([KeyStorePrefixes.KmsProjectDataKeyCreation, projectId], 3000, { retryCount: 0 })
-        .catch(() => null);
+        .catch((err) => {
+          logger.error(err, "KMS. Failed to acquire lock.");
+          return null;
+        });
 
       try {
         if (!lock) {
           await keyStore.waitTillReady({
             key: `${KeyStorePrefixes.WaitUntilReadyKmsProjectDataKeyCreation}${projectId}`,
             keyCheckCb: (val) => val === "true",
-            waitingCb: () => logger.debug("KMS. Waiting for secret manager data key to be created"),
+            waitingCb: () => logger.info("KMS. Waiting for secret manager data key to be created"),
             delay: 500
           });
 
           project = await projectDAL.findById(projectId, trx);
         } else {
+          logger.info(`KMS. Generating KMS key for project ${projectId}`);
           const projectDataKey = await (trx || projectDAL).transaction(async (tx) => {
             project = await projectDAL.findById(projectId, tx);
             if (project.kmsSecretManagerEncryptedDataKey) {
-              return;
+              return project.kmsSecretManagerEncryptedDataKey;
             }
 
             const dataKey = crypto.randomBytes(32);

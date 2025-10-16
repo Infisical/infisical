@@ -4,7 +4,7 @@ import { faFileImport, faKey, faSync, faWarning } from "@fortawesome/free-solid-
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Table, TBody, Td, Th, THead, Tooltip, Tr } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 
 enum ItemType {
@@ -44,7 +44,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
   secretsToDelete,
   onlyReferences
 }) => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const truncatePath = (path: string, maxLength = 24): string => {
     if (path.length <= maxLength) return path;
@@ -62,7 +62,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
   const handlePathClick = (item: FlatItem) => {
     if (item.type === ItemType.SecretSync) {
       window.open(
-        `/secret-manager/${currentWorkspace.id}/integrations/secret-syncs/${item.destination}/${item.id}`,
+        `/secret-manager/${currentProject.id}/integrations/secret-syncs/${item.destination}/${item.id}`,
         "_blank",
         "noopener,noreferrer"
       );
@@ -78,7 +78,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
     }
     const encodedPath = encodeURIComponent(pathToNavigate);
     window.open(
-      `/secret-manager/${currentWorkspace.id}/secrets/${item.environment.slug}?secretPath=${encodedPath}`,
+      `/secret-manager/${currentProject.id}/secrets/${item.environment.slug}?secretPath=${encodedPath}`,
       "_blank"
     );
   };
@@ -194,11 +194,11 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
     <div className="mb-4 w-full">
       <div className={`mb-4 rounded-md border ${alertColors.border} ${alertColors.bg}`}>
         <div className="flex items-start gap-3 p-4">
-          <div className={`mt-0.5 flex-shrink-0 ${alertColors.text}`}>
+          <div className={`mt-0.5 shrink-0 ${alertColors.text}`}>
             <FontAwesomeIcon icon={faWarning} className="h-5 w-5" aria-hidden="true" />
           </div>
           <div className="w-full">
-            <p className={`text-sm font-semibold ${alertColors.text}`}>
+            <p className={`text-sm font-medium ${alertColors.text}`}>
               The following resources will be affected by this change
             </p>
           </div>

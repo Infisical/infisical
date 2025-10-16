@@ -1,4 +1,5 @@
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
@@ -22,12 +23,13 @@ type TListGitHubEnvironmentsDTO = {
 
 export const githubConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   const listRepositories = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.GitHub, connectionId, actor);
 
-    const repositories = await getGitHubRepositories(appConnection, gatewayService);
+    const repositories = await getGitHubRepositories(appConnection, gatewayService, gatewayV2Service);
 
     return repositories;
   };
@@ -35,7 +37,7 @@ export const githubConnectionService = (
   const listOrganizations = async (connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await getAppConnection(AppConnection.GitHub, connectionId, actor);
 
-    const organizations = await getGitHubOrganizations(appConnection, gatewayService);
+    const organizations = await getGitHubOrganizations(appConnection, gatewayService, gatewayV2Service);
 
     return organizations;
   };
@@ -46,7 +48,7 @@ export const githubConnectionService = (
   ) => {
     const appConnection = await getAppConnection(AppConnection.GitHub, connectionId, actor);
 
-    const environments = await getGitHubEnvironments(appConnection, gatewayService, owner, repo);
+    const environments = await getGitHubEnvironments(appConnection, gatewayService, gatewayV2Service, owner, repo);
 
     return environments;
   };

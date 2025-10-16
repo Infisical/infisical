@@ -13,9 +13,9 @@ const serviceTokenKeys = {
   getAllWorkspaceServiceToken: (workspaceID: string) => [{ workspaceID }, "service-tokens"] as const
 };
 
-const fetchWorkspaceServiceTokens = async (workspaceID: string) => {
+const fetchWorkspaceServiceTokens = async (projectID: string) => {
   const { data } = await apiRequest.get<{ serviceTokenData: ServiceToken[] }>(
-    `/api/v1/workspace/${workspaceID}/service-token-data`
+    `/api/v1/projects/${projectID}/service-token-data`
   );
 
   return data.serviceTokenData;

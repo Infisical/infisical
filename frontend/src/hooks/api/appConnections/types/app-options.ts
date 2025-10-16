@@ -164,8 +164,16 @@ export type TOktaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Okta;
 };
 
+export type TLaravelForgeConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.LaravelForge;
+};
+
 export type TAzureAdCsConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.AzureADCS;
+};
+
+export type TRedisConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Redis;
 };
 
 export type TAppConnectionOption =
@@ -206,7 +214,8 @@ export type TAppConnectionOption =
   | TDigitalOceanConnectionOption
   | TNetlifyConnectionOption
   | TOktaConnectionOption
-  | TAzureAdCsConnectionOption;
+  | TAzureAdCsConnectionOption
+  | TLaravelForgeConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -247,4 +256,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Netlify]: TNetlifyConnectionOption;
   [AppConnection.Okta]: TOktaConnectionOption;
   [AppConnection.AzureADCS]: TAzureAdCsConnectionOption;
+  [AppConnection.Redis]: TRedisConnectionOption;
+  [AppConnection.LaravelForge]: TLaravelForgeConnectionOption;
 };

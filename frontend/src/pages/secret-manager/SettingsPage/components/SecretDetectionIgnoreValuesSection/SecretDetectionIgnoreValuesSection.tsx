@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, IconButton, Input } from "@app/components/v2";
-import { useProjectPermission, useWorkspace } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import { useUpdateProject } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
@@ -23,8 +23,8 @@ const formSchema = z.object({
 type TForm = z.infer<typeof formSchema>;
 
 export const SecretDetectionIgnoreValuesSection = () => {
-  const { currentWorkspace } = useWorkspace();
-  const { membership } = useProjectPermission();
+  const { currentProject } = useProject();
+  const { hasProjectRole } = useProjectPermission();
   const { mutateAsync: updateProject } = useUpdateProject();
 
   const {
@@ -45,19 +45,19 @@ export const SecretDetectionIgnoreValuesSection = () => {
   });
 
   useEffect(() => {
-    const existingIgnoreValues = currentWorkspace?.secretDetectionIgnoreValues || [];
+    const existingIgnoreValues = currentProject?.secretDetectionIgnoreValues || [];
     reset({
       ignoreValues:
         existingIgnoreValues.length > 0
           ? existingIgnoreValues.map((value) => ({ value }))
           : [{ value: "" }] // Show one empty field by default
     });
-  }, [currentWorkspace?.secretDetectionIgnoreValues, reset]);
+  }, [currentProject?.secretDetectionIgnoreValues, reset]);
 
   const handleIgnoreValuesSubmit = async ({ ignoreValues }: TForm) => {
     try {
       await updateProject({
-        projectID: currentWorkspace.id,
+        projectId: currentProject.id,
         secretDetectionIgnoreValues: ignoreValues.map((item) => item.value)
       });
 
@@ -73,16 +73,16 @@ export const SecretDetectionIgnoreValuesSection = () => {
     }
   };
 
-  const isAdmin = membership.roles.includes(ProjectMembershipRole.Admin);
+  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
-  if (!currentWorkspace) return null;
+  if (!currentProject) return null;
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex w-full items-center justify-between">
-        <p className="text-xl font-semibold">Secret Detection</p>
+        <p className="text-xl font-medium">Secret Detection</p>
       </div>
-      <p className="mb-4 mt-2 max-w-2xl text-sm text-gray-400">
+      <p className="mt-2 mb-4 max-w-2xl text-sm text-gray-400">
         Define secret values to ignore when scanning designated parameter folders. Add values here
         to prevent false positives or allow approved sensitive data. These ignored values will not
         trigger policy violation alerts.
@@ -93,7 +93,7 @@ export const SecretDetectionIgnoreValuesSection = () => {
           <div className="flex flex-col space-y-2">
             {ignoreValuesFormFields.fields.map(({ id: ignoreValueFieldId }, i) => (
               <div key={ignoreValueFieldId} className="flex items-end space-x-2">
-                <div className="flex-grow">
+                <div className="grow">
                   {i === 0 && <span className="text-xs text-mineshaft-400">Secret Value</span>}
                   <Controller
                     control={control}

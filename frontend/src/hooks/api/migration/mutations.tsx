@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from "../workspace";
+import { projectKeys } from "../projects";
 
 export const useImportEnvKey = () => {
   const queryClient = useQueryClient();
@@ -34,7 +34,7 @@ export const useImportEnvKey = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: workspaceKeys.getAllUserWorkspace()
+        queryKey: projectKeys.getAllUserProjects()
       });
     }
   });
@@ -46,18 +46,21 @@ export const useImportVault = () => {
       vaultAccessToken,
       vaultNamespace,
       vaultUrl,
-      mappingType
+      mappingType,
+      gatewayId
     }: {
       vaultAccessToken: string;
       vaultNamespace?: string;
       vaultUrl: string;
       mappingType: string;
+      gatewayId?: string;
     }) => {
       await apiRequest.post("/api/v3/external-migration/vault/", {
         vaultAccessToken,
         vaultNamespace,
         vaultUrl,
-        mappingType
+        mappingType,
+        gatewayId
       });
     }
   });

@@ -103,7 +103,7 @@ const PasteEnvForm = ({ onParsedEnv }: Pick<Props, "onParsedEnv">) => {
         <TextArea
           {...register("value")}
           placeholder="Paste secrets in .json, .yml or .env format..."
-          className="h-[60vh] !resize-none"
+          className="h-[60vh] resize-none!"
         />
       </FormControl>
       <Button isDisabled={!isDirty} type="submit">

@@ -17,6 +17,9 @@ import {
   TAccessApprovalRequestsReviewersInsert,
   TAccessApprovalRequestsReviewersUpdate,
   TAccessApprovalRequestsUpdate,
+  TAdditionalPrivileges,
+  TAdditionalPrivilegesInsert,
+  TAdditionalPrivilegesUpdate,
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
@@ -101,6 +104,9 @@ import {
   TGateways,
   TGatewaysInsert,
   TGatewaysUpdate,
+  TGatewaysV2,
+  TGatewaysV2Insert,
+  TGatewaysV2Update,
   TGitAppInstallSessions,
   TGitAppInstallSessionsInsert,
   TGitAppInstallSessionsUpdate,
@@ -179,6 +185,9 @@ import {
   TIncidentContacts,
   TIncidentContactsInsert,
   TIncidentContactsUpdate,
+  TInstanceRelayConfig,
+  TInstanceRelayConfigInsert,
+  TInstanceRelayConfigUpdate,
   TIntegrationAuths,
   TIntegrationAuthsInsert,
   TIntegrationAuthsUpdate,
@@ -191,6 +200,9 @@ import {
   TInternalKms,
   TInternalKmsInsert,
   TInternalKmsUpdate,
+  TKeyValueStore,
+  TKeyValueStoreInsert,
+  TKeyValueStoreUpdate,
   TKmipClientCertificates,
   TKmipClientCertificatesInsert,
   TKmipClientCertificatesUpdate,
@@ -218,6 +230,15 @@ import {
   TLdapGroupMaps,
   TLdapGroupMapsInsert,
   TLdapGroupMapsUpdate,
+  TMembershipRoles,
+  TMembershipRolesInsert,
+  TMembershipRolesUpdate,
+  TMemberships,
+  TMembershipsInsert,
+  TMembershipsUpdate,
+  TNamespaces,
+  TNamespacesInsert,
+  TNamespacesUpdate,
   TOidcConfigs,
   TOidcConfigsInsert,
   TOidcConfigsUpdate,
@@ -230,9 +251,15 @@ import {
   TOrgGatewayConfig,
   TOrgGatewayConfigInsert,
   TOrgGatewayConfigUpdate,
+  TOrgGatewayConfigV2,
+  TOrgGatewayConfigV2Insert,
+  TOrgGatewayConfigV2Update,
   TOrgMemberships,
   TOrgMembershipsInsert,
   TOrgMembershipsUpdate,
+  TOrgRelayConfig,
+  TOrgRelayConfigInsert,
+  TOrgRelayConfigUpdate,
   TOrgRoles,
   TOrgRolesInsert,
   TOrgRolesUpdate,
@@ -248,6 +275,9 @@ import {
   TPkiSubscribers,
   TPkiSubscribersInsert,
   TPkiSubscribersUpdate,
+  TPkiSyncs,
+  TPkiSyncsInsert,
+  TPkiSyncsUpdate,
   TProjectBots,
   TProjectBotsInsert,
   TProjectBotsUpdate,
@@ -290,9 +320,15 @@ import {
   TRateLimit,
   TRateLimitInsert,
   TRateLimitUpdate,
+  TRelays,
+  TRelaysInsert,
+  TRelaysUpdate,
   TResourceMetadata,
   TResourceMetadataInsert,
   TResourceMetadataUpdate,
+  TRoles,
+  TRolesInsert,
+  TRolesUpdate,
   TSamlConfigs,
   TSamlConfigsInsert,
   TSamlConfigsUpdate,
@@ -509,6 +545,10 @@ import {
   TMicrosoftTeamsIntegrationsInsert,
   TMicrosoftTeamsIntegrationsUpdate
 } from "@app/db/schemas/microsoft-teams-integrations";
+import { TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate } from "@app/db/schemas/pam-accounts";
+import { TPamFolders, TPamFoldersInsert, TPamFoldersUpdate } from "@app/db/schemas/pam-folders";
+import { TPamResources, TPamResourcesInsert, TPamResourcesUpdate } from "@app/db/schemas/pam-resources";
+import { TPamSessions, TPamSessionsInsert, TPamSessionsUpdate } from "@app/db/schemas/pam-sessions";
 import {
   TProjectMicrosoftTeamsConfigs,
   TProjectMicrosoftTeamsConfigsInsert,
@@ -530,6 +570,11 @@ import {
   TSecretReminderRecipientsInsert,
   TSecretReminderRecipientsUpdate
 } from "@app/db/schemas/secret-reminder-recipients";
+import {
+  TUserNotifications,
+  TUserNotificationsInsert,
+  TUserNotificationsUpdate
+} from "@app/db/schemas/user-notifications";
 
 declare module "knex" {
   namespace Knex {
@@ -657,6 +702,7 @@ declare module "knex/types/tables" {
       TPkiSubscribersInsert,
       TPkiSubscribersUpdate
     >;
+    [TableName.PkiSync]: KnexOriginal.CompositeTableType<TPkiSyncs, TPkiSyncsInsert, TPkiSyncsUpdate>;
     [TableName.UserGroupMembership]: KnexOriginal.CompositeTableType<
       TUserGroupMembership,
       TUserGroupMembershipInsert,
@@ -1233,6 +1279,17 @@ declare module "knex/types/tables" {
       TSecretScanningResourcesInsert,
       TSecretScanningResourcesUpdate
     >;
+    [TableName.InstanceRelayConfig]: KnexOriginal.CompositeTableType<
+      TInstanceRelayConfig,
+      TInstanceRelayConfigInsert,
+      TInstanceRelayConfigUpdate
+    >;
+    [TableName.OrgRelayConfig]: KnexOriginal.CompositeTableType<
+      TOrgRelayConfig,
+      TOrgRelayConfigInsert,
+      TOrgRelayConfigUpdate
+    >;
+    [TableName.Relay]: KnexOriginal.CompositeTableType<TRelays, TRelaysInsert, TRelaysUpdate>;
     [TableName.SecretScanningScan]: KnexOriginal.CompositeTableType<
       TSecretScanningScans,
       TSecretScanningScansInsert,
@@ -1253,6 +1310,40 @@ declare module "knex/types/tables" {
       TRemindersRecipients,
       TRemindersRecipientsInsert,
       TRemindersRecipientsUpdate
+    >;
+    [TableName.OrgGatewayConfigV2]: KnexOriginal.CompositeTableType<
+      TOrgGatewayConfigV2,
+      TOrgGatewayConfigV2Insert,
+      TOrgGatewayConfigV2Update
+    >;
+    [TableName.GatewayV2]: KnexOriginal.CompositeTableType<TGatewaysV2, TGatewaysV2Insert, TGatewaysV2Update>;
+    [TableName.UserNotifications]: KnexOriginal.CompositeTableType<
+      TUserNotifications,
+      TUserNotificationsInsert,
+      TUserNotificationsUpdate
+    >;
+    [TableName.KeyValueStore]: KnexOriginal.CompositeTableType<
+      TKeyValueStore,
+      TKeyValueStoreInsert,
+      TKeyValueStoreUpdate
+    >;
+    [TableName.PamFolder]: KnexOriginal.CompositeTableType<TPamFolders, TPamFoldersInsert, TPamFoldersUpdate>;
+    [TableName.PamResource]: KnexOriginal.CompositeTableType<TPamResources, TPamResourcesInsert, TPamResourcesUpdate>;
+    [TableName.PamAccount]: KnexOriginal.CompositeTableType<TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate>;
+    [TableName.PamSession]: KnexOriginal.CompositeTableType<TPamSessions, TPamSessionsInsert, TPamSessionsUpdate>;
+
+    [TableName.Namespace]: KnexOriginal.CompositeTableType<TNamespaces, TNamespacesInsert, TNamespacesUpdate>;
+    [TableName.Membership]: KnexOriginal.CompositeTableType<TMemberships, TMembershipsInsert, TMembershipsUpdate>;
+    [TableName.MembershipRole]: KnexOriginal.CompositeTableType<
+      TMembershipRoles,
+      TMembershipRolesInsert,
+      TMembershipRolesUpdate
+    >;
+    [TableName.Role]: KnexOriginal.CompositeTableType<TRoles, TRolesInsert, TRolesUpdate>;
+    [TableName.AdditionalPrivilege]: KnexOriginal.CompositeTableType<
+      TAdditionalPrivileges,
+      TAdditionalPrivilegesInsert,
+      TAdditionalPrivilegesUpdate
     >;
   }
 }

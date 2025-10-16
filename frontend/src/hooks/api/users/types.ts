@@ -1,5 +1,5 @@
 import { MfaMethod } from "../auth/types";
-import { ProjectType, ProjectUserMembershipTemporaryMode } from "../workspace/types";
+import { ProjectType, ProjectUserMembershipTemporaryMode } from "../projects/types";
 
 export enum AuthMethod {
   EMAIL = "email",
@@ -19,10 +19,10 @@ export type User = {
   createdAt: Date;
   updatedAt: Date;
   username: string;
-  email?: string;
+  email?: string | null;
   superAdmin: boolean;
-  firstName?: string;
-  lastName?: string;
+  firstName?: string | null;
+  lastName?: string | null;
   authProvider?: AuthMethod;
   authMethods: AuthMethod[];
   isMfaEnabled: boolean;
@@ -64,12 +64,20 @@ export type OrgUser = {
   inviteEmail: string;
   organization: string;
   role: "owner" | "admin" | "member" | "no-access" | "custom";
+  customRoleSlug?: string;
   status: "invited" | "accepted" | "verified" | "completed";
   deniedPermissions: any[];
   roleId: string;
   isActive: boolean;
   lastLoginAuthMethod?: AuthMethod;
   lastLoginTime?: string;
+};
+
+export type TUserMembership = {
+  id: string;
+  scope: string;
+  scopeOrgId: string;
+  actorUserId: string;
 };
 
 export type TProjectMembership = {
@@ -160,9 +168,6 @@ export type AddUserToOrgDTO = {
   inviteeEmails: string[];
   organizationRoleSlug: string;
   organizationId: string;
-
-  // We need the slug in order to invalidate the groups query. `slug` is only used for invalidation purposes.
-  projects?: { id: string; slug?: string; projectRoleSlug: string[] }[];
 };
 
 export type CreateAPIKeyRes = {

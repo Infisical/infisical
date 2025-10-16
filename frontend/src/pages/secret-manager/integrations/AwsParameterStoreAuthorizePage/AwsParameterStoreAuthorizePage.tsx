@@ -16,7 +16,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 enum AwsAuthType {
@@ -40,7 +40,7 @@ type TForm = z.infer<typeof formSchema>;
 
 export const AWSParameterStoreAuthorizeIntegrationPage = () => {
   const navigate = useNavigate();
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { mutateAsync } = useSaveIntegrationAccessToken();
 
   const { control, handleSubmit, formState, watch } = useForm<TForm>({
@@ -55,7 +55,7 @@ export const AWSParameterStoreAuthorizeIntegrationPage = () => {
   const handleFormSubmit = async (data: TForm) => {
     try {
       const integrationAuth = await mutateAsync({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentProject.id,
         integration: "aws-parameter-store",
         ...(data.type === AwsAuthType.AssumeRole
           ? {
@@ -70,7 +70,7 @@ export const AWSParameterStoreAuthorizeIntegrationPage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations/aws-parameter-store/create",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           integrationAuthId: integrationAuth.id
@@ -106,12 +106,12 @@ export const AWSParameterStoreAuthorizeIntegrationPage = () => {
               rel="noopener noreferrer"
               href="https://infisical.com/docs/integrations/cloud/aws-parameter-store"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-xxs"
+                  className="text-xxs mb-[0.07rem] ml-1.5"
                 />
               </div>
             </a>
@@ -194,7 +194,7 @@ export const AWSParameterStoreAuthorizeIntegrationPage = () => {
               type="submit"
               colorSchema="primary"
               variant="outline_bg"
-              className="mb-6 ml-auto mr-6 mt-2 w-min"
+              className="mt-2 mr-6 mb-6 ml-auto w-min"
               isLoading={formState.isSubmitting}
             >
               Connect to AWS Parameter Store

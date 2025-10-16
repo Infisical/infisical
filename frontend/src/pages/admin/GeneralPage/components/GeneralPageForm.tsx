@@ -103,11 +103,11 @@ export const GeneralPageForm = () => {
 
   return (
     <form
-      className="space-y-8 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
+      className="space-y-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
       onSubmit={handleSubmit(onFormSubmit)}
     >
       <div className="flex flex-col justify-start">
-        <div className="mb-2 text-xl font-semibold text-mineshaft-100">Allow user signups</div>
+        <div className="mb-2 text-xl font-medium text-mineshaft-100">Allow user signups</div>
         <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
           Select if you want users to be able to signup freely into your Infisical instance.
         </div>
@@ -132,7 +132,7 @@ export const GeneralPageForm = () => {
       </div>
       {signUpMode === "anyone" && (
         <div className="flex flex-col justify-start">
-          <div className="mb-4 text-xl font-semibold text-mineshaft-100">
+          <div className="mb-4 text-xl font-medium text-mineshaft-100">
             Restrict signup by email domain(s)
           </div>
           <Controller
@@ -159,7 +159,7 @@ export const GeneralPageForm = () => {
       )}
 
       <div className="flex flex-col justify-start">
-        <div className="mb-2 text-xl font-semibold text-mineshaft-100">Default organization</div>
+        <div className="mb-2 text-xl font-medium text-mineshaft-100">Default organization</div>
         <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
           Select the default organization you want to set for SAML/LDAP/OIDC/Github logins. When
           selected, user logins will be automatically scoped to the selected organization.
@@ -197,7 +197,7 @@ export const GeneralPageForm = () => {
       </div>
 
       <div className="flex flex-col justify-start">
-        <div className="mb-2 text-xl font-semibold text-mineshaft-100">Trust emails</div>
+        <div className="mb-2 text-xl font-medium text-mineshaft-100">Trust emails</div>
         <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
           Select if you want Infisical to trust external emails from SAML/LDAP/OIDC identity
           providers. If set to false, then Infisical will prompt SAML/LDAP/OIDC provisioned users to
@@ -257,7 +257,7 @@ export const GeneralPageForm = () => {
       </div>
 
       <div className="flex flex-col justify-start">
-        <div className="mb-2 text-xl font-semibold text-mineshaft-100">Notices</div>
+        <div className="mb-2 text-xl font-medium text-mineshaft-100">Notices</div>
         <div className="mb-4 max-w-lg text-sm text-mineshaft-400">
           Configure system-wide notification banners and security messages. These settings control
           the text displayed to users during authentication and throughout their session
@@ -274,7 +274,7 @@ export const GeneralPageForm = () => {
                 placeholder="**Auth Consent Message**"
                 {...field}
                 rows={3}
-                className="thin-scrollbar h-48 max-w-lg !resize-none bg-mineshaft-800"
+                className="h-48 thin-scrollbar max-w-lg resize-none! bg-mineshaft-800"
               />
             </FormControl>
           )}
@@ -293,7 +293,7 @@ export const GeneralPageForm = () => {
                 placeholder='<div style="background-color: red">TOP SECRET</div>'
                 {...field}
                 rows={3}
-                className="thin-scrollbar h-48 max-w-lg !resize-none bg-mineshaft-800"
+                className="h-48 thin-scrollbar max-w-lg resize-none! bg-mineshaft-800"
               />
             </FormControl>
           )}

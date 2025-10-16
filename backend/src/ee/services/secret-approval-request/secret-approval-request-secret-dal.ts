@@ -284,7 +284,8 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           db.ref("version").withSchema(TableName.SecretVersionV2).as("secVerVersion"),
           db.ref("key").withSchema(TableName.SecretVersionV2).as("secVerKey"),
           db.ref("encryptedValue").withSchema(TableName.SecretVersionV2).as("secVerValue"),
-          db.ref("encryptedComment").withSchema(TableName.SecretVersionV2).as("secVerComment")
+          db.ref("encryptedComment").withSchema(TableName.SecretVersionV2).as("secVerComment"),
+          db.ref("skipMultilineEncoding").withSchema(TableName.SecretVersionV2).as("secVerSkipMultilineEncoding")
         )
         .select(
           db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
@@ -326,14 +327,22 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
           {
             key: "secretVersion",
             label: "secretVersion" as const,
-            mapper: ({ secretVersion, secVerVersion, secVerKey, secVerValue, secVerComment }) =>
+            mapper: ({
+              secretVersion,
+              secVerVersion,
+              secVerKey,
+              secVerValue,
+              secVerComment,
+              secVerSkipMultilineEncoding
+            }) =>
               secretVersion
                 ? {
                     version: secVerVersion,
                     id: secretVersion,
                     key: secVerKey,
                     encryptedValue: secVerValue,
-                    encryptedComment: secVerComment
+                    encryptedComment: secVerComment,
+                    skipMultilineEncoding: secVerSkipMultilineEncoding
                   }
                 : undefined,
             childrenMapper: [
@@ -377,7 +386,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
   // special query for migration to v2 secret
   const findByProjectId = async (projectId: string, tx?: Knex) => {
     try {
-      const docs = await (tx || db)(TableName.SecretApprovalRequestSecret)
+      const docs = await (tx || db.replicaNode())(TableName.SecretApprovalRequestSecret)
         .join(
           TableName.SecretApprovalRequest,
           `${TableName.SecretApprovalRequest}.id`,

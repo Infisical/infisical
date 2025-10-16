@@ -23,7 +23,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { getProjectHomePage } from "@app/helpers/project";
 import {
   getUserTablePreference,
@@ -69,12 +69,12 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
     setUserTablePreference("projectGroupMembersTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   const { data: groupMemberships, isPending } = useListProjectGroupUsers({
     id: groupMembership.group.id,
     groupSlug: groupMembership.group.slug,
-    projectId: currentWorkspace.id,
+    projectId: currentProject.id,
     offset,
     limit: perPage,
     search,
@@ -127,7 +127,7 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
       {
         actorId: userId,
         actorType: ActorType.USER,
-        projectId: currentWorkspace.id
+        projectId: currentProject.id
       },
       {
         onSuccess: () => {
@@ -136,8 +136,8 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
             text: "User privilege assumption has started"
           });
 
-          const url = getProjectHomePage(currentWorkspace.type);
-          window.location.href = url.replace("$projectId", currentWorkspace.id);
+          const url = getProjectHomePage(currentProject.type, currentProject.environments);
+          window.location.href = url.replace("$projectId", currentProject.id);
         }
       }
     );

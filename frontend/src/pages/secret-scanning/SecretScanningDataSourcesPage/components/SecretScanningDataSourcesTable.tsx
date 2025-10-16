@@ -248,7 +248,7 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
               <FontAwesomeIcon icon={faFilter} />
             </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="thin-scrollbar max-h-[70vh] overflow-y-auto" align="end">
+          <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
             <DropdownMenuLabel>Platform</DropdownMenuLabel>
             {dataSources.length ? (
               [...new Set(dataSources.map(({ type }) => type))].map((type) => {

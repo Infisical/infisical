@@ -7,8 +7,19 @@ export type { GetAuthTokenAPI } from "./auth/types";
 export type { IncidentContact } from "./incidentContacts/types";
 export type { IntegrationAuth } from "./integrationAuth/types";
 export type { TCloudIntegration, TIntegration } from "./integrations/types";
-export type { UserWsKeyPair } from "./keys/types";
 export type { Organization } from "./organization/types";
+export type {
+  CreateEnvironmentDTO,
+  CreateWorkspaceDTO,
+  DeleteEnvironmentDTO,
+  DeleteWorkspaceDTO,
+  Project,
+  ProjectEnv,
+  ProjectTag,
+  ToggleAutoCapitalizationDTO,
+  UpdateEnvironmentDTO,
+  UpdateProjectDTO
+} from "./projects/types";
 export type { TSecretApprovalPolicy } from "./secretApproval/types";
 export type {
   TGetSecretApprovalRequestDetails,
@@ -29,18 +40,6 @@ export type { SubscriptionPlan } from "./subscriptions/types";
 export type { WsTag } from "./tags/types";
 export type { OrgUser, TWorkspaceUser, User, UserEnc } from "./users/types";
 export type { TWebhook } from "./webhooks/types";
-export type {
-  CreateEnvironmentDTO,
-  CreateWorkspaceDTO,
-  DeleteEnvironmentDTO,
-  DeleteWorkspaceDTO,
-  ToggleAutoCapitalizationDTO,
-  UpdateEnvironmentDTO,
-  UpdateProjectDTO,
-  Workspace,
-  WorkspaceEnv,
-  WorkspaceTag
-} from "./workspace/types";
 
 export enum ApiErrorTypes {
   ValidationError = "ValidationFailure",

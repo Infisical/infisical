@@ -29,7 +29,7 @@ const getCustomSlackAppCreationUrl = () =>
         - Notifications: Receive real-time updates and alerts about critical events in your Infisical projects. Whether it's a new project being created, updates to secrets, or changes to your team's configuration, you will be promptly notified within the designated Slack channels of your choice.
         - Customization: Tailor the notifications to your team's specific needs by configuring which types of events trigger alerts and in which channels they are sent.
         - Collaboration: Keep your entire team in the loop with notifications that help facilitate more efficient collaboration by ensuring that everyone is aware of important developments in your Infisical projects.
-        
+
         By integrating Infisical with Slack, you can enhance your workflow by combining the power of secure secrets management with the communication capabilities of Slack.`
       },
       features: {
@@ -108,7 +108,7 @@ export const SlackIntegrationForm = ({ adminIntegrationsConfig }: Props) => {
           <AccordionTrigger className="flex h-fit w-full justify-start rounded-md border border-mineshaft-500 bg-mineshaft-700 px-4 py-6 text-sm transition-colors data-[state=open]:rounded-b-none">
             <div className="text-md group order-1 ml-3 flex items-center gap-2">
               <BsSlack className="text-lg group-hover:text-primary-400" />
-              <div className="text-[15px] font-semibold">Slack</div>
+              <div className="text-[15px] font-medium">Slack</div>
             </div>
           </AccordionTrigger>
           <AccordionContent childrenClassName="px-0 py-0">

@@ -28,7 +28,7 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
 
   const rule = useWatch({
     control,
-    name: "permissions.workspace"
+    name: "permissions.project"
   });
 
   const selectedPermissionCategory = useMemo(() => {
@@ -60,7 +60,7 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
     setIsCustom.off();
 
     if (val === Permission.NoAccess) {
-      setValue("permissions.workspace", { create: false }, { shouldDirty: true });
+      setValue("permissions.project", { create: false }, { shouldDirty: true });
     }
   };
 
@@ -91,12 +91,12 @@ export const OrgRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) =>
       {isRowExpanded && (
         <Tr>
           <Td colSpan={3} className="border-mineshaft-500 bg-mineshaft-900 p-8">
-            <div className="flex flex-grow flex-wrap justify-start gap-x-8 gap-y-4">
+            <div className="flex grow flex-wrap justify-start gap-x-8 gap-y-4">
               {PERMISSION_ACTIONS.map(({ action, label }) => {
                 return (
                   <Controller
-                    name={`permissions.workspace.${action}`}
-                    key={`permissions.workspace.${action}`}
+                    name={`permissions.project.${action}`}
+                    key={`permissions.project.${action}`}
                     control={control}
                     render={({ field }) => (
                       <Checkbox

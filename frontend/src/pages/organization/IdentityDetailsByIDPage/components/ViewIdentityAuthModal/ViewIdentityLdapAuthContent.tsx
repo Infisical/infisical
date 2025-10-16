@@ -2,11 +2,12 @@ import { faBan, faEye } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Badge, EmptyState, Spinner, Tooltip } from "@app/components/v2";
-import { useGetIdentityLdapAuth } from "@app/hooks/api";
+import { useClearIdentityLdapAuthLockouts, useGetIdentityLdapAuth } from "@app/hooks/api";
 import { IdentityLdapAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityLdapAuthForm";
 import { ViewIdentityContentWrapper } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityContentWrapper";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
+import { LockoutFields } from "./IdentityAuthLockoutFields";
 import { ViewAuthMethodProps } from "./types";
 
 export const ViewIdentityLdapAuthContent = ({
@@ -14,9 +15,12 @@ export const ViewIdentityLdapAuthContent = ({
   handlePopUpToggle,
   handlePopUpOpen,
   onDelete,
-  popUp
+  popUp,
+  lockedOut,
+  onResetAllLockouts
 }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityLdapAuth(identityId);
+  const clearLockoutsResult = useClearIdentityLdapAuthLockouts();
 
   if (isPending) {
     return (
@@ -66,10 +70,10 @@ export const ViewIdentityLdapAuthContent = ({
         <Tooltip
           side="right"
           className="max-w-xl p-2"
-          content={<p className="break-words rounded bg-mineshaft-600 p-2">{data.bindPass}</p>}
+          content={<p className="rounded-sm bg-mineshaft-600 p-2 break-words">{data.bindPass}</p>}
         >
           <div className="w-min">
-            <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+            <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
               <FontAwesomeIcon icon={faEye} />
               <span>Reveal</span>
             </Badge>
@@ -86,11 +90,13 @@ export const ViewIdentityLdapAuthContent = ({
             side="right"
             className="max-w-xl p-2"
             content={
-              <p className="break-words rounded bg-mineshaft-600 p-2">{data.ldapCaCertificate}</p>
+              <p className="rounded-sm bg-mineshaft-600 p-2 break-words">
+                {data.ldapCaCertificate}
+              </p>
             }
           >
             <div className="w-min">
-              <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap bg-mineshaft-400/50 text-bunker-300">
+              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
                 <FontAwesomeIcon icon={faEye} />
                 <span>Reveal</span>
               </Badge>
@@ -98,6 +104,18 @@ export const ViewIdentityLdapAuthContent = ({
           </Tooltip>
         )}
       </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay label="Lockout">
+        {data.lockoutEnabled ? "Enabled" : "Disabled"}
+      </IdentityAuthFieldDisplay>
+      {data.lockoutEnabled && (
+        <LockoutFields
+          identityId={identityId}
+          lockedOut={lockedOut}
+          clearLockoutsResult={clearLockoutsResult}
+          data={data}
+          onResetAllLockouts={onResetAllLockouts}
+        />
+      )}
     </ViewIdentityContentWrapper>
   );
 };

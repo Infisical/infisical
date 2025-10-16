@@ -15,7 +15,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { localStorageService } from "@app/helpers/localStorage";
 import { useGetCloudIntegrations } from "@app/hooks/api";
 
@@ -31,7 +31,7 @@ export const GithubAuthorizePage = () => {
   const { data: cloudIntegrations } = useGetCloudIntegrations();
   const githubIntegration = cloudIntegrations?.find((integration) => integration.slug === "github");
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<AuthMethod>(AuthMethod.APP);
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
 
   return (
     <div className="flex h-full w-full items-center justify-center">
@@ -53,12 +53,12 @@ export const GithubAuthorizePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-xxs"
+                  className="text-xxs mb-[0.07rem] ml-1.5"
                 />
               </div>
             </a>
@@ -84,7 +84,7 @@ export const GithubAuthorizePage = () => {
                   navigate({
                     to: "/projects/secret-management/$projectId/integrations/select-integration-auth",
                     params: {
-                      projectId: currentWorkspace.id
+                      projectId: currentProject.id
                     },
                     search: {
                       integrationSlug: "github"
@@ -102,7 +102,7 @@ export const GithubAuthorizePage = () => {
 
                   const state = crypto.randomBytes(16).toString("hex");
                   localStorage.setItem("latestCSRFToken", state);
-                  localStorageService.setIntegrationProjectId(currentWorkspace.id);
+                  localStorageService.setIntegrationProjectId(currentProject.id);
                   window.location.assign(
                     `https://github.com/login/oauth/authorize?client_id=${githubIntegration?.clientId}&response_type=code&scope=repo,admin:org&redirect_uri=${window.location.origin}/integrations/github/oauth2/callback&state=${state}`
                   );
@@ -110,7 +110,7 @@ export const GithubAuthorizePage = () => {
               }}
               colorSchema="primary"
               variant="outline_bg"
-              className="ml-auto mt-4 w-min"
+              className="mt-4 ml-auto w-min"
             >
               Connect to GitHub
             </Button>

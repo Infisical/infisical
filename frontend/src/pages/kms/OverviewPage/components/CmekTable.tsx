@@ -49,8 +49,8 @@ import {
   ProjectPermissionActions,
   ProjectPermissionCmekActions,
   ProjectPermissionSub,
-  useProjectPermission,
-  useWorkspace
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { kmsKeyUsageOptions } from "@app/helpers/kms";
 import {
@@ -87,10 +87,10 @@ const getStatusBadgeProps = (
 };
 
 export const CmekTable = () => {
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const { permission } = useProjectPermission();
 
-  const projectId = currentWorkspace?.id ?? "";
+  const projectId = currentProject?.id ?? "";
 
   const {
     offset,
@@ -216,7 +216,7 @@ export const CmekTable = () => {
     >
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
-          <p className="whitespace-nowrap text-xl font-semibold text-mineshaft-100">Keys</p>
+          <p className="text-xl font-medium whitespace-nowrap text-mineshaft-100">Keys</p>
           <div className="flex w-full justify-end pr-4">
             <a
               target="_blank"

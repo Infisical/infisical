@@ -24,6 +24,7 @@ export type TVerifyMfaTokenDTO = {
   ip: string;
   userAgent: string;
   orgId?: string;
+  isRecoveryCode?: boolean;
 };
 
 export type TOauthLoginDTO = {

@@ -99,6 +99,17 @@ export const licenseServiceFactory = ({
       const workspacesUsed = await projectDAL.countOfOrgProjects(null);
       currentPlan.workspacesUsed = workspacesUsed;
 
+      const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null);
+      if (usedIdentitySeats !== currentPlan.identitiesUsed) {
+        const usedSeats = await licenseDAL.countOfOrgMembers(null);
+        await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, {
+          usedSeats,
+          usedIdentitySeats
+        });
+        currentPlan.identitiesUsed = usedIdentitySeats;
+        currentPlan.membersUsed = usedSeats;
+      }
+
       onPremFeatures = currentPlan;
       logger.info("Successfully synchronized license key features");
     } catch (error) {
@@ -149,7 +160,10 @@ export const licenseServiceFactory = ({
         }
 
         if (isValidOfflineLicense) {
-          onPremFeatures = contents.license.features;
+          onPremFeatures = {
+            ...contents.license.features,
+            slug: "enterprise"
+          };
           instanceType = InstanceType.EnterpriseOnPremOffline;
           logger.info(`Instance type: ${InstanceType.EnterpriseOnPremOffline}`);
           isValidLicense = true;
@@ -226,9 +240,12 @@ export const licenseServiceFactory = ({
   };
 
   const refreshPlan = async (orgId: string) => {
+    await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
     if (instanceType === InstanceType.Cloud) {
-      await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
       await getPlan(orgId);
+    }
+    if (instanceType === InstanceType.EnterpriseOnPrem) {
+      await syncLicenseKeyOnPremFeatures(true);
     }
   };
 
@@ -296,8 +313,19 @@ export const licenseServiceFactory = ({
     return data;
   };
 
-  const getOrgPlan = async ({ orgId, actor, actorId, actorOrgId, actorAuthMethod, projectId }: TOrgPlanDTO) => {
+  const getOrgPlan = async ({
+    orgId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    refreshCache
+  }: TOrgPlanDTO) => {
     await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    if (refreshCache) {
+      await refreshPlan(orgId);
+    }
     const plan = await getPlan(orgId, projectId);
     return plan;
   };
@@ -322,6 +350,8 @@ export const licenseServiceFactory = ({
         message: `Organization with ID '${orgId}' not found`
       });
     }
+
+    await updateSubscriptionOrgMemberCount(orgId);
 
     const {
       data: { url }
@@ -415,6 +445,61 @@ export const licenseServiceFactory = ({
     };
   };
 
+  const calculateUsageValue = (
+    rowName: string,
+    field: string,
+    projectCount: number,
+    totalIdentities: number
+  ): string => {
+    if (rowName === BillingPlanRows.WorkspaceLimit.name || field === BillingPlanRows.WorkspaceLimit.field) {
+      return projectCount.toString();
+    }
+    if (rowName === BillingPlanRows.IdentityLimit.name || field === BillingPlanRows.IdentityLimit.field) {
+      return totalIdentities.toString();
+    }
+    return "-";
+  };
+
+  const fetchPlanTableFromServer = async (customerId: string | null | undefined) => {
+    const baseUrl = `/api/license-server/v1/customers`;
+
+    if (instanceType === InstanceType.Cloud) {
+      if (!customerId) {
+        throw new NotFoundError({ message: "Organization customer ID is required for plan table retrieval" });
+      }
+      const { data } = await licenseServerCloudApi.request.get<{
+        head: { name: string }[];
+        rows: { name: string; allowed: boolean }[];
+      }>(`${baseUrl}/${customerId}/cloud-plan/table`);
+      return data;
+    }
+
+    if (instanceType === InstanceType.EnterpriseOnPrem) {
+      const { data } = await licenseServerOnPremApi.request.get<{
+        head: { name: string }[];
+        rows: { name: string; allowed: boolean }[];
+      }>(`${baseUrl}/on-prem-plan/table`);
+      return data;
+    }
+
+    throw new Error(`Unsupported instance type for server-based plan table: ${instanceType}`);
+  };
+
+  const getUsageMetrics = async (orgId: string) => {
+    const [orgMembersUsed, identityUsed, projectCount] = await Promise.all([
+      orgDAL.countAllOrgMembers(orgId),
+      identityOrgMembershipDAL.countAllOrgIdentities({ scopeOrgId: orgId }),
+      projectDAL.countOfOrgProjects(orgId)
+    ]);
+
+    return {
+      orgMembersUsed,
+      identityUsed,
+      projectCount,
+      totalIdentities: identityUsed + orgMembersUsed
+    };
+  };
+
   // returns org current plan feature table
   const getOrgPlanTable = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TGetOrgBillInfoDTO) => {
     const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
@@ -427,55 +512,25 @@ export const licenseServiceFactory = ({
       });
     }
 
-    const orgMembersUsed = await orgDAL.countAllOrgMembers(orgId);
-    const identityUsed = await identityOrgMembershipDAL.countAllOrgIdentities({ orgId });
-    const projects = await projectDAL.find({ orgId });
-    const projectCount = projects.length;
+    const { projectCount, totalIdentities } = await getUsageMetrics(orgId);
 
-    if (instanceType === InstanceType.Cloud) {
-      const { data } = await licenseServerCloudApi.request.get<{
-        head: { name: string }[];
-        rows: { name: string; allowed: boolean }[];
-      }>(`/api/license-server/v1/customers/${organization.customerId}/cloud-plan/table`);
+    if (instanceType === InstanceType.Cloud || instanceType === InstanceType.EnterpriseOnPrem) {
+      const tableResponse = await fetchPlanTableFromServer(organization.customerId);
 
-      const formattedData = {
-        head: data.head,
-        rows: data.rows.map((el) => {
-          let used = "-";
-
-          if (el.name === BillingPlanRows.WorkspaceLimit.name) {
-            used = projectCount.toString();
-          } else if (el.name === BillingPlanRows.IdentityLimit.name) {
-            used = (identityUsed + orgMembersUsed).toString();
-          }
-
-          return {
-            ...el,
-            used
-          };
-        })
+      return {
+        head: tableResponse.head,
+        rows: tableResponse.rows.map((row) => ({
+          ...row,
+          used: calculateUsageValue(row.name, "", projectCount, totalIdentities)
+        }))
       };
-      return formattedData;
     }
 
-    const mappedRows = await Promise.all(
-      Object.values(BillingPlanRows).map(async ({ name, field }: { name: string; field: string }) => {
-        const allowed = onPremFeatures[field as keyof TFeatureSet];
-        let used = "-";
-
-        if (field === BillingPlanRows.WorkspaceLimit.field) {
-          used = projectCount.toString();
-        } else if (field === BillingPlanRows.IdentityLimit.field) {
-          used = (identityUsed + orgMembersUsed).toString();
-        }
-
-        return {
-          name,
-          allowed,
-          used
-        };
-      })
-    );
+    const mappedRows = Object.values(BillingPlanRows).map(({ name, field }) => ({
+      name,
+      allowed: onPremFeatures[field as keyof TFeatureSet] || false,
+      used: calculateUsageValue(name, field, projectCount, totalIdentities)
+    }));
 
     return {
       head: Object.values(BillingPlanTableHead),
@@ -722,6 +777,16 @@ export const licenseServiceFactory = ({
     await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
   };
 
+  const getCustomerId = () => {
+    if (!selfHostedLicense) return "unknown";
+    return selfHostedLicense?.customerId;
+  };
+
+  const getLicenseId = () => {
+    if (!selfHostedLicense) return "unknown";
+    return selfHostedLicense?.licenseId;
+  };
+
   return {
     generateOrgCustomerId,
     removeOrgCustomer,
@@ -736,6 +801,8 @@ export const licenseServiceFactory = ({
       return onPremFeatures;
     },
     getPlan,
+    getCustomerId,
+    getLicenseId,
     invalidateGetPlan,
     updateSubscriptionOrgMemberCount,
     refreshPlan,

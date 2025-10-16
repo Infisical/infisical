@@ -25,7 +25,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useWorkspace } from "@app/context";
+import { useProject } from "@app/context";
 import { isValidPath } from "@app/helpers/string";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthById } from "@app/hooks/api/integrationAuth";
@@ -61,7 +61,7 @@ export const HashicorpVaultConfigurePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useCreateIntegration();
 
-  const { currentWorkspace } = useWorkspace();
+  const { currentProject } = useProject();
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.HashicorpVaultConfigurePage.id,
     select: (el) => el.integrationAuthId
@@ -72,8 +72,8 @@ export const HashicorpVaultConfigurePage = () => {
   );
 
   const formSchema = useMemo(() => {
-    return generateFormSchema(currentWorkspace?.environments.map((env) => env.slug) ?? []);
-  }, [currentWorkspace?.environments]);
+    return generateFormSchema(currentProject?.environments.map((env) => env.slug) ?? []);
+  }, [currentProject?.environments]);
 
   const {
     control,
@@ -103,7 +103,7 @@ export const HashicorpVaultConfigurePage = () => {
       navigate({
         to: "/projects/secret-management/$projectId/integrations",
         params: {
-          projectId: currentWorkspace.id
+          projectId: currentProject.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
@@ -149,12 +149,12 @@ export const HashicorpVaultConfigurePage = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pb-[0.03rem] pt-[0.04rem] text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-yellow/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 Docs
                 <FontAwesomeIcon
                   icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-xxs"
+                  className="text-xxs mb-[0.07rem] ml-1.5"
                 />
               </div>
             </a>
@@ -177,7 +177,7 @@ export const HashicorpVaultConfigurePage = () => {
                     onValueChange={field.onChange}
                     className="w-full border border-mineshaft-500"
                   >
-                    {currentWorkspace?.environments.map((sourceEnvironment) => (
+                    {currentProject?.environments.map((sourceEnvironment) => (
                       <SelectItem
                         value={sourceEnvironment.slug}
                         key={`vault-environment-${sourceEnvironment.slug}`}

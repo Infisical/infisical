@@ -16,7 +16,11 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  getAppConnectionMethodDetails,
+  useGetAppConnectionOauthReturnUrl
+} from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useGetAppConnectionOption } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -26,6 +30,7 @@ import {
   TGitLabConnection
 } from "@app/hooks/api/appConnections/types/gitlab-connection";
 
+import { GitLabFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -34,6 +39,7 @@ import {
 type Props = {
   appConnection?: TGitLabConnection;
   onSubmit: (formData: FormData) => Promise<void>;
+  projectId: string | undefined | null;
 };
 
 const formSchema = z.discriminatedUnion("method", [
@@ -72,7 +78,7 @@ const formSchema = z.discriminatedUnion("method", [
 
 type FormData = z.infer<typeof formSchema>;
 
-export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Props) => {
+export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, projectId }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -97,6 +103,8 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
             }
           } as FormData))
   });
+
+  const returnUrl = useGetAppConnectionOauthReturnUrl();
 
   const {
     handleSubmit,
@@ -132,8 +140,10 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
             JSON.stringify({
               ...formData,
               connectionId: appConnection?.id,
-              isUpdate
-            })
+              isUpdate,
+              projectId,
+              returnUrl
+            } as GitLabFormData)
           );
 
           // Redirect to Gitlab OAuth
@@ -293,7 +303,7 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit }: Pr
                   tooltipText="Your GitLab Access Token"
                 >
                   <SecretInput
-                    containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                    containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                   />
