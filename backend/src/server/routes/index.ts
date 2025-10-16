@@ -194,6 +194,7 @@ import { folderTreeCheckpointDALFactory } from "@app/services/folder-tree-checkp
 import { folderTreeCheckpointResourcesDALFactory } from "@app/services/folder-tree-checkpoint-resources/folder-tree-checkpoint-resources-dal";
 import { groupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { groupProjectServiceFactory } from "@app/services/group-project/group-project-service";
+import { healthAlertServiceFactory } from "@app/services/health-alert/health-alert-queue";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { identityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
@@ -1619,9 +1620,9 @@ export const registerRoutes = async (
 
   const identityAccessTokenService = identityAccessTokenServiceFactory({
     identityAccessTokenDAL,
-    identityOrgMembershipDAL,
     accessTokenQueue,
-    identityDAL
+    identityDAL,
+    membershipIdentityDAL
   });
 
   const identityTokenAuthService = identityTokenAuthServiceFactory({
@@ -1807,6 +1808,7 @@ export const registerRoutes = async (
     identityDAL
   });
 
+  // DAILY
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     auditLogDAL,
     queueService,
@@ -1821,6 +1823,12 @@ export const registerRoutes = async (
     orgService,
     userNotificationDAL,
     keyValueStoreDAL
+  });
+
+  const healthAlert = healthAlertServiceFactory({
+    gatewayV2Service,
+    queueService,
+    relayService
   });
 
   const dailyReminderQueueService = dailyReminderQueueServiceFactory({
@@ -2256,6 +2264,7 @@ export const registerRoutes = async (
   await telemetryQueue.startTelemetryCheck();
   await telemetryQueue.startAggregatedEventsJob();
   await dailyResourceCleanUp.init();
+  await healthAlert.init();
   await pkiSyncCleanup.init();
   await dailyReminderQueueService.startDailyRemindersJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();
@@ -2418,16 +2427,6 @@ export const registerRoutes = async (
   const configSyncJob = await superAdminService.initializeEnvConfigSync();
   if (configSyncJob) {
     cronJobs.push(configSyncJob);
-  }
-
-  const gatewayHealthcheckNotifyJob = await gatewayV2Service.initializeHealthcheckNotify();
-  if (gatewayHealthcheckNotifyJob) {
-    cronJobs.push(gatewayHealthcheckNotifyJob);
-  }
-
-  const relayHealthcheckNotifyJob = await relayService.initializeHealthcheckNotify();
-  if (relayHealthcheckNotifyJob) {
-    cronJobs.push(relayHealthcheckNotifyJob);
   }
 
   const oauthConfigSyncJob = await initializeOauthConfigSync();

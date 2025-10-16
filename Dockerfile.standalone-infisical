@@ -6,7 +6,7 @@ ARG CAPTCHA_SITE_KEY=captcha-site-key
 FROM node:20.19.5-trixie-slim AS base
 
 # Fixes NPM vulnerability: https://security.snyk.io/vuln/SNYK-JS-CROSSSPAWN-8303230
-RUN npm install -g npm@11
+RUN npm install -g npm@10.9.0
 
 FROM base AS frontend-dependencies
 

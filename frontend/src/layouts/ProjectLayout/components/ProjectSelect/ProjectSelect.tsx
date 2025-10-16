@@ -3,10 +3,10 @@ import { faStar } from "@fortawesome/free-regular-svg-icons";
 import {
   faCaretDown,
   faCheck,
+  faCube,
   faMagnifyingGlass,
   faPlus,
-  faStar as faSolidStar,
-  faTable
+  faStar as faSolidStar
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, linkOptions } from "@tanstack/react-router";
@@ -16,6 +16,7 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -106,14 +107,16 @@ export const ProjectSelect = () => {
             projectId: currentWorkspace.id
           }}
         >
-          <div className="flex cursor-pointer items-center gap-2 text-sm text-white duration-100 hover:text-primary">
-            <div>
-              <FontAwesomeIcon icon={faTable} className="text-xs text-bunker-300" />
-            </div>
+          <div className="relative flex cursor-pointer items-center gap-2 text-sm text-white duration-100 hover:text-primary">
             <Tooltip content={currentWorkspace.name} className="max-w-96 break-words">
-              <div className="max-w-44 overflow-hidden text-ellipsis whitespace-nowrap">
+              <Badge
+                variant="project"
+                className="max-w-44 overflow-hidden text-sm text-ellipsis whitespace-nowrap"
+              >
+                <FontAwesomeIcon icon={faCube} />
+
                 {currentWorkspace?.name}
-              </div>
+              </Badge>
             </Tooltip>
           </div>
         </Link>

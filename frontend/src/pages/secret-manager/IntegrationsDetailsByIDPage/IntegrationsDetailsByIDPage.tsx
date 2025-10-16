@@ -94,6 +94,7 @@ export const IntegrationDetailsByIDPage = () => {
         {integration ? (
           <div className="mx-auto mb-6 w-full max-w-7xl">
             <PageHeader
+              scope="project"
               title={`${integrationSlugNameMapping[integration.integration]} Integration`}
             >
               <DropdownMenu>

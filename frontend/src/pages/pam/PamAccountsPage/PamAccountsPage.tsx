@@ -23,7 +23,11 @@ export const PamAccountsPage = () => {
         <div className="h-full bg-bunker-800">
           <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
             <div className="mx-auto mb-6 w-full max-w-7xl">
-              <PageHeader title="Accounts" description="View, access, and manage accounts." />
+              <PageHeader
+                scope="project"
+                title="Accounts"
+                description="View, access, and manage accounts."
+              />
               <PamAccountsSection />
             </div>
           </div>

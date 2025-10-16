@@ -70,7 +70,7 @@ export const PkiManagerLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
+                        <MenuItem variant="project" isSelected={isActive}>
                           <div className="mx-1 flex gap-2">
                             <div className="w-6">
                               <FontAwesomeIcon icon={faFileLines} />
@@ -87,7 +87,7 @@ export const PkiManagerLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
+                        <MenuItem variant="project" isSelected={isActive}>
                           <div className="mx-1 flex gap-2">
                             <div className="w-6">
                               <FontAwesomeIcon icon={faCertificate} />
@@ -104,7 +104,7 @@ export const PkiManagerLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
+                        <MenuItem variant="project" isSelected={isActive}>
                           <div className="mx-1 flex gap-2">
                             <div className="w-6">
                               <FontAwesomeIcon icon={faStamp} />
@@ -121,7 +121,7 @@ export const PkiManagerLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
+                        <MenuItem variant="project" isSelected={isActive}>
                           <div className="mx-1 flex gap-2">
                             <div className="w-6">
                               <FontAwesomeIcon icon={faBell} />
@@ -138,7 +138,7 @@ export const PkiManagerLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
+                        <MenuItem variant="project" isSelected={isActive}>
                           <div className="mx-1 flex gap-2">
                             <div className="w-6">
                               <FontAwesomeIcon icon={faPuzzlePiece} />
@@ -155,7 +155,7 @@ export const PkiManagerLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
+                        <MenuItem variant="project" isSelected={isActive}>
                           <div className="mx-1 flex gap-2">
                             <div className="w-6">
                               <FontAwesomeIcon icon={faPlug} />
@@ -216,12 +216,12 @@ export const PkiManagerLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
+                        <MenuItem variant="project" isSelected={isActive}>
                           <div className="mx-1 flex gap-2">
                             <div className="w-6">
                               <FontAwesomeIcon icon={faUsers} />
                             </div>
-                            Access Management
+                            Project Access
                           </div>
                         </MenuItem>
                       )}
@@ -233,7 +233,7 @@ export const PkiManagerLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
+                        <MenuItem variant="project" isSelected={isActive}>
                           <div className="mx-1 flex gap-2">
                             <div className="w-6">
                               <FontAwesomeIcon icon={faBook} />
@@ -250,12 +250,12 @@ export const PkiManagerLayout = () => {
                       }}
                     >
                       {({ isActive }) => (
-                        <MenuItem isSelected={isActive}>
+                        <MenuItem variant="project" isSelected={isActive}>
                           <div className="mx-1 flex gap-2">
                             <div className="w-6">
                               <FontAwesomeIcon icon={faCog} />
                             </div>
-                            Settings
+                            Project Settings
                           </div>
                         </MenuItem>
                       )}

@@ -20,6 +20,7 @@ import { GitlabSyncDestinationSchema } from "./gitlab-sync-destination-schema";
 import { HCVaultSyncDestinationSchema } from "./hc-vault-sync-destination-schema";
 import { HerokuSyncDestinationSchema } from "./heroku-sync-destination-schema";
 import { HumanitecSyncDestinationSchema } from "./humanitec-sync-destination-schema";
+import { LaravelForgeSyncDestinationSchema } from "./laravel-forge-sync-destination-schema";
 import { NetlifySyncDestinationSchema } from "./netlify-sync-destination-schema";
 import { OCIVaultSyncDestinationSchema } from "./oci-vault-sync-destination-schema";
 import { RailwaySyncDestinationSchema } from "./railway-sync-destination-schema";
@@ -61,7 +62,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   ChecklySyncDestinationSchema,
   DigitalOceanAppPlatformSyncDestinationSchema,
   NetlifySyncDestinationSchema,
-  BitbucketSyncDestinationSchema
+  BitbucketSyncDestinationSchema,
+  LaravelForgeSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;
