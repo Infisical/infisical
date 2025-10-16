@@ -122,7 +122,7 @@ export const newNamespaceRoleFactory = ({ permissionService }: TNamespaceRoleSco
         id: "b11b49a9-09a9-4443-916a-4246f9ff2c70", // dummy user for zod validation in response
         name: "Member",
         slug: "member",
-        orgId: scopeField.value,
+        namespaceId: scopeField.value,
         description: "Non-administrative role in an namespace",
         permissions: namespaceMemberPermissions,
         createdAt: new Date(),
@@ -132,7 +132,7 @@ export const newNamespaceRoleFactory = ({ permissionService }: TNamespaceRoleSco
         id: "b10d49a9-09a9-4443-916a-4246f9ff2c72", // dummy user for zod validation in response
         name: "No Access",
         slug: "no-access",
-        orgId: scopeField.value,
+        namespaceId: scopeField.value,
         description: "No access to any resources in the namespace",
         permissions: namespaceNoAccessPermissions,
         createdAt: new Date(),

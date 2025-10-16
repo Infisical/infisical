@@ -112,7 +112,7 @@ export const namespaceServiceFactory = ({
   }: TUpdateNamespaceDTO) => {
     const existingNamespace = await namespaceDAL.findOne({ id: namespaceId, orgId: permission.orgId });
     if (!existingNamespace) {
-      throw new NotFoundError({ message: `Namespace with name '${name}' not found` });
+      throw new NotFoundError({ message: `Namespace with id '${namespaceId}' not found` });
     }
 
     const { permission: namespacePermission } = await permissionService.getNamespacePermission({
@@ -136,7 +136,7 @@ export const namespaceServiceFactory = ({
 
     if (name) {
       const namespaceWithNewName = await namespaceDAL.findOne({ name, orgId: permission.orgId });
-      if (namespaceWithNewName) {
+      if (namespaceWithNewName && namespaceWithNewName.id !== existingNamespace.id) {
         throw new BadRequestError({ message: `Namespace with name '${name}' already exists` });
       }
     }

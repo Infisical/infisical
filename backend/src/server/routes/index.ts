@@ -1633,7 +1633,6 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     permissionService,
     licenseService,
-    orgDAL,
     membershipIdentityDAL
   });
 
@@ -1644,7 +1643,6 @@ export const registerRoutes = async (
     identityUaDAL,
     licenseService,
     keyStore,
-    orgDAL,
     membershipIdentityDAL
   });
 
@@ -1654,7 +1652,6 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     gatewayService,
-    orgDAL,
     gatewayV2Service,
     gatewayV2DAL,
     gatewayDAL,
@@ -1663,7 +1660,6 @@ export const registerRoutes = async (
   });
   const identityGcpAuthService = identityGcpAuthServiceFactory({
     identityGcpAuthDAL,
-    orgDAL,
     identityAccessTokenDAL,
     permissionService,
     licenseService,
@@ -1672,7 +1668,6 @@ export const registerRoutes = async (
 
   const identityAliCloudAuthService = identityAliCloudAuthServiceFactory({
     identityAccessTokenDAL,
-    orgDAL,
     identityAliCloudAuthDAL,
     licenseService,
     permissionService,
@@ -1690,7 +1685,6 @@ export const registerRoutes = async (
 
   const identityAwsAuthService = identityAwsAuthServiceFactory({
     identityAccessTokenDAL,
-    orgDAL,
     identityAwsAuthDAL,
     licenseService,
     permissionService,
@@ -1699,7 +1693,6 @@ export const registerRoutes = async (
 
   const identityAzureAuthService = identityAzureAuthServiceFactory({
     identityAzureAuthDAL,
-    orgDAL,
     identityAccessTokenDAL,
     permissionService,
     licenseService,
@@ -1708,7 +1701,6 @@ export const registerRoutes = async (
 
   const identityOciAuthService = identityOciAuthServiceFactory({
     identityAccessTokenDAL,
-    orgDAL,
     identityOciAuthDAL,
     licenseService,
     permissionService,
@@ -1731,7 +1723,6 @@ export const registerRoutes = async (
 
   const identityOidcAuthService = identityOidcAuthServiceFactory({
     identityOidcAuthDAL,
-    orgDAL,
     identityAccessTokenDAL,
     permissionService,
     licenseService,
@@ -1741,7 +1732,6 @@ export const registerRoutes = async (
 
   const identityJwtAuthService = identityJwtAuthServiceFactory({
     identityJwtAuthDAL,
-    orgDAL,
     permissionService,
     identityAccessTokenDAL,
     licenseService,
@@ -1751,7 +1741,6 @@ export const registerRoutes = async (
 
   const identityLdapAuthService = identityLdapAuthServiceFactory({
     identityLdapAuthDAL,
-    orgDAL,
     permissionService,
     kmsService,
     identityAccessTokenDAL,

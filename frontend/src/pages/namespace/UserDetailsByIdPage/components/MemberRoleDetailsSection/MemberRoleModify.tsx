@@ -33,7 +33,6 @@ import {
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
 import { isCustomNamespaceRole, NamespaceMembershipRole } from "@app/helpers/roles";
-import {} from "@app/hooks/api";
 import { namespaceRolesQueryKeys } from "@app/hooks/api/namespaceRoles";
 import {
   TNamespaceMembership,

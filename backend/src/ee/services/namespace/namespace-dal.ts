@@ -56,7 +56,9 @@ export const namespaceDALFactory = (db: TDbClient): TNamespaceDALFactory => {
       .select<(TNamespaces & { total: number })[]>(
         db.raw(
           // TODO(namespace-group): consider group counting here
-          `count(${TableName.Membership}."actorUserId") OVER(PARTITION BY ${TableName.Membership}."scopeOrgId") as total`
+          dto.actor === ActorType.USER
+            ? `count(${TableName.Membership}."actorUserId") OVER(PARTITION BY ${TableName.Membership}."scopeOrgId") as total`
+            : `count(${TableName.Membership}."actorIdentityId") OVER(PARTITION BY ${TableName.Membership}."scopeOrgId") as total`
         )
       )
       .limit(limit)

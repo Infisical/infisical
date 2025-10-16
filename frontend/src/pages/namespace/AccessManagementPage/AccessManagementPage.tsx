@@ -38,7 +38,7 @@ export const AccessManagementPage = () => {
           <PageHeader
             title="Access Control"
             scope="namespace"
-            description="Manage fine-grained access for users, groups, roles, and identities within your project resources."
+            description="Manage fine-grained access for users, groups, roles, and identities within your namespace resources."
           />
           <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
             <TabList>

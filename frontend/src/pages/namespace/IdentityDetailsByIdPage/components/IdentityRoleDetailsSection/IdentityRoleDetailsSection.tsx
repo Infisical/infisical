@@ -50,12 +50,12 @@ export const IdentityRoleDetailsSection = ({
     "deleteRole",
     "modifyRole"
   ] as const);
-  const { mutateAsync: updateIdentityWorkspaceRole } = useUpdateNamespaceIdentityMembership();
+  const { mutateAsync: updateIdentityNamespaceRole } = useUpdateNamespaceIdentityMembership();
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TNamespaceRole;
     try {
       const updatedRoles = identityMembershipDetails?.roles?.filter((el) => el.id !== id);
-      await updateIdentityWorkspaceRole({
+      await updateIdentityNamespaceRole({
         namespaceId,
         identityId: identityMembershipDetails.identity.id,
         roles: updatedRoles.map(
@@ -103,7 +103,7 @@ export const IdentityRoleDetailsSection = ({
         >
           {(isAllowed) => (
             <IconButton
-              ariaLabel="copy icon"
+              ariaLabel="edit-icon"
               variant="plain"
               className="group relative"
               onClick={() => {
@@ -186,7 +186,7 @@ export const IdentityRoleDetailsSection = ({
                             {(isAllowed) => (
                               <IconButton
                                 colorSchema="danger"
-                                ariaLabel="copy icon"
+                                ariaLabel="trash-icon"
                                 variant="plain"
                                 className="group relative"
                                 isDisabled={!isAllowed}
@@ -210,7 +210,7 @@ export const IdentityRoleDetailsSection = ({
             </TBody>
           </Table>
           {!isMembershipDetailsLoading && !identityMembershipDetails?.roles?.length && (
-            <EmptyState title="This user has no roles" icon={faFolder} />
+            <EmptyState title="This identity has no roles" icon={faFolder} />
           )}
         </TableContainer>
       </div>

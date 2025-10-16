@@ -93,7 +93,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.Identity).as("identityId"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity).as("identityHasDeleteProtection"),
           db.ref("scopeNamespaceId").withSchema(TableName.Identity).as("identityScopeNamespaceId"),
-          db.ref("hasDeleteProtection").withSchema(TableName.Identity).as("identityHasDeleteProtection"),
+          db.ref("scopeProjectId").withSchema(TableName.Identity).as("identityScopeProjectId"),
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
           db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
           db.ref("role").withSchema(TableName.MembershipRole).as("membershipRole"),
@@ -155,7 +155,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
               id: actorIdentityId,
               hasDeleteProtection: identityHasDeleteProtection,
               scopeNamespaceId: el.identityScopeNamespaceId,
-              scopeProjectId: el.scopeNamespaceId,
+              scopeProjectId: el.identityScopeProjectId,
               authMethods: buildAuthMethods({
                 uaId,
                 awsId,

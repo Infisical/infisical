@@ -424,6 +424,33 @@ export const membershipUserServiceFactory = ({
         return doc;
       }
 
+      // when deleting a namespace membership, need  to remove them from projects as well
+      if (dto.scopeData.scope === AccessScope.Namespace) {
+        const projects = await projectDAL.find(
+          {
+            namespaceId: dto.scopeData.namespaceId
+          },
+          { tx }
+        );
+        if (projects.length) {
+          await additionalPrivilegeDAL.delete(
+            {
+              actorUserId: dto.selector.userId,
+              $in: { projectId: projects.map((el) => el.id) }
+            },
+            tx
+          );
+          await membershipUserDAL.delete(
+            {
+              actorUserId: dto.selector.userId,
+              scope: AccessScope.Project,
+              $in: { scopeProjectId: projects.map((el) => el.id) }
+            },
+            tx
+          );
+        }
+      }
+
       if (dto.scopeData.scope === AccessScope.Project) {
         await additionalPrivilegeDAL.delete(
           {

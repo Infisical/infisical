@@ -129,7 +129,7 @@ export const RolePermissionsSection = ({ roleSlug }: Props) => {
                     formName={permission.formName}
                     control={control}
                     setValue={setValue}
-                    key={`org-role-${roleSlug}-permission-${permission.formName}`}
+                    key={`namespace-role-${roleSlug}-permission-${permission.formName}`}
                     isEditable={isCustomRole}
                   />
                 );

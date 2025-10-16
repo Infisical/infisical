@@ -159,6 +159,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .join(TableName.Membership, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .whereNull(`${TableName.Identity}.scopeNamespaceId`)
         .orderBy(`${TableName.Identity}.${orderBy}`, orderDirection)
         .select(
           selectAllTableCols(TableName.Membership),
@@ -401,6 +402,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .whereNull(`${TableName.Identity}.scopeNamespaceId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .orderBy(
           orderBy === OrgIdentityOrderBy.Role

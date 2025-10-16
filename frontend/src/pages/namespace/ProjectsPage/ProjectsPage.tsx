@@ -1,7 +1,5 @@
-// REFACTOR(akhilmhdh): This file needs to be split into multiple components too complex
 import { useState } from "react";
 import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { faCube, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -27,7 +25,6 @@ import {
 } from "@app/pages/organization/ProjectsPage/components/ResourceListToolbar";
 
 export const ProjectsPage = () => {
-  const { t } = useTranslation();
   const { namespaceId } = useNamespace();
 
   const [searchFilter, setSearchFilter] = useState("");
@@ -86,7 +83,7 @@ export const ProjectsPage = () => {
   return (
     <div className="mx-auto flex max-w-7xl flex-col justify-start bg-bunker-800">
       <Helmet>
-        <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
+        <title>Namespace Overview</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <div className="mb-4 flex flex-col items-start justify-start">

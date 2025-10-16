@@ -73,7 +73,7 @@ const Page = withNamespacePermission(
         });
 
         createNotification({
-          text: "Successfully removed user from org",
+          text: "Successfully removed user from namespace",
           type: "success"
         });
 
@@ -90,7 +90,7 @@ const Page = withNamespacePermission(
       } catch (err) {
         console.error(err);
         createNotification({
-          text: "Failed to remove user from the organization",
+          text: "Failed to remove user from the namespace",
           type: "error"
         });
       }
@@ -136,7 +136,6 @@ const Page = withNamespacePermission(
                             )}
                             onClick={() => {
                               handlePopUpOpen("removeMember", {
-                                orgMembershipId: userId,
                                 username: membership.user.username
                               });
                             }}

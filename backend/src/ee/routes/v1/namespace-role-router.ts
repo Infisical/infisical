@@ -84,10 +84,9 @@ export const registerNamespaceRoleRouter = async (server: FastifyZodProvider) =>
         roleId: z.string().trim()
       }),
       body: z.object({
-        // TODO: Switch to slugSchema after verifying correct methods with Akhil - Omar 11/24
         slug: slugSchema({ min: 1, max: 64 })
           .refine(
-            (val) => !Object.keys(NamespaceMembershipRole).includes(val),
+            (val) => !Object.values(NamespaceMembershipRole).includes(val as NamespaceMembershipRole),
             "Please choose a different slug, the slug you have entered is reserved."
           )
           .optional(),

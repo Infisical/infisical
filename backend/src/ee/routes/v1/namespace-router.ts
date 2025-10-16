@@ -159,7 +159,7 @@ export const registerNamespaceRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        namespaceId: slugSchema().describe(NAMESPACES.GET.id)
+        namespaceId: z.string().uuid().describe(NAMESPACES.GET.id)
       }),
       response: {
         200: z.object({

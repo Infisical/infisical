@@ -11,6 +11,7 @@ import {
   NamespacePermissionNamespaceActions,
   NamespacePermissionSubjects
 } from "@app/context/NamespacePermissionContext/types";
+import { TNamespacePermission } from "@app/hooks/api/namespaceRoles";
 import { TPermission } from "@app/hooks/api/roles/types";
 
 const generalPermissionSchema = z
@@ -124,7 +125,7 @@ export const formSchema = z.object({
 export type TFormSchema = z.infer<typeof formSchema>;
 
 // convert role permission to form compatiable  data structure
-export const rolePermission2Form = (permissions: TPermission[] = []) => {
+export const rolePermission2Form = (permissions: TNamespacePermission[] = []) => {
   // any because if it set it as form type due to the discriminated union type of ts
   // i would have to write a if loop with both conditions same
   const formVal: Record<string, any> = {};
@@ -132,7 +133,13 @@ export const rolePermission2Form = (permissions: TPermission[] = []) => {
     const { action, subject } = permission;
 
     if (!formVal?.[subject]) formVal[subject] = {};
-    formVal[subject][action] = true;
+    if (Array.isArray(action)) {
+      action.forEach((el) => {
+        formVal[subject][el] = true;
+      });
+    } else {
+      formVal[subject][action] = true;
+    }
   });
 
   return formVal;

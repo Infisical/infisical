@@ -62,7 +62,7 @@ export const OverviewSection = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="justify-betweens flex">
+      <div className="flex justify-between">
         <h2 className="mb-8 flex-1 text-xl font-medium text-mineshaft-100">Namespace Overview</h2>
         <div className="space-x-2">
           <Button
@@ -95,7 +95,7 @@ export const OverviewSection = () => {
                     render={({ field, fieldState: { error } }) => (
                       <FormControl isError={Boolean(error)} errorText={error?.message} label="Name">
                         <Input
-                          placeholder="Project name"
+                          placeholder="Namespace name"
                           {...field}
                           className="bg-mineshaft-800"
                           isDisabled={!isAllowed}

@@ -23,7 +23,7 @@ export const AllNamespaceView = ({ orderDirection, searchValue }: Props) => {
   const navigate = useNavigate();
   const [debouncedSearch] = useDebounce(searchValue);
   const { setPage, perPage, setPerPage, page, offset, limit } = usePagination("name", {
-    initPerPage: getUserTablePreference("allNamespacesTable", PreferenceKey.PerPage, 1)
+    initPerPage: getUserTablePreference("allNamespacesTable", PreferenceKey.PerPage, 50)
   });
 
   const handlePerPageChange = (newPerPage: number) => {

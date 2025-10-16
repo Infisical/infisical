@@ -343,10 +343,12 @@ export const registerNamespaceUserMembershipRouter = async (server: FastifyZodPr
         orgId: req.permission.orgId,
         namespaceId: req.params.namespaceId,
         event: {
-          type: EventType.REMOVE_PROJECT_MEMBER,
+          type: EventType.REMOVE_NAMESPACE_MEMBER,
           metadata: {
-            userId: membership.actorUserId as string,
-            email: ""
+            user: {
+              userId: membership.actorUserId as string,
+              username: ""
+            }
           }
         }
       });

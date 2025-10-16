@@ -111,7 +111,7 @@ export const MemberRoleDetailsSection = ({
           >
             {(isAllowed) => (
               <IconButton
-                ariaLabel="copy icon"
+                ariaLabel="edit-icon"
                 variant="plain"
                 className="group relative"
                 onClick={() => {
@@ -195,7 +195,7 @@ export const MemberRoleDetailsSection = ({
                             {(isAllowed) => (
                               <IconButton
                                 colorSchema="danger"
-                                ariaLabel="copy icon"
+                                ariaLabel="trash-icon"
                                 variant="plain"
                                 className="group relative"
                                 isDisabled={!isAllowed || isOwnMembershipDetails}

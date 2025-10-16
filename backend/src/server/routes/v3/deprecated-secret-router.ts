@@ -60,7 +60,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       }),
       body: z.object({
         projectSlug: z.string().trim().describe(SECRETS.ATTACH_TAGS.projectSlug),
-        namespaceId: z.string().trim().describe(SECRETS.ATTACH_TAGS.namespaceId),
+        namespaceId: z.string().trim().optional().describe(SECRETS.ATTACH_TAGS.namespaceId),
         environment: z.string().trim().describe(SECRETS.ATTACH_TAGS.environment),
         secretPath: z
           .string()

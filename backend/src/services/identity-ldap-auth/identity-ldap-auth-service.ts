@@ -7,6 +7,10 @@ import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
+  NamespacePermissionIdentityActions,
+  NamespacePermissionSubjects
+} from "@app/ee/services/permission/namespace-permission";
+import {
   OrgPermissionIdentityActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSubjects
@@ -36,7 +40,6 @@ import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identit
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
-import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityLdapAuthDALFactory } from "./identity-ldap-auth-dal";
 import {
@@ -58,7 +61,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getNamespacePermission">;
   kmsService: TKmsServiceFactory;
   identityDAL: TIdentityDALFactory;
   identityAuthTemplateDAL: TIdentityAuthTemplateDALFactory;
@@ -66,7 +69,6 @@ type TIdentityLdapAuthServiceFactoryDep = {
     TKeyStoreFactory,
     "setItemWithExpiry" | "getItem" | "deleteItem" | "getKeysByPattern" | "deleteItems" | "acquireLock"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 export type TIdentityLdapAuthServiceFactory = ReturnType<typeof identityLdapAuthServiceFactory>;
@@ -85,8 +87,7 @@ export const identityLdapAuthServiceFactory = ({
   permissionService,
   kmsService,
   identityAuthTemplateDAL,
-  keyStore,
-  orgDAL
+  keyStore
 }: TIdentityLdapAuthServiceFactoryDep) => {
   const getLdapConfig = async (identityId: string) => {
     const identity = await identityDAL.findOne({ id: identityId });
@@ -265,20 +266,37 @@ export const identityLdapAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
-
-    if (templateId) {
+    if (identityMembershipOrg.identity.scopeNamespaceId) {
+      const { permission } = await permissionService.getNamespacePermission({
+        actor,
+        actorId,
+        namespaceId: identityMembershipOrg.identity.scopeNamespaceId,
+        actorAuthMethod,
+        actorOrgId
+      });
       ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
-        OrgPermissionSubjects.MachineIdentityAuthTemplate
+        NamespacePermissionIdentityActions.Create,
+        NamespacePermissionSubjects.Identity
       );
+    } else {
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.Create,
+        OrgPermissionSubjects.Identity
+      );
+
+      if (templateId) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+          OrgPermissionSubjects.MachineIdentityAuthTemplate
+        );
+      }
     }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
@@ -441,20 +459,34 @@ export const identityLdapAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
-
-    if (templateId) {
+    if (identityMembershipOrg.identity.scopeNamespaceId) {
+      const { permission } = await permissionService.getNamespacePermission({
+        actor,
+        actorId,
+        namespaceId: identityMembershipOrg.identity.scopeNamespaceId,
+        actorAuthMethod,
+        actorOrgId
+      });
       ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
-        OrgPermissionSubjects.MachineIdentityAuthTemplate
+        NamespacePermissionIdentityActions.Edit,
+        NamespacePermissionSubjects.Identity
       );
+    } else {
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+
+      if (templateId) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
+          OrgPermissionSubjects.MachineIdentityAuthTemplate
+        );
+      }
     }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
@@ -597,13 +629,28 @@ export const identityLdapAuthServiceFactory = ({
 
     const ldapIdentityAuth = await identityLdapAuthDAL.findOne({ identityId });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
+    if (identityMembershipOrg.identity.scopeNamespaceId) {
+      const { permission } = await permissionService.getNamespacePermission({
+        actor,
+        actorId,
+        namespaceId: identityMembershipOrg.identity.scopeNamespaceId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        NamespacePermissionIdentityActions.Read,
+        NamespacePermissionSubjects.Identity
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    }
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -615,8 +662,6 @@ export const identityLdapAuthServiceFactory = ({
     const ldapCaCertificate = ldapIdentityAuth.encryptedLdapCaCertificate
       ? decryptor({ cipherTextBlob: ldapIdentityAuth.encryptedLdapCaCertificate }).toString()
       : undefined;
-
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
     return { ...ldapIdentityAuth, orgId: identityMembershipOrg.scopeOrgId, bindDN, bindPass, ldapCaCertificate };
   };
 
@@ -640,42 +685,84 @@ export const identityLdapAuthServiceFactory = ({
         message: "The identity does not have LDAP Auth attached"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
-    const permissionBoundary = validatePrivilegeChangeOperation(
-      shouldUseNewPrivilegeSystem,
-      OrgPermissionIdentityActions.RevokeAuth,
-      OrgPermissionSubjects.Identity,
-      permission,
-      rolePermission
-    );
-
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to revoke LDAP auth of identity with more privileged role",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionIdentityActions.RevokeAuth,
-          OrgPermissionSubjects.Identity
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
+    if (identityMembershipOrg.identity.scopeNamespaceId) {
+      const { permission, memberships } = await permissionService.getNamespacePermission({
+        actor,
+        actorId,
+        namespaceId: identityMembershipOrg.identity.scopeNamespaceId,
+        actorAuthMethod,
+        actorOrgId
       });
+      ForbiddenError.from(permission).throwUnlessCan(
+        NamespacePermissionIdentityActions.Edit,
+        NamespacePermissionSubjects.Identity
+      );
+
+      const { permission: rolePermission } = await permissionService.getNamespacePermission({
+        actor,
+        actorId: identityMembershipOrg.identity.id,
+        namespaceId: identityMembershipOrg.identity.scopeNamespaceId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        NamespacePermissionIdentityActions.RevokeAuth,
+        NamespacePermissionSubjects.Identity,
+        permission,
+        rolePermission
+      );
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to revoke LDAP auth of identity with more privileged role",
+            shouldUseNewPrivilegeSystem,
+            NamespacePermissionIdentityActions.RevokeAuth,
+            NamespacePermissionSubjects.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+    } else {
+      const { permission, memberships } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+
+      const { permission: rolePermission } = await permissionService.getOrgPermission(
+        ActorType.IDENTITY,
+        identityMembershipOrg.identity.id,
+        identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+
+      const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        OrgPermissionIdentityActions.RevokeAuth,
+        OrgPermissionSubjects.Identity,
+        permission,
+        rolePermission
+      );
+
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to revoke LDAP auth of identity with more privileged role",
+            shouldUseNewPrivilegeSystem,
+            OrgPermissionIdentityActions.RevokeAuth,
+            OrgPermissionSubjects.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+    }
 
     const revokedIdentityLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
       const [deletedLdapAuth] = await identityLdapAuthDAL.delete({ identityId }, tx);
@@ -785,14 +872,28 @@ export const identityLdapAuthServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+    if (identityMembershipOrg.identity.scopeNamespaceId) {
+      const { permission } = await permissionService.getNamespacePermission({
+        actor,
+        actorId,
+        namespaceId: identityMembershipOrg.identity.scopeNamespaceId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        NamespacePermissionIdentityActions.Edit,
+        NamespacePermissionSubjects.Identity
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+    }
 
     const deleted = await keyStore.deleteItems({
       pattern: `lockout:identity:${identityId}:${IdentityAuthMethod.LDAP_AUTH}:*`

@@ -323,7 +323,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         slug: slugSchema({ max: 64 }).describe("The slug of the project to get.")
       }),
       querystring: z.object({
-        namespaceId: z.string().optional().describe("The ID of the namespace in which to create the project.")
+        namespaceId: z.string().optional().describe("The ID of the namespace in which the project belongs to.")
       }),
       response: {
         200: projectWithEnv

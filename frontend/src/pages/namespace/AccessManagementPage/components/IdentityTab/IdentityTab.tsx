@@ -99,7 +99,7 @@ export const IdentityTab = withNamespacePermission(
 
     const handlePerPageChange = (newPerPage: number) => {
       setPerPage(newPerPage);
-      setUserTablePreference("projectIdentityTable", PreferenceKey.PerPage, newPerPage);
+      setUserTablePreference("namespaceIdentityTable", PreferenceKey.PerPage, newPerPage);
     };
 
     const { data, isPending, isFetching } = useQuery({
@@ -149,7 +149,7 @@ export const IdentityTab = withNamespacePermission(
       } catch (err) {
         console.error(err);
         const error = err as any;
-        const text = error?.response?.data?.message ?? "Failed to remove identity from project";
+        const text = error?.response?.data?.message ?? "Failed to remove identity from namespace";
 
         createNotification({
           text,
@@ -174,7 +174,7 @@ export const IdentityTab = withNamespacePermission(
       } catch (err) {
         console.error(err);
         const error = err as any;
-        const text = error?.response?.data?.message ?? "Failed to remove identity from project";
+        const text = error?.response?.data?.message ?? "Failed to remove identity from namespace";
 
         createNotification({
           text,
@@ -282,7 +282,7 @@ export const IdentityTab = withNamespacePermission(
                 </Tr>
               </THead>
               <TBody>
-                {isPending && <TableSkeleton columns={4} innerKey="project-identities" />}
+                {isPending && <TableSkeleton columns={4} innerKey="namespace-identities" />}
                 {!isPending &&
                   data &&
                   data.identityMemberships.length > 0 &&
@@ -539,7 +539,7 @@ export const IdentityTab = withNamespacePermission(
                 title={
                   debouncedSearch.trim().length > 0
                     ? "No identities match search filter"
-                    : "No identities have been added to this project"
+                    : "No identities have been added to this namespace"
                 }
                 icon={faServer}
               />
@@ -564,7 +564,7 @@ export const IdentityTab = withNamespacePermission(
           <DeleteActionModal
             isOpen={popUp.unlinkFromNamespace.isOpen}
             title={`Are you sure you want to unlink ${
-              (popUp?.deleteIdentity?.data as { name: string })?.name || ""
+              (popUp?.unlinkFromNamespace?.data as { name: string })?.name || ""
             } from the namespace?`}
             onChange={(isOpen) => handlePopUpToggle("unlinkFromNamespace", isOpen)}
             deleteKey="confirm"

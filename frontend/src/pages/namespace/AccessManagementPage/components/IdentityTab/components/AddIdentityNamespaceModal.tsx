@@ -53,7 +53,7 @@ export const AddIdentityNamespaceModal = ({ handlePopUpToggle }: Props) => {
                   setStep(2);
                 }
               }}
-              className="cursor-pointer rounded-md border border-mineshaft-600 p-4 transition-all hover:bg-mineshaft-600"
+              className="hover:bg-namespace-v1-600 cursor-pointer rounded-md border border-mineshaft-600 p-4 transition-all"
             >
               <div className="mb-2 flex items-center gap-2">
                 <FontAwesomeIcon icon={faLink} />

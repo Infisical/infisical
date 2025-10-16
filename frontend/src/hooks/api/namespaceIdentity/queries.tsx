@@ -45,7 +45,7 @@ export const namespaceIdentityQueryKeys = {
       queryKey: namespaceIdentityQueryKeys.listKey({ namespaceId, ...params }),
       queryFn: async () => {
         const { data } = await apiRequest.get<{
-          identity: TNamespaceIdentity[];
+          identities: TNamespaceIdentity[];
           totalCount: number;
         }>(`/api/v1/namespaces/${namespaceId}/identities`, {
           params

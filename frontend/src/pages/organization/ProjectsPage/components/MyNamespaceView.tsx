@@ -147,7 +147,7 @@ export const MyNamespaceView = ({ resourceViewMode, orderDirection, searchValue 
         namespacesComponents = (
           <div className="mt-4 grid w-full grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
             {isNamespaceViewLoading &&
-              Array.apply(0, Array(3)).map((_x, i) => (
+              Array.from({ length: 3 }).map((_x, i) => (
                 <div
                   key={`namespace-cards-loading-${i + 1}`}
                   className="flex h-40 min-w-72 flex-col justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4"

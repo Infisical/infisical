@@ -39,7 +39,7 @@ export const DeleteNamespaceSection = () => {
     } catch (err) {
       console.error(err);
       createNotification({
-        text: "Failed to delete organization",
+        text: "Failed to delete namespace",
         type: "error"
       });
     }
@@ -65,7 +65,7 @@ export const DeleteNamespaceSection = () => {
         </Button>
         <DeleteActionModal
           isOpen={popUp.deleteNamespace.isOpen}
-          title="Are you sure you want to delete this organization?"
+          title="Are you sure you want to delete this namespace?"
           subTitle={`Permanently remove ${namespace.name} and all of its data. This action is not reversible, so please be careful.`}
           onChange={(isOpen) => handlePopUpToggle("deleteNamespace", isOpen)}
           deleteKey="confirm"

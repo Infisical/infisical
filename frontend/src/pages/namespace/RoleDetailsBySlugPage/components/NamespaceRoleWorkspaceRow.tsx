@@ -24,7 +24,6 @@ const PERMISSION_ACTIONS = [{ action: "create", label: "Create projects" }] as c
 
 export const NamespaceRoleWorkspaceRow = ({ isEditable, control, setValue }: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
-  const [isCustom, setIsCustom] = useToggle();
 
   const rule = useWatch({
     control,
@@ -36,12 +35,7 @@ export const NamespaceRoleWorkspaceRow = ({ isEditable, control, setValue }: Pro
       return Permission.Custom;
     }
     return Permission.NoAccess;
-  }, [rule, isCustom]);
-
-  useEffect(() => {
-    if (selectedPermissionCategory === Permission.Custom) setIsCustom.on();
-    else setIsCustom.off();
-  }, [selectedPermissionCategory]);
+  }, [rule]);
 
   useEffect(() => {
     const isRowCustom = selectedPermissionCategory === Permission.Custom;
@@ -54,10 +48,8 @@ export const NamespaceRoleWorkspaceRow = ({ isEditable, control, setValue }: Pro
     if (!val) return;
     if (val === Permission.Custom) {
       setIsRowExpanded.on();
-      setIsCustom.on();
       return;
     }
-    setIsCustom.off();
 
     if (val === Permission.NoAccess) {
       setValue("permissions.project", { create: false }, { shouldDirty: true });
@@ -111,7 +103,7 @@ export const NamespaceRoleWorkspaceRow = ({ isEditable, control, setValue }: Pro
                           }
                           field.onChange(e);
                         }}
-                        id={`permissions.organization-admin-console.${action}`}
+                        id={`permissions.project.${action}`}
                       >
                         {label}
                       </Checkbox>

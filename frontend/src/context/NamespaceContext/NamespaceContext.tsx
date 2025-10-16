@@ -9,7 +9,7 @@ export const useNamespace = () => {
   });
 
   if (!params.namespaceId) {
-    throw new Error("Missing namespace name");
+    throw new Error("Missing namespace id");
   }
 
   const { data: namespace } = useSuspenseQuery({

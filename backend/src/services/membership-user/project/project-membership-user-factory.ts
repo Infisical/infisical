@@ -77,7 +77,7 @@ export const newProjectMembershipUserFactory = ({
         const missingUsers = newUsers
           .filter((el) => !namespaceMemberships.find((memb) => memb.actorUserId === el.id))
           .map((el) => el.email);
-        throw new BadRequestError({ message: `Users ${missingUsers.join(",")} not part of organization` });
+        throw new BadRequestError({ message: `Users ${missingUsers.join(",")} not part of namespace` });
       }
     } else {
       const orgMemberships = await membershipUserDAL.find({

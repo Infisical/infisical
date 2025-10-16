@@ -208,7 +208,7 @@ export const Page = () => {
   );
 };
 
-export const RoleBySlugPage = () => {
+export const RoleDetailsBySlugPage = () => {
   const { t } = useTranslation();
   return (
     <>

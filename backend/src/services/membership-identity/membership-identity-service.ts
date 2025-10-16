@@ -37,7 +37,7 @@ type TMembershipIdentityServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "find">;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -295,6 +295,12 @@ export const membershipIdentityServiceFactory = ({
       id: dto.selector.identityId
     });
     $validateIdentityScope(identity, dto.scopeData.scope);
+    if (identity.scopeNamespaceId && scopeData.scope === AccessScope.Namespace) {
+      throw new BadRequestError({ message: "Namespace membership cannot be deleted for namespace scoped identity" });
+    }
+    if (identity.scopeProjectId && scopeData.scope === AccessScope.Project) {
+      throw new BadRequestError({ message: "Project membership cannot be deleted for project scoped identity" });
+    }
 
     const scopeField = factory.getScopeField(scopeData);
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
@@ -314,6 +320,33 @@ export const membershipIdentityServiceFactory = ({
       });
 
     const membershipDoc = await membershipIdentityDAL.transaction(async (tx) => {
+      // when deleting a namespace membership, need  to remove them from projects as well
+      if (scopeData.scope === AccessScope.Namespace) {
+        const projects = await projectDAL.find(
+          {
+            namespaceId: scopeData.namespaceId
+          },
+          { tx }
+        );
+        if (projects.length) {
+          await additionalPrivilegeDAL.delete(
+            {
+              actorIdentityId: dto.selector.identityId,
+              $in: { projectId: projects.map((el) => el.id) }
+            },
+            tx
+          );
+          await membershipIdentityDAL.delete(
+            {
+              actorIdentityId: dto.selector.identityId,
+              scope: AccessScope.Project,
+              $in: { scopeProjectId: projects.map((el) => el.id) }
+            },
+            tx
+          );
+        }
+      }
+
       await additionalPrivilegeDAL.delete(
         {
           actorIdentityId: dto.selector.identityId,

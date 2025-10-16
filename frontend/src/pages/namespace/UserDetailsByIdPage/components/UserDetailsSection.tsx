@@ -57,7 +57,7 @@ export const UserDetailsSection = ({ userId, handlePopUpOpen }: Props) => {
                 <Tooltip content="Edit Membership">
                   <IconButton
                     isDisabled={!isAllowed}
-                    ariaLabel="copy icon"
+                    ariaLabel="edit-icon"
                     variant="plain"
                     className="group relative"
                     onClick={() => {

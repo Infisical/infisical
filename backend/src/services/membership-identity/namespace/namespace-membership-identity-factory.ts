@@ -122,7 +122,7 @@ export const newNamespaceMembershipIdentityFactory = ({
     const plan = await licenseService.getPlan(dto.permission.orgId);
     if (!plan.namespace) {
       throw new BadRequestError({
-        message: "Failed to add identity to namespace. Upgrade plan to use namespace."
+        message: "Failed to update identity to namespace. Upgrade plan to use namespace."
       });
     }
     const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);

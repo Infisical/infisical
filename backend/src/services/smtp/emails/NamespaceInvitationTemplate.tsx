@@ -17,11 +17,11 @@ export const NamespaceInvitationTemplate = ({
   return (
     <BaseEmailWrapper
       title="Namespace Invitation"
-      preview="You've been invited to join a project on Infisical."
+      preview="You've been invited to join a namespace on Infisical."
       siteUrl={siteUrl}
     >
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        You've been invited to join a project on Infisical
+        You've been invited to join a namespace on Infisical
       </Heading>
       <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border text-center border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-black text-[14px] leading-[24px]">

@@ -1,17 +1,23 @@
+import { MongoAbility, RawRuleOf } from "@casl/ability";
+import { PackRule } from "@casl/ability/extra";
+
+import { NamespacePermissionSet } from "@app/context/NamespacePermissionContext";
+
 export type TNamespaceRole = {
   id: string;
   name: string;
   slug: string;
   description?: string;
-  permissions?: any[];
+  permissions: TNamespacePermission[];
   createdAt: string;
   updatedAt: string;
 };
 
 export type TNamespacePermission = {
-  action: string;
-  subject: string;
   conditions?: Record<string, any>;
+  inverted?: boolean;
+  action: string | string[];
+  subject: string;
 };
 
 export type TCreateNamespaceRoleDTO = {
@@ -59,5 +65,5 @@ export type TNamespaceUserPermissions = {
       role: string;
     }>;
   }[];
-  permissions: any[];
+  permissions: PackRule<RawRuleOf<MongoAbility<NamespacePermissionSet>>>[];
 };

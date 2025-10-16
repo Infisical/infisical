@@ -711,7 +711,7 @@ export const permissionServiceFactory = ({
         return {
           permission: createMongoAbility<NamespacePermissionSet>(
             buildNamespacePermissionRules([
-              { role: OrgMembershipRole.Custom, permissions: roleDetails?.permissions || [] }
+              { role: NamespaceMembershipRole.Custom, permissions: roleDetails?.permissions || [] }
             ]),
             {
               conditionsMatcher

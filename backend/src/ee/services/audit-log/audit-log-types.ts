@@ -256,7 +256,7 @@ export enum EventType {
   REMOVE_PROJECT_MEMBER = "remove-project-member",
 
   ADD_NAMESPACE_MEMBERS = "add-namespace-members",
-  UPDATE_NAMESPACE_MEMBER = "add-namespace-member",
+  UPDATE_NAMESPACE_MEMBER = "update-namespace-member",
   REMOVE_NAMESPACE_MEMBER = "remove-namespace-member",
 
   CREATE_FOLDER = "create-folder",
@@ -1677,7 +1677,7 @@ interface UpdateNamespaceMemberEvent {
 interface RemoveNamespaceMemberEvent {
   type: EventType.REMOVE_NAMESPACE_MEMBER;
   metadata: {
-    users: {
+    user: {
       userId: string;
       username: string;
     };

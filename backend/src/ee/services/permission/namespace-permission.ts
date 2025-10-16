@@ -54,10 +54,6 @@ export enum NamespacePermissionMachineIdentityAuthTemplateActions {
   AttachTemplates = "attach-templates"
 }
 
-export enum NamespacePermissionAdminConsoleAction {
-  AccessAllProjects = "access-all-projects"
-}
-
 export enum NamespacePermissionSecretShareAction {
   ManageSettings = "manage-settings"
 }
@@ -93,11 +89,6 @@ export enum NamespacePermissionGroupActions {
   RemoveMembers = "remove-members"
 }
 
-export enum NamespacePermissionBillingActions {
-  Read = "read",
-  ManageBilling = "manage-billing"
-}
-
 export enum NamespacePermissionSubjects {
   Project = "project",
   Role = "role",
@@ -112,7 +103,6 @@ export enum NamespacePermissionSubjects {
   AuditLogs = "audit-logs",
   ProjectTemplates = "project-templates",
   AppConnections = "app-connections",
-  Kmip = "kmip",
   Gateway = "gateway",
   SecretShare = "secret-share"
 }
@@ -258,6 +248,9 @@ const buildAdminPermission = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<NamespacePermissionSet>>(createMongoAbility);
   // ws permissions
   can(NamespacePermissionActions.Create, NamespacePermissionSubjects.Project);
+
+  can(NamespacePermissionNamespaceActions.Edit, NamespacePermissionSubjects.Namespace);
+  can(NamespacePermissionNamespaceActions.Delete, NamespacePermissionSubjects.Namespace);
   // role permission
   can(NamespacePermissionActions.Read, NamespacePermissionSubjects.Role);
   can(NamespacePermissionActions.Create, NamespacePermissionSubjects.Role);

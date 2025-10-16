@@ -2,12 +2,12 @@ import { createFileRoute, linkOptions } from "@tanstack/react-router";
 
 import { OrgAccessControlTabSections } from "@app/types/org";
 
-import { RoleBySlugPage } from "./RoleDetailsBySlugPage";
+import { RoleDetailsBySlugPage } from "./RoleDetailsBySlugPage";
 
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceId/_namespace-layout/roles/$roleSlug"
 )({
-  component: RoleBySlugPage,
+  component: RoleDetailsBySlugPage,
   beforeLoad: ({ params, context }) => {
     return {
       breadcrumbs: [

@@ -70,7 +70,7 @@ export const newProjectMembershipIdentityFactory = ({
         scope: AccessScope.Namespace
       });
       if (!namespaceMembership)
-        throw new BadRequestError({ message: `Identity ${dto.data.identityId} is missing organization membership` });
+        throw new BadRequestError({ message: `Identity ${dto.data.identityId} is missing namespace membership` });
     } else {
       const orgMembership = await membershipIdentityDAL.findOne({
         actorIdentityId: dto.data.identityId,
@@ -80,7 +80,6 @@ export const newProjectMembershipIdentityFactory = ({
       if (!orgMembership)
         throw new BadRequestError({ message: `Identity ${dto.data.identityId} is missing organization membership` });
     }
-    // TODO(namespace): conditionally switch to namespace check
     const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.map((el) => el.role),

@@ -27,7 +27,7 @@ export const OrganizationLayout = () => {
     strict: false,
     select: (el) => el?.namespaceId
   });
-  const isInsideProject = Boolean(projectId) || Boolean(namespaceId);
+  const isHidden = Boolean(projectId) || Boolean(namespaceId);
 
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
 
@@ -50,11 +50,11 @@ export const OrganizationLayout = () => {
         {!isLoading && subscription.auditLogs && <AuditLogBanner />}
         {!window.isSecureContext && <InsecureConnectionBanner />}
         <div className="flex grow flex-col overflow-y-hidden md:flex-row">
-          <OrgSidebar isHidden={isInsideProject} />
+          <OrgSidebar isHidden={isHidden} />
           <main
             className={twMerge(
               "flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 px-4 pt-8 pb-4 dark:scheme-dark",
-              isInsideProject && "p-0"
+              isHidden && "p-0"
             )}
           >
             <Outlet />

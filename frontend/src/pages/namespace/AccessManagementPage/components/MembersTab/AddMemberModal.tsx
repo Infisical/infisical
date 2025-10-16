@@ -255,11 +255,11 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                         <>
                           <p>
                             {!namespaceInviteList.list.length && (
-                              <p>All organization members are already assigned to this project.</p>
+                              <p>All namespace members are already assigned to this project.</p>
                             )}
                           </p>
                           <p>
-                            Invite new users to your organization by typing out their email address.
+                            Invite new users to your namespace by typing out their email address.
                           </p>
                         </>
                       )}
@@ -334,7 +334,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             />
             {requesterEmail && namespaceInviteList.requesterStatus.isNamespaceUser && (
               <Alert hideTitle variant="danger">
-                <AlertDescription>Requested user is part of the project.</AlertDescription>
+                <AlertDescription>Requested user is part of the namespace.</AlertDescription>
               </Alert>
             )}
             {requesterEmail && !namespaceInviteList.requesterStatus.isNamespaceUser && (

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { AccessScope, IdentitiesSchema } from "@app/db/schemas";
+import { AccessScope } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, NAMESPACE_IDENTITIES } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -190,7 +190,7 @@ export const registerNamespaceIdentityRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          identity: IdentitiesSchema
+          identity: SanitizedNamespaceIdentitySchema.omit({ metadata: true })
         })
       }
     },

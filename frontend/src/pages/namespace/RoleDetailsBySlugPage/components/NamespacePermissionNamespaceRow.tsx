@@ -28,7 +28,6 @@ const PERMISSION_ACTIONS = [
 
 export const NamespaceRoleNamespaceRow = ({ isEditable, control, setValue }: Props) => {
   const [isRowExpanded, setIsRowExpanded] = useToggle();
-  const [isCustom, setIsCustom] = useToggle();
 
   const rule = useWatch({
     control,
@@ -40,12 +39,7 @@ export const NamespaceRoleNamespaceRow = ({ isEditable, control, setValue }: Pro
       return Permission.Custom;
     }
     return Permission.NoAccess;
-  }, [rule, isCustom]);
-
-  useEffect(() => {
-    if (selectedPermissionCategory === Permission.Custom) setIsCustom.on();
-    else setIsCustom.off();
-  }, [selectedPermissionCategory]);
+  }, [rule]);
 
   useEffect(() => {
     const isRowCustom = selectedPermissionCategory === Permission.Custom;
@@ -58,10 +52,8 @@ export const NamespaceRoleNamespaceRow = ({ isEditable, control, setValue }: Pro
     if (!val) return;
     if (val === Permission.Custom) {
       setIsRowExpanded.on();
-      setIsCustom.on();
       return;
     }
-    setIsCustom.off();
 
     if (val === Permission.NoAccess) {
       setValue("permissions.namespace", { edit: false, delete: false }, { shouldDirty: true });

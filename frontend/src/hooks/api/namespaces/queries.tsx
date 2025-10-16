@@ -8,7 +8,7 @@ export const namespacesQueryKeys = {
   allKey: () => ["namespaces"],
   listKey: (params?: TListNamespacesDTO) => [...namespacesQueryKeys.allKey(), "list", params],
   searchKey: (params?: TSearchNamespacesDTO) => [...namespacesQueryKeys.allKey(), "search", params],
-  detailKey: (name: string) => [...namespacesQueryKeys.allKey(), "detail", name],
+  detailKey: (namepaceId: string) => [...namespacesQueryKeys.allKey(), "detail", namepaceId],
   list: (params?: TListNamespacesDTO) =>
     queryOptions({
       queryKey: namespacesQueryKeys.listKey(params),
