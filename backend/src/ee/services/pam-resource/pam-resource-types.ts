@@ -19,6 +19,7 @@ export type TPamResourceConnectionDetails = TPostgresResourceConnectionDetails |
 
 // Account types
 export type TPamAccount = TPostgresAccount | TMySQLAccount;
+// eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
 export type TPamAccountCredentials = TPostgresAccountCredentials | TMySQLAccountCredentials;
 
 // Resource DTOs
