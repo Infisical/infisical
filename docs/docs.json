@@ -421,6 +421,7 @@
                       "documentation/guides/node",
                       "documentation/guides/python",
                       "documentation/guides/nextjs-vercel",
+                      "documentation/guides/kubernetes-operator",
                       "documentation/guides/microsoft-power-apps"
                     ]
                   }
