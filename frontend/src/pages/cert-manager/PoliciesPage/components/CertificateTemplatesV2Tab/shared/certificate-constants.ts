@@ -148,7 +148,6 @@ export const formatSanEffect = (effect: CertSanEffect): string => {
   }
 };
 
-
 export const SAN_TYPE_OPTIONS = Object.values(CertSubjectAlternativeNameType);
 export const KEY_USAGE_OPTIONS = Object.values(CertKeyUsageType);
 export const EXTENDED_KEY_USAGE_OPTIONS = Object.values(CertExtendedKeyUsageType);
@@ -165,7 +164,7 @@ export const USAGE_STATES = {
   OPTIONAL: "optional"
 } as const;
 
-export type UsageState = typeof USAGE_STATES[keyof typeof USAGE_STATES] | undefined;
+export type UsageState = (typeof USAGE_STATES)[keyof typeof USAGE_STATES] | undefined;
 
 export const TEMPLATE_SIGNATURE_ALGORITHMS = [
   "SHA256-RSA",
@@ -225,4 +224,3 @@ export const mapTemplateKeyAlgorithmToApi = (templateFormat: string): string => 
   };
   return mapping[templateFormat] || templateFormat;
 };
-

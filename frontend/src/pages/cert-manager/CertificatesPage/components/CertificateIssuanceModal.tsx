@@ -597,8 +597,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                     >
                       <div className="space-y-2">
                         {value.map((san, index) => (
-                          // eslint-disable-next-line react/no-array-index-key
                           <div
+                            // eslint-disable-next-line react/no-array-index-key
                             key={`subject-alt-name-${index}`}
                             className="flex items-center gap-2"
                           >
@@ -746,80 +746,80 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                   <AccordionItem value="key-usages">
                     <AccordionTrigger>Key Usages</AccordionTrigger>
                     <AccordionContent>
-                        <div className="grid grid-cols-2 gap-2 pl-2">
-                          {filteredKeyUsages.map(({ label, value }) => {
-                            const isRequired = requiredKeyUsages.includes(value);
-                            return (
-                              <Controller
-                                key={label}
-                                control={control}
-                                name={`keyUsages.${value}` as any}
-                                render={({ field }) => (
-                                  <div className="flex items-center space-x-3">
-                                    <Checkbox
-                                      id={`key-usage-${value}`}
-                                      isChecked={field.value || false}
-                                      onCheckedChange={(checked) => {
+                      <div className="grid grid-cols-2 gap-2 pl-2">
+                        {filteredKeyUsages.map(({ label, value }) => {
+                          const isRequired = requiredKeyUsages.includes(value);
+                          return (
+                            <Controller
+                              key={label}
+                              control={control}
+                              name={`keyUsages.${value}` as any}
+                              render={({ field }) => (
+                                <div className="flex items-center space-x-3">
+                                  <Checkbox
+                                    id={`key-usage-${value}`}
+                                    isChecked={field.value || false}
+                                    onCheckedChange={(checked) => {
                                       if (!isRequired) {
-                                          field.onChange(checked);
-                                        }
-                                      }}
+                                        field.onChange(checked);
+                                      }
+                                    }}
                                     isDisabled={isRequired}
+                                  />
+                                  <div className="flex items-center gap-2">
+                                    <FormLabel
+                                      id={`key-usage-${value}`}
+                                      className={`text-sm ${isRequired ? "text-mineshaft-200" : "cursor-pointer text-mineshaft-300"}`}
+                                      label={label}
                                     />
-                                    <div className="flex items-center gap-2">
-                                      <FormLabel
-                                        id={`key-usage-${value}`}
-                                        className={`text-sm ${isRequired ? "text-mineshaft-200" : "cursor-pointer text-mineshaft-300"}`}
-                                        label={label}
-                                      />
-                                      {isRequired && <span className="text-xs">(Required)</span>}
-                                    </div>
+                                    {isRequired && <span className="text-xs">(Required)</span>}
                                   </div>
-                                )}
-                              />
-                            );
-                          })}
-                        </div>
+                                </div>
+                              )}
+                            />
+                          );
+                        })}
+                      </div>
                     </AccordionContent>
                   </AccordionItem>
 
                   <AccordionItem value="extended-key-usages">
                     <AccordionTrigger>Extended Key Usages</AccordionTrigger>
                     <AccordionContent>
-                        <div className="grid grid-cols-2 gap-2 pl-2">
-                          {filteredExtendedKeyUsages.map(({ label, value }) => {
-                            const isRequired = requiredExtendedKeyUsages.includes(value);
-                            return (
-                              <Controller
-                                key={label}
-                                control={control}
-                                name={`extendedKeyUsages.${value}` as any}
-                                render={({ field }) => (
-                                  <div className="flex items-center space-x-3">
-                                    <Checkbox
-                                      id={`ext-key-usage-${value}`}
-                                      isChecked={field.value || false}
-                                      onCheckedChange={(checked) => {
+                      <div className="grid grid-cols-2 gap-2 pl-2">
+                        {filteredExtendedKeyUsages.map(({ label, value }) => {
+                          const isRequired = requiredExtendedKeyUsages.includes(value);
+                          return (
+                            <Controller
+                              key={label}
+                              control={control}
+                              name={`extendedKeyUsages.${value}` as any}
+                              render={({ field }) => (
+                                <div className="flex items-center space-x-3">
+                                  <Checkbox
+                                    id={`ext-key-usage-${value}`}
+                                    isChecked={field.value || false}
+                                    onCheckedChange={(checked) => {
                                       if (!isRequired) {
-                                          field.onChange(checked);
-                                        }
-                                      }}
+                                        field.onChange(checked);
+                                      }
+                                    }}
                                     isDisabled={isRequired}
+                                  />
+                                  <div className="flex items-center gap-2">
+                                    <FormLabel
+                                      id={`ext-key-usage-${value}`}
+                                      className={`text-sm ${isRequired ? "text-mineshaft-200" : "cursor-pointer text-mineshaft-300"}`}
+                                      label={label}
                                     />
-                                    <div className="flex items-center gap-2">
-                                      <FormLabel
-                                        id={`ext-key-usage-${value}`}
-                                        className={`text-sm ${isRequired ? "text-mineshaft-200" : "cursor-pointer text-mineshaft-300"}`}
-                                        label={label}
-                                      />
-                                      {isRequired && <span className="text-xs">(Required)</span>}
-                                    </div>
+                                    {isRequired && <span className="text-xs">(Required)</span>}
                                   </div>
-                                )}
-                              />
-                            );
-                          })}
-                        </div>
+                                </div>
+                              )}
+                            />
+                          );
+                        })}
+                      </div>
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>

@@ -6,8 +6,8 @@ import {
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
-  SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS,
-  SAN_INCLUDE_OPTIONS
+  SAN_INCLUDE_OPTIONS,
+  SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS
 } from "./certificate-constants";
 
 export const uiAttributeSchema = z.object({

@@ -29,6 +29,7 @@ export const PoliciesPage = () => {
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-7xl">
         <PageHeader
+          scope="project"
           title="Certificate Policies"
           description="Manage certificate templates and profiles for unified certificate issuance"
         />
