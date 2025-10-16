@@ -773,6 +773,15 @@
                 ]
               }
             ]
+          },
+          {
+            "item": "Infisical PAM",
+            "groups": [
+              {
+                "group": "Infisical PAM",
+                "pages": ["documentation/platform/pam/overview"]
+              }
+            ]
           }
         ]
       },

@@ -55,7 +55,7 @@ export const RotateAccountFields = () => {
               dropdownContainerClassName="max-w-none"
               isDisabled={!rotationEnabled}
               dropdownContainerStyle={{
-                width: "120px"
+                width: "130px"
               }}
             >
               <SelectItem value="2592000">30 Days</SelectItem>
