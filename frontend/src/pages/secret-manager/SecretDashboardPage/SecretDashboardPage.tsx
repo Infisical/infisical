@@ -3,9 +3,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
-import { faArrowDown, faArrowUp, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowDown,
+  faArrowUp,
+  faChevronLeft,
+  faInfoCircle
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -760,7 +765,17 @@ const Page = () => {
     );
 
   return (
-    <div className="container mx-auto flex max-w-7xl flex-col text-mineshaft-50 dark:scheme-dark">
+    <div className="mx-auto flex max-w-8xl flex-col text-mineshaft-50 dark:scheme-dark">
+      <Link
+        to="/projects/secret-management/$projectId/overview"
+        params={{
+          projectId
+        }}
+        className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+      >
+        <FontAwesomeIcon icon={faChevronLeft} />
+        Secrets Overview
+      </Link>
       <PageHeader
         scope="project"
         title="Secrets Management"

@@ -12,11 +12,13 @@ export const SettingsPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
       </Helmet>
-      <div className="w-full max-w-7xl">
+      <div className="w-full max-w-8xl">
         <PageHeader scope="project" title="Settings" description="Configure your PAM project." />
-        <Tabs defaultValue="tab-project-general">
+        <Tabs orientation="vertical" defaultValue="tab-project-general">
           <TabList>
-            <Tab value="tab-project-general">General</Tab>
+            <Tab variant="project" value="tab-project-general">
+              General
+            </Tab>
           </TabList>
           <TabPanel value="tab-project-general">
             <ProjectGeneralTab />

@@ -17,14 +17,14 @@ const tabs = [
 
 export const BillingTabGroup = withPermission(
   () => {
-    const tabsFiltered = isInfisicalCloud()
-      ? tabs
-      : [{ name: "Infisical Self-Hosted", key: "tab-infisical-cloud" }];
+    if (!isInfisicalCloud()) {
+      return <BillingCloudTab />;
+    }
 
     return (
-      <Tabs defaultValue={tabs[0].key}>
+      <Tabs orientation="vertical" defaultValue={tabs[0].key}>
         <TabList>
-          {tabsFiltered.map((tab) => (
+          {tabs.map((tab) => (
             <Tab variant="org" value={tab.key}>
               {tab.name}
             </Tab>
@@ -33,19 +33,15 @@ export const BillingTabGroup = withPermission(
         <TabPanel value={tabs[0].key}>
           <BillingCloudTab />
         </TabPanel>
-        {isInfisicalCloud() && (
-          <>
-            <TabPanel value={tabs[1].key}>
-              <BillingSelfHostedTab />
-            </TabPanel>
-            <TabPanel value={tabs[2].key}>
-              <BillingReceiptsTab />
-            </TabPanel>
-            <TabPanel value={tabs[3].key}>
-              <BillingDetailsTab />
-            </TabPanel>
-          </>
-        )}
+        <TabPanel value={tabs[1].key}>
+          <BillingSelfHostedTab />
+        </TabPanel>
+        <TabPanel value={tabs[2].key}>
+          <BillingReceiptsTab />
+        </TabPanel>
+        <TabPanel value={tabs[3].key}>
+          <BillingDetailsTab />
+        </TabPanel>
       </Tabs>
     );
   },

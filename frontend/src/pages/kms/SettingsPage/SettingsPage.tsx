@@ -20,12 +20,16 @@ export const SettingsPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
       </Helmet>
-      <div className="w-full max-w-7xl">
-        <PageHeader scope="project" title="Settings" />
-        <Tabs defaultValue={tabs[0].key}>
+      <div className="w-full max-w-8xl">
+        <PageHeader
+          scope="project"
+          title="Settings"
+          description="Configure general project settings"
+        />
+        <Tabs orientation="vertical" defaultValue={tabs[0].key}>
           <TabList>
             {tabs.map((tab) => (
-              <Tab value={tab.key} key={tab.key}>
+              <Tab variant="project" value={tab.key} key={tab.key}>
                 {tab.name}
               </Tab>
             ))}

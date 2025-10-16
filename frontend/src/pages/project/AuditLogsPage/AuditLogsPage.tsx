@@ -8,13 +8,13 @@ export const AuditLogsPage = () => {
   const { currentProject } = useProject();
 
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       <Helmet>
         <title>Project Audit Logs</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
-        <div className="w-full max-w-7xl">
+        <div className="w-full max-w-8xl">
           <PageHeader
             scope="project"
             title="Audit logs"

@@ -16,16 +16,20 @@ export const SettingsPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
       </Helmet>
-      <div className="w-full max-w-7xl">
+      <div className="w-full max-w-8xl">
         <PageHeader
           scope="project"
           title="Settings"
           description="Configure your SSH product's configurations."
         />
-        <Tabs defaultValue="tab-project-general">
+        <Tabs orientation="vertical" defaultValue="tab-project-general">
           <TabList>
-            <Tab value="tab-project-general">General</Tab>
-            <Tab value="tab-ssh-settings">SSH Settings</Tab>
+            <Tab variant="project" value="tab-project-general">
+              General
+            </Tab>
+            <Tab variant="project" value="tab-ssh-settings">
+              SSH Settings
+            </Tab>
           </TabList>
           <TabPanel value="tab-project-general">
             <ProjectGeneralTab />

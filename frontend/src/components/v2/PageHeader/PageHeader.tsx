@@ -22,7 +22,7 @@ const SCOPE_NAME: Record<NonNullable<Props["scope"]>, { label: string; icon: Ico
 };
 
 export const PageHeader = ({ title, description, children, className, scope }: Props) => (
-  <div className={twMerge("mb-4 w-full", className)}>
+  <div className={twMerge("mb-10 w-full border-b border-mineshaft-500 pb-10", className)}>
     <div className="flex w-full justify-between">
       <div className="mr-4 flex w-full items-center">
         <h1 className="text-3xl font-medium text-white capitalize">{title}</h1>

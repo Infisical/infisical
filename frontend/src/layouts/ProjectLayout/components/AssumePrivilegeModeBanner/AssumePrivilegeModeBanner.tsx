@@ -15,7 +15,7 @@ export const AssumePrivilegeModeBanner = () => {
   if (!assumedPrivilegeDetails) return null;
 
   return (
-    <div className="z-10 -mx-4 flex items-center justify-center gap-2 rounded-sm border border-mineshaft-600 bg-primary-400 p-2 text-mineshaft-800 shadow-sm">
+    <div className="flex w-full items-center border-b border-yellow/50 bg-yellow/30 px-4 py-2 text-sm text-yellow-200">
       <div>
         <FontAwesomeIcon icon={faInfoCircle} className="mr-2" />
         You are currently viewing the project with privileges of{" "}
@@ -24,7 +24,7 @@ export const AssumePrivilegeModeBanner = () => {
           {assumedPrivilegeDetails?.actorName}
         </b>
       </div>
-      <div>
+      <div className="ml-auto">
         <Button
           size="xs"
           variant="outline_bg"

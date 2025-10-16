@@ -1,7 +1,9 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { formatRelative } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
@@ -28,6 +30,7 @@ import {
   useGetWorkspaceIdentityMembershipDetails
 } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { IdentityProjectAdditionalPrivilegeSection } from "./components/IdentityProjectAdditionalPrivilegeSection";
 import { IdentityRoleDetailsSection } from "./components/IdentityRoleDetailsSection";
@@ -113,9 +116,22 @@ const Page = () => {
   }
 
   return (
-    <div className="container mx-auto flex max-w-7xl flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex max-w-8xl flex-col justify-between bg-bunker-800 text-white">
       {identityMembershipDetails ? (
         <>
+          <Link
+            to={`${getProjectBaseURL(currentProject.type)}/access-management`}
+            params={{
+              projectId
+            }}
+            search={{
+              selectedTab: ProjectAccessControlTabs.Identities
+            }}
+            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+          >
+            <FontAwesomeIcon icon={faChevronLeft} />
+            Identities
+          </Link>
           <PageHeader
             scope="project"
             title={identityMembershipDetails?.identity?.name}

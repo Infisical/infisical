@@ -1,21 +1,10 @@
 import { useTranslation } from "react-i18next";
-import {
-  faArrowsSpin,
-  faBook,
-  faCheckToSlot,
-  faCog,
-  faHome,
-  faMobile,
-  faPlug,
-  faPuzzlePiece,
-  faUsers,
-  faVault
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faGlobe, faMobile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
-import { Badge, Lottie, Menu, MenuGroup, MenuItem } from "@app/components/v2";
+import { Badge, Tab, TabList, Tabs } from "@app/components/v2";
 import { useProject, useProjectPermission } from "@app/context";
 import {
   useGetAccessRequestsCount,
@@ -28,10 +17,10 @@ import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePri
 export const SecretManagerLayout = () => {
   const { currentProject, projectId } = useProject();
   const { assumedPrivilegeDetails } = useProjectPermission();
+  const location = useLocation();
 
   const { t } = useTranslation();
   const projectSlug = currentProject?.slug || "";
-  const location = useLocation();
 
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({
     projectId
@@ -54,208 +43,137 @@ export const SecretManagerLayout = () => {
   return (
     <>
       <div className="dark hidden h-full w-full flex-col overflow-x-hidden md:flex">
-        <div className="flex grow flex-col overflow-y-hidden md:flex-row">
+        <div className="border-b border-mineshaft-600 bg-mineshaft-900">
           <motion.div
             key="menu-project-items"
             initial={{ x: -150 }}
             animate={{ x: 0 }}
             exit={{ x: -150 }}
             transition={{ duration: 0.2 }}
-            className="dark w-full border-r border-mineshaft-600 bg-linear-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60"
+            className="px-4"
           >
-            <nav className="items-between flex h-full flex-col overflow-y-auto dark:scheme-dark">
-              <div className="flex items-center gap-3 border-b border-mineshaft-600 px-4 py-3.5 text-lg text-white">
-                <Lottie className="inline-block h-5 w-5 shrink-0" icon="vault" />
-                Secrets Manager
-              </div>
-              <div className="flex-1">
-                <Menu>
-                  <MenuGroup title="Resources">
-                    <Link
-                      to="/projects/secret-management/$projectId/overview"
-                      params={{
-                        projectId: currentProject.id,
-                        ...(currentProject.environments.length
-                          ? { envSlug: currentProject.environments[0]?.slug }
-                          : {})
-                      }}
-                    >
-                      {({ isActive }) => (
-                        <MenuItem
-                          variant="project"
-                          isSelected={
-                            isActive ||
-                            location.pathname.startsWith(
-                              `/projects/secret-management/${currentProject.id}/overview`
-                            )
-                          }
-                        >
-                          <div className="mx-1 flex gap-2">
-                            <div className="w-6">
-                              <FontAwesomeIcon icon={faVault} />
-                            </div>
-                            Secrets
-                          </div>
-                        </MenuItem>
-                      )}
-                    </Link>
-                    <Link
-                      to="/projects/secret-management/$projectId/integrations"
-                      params={{
-                        projectId: currentProject.id
-                      }}
-                    >
-                      {({ isActive }) => (
-                        <MenuItem variant="project" isSelected={isActive}>
-                          <div className="mx-1 flex gap-2">
-                            <div className="w-6">
-                              <FontAwesomeIcon icon={faPuzzlePiece} />
-                            </div>
-                            Integrations
-                          </div>
-                        </MenuItem>
-                      )}
-                    </Link>
-                    {Boolean(secretRotations?.length) && (
-                      <Link
-                        to="/projects/secret-management/$projectId/secret-rotation"
-                        params={{
-                          projectId: currentProject.id
-                        }}
-                      >
-                        {({ isActive }) => (
-                          <MenuItem variant="project" isSelected={isActive}>
-                            <div className="mx-1 flex gap-2">
-                              <div className="w-6">
-                                <FontAwesomeIcon icon={faArrowsSpin} />
-                              </div>
-                              Secret Rotations
-                            </div>
-                          </MenuItem>
-                        )}
-                      </Link>
-                    )}
-                    <Link
-                      to="/projects/secret-management/$projectId/approval"
-                      params={{
-                        projectId: currentProject.id
-                      }}
-                    >
-                      {({ isActive }) => (
-                        <MenuItem variant="project" isSelected={isActive}>
-                          <div className="mx-1 flex gap-2">
-                            <div className="w-6">
-                              <FontAwesomeIcon icon={faCheckToSlot} />
-                            </div>
-                            Approvals
-                            {Boolean(
-                              secretApprovalReqCount?.open ||
-                                accessApprovalRequestCount?.pendingCount
-                            ) && (
-                              <Badge variant="primary" className="ml-1.5">
-                                {pendingRequestsCount}
-                              </Badge>
-                            )}
-                          </div>
-                        </MenuItem>
-                      )}
-                    </Link>
-                    <Link
-                      to="/projects/secret-management/$projectId/app-connections"
-                      params={{
-                        projectId: currentProject.id
-                      }}
-                    >
-                      {({ isActive }) => (
-                        <MenuItem variant="project" isSelected={isActive}>
-                          <div className="mx-1 flex gap-2">
-                            <div className="w-6">
-                              <FontAwesomeIcon icon={faPlug} />
-                            </div>
-                            App Connections
-                          </div>
-                        </MenuItem>
-                      )}
-                    </Link>
-                  </MenuGroup>
-                  <MenuGroup title="Others">
-                    <Link
-                      to="/projects/secret-management/$projectId/access-management"
-                      params={{
-                        projectId: currentProject.id
-                      }}
-                    >
-                      {({ isActive }) => (
-                        <MenuItem variant="project" isSelected={isActive}>
-                          <div className="mx-1 flex gap-2">
-                            <div className="w-6">
-                              <FontAwesomeIcon icon={faUsers} />
-                            </div>
-                            Project Access
-                          </div>
-                        </MenuItem>
-                      )}
-                    </Link>
-                    <Link
-                      to="/projects/secret-management/$projectId/audit-logs"
-                      params={{
-                        projectId: currentProject.id
-                      }}
-                    >
-                      {({ isActive }) => (
-                        <MenuItem variant="project" isSelected={isActive}>
-                          <div className="mx-1 flex gap-2">
-                            <div className="w-6">
-                              <FontAwesomeIcon icon={faBook} />
-                            </div>
-                            Audit Logs
-                          </div>
-                        </MenuItem>
-                      )}
-                    </Link>
-                    <Link
-                      to="/projects/secret-management/$projectId/settings"
-                      params={{
-                        projectId: currentProject.id
-                      }}
-                    >
-                      {({ isActive }) => (
-                        <MenuItem variant="project" isSelected={isActive}>
-                          <div className="mx-1 flex gap-2">
-                            <div className="w-6">
-                              <FontAwesomeIcon icon={faCog} />
-                            </div>
-                            Project Settings
-                          </div>
-                        </MenuItem>
-                      )}
-                    </Link>
-                  </MenuGroup>
-                </Menu>
-              </div>
-              <div>
-                <Menu>
+            <nav className="w-full">
+              <Tabs value="selected">
+                <TabList className="border-b-0">
                   <Link to="/organization/projects">
-                    <MenuItem
-                      variant="project"
-                      className="relative flex items-center gap-2 overflow-hidden text-sm text-mineshaft-400 hover:text-mineshaft-300"
-                      leftIcon={
-                        <div className="w-6">
-                          <FontAwesomeIcon className="mx-1 inline-block shrink-0" icon={faHome} />
-                        </div>
-                      }
-                    >
-                      Organization Home
-                    </MenuItem>
+                    <Tab value="back" className="flex gap-x-2">
+                      <FontAwesomeIcon icon={faGlobe} />
+                      <FontAwesomeIcon icon={faArrowLeft} />
+                    </Tab>
                   </Link>
-                </Menu>
-              </div>
+                  <Link
+                    to="/projects/secret-management/$projectId/overview"
+                    params={{
+                      projectId: currentProject.id,
+                      ...(currentProject.environments.length
+                        ? { envSlug: currentProject.environments[0]?.slug }
+                        : {})
+                    }}
+                  >
+                    {({ isActive }) => (
+                      <Tab
+                        value={
+                          isActive || location.pathname.match(/\/secrets\/|\/commits\//)
+                            ? "selected"
+                            : ""
+                        }
+                      >
+                        Overview
+                      </Tab>
+                    )}
+                  </Link>
+                  <Link
+                    to="/projects/secret-management/$projectId/integrations"
+                    params={{
+                      projectId: currentProject.id
+                    }}
+                  >
+                    {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Integrations</Tab>}
+                  </Link>
+                  {Boolean(secretRotations?.length) && (
+                    <Link
+                      to="/projects/secret-management/$projectId/secret-rotation"
+                      params={{
+                        projectId: currentProject.id
+                      }}
+                    >
+                      {({ isActive }) => (
+                        <Tab value={isActive ? "selected" : ""}>Secret Rotations</Tab>
+                      )}
+                    </Link>
+                  )}
+                  <Link
+                    to="/projects/secret-management/$projectId/app-connections"
+                    params={{
+                      projectId: currentProject.id
+                    }}
+                  >
+                    {({ isActive }) => (
+                      <Tab value={isActive ? "selected" : ""}>App Connections</Tab>
+                    )}
+                  </Link>
+                  <Link
+                    to="/projects/secret-management/$projectId/approval"
+                    params={{
+                      projectId: currentProject.id
+                    }}
+                  >
+                    {({ isActive }) => (
+                      <Tab value={isActive ? "selected" : ""}>
+                        Approvals
+                        {Boolean(
+                          secretApprovalReqCount?.open || accessApprovalRequestCount?.pendingCount
+                        ) && (
+                          <Badge variant="primary" className="ml-1.5">
+                            {pendingRequestsCount}
+                          </Badge>
+                        )}
+                      </Tab>
+                    )}
+                  </Link>
+                  <Link
+                    to="/projects/secret-management/$projectId/audit-logs"
+                    params={{
+                      projectId: currentProject.id
+                    }}
+                  >
+                    {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Audit Logs</Tab>}
+                  </Link>
+                  <Link
+                    to="/projects/secret-management/$projectId/access-management"
+                    params={{
+                      projectId: currentProject.id
+                    }}
+                  >
+                    {({ isActive }) => (
+                      <Tab
+                        value={
+                          isActive ||
+                          location.pathname.match(/\/groups\/|\/identities\/|\/members\/|\/roles\//)
+                            ? "selected"
+                            : ""
+                        }
+                      >
+                        Access Control
+                      </Tab>
+                    )}
+                  </Link>
+                  <Link
+                    to="/projects/secret-management/$projectId/settings"
+                    params={{
+                      projectId: currentProject.id
+                    }}
+                  >
+                    {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Settings</Tab>}
+                  </Link>
+                </TabList>
+              </Tabs>
             </nav>
           </motion.div>
-          <div className="flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 p-4 pt-8">
-            {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
-            <Outlet />
-          </div>
+        </div>
+        {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
+        <div className="flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 px-12 pt-10 pb-4">
+          <Outlet />
         </div>
       </div>
       <div className="z-200 flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">

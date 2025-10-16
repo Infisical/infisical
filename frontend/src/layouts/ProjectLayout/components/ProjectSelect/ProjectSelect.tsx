@@ -99,26 +99,21 @@ export const ProjectSelect = () => {
   }, [projects, projectFavorites, currentWorkspace]);
 
   return (
-    <div className="-mr-2 flex w-full items-center gap-1">
+    <div className="mr-2 flex items-center gap-1 overflow-hidden">
       <DropdownMenu modal={false}>
         <Link
           to={getProjectHomePage(currentWorkspace.type, currentWorkspace.environments)}
           params={{
             projectId: currentWorkspace.id
           }}
+          className="overflow-hidden"
         >
-          <div className="relative flex cursor-pointer items-center gap-2 text-sm text-white duration-100 hover:text-primary">
-            <Tooltip content={currentWorkspace.name} className="max-w-96 break-words">
-              <Badge
-                variant="project"
-                className="max-w-44 overflow-hidden text-sm text-ellipsis whitespace-nowrap"
-              >
-                <FontAwesomeIcon icon={faCube} />
-
-                {currentWorkspace?.name}
-              </Badge>
-            </Tooltip>
-          </div>
+          <Tooltip content={currentWorkspace.name} className="max-w-96 break-words">
+            <Badge variant="project" className="max-w-full min-w-0 text-sm">
+              <FontAwesomeIcon icon={faCube} />
+              <p className="truncate">{currentWorkspace?.name}</p>
+            </Badge>
+          </Tooltip>
         </Link>
         <DropdownMenuTrigger asChild>
           <div>

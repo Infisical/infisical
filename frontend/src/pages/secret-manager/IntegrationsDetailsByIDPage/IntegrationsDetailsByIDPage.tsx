@@ -90,9 +90,9 @@ export const IntegrationDetailsByIDPage = () => {
         <meta property="og:title" content="Manage your .env files in seconds" />
         <meta name="og:description" content={t("integrations.description") as string} />
       </Helmet>
-      <div className="mx-auto flex max-w-7xl flex-col justify-between bg-bunker-800 text-white">
+      <div className="mx-auto flex max-w-8xl flex-col justify-between bg-bunker-800 text-white">
         {integration ? (
-          <div className="mx-auto mb-6 w-full max-w-7xl">
+          <div className="mx-auto mb-6 w-full max-w-8xl">
             <PageHeader
               scope="project"
               title={`${integrationSlugNameMapping[integration.integration]} Integration`}

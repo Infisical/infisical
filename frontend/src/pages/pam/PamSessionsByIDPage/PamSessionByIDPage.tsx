@@ -1,10 +1,12 @@
 import { Helmet } from "react-helmet";
-import { useParams } from "@tanstack/react-router";
+import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link, useParams } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionPamSessionActions } from "@app/context/ProjectPermissionContext/types";
 import { useGetPamSessionById } from "@app/hooks/api/pam";
 
@@ -17,11 +19,21 @@ const Page = () => {
     select: (el) => el.sessionId
   });
   const { data: session } = useGetPamSessionById(sessionId);
-
+  const { currentProject } = useProject();
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {session && (
-        <div className="mx-auto mb-6 flex w-full max-w-7xl flex-col">
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
+          <Link
+            to="/projects/pam/$projectId/sessions"
+            params={{
+              projectId: currentProject.id
+            }}
+            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+          >
+            <FontAwesomeIcon icon={faChevronLeft} />
+            Sessions
+          </Link>
           <PageHeader
             scope="project"
             title={`${session.accountName} Session`}

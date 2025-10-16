@@ -58,18 +58,16 @@ export const ProjectsPage = () => {
     : true;
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col justify-start bg-bunker-800">
+    <div className="mx-auto flex max-w-8xl flex-col justify-start bg-bunker-800">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="mb-4 flex flex-col items-start justify-start">
-        <PageHeader
-          scope="org"
-          title="Overview"
-          description="Your team's complete security toolkit - organized and ready when you need them."
-        />
-      </div>
+      <PageHeader
+        scope="org"
+        title="Overview"
+        description="Your team's complete security toolkit - organized and ready when you need them."
+      />
       {projectListView === ProjectListView.MyProjects ? (
         <MyProjectView
           onAddNewProject={() => handlePopUpOpen("addNewWs")}

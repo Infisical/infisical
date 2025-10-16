@@ -37,26 +37,32 @@ const Page = () => {
   const isSecretManager = currentProject.type === ProjectType.SecretManager;
 
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
-      <div className="mx-auto mb-6 w-full max-w-7xl">
+    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+      <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope="project"
           title="Access Control"
           description="Manage fine-grained access for users, groups, roles, and identities within your project resources."
         />
-        <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
+        <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
           <TabList>
-            <Tab value={ProjectAccessControlTabs.Member}>Users</Tab>
-            <Tab value={ProjectAccessControlTabs.Groups}>Groups</Tab>
-            <Tab value={ProjectAccessControlTabs.Identities}>
-              <div className="flex items-center">
-                <p>Machine Identities</p>
-              </div>
+            <Tab variant="project" value={ProjectAccessControlTabs.Member}>
+              Users
+            </Tab>
+            <Tab variant="project" value={ProjectAccessControlTabs.Groups}>
+              Groups
+            </Tab>
+            <Tab variant="project" value={ProjectAccessControlTabs.Identities}>
+              Identities
             </Tab>
             {isSecretManager && (
-              <Tab value={ProjectAccessControlTabs.ServiceTokens}>Service Tokens</Tab>
+              <Tab variant="project" value={ProjectAccessControlTabs.ServiceTokens}>
+                Service Tokens
+              </Tab>
             )}
-            <Tab value={ProjectAccessControlTabs.Roles}>Project Roles</Tab>
+            <Tab variant="project" value={ProjectAccessControlTabs.Roles}>
+              Roles
+            </Tab>
           </TabList>
           <TabPanel value={ProjectAccessControlTabs.Member}>
             <MembersTab />

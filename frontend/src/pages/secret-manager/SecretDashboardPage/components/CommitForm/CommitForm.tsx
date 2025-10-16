@@ -383,7 +383,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
             </div>
           }
           subTitle="Write a commit message and review the changes you're about to save."
-          className="max-h-[90vh] max-w-[95%] md:max-w-7xl"
+          className="max-h-[90vh] max-w-[95%] md:max-w-8xl"
         >
           <div className="space-y-6">
             {/* Changes List */}

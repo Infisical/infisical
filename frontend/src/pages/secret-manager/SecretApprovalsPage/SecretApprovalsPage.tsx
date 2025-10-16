@@ -38,27 +38,29 @@ export const SecretApprovalsPage = () => {
         <meta property="og:title" content={String(t("approval.og-title"))} />
         <meta name="og:description" content={String(t("approval.og-description"))} />
       </Helmet>
-      <div className="container mx-auto h-full w-full max-w-7xl bg-bunker-800 text-white">
+      <div className="mx-auto h-full w-full max-w-8xl bg-bunker-800 text-white">
         <PageHeader
           scope="project"
           title="Approval Workflows"
           description="Create approval policies for any modifications to secrets in sensitive environments and folders."
         />
-        <Tabs defaultValue={defaultTab}>
+        <Tabs orientation="vertical" defaultValue={defaultTab}>
           <TabList>
-            <Tab value={TabSection.SecretApprovalRequests}>
+            <Tab variant="project" value={TabSection.SecretApprovalRequests}>
               Change Requests
               {Boolean(secretApprovalReqCount?.open) && (
                 <Badge className="ml-2">{secretApprovalReqCount?.open}</Badge>
               )}
             </Tab>
-            <Tab value={TabSection.ResourceApprovalRequests}>
+            <Tab variant="project" value={TabSection.ResourceApprovalRequests}>
               Access Requests
               {Boolean(accessApprovalRequestCount?.pendingCount) && (
                 <Badge className="ml-2">{accessApprovalRequestCount?.pendingCount}</Badge>
               )}
             </Tab>
-            <Tab value={TabSection.Policies}>Policies</Tab>
+            <Tab variant="project" value={TabSection.Policies}>
+              Policies
+            </Tab>
           </TabList>
           <TabPanel value={TabSection.SecretApprovalRequests}>
             <SecretApprovalRequest />

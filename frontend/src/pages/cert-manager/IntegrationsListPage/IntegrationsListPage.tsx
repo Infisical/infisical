@@ -42,16 +42,18 @@ export const IntegrationsListPage = () => {
         <meta property="og:title" content="Manage your certificates in seconds" />
         <meta name="og:description" content="Sync and manage PKI certificates across services" />
       </Helmet>
-      <div className="relative container mx-auto max-w-7xl pb-12 text-white">
+      <div className="relative mx-auto max-w-8xl pb-12 text-white">
         <div className="mb-8">
           <PageHeader
             scope="project"
             title="Integrations"
             description="Manage integrations with third-party certificate services."
           />
-          <Tabs value={currentTab} onValueChange={updateSelectedTab}>
+          <Tabs orientation="vertical" value={currentTab} onValueChange={updateSelectedTab}>
             <TabList>
-              <Tab value={IntegrationsListPageTabs.PkiSyncs}>Certificate Syncs</Tab>
+              <Tab variant="project" value={IntegrationsListPageTabs.PkiSyncs}>
+                Certificate Syncs
+              </Tab>
             </TabList>
             <TabPanel value={IntegrationsListPageTabs.PkiSyncs}>
               <ProjectPermissionCan

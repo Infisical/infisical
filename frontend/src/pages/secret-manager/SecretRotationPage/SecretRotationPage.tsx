@@ -145,7 +145,7 @@ const Page = () => {
   };
 
   return (
-    <div className="container mx-auto w-full max-w-7xl bg-bunker-800 text-white">
+    <div className="container mx-auto w-full max-w-8xl bg-bunker-800 text-white">
       <PageHeader
         scope="project"
         title="Secret Rotation"
