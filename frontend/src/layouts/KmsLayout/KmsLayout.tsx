@@ -51,14 +51,6 @@ export const KmsLayout = () => {
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>KMIP</Tab>}
                 </Link>
                 <Link
-                  to="/projects/kms/$projectId/audit-logs"
-                  params={{
-                    projectId: currentProject.id
-                  }}
-                >
-                  {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Audit Logs</Tab>}
-                </Link>
-                <Link
                   to="/projects/kms/$projectId/access-management"
                   params={{
                     projectId: currentProject.id
@@ -76,6 +68,14 @@ export const KmsLayout = () => {
                       Access Control
                     </Tab>
                   )}
+                </Link>
+                <Link
+                  to="/projects/kms/$projectId/audit-logs"
+                  params={{
+                    projectId: currentProject.id
+                  }}
+                >
+                  {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Audit Logs</Tab>}
                 </Link>
                 <Link
                   to="/projects/kms/$projectId/settings"

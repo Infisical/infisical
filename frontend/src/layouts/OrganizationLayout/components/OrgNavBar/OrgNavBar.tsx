@@ -36,6 +36,27 @@ export const OrgNavBar = ({ isHidden }: Props) => {
                       </Tab>
                     )}
                   </Link>
+                  <Link to="/organization/app-connections">
+                    {({ isActive }) => (
+                      <Tab variant="org" value={isActive ? "selected" : ""}>
+                        App Connections
+                      </Tab>
+                    )}
+                  </Link>
+                  <Link to="/organization/networking">
+                    {({ isActive }) => (
+                      <Tab variant="org" value={isActive ? "selected" : ""}>
+                        Networking
+                      </Tab>
+                    )}
+                  </Link>
+                  <Link to="/organization/secret-sharing">
+                    {({ isActive }) => (
+                      <Tab value={isActive ? "selected" : ""} variant="org">
+                        Secret Sharing
+                      </Tab>
+                    )}
+                  </Link>
                   <Link to="/organization/access-management">
                     {({ isActive }) => (
                       <Tab
@@ -53,31 +74,10 @@ export const OrgNavBar = ({ isHidden }: Props) => {
                       </Tab>
                     )}
                   </Link>
-                  <Link to="/organization/app-connections">
-                    {({ isActive }) => (
-                      <Tab variant="org" value={isActive ? "selected" : ""}>
-                        App Connections
-                      </Tab>
-                    )}
-                  </Link>
-                  <Link to="/organization/networking">
-                    {({ isActive }) => (
-                      <Tab variant="org" value={isActive ? "selected" : ""}>
-                        Networking
-                      </Tab>
-                    )}
-                  </Link>
                   <Link to="/organization/audit-logs">
                     {({ isActive }) => (
                       <Tab variant="org" value={isActive ? "selected" : ""}>
                         Audit Logs
-                      </Tab>
-                    )}
-                  </Link>
-                  <Link to="/organization/settings">
-                    {({ isActive }) => (
-                      <Tab variant="org" value={isActive ? "selected" : ""}>
-                        Settings
                       </Tab>
                     )}
                   </Link>
@@ -88,10 +88,10 @@ export const OrgNavBar = ({ isHidden }: Props) => {
                       </Tab>
                     )}
                   </Link>
-                  <Link className="mr-auto" to="/organization/secret-sharing">
+                  <Link to="/organization/settings">
                     {({ isActive }) => (
-                      <Tab value={isActive ? "selected" : ""} variant="org">
-                        Secret Sharing
+                      <Tab variant="org" value={isActive ? "selected" : ""}>
+                        Settings
                       </Tab>
                     )}
                   </Link>

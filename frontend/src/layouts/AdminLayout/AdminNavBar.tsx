@@ -23,6 +23,16 @@ const generalTabs = [
     link: "/admin/"
   },
   {
+    label: "Resource Overview",
+    icon: faBuilding,
+    link: "/admin/resources/overview"
+  },
+  {
+    label: "Access Control",
+    icon: faUserTie,
+    link: "/admin/access-management"
+  },
+  {
     label: "Encryption",
     icon: faLock,
     link: "/admin/encryption"
@@ -49,19 +59,6 @@ const generalTabs = [
   }
 ];
 
-const othersTabs = [
-  {
-    label: "Access Controls",
-    icon: faUserTie,
-    link: "/admin/access-management"
-  },
-  {
-    label: "Resource Overview",
-    icon: faBuilding,
-    link: "/admin/resources/overview"
-  }
-];
-
 export const AdminNavBar = () => {
   const matchRoute = useMatchRoute();
 
@@ -83,7 +80,7 @@ export const AdminNavBar = () => {
                   <FontAwesomeIcon icon={faArrowLeft} />
                 </Tab>
               </Link>
-              {[...generalTabs, ...othersTabs].map((tab) => {
+              {generalTabs.map((tab) => {
                 const isActive = matchRoute({ to: tab.link, fuzzy: false });
                 return (
                   <Link key={tab.link} to={tab.link}>

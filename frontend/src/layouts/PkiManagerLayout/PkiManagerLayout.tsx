@@ -111,14 +111,6 @@ export const PkiManagerLayout = () => {
                     )}
                   </Link>
                   <Link
-                    to="/projects/cert-management/$projectId/audit-logs"
-                    params={{
-                      projectId: currentProject.id
-                    }}
-                  >
-                    {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Audit Logs</Tab>}
-                  </Link>
-                  <Link
                     to="/projects/cert-management/$projectId/access-management"
                     params={{
                       projectId: currentProject.id
@@ -136,6 +128,14 @@ export const PkiManagerLayout = () => {
                         Access Control
                       </Tab>
                     )}
+                  </Link>
+                  <Link
+                    to="/projects/cert-management/$projectId/audit-logs"
+                    params={{
+                      projectId: currentProject.id
+                    }}
+                  >
+                    {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Audit Logs</Tab>}
                   </Link>
                   <Link
                     to="/projects/cert-management/$projectId/settings"

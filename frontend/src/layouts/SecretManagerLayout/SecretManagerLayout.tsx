@@ -83,6 +83,25 @@ export const SecretManagerLayout = () => {
                     )}
                   </Link>
                   <Link
+                    to="/projects/secret-management/$projectId/approval"
+                    params={{
+                      projectId: currentProject.id
+                    }}
+                  >
+                    {({ isActive }) => (
+                      <Tab value={isActive ? "selected" : ""}>
+                        Approvals
+                        {Boolean(
+                          secretApprovalReqCount?.open || accessApprovalRequestCount?.pendingCount
+                        ) && (
+                          <Badge variant="primary" className="ml-1.5">
+                            {pendingRequestsCount}
+                          </Badge>
+                        )}
+                      </Tab>
+                    )}
+                  </Link>
+                  <Link
                     to="/projects/secret-management/$projectId/integrations"
                     params={{
                       projectId: currentProject.id
@@ -113,33 +132,6 @@ export const SecretManagerLayout = () => {
                     )}
                   </Link>
                   <Link
-                    to="/projects/secret-management/$projectId/approval"
-                    params={{
-                      projectId: currentProject.id
-                    }}
-                  >
-                    {({ isActive }) => (
-                      <Tab value={isActive ? "selected" : ""}>
-                        Approvals
-                        {Boolean(
-                          secretApprovalReqCount?.open || accessApprovalRequestCount?.pendingCount
-                        ) && (
-                          <Badge variant="primary" className="ml-1.5">
-                            {pendingRequestsCount}
-                          </Badge>
-                        )}
-                      </Tab>
-                    )}
-                  </Link>
-                  <Link
-                    to="/projects/secret-management/$projectId/audit-logs"
-                    params={{
-                      projectId: currentProject.id
-                    }}
-                  >
-                    {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Audit Logs</Tab>}
-                  </Link>
-                  <Link
                     to="/projects/secret-management/$projectId/access-management"
                     params={{
                       projectId: currentProject.id
@@ -157,6 +149,14 @@ export const SecretManagerLayout = () => {
                         Access Control
                       </Tab>
                     )}
+                  </Link>
+                  <Link
+                    to="/projects/secret-management/$projectId/audit-logs"
+                    params={{
+                      projectId: currentProject.id
+                    }}
+                  >
+                    {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Audit Logs</Tab>}
                   </Link>
                   <Link
                     to="/projects/secret-management/$projectId/settings"

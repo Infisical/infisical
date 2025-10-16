@@ -89,15 +89,6 @@ export const SecretScanningLayout = () => {
                 >
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>App Connections</Tab>}
                 </Link>
-
-                <Link
-                  to="/projects/secret-scanning/$projectId/audit-logs"
-                  params={{
-                    projectId: currentProject.id
-                  }}
-                >
-                  {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Audit Logs</Tab>}
-                </Link>
                 <Link
                   to="/projects/secret-scanning/$projectId/access-management"
                   params={{
@@ -116,6 +107,14 @@ export const SecretScanningLayout = () => {
                       Access Control
                     </Tab>
                   )}
+                </Link>
+                <Link
+                  to="/projects/secret-scanning/$projectId/audit-logs"
+                  params={{
+                    projectId: currentProject.id
+                  }}
+                >
+                  {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Audit Logs</Tab>}
                 </Link>
                 <Link
                   to="/projects/secret-scanning/$projectId/settings"
