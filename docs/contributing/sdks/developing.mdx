@@ -1,0 +1,74 @@
+Developing Infisical SDKs Locally
+
+This guide explains how to **clone, run, test, and contribute** to Infisical SDKs across supported languages.
+
+> This page is for **contributors** who want to work on the SDKs themselves.  
+> To **use** SDKs in your app, see the [SDKs overview](/docs/sdks/overview).
+
+## Repositories
+
+Pick your target SDK and follow its repository’s CONTRIBUTING guide:
+
+- **Node.js / TypeScript** — https://github.com/Infisical/infisical-node#contributing
+- **Python** — https://github.com/Infisical/python-sdk-official#contributing
+- **Go** — https://github.com/Infisical/infisical-go#contributing
+- **Java / Kotlin** — https://github.com/Infisical/infisical-java#contributing
+- **.NET (C#)** — https://github.com/Infisical/infisical-dotnet#contributing
+- **C++** — https://github.com/Infisical/infisical-cpp#contributing
+- **PHP** — https://github.com/Infisical/infisical-php#contributing
+- **Ruby** — https://github.com/Infisical/infisical-ruby#contributing
+
+> Each SDK repository documents language-specific local setup, testing, and release steps.
+
+## Prerequisites
+- Git + a GitHub account.
+- The language toolchain for your SDK (Node.js LTS, Python 3.x, Go toolchain, JDK, .NET SDK, etc.).
+- Any SDK-specific tools listed in that repository’s README/CONTRIBUTING.
+
+## Recommended workflow
+
+1. **Fork** the SDK repository and **clone** it locally.  
+2. Create a feature branch:
+   ```bash
+   git checkout -b feat/<short-desc>
+   ```
+3. **Install dependencies** (language-specific).  
+4. **Run tests** locally to validate your setup.  
+5. Implement changes; add/adjust tests as needed.  
+6. **Lint/format** per repo guidelines (ESLint/Prettier, Black/Flake8, gofmt, rustfmt, etc.).  
+7. **Commit & push**, then open a PR to the SDK repository with a clear summary and rationale.
+
+## Common commands (examples)
+
+### Node / TypeScript
+```
+pnpm install
+pnpm build
+pnpm test
+```
+
+### Python
+```
+pip install -r requirements-dev.txt
+pytest
+```
+
+### Go
+```
+go test ./...
+```
+
+### Java (Gradle)
+```
+./gradlew build test
+```
+
+> See the specific SDK repo’s CONTRIBUTING for authoritative commands.
+
+## Code style & CI
+Follow each SDK repo’s style and CI rules. Keep PRs focused and include test results or screenshots where helpful.
+
+## Need help?
+- Ask in the SDK repo’s issues/discussions.
+- Or open a docs issue on the main Infisical repo to improve this guide.
+
