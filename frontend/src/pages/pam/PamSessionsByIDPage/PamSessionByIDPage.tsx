@@ -9,6 +9,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionPamSessionActions } from "@app/context/ProjectPermissionContext/types";
 import { useGetPamSessionById } from "@app/hooks/api/pam";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { PamSessionDetailsSection } from "./components/PamSessionDetailsSection";
 import { PamSessionLogsSection } from "./components/PamSessionLogsSection";
@@ -35,7 +36,7 @@ const Page = () => {
             Sessions
           </Link>
           <PageHeader
-            scope="project"
+            scope={ProjectType.PAM}
             title={`${session.accountName} Session`}
             description={`View details for this ${session.accountName} session.`}
           />

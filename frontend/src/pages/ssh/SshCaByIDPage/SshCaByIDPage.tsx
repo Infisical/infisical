@@ -19,6 +19,7 @@ import {
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useDeleteSshCa, useGetSshCaById } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { SshCaModal } from "../SshCasPage/components/SshCaModal";
@@ -83,7 +84,7 @@ const Page = () => {
             Certificate Authorities
           </Link>
           <PageHeader
-            scope="project"
+            scope={ProjectType.SSH}
             description="Configure Certificate Authority"
             title={data.friendlyName}
           >

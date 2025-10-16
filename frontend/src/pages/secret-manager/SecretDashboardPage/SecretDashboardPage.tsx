@@ -56,7 +56,7 @@ import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectVersion } from "@app/hooks/api/projects/types";
+import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { queryClient } from "@app/hooks/api/reactQuery";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
@@ -777,7 +777,7 @@ const Page = () => {
         Secrets Overview
       </Link>
       <PageHeader
-        scope="project"
+        scope={ProjectType.SecretManager}
         title="Secrets Management"
         description={
           <p className="text-md text-bunker-300">

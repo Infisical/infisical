@@ -11,6 +11,7 @@ import {
   ProjectPermissionCommitsActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { CommitHistoryTab } from "./components/CommitHistoryTab";
 
@@ -62,7 +63,7 @@ export const CommitsPage = () => {
           Secrets
         </Link>
         <PageHeader
-          scope="project"
+          scope={ProjectType.SecretManager}
           title="Commits"
           description="Track, inspect, and restore your secrets and folders with confidence. View the complete history of changes made to your environment, examine specific modifications at each commit point, and preview the exact impact before rolling back to previous states."
         />

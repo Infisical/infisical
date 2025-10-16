@@ -133,7 +133,7 @@ const Page = () => {
             Identities
           </Link>
           <PageHeader
-            scope="project"
+            scope={currentProject.type}
             title={identityMembershipDetails?.identity?.name}
             description={`Identity joined on ${identityMembershipDetails?.createdAt && formatRelative(new Date(identityMembershipDetails?.createdAt || ""), new Date())}`}
           >

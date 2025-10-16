@@ -2,6 +2,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
 export const SettingsPage = () => {
@@ -13,7 +14,11 @@ export const SettingsPage = () => {
         <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
       </Helmet>
       <div className="w-full max-w-8xl">
-        <PageHeader scope="project" title="Settings" description="Configure your PAM project." />
+        <PageHeader
+          scope={ProjectType.PAM}
+          title="Settings"
+          description="Configure your PAM project."
+        />
         <Tabs orientation="vertical" defaultValue="tab-project-general">
           <TabList>
             <Tab variant="project" value="tab-project-general">

@@ -20,6 +20,7 @@ import {
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useDeleteSshHostGroup, useGetSshHostGroupById } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { SshHostGroupModal } from "../SshHostsPage/components/SshHostGroupModal";
@@ -83,7 +84,7 @@ const Page = () => {
             <FontAwesomeIcon icon={faChevronLeft} />
             Hosts
           </Link>
-          <PageHeader scope="project" title={data.name} description="Configure SSH Group">
+          <PageHeader scope={ProjectType.SSH} title={data.name} description="Configure SSH Group">
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
                 <div className="hover:text-primary-400 data-[state=open]:text-primary-400">

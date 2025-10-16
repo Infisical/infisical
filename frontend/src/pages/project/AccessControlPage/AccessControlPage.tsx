@@ -40,7 +40,7 @@ const Page = () => {
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
-          scope="project"
+          scope={currentProject.type}
           title="Access Control"
           description="Manage fine-grained access for users, groups, roles, and identities within your project resources."
         />

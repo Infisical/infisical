@@ -135,7 +135,7 @@ export const Page = () => {
             Users
           </Link>
           <PageHeader
-            scope="project"
+            scope={currentProject.type}
             title={
               membershipDetails.user.firstName || membershipDetails.user.lastName
                 ? `${membershipDetails.user.firstName} ${membershipDetails.user.lastName}`

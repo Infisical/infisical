@@ -48,6 +48,7 @@ import {
 import { usePopUp } from "@app/hooks";
 import { useDeleteCertTemplateV2 } from "@app/hooks/api";
 import { useListCertificateTemplates } from "@app/hooks/api/certificateTemplates/queries";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { CertificateTemplateEnrollmentModal } from "../CertificatesPage/components/CertificateTemplateEnrollmentModal";
 import { PkiTemplateForm } from "./components/PkiTemplateForm";
@@ -106,7 +107,7 @@ export const PkiTemplateListPage = () => {
         <div className="mx-auto flex flex-col justify-between text-white">
           <div className="mx-auto mb-6 w-full max-w-8xl">
             <PageHeader
-              scope="project"
+              scope={ProjectType.CertificateManager}
               title="Certificate Templates"
               description="Manage certificate template to request and issue dynamic certificates following a strict format."
             />

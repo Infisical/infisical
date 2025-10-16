@@ -7,6 +7,7 @@ import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import { PkiSyncsTab } from "./components";
@@ -45,7 +46,7 @@ export const IntegrationsListPage = () => {
       <div className="relative mx-auto max-w-8xl pb-12 text-white">
         <div className="mb-8">
           <PageHeader
-            scope="project"
+            scope={ProjectType.CertificateManager}
             title="Integrations"
             description="Manage integrations with third-party certificate services."
           />

@@ -24,6 +24,7 @@ import {
   useProject
 } from "@app/context";
 import { useDeletePkiSubscriber, useGetPkiSubscriber } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiSubscriberModal } from "../PkiSubscribersPage/components/PkiSubscriberModal";
@@ -90,7 +91,11 @@ const Page = () => {
             <FontAwesomeIcon icon={faChevronLeft} />
             Subscribers
           </Link>
-          <PageHeader scope="project" title={data.name} description="Manage PKI subscriber">
+          <PageHeader
+            scope={ProjectType.CertificateManager}
+            title={data.name}
+            description="Manage PKI subscriber"
+          >
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
                 <div className="hover:text-primary-400 data-[state=open]:text-primary-400">

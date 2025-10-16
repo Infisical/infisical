@@ -108,12 +108,10 @@ export const ProjectSelect = () => {
           }}
           className="overflow-hidden"
         >
-          <Tooltip content={currentWorkspace.name} className="max-w-96 break-words">
-            <Badge variant="project" className="max-w-full min-w-0 text-sm">
-              <FontAwesomeIcon icon={faCube} />
-              <p className="truncate">{currentWorkspace?.name}</p>
-            </Badge>
-          </Tooltip>
+          <Badge variant="project" className="max-w-full min-w-0 cursor-pointer text-sm">
+            <FontAwesomeIcon icon={faCube} />
+            <p className="truncate">{currentWorkspace?.name}</p>
+          </Badge>
         </Link>
         <DropdownMenuTrigger asChild>
           <div>

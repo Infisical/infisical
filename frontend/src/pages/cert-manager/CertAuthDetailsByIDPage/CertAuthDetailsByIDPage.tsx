@@ -20,6 +20,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { CaType, useDeleteCa, useGetCa } from "@app/hooks/api";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CaInstallCertModal } from "../CertificateAuthoritiesPage/components/CaInstallCertModal";
@@ -99,7 +100,11 @@ const Page = () => {
             <FontAwesomeIcon icon={faChevronLeft} />
             Certificate Authorities
           </Link>
-          <PageHeader scope="project" description="Manage certificate authority" title={data.name}>
+          <PageHeader
+            scope={ProjectType.CertificateManager}
+            description="Manage certificate authority"
+            title={data.name}
+          >
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
                 <div className="hover:text-primary-400 data-[state=open]:text-primary-400">

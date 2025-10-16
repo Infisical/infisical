@@ -5,6 +5,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningConfigActions } from "@app/context/ProjectPermissionContext/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
 import { ProjectScanningConfigTab } from "./components/ProjectScanningConfigTab";
@@ -19,7 +20,7 @@ export const SettingsPage = () => {
       </Helmet>
       <div className="w-full max-w-8xl">
         <PageHeader
-          scope="project"
+          scope={ProjectType.SecretScanning}
           title="Settings"
           description="Configure your Secret Scanning product's configurations."
         />

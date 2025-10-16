@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { ExternalCaSection } from "./components/ExternalCaSection";
 import { CaSection } from "./components";
@@ -17,7 +18,7 @@ export const CertificateAuthoritiesPage = () => {
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
-          scope="project"
+          scope={ProjectType.CertificateManager}
           title="Certificate Authorities"
           description="Manage certificate authorities for issuing and signing certificates"
         />

@@ -109,7 +109,7 @@ const Page = () => {
             Roles
           </Link>
           <PageHeader
-            scope="project"
+            scope={currentProject.type}
             title={data.name}
             description={
               <>

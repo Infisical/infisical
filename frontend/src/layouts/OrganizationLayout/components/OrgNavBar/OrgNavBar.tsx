@@ -19,10 +19,10 @@ export const OrgNavBar = ({ isHidden }: Props) => {
       {!isHidden && (
         <div className="dark hidden w-full flex-col overflow-x-hidden border-b border-mineshaft-600 bg-mineshaft-900 px-4 md:flex">
           <motion.div
-            key="menu-project-items"
-            initial={{ x: 150 }}
+            key="menu-org-items"
+            initial={{ x: -150 }}
             animate={{ x: 0 }}
-            exit={{ x: 150 }}
+            exit={{ x: -150 }}
             transition={{ duration: 0.2 }}
             className=""
           >

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
 import { ProjectSshTab } from "./components/ProjectSshTab";
@@ -18,7 +19,7 @@ export const SettingsPage = () => {
       </Helmet>
       <div className="w-full max-w-8xl">
         <PageHeader
-          scope="project"
+          scope={ProjectType.SSH}
           title="Settings"
           description="Configure your SSH product's configurations."
         />

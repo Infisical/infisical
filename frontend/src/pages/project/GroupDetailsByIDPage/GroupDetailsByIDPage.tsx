@@ -53,7 +53,7 @@ const Page = () => {
             Groups
           </Link>
           <PageHeader
-            scope="project"
+            scope={currentProject.type}
             title={groupMembership.group.name}
             description={`Group joined on ${groupMembership?.createdAt && formatRelative(new Date(groupMembership?.createdAt || ""), new Date())}`}
           />

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { CmekTable } from "./components";
 
@@ -18,7 +19,7 @@ export const OverviewPage = () => {
       <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <PageHeader
-            scope="project"
+            scope={ProjectType.KMS}
             title="Overview"
             description="Manage keys and perform cryptographic operations."
           />

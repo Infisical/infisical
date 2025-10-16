@@ -21,6 +21,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useDeletePkiCollection, useGetPkiCollectionById } from "@app/hooks/api";
 import { PkiItemType } from "@app/hooks/api/pkiCollections/constants";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiCollectionModal } from "../AlertingPage/components/PkiCollectionModal";
@@ -85,7 +86,11 @@ export const PkiCollectionPage = () => {
             <FontAwesomeIcon icon={faChevronLeft} />
             Certificates
           </Link>
-          <PageHeader scope="project" title={data.name} description="Manage certificate collection">
+          <PageHeader
+            scope={ProjectType.CertificateManager}
+            title={data.name}
+            description="Manage certificate collection"
+          >
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
                 <div className="hover:text-primary-400 data-[state=open]:text-primary-400">

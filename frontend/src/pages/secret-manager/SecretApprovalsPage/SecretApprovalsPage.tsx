@@ -5,6 +5,7 @@ import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { Badge } from "@app/components/v2/Badge";
 import { useProject } from "@app/context";
 import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AccessApprovalRequest } from "./components/AccessApprovalRequest";
 import { ApprovalPolicyList } from "./components/ApprovalPolicyList";
@@ -40,7 +41,7 @@ export const SecretApprovalsPage = () => {
       </Helmet>
       <div className="mx-auto h-full w-full max-w-8xl bg-bunker-800 text-white">
         <PageHeader
-          scope="project"
+          scope={ProjectType.SecretManager}
           title="Approval Workflows"
           description="Create approval policies for any modifications to secrets in sensitive environments and folders."
         />

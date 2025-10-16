@@ -5,6 +5,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { PamResourcesSection } from "./components/PamResourcesSection";
 
@@ -24,7 +25,7 @@ export const PamResourcesPage = () => {
           <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
             <div className="mx-auto mb-6 w-full max-w-8xl">
               <PageHeader
-                scope="project"
+                scope={ProjectType.PAM}
                 title="Resources"
                 description="Manage resources such as servers, databases, and more."
               />

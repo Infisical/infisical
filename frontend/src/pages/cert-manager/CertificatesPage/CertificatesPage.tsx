@@ -9,6 +9,7 @@ import {
   ProjectPermissionSub,
   useProjectPermission
 } from "@app/context";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { PkiCollectionSection } from "../AlertingPage/components";
 import { CertificatesSection } from "./components";
@@ -33,7 +34,7 @@ export const CertificatesPage = () => {
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
-          scope="project"
+          scope={ProjectType.CertificateManager}
           title="Certificates"
           description="View and track issued certificates, monitor expiration dates, and manage certificate lifecycles."
         />

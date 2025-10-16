@@ -23,7 +23,7 @@ export const AppConnectionsPage = withProjectPermission(
         <div className="flex w-full justify-center bg-bunker-800 text-white">
           <div className="w-full max-w-8xl">
             <PageHeader
-              scope="project"
+              scope={currentProject.type}
               className="w-full"
               title="App Connections"
               description="Manage project App Connections"

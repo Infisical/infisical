@@ -241,7 +241,7 @@ export const Navbar = () => {
                     <Badge
                       variant="org"
                       className={twMerge(
-                        "max-w-full min-w-0 text-sm",
+                        "max-w-full min-w-0 cursor-pointer text-sm",
                         !isOrgScope && "bg-transparent opacity-75"
                       )}
                     >

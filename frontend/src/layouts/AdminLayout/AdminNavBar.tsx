@@ -4,7 +4,6 @@ import {
   faBuilding,
   faCog,
   faDatabase,
-  faGlobe,
   faKey,
   faLock,
   faPlug,
@@ -14,7 +13,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useMatchRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
-import { Tab, TabList, Tabs } from "@app/components/v2";
+import { Tab, TabList, Tabs, Tooltip } from "@app/components/v2";
 
 const generalTabs = [
   {
@@ -74,12 +73,13 @@ export const AdminNavBar = () => {
         <nav className="w-full">
           <Tabs value="selected">
             <TabList className="border-b-0">
-              <Link to="/organization/projects">
-                <Tab value="back" className="flex gap-x-2">
-                  <FontAwesomeIcon icon={faGlobe} />
-                  <FontAwesomeIcon icon={faArrowLeft} />
-                </Tab>
-              </Link>
+              <Tooltip position="bottom" content="Back to organization">
+                <Link to="/organization/projects">
+                  <Tab value="back">
+                    <FontAwesomeIcon icon={faArrowLeft} />
+                  </Tab>
+                </Link>
+              </Tooltip>
               {generalTabs.map((tab) => {
                 const isActive = matchRoute({ to: tab.link, fuzzy: false });
                 return (

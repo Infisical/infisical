@@ -1,5 +1,3 @@
-import { faArrowLeft, faGlobe } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
@@ -50,12 +48,6 @@ export const SecretScanningLayout = () => {
           <nav className="w-full">
             <Tabs value="selected">
               <TabList className="border-b-0">
-                <Link to="/organization/projects">
-                  <Tab value="back" className="flex gap-x-2">
-                    <FontAwesomeIcon icon={faGlobe} />
-                    <FontAwesomeIcon icon={faArrowLeft} />
-                  </Tab>
-                </Link>
                 <Link
                   to="/projects/secret-scanning/$projectId/data-sources"
                   params={{
