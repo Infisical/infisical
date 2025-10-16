@@ -12,6 +12,7 @@ import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import { ActorType } from "@app/services/auth/auth-type";
 import { buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 
 import {
@@ -534,13 +535,19 @@ export const secretFolderServiceFactory = ({
     projectId,
     env,
     parentId,
-    idOrName
+    idOrName,
+    actor
   }: {
     projectId: string;
     env: TProjectEnvironments;
     parentId: string;
     idOrName: string;
+    actor: ActorType;
   }) => {
+    if (actor === ActorType.IDENTITY) {
+      return;
+    }
+
     let targetFolder = await folderDAL
       .findOne({
         envId: env.id,
@@ -664,7 +671,7 @@ export const secretFolderServiceFactory = ({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
         });
 
-      await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName });
+      await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor });
 
       let folderToDelete = await folderDAL
         .findOne({
@@ -1315,7 +1322,7 @@ export const secretFolderServiceFactory = ({
             });
           }
 
-          await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName });
+          await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor });
 
           let folderToDelete = await folderDAL
             .findOne({
