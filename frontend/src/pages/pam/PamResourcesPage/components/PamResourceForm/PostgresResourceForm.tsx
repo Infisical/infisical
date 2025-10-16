@@ -5,9 +5,11 @@ import { z } from "zod";
 
 import { Button, ModalClose } from "@app/components/v2";
 import { PamResourceType, TPostgresResource } from "@app/hooks/api/pam";
+import { BaseSqlAccountSchema } from "@app/pages/pam/PamAccountsPage/components/PamAccountForm/shared/sql-account-schemas";
 
 import { BaseSqlResourceSchema } from "./shared/sql-resource-schemas";
 import { SqlResourceFields } from "./shared/SqlResourceFields";
+import { SqlRotateAccountFields } from "./shared/SqlRotateAccountFields";
 import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
 
 type Props = {
@@ -17,7 +19,8 @@ type Props = {
 
 const formSchema = genericResourceFieldsSchema.extend({
   resourceType: z.literal(PamResourceType.Postgres),
-  connectionDetails: BaseSqlResourceSchema
+  connectionDetails: BaseSqlResourceSchema,
+  rotationAccountCredentials: BaseSqlAccountSchema.nullable().optional()
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -59,6 +62,7 @@ export const PostgresResourceForm = ({ resource, onSubmit }: Props) => {
           selectedTabIndex={selectedTabIndex}
           setSelectedTabIndex={setSelectedTabIndex}
         />
+        <SqlRotateAccountFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

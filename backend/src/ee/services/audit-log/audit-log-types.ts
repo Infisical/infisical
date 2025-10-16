@@ -515,6 +515,7 @@ export enum EventType {
   PAM_ACCOUNT_CREATE = "pam-account-create",
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
+  PAM_ACCOUNT_CREDENTIAL_ROTATION = "pam-account-credential-rotation",
   PAM_RESOURCE_LIST = "pam-resource-list",
   PAM_RESOURCE_GET = "pam-resource-get",
   PAM_RESOURCE_CREATE = "pam-resource-create",
@@ -3795,6 +3796,8 @@ interface PamAccountCreateEvent {
     folderId?: string | null;
     name: string;
     description?: string | null;
+    rotationEnabled: boolean;
+    rotationIntervalSeconds: number;
   };
 }
 
@@ -3806,11 +3809,23 @@ interface PamAccountUpdateEvent {
     resourceType: string;
     name?: string;
     description?: string | null;
+    rotationEnabled?: boolean;
+    rotationIntervalSeconds?: number;
   };
 }
 
 interface PamAccountDeleteEvent {
   type: EventType.PAM_ACCOUNT_DELETE;
+  metadata: {
+    accountName: string;
+    accountId: string;
+    resourceId: string;
+    resourceType: string;
+  };
+}
+
+interface PamAccountCredentialRotationEvent {
+  type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION;
   metadata: {
     accountName: string;
     accountId: string;
@@ -4209,6 +4224,7 @@ export type Event =
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
+  | PamAccountCredentialRotationEvent
   | PamResourceListEvent
   | PamResourceGetEvent
   | PamResourceCreateEvent

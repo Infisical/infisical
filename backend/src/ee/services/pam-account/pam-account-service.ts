@@ -11,12 +11,14 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
@@ -45,9 +47,11 @@ type TPamAccountServiceFactoryDep = {
     "getPAMConnectionDetails" | "getPlatformConnectionDetailsByGatewayId"
   >;
   userDAL: TUserDALFactory;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
-
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
+
+const ROTATION_CONCURRENCY_LIMIT = 10;
 
 export const pamAccountServiceFactory = ({
   pamResourceDAL,
@@ -59,10 +63,19 @@ export const pamAccountServiceFactory = ({
   permissionService,
   licenseService,
   kmsService,
-  gatewayV2Service
+  gatewayV2Service,
+  auditLogService
 }: TPamAccountServiceFactoryDep) => {
   const create = async (
-    { credentials, resourceId, name, description, folderId }: TCreateAccountDTO,
+    {
+      credentials,
+      resourceId,
+      name,
+      description,
+      folderId,
+      rotationEnabled,
+      rotationIntervalSeconds
+    }: TCreateAccountDTO,
     actor: OrgServiceActor
   ) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
@@ -83,6 +96,10 @@ export const pamAccountServiceFactory = ({
       projectId: resource.projectId,
       actionProjectType: ActionProjectType.PAM
     });
+
+    if (!resource.encryptedRotationAccountCredentials && rotationEnabled) {
+      throw new NotFoundError({ message: "Rotation credentials are not configured for this account's resource" });
+    }
 
     const accountPath = await getFullPamFolderPath({
       pamFolderDAL,
@@ -126,7 +143,9 @@ export const pamAccountServiceFactory = ({
         encryptedCredentials,
         name,
         description,
-        folderId
+        folderId,
+        rotationEnabled,
+        rotationIntervalSeconds
       });
 
       return {
@@ -145,7 +164,7 @@ export const pamAccountServiceFactory = ({
   };
 
   const updateById = async (
-    { accountId, credentials, description, name }: TUpdateAccountDTO,
+    { accountId, credentials, description, name, rotationEnabled, rotationIntervalSeconds }: TUpdateAccountDTO,
     actor: OrgServiceActor
   ) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
@@ -193,6 +212,17 @@ export const pamAccountServiceFactory = ({
 
     if (description !== undefined) {
       updateDoc.description = description;
+    }
+
+    if (rotationEnabled !== undefined) {
+      if (!resource.encryptedRotationAccountCredentials && rotationEnabled) {
+        throw new NotFoundError({ message: "Rotation credentials are not configured for this account's resource" });
+      }
+      updateDoc.rotationEnabled = rotationEnabled;
+    }
+
+    if (rotationIntervalSeconds !== undefined) {
+      updateDoc.rotationIntervalSeconds = rotationIntervalSeconds;
     }
 
     if (credentials !== undefined) {
@@ -516,12 +546,84 @@ export const pamAccountServiceFactory = ({
     };
   };
 
+  const rotateAllDueAccounts = async () => {
+    const accounts = await pamAccountDAL.findAccountsDueForRotation();
+
+    for (let i = 0; i < accounts.length; i += ROTATION_CONCURRENCY_LIMIT) {
+      const batch = accounts.slice(i, i + ROTATION_CONCURRENCY_LIMIT);
+
+      const rotationPromises = batch.map(async (account) => {
+        try {
+          const resource = await pamResourceDAL.findById(account.resourceId);
+          if (!resource || !resource.encryptedRotationAccountCredentials) return;
+
+          const { connectionDetails, rotationAccountCredentials, gatewayId, resourceType } = await decryptResource(
+            resource,
+            account.projectId,
+            kmsService
+          );
+
+          if (!rotationAccountCredentials) return;
+
+          const accountCredentials = await decryptAccountCredentials({
+            encryptedCredentials: account.encryptedCredentials,
+            projectId: account.projectId,
+            kmsService
+          });
+
+          const factory = PAM_RESOURCE_FACTORY_MAP[resourceType as PamResource](
+            resourceType as PamResource,
+            connectionDetails,
+            gatewayId,
+            gatewayV2Service
+          );
+
+          const newCredentials = await factory.rotateAccountCredentials(rotationAccountCredentials, accountCredentials);
+
+          const encryptedCredentials = await encryptAccountCredentials({
+            credentials: newCredentials,
+            projectId: account.projectId,
+            kmsService
+          });
+
+          await pamAccountDAL.updateById(account.id, {
+            encryptedCredentials,
+            lastRotatedAt: new Date()
+          });
+
+          await auditLogService.createAuditLog({
+            projectId: account.projectId,
+            actor: {
+              type: ActorType.PLATFORM,
+              metadata: {}
+            },
+            event: {
+              type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION,
+              metadata: {
+                accountId: account.id,
+                accountName: account.name,
+                resourceId: resource.id,
+                resourceType: resource.resourceType
+              }
+            }
+          });
+        } catch (error) {
+          logger.error(error, `Failed to rotate credentials for account ${account.id}`);
+        }
+      });
+
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.all(rotationPromises);
+    }
+  };
+
   return {
     create,
     updateById,
     deleteById,
     list,
     access,
-    getSessionCredentials
+    getSessionCredentials,
+    rotateAllDueAccounts
   };
 };

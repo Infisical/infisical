@@ -39,5 +39,19 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     }));
   };
 
-  return { ...orm, findWithResourceDetails };
+  const findAccountsDueForRotation = async (tx?: Knex) => {
+    const dbClient = tx || db.replicaNode();
+
+    const accounts = await dbClient(TableName.PamAccount)
+      .innerJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
+      .whereNotNull(`${TableName.PamResource}.encryptedRotationAccountCredentials`)
+      .whereRaw(
+        `COALESCE("${TableName.PamAccount}"."lastRotatedAt", "${TableName.PamAccount}"."createdAt") + "${TableName.PamAccount}"."rotationIntervalSeconds" * interval '1 second' < NOW()`
+      )
+      .select(selectAllTableCols(TableName.PamAccount));
+
+    return accounts;
+  };
+
+  return { ...orm, findWithResourceDetails, findAccountsDueForRotation };
 };
