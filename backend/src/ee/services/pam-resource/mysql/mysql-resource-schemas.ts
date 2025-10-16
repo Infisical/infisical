@@ -41,7 +41,8 @@ export const UpdateMySQLResourceSchema = BaseUpdatePamResourceSchema.extend({
 });
 
 // Accounts
-export const MySQLAccountCredentialsSchema = BaseSqlAccountCredentialsSchema;
+// Notice: we extend with nothing to make linter stops complaining that the duplicate Union type issue
+export const MySQLAccountCredentialsSchema = BaseSqlAccountCredentialsSchema.extend({});
 
 export const MySQLAccountSchema = BasePamAccountSchema.extend({
   credentials: MySQLAccountCredentialsSchema
