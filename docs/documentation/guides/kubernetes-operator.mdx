@@ -1,7 +1,7 @@
 ---
 title: "Managing Secrets With Kubernetes Operator"
 sidebarTitle: "Kubernetes Operator"
-description: "How to Use the Infisical Kubernetes Operator to Sync Secrets."
+description: "How to use the Infisical Kubernetes Operator to Push Secrets, Pull Secrets, and Generate Dynamic Secrets within your clusters."
 ---
 
 Infisical's Kubernetes Operator provides a seamless, secure, and automated way to synchronize secrets between your Infisical instance and your Kubernetes clusters. The Operator's three Custom Resource Definitions (CRDs) make this possible. In this guide, we provide the necessary CRDs and configurations for your kubernetes cluster, but you can customize them to fit your use-case.
@@ -77,7 +77,7 @@ The operator uses a [Machine Identity](https://infisical.com/docs/documentation/
 Now we will be interacting with the local repository you cloned earlier. Make sure you are in the directory that contains the yaml configurations. Assuming you are in your root user directory: 
 
 ```console 
-cd infisical-guides-source-code
+cd infisical-guides-source-code/kubernetes-operator-demo
 ```
 
 1. Create the ```infisical-token-reviewer``` service account. This Manifest creates a **service account** that the Infisical Operator uses to authenticate with Kubernetes for token reviews. It allows Infisical to validate Kubernetes tokens securely during the Machine Identity authentication process. 
@@ -102,7 +102,7 @@ kubectl apply -f infisical-service-account-token.yaml
 ```
 6. Apply the patch to manually associate the token secret
 ```console 
-kubectl patch serviceaccount infisical-service-account -p '{"secrets": [{"name": "infisical-service-account-token"}]}' \ -n default
+kubectl patch serviceaccount infisical-service-account -p '{"secrets": [{"name": "infisical-service-account-token"}]}' -n default
 ```
 7. Create the **JWT Token** and **Certificate** and add it to the **Machine Identity** we created under **Kubernetes Auth**. For the generated CA, navigate to the **Advanced** tab to paste the certificate:
 - JWT Command
@@ -163,7 +163,7 @@ kubectl get secret managed-secret -n default
 kubectl get secret managed-secret -n default -o jsonpath='{.data}' | jq
 ```
   </Step>
-  <Step title="Deploy the Application">
+  <Step title="Deploy the Demo Application">
  
 1. Deploy the nginx demo deployment that will use the managed secret. 
 ```console
