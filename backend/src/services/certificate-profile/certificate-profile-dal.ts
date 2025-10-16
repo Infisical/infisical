@@ -68,7 +68,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           (tx || db).ref("name").withSchema(TableName.CertificateAuthority).as("caName"),
           (tx || db).ref("id").withSchema(TableName.CertificateTemplateV2).as("templateId"),
           (tx || db).ref("projectId").withSchema(TableName.CertificateTemplateV2).as("templateProjectId"),
-          (tx || db).ref("slug").withSchema(TableName.CertificateTemplateV2).as("templateName"),
+          (tx || db).ref("name").withSchema(TableName.CertificateTemplateV2).as("templateName"),
           (tx || db).ref("description").withSchema(TableName.CertificateTemplateV2).as("templateDescription"),
           (tx || db).ref("id").withSchema(TableName.PkiEstEnrollmentConfig).as("estConfigId"),
           (tx || db)

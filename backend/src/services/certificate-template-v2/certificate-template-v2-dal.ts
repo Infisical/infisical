@@ -23,19 +23,12 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
 
   const serializeJsonFields = (data: TCertificateTemplateV2Insert | TCertificateTemplateV2Update) => {
     const serialized = { ...data } as Record<string, unknown>;
-    const jsonFields = [
-      "attributes",
-      "keyUsages",
-      "extendedKeyUsages",
-      "subjectAlternativeNames",
-      "validity",
-      "signatureAlgorithm",
-      "keyAlgorithm"
-    ];
+
+    const jsonFields = ["subject", "sans", "keyUsages", "extendedKeyUsages", "algorithms", "validity"];
 
     jsonFields.forEach((field) => {
-      const value = (data as Record<string, unknown>)[field];
-      if (value !== undefined) {
+      const value = serialized[field];
+      if (value !== undefined && typeof value !== "string") {
         serialized[field] = JSON.stringify(value);
       }
     });
@@ -44,21 +37,15 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
   };
 
   const parseJsonFields = (raw: Record<string, unknown>): TCertificateTemplateV2 => {
-    const jsonFields = [
-      "attributes",
-      "keyUsages",
-      "extendedKeyUsages",
-      "subjectAlternativeNames",
-      "validity",
-      "signatureAlgorithm",
-      "keyAlgorithm"
-    ];
-    const parsed = { ...raw };
+    const jsonFields = ["subject", "sans", "keyUsages", "extendedKeyUsages", "algorithms", "validity"];
+    const parsed = { ...raw } as Record<string, unknown>;
 
     jsonFields.forEach((field) => {
       const value = raw[field];
-      if (value) {
+      if (value !== null && value !== undefined) {
         parsed[field] = typeof value === "string" ? JSON.parse(value) : value;
+      } else {
+        parsed[field] = undefined;
       }
     });
 
@@ -143,7 +130,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
 
       if (search) {
         query = query.where((builder) => {
-          void builder.whereILike("slug", `%${search}%`).orWhereILike("description", `%${search}%`);
+          void builder.whereILike("name", `%${search}%`).orWhereILike("description", `%${search}%`);
         });
       }
 
@@ -169,7 +156,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
 
       if (search) {
         query = query.where((builder) => {
-          void builder.whereILike("slug", `%${search}%`).orWhereILike("description", `%${search}%`);
+          void builder.whereILike("name", `%${search}%`).orWhereILike("description", `%${search}%`);
         });
       }
 
@@ -180,10 +167,10 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
     }
   };
 
-  const findBySlugAndProjectId = async (slug: string, projectId: string, tx?: Knex) => {
+  const findByNameAndProjectId = async (name: string, projectId: string, tx?: Knex) => {
     try {
       const certificateTemplateV2 = await (tx || db)(TableName.CertificateTemplateV2)
-        .where({ slug, projectId })
+        .where({ name, projectId })
         .first();
 
       if (!certificateTemplateV2) {
@@ -192,7 +179,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
 
       return parseJsonFields(certificateTemplateV2);
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find certificate template v2 by slug and project id" });
+      throw new DatabaseError({ error, name: "Find certificate template v2 by name and project id" });
     }
   };
 
@@ -238,7 +225,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
     findById,
     findByProjectId,
     countByProjectId,
-    findBySlugAndProjectId,
+    findByNameAndProjectId,
     isTemplateInUse,
     getProfilesUsingTemplate
   };

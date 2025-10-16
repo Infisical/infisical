@@ -32,6 +32,17 @@ export enum CertIncludeType {
   PROHIBIT = "prohibit"
 }
 
+export enum CertAttributeRule {
+  ALLOW = "allow",
+  DENY = "deny"
+}
+
+export enum CertSanEffect {
+  ALLOW = "allow",
+  DENY = "deny",
+  REQUIRE = "require"
+}
+
 export enum CertDurationUnit {
   DAYS = "days",
   MONTHS = "months",
@@ -39,7 +50,9 @@ export enum CertDurationUnit {
 }
 
 export enum CertSubjectAttributeType {
-  COMMON_NAME = "common_name"
+  COMMON_NAME = "common_name",
+  ORGANIZATION = "organization",
+  COUNTRY = "country"
 }
 
 export const mapSANTypeToLegacy = (type: CertSubjectAlternativeNameType): string => {
@@ -184,3 +197,5 @@ export const EXTENDED_KEY_USAGE_OPTIONS = Object.values(CertExtendedKeyUsageType
 export const INCLUDE_TYPE_OPTIONS = Object.values(CertIncludeType);
 export const DURATION_UNIT_OPTIONS = Object.values(CertDurationUnit);
 export const SUBJECT_ATTRIBUTE_TYPE_OPTIONS = Object.values(CertSubjectAttributeType);
+export const ATTRIBUTE_RULE_OPTIONS = Object.values(CertAttributeRule);
+export const SAN_EFFECT_OPTIONS = Object.values(CertSanEffect);

@@ -50,43 +50,27 @@ export const buildCertificateSubjectFromTemplate = (
   request: Record<string, unknown>,
   templateAttributes?: Array<{
     type: string;
-    include: "mandatory" | "optional" | "prohibit";
-    value?: string[];
+    allowed?: string[];
+    required?: string[];
+    denied?: string[];
   }>
 ): Record<string, string | undefined> => {
   const subject: Record<string, string> = {};
   const attributeMap: Record<string, string> = {
-    common_name: "commonName"
+    common_name: "commonName",
+    organization: "organization",
+    country: "country"
   };
 
   if (!templateAttributes || templateAttributes.length === 0) {
-    throw new Error(
-      "Template must define allowed certificate attributes. Cannot issue certificate without template attribute constraints."
-    );
+    return subject;
   }
 
-  const allowedAttributes = new Set(templateAttributes.map((attr) => attributeMap[attr.type]));
-
-  Object.keys(attributeMap).forEach((templateType) => {
-    const requestKey = attributeMap[templateType];
-    const value = request[requestKey];
-
-    if (value && !allowedAttributes.has(requestKey)) {
-      throw new Error(
-        `Certificate attribute '${requestKey}' is not allowed by the template. Template must define constraints for all requested attributes.`
-      );
-    }
-  });
-
   templateAttributes.forEach((attr) => {
-    if (attr.include === "prohibit") {
-      return;
-    }
-
     const requestKey = attributeMap[attr.type];
     const value = request[requestKey];
 
-    if (value && typeof value === "string") {
+    if (value && typeof value === "string" && (attr.allowed || attr.required)) {
       subject[attr.type] = value;
     }
   });
@@ -98,8 +82,9 @@ export const buildSubjectAlternativeNamesFromTemplate = (
   request: { subjectAlternativeNames?: Array<{ type: string; value: string }> },
   templateSans?: Array<{
     type: string;
-    include: "mandatory" | "optional" | "prohibit";
-    value?: string[];
+    allowed?: string[];
+    required?: string[];
+    denied?: string[];
   }>
 ): string => {
   if (!request.subjectAlternativeNames || request.subjectAlternativeNames.length === 0) {
@@ -107,33 +92,13 @@ export const buildSubjectAlternativeNamesFromTemplate = (
   }
 
   if (!templateSans || templateSans.length === 0) {
-    if (request.subjectAlternativeNames.length > 0) {
-      throw new Error(
-        "Template must define allowed subject alternative names. Cannot issue certificate with SANs when template has no SAN constraints."
-      );
-    }
-    return "";
+    return request.subjectAlternativeNames.map((san) => san.value).join(",");
   }
-
-  const templateSanTypes = new Set(templateSans.map((san) => san.type));
-  const prohibitedTypes = new Set(templateSans.filter((san) => san.include === "prohibit").map((san) => san.type));
-
-  request.subjectAlternativeNames.forEach((san) => {
-    const sanType = san.type === "dns_name" ? "dns_name" : san.type;
-    if (!templateSanTypes.has(sanType)) {
-      throw new Error(
-        `Subject Alternative Name type '${sanType}' is not allowed by the template. Template must define constraints for all requested SAN types.`
-      );
-    }
-  });
 
   const allowedSans: string[] = [];
 
   request.subjectAlternativeNames.forEach((san) => {
-    const sanType = san.type === "dns_name" ? "dns_name" : san.type;
-    if (!prohibitedTypes.has(sanType)) {
-      allowedSans.push(san.value);
-    }
+    allowedSans.push(san.value);
   });
 
   return allowedSans.join(",");

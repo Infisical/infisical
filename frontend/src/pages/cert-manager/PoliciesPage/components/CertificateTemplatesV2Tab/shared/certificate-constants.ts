@@ -26,10 +26,16 @@ export enum CertExtendedKeyUsageType {
   TIME_STAMPING = "time_stamping"
 }
 
-export enum CertIncludeType {
-  MANDATORY = "mandatory",
-  OPTIONAL = "optional",
-  PROHIBIT = "prohibit"
+export enum CertAttributeRule {
+  ALLOW = "allow",
+  DENY = "deny",
+  REQUIRE = "require"
+}
+
+export enum CertSanEffect {
+  ALLOW = "allow",
+  DENY = "deny",
+  REQUIRE = "require"
 }
 
 export enum CertDurationUnit {
@@ -39,7 +45,9 @@ export enum CertDurationUnit {
 }
 
 export enum CertSubjectAttributeType {
-  COMMON_NAME = "common_name"
+  COMMON_NAME = "common_name",
+  ORGANIZATION = "organization",
+  COUNTRY = "country"
 }
 
 export const formatSANType = (type: CertSubjectAlternativeNameType): string => {
@@ -104,61 +112,117 @@ export const formatExtendedKeyUsage = (usage: CertExtendedKeyUsageType): string 
 export const formatSubjectAttributeType = (type: CertSubjectAttributeType): string => {
   switch (type) {
     case CertSubjectAttributeType.COMMON_NAME:
-      return "Common Name";
+      return "Common Name (CN)";
+    case CertSubjectAttributeType.ORGANIZATION:
+      return "Organization";
+    case CertSubjectAttributeType.COUNTRY:
+      return "Country";
     default:
       return type;
   }
 };
 
-export const formatIncludeType = (include: CertIncludeType): string => {
-  switch (include) {
-    case CertIncludeType.MANDATORY:
-      return "Mandatory";
-    case CertIncludeType.OPTIONAL:
-      return "Optional";
-    case CertIncludeType.PROHIBIT:
-      return "Prohibit";
+export const formatAttributeRule = (rule: CertAttributeRule): string => {
+  switch (rule) {
+    case CertAttributeRule.ALLOW:
+      return "Allow";
+    case CertAttributeRule.DENY:
+      return "Deny";
+    case CertAttributeRule.REQUIRE:
+      return "Require";
     default:
-      return include;
+      return rule;
   }
 };
 
-export const mapLegacySANTypeToStandard = (type: string): CertSubjectAlternativeNameType => {
-  switch (type) {
-    case "dns":
-    case "dns_name":
-      return CertSubjectAlternativeNameType.DNS_NAME;
-    case "ip":
-    case "ip_address":
-      return CertSubjectAlternativeNameType.IP_ADDRESS;
-    case "email":
-      return CertSubjectAlternativeNameType.EMAIL;
-    case "uri":
-    case "url":
-      return CertSubjectAlternativeNameType.URI;
+export const formatSanEffect = (effect: CertSanEffect): string => {
+  switch (effect) {
+    case CertSanEffect.ALLOW:
+      return "Allow";
+    case CertSanEffect.DENY:
+      return "Deny";
+    case CertSanEffect.REQUIRE:
+      return "Require";
     default:
-      throw new Error(`Unknown SAN type: ${type}`);
+      return effect;
   }
 };
 
-export const mapSANTypeToLegacy = (type: CertSubjectAlternativeNameType): string => {
-  switch (type) {
-    case CertSubjectAlternativeNameType.DNS_NAME:
-      return "dns";
-    case CertSubjectAlternativeNameType.IP_ADDRESS:
-      return "ip";
-    case CertSubjectAlternativeNameType.EMAIL:
-      return "email";
-    case CertSubjectAlternativeNameType.URI:
-      return "uri";
-    default:
-      return type;
-  }
-};
 
 export const SAN_TYPE_OPTIONS = Object.values(CertSubjectAlternativeNameType);
 export const KEY_USAGE_OPTIONS = Object.values(CertKeyUsageType);
 export const EXTENDED_KEY_USAGE_OPTIONS = Object.values(CertExtendedKeyUsageType);
-export const INCLUDE_TYPE_OPTIONS = Object.values(CertIncludeType);
 export const DURATION_UNIT_OPTIONS = Object.values(CertDurationUnit);
 export const SUBJECT_ATTRIBUTE_TYPE_OPTIONS = Object.values(CertSubjectAttributeType);
+export const ATTRIBUTE_RULE_OPTIONS = Object.values(CertAttributeRule);
+export const SAN_EFFECT_OPTIONS = Object.values(CertSanEffect);
+
+export const SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS = ["optional", "prohibit"] as const;
+export const SAN_INCLUDE_OPTIONS = ["mandatory", "optional", "prohibit"] as const;
+
+export const USAGE_STATES = {
+  REQUIRED: "required",
+  OPTIONAL: "optional"
+} as const;
+
+export type UsageState = typeof USAGE_STATES[keyof typeof USAGE_STATES] | undefined;
+
+export const TEMPLATE_SIGNATURE_ALGORITHMS = [
+  "SHA256-RSA",
+  "SHA384-RSA",
+  "SHA512-RSA",
+  "SHA256-ECDSA",
+  "SHA384-ECDSA",
+  "SHA512-ECDSA"
+] as const;
+
+export const TEMPLATE_KEY_ALGORITHMS = [
+  "RSA-2048",
+  "RSA-3072",
+  "RSA-4096",
+  "ECDSA-P256",
+  "ECDSA-P384"
+] as const;
+
+// API format algorithm constants
+export const API_SIGNATURE_ALGORITHMS = [
+  "RSA-SHA256",
+  "RSA-SHA384",
+  "RSA-SHA512",
+  "ECDSA-SHA256",
+  "ECDSA-SHA384",
+  "ECDSA-SHA512"
+] as const;
+
+export const API_KEY_ALGORITHMS = [
+  "RSA_2048",
+  "RSA_3072",
+  "RSA_4096",
+  "EC_prime256v1",
+  "EC_secp384r1"
+] as const;
+
+// Mapping functions between template and API formats
+export const mapTemplateSignatureAlgorithmToApi = (templateFormat: string): string => {
+  const mapping: Record<string, string> = {
+    "SHA256-RSA": "RSA-SHA256",
+    "SHA384-RSA": "RSA-SHA384",
+    "SHA512-RSA": "RSA-SHA512",
+    "SHA256-ECDSA": "ECDSA-SHA256",
+    "SHA384-ECDSA": "ECDSA-SHA384",
+    "SHA512-ECDSA": "ECDSA-SHA512"
+  };
+  return mapping[templateFormat] || templateFormat;
+};
+
+export const mapTemplateKeyAlgorithmToApi = (templateFormat: string): string => {
+  const mapping: Record<string, string> = {
+    "RSA-2048": "RSA_2048",
+    "RSA-3072": "RSA_3072",
+    "RSA-4096": "RSA_4096",
+    "ECDSA-P256": "EC_prime256v1",
+    "ECDSA-P384": "EC_secp384r1"
+  };
+  return mapping[templateFormat] || templateFormat;
+};
+

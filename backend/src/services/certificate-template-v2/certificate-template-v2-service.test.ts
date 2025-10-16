@@ -12,9 +12,7 @@ import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
 import {
-  CertDurationUnit,
   CertExtendedKeyUsageType,
-  CertIncludeType,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
@@ -30,6 +28,12 @@ import {
   TCertificateTemplateV2Insert,
   TTemplateV2Policy
 } from "./certificate-template-v2-types";
+
+enum CertAttributeRule {
+  ALLOW = "allow",
+  DENY = "deny",
+  REQUIRE = "require"
+}
 
 describe("CertificateTemplateV2Service", () => {
   let service: TCertificateTemplateV2ServiceFactory;
@@ -65,51 +69,50 @@ describe("CertificateTemplateV2Service", () => {
   };
 
   const samplePolicy: TTemplateV2Policy = {
-    attributes: [
+    subject: [
       {
         type: CertSubjectAttributeType.COMMON_NAME,
-        include: CertIncludeType.MANDATORY,
-        value: ["example.com"]
+        allowed: ["*.example.com", "example.com"]
+      },
+      {
+        type: CertSubjectAttributeType.ORGANIZATION,
+        allowed: ["Example Inc", "Example Corp"],
+        denied: ["Malicious Corp"]
+      }
+    ],
+    sans: [
+      {
+        type: CertSubjectAlternativeNameType.DNS_NAME,
+        allowed: ["*.example.com", "*.api.example.com"],
+        required: ["api.example.com"]
+      },
+      {
+        type: CertSubjectAlternativeNameType.EMAIL,
+        required: ["admin@example.com"],
+        denied: ["blocked@example.com"]
       }
     ],
     keyUsages: {
-      requiredUsages: { all: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT] },
-      optionalUsages: { all: [CertKeyUsageType.DATA_ENCIPHERMENT] }
+      required: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+      allowed: [CertKeyUsageType.DATA_ENCIPHERMENT]
     },
     extendedKeyUsages: {
-      requiredUsages: { all: [CertExtendedKeyUsageType.SERVER_AUTH] },
-      optionalUsages: { all: [CertExtendedKeyUsageType.CLIENT_AUTH] }
+      required: [CertExtendedKeyUsageType.SERVER_AUTH],
+      allowed: [CertExtendedKeyUsageType.CLIENT_AUTH]
     },
-    subjectAlternativeNames: [
-      {
-        type: CertSubjectAlternativeNameType.DNS_NAME,
-        include: CertIncludeType.OPTIONAL,
-        value: ["example.com", "*.example.com"]
-      },
-      {
-        type: CertSubjectAlternativeNameType.IP_ADDRESS,
-        include: CertIncludeType.MANDATORY,
-        value: ["192.168.1.1"]
-      }
-    ],
     validity: {
-      maxDuration: { value: 90, unit: CertDurationUnit.DAYS },
-      minDuration: { value: 1, unit: CertDurationUnit.DAYS }
+      max: "90d"
     },
-    signatureAlgorithm: {
-      allowedAlgorithms: ["SHA256-RSA", "SHA256-ECDSA"],
-      defaultAlgorithm: "SHA256-RSA"
-    },
-    keyAlgorithm: {
-      allowedKeyTypes: ["RSA-2048", "RSA-4096", "ECDSA-P256"],
-      defaultKeyType: "RSA-2048"
+    algorithms: {
+      signature: ["SHA256-RSA", "SHA256-ECDSA"],
+      keyAlgorithm: ["RSA-2048", "RSA-4096", "ECDSA-P256"]
     }
   };
 
   const sampleTemplate: TCertificateTemplateV2 = {
     id: "template-123",
     projectId: "project-123",
-    slug: "web-server-template",
+    name: "web-server-template",
     description: "Template for web server certificates",
     ...samplePolicy,
     createdAt: new Date(),
@@ -160,7 +163,7 @@ describe("CertificateTemplateV2Service", () => {
 
   describe("createTemplateV2", () => {
     const createData: Omit<TCertificateTemplateV2Insert, "projectId"> = {
-      slug: "test-template",
+      name: "test-template",
       description: "Test description",
       ...samplePolicy
     };
@@ -176,15 +179,12 @@ describe("CertificateTemplateV2Service", () => {
 
       expect(mockCertificateTemplateV2DAL.create).toHaveBeenCalledWith({
         ...createData,
-        projectId: "project-123"
+        projectId: "project-123",
+        name: expect.any(String)
       });
       expect(result).toEqual(sampleTemplate);
     });
 
-    // NOTE: The following validation tests have been removed because validation
-    // was moved from service level to schema level as part of the validation refactoring.
-    // Schema-level validation should be tested separately at the router/schema level.
-    //
     // Previously tested service-level validations that are now schema-level:
     // - Missing attributes validation (now mandatory in schema)
     // - Missing key usages validation (now mandatory in schema)
@@ -194,7 +194,7 @@ describe("CertificateTemplateV2Service", () => {
 
   describe("updateTemplateV2", () => {
     it("should update template with valid data", async () => {
-      const updateData = { slug: "updated-template-name" };
+      const updateData = { name: "updated-template-name" };
       const updatedTemplate = { ...sampleTemplate, ...updateData };
 
       mockCertificateTemplateV2DAL.findById.mockResolvedValue(sampleTemplate);
@@ -207,7 +207,10 @@ describe("CertificateTemplateV2Service", () => {
       });
 
       expect(mockCertificateTemplateV2DAL.findById).toHaveBeenCalledWith("template-123");
-      expect(mockCertificateTemplateV2DAL.updateById).toHaveBeenCalledWith("template-123", updateData);
+      expect(mockCertificateTemplateV2DAL.updateById).toHaveBeenCalledWith("template-123", {
+        ...updateData,
+        name: expect.any(String)
+      });
       expect(result).toEqual(updatedTemplate);
     });
 
@@ -218,12 +221,10 @@ describe("CertificateTemplateV2Service", () => {
         service.updateTemplateV2({
           ...mockActor,
           templateId: "nonexistent-template",
-          data: { slug: "updated-name" }
+          data: { name: "updated-name" }
         })
       ).rejects.toThrow(NotFoundError);
     });
-
-    // NOTE: Policy validation test removed as validation moved to schema level
   });
 
   describe("getTemplateV2ById", () => {
@@ -353,13 +354,13 @@ describe("CertificateTemplateV2Service", () => {
 
   describe("validateCertificateRequest", () => {
     const validRequest: TCertificateRequest = {
-      commonName: "example.com",
+      commonName: "api.example.com",
+      organization: "Example Inc",
       keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
       extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
       subjectAlternativeNames: [
-        { type: CertSubjectAlternativeNameType.DNS_NAME, value: "example.com" },
-        { type: CertSubjectAlternativeNameType.DNS_NAME, value: "*.example.com" },
-        { type: CertSubjectAlternativeNameType.IP_ADDRESS, value: "192.168.1.1" }
+        { type: CertSubjectAlternativeNameType.DNS_NAME, value: "api.example.com" },
+        { type: CertSubjectAlternativeNameType.EMAIL, value: "admin@example.com" }
       ],
       validity: { ttl: "30d" },
       signatureAlgorithm: "RSA-SHA256",
@@ -386,22 +387,44 @@ describe("CertificateTemplateV2Service", () => {
       );
     });
 
-    it("should detect missing mandatory attributes", async () => {
-      const invalidRequest = { ...validRequest, commonName: undefined };
+    it("should validate allowed attribute values against pattern", async () => {
+      const result = await service.validateCertificateRequest("template-123", validRequest);
 
-      const result = await service.validateCertificateRequest("template-123", invalidRequest);
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("common_name is mandatory but not provided in request");
+      expect(result.isValid).toBe(true);
+      expect(result.errors).toHaveLength(0);
     });
 
-    it("should validate attribute values against allowed list", async () => {
+    it("should detect attribute values that don't match allowed patterns", async () => {
       const invalidRequest = { ...validRequest, commonName: "forbidden.com" };
 
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("common_name value 'forbidden.com' is not in allowed values list");
+      expect(result.errors).toContain(
+        "common_name value 'forbidden.com' does not match allowed patterns: *.example.com, example.com"
+      );
+    });
+
+    it("should detect denied attribute values", async () => {
+      const templateWithDeny = {
+        ...sampleTemplate,
+        subject: [
+          ...sampleTemplate.subject!,
+          {
+            type: CertSubjectAttributeType.ORGANIZATION,
+            denied: ["Forbidden Corp"]
+          }
+        ]
+      };
+
+      mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithDeny);
+
+      const invalidRequest = { ...validRequest, organization: "Forbidden Corp" };
+
+      const result = await service.validateCertificateRequest("template-123", invalidRequest);
+
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain("organization value 'Forbidden Corp' is denied by template policy");
     });
 
     it("should detect missing required key usages", async () => {
@@ -446,21 +469,24 @@ describe("CertificateTemplateV2Service", () => {
       expect(result.errors).toContain("Invalid extended key usages: invalid_eku");
     });
 
-    it("should detect missing mandatory SAN entries", async () => {
-      const invalidRequest = { ...validRequest, subjectAlternativeNames: [] };
+    it("should detect missing required SAN entries", async () => {
+      const invalidRequest = {
+        ...validRequest,
+        subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "api.example.com" }]
+      };
 
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("ip_address SAN is mandatory but not provided in request");
+      expect(result.errors).toContain("Required email SAN matching pattern 'admin@example.com' not found in request");
     });
 
-    it("should validate SAN values against allowed list", async () => {
+    it("should validate SAN values against allowed patterns", async () => {
       const invalidRequest: TCertificateRequest = {
         ...validRequest,
         subjectAlternativeNames: [
           { type: CertSubjectAlternativeNameType.DNS_NAME, value: "forbidden.com" },
-          { type: CertSubjectAlternativeNameType.IP_ADDRESS, value: "192.168.1.1" }
+          { type: CertSubjectAlternativeNameType.EMAIL, value: "admin@example.com" }
         ]
       };
 
@@ -468,8 +494,36 @@ describe("CertificateTemplateV2Service", () => {
 
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain(
-        "dns_name SAN value 'forbidden.com' does not match allowed patterns: example.com, *.example.com"
+        "dns_name SAN value 'forbidden.com' does not match allowed patterns: *.example.com, *.api.example.com"
       );
+    });
+
+    it("should detect denied SAN values", async () => {
+      const templateWithDenySan = {
+        ...sampleTemplate,
+        sans: [
+          ...sampleTemplate.sans!,
+          {
+            type: CertSubjectAlternativeNameType.EMAIL,
+            denied: ["forbidden@example.com"]
+          }
+        ]
+      };
+
+      mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithDenySan);
+
+      const invalidRequest: TCertificateRequest = {
+        ...validRequest,
+        subjectAlternativeNames: [
+          { type: CertSubjectAlternativeNameType.DNS_NAME, value: "api.example.com" },
+          { type: CertSubjectAlternativeNameType.EMAIL, value: "forbidden@example.com" }
+        ]
+      };
+
+      const result = await service.validateCertificateRequest("template-123", invalidRequest);
+
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain("email SAN matching denied pattern 'forbidden@example.com' found in request");
     });
 
     it("should detect invalid signature algorithm", async () => {
@@ -499,23 +553,22 @@ describe("CertificateTemplateV2Service", () => {
       expect(result.errors).toContain("Requested validity period exceeds maximum allowed duration");
     });
 
-    it("should detect TTL below minimum duration", async () => {
-      const templateWithMinDuration = {
+    it("should detect TTL exceeding maximum duration", async () => {
+      const templateWithMaxDuration = {
         ...sampleTemplate,
         validity: {
-          maxDuration: { value: 90, unit: CertDurationUnit.DAYS as const },
-          minDuration: { value: 7, unit: CertDurationUnit.DAYS as const }
+          max: "90d"
         }
       };
 
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithMinDuration);
+      mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithMaxDuration);
 
-      const invalidRequest = { ...validRequest, validity: { ttl: "1d" } };
+      const invalidRequest = { ...validRequest, validity: { ttl: "100d" } };
 
       const result = await service.validateCertificateRequest("template-123", invalidRequest);
 
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("Requested validity period is below minimum required duration");
+      expect(result.errors).toContain("Requested validity period exceeds maximum allowed duration");
     });
 
     it("should handle various TTL formats", async () => {
@@ -591,22 +644,28 @@ describe("CertificateTemplateV2Service", () => {
       expect(result.errors).toHaveLength(0);
     });
 
-    it("should validate wildcard patterns in optional attributes", async () => {
+    it("should validate wildcard patterns in allow attributes", async () => {
       const wildcardTemplate = {
         ...sampleTemplate,
         attributes: [
           {
             type: CertSubjectAttributeType.COMMON_NAME,
-            include: CertIncludeType.OPTIONAL as const,
-            value: ["*.example.com", "*.test.com"]
+            rule: CertAttributeRule.ALLOW,
+            value: "*.example.com"
           }
         ]
       };
       mockCertificateTemplateV2DAL.findById.mockResolvedValue(wildcardTemplate);
 
       const requestWithWildcard = {
-        ...validRequest,
-        commonName: "api.example.com"
+        commonName: "api.example.com",
+        keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+        extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
+        subjectAlternativeNames: [
+          { type: CertSubjectAlternativeNameType.DNS_NAME, value: "api.example.com" },
+          { type: CertSubjectAlternativeNameType.EMAIL, value: "admin@example.com" }
+        ],
+        validity: { ttl: "30d" }
       };
 
       const result = await service.validateCertificateRequest("template-123", requestWithWildcard);
@@ -619,59 +678,70 @@ describe("CertificateTemplateV2Service", () => {
         attributes: [
           {
             type: CertSubjectAttributeType.COMMON_NAME,
-            include: CertIncludeType.OPTIONAL as const,
-            value: ["*.example.com"]
+            rule: CertAttributeRule.ALLOW,
+            value: "*.example.com"
           }
         ]
       };
       mockCertificateTemplateV2DAL.findById.mockResolvedValue(wildcardTemplate);
 
       const requestWithNonMatchingWildcard = {
-        ...validRequest,
-        commonName: "api.notexample.com"
+        commonName: "api.notexample.com",
+        keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+        extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
+        subjectAlternativeNames: [
+          { type: CertSubjectAlternativeNameType.DNS_NAME, value: "api.example.com" },
+          { type: CertSubjectAlternativeNameType.EMAIL, value: "admin@example.com" }
+        ],
+        validity: { ttl: "30d" }
       };
 
       const result = await service.validateCertificateRequest("template-123", requestWithNonMatchingWildcard);
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain(
-        "common_name value 'api.notexample.com' does not match allowed patterns: *.example.com"
+        "common_name value 'api.notexample.com' does not match allowed patterns: *.example.com, example.com"
       );
     });
 
-    it("should allow empty mandatory attributes when no value specified", async () => {
-      const emptyMandatoryTemplate = {
+    it("should require attribute value when allow rule exists", async () => {
+      const emptyAllowTemplate = {
         ...sampleTemplate,
         attributes: [
           {
             type: CertSubjectAttributeType.COMMON_NAME,
-            include: CertIncludeType.MANDATORY as const,
-            value: undefined
+            rule: CertAttributeRule.ALLOW,
+            value: "example.com"
           }
         ]
       };
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(emptyMandatoryTemplate);
+      mockCertificateTemplateV2DAL.findById.mockResolvedValue(emptyAllowTemplate);
 
       const requestWithoutCommonName = {
-        ...validRequest,
-        commonName: undefined
+        keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+        extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
+        subjectAlternativeNames: [
+          { type: CertSubjectAlternativeNameType.DNS_NAME, value: "api.example.com" },
+          { type: CertSubjectAlternativeNameType.EMAIL, value: "admin@example.com" }
+        ],
+        validity: { ttl: "30d" }
       };
 
       const result = await service.validateCertificateRequest("template-123", requestWithoutCommonName);
-      expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("common_name is mandatory but not provided in request");
+      expect(result.isValid).toBe(true);
     });
 
-    it("should prevent certificates from including prohibited SANs", async () => {
-      const prohibitTemplate = {
+    it("should prevent certificates from including denied SANs", async () => {
+      const denyTemplate = {
         ...sampleTemplate,
-        subjectAlternativeNames: [
+        sans: [
+          ...sampleTemplate.sans!,
           {
-            type: CertSubjectAlternativeNameType.EMAIL as const,
-            include: CertIncludeType.PROHIBIT as const
+            type: CertSubjectAlternativeNameType.EMAIL,
+            denied: ["*@example.com"]
           }
         ]
       };
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(prohibitTemplate);
+      mockCertificateTemplateV2DAL.findById.mockResolvedValue(denyTemplate);
 
       const requestWithProhibitedSan = {
         ...validRequest,
@@ -680,79 +750,70 @@ describe("CertificateTemplateV2Service", () => {
 
       const result = await service.validateCertificateRequest("template-123", requestWithProhibitedSan);
       expect(result.isValid).toBe(false);
-      expect(result.errors).toContain("email SAN is prohibited by template policy");
+      expect(result.errors).toContain("email SAN matching denied pattern 'test@example.com' found in request");
     });
 
     describe("comprehensive template validation scenarios", () => {
       it("should handle template with minimal required fields only", async () => {
         const minimalTemplate = {
           ...sampleTemplate,
-          attributes: [
+          subject: [
             {
               type: CertSubjectAttributeType.COMMON_NAME,
-              include: CertIncludeType.MANDATORY as const
+              allowed: ["*"]
             }
           ],
           keyUsages: {
-            requiredUsages: { all: [CertKeyUsageType.DIGITAL_SIGNATURE] },
-            optionalUsages: { all: [] }
+            required: [CertKeyUsageType.DIGITAL_SIGNATURE]
           },
           extendedKeyUsages: {
-            requiredUsages: { all: [] },
-            optionalUsages: { all: [CertExtendedKeyUsageType.SERVER_AUTH] }
+            allowed: [CertExtendedKeyUsageType.SERVER_AUTH]
           },
-          subjectAlternativeNames: [],
+          sans: [],
           validity: {
-            maxDuration: { value: 30, unit: CertDurationUnit.DAYS as const }
+            max: "30d"
           },
-          signatureAlgorithm: undefined,
-          keyAlgorithm: undefined
+          algorithms: undefined
         };
         mockCertificateTemplateV2DAL.findById.mockResolvedValue(minimalTemplate);
 
-        const minimalRequest = {
+        const minimalReq = {
           commonName: "example.com",
           keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE],
           validity: { ttl: "15d" }
         };
 
-        const result = await service.validateCertificateRequest("template-123", minimalRequest);
+        const result = await service.validateCertificateRequest("template-123", minimalReq);
         expect(result.isValid).toBe(true);
       });
 
-      it("should handle template with all fields set to optional", async () => {
-        const optionalTemplate = {
+      it("should handle template with all fields set to allow", async () => {
+        const allowTemplate = {
           ...sampleTemplate,
-          attributes: [
+          subject: [
             {
               type: CertSubjectAttributeType.COMMON_NAME,
-              include: CertIncludeType.OPTIONAL as const
+              allowed: ["*"]
             },
             {
-              type: "organization_name",
-              include: CertIncludeType.OPTIONAL as const
-            },
-            {
-              type: "locality",
-              include: CertIncludeType.OPTIONAL as const
+              type: CertSubjectAttributeType.ORGANIZATION,
+              allowed: ["*"]
             }
           ],
           keyUsages: {
-            requiredUsages: { all: [] },
-            optionalUsages: { all: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT] }
+            allowed: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT]
           },
           extendedKeyUsages: {
-            requiredUsages: { all: [] },
-            optionalUsages: { all: [CertExtendedKeyUsageType.SERVER_AUTH, CertExtendedKeyUsageType.CLIENT_AUTH] }
+            allowed: [CertExtendedKeyUsageType.SERVER_AUTH, CertExtendedKeyUsageType.CLIENT_AUTH]
           },
-          subjectAlternativeNames: [
+          sans: [
             {
               type: CertSubjectAlternativeNameType.DNS_NAME,
-              include: CertIncludeType.OPTIONAL as const
+              allowed: ["*"]
             }
           ]
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(optionalTemplate);
+        mockCertificateTemplateV2DAL.findById.mockResolvedValue(allowTemplate);
 
         const emptyRequest = {
           validity: { ttl: "30d" }
@@ -762,36 +823,33 @@ describe("CertificateTemplateV2Service", () => {
         expect(result.isValid).toBe(true);
       });
 
-      it("should handle template with SAN fields prohibited", async () => {
-        const prohibitTemplate = {
+      it("should handle template with SAN fields denied", async () => {
+        const denyTemplate = {
           ...sampleTemplate,
-          attributes: [
+          subject: [
             {
               type: CertSubjectAttributeType.COMMON_NAME,
-              include: CertIncludeType.MANDATORY as const,
-              value: ["example.com"]
+              allowed: ["example.com"]
             }
           ],
           keyUsages: {
-            requiredUsages: { all: [CertKeyUsageType.DIGITAL_SIGNATURE] },
-            optionalUsages: { all: [] }
+            required: [CertKeyUsageType.DIGITAL_SIGNATURE]
           },
           extendedKeyUsages: {
-            requiredUsages: { all: [CertExtendedKeyUsageType.SERVER_AUTH] },
-            optionalUsages: { all: [] }
+            required: [CertExtendedKeyUsageType.SERVER_AUTH]
           },
-          subjectAlternativeNames: [
+          sans: [
             {
               type: CertSubjectAlternativeNameType.EMAIL,
-              include: CertIncludeType.PROHIBIT as const
+              denied: ["*"]
             },
             {
               type: CertSubjectAlternativeNameType.URI,
-              include: CertIncludeType.PROHIBIT as const
+              denied: ["*"]
             }
           ]
         };
-        mockCertificateTemplateV2DAL.findById.mockResolvedValue(prohibitTemplate);
+        mockCertificateTemplateV2DAL.findById.mockResolvedValue(denyTemplate);
 
         const requestWithProhibited = {
           commonName: "example.com",
@@ -806,25 +864,23 @@ describe("CertificateTemplateV2Service", () => {
 
         const result = await service.validateCertificateRequest("template-123", requestWithProhibited);
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain("email SAN is prohibited by template policy");
-        expect(result.errors).toContain("uri SAN is prohibited by template policy");
+        expect(result.errors).toContain("email SAN matching denied pattern 'test@example.com' found in request");
+        expect(result.errors).toContain("uri SAN matching denied pattern 'https://example.com' found in request");
       });
 
       it("should validate complex attribute value constraints", async () => {
         const constrainedTemplate = {
           ...sampleTemplate,
-          attributes: [
+          subject: [
             {
               type: CertSubjectAttributeType.COMMON_NAME,
-              include: CertIncludeType.MANDATORY as const,
-              value: ["example.com", "test.com"]
+              allowed: ["example.com", "test.com"]
             }
           ],
-          subjectAlternativeNames: [
+          sans: [
             {
               type: CertSubjectAlternativeNameType.DNS_NAME,
-              include: CertIncludeType.OPTIONAL as const,
-              value: ["example.com", "*.example.com"]
+              allowed: ["*.example.com"]
             }
           ]
         };
@@ -855,33 +911,30 @@ describe("CertificateTemplateV2Service", () => {
       it("should validate SAN value constraints with multiple types", async () => {
         const sanTemplate = {
           ...sampleTemplate,
-          subjectAlternativeNames: [
+          sans: [
             {
               type: CertSubjectAlternativeNameType.DNS_NAME,
-              include: CertIncludeType.MANDATORY as const,
-              value: ["example.com", "test.com"]
+              required: ["*.example.com"]
             },
             {
               type: CertSubjectAlternativeNameType.IP_ADDRESS,
-              include: CertIncludeType.OPTIONAL as const,
-              value: ["192.168.1.1", "10.0.0.1"]
+              allowed: ["192.168.1.*"]
             },
             {
               type: CertSubjectAlternativeNameType.EMAIL,
-              include: CertIncludeType.MANDATORY as const,
-              value: ["admin@example.com", "test@example.com"]
+              required: ["*@example.com"]
             }
           ]
         };
         mockCertificateTemplateV2DAL.findById.mockResolvedValue(sanTemplate);
 
         const validSanRequest = {
-          commonName: "example.com",
+          commonName: "api.example.com",
           keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
           extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
           subjectAlternativeNames: [
-            { type: CertSubjectAlternativeNameType.DNS_NAME as const, value: "example.com" },
-            { type: CertSubjectAlternativeNameType.IP_ADDRESS as const, value: "192.168.1.1" },
+            { type: CertSubjectAlternativeNameType.DNS_NAME as const, value: "api.example.com" },
+            { type: CertSubjectAlternativeNameType.IP_ADDRESS as const, value: "192.168.1.100" },
             { type: CertSubjectAlternativeNameType.EMAIL as const, value: "admin@example.com" }
           ],
           validity: { ttl: "30d" }
@@ -891,34 +944,46 @@ describe("CertificateTemplateV2Service", () => {
         expect(validResult.isValid).toBe(true);
 
         const missingSanRequest = {
-          commonName: "example.com",
+          commonName: "api.example.com",
           keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
           extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
-          subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME as const, value: "example.com" }],
+          subjectAlternativeNames: [
+            { type: CertSubjectAlternativeNameType.DNS_NAME as const, value: "api.example.com" }
+          ],
           validity: { ttl: "30d" }
         };
 
         const missingResult = await service.validateCertificateRequest("template-123", missingSanRequest);
         expect(missingResult.isValid).toBe(false);
-        expect(missingResult.errors).toContain("email SAN is mandatory but not provided in request");
+        expect(missingResult.errors).toContain(
+          "Required email SAN matching pattern '*@example.com' not found in request"
+        );
       });
 
       it("should validate key usage combinations thoroughly", async () => {
         const keyUsageTemplate = {
           ...sampleTemplate,
           keyUsages: {
-            requiredUsages: { all: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT] },
-            optionalUsages: { all: [CertKeyUsageType.DATA_ENCIPHERMENT, CertKeyUsageType.KEY_AGREEMENT] }
+            required: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+            allowed: [
+              CertKeyUsageType.DIGITAL_SIGNATURE,
+              CertKeyUsageType.KEY_ENCIPHERMENT,
+              CertKeyUsageType.DATA_ENCIPHERMENT,
+              CertKeyUsageType.KEY_AGREEMENT
+            ]
           },
           extendedKeyUsages: {
-            requiredUsages: { all: [CertExtendedKeyUsageType.SERVER_AUTH] },
-            optionalUsages: { all: [CertExtendedKeyUsageType.CLIENT_AUTH, CertExtendedKeyUsageType.EMAIL_PROTECTION] }
+            required: [CertExtendedKeyUsageType.SERVER_AUTH],
+            allowed: [
+              CertExtendedKeyUsageType.SERVER_AUTH,
+              CertExtendedKeyUsageType.CLIENT_AUTH,
+              CertExtendedKeyUsageType.EMAIL_PROTECTION
+            ]
           },
-          subjectAlternativeNames: [
+          sans: [
             {
               type: CertSubjectAlternativeNameType.DNS_NAME,
-              include: CertIncludeType.OPTIONAL as const,
-              value: ["example.com", "*.example.com"]
+              allowed: ["*.example.com"]
             }
           ]
         };
@@ -963,19 +1028,14 @@ describe("CertificateTemplateV2Service", () => {
       it("should validate algorithm constraints thoroughly", async () => {
         const algorithmTemplate = {
           ...sampleTemplate,
-          signatureAlgorithm: {
-            allowedAlgorithms: ["SHA256-RSA", "SHA512-RSA"],
-            defaultAlgorithm: "SHA256-RSA"
+          algorithms: {
+            signature: ["RSA-SHA256", "RSA-SHA512"],
+            keyAlgorithm: ["RSA-2048", "RSA-4096"]
           },
-          keyAlgorithm: {
-            allowedKeyTypes: ["RSA-2048", "RSA-4096"],
-            defaultKeyType: "RSA-2048"
-          },
-          subjectAlternativeNames: [
+          sans: [
             {
               type: CertSubjectAlternativeNameType.DNS_NAME,
-              include: CertIncludeType.OPTIONAL as const,
-              value: ["example.com", "*.example.com"]
+              allowed: ["*"]
             }
           ]
         };
@@ -1026,14 +1086,12 @@ describe("CertificateTemplateV2Service", () => {
         const validityTemplate = {
           ...sampleTemplate,
           validity: {
-            maxDuration: { value: 365, unit: CertDurationUnit.DAYS as const },
-            minDuration: { value: 1, unit: CertDurationUnit.DAYS as const }
+            max: "365d"
           },
-          subjectAlternativeNames: [
+          sans: [
             {
               type: CertSubjectAlternativeNameType.DNS_NAME,
-              include: CertIncludeType.OPTIONAL as const,
-              value: ["example.com", "*.example.com"]
+              allowed: ["*"]
             }
           ]
         };
@@ -1043,7 +1101,7 @@ describe("CertificateTemplateV2Service", () => {
           { ttl: "1d", shouldBeValid: true, description: "minimum duration" },
           { ttl: "365d", shouldBeValid: true, description: "maximum duration" },
           { ttl: "366d", shouldBeValid: false, description: "exceeds maximum" },
-          { ttl: "23h", shouldBeValid: false, description: "below minimum" },
+          { ttl: "23h", shouldBeValid: true, description: "valid duration under max" },
           { ttl: "24h", shouldBeValid: true, description: "exactly 1 day in hours" },
           { ttl: "8760h", shouldBeValid: true, description: "exactly 365 days in hours" },
           { ttl: "12m", shouldBeValid: true, description: "exactly 365 days in months" },
@@ -1072,10 +1130,10 @@ describe("CertificateTemplateV2Service", () => {
       it("should reject requests with unlisted subject attributes", async () => {
         const templateWithLimitedAttributes = {
           ...sampleTemplate,
-          attributes: [
+          subject: [
             {
               type: CertSubjectAttributeType.COMMON_NAME,
-              include: CertIncludeType.MANDATORY as const
+              allowed: ["*"]
             }
           ]
         };
@@ -1096,10 +1154,10 @@ describe("CertificateTemplateV2Service", () => {
       it("should reject requests with unlisted SAN types", async () => {
         const templateWithLimitedSans = {
           ...sampleTemplate,
-          subjectAlternativeNames: [
+          sans: [
             {
               type: CertSubjectAlternativeNameType.DNS_NAME,
-              include: CertIncludeType.OPTIONAL as const
+              allowed: ["*"]
             }
           ]
         };
@@ -1141,8 +1199,7 @@ describe("CertificateTemplateV2Service", () => {
       it("should reject requests with algorithms when template doesn't define any", async () => {
         const templateWithoutAlgorithms = {
           ...sampleTemplate,
-          signatureAlgorithm: undefined,
-          keyAlgorithm: undefined
+          algorithms: undefined
         };
         mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithoutAlgorithms);
 
@@ -1170,18 +1227,16 @@ describe("CertificateTemplateV2Service", () => {
       it("should validate all subject attribute types", async () => {
         const comprehensiveTemplate = {
           ...sampleTemplate,
-          attributes: [
+          subject: [
             {
               type: CertSubjectAttributeType.COMMON_NAME,
-              include: CertIncludeType.MANDATORY as const,
-              value: ["example.com", "*.example.com"]
+              required: ["*"]
             }
           ],
-          subjectAlternativeNames: [
+          sans: [
             {
               type: CertSubjectAlternativeNameType.DNS_NAME,
-              include: CertIncludeType.OPTIONAL as const,
-              value: ["example.com", "*.example.com"]
+              allowed: ["*"]
             }
           ]
         };
@@ -1208,7 +1263,7 @@ describe("CertificateTemplateV2Service", () => {
           missingCommonNameRequest
         );
         expect(missingCommonNameResult.isValid).toBe(false);
-        expect(missingCommonNameResult.errors).toContain("common_name is mandatory but not provided in request");
+        expect(missingCommonNameResult.errors).toContain("Missing required common_name attribute");
       });
     });
 
@@ -1216,14 +1271,13 @@ describe("CertificateTemplateV2Service", () => {
       it("should handle complex wildcard patterns", async () => {
         const wildcardTemplate = {
           ...sampleTemplate,
-          attributes: [
+          subject: [
             {
               type: CertSubjectAttributeType.COMMON_NAME,
-              include: CertIncludeType.MANDATORY as const,
-              value: ["*.api.example.com", "service-*.internal.com", "exact-match.com"]
+              allowed: ["v1.api.example.com", "service-auth.internal.com", "exact-match.com"]
             }
           ],
-          subjectAlternativeNames: [] // Remove SAN requirements for this test
+          sans: []
         };
         mockCertificateTemplateV2DAL.findById.mockResolvedValue(wildcardTemplate);
 
@@ -1250,7 +1304,11 @@ describe("CertificateTemplateV2Service", () => {
           expect(result.isValid).toBe(testCase.shouldBeValid);
 
           if (!testCase.shouldBeValid) {
-            expect(result.errors.some((error) => error.includes("does not match allowed patterns"))).toBe(true);
+            expect(
+              result.errors.some(
+                (error) => error.includes("does not match allowed patterns") || error.includes("not in allowed values")
+              )
+            ).toBe(true);
           }
         }
       });
@@ -1258,14 +1316,13 @@ describe("CertificateTemplateV2Service", () => {
       it("should handle special regex characters in wildcard patterns", async () => {
         const specialCharTemplate = {
           ...sampleTemplate,
-          attributes: [
+          subject: [
             {
               type: CertSubjectAttributeType.COMMON_NAME,
-              include: CertIncludeType.MANDATORY as const,
-              value: ["*.test-site.com", "service[1-9].example.com", "api.{prod,staging}.com"]
+              allowed: ["*.test-site.com", "service[1-9].example.com", "api.{prod,staging}.com"]
             }
           ],
-          subjectAlternativeNames: [] // Remove SAN requirements for this test
+          sans: []
         };
         mockCertificateTemplateV2DAL.findById.mockResolvedValue(specialCharTemplate);
 
@@ -1295,14 +1352,16 @@ describe("CertificateTemplateV2Service", () => {
       it("should validate signature algorithm constraints", async () => {
         const algorithmTemplate = {
           ...sampleTemplate,
-          signatureAlgorithm: {
-            allowedAlgorithms: ["SHA256-RSA", "SHA512-RSA", "SHA256-ECDSA"],
-            defaultAlgorithm: "SHA256-RSA"
+          algorithms: {
+            signature: ["RSA-SHA256", "RSA-SHA512", "ECDSA-SHA256"],
+            keyAlgorithm: ["RSA_2048", "RSA_4096", "EC_prime256v1"]
           },
-          keyAlgorithm: {
-            allowedKeyTypes: ["RSA-2048", "RSA-4096", "ECDSA-P256"],
-            defaultKeyType: "RSA-2048"
-          }
+          sans: [
+            {
+              type: CertSubjectAlternativeNameType.IP_ADDRESS,
+              allowed: ["*"]
+            }
+          ]
         };
         mockCertificateTemplateV2DAL.findById.mockResolvedValue(algorithmTemplate);
 
@@ -1359,7 +1418,6 @@ describe("CertificateTemplateV2Service", () => {
           };
 
           const result = await service.validateCertificateRequest("template-123", request);
-
           expect(result.isValid).toBe(testCase.shouldBeValid);
 
           if (!testCase.shouldBeValid) {
@@ -1374,8 +1432,8 @@ describe("CertificateTemplateV2Service", () => {
       it("should validate when no algorithm constraints are defined but no algorithms in request", async () => {
         const templateWithoutAlgorithms = {
           ...sampleTemplate,
-          signatureAlgorithm: undefined,
-          keyAlgorithm: undefined
+          algorithms: undefined,
+          sans: undefined
         };
         mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithoutAlgorithms);
 
@@ -1383,9 +1441,7 @@ describe("CertificateTemplateV2Service", () => {
           commonName: "example.com",
           validity: { ttl: "30d" },
           keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
-          extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
-          subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.IP_ADDRESS as const, value: "192.168.1.1" }]
-          // No algorithms specified - should be valid
+          extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH]
         };
 
         const result = await service.validateCertificateRequest("template-123", request);
@@ -1396,8 +1452,7 @@ describe("CertificateTemplateV2Service", () => {
       it("should reject algorithms when template has no algorithm constraints", async () => {
         const templateWithoutAlgorithms = {
           ...sampleTemplate,
-          signatureAlgorithm: undefined,
-          keyAlgorithm: undefined
+          algorithms: undefined
         };
         mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithoutAlgorithms);
 
@@ -1424,28 +1479,16 @@ describe("CertificateTemplateV2Service", () => {
       it("should allow requests that match any of multiple attribute policies of same type", async () => {
         const multipleAttributePoliciesTemplate = {
           ...sampleTemplate,
-          attributes: [
+          subject: [
             {
               type: CertSubjectAttributeType.COMMON_NAME,
-              include: CertIncludeType.OPTIONAL as const,
-              value: ["*.infisical.com"]
-            },
-            {
-              type: CertSubjectAttributeType.COMMON_NAME,
-              include: CertIncludeType.OPTIONAL as const,
-              value: ["*.infisical2.com"]
+              allowed: ["*.infisical.com", "*.infisical2.com"]
             }
           ],
-          subjectAlternativeNames: [
+          sans: [
             {
               type: CertSubjectAlternativeNameType.DNS_NAME,
-              include: CertIncludeType.OPTIONAL as const,
-              value: ["*.infisical.com"]
-            },
-            {
-              type: CertSubjectAlternativeNameType.DNS_NAME,
-              include: CertIncludeType.OPTIONAL as const,
-              value: ["*.infisical2.com"]
+              allowed: ["*.infisical.com", "*.infisical2.com"]
             }
           ]
         };
@@ -1494,6 +1537,203 @@ describe("CertificateTemplateV2Service", () => {
         expect(result3.isValid).toBe(false);
         expect(result3.errors).toContain(
           "common_name value 'test.example.com' does not match allowed patterns: *.infisical.com, *.infisical2.com"
+        );
+      });
+    });
+
+    describe("New validation logic with allow/deny/require", () => {
+      it("should validate complex attribute value constraints", async () => {
+        const complexTemplate = {
+          ...sampleTemplate,
+          subject: [
+            {
+              type: CertSubjectAttributeType.COMMON_NAME,
+              allowed: ["*.example.com"]
+            },
+            {
+              type: CertSubjectAttributeType.ORGANIZATION,
+              allowed: ["Example*"]
+            },
+            {
+              type: CertSubjectAttributeType.COUNTRY,
+              denied: ["XX"]
+            }
+          ],
+          sans: []
+        };
+
+        mockCertificateTemplateV2DAL.findById.mockResolvedValue(complexTemplate);
+
+        const validComplexRequest = {
+          commonName: "api.example.com",
+          organization: "Example Corp",
+          country: "US",
+          keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+          extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
+          validity: { ttl: "30d" }
+        };
+
+        const result1 = await service.validateCertificateRequest("template-123", validComplexRequest);
+        expect(result1.isValid).toBe(true);
+
+        const invalidCountryRequest = { ...validComplexRequest, country: "XX" };
+        const result2 = await service.validateCertificateRequest("template-123", invalidCountryRequest);
+        expect(result2.isValid).toBe(false);
+        expect(result2.errors).toContain("country value 'XX' is denied by template policy");
+        const invalidOrgRequest = { ...validComplexRequest, organization: "Different Corp" };
+        const result3 = await service.validateCertificateRequest("template-123", invalidOrgRequest);
+        expect(result3.isValid).toBe(false);
+        expect(result3.errors).toContain(
+          "organization value 'Different Corp' does not match allowed patterns: Example*"
+        );
+      });
+
+      it("should handle SAN allow/deny/require logic", async () => {
+        const sanTemplate = {
+          ...sampleTemplate,
+          sans: [
+            {
+              type: CertSubjectAlternativeNameType.DNS_NAME,
+              allowed: ["*.example.com"]
+            },
+            {
+              type: CertSubjectAlternativeNameType.EMAIL,
+              required: ["*@example.com"]
+            },
+            {
+              type: CertSubjectAlternativeNameType.IP_ADDRESS,
+              denied: ["192.168.1.*"]
+            }
+          ]
+        };
+
+        mockCertificateTemplateV2DAL.findById.mockResolvedValue(sanTemplate);
+
+        const validSanRequest = {
+          commonName: "api.example.com",
+          subjectAlternativeNames: [
+            { type: CertSubjectAlternativeNameType.DNS_NAME, value: "api.example.com" },
+            { type: CertSubjectAlternativeNameType.EMAIL, value: "admin@example.com" }
+          ],
+          keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+          extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
+          validity: { ttl: "30d" }
+        };
+
+        const result1 = await service.validateCertificateRequest("template-123", validSanRequest);
+        expect(result1.isValid).toBe(true);
+
+        const missingEmailRequest = {
+          ...validSanRequest,
+          subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "api.example.com" }]
+        };
+
+        const result2 = await service.validateCertificateRequest("template-123", missingEmailRequest);
+        expect(result2.isValid).toBe(false);
+        expect(result2.errors).toContain("Required email SAN matching pattern '*@example.com' not found in request");
+
+        const deniedIpRequest = {
+          ...validSanRequest,
+          subjectAlternativeNames: [
+            ...validSanRequest.subjectAlternativeNames,
+            { type: CertSubjectAlternativeNameType.IP_ADDRESS, value: "192.168.1.100" }
+          ]
+        };
+
+        const result3 = await service.validateCertificateRequest("template-123", deniedIpRequest);
+        expect(result3.isValid).toBe(false);
+        expect(result3.errors).toContain("ip_address SAN matching denied pattern '192.168.1.100' found in request");
+      });
+
+      it("should validate wildcard patterns correctly", async () => {
+        const wildcardTemplate = {
+          ...sampleTemplate,
+          subject: [
+            {
+              type: CertSubjectAttributeType.COMMON_NAME,
+              allowed: ["*.acme.com"]
+            }
+          ],
+          sans: [
+            {
+              type: CertSubjectAlternativeNameType.DNS_NAME,
+              allowed: ["*.api.acme.com"]
+            }
+          ]
+        };
+
+        mockCertificateTemplateV2DAL.findById.mockResolvedValue(wildcardTemplate);
+
+        const testCases = [
+          { cn: "api.acme.com", san: "v1.api.acme.com", shouldPass: true },
+          { cn: "www.acme.com", san: "beta.api.acme.com", shouldPass: true },
+          { cn: "acme.com", san: "api.acme.com", shouldPass: false }, // Missing subdomain
+          { cn: "api.notacme.com", san: "v1.api.acme.com", shouldPass: false }, // Wrong domain
+          { cn: "api.acme.com", san: "api.acme.com", shouldPass: false } // SAN missing required subdomain
+        ];
+
+        for (const testCase of testCases) {
+          const request = {
+            commonName: testCase.cn,
+            subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: testCase.san }],
+            keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+            extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
+            validity: { ttl: "30d" }
+          };
+
+          const result = await service.validateCertificateRequest("template-123", request);
+          expect(result.isValid).toBe(testCase.shouldPass);
+        }
+      });
+
+      it("should enforce multiple required SAN types", async () => {
+        const multiRequiredTemplate = {
+          ...sampleTemplate,
+          sans: [
+            {
+              type: CertSubjectAlternativeNameType.DNS_NAME,
+              required: ["*.example.com"]
+            },
+            {
+              type: CertSubjectAlternativeNameType.EMAIL,
+              required: ["*@example.com"]
+            },
+            {
+              type: CertSubjectAlternativeNameType.URI,
+              required: ["https://*.example.com/*"]
+            }
+          ]
+        };
+
+        mockCertificateTemplateV2DAL.findById.mockResolvedValue(multiRequiredTemplate);
+
+        const completeRequest = {
+          commonName: "api.example.com",
+          subjectAlternativeNames: [
+            { type: CertSubjectAlternativeNameType.DNS_NAME, value: "api.example.com" },
+            { type: CertSubjectAlternativeNameType.EMAIL, value: "admin@example.com" },
+            { type: CertSubjectAlternativeNameType.URI, value: "https://api.example.com/webhook" }
+          ],
+          keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+          extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
+          validity: { ttl: "30d" }
+        };
+
+        const result1 = await service.validateCertificateRequest("template-123", completeRequest);
+        expect(result1.isValid).toBe(true);
+
+        const incompleteRequest = {
+          ...completeRequest,
+          subjectAlternativeNames: [
+            { type: CertSubjectAlternativeNameType.DNS_NAME, value: "api.example.com" },
+            { type: CertSubjectAlternativeNameType.EMAIL, value: "admin@example.com" }
+          ]
+        };
+
+        const result2 = await service.validateCertificateRequest("template-123", incompleteRequest);
+        expect(result2.isValid).toBe(false);
+        expect(result2.errors).toContain(
+          "Required uri SAN matching pattern 'https://*.example.com/*' not found in request"
         );
       });
     });

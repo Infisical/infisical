@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+/* eslint-disable no-nested-ternary */
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faExclamationTriangle, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -19,8 +20,7 @@ import {
   ModalContent,
   Select,
   SelectItem,
-  TextArea,
-  Tooltip
+  TextArea
 } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
@@ -29,7 +29,15 @@ import {
 } from "@app/hooks/api/certificateTemplates/mutations";
 import { TCertificateTemplateV2New } from "@app/hooks/api/certificateTemplates/types";
 
-import { INCLUDE_TYPE_OPTIONS, SAN_TYPE_OPTIONS, SUBJECT_ATTRIBUTE_TYPE_OPTIONS } from "./shared/certificate-constants";
+import {
+  CertDurationUnit,
+  CertExtendedKeyUsageType,
+  CertKeyUsageType,
+  SAN_INCLUDE_OPTIONS,
+  SAN_TYPE_OPTIONS,
+  SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS,
+  SUBJECT_ATTRIBUTE_TYPE_OPTIONS
+} from "./shared/certificate-constants";
 import { KeyUsagesSection, TemplateFormData, templateSchema } from "./shared";
 
 export type FormData = TemplateFormData;
@@ -42,7 +50,9 @@ interface Props {
 }
 
 const ATTRIBUTE_TYPE_LABELS: Record<(typeof SUBJECT_ATTRIBUTE_TYPE_OPTIONS)[number], string> = {
-  common_name: "Common Name (CN)"
+  common_name: "Common Name (CN)",
+  organization: "Organization (O)",
+  country: "Country (C)"
 };
 
 const SAN_TYPE_LABELS: Record<(typeof SAN_TYPE_OPTIONS)[number], string> = {
@@ -52,10 +62,16 @@ const SAN_TYPE_LABELS: Record<(typeof SAN_TYPE_OPTIONS)[number], string> = {
   uri: "URI"
 };
 
-const INCLUDE_TYPE_LABELS: Record<(typeof INCLUDE_TYPE_OPTIONS)[number], string> = {
-  mandatory: "Mandatory",
-  optional: "Optional",
-  prohibit: "Prohibited"
+const SUBJECT_ATTRIBUTE_LABELS: Record<(typeof SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS)[number], string> =
+  {
+    optional: "Allow",
+    prohibit: "Deny"
+  };
+
+const SAN_INCLUDE_LABELS: Record<(typeof SAN_INCLUDE_OPTIONS)[number], string> = {
+  mandatory: "Require",
+  optional: "Allow",
+  prohibit: "Deny"
 };
 
 const SIGNATURE_ALGORITHMS = [
@@ -83,110 +99,260 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
 
   const isEdit = mode === "edit" && template;
 
-  const validateAttributeRules = (attributes: FormData["attributes"]) => {
-    if (!attributes) return { isValid: true, warnings: [], invalidIndices: [] };
+  const convertApiToUiFormat = (templateData: TCertificateTemplateV2New): FormData => {
+    const attributes: any[] = [];
+    if (templateData.subject && Array.isArray(templateData.subject)) {
+      templateData.subject.forEach((subj) => {
+        if (subj.allowed && Array.isArray(subj.allowed)) {
+          subj.allowed.forEach((allowedValue) => {
+            attributes.push({
+              type: subj.type,
+              include: "optional",
+              value: [allowedValue]
+            });
+          });
+        }
+        if (subj.denied && Array.isArray(subj.denied)) {
+          subj.denied.forEach((deniedValue) => {
+            attributes.push({
+              type: subj.type,
+              include: "prohibit",
+              value: [deniedValue]
+            });
+          });
+        }
+      });
+    }
 
-    const warnings: string[] = [];
-    const invalidIndices: number[] = [];
+    const subjectAlternativeNames: any[] = [];
+    if (templateData.sans && Array.isArray(templateData.sans)) {
+      templateData.sans.forEach((san) => {
+        if (san.required && Array.isArray(san.required)) {
+          san.required.forEach((requiredValue) => {
+            subjectAlternativeNames.push({
+              type: san.type,
+              include: "mandatory",
+              value: [requiredValue]
+            });
+          });
+        }
+        if (san.allowed && Array.isArray(san.allowed)) {
+          san.allowed.forEach((allowedValue) => {
+            subjectAlternativeNames.push({
+              type: san.type,
+              include: "optional",
+              value: [allowedValue]
+            });
+          });
+        }
+        if (san.denied && Array.isArray(san.denied)) {
+          san.denied.forEach((deniedValue) => {
+            subjectAlternativeNames.push({
+              type: san.type,
+              include: "prohibit",
+              value: [deniedValue]
+            });
+          });
+        }
+      });
+    }
 
-    const attributesByType = attributes.reduce((acc, attr, index) => {
-      if (!acc[attr.type]) acc[attr.type] = [];
-      acc[attr.type].push({ ...attr, index });
-      return acc;
-    }, {} as Record<string, Array<(typeof attributes[0] & { index: number })>>);
+    const keyUsages = {
+      requiredUsages: (templateData.keyUsages?.required || []) as CertKeyUsageType[],
+      optionalUsages: (templateData.keyUsages?.allowed || []) as CertKeyUsageType[]
+    };
 
-    Object.entries(attributesByType).forEach(([type, attrs]) => {
-      const mandatoryAttrs = attrs.filter(attr => attr.include === 'mandatory');
+    const extendedKeyUsages = {
+      requiredUsages: (templateData.extendedKeyUsages?.required ||
+        []) as CertExtendedKeyUsageType[],
+      optionalUsages: (templateData.extendedKeyUsages?.allowed || []) as CertExtendedKeyUsageType[]
+    };
 
-      if (mandatoryAttrs.length > 1) {
-        mandatoryAttrs.forEach(attr => invalidIndices.push(attr.index));
-        warnings.push(`Multiple mandatory values found for ${ATTRIBUTE_TYPE_LABELS[type as keyof typeof ATTRIBUTE_TYPE_LABELS]}. Only one mandatory value is allowed per attribute type.`);
-      }
+    const validity = templateData.validity?.max
+      ? (() => {
+          const maxValue = templateData.validity.max;
+          const match = maxValue.match(/^(\d+)([dmy])$/);
+          if (match) {
+            const value = parseInt(match[1], 10);
+            const unitChar = match[2];
+            let unit: CertDurationUnit = CertDurationUnit.DAYS;
+            if (unitChar === "d") {
+              unit = CertDurationUnit.DAYS;
+            } else if (unitChar === "m") {
+              unit = CertDurationUnit.MONTHS;
+            } else {
+              unit = CertDurationUnit.YEARS;
+            }
+            return {
+              maxDuration: { value, unit }
+            };
+          }
+          return { maxDuration: { value: 365, unit: CertDurationUnit.DAYS } };
+        })()
+      : { maxDuration: { value: 365, unit: CertDurationUnit.DAYS } };
 
-      if (mandatoryAttrs.length === 1 && attrs.length > 1) {
-        attrs.forEach(attr => invalidIndices.push(attr.index));
-        warnings.push(`When a mandatory value exists for ${ATTRIBUTE_TYPE_LABELS[type as keyof typeof ATTRIBUTE_TYPE_LABELS]}, no other values (optional or forbidden) are allowed for that attribute type.`);
-      }
-    });
+    const signatureAlgorithm = {
+      allowedAlgorithms: templateData.algorithms?.signature || [],
+      defaultAlgorithm: ""
+    };
 
-    return { isValid: warnings.length === 0, warnings, invalidIndices };
+    const keyAlgorithm = {
+      allowedKeyTypes: templateData.algorithms?.keyAlgorithm || [],
+      defaultKeyType: ""
+    };
+
+    return {
+      slug: templateData.name || "",
+      description: templateData.description || "",
+      attributes,
+      subjectAlternativeNames,
+      keyUsages,
+      extendedKeyUsages,
+      validity,
+      signatureAlgorithm,
+      keyAlgorithm
+    };
   };
+
+  const getDefaultValues = (): FormData => ({
+    slug: "",
+    description: "",
+    attributes: [],
+    keyUsages: { requiredUsages: [], optionalUsages: [] },
+    extendedKeyUsages: { requiredUsages: [], optionalUsages: [] },
+    subjectAlternativeNames: [],
+    validity: {
+      maxDuration: { value: 365, unit: CertDurationUnit.DAYS }
+    },
+    signatureAlgorithm: {
+      allowedAlgorithms: [],
+      defaultAlgorithm: ""
+    },
+    keyAlgorithm: {
+      allowedKeyTypes: [],
+      defaultKeyType: ""
+    }
+  });
 
   const { control, handleSubmit, reset, watch, setValue, formState } = useForm<FormData>({
     resolver: zodResolver(templateSchema),
-    defaultValues: isEdit
-      ? {
-          slug: template.slug,
-          description: template.description || "",
-          attributes: template.attributes || [],
-          keyUsages: {
-            requiredUsages: template.keyUsages?.requiredUsages?.all || [],
-            optionalUsages: template.keyUsages?.optionalUsages?.all || []
-          },
-          extendedKeyUsages: {
-            requiredUsages: template.extendedKeyUsages?.requiredUsages?.all || [],
-            optionalUsages: template.extendedKeyUsages?.optionalUsages?.all || []
-          },
-          subjectAlternativeNames: template.subjectAlternativeNames || [],
-          validity: template.validity || { maxDuration: { value: 365, unit: "days" } },
-          signatureAlgorithm: template.signatureAlgorithm || {
-            allowedAlgorithms: ["SHA256-RSA"],
-            defaultAlgorithm: "SHA256-RSA"
-          },
-          keyAlgorithm: template.keyAlgorithm || {
-            allowedKeyTypes: ["RSA-2048"],
-            defaultKeyType: "RSA-2048"
-          }
-        }
-      : {
-          slug: "",
-          description: "",
-          attributes: [],
-          keyUsages: { requiredUsages: [], optionalUsages: [] },
-          extendedKeyUsages: { requiredUsages: [], optionalUsages: [] },
-          subjectAlternativeNames: [],
-          validity: {
-            maxDuration: { value: 365, unit: "days" }
-          },
-          signatureAlgorithm: {
-            allowedAlgorithms: ["SHA256-RSA"],
-            defaultAlgorithm: "SHA256-RSA"
-          },
-          keyAlgorithm: {
-            allowedKeyTypes: ["RSA-2048"],
-            defaultKeyType: "RSA-2048"
-          }
-        }
+    defaultValues: getDefaultValues()
   });
+
+  useEffect(() => {
+    if (isEdit && template) {
+      const convertedData = convertApiToUiFormat(template);
+      reset(convertedData);
+    } else if (!isEdit) {
+      reset(getDefaultValues());
+    }
+  }, [isEdit, template, reset]);
 
   const watchedAttributes = watch("attributes") || [];
   const watchedSans = watch("subjectAlternativeNames") || [];
   const watchedKeyUsages = watch("keyUsages") || { requiredUsages: [], optionalUsages: [] };
-  const watchedExtendedKeyUsages = watch("extendedKeyUsages") || { requiredUsages: [], optionalUsages: [] };
+  const watchedExtendedKeyUsages = watch("extendedKeyUsages") || {
+    requiredUsages: [],
+    optionalUsages: []
+  };
 
-  const attributeValidation = useMemo(() =>
-    validateAttributeRules(watchedAttributes),
-    [watchedAttributes]
-  );
+  const transformToNewApiFormat = (data: FormData) => {
+    const subject =
+      data.attributes?.map((attr) => {
+        const result: any = { type: attr.type };
+
+        if (attr.include === "optional" && attr.value && attr.value.length > 0) {
+          result.allowed = attr.value;
+        } else if (attr.include === "prohibit" && attr.value && attr.value.length > 0) {
+          result.denied = attr.value;
+        }
+
+        return result;
+      }) || [];
+
+    const sans =
+      data.subjectAlternativeNames?.map((san) => {
+        const result: any = { type: san.type };
+
+        if (san.include === "mandatory" && san.value && san.value.length > 0) {
+          result.required = san.value;
+        } else if (san.include === "optional" && san.value && san.value.length > 0) {
+          result.allowed = san.value;
+        } else if (san.include === "prohibit" && san.value && san.value.length > 0) {
+          result.denied = san.value;
+        }
+
+        return result;
+      }) || [];
+
+    const keyUsages: any = {};
+    if (data.keyUsages?.requiredUsages && data.keyUsages.requiredUsages.length > 0) {
+      keyUsages.required = data.keyUsages.requiredUsages;
+    }
+    if (data.keyUsages?.optionalUsages && data.keyUsages.optionalUsages.length > 0) {
+      keyUsages.allowed = data.keyUsages.optionalUsages;
+    }
+
+    const extendedKeyUsages: any = {};
+    if (
+      data.extendedKeyUsages?.requiredUsages &&
+      data.extendedKeyUsages.requiredUsages.length > 0
+    ) {
+      extendedKeyUsages.required = data.extendedKeyUsages.requiredUsages;
+    }
+    if (
+      data.extendedKeyUsages?.optionalUsages &&
+      data.extendedKeyUsages.optionalUsages.length > 0
+    ) {
+      extendedKeyUsages.allowed = data.extendedKeyUsages.optionalUsages;
+    }
+
+    const algorithms: any = {};
+    if (
+      data.signatureAlgorithm?.allowedAlgorithms &&
+      data.signatureAlgorithm.allowedAlgorithms.length > 0
+    ) {
+      algorithms.signature = data.signatureAlgorithm.allowedAlgorithms;
+    }
+    if (data.keyAlgorithm?.allowedKeyTypes && data.keyAlgorithm.allowedKeyTypes.length > 0) {
+      algorithms.keyAlgorithm = data.keyAlgorithm.allowedKeyTypes;
+    }
+
+    const validity: any = {};
+    if (data.validity?.maxDuration) {
+      let unit = "d";
+      if (data.validity.maxDuration.unit === CertDurationUnit.DAYS) {
+        unit = "d";
+      } else if (data.validity.maxDuration.unit === CertDurationUnit.MONTHS) {
+        unit = "m";
+      } else {
+        unit = "y";
+      }
+      validity.max = `${data.validity.maxDuration.value}${unit}`;
+    }
+
+    return {
+      name: data.slug,
+      description: data.description,
+      subject: subject.length > 0 ? subject : undefined,
+      sans: sans.length > 0 ? sans : undefined,
+      keyUsages: Object.keys(keyUsages).length > 0 ? keyUsages : undefined,
+      extendedKeyUsages: Object.keys(extendedKeyUsages).length > 0 ? extendedKeyUsages : undefined,
+      algorithms: Object.keys(algorithms).length > 0 ? algorithms : undefined,
+      validity: Object.keys(validity).length > 0 ? validity : undefined
+    };
+  };
 
   const onFormSubmit = async (data: FormData) => {
     try {
       if (!currentProject?.id && !isEdit) return;
 
-      if (!attributeValidation.isValid) {
-        createNotification({
-          text: "Please fix validation errors before submitting",
-          type: "error"
-        });
-        return;
-      }
-
-      const hasEmptyAttributeValues = data.attributes?.some(attr =>
-        !attr.value || attr.value.length === 0 || attr.value.some(v => !v.trim())
+      const hasEmptyAttributeValues = data.attributes?.some(
+        (attr) => !attr.value || attr.value.length === 0 || attr.value.some((v) => !v.trim())
       );
 
-      const hasEmptySanValues = data.subjectAlternativeNames?.some(san =>
-        !san.value || san.value.length === 0 || san.value.some(v => !v.trim())
+      const hasEmptySanValues = data.subjectAlternativeNames?.some(
+        (san) => !san.value || san.value.length === 0 || san.value.some((v) => !v.trim())
       );
 
       if (hasEmptyAttributeValues || hasEmptySanValues) {
@@ -197,60 +363,18 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
         return;
       }
 
+      const transformedData = transformToNewApiFormat(data);
+
       if (isEdit) {
         const updateData = {
           templateId: template.id,
-          name: data.slug,
-          description: data.description,
-          attributes: data.attributes || [],
-          keyUsages: {
-            requiredUsages: { all: data.keyUsages?.requiredUsages || [] },
-            optionalUsages: { all: data.keyUsages?.optionalUsages || [] }
-          },
-          extendedKeyUsages: {
-            requiredUsages: { all: data.extendedKeyUsages?.requiredUsages || [] },
-            optionalUsages: { all: data.extendedKeyUsages?.optionalUsages || [] }
-          },
-          subjectAlternativeNames: data.subjectAlternativeNames || [],
-          validity: {
-            maxDuration: data.validity?.maxDuration || { value: 365, unit: "days" as const }
-          },
-          signatureAlgorithm: {
-            allowedAlgorithms: data.signatureAlgorithm?.allowedAlgorithms || ["SHA256-RSA"],
-            defaultAlgorithm: data.signatureAlgorithm?.defaultAlgorithm || "SHA256-RSA"
-          },
-          keyAlgorithm: {
-            allowedKeyTypes: data.keyAlgorithm?.allowedKeyTypes || ["RSA-2048"],
-            defaultKeyType: data.keyAlgorithm?.defaultKeyType || "RSA-2048"
-          }
+          ...transformedData
         };
         await updateTemplate.mutateAsync(updateData);
       } else {
         const createData = {
           projectId: currentProject!.id,
-          slug: data.slug,
-          description: data.description,
-          attributes: data.attributes || [],
-          keyUsages: {
-            requiredUsages: { all: data.keyUsages?.requiredUsages || [] },
-            optionalUsages: { all: data.keyUsages?.optionalUsages || [] }
-          },
-          extendedKeyUsages: {
-            requiredUsages: { all: data.extendedKeyUsages?.requiredUsages || [] },
-            optionalUsages: { all: data.extendedKeyUsages?.optionalUsages || [] }
-          },
-          subjectAlternativeNames: data.subjectAlternativeNames || [],
-          validity: {
-            maxDuration: data.validity?.maxDuration || { value: 365, unit: "days" as const }
-          },
-          signatureAlgorithm: {
-            allowedAlgorithms: data.signatureAlgorithm?.allowedAlgorithms || ["SHA256-RSA"],
-            defaultAlgorithm: data.signatureAlgorithm?.defaultAlgorithm || "SHA256-RSA"
-          },
-          keyAlgorithm: {
-            allowedKeyTypes: data.keyAlgorithm?.allowedKeyTypes || ["RSA-2048"],
-            defaultKeyType: data.keyAlgorithm?.defaultKeyType || "RSA-2048"
-          }
+          ...transformedData
         };
         await createTemplate.mutateAsync(createData);
       }
@@ -274,7 +398,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
   const addAttribute = () => {
     const newAttribute = {
       type: SUBJECT_ATTRIBUTE_TYPE_OPTIONS[0],
-      include: INCLUDE_TYPE_OPTIONS[1],
+      include: SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS[0],
       value: ["*"]
     };
     setValue("attributes", [...watchedAttributes, newAttribute]);
@@ -288,7 +412,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
   const addSan = () => {
     const newSan = {
       type: SAN_TYPE_OPTIONS[0],
-      include: INCLUDE_TYPE_OPTIONS[1],
+      include: SAN_INCLUDE_OPTIONS[1],
       value: ["*"]
     };
     setValue("subjectAlternativeNames", [...watchedSans, newSan]);
@@ -299,14 +423,20 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     setValue("subjectAlternativeNames", newSans);
   };
 
-  const handleKeyUsagesChange = (usages: { requiredUsages: string[]; optionalUsages: string[] }) => {
+  const handleKeyUsagesChange = (usages: {
+    requiredUsages: string[];
+    optionalUsages: string[];
+  }) => {
     setValue("keyUsages", {
       requiredUsages: usages.requiredUsages as any,
       optionalUsages: usages.optionalUsages as any
     });
   };
 
-  const handleExtendedKeyUsagesChange = (usages: { requiredUsages: string[]; optionalUsages: string[] }) => {
+  const handleExtendedKeyUsagesChange = (usages: {
+    requiredUsages: string[];
+    optionalUsages: string[];
+  }) => {
     setValue("extendedKeyUsages", {
       requiredUsages: usages.requiredUsages as any,
       optionalUsages: usages.optionalUsages as any
@@ -328,7 +458,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
         title={isEdit ? "Edit Certificate Template" : "Create Certificate Template"}
         subTitle={
           isEdit
-            ? `Update configuration for ${template?.slug}`
+            ? `Update configuration for ${template?.name}`
             : "Define comprehensive certificate policies, validation rules, and constraints"
         }
       >
@@ -380,157 +510,82 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                     </Button>
                   </div>
 
-                  {/* Validation warnings */}
-                  {!attributeValidation.isValid && attributeValidation.warnings.length > 0 && (
-                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-md p-3">
-                      <div className="flex items-start gap-2">
-                        <FontAwesomeIcon icon={faExclamationTriangle} className="text-yellow-500 mt-0.5" />
-                        <div className="flex-1">
-                          <h4 className="text-yellow-500 font-medium text-sm">Validation Warnings</h4>
-                          <ul className="text-yellow-400 text-sm mt-1 space-y-1">
-                            {attributeValidation.warnings.map((warning, index) => (
-                              <li key={index}>• {warning}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   <div className="space-y-2">
                     {watchedAttributes.length === 0 ? (
-                      <div className="text-bunker-300 py-8 text-center">
+                      <div className="py-8 text-center text-bunker-300">
                         No subject attributes configured yet. Click &quot;Add Attribute&quot; to get
                         started.
                       </div>
                     ) : (
                       watchedAttributes.map((attr, index) => {
-                        const isInvalid = attributeValidation.invalidIndices.includes(index);
-                        const errorClass = isInvalid ? "border-red-500 focus:border-red-500" : "";
-
                         return (
-                        <div key={`attr-${attr.type}-${attr.include}-${index}`} className="flex items-start gap-2">
-                          {isInvalid ? (
-                            <Tooltip content="This attribute has validation errors. Check the warnings above for details.">
-                              <div className="flex items-start gap-2 flex-1">
-                                <Select
-                                  value={attr.type}
-                                  onValueChange={(value) => {
-                                    const newAttributes = [...watchedAttributes];
-                                    newAttributes[index] = { ...attr, type: value as any };
-                                    setValue("attributes", newAttributes);
-                                  }}
-                                  className={`w-48 ${errorClass}`}
-                                >
-                                  {SUBJECT_ATTRIBUTE_TYPE_OPTIONS.map((type) => (
-                                    <SelectItem key={type} value={type}>
-                                      {ATTRIBUTE_TYPE_LABELS[type]}
-                                    </SelectItem>
-                                  ))}
-                                </Select>
-
-                                <Select
-                                  value={attr.include}
-                                  onValueChange={(value) => {
-                                    const newAttributes = [...watchedAttributes];
-                                    newAttributes[index] = { ...attr, include: value as any };
-                                    setValue("attributes", newAttributes);
-                                  }}
-                                  className={`w-32 ${errorClass}`}
-                                >
-                                  {INCLUDE_TYPE_OPTIONS.map((type) => (
-                                    <SelectItem key={type} value={type}>
-                                      {INCLUDE_TYPE_LABELS[type]}
-                                    </SelectItem>
-                                  ))}
-                                </Select>
-
-                                <Input
-                                  placeholder="Pattern/Value (required - use * for wildcards)"
-                                  value={attr.value?.[0] || ""}
-                                  onChange={(e) => {
-                                    const newAttributes = [...watchedAttributes];
-                                    newAttributes[index] = {
-                                      ...attr,
-                                      value: e.target.value.trim() ? [e.target.value.trim()] : []
-                                    };
-                                    setValue("attributes", newAttributes);
-                                  }}
-                                  className={`flex-1 ${errorClass} ${
-                                    attr.value && attr.value.length > 0 && attr.value[0] === ""
-                                      ? "border-red-500 focus:border-red-500"
-                                      : ""
-                                  }`}
-                                  required
-                                />
-                              </div>
-                            </Tooltip>
-                          ) : (
-                            <>
-                              <Select
-                                value={attr.type}
-                                onValueChange={(value) => {
-                                  const newAttributes = [...watchedAttributes];
-                                  newAttributes[index] = { ...attr, type: value as any };
-                                  setValue("attributes", newAttributes);
-                                }}
-                                className="w-48"
-                              >
-                                {SUBJECT_ATTRIBUTE_TYPE_OPTIONS.map((type) => (
-                                  <SelectItem key={type} value={type}>
-                                    {ATTRIBUTE_TYPE_LABELS[type]}
-                                  </SelectItem>
-                                ))}
-                              </Select>
-
-                              <Select
-                                value={attr.include}
-                                onValueChange={(value) => {
-                                  const newAttributes = [...watchedAttributes];
-                                  newAttributes[index] = { ...attr, include: value as any };
-                                  setValue("attributes", newAttributes);
-                                }}
-                                className="w-32"
-                              >
-                                {INCLUDE_TYPE_OPTIONS.map((type) => (
-                                  <SelectItem key={type} value={type}>
-                                    {INCLUDE_TYPE_LABELS[type]}
-                                  </SelectItem>
-                                ))}
-                              </Select>
-
-                              <Input
-                                placeholder="Pattern/Value (required - use * for wildcards)"
-                                value={attr.value?.[0] || ""}
-                                onChange={(e) => {
-                                  const newAttributes = [...watchedAttributes];
-                                  newAttributes[index] = {
-                                    ...attr,
-                                    value: e.target.value.trim() ? [e.target.value.trim()] : []
-                                  };
-                                  setValue("attributes", newAttributes);
-                                }}
-                                className={`flex-1 ${
-                                  attr.value && attr.value.length > 0 && attr.value[0] === ""
-                                    ? "border-red-500 focus:border-red-500"
-                                    : ""
-                                }`}
-                                required
-                              />
-                            </>
-                          )}
-
-                          {watchedAttributes.length > 1 && (
-                            <IconButton
-                              ariaLabel="Remove Attribute"
-                              variant="plain"
-                              size="sm"
-                              onClick={() => removeAttribute(index)}
+                          <div
+                            // eslint-disable-next-line react/no-array-index-key
+                            key={`attr-${attr.type}-${attr.include}-${index}`}
+                            className="flex items-start gap-2"
+                          >
+                            <Select
+                              value={attr.type}
+                              onValueChange={(value) => {
+                                const newAttributes = [...watchedAttributes];
+                                newAttributes[index] = { ...attr, type: value as any };
+                                setValue("attributes", newAttributes);
+                              }}
+                              className="w-48"
                             >
-                              <FontAwesomeIcon icon={faTrash} />
-                            </IconButton>
-                          )}
-                        </div>
+                              {SUBJECT_ATTRIBUTE_TYPE_OPTIONS.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {ATTRIBUTE_TYPE_LABELS[type]}
+                                </SelectItem>
+                              ))}
+                            </Select>
+
+                            <Select
+                              value={attr.include}
+                              onValueChange={(value) => {
+                                const newAttributes = [...watchedAttributes];
+                                newAttributes[index] = { ...attr, include: value as any };
+                                setValue("attributes", newAttributes);
+                              }}
+                              className="w-32"
+                            >
+                              {SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {SUBJECT_ATTRIBUTE_LABELS[type]}
+                                </SelectItem>
+                              ))}
+                            </Select>
+
+                            <Input
+                              placeholder="Pattern/Value (required - use * for wildcards)"
+                              value={attr.value?.[0] || ""}
+                              onChange={(e) => {
+                                const newAttributes = [...watchedAttributes];
+                                newAttributes[index] = {
+                                  ...attr,
+                                  value: e.target.value.trim() ? [e.target.value.trim()] : []
+                                };
+                                setValue("attributes", newAttributes);
+                              }}
+                              className={`flex-1 ${
+                                attr.value && attr.value.length > 0 && attr.value[0] === ""
+                                  ? "border-red-500 focus:border-red-500"
+                                  : ""
+                              }`}
+                              required
+                            />
+
+                            {watchedAttributes.length > 1 && (
+                              <IconButton
+                                ariaLabel="Remove Attribute"
+                                variant="plain"
+                                size="sm"
+                                onClick={() => removeAttribute(index)}
+                              >
+                                <FontAwesomeIcon icon={faTrash} />
+                              </IconButton>
+                            )}
+                          </div>
                         );
                       })
                     )}
@@ -557,13 +612,17 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
 
                   <div className="space-y-2">
                     {watchedSans.length === 0 ? (
-                      <div className="text-bunker-300 py-8 text-center">
+                      <div className="py-8 text-center text-bunker-300">
                         No subject alternative names configured yet. Click &quot;Add SAN&quot; to
                         get started.
                       </div>
                     ) : (
                       watchedSans.map((san, index) => (
-                        <div key={`san-${san.type}-${san.include}-${index}`} className="flex items-start gap-2">
+                        <div
+                          // eslint-disable-next-line react/no-array-index-key
+                          key={`san-${san.type}-${san.include}-${index}`}
+                          className="flex items-start gap-2"
+                        >
                           <Select
                             value={san.type}
                             onValueChange={(value) => {
@@ -589,9 +648,9 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                             }}
                             className="w-32"
                           >
-                            {INCLUDE_TYPE_OPTIONS.map((type) => (
+                            {SAN_INCLUDE_OPTIONS.map((type) => (
                               <SelectItem key={type} value={type}>
-                                {INCLUDE_TYPE_LABELS[type]}
+                                {SAN_INCLUDE_LABELS[type]}
                               </SelectItem>
                             ))}
                           </Select>
@@ -643,221 +702,147 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="constraints" className="mt-4">
-              <AccordionTrigger>Constraints</AccordionTrigger>
+            <AccordionItem value="algorithms" className="mt-4">
+              <AccordionTrigger>Algorithms</AccordionTrigger>
               <AccordionContent>
-                <div className="space-y-4">
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <Controller
-                        control={control}
-                        name="validity.maxDuration.value"
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            label="Max Duration"
-                            isError={Boolean(error)}
-                            errorText={error?.message}
-                          >
-                            <Input
-                              {...field}
-                              type="number"
-                              placeholder="365"
-                              className="w-full"
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                            />
-                          </FormControl>
-                        )}
-                      />
-                      <Controller
-                        control={control}
-                        name="validity.maxDuration.unit"
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            label="Unit"
-                            isError={Boolean(error)}
-                            errorText={error?.message}
-                          >
-                            <Select
-                              {...field}
-                              onValueChange={field.onChange}
-                              className="w-full"
-                              position="popper"
-                            >
-                              <SelectItem value="days">Days</SelectItem>
-                              <SelectItem value="months">Months</SelectItem>
-                              <SelectItem value="years">Years</SelectItem>
-                            </Select>
-                          </FormControl>
-                        )}
-                      />
-                    </div>
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="mb-3 text-sm font-medium text-mineshaft-200">
+                      Signature Algorithms
+                    </h4>
+                    <Controller
+                      control={control}
+                      name="signatureAlgorithm.allowedAlgorithms"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl isError={Boolean(error)} errorText={error?.message}>
+                          <div className="grid grid-cols-2 gap-2">
+                            {SIGNATURE_ALGORITHMS.map((alg) => {
+                              const isSelected = field.value?.includes(alg);
+                              return (
+                                <div key={alg} className="flex items-center space-x-3">
+                                  <Checkbox
+                                    id={`sig-alg-${alg}`}
+                                    isChecked={isSelected}
+                                    onCheckedChange={(checked) => {
+                                      const current = field.value || [];
+                                      let newValue;
+                                      if (checked && !isSelected) {
+                                        newValue = [...current, alg];
+                                      } else if (!checked && isSelected) {
+                                        newValue = current.filter((a) => a !== alg);
+                                      } else {
+                                        return;
+                                      }
+                                      field.onChange(newValue);
+                                    }}
+                                  />
+                                  <label
+                                    htmlFor={`sig-alg-${alg}`}
+                                    className="cursor-pointer text-sm font-medium text-mineshaft-200"
+                                  >
+                                    {alg}
+                                  </label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </FormControl>
+                      )}
+                    />
                   </div>
 
-                  <div className="space-y-3">
-                    <div className="space-y-4">
-                      <Controller
-                        control={control}
-                        name="signatureAlgorithm.allowedAlgorithms"
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            label="Allowed Signature Algorithms"
-                            isError={Boolean(error)}
-                            errorText={error?.message}
-                          >
-                            <div className="grid grid-cols-2 gap-2 pl-2">
-                              {SIGNATURE_ALGORITHMS.map((alg) => {
-                                const isSelected = field.value?.includes(alg);
-                                return (
-                                  <div key={alg} className="flex items-center space-x-3">
-                                    <Checkbox
-                                      id={`sig-alg-${alg}`}
-                                      isChecked={isSelected}
-                                      onCheckedChange={(checked) => {
-                                        const current = field.value || [];
-                                        let newValue;
-                                        if (checked && !isSelected) {
-                                          newValue = [...current, alg];
-                                        } else if (!checked && isSelected) {
-                                          if (current.length > 1) {
-                                            newValue = current.filter((a) => a !== alg);
-                                          } else {
-                                            return;
-                                          }
-                                        } else {
-                                          return;
-                                        }
-                                        field.onChange(newValue);
-
-                                        const currentDefault = watch(
-                                          "signatureAlgorithm.defaultAlgorithm"
-                                        );
-                                        if (currentDefault && !newValue.includes(currentDefault)) {
-                                          setValue(
-                                            "signatureAlgorithm.defaultAlgorithm",
-                                            newValue[0]
-                                          );
-                                        }
-                                      }}
-                                    />
-                                    <label
-                                      htmlFor={`sig-alg-${alg}`}
-                                      className="text-mineshaft-200 cursor-pointer text-sm font-medium"
-                                    >
-                                      {alg}
-                                    </label>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </FormControl>
-                        )}
-                      />
-
-                      <Controller
-                        control={control}
-                        name="signatureAlgorithm.defaultAlgorithm"
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            label="Default Signature Algorithm"
-                            isError={Boolean(error)}
-                            errorText={error?.message}
-                          >
-                            <Select
-                              value={field.value || ""}
-                              onValueChange={field.onChange}
-                              className="w-full"
-                              position="popper"
-                            >
-                              {(watch("signatureAlgorithm.allowedAlgorithms") || []).map(
-                                (alg: string) => (
-                                  <SelectItem key={alg} value={alg}>
+                  <div>
+                    <h4 className="mb-3 text-sm font-medium text-mineshaft-200">Key Algorithms</h4>
+                    <Controller
+                      control={control}
+                      name="keyAlgorithm.allowedKeyTypes"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl isError={Boolean(error)} errorText={error?.message}>
+                          <div className="grid grid-cols-2 gap-2">
+                            {KEY_ALGORITHMS.map((alg) => {
+                              const isSelected = field.value?.includes(alg);
+                              return (
+                                <div key={alg} className="flex items-center space-x-3">
+                                  <Checkbox
+                                    id={`key-alg-${alg}`}
+                                    isChecked={isSelected}
+                                    onCheckedChange={(checked) => {
+                                      const current = field.value || [];
+                                      let newValue;
+                                      if (checked && !isSelected) {
+                                        newValue = [...current, alg];
+                                      } else if (!checked && isSelected) {
+                                        newValue = current.filter((a) => a !== alg);
+                                      } else {
+                                        return;
+                                      }
+                                      field.onChange(newValue);
+                                    }}
+                                  />
+                                  <label
+                                    htmlFor={`key-alg-${alg}`}
+                                    className="cursor-pointer text-sm font-medium text-mineshaft-200"
+                                  >
                                     {alg}
-                                  </SelectItem>
-                                )
-                              )}
-                            </Select>
-                          </FormControl>
-                        )}
-                      />
+                                  </label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </FormControl>
+                      )}
+                    />
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
 
-                      <Controller
-                        control={control}
-                        name="keyAlgorithm.allowedKeyTypes"
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            label="Allowed Key Algorithms"
-                            isError={Boolean(error)}
-                            errorText={error?.message}
+            <AccordionItem value="validity" className="mt-4">
+              <AccordionTrigger>Certificate Validity</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Controller
+                      control={control}
+                      name="validity.maxDuration.value"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Max Duration"
+                          isError={Boolean(error)}
+                          errorText={error?.message}
+                        >
+                          <Input
+                            {...field}
+                            type="number"
+                            placeholder="365"
+                            className="w-full"
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </FormControl>
+                      )}
+                    />
+                    <Controller
+                      control={control}
+                      name="validity.maxDuration.unit"
+                      render={({ field, fieldState: { error } }) => (
+                        <FormControl
+                          label="Unit"
+                          isError={Boolean(error)}
+                          errorText={error?.message}
+                        >
+                          <Select
+                            {...field}
+                            onValueChange={field.onChange}
+                            className="w-full"
+                            position="popper"
                           >
-                            <div className="grid grid-cols-2 gap-2 pl-2">
-                              {KEY_ALGORITHMS.map((alg) => {
-                                const isSelected = field.value?.includes(alg);
-                                return (
-                                  <div key={alg} className="flex items-center space-x-3">
-                                    <Checkbox
-                                      id={`key-alg-${alg}`}
-                                      isChecked={isSelected}
-                                      onCheckedChange={(checked) => {
-                                        const current = field.value || [];
-                                        let newValue;
-                                        if (checked && !isSelected) {
-                                          newValue = [...current, alg];
-                                        } else if (!checked && isSelected) {
-                                          if (current.length > 1) {
-                                            newValue = current.filter((a) => a !== alg);
-                                          } else {
-                                            return;
-                                          }
-                                        } else {
-                                          return;
-                                        }
-                                        field.onChange(newValue);
-
-                                        const currentDefault = watch("keyAlgorithm.defaultKeyType");
-                                        if (currentDefault && !newValue.includes(currentDefault)) {
-                                          setValue("keyAlgorithm.defaultKeyType", newValue[0]);
-                                        }
-                                      }}
-                                    />
-                                    <label
-                                      htmlFor={`key-alg-${alg}`}
-                                      className="text-mineshaft-200 cursor-pointer text-sm font-medium"
-                                    >
-                                      {alg}
-                                    </label>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </FormControl>
-                        )}
-                      />
-
-                      <Controller
-                        control={control}
-                        name="keyAlgorithm.defaultKeyType"
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            label="Default Key Algorithm"
-                            isError={Boolean(error)}
-                            errorText={error?.message}
-                          >
-                            <Select
-                              value={field.value || ""}
-                              onValueChange={field.onChange}
-                              className="w-full"
-                              position="popper"
-                            >
-                              {(watch("keyAlgorithm.allowedKeyTypes") || []).map((alg: string) => (
-                                <SelectItem key={alg} value={alg}>
-                                  {alg}
-                                </SelectItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        )}
-                      />
-                    </div>
+                            <SelectItem value="days">Days</SelectItem>
+                            <SelectItem value="months">Months</SelectItem>
+                            <SelectItem value="years">Years</SelectItem>
+                          </Select>
+                        </FormControl>
+                      )}
+                    />
                   </div>
                 </div>
               </AccordionContent>
@@ -870,9 +855,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
               colorSchema="primary"
               isLoading={isEdit ? updateTemplate.isPending : createTemplate.isPending}
               isDisabled={
-                !formState.isValid ||
-                !attributeValidation.isValid ||
-                (isEdit ? updateTemplate.isPending : createTemplate.isPending)
+                !formState.isValid || (isEdit ? updateTemplate.isPending : createTemplate.isPending)
               }
             >
               {isEdit ? "Save Changes" : "Create"}

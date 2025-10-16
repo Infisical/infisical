@@ -165,7 +165,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
       if (isEdit) {
         const updateData: any = {
           profileId: profile.id,
-          name: data.slug,
+          slug: data.slug,
           description: data.description
         };
 
@@ -240,7 +240,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
-                <Input {...field} placeholder="your-profile-name" isDisabled={Boolean(isEdit)} />
+                <Input {...field} placeholder="your-profile-name" />
               </FormControl>
             )}
           />
@@ -319,7 +319,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 >
                   {certificateTemplates.map((template) => (
                     <SelectItem key={template.id} value={template.id}>
-                      {template.slug}
+                      {template.name}
                     </SelectItem>
                   ))}
                 </Select>
@@ -376,17 +376,17 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   name="estConfig.disableBootstrapCaValidation"
                   render={({ field: { value, onChange }, fieldState: { error } }) => (
                     <FormControl isError={Boolean(error)} errorText={error?.message}>
-                      <div className="border-mineshaft-600 bg-mineshaft-900 flex items-center gap-3 rounded-md border p-4">
+                      <div className="flex items-center gap-3 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4">
                         <Checkbox
                           id="disableBootstrapCaValidation"
                           isChecked={value}
                           onCheckedChange={onChange}
                         />
                         <div className="space-y-1">
-                          <span className="text-mineshaft-100 text-sm font-medium">
+                          <span className="text-sm font-medium text-mineshaft-100">
                             Disable Bootstrap CA Validation
                           </span>
-                          <p className="text-bunker-300 text-xs">
+                          <p className="text-xs text-bunker-300">
                             Skip CA certificate validation during EST bootstrap phase
                           </p>
                         </div>
@@ -433,7 +433,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                             rows={6}
                             className="w-full font-mono text-xs"
                           />
-                          <p className="text-bunker-400 text-xs">
+                          <p className="text-xs text-bunker-400">
                             Paste the complete CA certificate chain in PEM format
                           </p>
                         </div>

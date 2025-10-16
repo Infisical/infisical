@@ -75,61 +75,64 @@ export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {
               </Td>
             </Tr>
           )}
-          {!isLoading && templates && templates.length > 0 && templates.map((template) => (
-            <Tr
-              key={template.id}
-              className="h-10 transition-colors duration-100 hover:bg-mineshaft-700"
-            >
-              <Td>
-                <div className="flex items-center gap-2">
-                  <div className="font-medium">{template.slug}</div>
-                  {template.description && (
-                    <Tooltip content={template.description}>
-                      <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
-                    </Tooltip>
-                  )}
-                </div>
-              </Td>
-              <Td>
-                <span className="text-sm text-bunker-300">{formatDate(template.createdAt)}</span>
-              </Td>
-              <Td className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild className="rounded-lg">
-                    <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
-                      <Tooltip content="More options">
-                        <FontAwesomeIcon size="lg" icon={faEllipsis} />
+          {!isLoading &&
+            templates &&
+            templates.length > 0 &&
+            templates.map((template) => (
+              <Tr
+                key={template.id}
+                className="h-10 transition-colors duration-100 hover:bg-mineshaft-700"
+              >
+                <Td>
+                  <div className="flex items-center gap-2">
+                    <div className="font-medium">{template.name}</div>
+                    {template.description && (
+                      <Tooltip content={template.description}>
+                        <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
                       </Tooltip>
-                    </div>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="p-1">
-                    {canEditTemplate && (
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditTemplate(template);
-                        }}
-                        icon={<FontAwesomeIcon icon={faEdit} />}
-                      >
-                        Edit Template
-                      </DropdownMenuItem>
                     )}
-                    {canDeleteTemplate && (
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteTemplate(template);
-                        }}
-                        icon={<FontAwesomeIcon icon={faTrash} />}
-                      >
-                        Delete Template
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </Td>
-            </Tr>
-          ))}
+                  </div>
+                </Td>
+                <Td>
+                  <span className="text-sm text-bunker-300">{formatDate(template.createdAt)}</span>
+                </Td>
+                <Td className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild className="rounded-lg">
+                      <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
+                        <Tooltip content="More options">
+                          <FontAwesomeIcon size="lg" icon={faEllipsis} />
+                        </Tooltip>
+                      </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="p-1">
+                      {canEditTemplate && (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditTemplate(template);
+                          }}
+                          icon={<FontAwesomeIcon icon={faEdit} />}
+                        >
+                          Edit Template
+                        </DropdownMenuItem>
+                      )}
+                      {canDeleteTemplate && (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteTemplate(template);
+                          }}
+                          icon={<FontAwesomeIcon icon={faTrash} />}
+                        >
+                          Delete Template
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </Td>
+              </Tr>
+            ))}
         </TBody>
       </Table>
     </TableContainer>

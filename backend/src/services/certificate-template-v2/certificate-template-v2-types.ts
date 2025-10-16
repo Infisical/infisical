@@ -1,101 +1,71 @@
 import { TCertificateTemplatesV2, TCertificateTemplatesV2Insert } from "@app/db/schemas/certificate-templates-v2";
 import {
-  CertDurationUnit,
   CertExtendedKeyUsageType,
-  CertIncludeType,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "@app/services/certificate-common/certificate-constants";
 
 export interface TTemplateV2Policy {
-  attributes: Array<{
+  subject?: Array<{
     type: CertSubjectAttributeType;
-    include: CertIncludeType;
-    value?: string[];
+    allowed?: string[];
+    required?: string[];
+    denied?: string[];
   }>;
-  keyUsages: {
-    requiredUsages?: { all: CertKeyUsageType[] };
-    optionalUsages?: { all: CertKeyUsageType[] };
-  };
-  extendedKeyUsages: {
-    requiredUsages?: { all: CertExtendedKeyUsageType[] };
-    optionalUsages?: { all: CertExtendedKeyUsageType[] };
-  };
-  subjectAlternativeNames: Array<{
+  sans?: Array<{
     type: CertSubjectAlternativeNameType;
-    include: CertIncludeType;
-    value?: string[];
+    allowed?: string[];
+    required?: string[];
+    denied?: string[];
   }>;
-  validity: {
-    maxDuration: { value: number; unit: CertDurationUnit };
-    minDuration?: { value: number; unit: CertDurationUnit };
+  keyUsages?: {
+    allowed?: CertKeyUsageType[];
+    required?: CertKeyUsageType[];
+    denied?: CertKeyUsageType[];
   };
-  signatureAlgorithm: {
-    allowedAlgorithms: string[];
-    defaultAlgorithm: string;
+  extendedKeyUsages?: {
+    allowed?: CertExtendedKeyUsageType[];
+    required?: CertExtendedKeyUsageType[];
+    denied?: CertExtendedKeyUsageType[];
   };
-  keyAlgorithm: {
-    allowedKeyTypes: string[];
-    defaultKeyType: string;
+  algorithms?: {
+    signature?: string[];
+    keyAlgorithm?: string[];
+  };
+  validity?: {
+    max?: string;
   };
 }
 
-export type TCertificateTemplateV2 = Omit<
-  TCertificateTemplatesV2,
-  | "attributes"
-  | "keyUsages"
-  | "extendedKeyUsages"
-  | "subjectAlternativeNames"
-  | "validity"
-  | "signatureAlgorithm"
-  | "keyAlgorithm"
-> & {
-  attributes: TTemplateV2Policy["attributes"];
-  keyUsages: TTemplateV2Policy["keyUsages"];
-  extendedKeyUsages: TTemplateV2Policy["extendedKeyUsages"];
-  subjectAlternativeNames: TTemplateV2Policy["subjectAlternativeNames"];
-  validity: TTemplateV2Policy["validity"];
-  signatureAlgorithm: TTemplateV2Policy["signatureAlgorithm"];
-  keyAlgorithm: TTemplateV2Policy["keyAlgorithm"];
-};
-
-export type TCertificateTemplateV2Insert = Omit<
-  TCertificateTemplatesV2Insert,
-  | "attributes"
-  | "keyUsages"
-  | "extendedKeyUsages"
-  | "subjectAlternativeNames"
-  | "validity"
-  | "signatureAlgorithm"
-  | "keyAlgorithm"
-> & {
-  attributes?: TTemplateV2Policy["attributes"];
+export type TCertificateTemplateV2 = TCertificateTemplatesV2 & {
+  subject?: TTemplateV2Policy["subject"];
+  sans?: TTemplateV2Policy["sans"];
   keyUsages?: TTemplateV2Policy["keyUsages"];
   extendedKeyUsages?: TTemplateV2Policy["extendedKeyUsages"];
-  subjectAlternativeNames?: TTemplateV2Policy["subjectAlternativeNames"];
+  algorithms?: TTemplateV2Policy["algorithms"];
   validity?: TTemplateV2Policy["validity"];
-  signatureAlgorithm?: TTemplateV2Policy["signatureAlgorithm"];
-  keyAlgorithm?: TTemplateV2Policy["keyAlgorithm"];
+};
+
+export type TCertificateTemplateV2Insert = TCertificateTemplatesV2Insert & {
+  subject?: TTemplateV2Policy["subject"];
+  sans?: TTemplateV2Policy["sans"];
+  keyUsages?: TTemplateV2Policy["keyUsages"];
+  extendedKeyUsages?: TTemplateV2Policy["extendedKeyUsages"];
+  algorithms?: TTemplateV2Policy["algorithms"];
+  validity?: TTemplateV2Policy["validity"];
 };
 
 export type TCertificateTemplateV2Update = Partial<
   Pick<
     TCertificateTemplateV2,
-    | "slug"
-    | "description"
-    | "attributes"
-    | "keyUsages"
-    | "extendedKeyUsages"
-    | "subjectAlternativeNames"
-    | "validity"
-    | "signatureAlgorithm"
-    | "keyAlgorithm"
+    "name" | "description" | "subject" | "sans" | "keyUsages" | "extendedKeyUsages" | "algorithms" | "validity"
   >
 >;
 
 export interface TCertificateRequest {
   commonName?: string;
+  organization?: string;
   organizationName?: string;
   organizationUnit?: string;
   locality?: string;

@@ -10,20 +10,19 @@ export async function up(knex: Knex): Promise<void> {
       t.string("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project);
 
-      t.string("slug").notNullable();
+      t.string("name").notNullable();
       t.string("description");
 
-      t.jsonb("attributes");
+      t.jsonb("subject");
+      t.jsonb("sans");
       t.jsonb("keyUsages");
       t.jsonb("extendedKeyUsages");
-      t.jsonb("subjectAlternativeNames");
+      t.jsonb("algorithms");
       t.jsonb("validity");
-      t.jsonb("signatureAlgorithm");
-      t.jsonb("keyAlgorithm");
 
       t.timestamps(true, true, true);
 
-      t.unique(["slug", "projectId"]);
+      t.unique(["name", "projectId"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.CertificateTemplateV2);

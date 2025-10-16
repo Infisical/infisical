@@ -102,12 +102,12 @@ const validateCaSupport = (ca: TCertificateAuthorityWithAssociatedCa, operation:
 const validateAlgorithmCompatibility = (
   ca: TCertificateAuthorityWithAssociatedCa,
   template: {
-    signatureAlgorithm?: {
-      allowedAlgorithms?: string[];
+    algorithms?: {
+      signature?: string[];
     };
   }
 ) => {
-  if (!template.signatureAlgorithm || !template.signatureAlgorithm.allowedAlgorithms) {
+  if (!template.algorithms?.signature || template.algorithms.signature.length === 0) {
     return;
   }
 
@@ -116,7 +116,7 @@ const validateAlgorithmCompatibility = (
     throw new BadRequestError({ message: "CA key algorithm not found" });
   }
 
-  const compatibleAlgorithms = template.signatureAlgorithm.allowedAlgorithms.filter((sigAlg: string) => {
+  const compatibleAlgorithms = template.algorithms.signature.filter((sigAlg: string) => {
     const parts = sigAlg.split("-");
     const keyType = parts[parts.length - 1];
 
@@ -133,7 +133,7 @@ const validateAlgorithmCompatibility = (
 
   if (compatibleAlgorithms.length === 0) {
     throw new BadRequestError({
-      message: `Template signature algorithms (${template.signatureAlgorithm.allowedAlgorithms.join(", ")}) are not compatible with CA key algorithm (${caKeyAlgorithm})`
+      message: `Template signature algorithms (${template.algorithms.signature.join(", ")}) are not compatible with CA key algorithm (${caKeyAlgorithm})`
     });
   }
 };
@@ -180,7 +180,10 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
+    const mappedCertificateRequest = mapEnumsForValidation({
+      ...certificateRequest,
+      subjectAlternativeNames: certificateRequest.altNames
+    });
     const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
       profile.certificateTemplateId,
       mappedCertificateRequest
@@ -217,26 +220,25 @@ export const certificateV3ServiceFactory = ({
 
     validateAlgorithmCompatibility(ca, template);
 
-    const effectiveSignatureAlgorithm =
-      certificateRequest.signatureAlgorithm || template.signatureAlgorithm?.defaultAlgorithm;
-    const effectiveKeyAlgorithm = certificateRequest.keyAlgorithm || template.keyAlgorithm?.defaultKeyType;
+    const effectiveSignatureAlgorithm = certificateRequest.signatureAlgorithm;
+    const effectiveKeyAlgorithm = certificateRequest.keyAlgorithm;
 
-    if (template.keyAlgorithm?.allowedKeyTypes && !effectiveKeyAlgorithm) {
+    if (template.algorithms?.keyAlgorithm && !effectiveKeyAlgorithm) {
       throw new BadRequestError({
-        message: "Key algorithm is required by template policy but not provided in request or template default"
+        message: "Key algorithm is required by template policy but not provided in request"
       });
     }
 
-    if (template.signatureAlgorithm?.allowedAlgorithms && !effectiveSignatureAlgorithm) {
+    if (template.algorithms?.signature && !effectiveSignatureAlgorithm) {
       throw new BadRequestError({
-        message: "Signature algorithm is required by template policy but not provided in request or template default"
+        message: "Signature algorithm is required by template policy but not provided in request"
       });
     }
 
-    const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequest, template.attributes);
+    const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequest, template.subject);
     const subjectAlternativeNames = buildSubjectAlternativeNamesFromTemplate(
       { subjectAlternativeNames: certificateRequest.altNames },
-      template.subjectAlternativeNames
+      template.sans
     );
 
     const { certificate, certificateChain, issuingCaCertificate, privateKey, serialNumber } =
@@ -326,18 +328,18 @@ export const certificateV3ServiceFactory = ({
 
     validateAlgorithmCompatibility(ca, template);
 
-    const effectiveSignatureAlgorithm = signatureAlgorithm || template.signatureAlgorithm?.defaultAlgorithm;
-    const effectiveKeyAlgorithm = keyAlgorithm || template.keyAlgorithm?.defaultKeyType;
+    const effectiveSignatureAlgorithm = signatureAlgorithm;
+    const effectiveKeyAlgorithm = keyAlgorithm;
 
-    if (template.keyAlgorithm?.allowedKeyTypes && !effectiveKeyAlgorithm) {
+    if (template.algorithms?.keyAlgorithm && !effectiveKeyAlgorithm) {
       throw new BadRequestError({
-        message: "Key algorithm is required by template policy but not provided in request or template default"
+        message: "Key algorithm is required by template policy but not provided in request"
       });
     }
 
-    if (template.signatureAlgorithm?.allowedAlgorithms && !effectiveSignatureAlgorithm) {
+    if (template.algorithms?.signature && !effectiveSignatureAlgorithm) {
       throw new BadRequestError({
-        message: "Signature algorithm is required by template policy but not provided in request or template default"
+        message: "Signature algorithm is required by template policy but not provided in request"
       });
     }
 

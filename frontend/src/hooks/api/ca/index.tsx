@@ -1,5 +1,4 @@
 export { AcmeDnsProvider, CaRenewalType, CaStatus, CaType, InternalCaType } from "./enums";
-export type { TOrderCertificateDTO, TOrderCertificateResponse } from "./types";
 export {
   useCreateCa,
   useCreateCertificate,
@@ -24,3 +23,4 @@ export {
   useListCasByTypeAndProjectId,
   useListExternalCasByProjectId
 } from "./queries";
+export type { TOrderCertificateDTO, TOrderCertificateResponse } from "./types";

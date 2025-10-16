@@ -1,110 +1,133 @@
 import { z } from "zod";
 
-import { CertificateTemplatesV2Schema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
-  CertDurationUnit,
   CertExtendedKeyUsageType,
-  CertIncludeType,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "@app/services/certificate-common/certificate-constants";
+import { certificateTemplateV2ResponseSchema } from "@app/services/certificate-template-v2/certificate-template-v2-schemas";
+
+const attributeTypeSchema = z.nativeEnum(CertSubjectAttributeType);
+const sanTypeSchema = z.nativeEnum(CertSubjectAlternativeNameType);
+
+const templateV2SubjectSchema = z
+  .object({
+    type: attributeTypeSchema,
+    allowed: z.array(z.string()).optional(),
+    required: z.array(z.string()).optional(),
+    denied: z.array(z.string()).optional()
+  })
+  .refine(
+    (data) => {
+      if (!data.allowed && !data.required && !data.denied) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Subject attribute must have at least one allowed, required, or denied value"
+    }
+  );
+
+const templateV2KeyUsagesSchema = z
+  .object({
+    allowed: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
+    required: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
+    denied: z.array(z.nativeEnum(CertKeyUsageType)).optional()
+  })
+  .refine(
+    (data) => {
+      if (!data.allowed && !data.required && !data.denied) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Key usages must have at least one allowed, required, or denied value"
+    }
+  );
+
+const templateV2ExtendedKeyUsagesSchema = z
+  .object({
+    allowed: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
+    required: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
+    denied: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional()
+  })
+  .refine(
+    (data) => {
+      if (!data.allowed && !data.required && !data.denied) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Extended key usages must have at least one allowed, required, or denied value"
+    }
+  );
+
+const templateV2SanSchema = z
+  .object({
+    type: sanTypeSchema,
+    allowed: z.array(z.string()).optional(),
+    required: z.array(z.string()).optional(),
+    denied: z.array(z.string()).optional()
+  })
+  .refine(
+    (data) => {
+      if (!data.allowed && !data.required && !data.denied) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "SAN must have at least one allowed, required, or denied value"
+    }
+  );
+
+const templateV2ValiditySchema = z.object({
+  max: z
+    .string()
+    .regex(/^\d+[dhmy]$/, {
+      message: "Max validity must be in format like '365d', '12m', '1y', or '24h'"
+    })
+    .optional()
+});
+
+const templateV2AlgorithmsSchema = z.object({
+  signature: z.array(z.string()).min(1, "At least one signature algorithm must be provided").optional(),
+  keyAlgorithm: z.array(z.string()).min(1, "At least one key algorithm must be provided").optional()
+});
+
+const createCertificateTemplateV2Schema = z.object({
+  projectId: z.string().min(1),
+  name: z.string().min(1).max(255, "Name must be between 1 and 255 characters"),
+  description: z.string().max(1000).optional(),
+  subject: z.array(templateV2SubjectSchema).optional(),
+  sans: z.array(templateV2SanSchema).optional(),
+  keyUsages: templateV2KeyUsagesSchema.optional(),
+  extendedKeyUsages: templateV2ExtendedKeyUsagesSchema.optional(),
+  algorithms: templateV2AlgorithmsSchema.optional(),
+  validity: templateV2ValiditySchema.optional()
+});
+
+const updateCertificateTemplateV2Schema = z.object({
+  name: z.string().min(1).max(255, "Name must be between 1 and 255 characters").optional(),
+  description: z.string().max(1000).optional(),
+  subject: z.array(templateV2SubjectSchema).optional(),
+  sans: z.array(templateV2SanSchema).optional(),
+  keyUsages: templateV2KeyUsagesSchema.optional(),
+  extendedKeyUsages: templateV2ExtendedKeyUsagesSchema.optional(),
+  algorithms: templateV2AlgorithmsSchema.optional(),
+  validity: templateV2ValiditySchema.optional()
+});
 
 export const registerCertificateTemplatesV2Router = async (server: FastifyZodProvider) => {
-  const templateV2AttributeSchema = z
-    .object({
-      type: z.nativeEnum(CertSubjectAttributeType),
-      include: z.nativeEnum(CertIncludeType),
-      value: z.array(z.string()).optional()
-    })
-    .refine(
-      (data) => {
-        if (data.type === CertSubjectAttributeType.COMMON_NAME && data.value && data.value.length > 1) {
-          return false;
-        }
-        if (data.include === CertIncludeType.MANDATORY && (!data.value || data.value.length > 1)) {
-          return false;
-        }
-        return true;
-      },
-      {
-        message: "Common name can only have one value. Mandatory attributes can only have one value or no value (empty)"
-      }
-    );
-
-  const templateV2KeyUsagesSchema = z.object({
-    requiredUsages: z
-      .object({
-        all: z.array(z.nativeEnum(CertKeyUsageType))
-      })
-      .optional(),
-    optionalUsages: z
-      .object({
-        all: z.array(z.nativeEnum(CertKeyUsageType))
-      })
-      .optional()
-  });
-
-  const templateV2ExtendedKeyUsagesSchema = z.object({
-    requiredUsages: z
-      .object({
-        all: z.array(z.nativeEnum(CertExtendedKeyUsageType))
-      })
-      .optional(),
-    optionalUsages: z
-      .object({
-        all: z.array(z.nativeEnum(CertExtendedKeyUsageType))
-      })
-      .optional()
-  });
-
-  const templateV2SanSchema = z
-    .object({
-      type: z.nativeEnum(CertSubjectAlternativeNameType),
-      include: z.nativeEnum(CertIncludeType),
-      value: z.array(z.string()).optional()
-    })
-    .refine(
-      (data) => {
-        if (data.include === CertIncludeType.MANDATORY && (!data.value || data.value.length > 1)) {
-          return false;
-        }
-        return true;
-      },
-      {
-        message: "Mandatory SANs can only have one value or no value (empty)"
-      }
-    );
-
-  const templateV2ValiditySchema = z.object({
-    maxDuration: z.object({
-      value: z.number().positive(),
-      unit: z.nativeEnum(CertDurationUnit)
-    }),
-    minDuration: z
-      .object({
-        value: z.number().positive(),
-        unit: z.nativeEnum(CertDurationUnit)
-      })
-      .optional()
-  });
-
-  const templateV2SignatureAlgorithmSchema = z.object({
-    allowedAlgorithms: z.array(z.string()).min(1),
-    defaultAlgorithm: z.string()
-  });
-
-  const templateV2KeyAlgorithmSchema = z.object({
-    allowedKeyTypes: z.array(z.string()).min(1),
-    defaultKeyType: z.string()
-  });
-
   server.route({
     method: "POST",
     url: "/",
@@ -114,39 +137,10 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificateTemplates],
-      body: z
-        .object({
-          projectId: z.string().min(1),
-          slug: slugSchema({ min: 1, max: 255 }),
-          description: z.string().max(1000).optional(),
-          attributes: z.array(templateV2AttributeSchema).optional(),
-          keyUsages: templateV2KeyUsagesSchema.optional(),
-          extendedKeyUsages: templateV2ExtendedKeyUsagesSchema.optional(),
-          subjectAlternativeNames: z.array(templateV2SanSchema).optional(),
-          validity: templateV2ValiditySchema.optional(),
-          signatureAlgorithm: templateV2SignatureAlgorithmSchema.optional(),
-          keyAlgorithm: templateV2KeyAlgorithmSchema.optional()
-        })
-        .refine(
-          (data) => {
-            const hasConstraints =
-              (data.attributes && data.attributes.length > 0) ||
-              (data.subjectAlternativeNames && data.subjectAlternativeNames.length > 0) ||
-              data.keyUsages ||
-              data.extendedKeyUsages ||
-              data.validity ||
-              data.signatureAlgorithm ||
-              data.keyAlgorithm;
-            return hasConstraints;
-          },
-          {
-            message:
-              "Certificate template must define at least one constraint (attributes, SANs, key usages, validity, or algorithms)"
-          }
-        ),
+      body: createCertificateTemplateV2Schema,
       response: {
         200: z.object({
-          certificateTemplate: CertificateTemplatesV2Schema
+          certificateTemplate: certificateTemplateV2ResponseSchema
         })
       }
     },
@@ -169,7 +163,7 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
           type: EventType.CREATE_CERTIFICATE_TEMPLATE,
           metadata: {
             certificateTemplateId: certificateTemplate.id,
-            name: certificateTemplate.slug,
+            name: certificateTemplate.name,
             projectId: certificateTemplate.projectId
           }
         }
@@ -196,7 +190,7 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
       }),
       response: {
         200: z.object({
-          certificateTemplates: CertificateTemplatesV2Schema.array(),
+          certificateTemplates: certificateTemplateV2ResponseSchema.array(),
           totalCount: z.number()
         })
       }
@@ -240,7 +234,7 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
       }),
       response: {
         200: z.object({
-          certificateTemplate: CertificateTemplatesV2Schema
+          certificateTemplate: certificateTemplateV2ResponseSchema
         })
       }
     },
@@ -261,7 +255,7 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
           type: EventType.GET_CERTIFICATE_TEMPLATE,
           metadata: {
             certificateTemplateId: certificateTemplate.id,
-            name: certificateTemplate.slug
+            name: certificateTemplate.name
           }
         }
       });
@@ -282,20 +276,10 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
       params: z.object({
         id: z.string().uuid()
       }),
-      body: z.object({
-        slug: slugSchema({ min: 1, max: 255 }).optional(),
-        description: z.string().max(1000).optional(),
-        attributes: z.array(templateV2AttributeSchema).optional(),
-        keyUsages: templateV2KeyUsagesSchema.optional(),
-        extendedKeyUsages: templateV2ExtendedKeyUsagesSchema.optional(),
-        subjectAlternativeNames: z.array(templateV2SanSchema).optional(),
-        validity: templateV2ValiditySchema.optional(),
-        signatureAlgorithm: templateV2SignatureAlgorithmSchema.optional(),
-        keyAlgorithm: templateV2KeyAlgorithmSchema.optional()
-      }),
+      body: updateCertificateTemplateV2Schema,
       response: {
         200: z.object({
-          certificateTemplate: CertificateTemplatesV2Schema
+          certificateTemplate: certificateTemplateV2ResponseSchema
         })
       }
     },
@@ -317,7 +301,7 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
           type: EventType.UPDATE_CERTIFICATE_TEMPLATE,
           metadata: {
             certificateTemplateId: certificateTemplate.id,
-            name: certificateTemplate.slug
+            name: certificateTemplate.name
           }
         }
       });
@@ -340,7 +324,7 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
       }),
       response: {
         200: z.object({
-          certificateTemplate: CertificateTemplatesV2Schema
+          certificateTemplate: certificateTemplateV2ResponseSchema
         })
       }
     },
@@ -361,7 +345,7 @@ export const registerCertificateTemplatesV2Router = async (server: FastifyZodPro
           type: EventType.DELETE_CERTIFICATE_TEMPLATE,
           metadata: {
             certificateTemplateId: certificateTemplate.id,
-            name: certificateTemplate.slug
+            name: certificateTemplate.name
           }
         }
       });

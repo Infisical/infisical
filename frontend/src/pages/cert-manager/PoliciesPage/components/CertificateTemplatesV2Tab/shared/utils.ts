@@ -2,7 +2,9 @@ import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   formatExtendedKeyUsage,
-  formatKeyUsage
+  formatKeyUsage,
+  USAGE_STATES,
+  UsageState
 } from "./certificate-constants";
 
 export const formatUsageName = (usage: string): string => {
@@ -14,6 +16,7 @@ export const formatUsageName = (usage: string): string => {
       return formatExtendedKeyUsage(usage as CertExtendedKeyUsageType);
     }
   } catch {
+    // Handle any errors in type checking
   }
   return usage.replace(/_/g, " ");
 };
@@ -22,15 +25,15 @@ export const getUsageState = (
   usage: CertKeyUsageType | CertExtendedKeyUsageType,
   requiredUsages: (CertKeyUsageType | CertExtendedKeyUsageType)[],
   optionalUsages: (CertKeyUsageType | CertExtendedKeyUsageType)[]
-): "required" | "optional" | undefined => {
-  if (requiredUsages.includes(usage)) return "required";
-  if (optionalUsages.includes(usage)) return "optional";
+): UsageState => {
+  if (requiredUsages.includes(usage)) return USAGE_STATES.REQUIRED;
+  if (optionalUsages.includes(usage)) return USAGE_STATES.OPTIONAL;
   return undefined;
 };
 
 export const toggleUsageState = (
   usage: CertKeyUsageType | CertExtendedKeyUsageType,
-  newState: "required" | "optional" | undefined,
+  newState: UsageState,
   currentRequiredUsages: (CertKeyUsageType | CertExtendedKeyUsageType)[],
   currentOptionalUsages: (CertKeyUsageType | CertExtendedKeyUsageType)[],
   toggleRequired: (usage: CertKeyUsageType | CertExtendedKeyUsageType) => void,
@@ -39,10 +42,10 @@ export const toggleUsageState = (
   const isRequired = currentRequiredUsages.includes(usage);
   const isOptional = currentOptionalUsages.includes(usage);
 
-  if (newState === "required") {
+  if (newState === USAGE_STATES.REQUIRED) {
     if (isOptional) toggleOptional(usage);
     if (!isRequired) toggleRequired(usage);
-  } else if (newState === "optional") {
+  } else if (newState === USAGE_STATES.OPTIONAL) {
     if (isRequired) toggleRequired(usage);
     if (!isOptional) toggleOptional(usage);
   } else {

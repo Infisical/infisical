@@ -54,7 +54,7 @@ export const CertificateTemplatesV2Tab = () => {
       setIsDeleteModalOpen(false);
       setSelectedTemplate(null);
       createNotification({
-        text: `Certificate template "${selectedTemplate.slug}" deleted successfully`,
+        text: `Certificate template "${selectedTemplate.name}" deleted successfully`,
         type: "success"
       });
     } catch (error: any) {
@@ -103,12 +103,12 @@ export const CertificateTemplatesV2Tab = () => {
 
           <DeleteActionModal
             isOpen={isDeleteModalOpen}
-            title={`Delete Certificate Template ${selectedTemplate.slug}?`}
+            title={`Delete Certificate Template ${selectedTemplate.name}?`}
             onChange={(isOpen) => {
               setIsDeleteModalOpen(isOpen);
               if (!isOpen) setSelectedTemplate(null);
             }}
-            deleteKey={selectedTemplate.slug}
+            deleteKey={selectedTemplate.name}
             onDeleteApproved={handleDeleteConfirm}
           />
         </>

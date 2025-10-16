@@ -123,78 +123,74 @@ export type TListCertificateTemplatesDTO = {
 };
 
 export type TCertificateTemplateV2Policy = {
-  attributes: Array<{
-    type: "common_name";
-    include: "mandatory" | "optional" | "prohibit";
-    value?: string[];
+  subject?: Array<{
+    type: "common_name" | "organization" | "country";
+    allowed?: string[];
+    required?: string[];
+    denied?: string[];
   }>;
-  keyUsages: {
-    requiredUsages: { all: string[] };
-    optionalUsages: { all: string[] };
-  };
-  extendedKeyUsages: {
-    requiredUsages: { all: string[] };
-    optionalUsages: { all: string[] };
-  };
-  subjectAlternativeNames: Array<{
+  sans?: Array<{
     type: "dns_name" | "ip_address" | "email" | "uri";
-    include: "mandatory" | "optional" | "prohibit";
-    value?: string[];
+    allowed?: string[];
+    required?: string[];
+    denied?: string[];
   }>;
-  validity: {
-    maxDuration: { value: number; unit: "days" | "months" | "years" };
-    minDuration?: { value: number; unit: "days" | "months" | "years" };
+  keyUsages?: {
+    allowed?: string[];
+    required?: string[];
+    denied?: string[];
   };
-  signatureAlgorithm: {
-    allowedAlgorithms: string[];
-    defaultAlgorithm: string;
+  extendedKeyUsages?: {
+    allowed?: string[];
+    required?: string[];
+    denied?: string[];
   };
-  keyAlgorithm: {
-    allowedKeyTypes: string[];
-    defaultKeyType: string;
+  algorithms?: {
+    signature?: string[];
+    keyAlgorithm?: string[];
+  };
+  validity?: {
+    max?: string;
   };
 };
 
 export type TCertificateTemplateV2New = {
   id: string;
   projectId: string;
-  slug: string;
+  name: string;
   description?: string;
-  attributes: any;
-  keyUsages: any;
-  extendedKeyUsages: any;
-  subjectAlternativeNames: any;
-  validity: any;
-  signatureAlgorithm: any;
-  keyAlgorithm: any;
+  subject?: TCertificateTemplateV2Policy["subject"];
+  sans?: TCertificateTemplateV2Policy["sans"];
+  keyUsages?: TCertificateTemplateV2Policy["keyUsages"];
+  extendedKeyUsages?: TCertificateTemplateV2Policy["extendedKeyUsages"];
+  algorithms?: TCertificateTemplateV2Policy["algorithms"];
+  validity?: TCertificateTemplateV2Policy["validity"];
   createdAt: string;
   updatedAt: string;
 };
 
 export type TCreateCertificateTemplateV2NewDTO = {
   projectId: string;
-  slug: string;
+  name: string;
   description?: string;
-  attributes: TCertificateTemplateV2Policy["attributes"];
-  keyUsages: TCertificateTemplateV2Policy["keyUsages"];
-  extendedKeyUsages: TCertificateTemplateV2Policy["extendedKeyUsages"];
-  subjectAlternativeNames: TCertificateTemplateV2Policy["subjectAlternativeNames"];
-  validity: TCertificateTemplateV2Policy["validity"];
-  signatureAlgorithm: TCertificateTemplateV2Policy["signatureAlgorithm"];
-  keyAlgorithm: TCertificateTemplateV2Policy["keyAlgorithm"];
+  subject?: TCertificateTemplateV2Policy["subject"];
+  sans?: TCertificateTemplateV2Policy["sans"];
+  keyUsages?: TCertificateTemplateV2Policy["keyUsages"];
+  extendedKeyUsages?: TCertificateTemplateV2Policy["extendedKeyUsages"];
+  algorithms?: TCertificateTemplateV2Policy["algorithms"];
+  validity?: TCertificateTemplateV2Policy["validity"];
 };
 
 export type TUpdateCertificateTemplateV2NewDTO = {
   templateId: string;
-  slug?: string;
+  name?: string;
   description?: string;
-  attributes?: TCertificateTemplateV2Policy["attributes"];
+  subject?: TCertificateTemplateV2Policy["subject"];
+  sans?: TCertificateTemplateV2Policy["sans"];
   keyUsages?: TCertificateTemplateV2Policy["keyUsages"];
   extendedKeyUsages?: TCertificateTemplateV2Policy["extendedKeyUsages"];
-  subjectAlternativeNames?: TCertificateTemplateV2Policy["subjectAlternativeNames"];
+  algorithms?: TCertificateTemplateV2Policy["algorithms"];
   validity?: TCertificateTemplateV2Policy["validity"];
-  signatureAlgorithm?: TCertificateTemplateV2Policy["signatureAlgorithm"];
-  keyAlgorithm?: TCertificateTemplateV2Policy["keyAlgorithm"];
 };
 
 export type TDeleteCertificateTemplateV2NewDTO = {

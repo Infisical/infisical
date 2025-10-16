@@ -1,7 +1,17 @@
 /* eslint-disable no-nested-ternary */
-import { faCheck, faCircleInfo, faCopy, faEdit, faEllipsis, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { useCallback } from "react";
+import {
+  faCheck,
+  faCircleInfo,
+  faCopy,
+  faEdit,
+  faEllipsis,
+  faPlus,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   DropdownMenu,
@@ -18,12 +28,10 @@ import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { usePopUp, useToggle } from "@app/hooks";
 import { useGetCaById } from "@app/hooks/api/ca/queries";
 import { TCertificateProfile } from "@app/hooks/api/certificateProfiles";
 import { useGetCertificateTemplateV2ById } from "@app/hooks/api/certificateTemplates/queries";
-import { usePopUp, useToggle } from "@app/hooks";
-import { createNotification } from "@app/components/notifications";
-import { useCallback } from "react";
 import { CertificateIssuanceModal } from "@app/pages/cert-manager/CertificatesPage/components/CertificateIssuanceModal";
 
 interface Props {
@@ -37,9 +45,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
 
   const { data: caData } = useGetCaById(profile.caId);
 
-  const { popUp, handlePopUpToggle } = usePopUp([
-    "certificateIssuance"
-  ] as const);
+  const { popUp, handlePopUpToggle } = usePopUp(["certificateIssuance"] as const);
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
@@ -100,15 +106,15 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
           )}
         </div>
       </Td>
-      <Td className="text-center">{getEnrollmentTypeBadge(profile.enrollmentType)}</Td>
-      <Td className="text-center">
+      <Td className="text-start">{getEnrollmentTypeBadge(profile.enrollmentType)}</Td>
+      <Td className="text-start">
         <span className="text-sm text-mineshaft-300">
           {caData?.friendlyName || caData?.commonName || profile.caId}
         </span>
       </Td>
       <Td>
         <span className="text-sm text-mineshaft-300">
-          {templateData?.slug || profile.certificateTemplateId}
+          {templateData?.name || profile.certificateTemplateId}
         </span>
       </Td>
       <Td>
@@ -176,19 +182,17 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
                 Edit Profile
               </DropdownMenuItem>
             )}
-            {
-              canIssueCertificate && (
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePopUpToggle("certificateIssuance");
-                  }}
-                  icon={<FontAwesomeIcon icon={faPlus} />}
-                >
-                  Issue Certificate
-                </DropdownMenuItem>
-              )
-            }
+            {canIssueCertificate && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePopUpToggle("certificateIssuance");
+                }}
+                icon={<FontAwesomeIcon icon={faPlus} />}
+              >
+                Issue Certificate
+              </DropdownMenuItem>
+            )}
             {canDeleteProfile && (
               <DropdownMenuItem
                 onClick={(e) => {
@@ -202,7 +206,11 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
             )}
           </DropdownMenuContent>
         </DropdownMenu>
-        <CertificateIssuanceModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} profileId={profile.id}/>
+        <CertificateIssuanceModal
+          popUp={popUp}
+          handlePopUpToggle={handlePopUpToggle}
+          profileId={profile.id}
+        />
       </Td>
     </Tr>
   );

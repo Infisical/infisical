@@ -1,9 +1,6 @@
-/* eslint-disable react/no-array-index-key */
-/* eslint-disable no-nested-ternary */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faQuestionCircle } from "@fortawesome/free-regular-svg-icons";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faQuestionCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -35,13 +32,13 @@ import {
   KEY_USAGES_OPTIONS,
   SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
-import {
-  CertExtendedKeyUsage,
-  CertKeyAlgorithm,
-  CertKeyUsage
-} from "@app/hooks/api/certificates/enums";
+import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { useGetCertificateTemplateV2ById } from "@app/hooks/api/certificateTemplates/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import {
+  mapTemplateKeyAlgorithmToApi,
+  mapTemplateSignatureAlgorithmToApi
+} from "@app/pages/cert-manager/PoliciesPage/components/CertificateTemplatesV2Tab/shared/certificate-constants";
 
 import { CertificateContent } from "./CertificateContent";
 
@@ -109,9 +106,12 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
   const [allowedKeyUsages, setAllowedKeyUsages] = useState<string[]>([]);
   const [allowedExtendedKeyUsages, setAllowedExtendedKeyUsages] = useState<string[]>([]);
+  const [requiredKeyUsages, setRequiredKeyUsages] = useState<string[]>([]);
+  const [requiredExtendedKeyUsages, setRequiredExtendedKeyUsages] = useState<string[]>([]);
   const [allowedSignatureAlgorithms, setAllowedSignatureAlgorithms] = useState<string[]>([]);
   const [allowedKeyAlgorithms, setAllowedKeyAlgorithms] = useState<string[]>([]);
   const { currentProject } = useProject();
+
   const { data: cert } = useGetCert(
     (popUp?.certificateIssuance?.data as { serialNumber: string })?.serialNumber || ""
   );
@@ -133,7 +133,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      profileId: profileId ? profileId : "",
+      profileId: profileId || "",
       subjectAttributes: [{ type: "common_name", value: "" }],
       subjectAltNames: [],
       ttl: "30d",
@@ -144,276 +144,122 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
     }
   });
 
+  const resetAllState = useCallback(() => {
+    setCertificateDetails(null);
+    setAllowedKeyUsages([]);
+    setAllowedExtendedKeyUsages([]);
+    setRequiredKeyUsages([]);
+    setRequiredExtendedKeyUsages([]);
+    setAllowedSignatureAlgorithms([]);
+    setAllowedKeyAlgorithms([]);
+    reset();
+  }, [reset]);
+
   const selectedProfileId = watch("profileId");
-  const selectedProfile = profilesData?.certificateProfiles?.find(
-    (p) => p.id === selectedProfileId
+  const selectedProfile = useMemo(
+    () => profilesData?.certificateProfiles?.find((p) => p.id === selectedProfileId),
+    [profilesData?.certificateProfiles, selectedProfileId]
   );
 
   const { data: templateData } = useGetCertificateTemplateV2ById({
     templateId: selectedProfile?.certificateTemplateId || ""
   });
 
+  const filteredKeyUsages = useMemo(() => {
+    if (allowedKeyUsages.length === 0) return KEY_USAGES_OPTIONS;
+    return KEY_USAGES_OPTIONS.filter(({ value }) => allowedKeyUsages.includes(value));
+  }, [allowedKeyUsages]);
+
+  const filteredExtendedKeyUsages = useMemo(() => {
+    if (allowedExtendedKeyUsages.length === 0) return EXTENDED_KEY_USAGES_OPTIONS;
+    return EXTENDED_KEY_USAGES_OPTIONS.filter(({ value }) =>
+      allowedExtendedKeyUsages.includes(value)
+    );
+  }, [allowedExtendedKeyUsages]);
+
+  const availableSignatureAlgorithms = useMemo(() => {
+    if (allowedSignatureAlgorithms.length === 0) {
+      return SIGNATURE_ALGORITHMS_OPTIONS;
+    }
+    return allowedSignatureAlgorithms.map((templateAlgorithm) => {
+      const apiAlgorithm = mapTemplateSignatureAlgorithmToApi(templateAlgorithm);
+      return {
+        value: apiAlgorithm,
+        label: apiAlgorithm
+      };
+    });
+  }, [allowedSignatureAlgorithms]);
+
+  const availableKeyAlgorithms = useMemo(() => {
+    if (allowedKeyAlgorithms.length === 0) {
+      return certKeyAlgorithms;
+    }
+    return allowedKeyAlgorithms.map((templateAlgorithm) => {
+      const apiAlgorithm = mapTemplateKeyAlgorithmToApi(templateAlgorithm);
+      return {
+        value: apiAlgorithm,
+        label: apiAlgorithm
+      };
+    });
+  }, [allowedKeyAlgorithms]);
+
   useEffect(() => {
-    if (templateData && selectedProfile) {
-      if (templateData.signatureAlgorithm?.allowedAlgorithms && templateData.signatureAlgorithm.allowedAlgorithms.length > 0) {
-        const sigAlgMap: Record<string, string> = {
-          "SHA256-RSA": "RSA-SHA256",
-          "SHA384-RSA": "RSA-SHA384",
-          "SHA512-RSA": "RSA-SHA512",
-          "SHA256-ECDSA": "ECDSA-SHA256",
-          "SHA384-ECDSA": "ECDSA-SHA384",
-          "SHA512-ECDSA": "ECDSA-SHA512"
-        };
-
-        let defaultValue = templateData.signatureAlgorithm.defaultAlgorithm;
-        if (defaultValue && sigAlgMap[defaultValue]) {
-          defaultValue = sigAlgMap[defaultValue];
-        }
-
-        const allowedValues = templateData.signatureAlgorithm.allowedAlgorithms.map((alg: string) => sigAlgMap[alg] || alg);
-
-        if (defaultValue && allowedValues.includes(defaultValue)) {
-          setValue("signatureAlgorithm", defaultValue);
-        } else if (allowedValues.length > 0) {
-          setValue("signatureAlgorithm", allowedValues[0]);
-        }
-      }
-      if (templateData.keyAlgorithm?.allowedKeyTypes && templateData.keyAlgorithm.allowedKeyTypes.length > 0) {
-        const keyAlgMap: Record<string, string> = {
-          "RSA-2048": CertKeyAlgorithm.RSA_2048,
-          "RSA-3072": CertKeyAlgorithm.RSA_3072,
-          "RSA-4096": CertKeyAlgorithm.RSA_4096,
-          "ECDSA-P256": CertKeyAlgorithm.ECDSA_P256,
-          "ECDSA-P384": CertKeyAlgorithm.ECDSA_P384,
-          [CertKeyAlgorithm.ECDSA_P256]: CertKeyAlgorithm.ECDSA_P256,
-          [CertKeyAlgorithm.ECDSA_P384]: CertKeyAlgorithm.ECDSA_P384
-        };
-
-        let defaultValue = templateData.keyAlgorithm.defaultKeyType;
-        if (defaultValue && keyAlgMap[defaultValue]) {
-          defaultValue = keyAlgMap[defaultValue];
-        }
-
-        const allowedValues = templateData.keyAlgorithm.allowedKeyTypes.map((alg: string) => keyAlgMap[alg] || alg);
-
-        if (defaultValue && allowedValues.includes(defaultValue)) {
-          setValue("keyAlgorithm", defaultValue);
-        } else if (allowedValues.length > 0) {
-          setValue("keyAlgorithm", allowedValues[0]);
-        }
-      }
-
-      if (templateData.validity?.maxDuration) {
-        const { value, unit } = templateData.validity.maxDuration;
-        let ttlValue = "";
-
-        switch (unit) {
-          case "days":
-            ttlValue = `${value}d`;
-            break;
-          case "months":
-            ttlValue = `${value}m`;
-            break;
-          case "years":
-            ttlValue = `${value}y`;
-            break;
-          default:
-            ttlValue = `${value}d`;
-        }
-
-        setValue("ttl", ttlValue);
-      }
-
-      if (templateData.signatureAlgorithm?.allowedAlgorithms) {
-        const mappedSigAlgs = templateData.signatureAlgorithm.allowedAlgorithms.map(
-          (alg: string) => {
-            const sigAlgMap: Record<string, string> = {
-              "SHA256-RSA": "RSA-SHA256",
-              "SHA384-RSA": "RSA-SHA384",
-              "SHA512-RSA": "RSA-SHA512",
-              "SHA256-ECDSA": "ECDSA-SHA256",
-              "SHA384-ECDSA": "ECDSA-SHA384",
-              "SHA512-ECDSA": "ECDSA-SHA512"
-            };
-            return sigAlgMap[alg] || alg;
-          }
-        );
-        setAllowedSignatureAlgorithms(mappedSigAlgs);
-      }
-
-      if (templateData.keyAlgorithm?.allowedKeyTypes) {
-        const mappedKeyAlgs = templateData.keyAlgorithm.allowedKeyTypes.map((alg: string) => {
-          const keyAlgMap: Record<string, string> = {
-            "RSA-2048": CertKeyAlgorithm.RSA_2048,
-            "RSA-3072": CertKeyAlgorithm.RSA_3072,
-            "RSA-4096": CertKeyAlgorithm.RSA_4096,
-            "ECDSA-P256": CertKeyAlgorithm.ECDSA_P256,
-            "ECDSA-P384": CertKeyAlgorithm.ECDSA_P384
-          };
-          return keyAlgMap[alg] || alg;
-        });
-        setAllowedKeyAlgorithms(mappedKeyAlgs);
-      }
-
-      const allAllowedKeyUsages: string[] = [];
-      if (templateData.keyUsages?.requiredUsages?.all) {
-        allAllowedKeyUsages.push(...templateData.keyUsages.requiredUsages.all);
-      }
-      if (templateData.keyUsages?.optionalUsages?.all) {
-        allAllowedKeyUsages.push(...templateData.keyUsages.optionalUsages.all);
-      }
-      setAllowedKeyUsages([...new Set(allAllowedKeyUsages)]);
-
-      const allAllowedExtendedKeyUsages: string[] = [];
-      if (templateData.extendedKeyUsages?.requiredUsages?.all) {
-        allAllowedExtendedKeyUsages.push(...templateData.extendedKeyUsages.requiredUsages.all);
-      }
-      if (templateData.extendedKeyUsages?.optionalUsages?.all) {
-        allAllowedExtendedKeyUsages.push(...templateData.extendedKeyUsages.optionalUsages.all);
-      }
-      setAllowedExtendedKeyUsages([...new Set(allAllowedExtendedKeyUsages)]);
-
-      if (templateData.attributes && Array.isArray(templateData.attributes)) {
-        const subjectAttrs: Array<{
-          type: "common_name";
-          value: string;
-        }> = [];
-
-        templateData.attributes.forEach((attr) => {
-          if (
-            (attr.include === "mandatory" ||
-              attr.include === "optional" ||
-              attr.include === "prohibit") &&
-            attr.value &&
-            attr.value.length > 0
-          ) {
-            attr.value.forEach((val: string) => {
-              subjectAttrs.push({ type: attr.type as any, value: val });
-            });
-          }
-        });
-
-        if (subjectAttrs.length > 0) {
-          setValue("subjectAttributes", subjectAttrs);
-        } else {
-          setValue("subjectAttributes", [{ type: "common_name", value: "" }]);
-        }
+    if (templateData && selectedProfile && popUp?.certificateIssuance?.isOpen) {
+      if (templateData.algorithms?.signature && templateData.algorithms.signature.length > 0) {
+        setAllowedSignatureAlgorithms(templateData.algorithms.signature);
+      } else {
+        setAllowedSignatureAlgorithms([]);
       }
 
       if (
-        templateData.subjectAlternativeNames &&
-        Array.isArray(templateData.subjectAlternativeNames)
+        templateData.algorithms?.keyAlgorithm &&
+        templateData.algorithms.keyAlgorithm.length > 0
       ) {
-        const templateSans: Array<{ type: "dns" | "ip" | "email" | "uri"; value: string }> = [];
-
-        templateData.subjectAlternativeNames.forEach((sanPolicy) => {
-          if (
-            (sanPolicy.include === "mandatory" ||
-              sanPolicy.include === "optional" ||
-              sanPolicy.include === "prohibit") &&
-            sanPolicy.value &&
-            sanPolicy.value.length > 0
-          ) {
-            const typeMapping: Record<string, "dns" | "ip" | "email" | "uri"> = {
-              dns_name: "dns",
-              ip_address: "ip",
-              email: "email",
-              uri: "uri"
-            };
-
-            const mappedType = typeMapping[sanPolicy.type];
-            if (mappedType) {
-              sanPolicy.value.forEach((val: string) => {
-                templateSans.push({ type: mappedType, value: val });
-              });
-            }
-          }
-        });
-
-        if (templateSans.length > 0) {
-          setValue("subjectAltNames", templateSans);
-        }
+        setAllowedKeyAlgorithms(templateData.algorithms.keyAlgorithm);
+      } else {
+        setAllowedKeyAlgorithms([]);
       }
 
-      const resetKeyUsages = {
-        [CertKeyUsage.DIGITAL_SIGNATURE]: false,
-        [CertKeyUsage.KEY_ENCIPHERMENT]: false,
-        [CertKeyUsage.NON_REPUDIATION]: false,
-        [CertKeyUsage.DATA_ENCIPHERMENT]: false,
-        [CertKeyUsage.KEY_AGREEMENT]: false,
-        [CertKeyUsage.KEY_CERT_SIGN]: false,
-        [CertKeyUsage.CRL_SIGN]: false,
-        [CertKeyUsage.ENCIPHER_ONLY]: false,
-        [CertKeyUsage.DECIPHER_ONLY]: false
-      };
-
-      const resetExtendedKeyUsages = {
-        [CertExtendedKeyUsage.CLIENT_AUTH]: false,
-        [CertExtendedKeyUsage.CODE_SIGNING]: false,
-        [CertExtendedKeyUsage.EMAIL_PROTECTION]: false,
-        [CertExtendedKeyUsage.OCSP_SIGNING]: false,
-        [CertExtendedKeyUsage.SERVER_AUTH]: false,
-        [CertExtendedKeyUsage.TIMESTAMPING]: false
-      };
-
-      const templateToEnumMap = {
-        digital_signature: CertKeyUsage.DIGITAL_SIGNATURE,
-        digitalSignature: CertKeyUsage.DIGITAL_SIGNATURE,
-        key_encipherment: CertKeyUsage.KEY_ENCIPHERMENT,
-        keyEncipherment: CertKeyUsage.KEY_ENCIPHERMENT,
-        non_repudiation: CertKeyUsage.NON_REPUDIATION,
-        nonRepudiation: CertKeyUsage.NON_REPUDIATION,
-        data_encipherment: CertKeyUsage.DATA_ENCIPHERMENT,
-        dataEncipherment: CertKeyUsage.DATA_ENCIPHERMENT,
-        key_agreement: CertKeyUsage.KEY_AGREEMENT,
-        keyAgreement: CertKeyUsage.KEY_AGREEMENT,
-        key_cert_sign: CertKeyUsage.KEY_CERT_SIGN,
-        keyCertSign: CertKeyUsage.KEY_CERT_SIGN,
-        crl_sign: CertKeyUsage.CRL_SIGN,
-        cRLSign: CertKeyUsage.CRL_SIGN,
-        encipher_only: CertKeyUsage.ENCIPHER_ONLY,
-        encipherOnly: CertKeyUsage.ENCIPHER_ONLY,
-        decipher_only: CertKeyUsage.DECIPHER_ONLY,
-        decipherOnly: CertKeyUsage.DECIPHER_ONLY,
-        client_auth: CertExtendedKeyUsage.CLIENT_AUTH,
-        clientAuth: CertExtendedKeyUsage.CLIENT_AUTH,
-        server_auth: CertExtendedKeyUsage.SERVER_AUTH,
-        serverAuth: CertExtendedKeyUsage.SERVER_AUTH,
-        code_signing: CertExtendedKeyUsage.CODE_SIGNING,
-        codeSigning: CertExtendedKeyUsage.CODE_SIGNING,
-        email_protection: CertExtendedKeyUsage.EMAIL_PROTECTION,
-        emailProtection: CertExtendedKeyUsage.EMAIL_PROTECTION,
-        ocsp_signing: CertExtendedKeyUsage.OCSP_SIGNING,
-        ocspSigning: CertExtendedKeyUsage.OCSP_SIGNING,
-        time_stamping: CertExtendedKeyUsage.TIMESTAMPING,
-        timestamping: CertExtendedKeyUsage.TIMESTAMPING,
-        timeStamping: CertExtendedKeyUsage.TIMESTAMPING
-      };
-
-      const currentKeyUsages = { ...resetKeyUsages };
-      if (templateData.keyUsages?.requiredUsages?.all) {
-        templateData.keyUsages.requiredUsages.all.forEach((usage: string) => {
-          const enumValue = (templateToEnumMap as any)[usage];
-          if (enumValue && enumValue in currentKeyUsages) {
-            (currentKeyUsages as any)[enumValue] = true;
-          }
-        });
+      if (templateData.validity?.max) {
+        setValue("ttl", templateData.validity.max);
       }
 
-      const currentExtendedKeyUsages = { ...resetExtendedKeyUsages };
-      if (templateData.extendedKeyUsages?.requiredUsages?.all) {
-        templateData.extendedKeyUsages.requiredUsages.all.forEach((usage: string) => {
-          const enumValue = (templateToEnumMap as any)[usage];
-          if (enumValue && enumValue in currentExtendedKeyUsages) {
-            (currentExtendedKeyUsages as any)[enumValue] = true;
-          }
-        });
+      const keyUsages: string[] = [];
+      if (templateData.keyUsages?.required) {
+        keyUsages.push(...templateData.keyUsages.required);
       }
+      if (templateData.keyUsages?.allowed) {
+        keyUsages.push(...templateData.keyUsages.allowed);
+      }
+      setAllowedKeyUsages(keyUsages);
 
-      setValue("keyUsages", currentKeyUsages);
-      setValue("extendedKeyUsages", currentExtendedKeyUsages);
+      const extendedKeyUsages: string[] = [];
+      if (templateData.extendedKeyUsages?.required) {
+        extendedKeyUsages.push(...templateData.extendedKeyUsages.required);
+      }
+      if (templateData.extendedKeyUsages?.allowed) {
+        extendedKeyUsages.push(...templateData.extendedKeyUsages.allowed);
+      }
+      setAllowedExtendedKeyUsages(extendedKeyUsages);
+
+      setRequiredKeyUsages(templateData.keyUsages?.required || []);
+      setRequiredExtendedKeyUsages(templateData.extendedKeyUsages?.required || []);
+
+      const initialKeyUsages: Record<string, boolean> = {};
+      const initialExtendedKeyUsages: Record<string, boolean> = {};
+
+      (templateData.keyUsages?.required || []).forEach((usage: string) => {
+        initialKeyUsages[usage] = true;
+      });
+
+      (templateData.extendedKeyUsages?.required || []).forEach((usage: string) => {
+        initialExtendedKeyUsages[usage] = true;
+      });
+
+      setValue("keyUsages", initialKeyUsages);
+      setValue("extendedKeyUsages", initialExtendedKeyUsages);
     }
-  }, [templateData, selectedProfile, setValue]);
+  }, [templateData, selectedProfile, setValue, popUp?.certificateIssuance?.isOpen]);
 
   useEffect(() => {
     if (cert) {
@@ -451,83 +297,138 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
     }
   }, [popUp?.certificateIssuance?.isOpen, profileId, cert, setValue]);
 
-  const onFormSubmit = async ({
-    profileId,
-    subjectAttributes,
-    subjectAltNames,
-    ttl,
-    signatureAlgorithm,
-    keyAlgorithm,
-    keyUsages,
-    extendedKeyUsages
-  }: FormData) => {
-    try {
-      if (!currentProject?.slug) return;
+  const getAttributeValue = useCallback(
+    (subjectAttributes: typeof schema._type.subjectAttributes, type: string) => {
+      const foundAttr = subjectAttributes.find((attr) => attr.type === type);
+      return foundAttr?.value || "";
+    },
+    []
+  );
 
-      const getAttributeValue = (type: string) => {
-        const foundAttr = subjectAttributes.find((attr) => attr.type === type);
-        return foundAttr?.value || "";
-      };
+  const formatSubjectAltNames = useCallback(
+    (subjectAltNames: typeof schema._type.subjectAltNames) => {
+      return subjectAltNames
+        .filter((san) => san.value.trim())
+        .map((san) => san.value.trim())
+        .join(", ");
+    },
+    []
+  );
 
-      const { serialNumber, certificate, certificateChain, privateKey } = await createCertificate({
-        profileId,
-        projectSlug: currentProject.slug,
-        commonName: getAttributeValue("common_name"),
-        subjectAltNames: subjectAltNames
-          .filter((san) => san.value.trim())
-          .map((san) => san.value.trim())
-          .join(", "),
-        ttl,
-        signatureAlgorithm: (() => {
-          const frontendToBackendSigAlg: Record<string, string> = {
-            "RSA-SHA256": "RSA-SHA256",
-            "RSA-SHA384": "RSA-SHA384",
-            "RSA-SHA512": "RSA-SHA512",
-            "ECDSA-SHA256": "ECDSA-SHA256",
-            "ECDSA-SHA384": "ECDSA-SHA384",
-            "ECDSA-SHA512": "ECDSA-SHA512"
-          };
-          return signatureAlgorithm
-            ? frontendToBackendSigAlg[signatureAlgorithm] || signatureAlgorithm
-            : undefined;
-        })(),
-        keyAlgorithm: (() => {
-          const frontendToBackendKeyAlg: Record<string, string> = {
-            RSA_2048: "RSA_2048",
-            RSA_3072: "RSA_3072",
-            RSA_4096: "RSA_4096",
-            EC_prime256v1: "EC_prime256v1",
-            EC_secp384r1: "EC_secp384r1"
-          };
-          return keyAlgorithm ? frontendToBackendKeyAlg[keyAlgorithm] || keyAlgorithm : undefined;
-        })(),
-        keyUsages: Object.entries(keyUsages)
-          .filter(([, value]) => value)
-          .map(([key]) => key as CertKeyUsage),
-        extendedKeyUsages: Object.entries(extendedKeyUsages)
-          .filter(([, value]) => value)
-          .map(([key]) => key as CertExtendedKeyUsage)
-      });
+  const filterUsages = useCallback(<T extends Record<string, boolean>>(usages: T) => {
+    return Object.entries(usages)
+      .filter(([, value]) => value)
+      .map(([key]) => key);
+  }, []);
 
-      reset();
+  const onFormSubmit = useCallback(
+    async ({
+      profileId: formProfileId,
+      subjectAttributes,
+      subjectAltNames,
+      ttl,
+      signatureAlgorithm,
+      keyAlgorithm,
+      keyUsages,
+      extendedKeyUsages
+    }: FormData) => {
+      try {
+        if (!currentProject?.slug) {
+          createNotification({
+            text: "Project not found. Please refresh and try again.",
+            type: "error"
+          });
+          return;
+        }
 
-      setCertificateDetails({
-        serialNumber,
-        certificate,
-        certificateChain,
-        privateKey
-      });
+        if (!formProfileId) {
+          createNotification({
+            text: "Please select a certificate profile.",
+            type: "error"
+          });
+          return;
+        }
 
-      createNotification({
-        text: "Successfully created certificate",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to create certificate",
-        type: "error"
-      });
+        const commonName = getAttributeValue(subjectAttributes, "common_name");
+        if (!commonName.trim()) {
+          createNotification({
+            text: "Common name is required.",
+            type: "error"
+          });
+          return;
+        }
+
+        const { serialNumber, certificate, certificateChain, privateKey } = await createCertificate(
+          {
+            profileId: formProfileId,
+            projectSlug: currentProject.slug,
+            commonName,
+            subjectAltNames: formatSubjectAltNames(subjectAltNames),
+            ttl,
+            signatureAlgorithm,
+            keyAlgorithm,
+            keyUsages: filterUsages(keyUsages) as CertKeyUsage[],
+            extendedKeyUsages: filterUsages(extendedKeyUsages) as CertExtendedKeyUsage[]
+          }
+        );
+
+        setCertificateDetails({
+          serialNumber,
+          certificate,
+          certificateChain,
+          privateKey
+        });
+
+        createNotification({
+          text: "Successfully created certificate",
+          type: "success"
+        });
+      } catch (err) {
+        console.error("Certificate creation failed:", err);
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "An unexpected error occurred while creating the certificate";
+        createNotification({
+          text: `Failed to create certificate: ${errorMessage}`,
+          type: "error"
+        });
+      }
+    },
+    [
+      currentProject?.slug,
+      createCertificate,
+      reset,
+      getAttributeValue,
+      formatSubjectAltNames,
+      filterUsages
+    ]
+  );
+
+  const getModalTitle = () => {
+    if (certificateDetails) return "Certificate Created Successfully";
+    if (cert) return "Certificate Details";
+    return "Issue New Certificate";
+  };
+
+  const getModalSubTitle = () => {
+    if (certificateDetails) return "Certificate has been successfully created and is ready for use";
+    if (cert) return "View certificate information";
+    return "Issue a new certificate using a certificate profile";
+  };
+
+  const getSanPlaceholder = (sanType: string) => {
+    switch (sanType) {
+      case "dns":
+        return "example.com or *.example.com";
+      case "ip":
+        return "192.168.1.1";
+      case "email":
+        return "admin@example.com";
+      case "uri":
+        return "https://example.com";
+      default:
+        return "Enter value";
     }
   };
 
@@ -536,26 +437,12 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
       isOpen={popUp?.certificateIssuance?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("certificateIssuance", isOpen);
-        setCertificateDetails(null);
-        reset();
+        if (!isOpen) {
+          resetAllState();
+        }
       }}
     >
-      <ModalContent
-        title={
-          certificateDetails
-            ? "Certificate Created Successfully"
-            : cert
-              ? "Certificate Details"
-              : "Issue New Certificate"
-        }
-        subTitle={
-          certificateDetails
-            ? "Certificate has been successfully created and is ready for use"
-            : cert
-              ? "View certificate information"
-              : "Issue a new certificate using a certificate profile"
-        }
-      >
+      <ModalContent title={getModalTitle()} subTitle={getModalSubTitle()}>
         {certificateDetails && (
           <CertificateContent
             serialNumber={certificateDetails.serialNumber}
@@ -567,10 +454,10 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
         {cert && (
           <div className="space-y-4">
             <div>
-              <h4 className="text-mineshaft-300 text-sm font-medium">Certificate Details</h4>
-              <p className="text-mineshaft-400 text-sm">Serial Number: {cert.serialNumber}</p>
-              <p className="text-mineshaft-400 text-sm">Common Name: {cert.commonName}</p>
-              <p className="text-mineshaft-400 text-sm">Status: {cert.status}</p>
+              <h4 className="text-sm font-medium text-mineshaft-300">Certificate Details</h4>
+              <p className="text-sm text-mineshaft-400">Serial Number: {cert.serialNumber}</p>
+              <p className="text-sm text-mineshaft-400">Common Name: {cert.commonName}</p>
+              <p className="text-sm text-mineshaft-400">Status: {cert.status}</p>
             </div>
           </div>
         )}
@@ -592,9 +479,9 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                               className="text-center"
                               content={
                                 <span>
-                                  Certificate profiles define the policies and enrollment methods for
-                                  certificate issuance. The selected profile will enforce validation
-                                  rules and determine the CA used for signing.
+                                  Certificate profiles define the policies and enrollment methods
+                                  for certificate issuance. The selected profile will enforce
+                                  validation rules and determine the CA used for signing.
                                 </span>
                               }
                             >
@@ -629,7 +516,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
 
             {(selectedProfile || profileId) && (
               <>
-
                 <Controller
                   control={control}
                   name="subjectAttributes"
@@ -642,7 +528,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                     >
                       <div className="space-y-2">
                         {value.map((attr, index) => (
-                          <div key={`attr-${index}`} className="flex items-start gap-2">
+                          // eslint-disable-next-line react/no-array-index-key
+                          <div key={`subject-attr-${index}`} className="flex items-center gap-2">
                             <Select
                               value={attr.type}
                               onValueChange={(newType) => {
@@ -710,7 +597,11 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                     >
                       <div className="space-y-2">
                         {value.map((san, index) => (
-                          <div key={`san-${index}`} className="flex items-start gap-2">
+                          // eslint-disable-next-line react/no-array-index-key
+                          <div
+                            key={`subject-alt-name-${index}`}
+                            className="flex items-center gap-2"
+                          >
                             <Select
                               value={san.type}
                               onValueChange={(newType) => {
@@ -735,15 +626,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                                 newValue[index] = { ...san, value: e.target.value };
                                 onChange(newValue);
                               }}
-                              placeholder={
-                                san.type === "dns"
-                                  ? "example.com or *.example.com"
-                                  : san.type === "ip"
-                                    ? "192.168.1.1"
-                                    : san.type === "email"
-                                      ? "admin@example.com"
-                                      : "https://example.com"
-                              }
+                              placeholder={getSanPlaceholder(san.type)}
                               className="flex-1"
                             />
                             <IconButton
@@ -807,13 +690,14 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                             {...field}
                             onValueChange={(e) => onChange(e)}
                             className="w-full"
-                            placeholder="Use template default"
+                            placeholder={
+                              availableSignatureAlgorithms.length > 0
+                                ? "Select signature algorithm"
+                                : "No algorithms available"
+                            }
                             position="popper"
                           >
-                            {SIGNATURE_ALGORITHMS_OPTIONS.filter((algorithm) => {
-                              if (allowedSignatureAlgorithms.length === 0) return true;
-                              return allowedSignatureAlgorithms.includes(algorithm.value);
-                            }).map((algorithm) => (
+                            {availableSignatureAlgorithms.map((algorithm) => (
                               <SelectItem key={algorithm.value} value={algorithm.value}>
                                 {algorithm.label}
                               </SelectItem>
@@ -839,19 +723,18 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                             {...field}
                             onValueChange={(e) => onChange(e)}
                             className="w-full"
-                            placeholder="Use template default"
+                            placeholder={
+                              availableKeyAlgorithms.length > 0
+                                ? "Select key algorithm"
+                                : "No algorithms available"
+                            }
                             position="popper"
                           >
-                            {certKeyAlgorithms
-                              .filter((algorithm) => {
-                                if (allowedKeyAlgorithms.length === 0) return true;
-                                return allowedKeyAlgorithms.includes(algorithm.value);
-                              })
-                              .map((algorithm) => (
-                                <SelectItem key={algorithm.value} value={algorithm.value}>
-                                  {algorithm.label}
-                                </SelectItem>
-                              ))}
+                            {availableKeyAlgorithms.map((algorithm) => (
+                              <SelectItem key={algorithm.value} value={algorithm.value}>
+                                {algorithm.label}
+                              </SelectItem>
+                            ))}
                           </Select>
                         </FormControl>
                       )}
@@ -863,88 +746,80 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                   <AccordionItem value="key-usages">
                     <AccordionTrigger>Key Usages</AccordionTrigger>
                     <AccordionContent>
-                      <div className="grid grid-cols-2 gap-2 pl-2">
-                        {KEY_USAGES_OPTIONS.filter(({ value }) => {
-                          if (allowedKeyUsages.length === 0) return true;
-                          const templateToEnumMap = {
-                            digital_signature: CertKeyUsage.DIGITAL_SIGNATURE,
-                            key_encipherment: CertKeyUsage.KEY_ENCIPHERMENT,
-                            non_repudiation: CertKeyUsage.NON_REPUDIATION,
-                            data_encipherment: CertKeyUsage.DATA_ENCIPHERMENT,
-                            key_agreement: CertKeyUsage.KEY_AGREEMENT,
-                            key_cert_sign: CertKeyUsage.KEY_CERT_SIGN,
-                            crl_sign: CertKeyUsage.CRL_SIGN,
-                            encipher_only: CertKeyUsage.ENCIPHER_ONLY,
-                            decipher_only: CertKeyUsage.DECIPHER_ONLY
-                          };
-                          return allowedKeyUsages.some(
-                            (allowedUsage) => (templateToEnumMap as any)[allowedUsage] === value
-                          );
-                        }).map(({ label, value }) => (
-                          <Controller
-                            key={label}
-                            control={control}
-                            name={`keyUsages.${value}` as any}
-                            render={({ field }) => (
-                              <div className="flex items-center space-x-3">
-                                <Checkbox
-                                  id={`key-usage-${value}`}
-                                  isChecked={field.value || false}
-                                  onCheckedChange={(checked) => field.onChange(checked)}
-                                />
-                                <FormLabel
-                                  id={`key-usage-${value}`}
-                                  className="text-mineshaft-300 cursor-pointer text-sm"
-                                  label={label}
-                                />
-                              </div>
-                            )}
-                          />
-                        ))}
-                      </div>
+                        <div className="grid grid-cols-2 gap-2 pl-2">
+                          {filteredKeyUsages.map(({ label, value }) => {
+                            const isRequired = requiredKeyUsages.includes(value);
+                            return (
+                              <Controller
+                                key={label}
+                                control={control}
+                                name={`keyUsages.${value}` as any}
+                                render={({ field }) => (
+                                  <div className="flex items-center space-x-3">
+                                    <Checkbox
+                                      id={`key-usage-${value}`}
+                                      isChecked={field.value || false}
+                                      onCheckedChange={(checked) => {
+                                      if (!isRequired) {
+                                          field.onChange(checked);
+                                        }
+                                      }}
+                                    isDisabled={isRequired}
+                                    />
+                                    <div className="flex items-center gap-2">
+                                      <FormLabel
+                                        id={`key-usage-${value}`}
+                                        className={`text-sm ${isRequired ? "text-mineshaft-200" : "cursor-pointer text-mineshaft-300"}`}
+                                        label={label}
+                                      />
+                                      {isRequired && <span className="text-xs">(Required)</span>}
+                                    </div>
+                                  </div>
+                                )}
+                              />
+                            );
+                          })}
+                        </div>
                     </AccordionContent>
                   </AccordionItem>
 
                   <AccordionItem value="extended-key-usages">
                     <AccordionTrigger>Extended Key Usages</AccordionTrigger>
                     <AccordionContent>
-                      <div className="grid grid-cols-2 gap-2 pl-2">
-                        {EXTENDED_KEY_USAGES_OPTIONS.filter(({ value }) => {
-                          if (allowedExtendedKeyUsages.length === 0) return true;
-                          const templateToEnumMap = {
-                            client_auth: CertExtendedKeyUsage.CLIENT_AUTH,
-                            server_auth: CertExtendedKeyUsage.SERVER_AUTH,
-                            code_signing: CertExtendedKeyUsage.CODE_SIGNING,
-                            email_protection: CertExtendedKeyUsage.EMAIL_PROTECTION,
-                            ocsp_signing: CertExtendedKeyUsage.OCSP_SIGNING,
-                            time_stamping: CertExtendedKeyUsage.TIMESTAMPING,
-                            timestamping: CertExtendedKeyUsage.TIMESTAMPING
-                          };
-                          return allowedExtendedKeyUsages.some(
-                            (allowedUsage) => (templateToEnumMap as any)[allowedUsage] === value
-                          );
-                        }).map(({ label, value }) => (
-                          <Controller
-                            key={label}
-                            control={control}
-                            name={`extendedKeyUsages.${value}` as any}
-                            render={({ field }) => (
-                              <div className="flex items-center space-x-3">
-                                <Checkbox
-                                  id={`ext-key-usage-${value}`}
-                                  isChecked={field.value || false}
-                                  onCheckedChange={(checked) => field.onChange(checked)}
-                                />
-                                <FormLabel
-                                  id={`ext-key-usage-${value}`}
-                                  className="text-mineshaft-300 cursor-pointer text-sm"
-                                  label={label}
-                                />
-                              </div>
-                            )}
-                          />
-                        ))}
-                      </div>
+                        <div className="grid grid-cols-2 gap-2 pl-2">
+                          {filteredExtendedKeyUsages.map(({ label, value }) => {
+                            const isRequired = requiredExtendedKeyUsages.includes(value);
+                            return (
+                              <Controller
+                                key={label}
+                                control={control}
+                                name={`extendedKeyUsages.${value}` as any}
+                                render={({ field }) => (
+                                  <div className="flex items-center space-x-3">
+                                    <Checkbox
+                                      id={`ext-key-usage-${value}`}
+                                      isChecked={field.value || false}
+                                      onCheckedChange={(checked) => {
+                                      if (!isRequired) {
+                                          field.onChange(checked);
+                                        }
+                                      }}
+                                    isDisabled={isRequired}
+                                    />
+                                    <div className="flex items-center gap-2">
+                                      <FormLabel
+                                        id={`ext-key-usage-${value}`}
+                                        className={`text-sm ${isRequired ? "text-mineshaft-200" : "cursor-pointer text-mineshaft-300"}`}
+                                        label={label}
+                                      />
+                                      {isRequired && <span className="text-xs">(Required)</span>}
+                                    </div>
+                                  </div>
+                                )}
+                              />
+                            );
+                          })}
+                        </div>
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
@@ -964,7 +839,9 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
               <Button
                 colorSchema="secondary"
                 variant="plain"
-                onClick={() => handlePopUpToggle("certificateIssuance", false)}
+                onClick={() => {
+                  handlePopUpToggle("certificateIssuance", false);
+                }}
               >
                 Cancel
               </Button>
