@@ -703,13 +703,13 @@ export const secretFolderServiceFactory = ({
           message: `Cannot delete folder "${folderToDelete.name}" because it contains resources. Use forceDelete=true to delete it forcefully.`,
           name: "deleteFolder"
         });
-        const secretV2 = await secretV2BridgeDAL.findOne({ folderId: folderToDelete.id });
+        const secretV2 = await secretV2BridgeDAL.findOne({ folderId: folderToDelete.id }).catch(() => null);
         if (secretV2) throw error;
 
-        const dynamicSecret = await dynamicSecretDAL.findOne({ folderId: folderToDelete.id });
+        const dynamicSecret = await dynamicSecretDAL.findOne({ folderId: folderToDelete.id }).catch(() => null);
         if (dynamicSecret) throw error;
 
-        const subfolder = await folderDAL.findByParentId(folderToDelete.id);
+        const subfolder = await folderDAL.findByParentId(folderToDelete.id).catch(() => null);
         if (subfolder) throw error;
       }
 
