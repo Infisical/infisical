@@ -5,6 +5,7 @@ import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
 import { ActionProjectType, TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
+import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -47,7 +48,11 @@ type TSecretFolderServiceFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderIds" | "invalidateSecretCacheByProjectId">;
+  secretV2BridgeDAL: Pick<
+    TSecretV2BridgeDALFactory,
+    "findByFolderIds" | "invalidateSecretCacheByProjectId" | "findOne"
+  >;
+  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne">;
 };
 
 export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceFactory>;
@@ -61,7 +66,8 @@ export const secretFolderServiceFactory = ({
   folderCommitService,
   projectDAL,
   secretApprovalPolicyService,
-  secretV2BridgeDAL
+  secretV2BridgeDAL,
+  dynamicSecretDAL
 }: TSecretFolderServiceFactoryDep) => {
   const createFolder = async ({
     projectId,
@@ -638,7 +644,8 @@ export const secretFolderServiceFactory = ({
     actorAuthMethod,
     environment,
     path: secretPath,
-    idOrName
+    idOrName,
+    forceDelete = false
   }: TDeleteFolderDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -688,6 +695,22 @@ export const secretFolderServiceFactory = ({
 
       if (!folderToDelete) {
         throw new NotFoundError({ message: `Folder with ID '${idOrName}' not found` });
+      }
+
+      // Check if folder contains resources (secrets, dynamic secrets, subfolders)
+      if (!forceDelete) {
+        const error = new BadRequestError({
+          message: `Cannot delete folder "${folderToDelete.name}" because it contains resources. Use forceDelete=true to delete it forcefully.`,
+          name: "deleteFolder"
+        });
+        const secretV2 = await secretV2BridgeDAL.findOne({ folderId: folderToDelete.id });
+        if (secretV2) throw error;
+
+        const dynamicSecret = await dynamicSecretDAL.findOne({ folderId: folderToDelete.id });
+        if (dynamicSecret) throw error;
+
+        const subfolder = await folderDAL.findByParentId(folderToDelete.id);
+        if (subfolder) throw error;
       }
 
       const [doc] = await folderDAL.delete(
