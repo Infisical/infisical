@@ -6,5 +6,5 @@ type TPamResourceFactoryImplementation = TPamResourceFactory<TPamResourceConnect
 
 export const PAM_RESOURCE_FACTORY_MAP: Record<PamResource, TPamResourceFactoryImplementation> = {
   [PamResource.Postgres]: sqlResourceFactory as TPamResourceFactoryImplementation,
-  [PamResource.MySQL]: sqlResourceFactory as TPamResourceFactoryImplementation,
+  [PamResource.MySQL]: sqlResourceFactory as TPamResourceFactoryImplementation
 };

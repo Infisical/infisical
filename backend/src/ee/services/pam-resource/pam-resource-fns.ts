@@ -2,9 +2,9 @@ import { TPamResources } from "@app/db/schemas";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { getMySQLResourceListItem } from "./mysql/mysql-resource-fns";
 import { TPamResource, TPamResourceConnectionDetails } from "./pam-resource-types";
 import { getPostgresResourceListItem } from "./postgres/postgres-resource-fns";
-import { getMySQLResourceListItem } from "./mysql/mysql-resource-fns";
 
 export const listResourceOptions = () => {
   return [getPostgresResourceListItem(), getMySQLResourceListItem()].sort((a, b) => a.name.localeCompare(b.name));

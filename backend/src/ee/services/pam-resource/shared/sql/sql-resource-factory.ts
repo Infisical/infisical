@@ -98,7 +98,7 @@ const makeSqlConnection = (
             });
           }
         },
-        close: async () => await client.destroy()
+        close: () => client.destroy()
       };
     }
     case PamResource.MySQL: {
