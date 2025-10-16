@@ -27,7 +27,7 @@ Before we begin, make sure your environment is ready
 4. Clone [infisical-guides-source-code](https://github.com/Infisical/infisical-guides-source-code) repository
 5. Access to an Infisical instance (cloud or self-hosted)
 
-
+## Step-By-Step Guide
 <Steps titleSize="h2">
 
   <Step title="Install the Infisical Operator">
@@ -139,14 +139,7 @@ The [InfisicalSecret](https://infisical.com/docs/integrations/platforms/kubernet
 ```console
 kubectl apply -f example-infisical-secret-crd.yaml
 ```
-2. Restart the deployment to pick up all of the changes
-```console
-kubectl rollout restart deployment infisical-opera-controller-manager -n default
-```
-3. Check the pods after 15-20 seconds to make sure they spin up and are healthy
-```console
-kubectl get pods -n default
-```
+
   </Step>
   <Step title="Verify the InfisicalSecret Status">
 
@@ -242,4 +235,5 @@ kubectl get secret dynamic-secret-test -n default -o yaml
 ![dynamic secrets output](../../images/dynamic-secret-crd.png)
   </Step>
 </Steps>
-### Congratulations! You successfully synced secrets with Kubernetes.
+
+**Congratulations! You successfully managed secrets with Kubernetes.**
