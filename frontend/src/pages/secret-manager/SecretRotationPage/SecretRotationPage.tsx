@@ -52,6 +52,7 @@ import {
   useGetSecretRotations,
   useRestartSecretRotation
 } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { TSecretRotationProviderTemplate } from "@app/hooks/api/secretRotation/types";
 import { CreateRotationForm } from "@app/pages/secret-manager/SecretRotationPage/components/CreateRotationForm";
 
@@ -145,9 +146,9 @@ const Page = () => {
   };
 
   return (
-    <div className="container mx-auto w-full max-w-7xl bg-bunker-800 text-white">
+    <div className="container mx-auto w-full max-w-8xl bg-bunker-800 text-white">
       <PageHeader
-        scope="project"
+        scope={ProjectType.SecretManager}
         title="Secret Rotation"
         description="Stop manually rotating secrets and automate credential rotation."
       >

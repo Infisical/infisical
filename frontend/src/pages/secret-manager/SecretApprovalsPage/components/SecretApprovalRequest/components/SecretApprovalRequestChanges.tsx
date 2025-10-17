@@ -228,7 +228,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
   return (
     <div className="flex flex-col space-x-6 lg:flex-row">
       <div className="flex-1 lg:max-w-[calc(100%-17rem)]">
-        <div className="sticky -top-8 z-20 flex items-center space-x-4 bg-bunker-800 pt-2 pb-6">
+        <div className="sticky -top-10 z-20 flex items-center space-x-4 bg-bunker-800 pt-2 pb-6">
           <IconButton variant="outline_bg" ariaLabel="go-back" onClick={onGoBack}>
             <FontAwesomeIcon icon={faArrowLeft} />
           </IconButton>

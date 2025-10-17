@@ -24,6 +24,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useCommitRollback, useGetRollbackPreview } from "@app/hooks/api/folderCommits/queries";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { SecretVersionDiffView } from "../SecretVersionDiffView";
 
@@ -297,7 +298,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl justify-center bg-bunker-800 pt-2 pb-4 text-white">
+    <div className="mx-auto flex w-full max-w-8xl justify-center bg-bunker-800 pt-2 pb-4 text-white">
       <ProjectPermissionCan
         renderGuardBanner
         I={ProjectPermissionCommitsActions.PerformRollback}
@@ -307,7 +308,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
           <div className="h-full w-full">
             <div>
               <PageHeader
-                scope="project"
+                scope={ProjectType.SecretManager}
                 title={`Restore folder at commit ${selectedCommitId.substring(0, 8)}`}
                 description={`Will return all changes in this folder to how they appeared at the point of commit ${selectedCommitId.substring(0, 8)}. Any modifications made after this commit will be undone.`}
               />

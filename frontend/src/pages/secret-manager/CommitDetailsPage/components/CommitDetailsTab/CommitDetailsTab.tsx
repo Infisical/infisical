@@ -29,6 +29,7 @@ import {
 import { usePopUp } from "@app/hooks";
 import { CommitWithChanges } from "@app/hooks/api/folderCommits";
 import { useCommitRevert, useGetCommitDetails } from "@app/hooks/api/folderCommits/queries";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { CommitType } from "@app/hooks/api/types";
 
 import { SecretVersionDiffView } from "../SecretVersionDiffView";
@@ -260,7 +261,7 @@ export const CommitDetailsTab = ({
         Commit History
       </Button>
       <PageHeader
-        scope="project"
+        scope={ProjectType.SecretManager}
         title={`${parsedCommitDetails.changes?.message}` || "No message"}
         description={
           <>

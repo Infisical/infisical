@@ -7,6 +7,7 @@ import {
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { SecretScanningDataSourcesSection } from "./components";
 
@@ -23,10 +24,10 @@ export const SecretScanningDataSourcesPage = () => {
         a={ProjectPermissionSub.SecretScanningDataSources}
       >
         <div className="h-full bg-bunker-800">
-          <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
-            <div className="mx-auto mb-6 w-full max-w-7xl">
+          <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+            <div className="mx-auto mb-6 w-full max-w-8xl">
               <PageHeader
-                scope="project"
+                scope={ProjectType.SecretScanning}
                 title="Data Sources"
                 description="Manage your Secret Scanning data sources."
               />

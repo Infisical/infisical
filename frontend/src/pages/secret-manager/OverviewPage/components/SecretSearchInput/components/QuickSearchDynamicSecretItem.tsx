@@ -46,7 +46,7 @@ export const QuickSearchDynamicSecretItem = ({
           </span>
           <span className="text-xs text-mineshaft-400">
             <FontAwesomeIcon size="xs" className="mr-0.5 text-yellow-700" icon={faFolder} />{" "}
-            <Tooltip className="max-w-7xl" content={groupDynamicSecret.path}>
+            <Tooltip className="max-w-8xl" content={groupDynamicSecret.path}>
               <span>{reverseTruncate(groupDynamicSecret.path)}</span>
             </Tooltip>
           </span>

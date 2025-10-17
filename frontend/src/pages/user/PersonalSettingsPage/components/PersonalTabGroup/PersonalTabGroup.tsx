@@ -15,10 +15,12 @@ const tabs = [
 
 export const PersonalTabGroup = () => {
   return (
-    <Tabs defaultValue={tabs[0].key}>
+    <Tabs orientation="vertical" defaultValue={tabs[0].key}>
       <TabList>
         {tabs.map((tab) => (
-          <Tab value={tab.key}>{tab.name}</Tab>
+          <Tab value={tab.key} key={tab.key} variant="instance">
+            {tab.name}
+          </Tab>
         ))}
       </TabList>
       <TabPanel value={tabs[0].key}>

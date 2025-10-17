@@ -32,7 +32,7 @@ export const QuickSearchFolderItem = ({ folderGroup, onClose }: Props) => {
     >
       <Td className="w-full whitespace-nowrap">
         <FontAwesomeIcon className="text-yellow-700" icon={faFolder} />
-        <Tooltip content={groupFolder.path} className="max-w-7xl">
+        <Tooltip content={groupFolder.path} className="max-w-8xl">
           <div className="ml-2 inline-block">{reverseTruncate(groupFolder.path)}</div>
         </Tooltip>
       </Td>

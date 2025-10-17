@@ -1,5 +1,7 @@
 import { Helmet } from "react-helmet";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -18,6 +20,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { CaType, useDeleteCa, useGetCa } from "@app/hooks/api";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CaInstallCertModal } from "../CertificateAuthoritiesPage/components/CaInstallCertModal";
@@ -84,10 +87,24 @@ const Page = () => {
   };
 
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
-        <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader scope="project" title={data.name}>
+        <div className="mx-auto mb-6 w-full max-w-8xl">
+          <Link
+            to="/projects/cert-management/$projectId/certificate-authorities"
+            params={{
+              projectId
+            }}
+            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+          >
+            <FontAwesomeIcon icon={faChevronLeft} />
+            Certificate Authorities
+          </Link>
+          <PageHeader
+            scope={ProjectType.CertificateManager}
+            description="Manage certificate authority"
+            title={data.name}
+          >
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
                 <div className="hover:text-primary-400 data-[state=open]:text-primary-400">

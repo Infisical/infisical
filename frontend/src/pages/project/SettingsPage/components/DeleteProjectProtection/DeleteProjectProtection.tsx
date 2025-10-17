@@ -35,7 +35,7 @@ export const DeleteProjectProtection = () => {
       <p className="mb-3 text-xl font-medium">Delete Protection</p>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
         {(isAllowed) => (
-          <div className="w-max">
+          <div>
             <Checkbox
               id="hasDeleteProtection"
               isDisabled={!isAllowed}
@@ -43,6 +43,7 @@ export const DeleteProjectProtection = () => {
               onCheckedChange={(state) => {
                 handleToggleDeleteProjectProtection(state as boolean);
               }}
+              allowMultilineLabel
             >
               Protects the project from being deleted accidentally. While this option is enabled,
               you can&apos;t delete the project.

@@ -1,7 +1,7 @@
 export const getExpandedRowStyle = (scrollOffset: number) => ({
   marginLeft: scrollOffset,
-  width: "calc(100vw - 275px)", // accounts for sidebar and margin
-  maxWidth: "1270px" // largest width of table on ultra-wide
+  width: "calc(100vw - 110px)", // accounts for sidebar and margin
+  maxWidth: "1404px" // largest width of table on ultra-wide
 });
 
 type GetHeaderStyleParams = {

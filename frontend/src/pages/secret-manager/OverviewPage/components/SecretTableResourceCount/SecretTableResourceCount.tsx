@@ -25,7 +25,7 @@ export const SecretTableResourceCount = ({
   secretRotationCount = 0
 }: Props) => {
   return (
-    <div className="flex items-center gap-2 divide-x divide-mineshaft-500 text-sm text-mineshaft-400">
+    <div className="flex items-center divide-x divide-mineshaft-500 text-sm text-mineshaft-400 [&>*]:pr-2">
       {importCount > 0 && (
         <Tooltip
           className="max-w-sm"

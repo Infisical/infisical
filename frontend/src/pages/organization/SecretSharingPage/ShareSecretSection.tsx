@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { Badge, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 
 import { RequestSecretTab } from "./components/RequestSecret/RequestSecretTab";
@@ -34,14 +34,13 @@ export const ShareSecretSection = () => {
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
 
-      <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
+      <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
         <TabList>
-          <Tab value={SecretSharingPageTabs.ShareSecret}>Share Secrets</Tab>
-          <Tab value={SecretSharingPageTabs.RequestSecret}>
+          <Tab variant="org" value={SecretSharingPageTabs.ShareSecret}>
+            Share Secrets
+          </Tab>
+          <Tab variant="org" value={SecretSharingPageTabs.RequestSecret}>
             Request Secrets
-            <Badge variant="primary" className="ml-1 cursor-pointer text-xs">
-              New
-            </Badge>
           </Tab>
         </TabList>
         <TabPanel value={SecretSharingPageTabs.ShareSecret}>

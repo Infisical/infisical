@@ -45,6 +45,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { PAM_RESOURCE_TYPE_MAP, TPamAccount, TPamFolder } from "@app/hooks/api/pam";
 
 import { AccountView, AccountViewToggle } from "./AccountViewToggle";
+import { FolderBreadCrumbs } from "./FolderBreadCrumbs";
 import { PamAccessAccountModal } from "./PamAccessAccountModal";
 import { PamAccountRow } from "./PamAccountRow";
 import { PamAddAccountModal } from "./PamAddAccountModal";
@@ -255,6 +256,7 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
 
   return (
     <div>
+      {accountView === AccountView.Nested && <FolderBreadCrumbs path={accountPath} />}
       <div className="mt-4 flex gap-2">
         <ProjectPermissionCan I={ProjectPermissionActions.Read} a={ProjectPermissionSub.PamFolders}>
           {(isAllowed) =>
