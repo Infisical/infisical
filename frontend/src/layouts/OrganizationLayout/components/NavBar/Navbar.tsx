@@ -242,7 +242,8 @@ export const Navbar = () => {
                       variant="org"
                       className={twMerge(
                         "max-w-full min-w-0 cursor-pointer text-sm",
-                        !isOrgScope && "bg-transparent opacity-75"
+                        !isOrgScope &&
+                          "bg-transparent text-mineshaft-200 hover:bg-transparent hover:underline"
                       )}
                     >
                       <FontAwesomeIcon icon={faGlobe} />
@@ -349,7 +350,7 @@ export const Navbar = () => {
                 <p className="pr-3 pl-1 text-lg text-mineshaft-400/70">/</p>
                 {breadcrumbs ? (
                   <BreadcrumbContainer
-                    className="min-w-[10rem] flex-1"
+                    className="min-w-[15rem] flex-1"
                     breadcrumbs={[breadcrumbs[0]] as TBreadcrumbFormat[]}
                   />
                 ) : null}

@@ -18,12 +18,12 @@ type Props = {
 
 const SCOPE_NAME: Record<NonNullable<Props["scope"]>, { label: string; icon: IconDefinition }> = {
   org: { label: "Organization", icon: faGlobe },
-  [ProjectType.SecretManager]: { label: "Secrets Management", icon: faCube },
-  [ProjectType.CertificateManager]: { label: "PKI", icon: faCube },
-  [ProjectType.SSH]: { label: "SSH", icon: faCube },
-  [ProjectType.KMS]: { label: "KMS", icon: faCube },
-  [ProjectType.PAM]: { label: "PAM", icon: faCube },
-  [ProjectType.SecretScanning]: { label: "Secret Scanning", icon: faCube },
+  [ProjectType.SecretManager]: { label: "Project", icon: faCube },
+  [ProjectType.CertificateManager]: { label: "Project", icon: faCube },
+  [ProjectType.SSH]: { label: "Project", icon: faCube },
+  [ProjectType.KMS]: { label: "Project", icon: faCube },
+  [ProjectType.PAM]: { label: "Project", icon: faCube },
+  [ProjectType.SecretScanning]: { label: "Project", icon: faCube },
   namespace: { label: "Namespace", icon: faCubes },
   instance: { label: "Server", icon: faServer }
 };

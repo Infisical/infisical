@@ -35,9 +35,18 @@ import {
 import { getProjectHomePage } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
-import { Project } from "@app/hooks/api/projects/types";
+import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
+
+const PROJECT_TYPE_NAME: Record<ProjectType, string> = {
+  [ProjectType.SecretManager]: "Secrets Management",
+  [ProjectType.CertificateManager]: "PKI",
+  [ProjectType.SSH]: "SSH",
+  [ProjectType.KMS]: "KMS",
+  [ProjectType.PAM]: "PAM",
+  [ProjectType.SecretScanning]: "Secret Scanning"
+};
 
 export const ProjectSelect = () => {
   const [searchProject, setSearchProject] = useState("");
@@ -106,11 +115,16 @@ export const ProjectSelect = () => {
           params={{
             projectId: currentWorkspace.id
           }}
-          className="overflow-hidden"
+          className="group flex cursor-pointer items-center gap-x-1.5 overflow-hidden hover:text-white"
         >
-          <Badge variant="project" className="max-w-full min-w-0 cursor-pointer text-sm">
+          <p className="inline-block truncate text-mineshaft-200 group-hover:underline">
+            {currentWorkspace?.name}
+          </p>
+          <Badge variant="project" className="cursor-pointer">
             <FontAwesomeIcon icon={faCube} />
-            <p className="truncate">{currentWorkspace?.name}</p>
+            <span>
+              {currentWorkspace.type ? PROJECT_TYPE_NAME[currentWorkspace.type] : "Project"}
+            </span>
           </Badge>
         </Link>
         <DropdownMenuTrigger asChild>

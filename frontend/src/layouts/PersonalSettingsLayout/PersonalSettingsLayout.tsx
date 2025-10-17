@@ -1,10 +1,7 @@
 import { useTranslation } from "react-i18next";
-import { faArrowLeft, faMobile } from "@fortawesome/free-solid-svg-icons";
+import { faMobile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, Outlet } from "@tanstack/react-router";
-
-import { WishForm } from "@app/components/features/WishForm";
-import { Navbar } from "@app/layouts/OrganizationLayout/components/NavBar";
+import { Outlet } from "@tanstack/react-router";
 
 import { InsecureConnectionBanner } from "../OrganizationLayout/components/InsecureConnectionBanner";
 
