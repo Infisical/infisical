@@ -19,7 +19,7 @@ import {
 } from "@app/components/v2";
 import { useProject, useProjectPermission } from "@app/context";
 import {
-  ProjectPermissionActions,
+  ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { useListCertificateTemplatesV2 } from "@app/hooks/api/certificateTemplates/queries";
@@ -43,18 +43,20 @@ export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {
   const templates = data?.certificateTemplates || [];
 
   const canEditTemplate = permission.can(
-    ProjectPermissionActions.Edit,
-    ProjectPermissionSub.CertificateAuthorities
+    ProjectPermissionPkiTemplateActions.Edit,
+    ProjectPermissionSub.CertificateTemplates
   );
 
   const canDeleteTemplate = permission.can(
-    ProjectPermissionActions.Delete,
-    ProjectPermissionSub.CertificateAuthorities
+    ProjectPermissionPkiTemplateActions.Delete,
+    ProjectPermissionSub.CertificateTemplates
   );
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
+
+  const hasTemplates = !isLoading && templates && templates.length > 0;
 
   return (
     <TableContainer>
@@ -75,9 +77,7 @@ export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {
               </Td>
             </Tr>
           )}
-          {!isLoading &&
-            templates &&
-            templates.length > 0 &&
+          {hasTemplates &&
             templates.map((template) => (
               <Tr
                 key={template.id}

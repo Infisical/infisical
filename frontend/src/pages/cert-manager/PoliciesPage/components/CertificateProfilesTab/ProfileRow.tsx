@@ -62,7 +62,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
 
     // eslint-disable-next-line consistent-return
     return () => clearTimeout(timer);
-  }, [isIdCopied]);
+  }, [isIdCopied, setIsIdCopied]);
 
   const { data: templateData } = useGetCertificateTemplateV2ById({
     templateId: profile.certificateTemplateId
@@ -87,9 +87,12 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
     const config = {
       api: { variant: "success" as const, label: "API" },
       est: { variant: "primary" as const, label: "EST" }
-    };
+    } as const;
 
-    const { variant, label } = config[enrollmentType as keyof typeof config] || config.api;
+    const configKey = Object.keys(config).includes(enrollmentType)
+      ? (enrollmentType as keyof typeof config)
+      : "api";
+    const { variant, label } = config[configKey];
 
     return <Badge variant={variant}>{label}</Badge>;
   };

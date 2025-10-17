@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -90,24 +91,28 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         keyUsages: req.body.keyUsages,
         extendedKeyUsages: req.body.extendedKeyUsages,
         altNames: req.body.subjectAltNames
-          ? req.body.subjectAltNames
-              .split(", ")
-              .map((name) => name.trim())
-              .map((name) => {
-                const mappedType = validateAndMapAltNameType(name);
-                if (!mappedType) return null;
-                const typeMapping = {
-                  dns: "dns_name",
-                  ip: "ip_address",
-                  email: "email",
-                  url: "uri"
-                } as const;
-                return {
-                  type: typeMapping[mappedType.type] as CertSubjectAlternativeNameType,
-                  value: mappedType.value
-                };
-              })
-              .filter((item): item is NonNullable<typeof item> => item !== null)
+          ? (() => {
+              const splitRegex = new RE2("[,;]+");
+              return req.body.subjectAltNames
+                .split(splitRegex)
+                .map((name) => name.trim())
+                .filter((name) => name.length > 0)
+                .map((name) => {
+                  const mappedType = validateAndMapAltNameType(name);
+                  if (!mappedType) return null;
+                  const typeMapping = {
+                    dns: "dns_name",
+                    ip: "ip_address",
+                    email: "email",
+                    url: "uri"
+                  } as const;
+                  return {
+                    type: typeMapping[mappedType.type] as CertSubjectAlternativeNameType,
+                    value: mappedType.value
+                  };
+                })
+                .filter((item): item is NonNullable<typeof item> => item !== null);
+            })()
           : undefined,
         validity: {
           ttl: req.body.ttl
@@ -223,7 +228,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             certificateProfileId: req.body.profileId,
             certificateId: data.certificateId,
             profileName: data.profileName,
-            commonName: req.body.csr || ""
+            commonName: ""
           }
         }
       });

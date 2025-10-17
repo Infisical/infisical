@@ -4,24 +4,53 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 export const registerCertificateEstRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
 
-  const getIdentifierType = async (identifier: string): Promise<"template" | "profile" | null> => {
+  const getIdentifierType = async ({
+    identifier,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    identifier: string;
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+  }): Promise<"template" | "profile" | null> => {
     try {
       await server.services.certificateProfile.getEstConfigurationByProfile({
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId,
         profileId: identifier
       });
       return "profile";
-    } catch {
+    } catch (profileError) {
       try {
         await server.services.certificateTemplate.getEstConfiguration({
-          isInternal: true,
+          isInternal: false,
+          actor,
+          actorId,
+          actorAuthMethod,
+          actorOrgId,
           certificateTemplateId: identifier
         });
         return "template";
-      } catch {
+      } catch (templateError) {
+        server.log.debug(
+          {
+            identifier,
+            profileError: profileError instanceof Error ? profileError.message : "Unknown error",
+            templateError: templateError instanceof Error ? templateError.message : "Unknown error"
+          },
+          "EST identifier not found as profile or template"
+        );
         return null;
       }
     }
@@ -80,7 +109,13 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
 
     const identifier = urlFragments.slice(-2)[0];
 
-    const identifierType = await getIdentifierType(identifier);
+    const identifierType = await getIdentifierType({
+      identifier,
+      actor: req.permission.type,
+      actorId: req.permission.id,
+      actorAuthMethod: req.permission.authMethod,
+      actorOrgId: req.permission.orgId
+    });
     if (!identifierType) {
       res.raw.statusCode = 404;
       res.raw.setHeader("Content-Type", "text/plain");
@@ -92,6 +127,10 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
     let estConfig;
     if (identifierType === "profile") {
       estConfig = await server.services.certificateProfile.getEstConfigurationByProfile({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
         profileId: identifier
       });
     } else {
@@ -149,7 +188,13 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       void res.header("Content-Transfer-Encoding", "base64");
 
       const { identifier } = req.params;
-      const identifierType = await getIdentifierType(identifier);
+      const identifierType = await getIdentifierType({
+        identifier,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
 
       if (!identifierType) {
         throw new BadRequestError({ message: "Certificate template or profile not found" });
@@ -190,7 +235,13 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       void res.header("Content-Transfer-Encoding", "base64");
 
       const { identifier } = req.params;
-      const identifierType = await getIdentifierType(identifier);
+      const identifierType = await getIdentifierType({
+        identifier,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
 
       if (!identifierType) {
         throw new BadRequestError({ message: "Certificate template or profile not found" });
@@ -230,7 +281,13 @@ export const registerCertificateEstRouter = async (server: FastifyZodProvider) =
       void res.header("Content-Transfer-Encoding", "base64");
 
       const { identifier } = req.params;
-      const identifierType = await getIdentifierType(identifier);
+      const identifierType = await getIdentifierType({
+        identifier,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
 
       if (!identifierType) {
         throw new BadRequestError({ message: "Certificate template or profile not found" });

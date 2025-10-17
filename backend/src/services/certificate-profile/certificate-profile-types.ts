@@ -1,23 +1,23 @@
 import {
-  TCertificateProfiles,
-  TCertificateProfilesInsert,
-  TCertificateProfilesUpdate
-} from "@app/db/schemas/certificate-profiles";
+  TPkiCertificateProfiles,
+  TPkiCertificateProfilesInsert,
+  TPkiCertificateProfilesUpdate
+} from "@app/db/schemas/pki-certificate-profiles";
 
 export enum EnrollmentType {
   API = "api",
   EST = "est"
 }
 
-export type TCertificateProfile = Omit<TCertificateProfiles, "enrollmentType"> & {
+export type TCertificateProfile = Omit<TPkiCertificateProfiles, "enrollmentType"> & {
   enrollmentType: EnrollmentType;
 };
 
-export type TCertificateProfileInsert = Omit<TCertificateProfilesInsert, "enrollmentType"> & {
+export type TCertificateProfileInsert = Omit<TPkiCertificateProfilesInsert, "enrollmentType"> & {
   enrollmentType: EnrollmentType;
 };
 
-export type TCertificateProfileUpdate = Omit<TCertificateProfilesUpdate, "enrollmentType"> & {
+export type TCertificateProfileUpdate = Omit<TPkiCertificateProfilesUpdate, "enrollmentType"> & {
   enrollmentType?: EnrollmentType;
   estConfig?: {
     disableBootstrapCaValidation?: boolean;
@@ -47,7 +47,7 @@ export type TCertificateProfileWithConfigs = TCertificateProfile & {
     id: string;
     disableBootstrapCaValidation: boolean;
     hashedPassphrase: string;
-    encryptedCaChain: Buffer;
+    encryptedCaChain: string;
   };
   apiConfig?: {
     id: string;
@@ -73,7 +73,7 @@ export interface TCertificateProfileCertificate {
   status: string;
   notBefore: Date;
   notAfter: Date;
-  revokedAt: Date | null | undefined;
+  revokedAt: Date | null;
   createdAt: Date;
 }
 

@@ -100,7 +100,7 @@ const templateV2AlgorithmsSchema = z.object({
 
 export const certificateTemplateV2ResponseSchema = z.object({
   id: z.string().uuid(),
-  projectId: z.string(),
+  projectId: z.string().uuid("Project ID must be valid"),
   name: z.string(),
   description: z.string().nullable().optional(),
   subject: z.array(templateV2SubjectSchema).optional(),
@@ -116,7 +116,6 @@ export const certificateTemplateV2ResponseSchema = z.object({
 export const certificateRequestSchema = z.object({
   commonName: z.string().optional(),
   organization: z.string().optional(),
-  organizationName: z.string().optional(),
   country: z.string().optional(),
   keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
   extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),

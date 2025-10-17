@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -93,9 +94,19 @@ const templateV2SanSchema = z
 const templateV2ValiditySchema = z.object({
   max: z
     .string()
-    .regex(/^\d+[dhmy]$/, {
-      message: "Max validity must be in format like '365d', '12m', '1y', or '24h'"
-    })
+    .refine(
+      (val) => {
+        if (!val) return true;
+        if (val.length < 2) return false;
+        const unit = val.slice(-1);
+        const number = val.slice(0, -1);
+        const digitRegex = new RE2("^\\d+$");
+        return ["d", "h", "m", "y"].includes(unit) && digitRegex.test(number);
+      },
+      {
+        message: "Max validity must be in format like '365d', '12m', '1y', or '24h'"
+      }
+    )
     .optional()
 });
 

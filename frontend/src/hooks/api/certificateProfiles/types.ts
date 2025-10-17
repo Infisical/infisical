@@ -30,7 +30,7 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
     id: string;
     disableBootstrapCaValidation: boolean;
     hashedPassphrase: string;
-    encryptedCaChain: any;
+    encryptedCaChain: string;
   };
   apiConfig?: {
     id: string;
@@ -108,10 +108,10 @@ export type TProfileCertificate = {
   serialNumber: string;
   cn: string;
   status: string;
-  notBefore: Date;
-  notAfter: Date;
+  notBefore: string;
+  notAfter: string;
   isRevoked: boolean;
-  createdAt: Date;
+  createdAt: string;
 };
 
 export type TGetProfileCertificatesDTO = {

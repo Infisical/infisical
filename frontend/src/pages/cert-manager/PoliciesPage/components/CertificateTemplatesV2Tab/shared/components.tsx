@@ -11,7 +11,7 @@ import {
   KEY_USAGE_OPTIONS
 } from "./certificate-constants";
 
-type KeyUsagePolicy = "allow" | "require" | "deny" | "none";
+type KeyUsagePolicy = "allow" | "require" | "deny";
 
 interface KeyUsagesSectionProps {
   watchedKeyUsages: {
@@ -85,13 +85,7 @@ export const KeyUsagesSection: React.FC<KeyUsagesSectionProps> = ({
     });
   };
 
-  const keyUsagePolicyOptions = [
-    { value: "deny", label: "Deny" },
-    { value: "allow", label: "Allow" },
-    { value: "require", label: "Require" }
-  ];
-
-  const extendedKeyUsagePolicyOptions = [
+  const policyOptions = [
     { value: "deny", label: "Deny" },
     { value: "allow", label: "Allow" },
     { value: "require", label: "Require" }
@@ -116,7 +110,7 @@ export const KeyUsagesSection: React.FC<KeyUsagesSectionProps> = ({
                   }
                   className="w-32"
                 >
-                  {keyUsagePolicyOptions.map((option) => (
+                  {policyOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -145,7 +139,7 @@ export const KeyUsagesSection: React.FC<KeyUsagesSectionProps> = ({
                   }
                   className="w-32"
                 >
-                  {extendedKeyUsagePolicyOptions.map((option) => (
+                  {policyOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>

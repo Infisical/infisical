@@ -8,15 +8,11 @@ import {
 } from "./certificate-constants";
 
 export const formatUsageName = (usage: string): string => {
-  try {
-    if (Object.values(CertKeyUsageType).includes(usage as CertKeyUsageType)) {
-      return formatKeyUsage(usage as CertKeyUsageType);
-    }
-    if (Object.values(CertExtendedKeyUsageType).includes(usage as CertExtendedKeyUsageType)) {
-      return formatExtendedKeyUsage(usage as CertExtendedKeyUsageType);
-    }
-  } catch {
-    // Handle any errors in type checking
+  if (Object.values(CertKeyUsageType).includes(usage as CertKeyUsageType)) {
+    return formatKeyUsage(usage as CertKeyUsageType);
+  }
+  if (Object.values(CertExtendedKeyUsageType).includes(usage as CertExtendedKeyUsageType)) {
+    return formatExtendedKeyUsage(usage as CertExtendedKeyUsageType);
   }
   return usage.replace(/_/g, " ");
 };

@@ -101,7 +101,15 @@ export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
 
 export const signatureAlgorithmToAlgCfg = (signatureAlgorithm: string, keyAlgorithm: CertKeyAlgorithm | string) => {
   // Parse signature algorithm like "RSA-SHA256", "ECDSA-SHA256" etc.
+  if (!signatureAlgorithm || typeof signatureAlgorithm !== "string" || !signatureAlgorithm.includes("-")) {
+    throw new Error(`Invalid signature algorithm format: ${signatureAlgorithm}`);
+  }
+
   const [keyType, hashType] = signatureAlgorithm.split("-");
+
+  if (!keyType || !hashType) {
+    throw new Error(`Malformed signature algorithm: ${signatureAlgorithm}`);
+  }
 
   const normalizeHashType = (hash: string) => {
     const upperHash = hash.toUpperCase();
@@ -118,7 +126,7 @@ export const signatureAlgorithmToAlgCfg = (signatureAlgorithm: string, keyAlgori
     if (upperHash === "SHA3384" || upperHash === "SHA3-384") return "SHA3-384";
     if (upperHash === "SHA3512" || upperHash === "SHA3-512") return "SHA3-512";
 
-    return hash;
+    throw new Error(`Unsupported hash algorithm: ${hash}`);
   };
 
   const normalizedHash = hashType ? normalizeHashType(hashType) : undefined;
@@ -136,7 +144,16 @@ export const signatureAlgorithmToAlgCfg = (signatureAlgorithm: string, keyAlgori
       const is384Curve =
         keyAlgorithm === CertKeyAlgorithm.ECDSA_P384 || keyAlgorithm === "EC_secp384r1" || keyAlgorithm === "EC_P384";
       // eslint-disable-next-line no-case-declarations
-      const namedCurve = is384Curve ? "P-384" : "P-256";
+      const is521Curve = keyAlgorithm === "EC_secp521r1" || keyAlgorithm === "EC_P521";
+      // eslint-disable-next-line no-case-declarations
+      let namedCurve: string;
+      if (is521Curve) {
+        namedCurve = "P-521";
+      } else if (is384Curve) {
+        namedCurve = "P-384";
+      } else {
+        namedCurve = "P-256";
+      }
       return {
         name: "ECDSA",
         namedCurve,

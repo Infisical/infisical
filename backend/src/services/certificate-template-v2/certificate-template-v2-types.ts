@@ -1,4 +1,7 @@
-import { TCertificateTemplatesV2, TCertificateTemplatesV2Insert } from "@app/db/schemas/certificate-templates-v2";
+import {
+  TPkiCertificateTemplatesV2,
+  TPkiCertificateTemplatesV2Insert
+} from "@app/db/schemas/pki-certificate-templates-v2";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
@@ -38,7 +41,7 @@ export interface TTemplateV2Policy {
   };
 }
 
-export type TCertificateTemplateV2 = TCertificateTemplatesV2 & {
+export type TCertificateTemplateV2 = TPkiCertificateTemplatesV2 & {
   subject?: TTemplateV2Policy["subject"];
   sans?: TTemplateV2Policy["sans"];
   keyUsages?: TTemplateV2Policy["keyUsages"];
@@ -47,7 +50,7 @@ export type TCertificateTemplateV2 = TCertificateTemplatesV2 & {
   validity?: TTemplateV2Policy["validity"];
 };
 
-export type TCertificateTemplateV2Insert = TCertificateTemplatesV2Insert & {
+export type TCertificateTemplateV2Insert = TPkiCertificateTemplatesV2Insert & {
   subject?: TTemplateV2Policy["subject"];
   sans?: TTemplateV2Policy["sans"];
   keyUsages?: TTemplateV2Policy["keyUsages"];
@@ -66,7 +69,6 @@ export type TCertificateTemplateV2Update = Partial<
 export interface TCertificateRequest {
   commonName?: string;
   organization?: string;
-  organizationName?: string;
   organizationUnit?: string;
   locality?: string;
   state?: string;

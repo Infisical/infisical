@@ -60,12 +60,7 @@ const schema = z
         commonName: z.string(),
         notAfter: z.string().trim().refine(isValidDate, { message: "Invalid date format" }),
         maxPathLength: z.string(),
-        keyAlgorithm: z.enum([
-          CertKeyAlgorithm.RSA_2048,
-          CertKeyAlgorithm.RSA_4096,
-          CertKeyAlgorithm.ECDSA_P256,
-          CertKeyAlgorithm.ECDSA_P384
-        ])
+        keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
       })
       .required()
   })
@@ -145,13 +140,11 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           maxPathLength: ca.configuration.maxPathLength
             ? String(ca.configuration.maxPathLength)
             : "",
-          keyAlgorithm:
-            ca.configuration.keyAlgorithm === CertKeyAlgorithm.RSA_2048 ||
-            ca.configuration.keyAlgorithm === CertKeyAlgorithm.RSA_4096 ||
-            ca.configuration.keyAlgorithm === CertKeyAlgorithm.ECDSA_P256 ||
-            ca.configuration.keyAlgorithm === CertKeyAlgorithm.ECDSA_P384
-              ? ca.configuration.keyAlgorithm
-              : CertKeyAlgorithm.RSA_2048
+          keyAlgorithm: (Object.values(CertKeyAlgorithm) as string[]).includes(
+            ca.configuration.keyAlgorithm
+          )
+            ? ca.configuration.keyAlgorithm
+            : CertKeyAlgorithm.RSA_2048
         }
       });
     } else {

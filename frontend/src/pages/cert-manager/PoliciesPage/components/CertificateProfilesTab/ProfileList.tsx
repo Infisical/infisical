@@ -34,6 +34,32 @@ export const ProfileList = ({ onEditProfile, onDeleteProfile }: Props) => {
 
   const profiles = data?.certificateProfiles || [];
 
+  if (!currentProject?.id) {
+    return (
+      <TableContainer>
+        <Table>
+          <THead>
+            <Tr>
+              <Th>Name</Th>
+              <Th>Enrollment Type</Th>
+              <Th>Issuing CA</Th>
+              <Th>Certificate Template</Th>
+              <Th>Certificates</Th>
+              <Th className="w-5" />
+            </Tr>
+          </THead>
+          <TBody>
+            <Tr>
+              <Td colSpan={6}>
+                <EmptyState title="No Project Selected" />
+              </Td>
+            </Tr>
+          </TBody>
+        </Table>
+      </TableContainer>
+    );
+  }
+
   return (
     <TableContainer>
       <Table>

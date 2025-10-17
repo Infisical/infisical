@@ -146,8 +146,10 @@ export type TCertificateTemplateV2Policy = {
     denied?: string[];
   };
   algorithms?: {
-    signature?: string[];
-    keyAlgorithm?: string[];
+    signature?: Array<
+      "SHA256-RSA" | "SHA384-RSA" | "SHA512-RSA" | "SHA256-ECDSA" | "SHA384-ECDSA" | "SHA512-ECDSA"
+    >;
+    keyAlgorithm?: Array<"RSA-2048" | "RSA-3072" | "RSA-4096" | "ECDSA-P256" | "ECDSA-P384">;
   };
   validity?: {
     max?: string;

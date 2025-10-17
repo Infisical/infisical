@@ -1,7 +1,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { CertificateProfilesSchema } from "@app/db/schemas";
+import { PkiCertificateProfilesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -72,7 +72,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         ),
       response: {
         200: z.object({
-          certificateProfile: CertificateProfilesSchema
+          certificateProfile: PkiCertificateProfilesSchema
         })
       }
     },
@@ -126,7 +126,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       }),
       response: {
         200: z.object({
-          certificateProfiles: CertificateProfilesSchema.extend({
+          certificateProfiles: PkiCertificateProfilesSchema.extend({
             metrics: z
               .object({
                 profileId: z.string(),
@@ -177,7 +177,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       hide: false,
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
-        id: z.string().min(1)
+        id: z.string().uuid()
       }),
       querystring: z.object({
         includeMetrics: z.coerce.boolean().optional().default(false),
@@ -185,7 +185,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       }),
       response: {
         200: z.object({
-          certificateProfile: CertificateProfilesSchema.extend({
+          certificateProfile: PkiCertificateProfilesSchema.extend({
             certificateAuthority: z
               .object({
                 id: z.string(),
@@ -207,7 +207,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
                 id: z.string(),
                 disableBootstrapCaValidation: z.boolean(),
                 hashedPassphrase: z.string(),
-                encryptedCaChain: z.any()
+                encryptedCaChain: z.string()
               })
               .optional(),
             apiConfig: z
@@ -288,7 +288,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       }),
       response: {
         200: z.object({
-          certificateProfile: CertificateProfilesSchema
+          certificateProfile: PkiCertificateProfilesSchema
         })
       }
     },
@@ -317,7 +317,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       hide: false,
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
-        id: z.string().min(1)
+        id: z.string().uuid()
       }),
       body: z
         .object({
@@ -363,7 +363,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         ),
       response: {
         200: z.object({
-          certificateProfile: CertificateProfilesSchema
+          certificateProfile: PkiCertificateProfilesSchema
         })
       }
     },
@@ -408,7 +408,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       }),
       response: {
         200: z.object({
-          certificateProfile: CertificateProfilesSchema
+          certificateProfile: PkiCertificateProfilesSchema
         })
       }
     },
@@ -448,11 +448,11 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       hide: false,
       tags: [ApiDocsTags.PkiCertificateProfiles],
       params: z.object({
-        id: z.string().min(1)
+        id: z.string().uuid()
       }),
       querystring: z.object({
-        offset: z.number().min(0).default(0),
-        limit: z.number().min(1).max(100).default(20),
+        offset: z.coerce.number().min(0).default(0),
+        limit: z.coerce.number().min(1).max(100).default(20),
         status: z.enum(["active", "expired", "revoked"]).optional(),
         search: z.string().optional()
       }),

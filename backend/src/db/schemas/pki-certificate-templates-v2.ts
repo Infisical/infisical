@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { TImmutableDBKeys } from "./models";
 
-export const CertificateTemplatesV2Schema = z.object({
+export const PkiCertificateTemplatesV2Schema = z.object({
   id: z.string().uuid(),
   projectId: z.string(),
   name: z.string(),
@@ -22,8 +22,8 @@ export const CertificateTemplatesV2Schema = z.object({
   updatedAt: z.date()
 });
 
-export type TCertificateTemplatesV2 = z.infer<typeof CertificateTemplatesV2Schema>;
-export type TCertificateTemplatesV2Insert = Omit<z.input<typeof CertificateTemplatesV2Schema>, TImmutableDBKeys>;
-export type TCertificateTemplatesV2Update = Partial<
-  Omit<z.input<typeof CertificateTemplatesV2Schema>, TImmutableDBKeys>
+export type TPkiCertificateTemplatesV2 = z.infer<typeof PkiCertificateTemplatesV2Schema>;
+export type TPkiCertificateTemplatesV2Insert = Omit<z.input<typeof PkiCertificateTemplatesV2Schema>, TImmutableDBKeys>;
+export type TPkiCertificateTemplatesV2Update = Partial<
+  Omit<z.input<typeof PkiCertificateTemplatesV2Schema>, TImmutableDBKeys>
 >;

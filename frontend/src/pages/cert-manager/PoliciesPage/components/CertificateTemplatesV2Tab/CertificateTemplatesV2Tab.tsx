@@ -57,8 +57,12 @@ export const CertificateTemplatesV2Tab = () => {
         text: `Certificate template "${selectedTemplate.name}" deleted successfully`,
         type: "success"
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to delete template:", error);
+      createNotification({
+        text: "Failed to delete certificate template",
+        type: "error"
+      });
     }
   };
 
@@ -76,7 +80,7 @@ export const CertificateTemplatesV2Tab = () => {
         {canCreateTemplate && (
           <Button
             colorSchema="primary"
-            type="submit"
+            type="button"
             leftIcon={<FontAwesomeIcon icon={faPlus} />}
             onClick={handleCreateTemplate}
           >

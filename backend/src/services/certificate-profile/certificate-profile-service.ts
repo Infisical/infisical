@@ -8,7 +8,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateTemplateV2DALFactory } from "../certificate-template-v2/certificate-template-v2-dal";
@@ -127,11 +127,24 @@ export const certificateProfileServiceFactory = ({
         // Hash the passphrase
         const hashedPassphrase = await crypto.hashing().createHash(data.estConfig.passphrase, appCfg.SALT_ROUNDS);
 
+        let encryptedCaChainBuffer: Buffer;
+        try {
+          if (!data.estConfig.encryptedCaChain || typeof data.estConfig.encryptedCaChain !== "string") {
+            throw new BadRequestError({ message: "Invalid or missing CA chain data" });
+          }
+          encryptedCaChainBuffer = Buffer.from(data.estConfig.encryptedCaChain, "base64");
+          if (encryptedCaChainBuffer.toString("base64") !== data.estConfig.encryptedCaChain) {
+            throw new BadRequestError({ message: "Invalid Base64 encoding in CA chain data" });
+          }
+        } catch (error) {
+          throw new BadRequestError({ message: "Failed to decode CA chain data: Invalid Base64 format" });
+        }
+
         const estConfig = await estEnrollmentConfigDAL.create(
           {
             disableBootstrapCaValidation: data.estConfig.disableBootstrapCaValidation,
             hashedPassphrase,
-            encryptedCaChain: Buffer.from(data.estConfig.encryptedCaChain, "base64")
+            encryptedCaChain: encryptedCaChainBuffer
           },
           tx
         );
@@ -233,9 +246,21 @@ export const certificateProfileServiceFactory = ({
             ...(estConfig.passphrase && {
               hashedPassphrase: await crypto.hashing().createHash(estConfig.passphrase, getConfig().SALT_ROUNDS)
             }),
-            ...(estConfig.caChain && {
-              encryptedCaChain: Buffer.from(estConfig.caChain, "base64")
-            })
+            ...(estConfig.caChain &&
+              (() => {
+                try {
+                  if (typeof estConfig.caChain !== "string") {
+                    throw new BadRequestError({ message: "CA chain must be a string" });
+                  }
+                  const buffer = Buffer.from(estConfig.caChain, "base64");
+                  if (buffer.toString("base64") !== estConfig.caChain) {
+                    throw new BadRequestError({ message: "Invalid Base64 encoding in CA chain data" });
+                  }
+                  return { encryptedCaChain: buffer };
+                } catch (error) {
+                  throw new BadRequestError({ message: "Failed to decode CA chain data: Invalid Base64 format" });
+                }
+              })())
           },
           tx
         );
@@ -596,11 +621,37 @@ export const certificateProfileServiceFactory = ({
     return metrics;
   };
 
-  const getEstConfigurationByProfile = async ({ profileId }: { profileId: string }) => {
+  const getEstConfigurationByProfile = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    profileId
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string | undefined;
+    profileId: string;
+  }) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: profile.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateProfileActions.Read,
+      ProjectPermissionSub.CertificateProfiles
+    );
 
     if (profile.enrollmentType !== EnrollmentType.EST) {
       throw new ForbiddenRequestError({
@@ -608,16 +659,16 @@ export const certificateProfileServiceFactory = ({
       });
     }
 
-    if (!profile.estConfigEncryptedCaChain) {
+    if (!profile.estConfig) {
       throw new NotFoundError({ message: "EST configuration not found for this profile" });
     }
 
     return {
       orgId: profile.projectId,
       isEnabled: true,
-      caChain: profile.estConfigEncryptedCaChain.toString("base64"),
-      disableBootstrapCertValidation: profile.estConfigDisableBootstrapCaValidation,
-      hashedPassphrase: profile.estConfigHashedPassphrase
+      caChain: profile.estConfig.encryptedCaChain,
+      disableBootstrapCertValidation: profile.estConfig.disableBootstrapCaValidation,
+      hashedPassphrase: profile.estConfig.hashedPassphrase
     };
   };
 

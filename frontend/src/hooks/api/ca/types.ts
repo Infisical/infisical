@@ -235,7 +235,7 @@ export type TOrderCertificateResponse = {
       url: string;
       token: string;
       validated?: string;
-      error?: any;
+      error?: string | Error;
     }>;
   }>;
   certificate?: string;

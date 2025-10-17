@@ -290,8 +290,8 @@ export const certificateTemplateV2ServiceFactory = ({
     const subjectPolicies = template.subject;
     const requestAttributes = new Map<string, string>();
     if (request.commonName) requestAttributes.set(CertSubjectAttributeType.COMMON_NAME, request.commonName);
-    if (request.organization || request.organizationName) {
-      requestAttributes.set(CertSubjectAttributeType.ORGANIZATION, request.organization || request.organizationName!);
+    if (request.organization) {
+      requestAttributes.set(CertSubjectAttributeType.ORGANIZATION, request.organization);
     }
     if (request.country) requestAttributes.set(CertSubjectAttributeType.COUNTRY, request.country);
 

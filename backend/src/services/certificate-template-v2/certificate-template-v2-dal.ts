@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
-import { TCertificateTemplatesV2Insert } from "@app/db/schemas/certificate-templates-v2";
+import { TPkiCertificateTemplatesV2Insert } from "@app/db/schemas/pki-certificate-templates-v2";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
@@ -19,7 +19,7 @@ interface CountResult {
 }
 
 export const certificateTemplateV2DALFactory = (db: TDbClient) => {
-  const certificateTemplateV2Orm = ormify(db, TableName.CertificateTemplateV2);
+  const certificateTemplateV2Orm = ormify(db, TableName.PkiCertificateTemplateV2);
 
   const serializeJsonFields = (data: TCertificateTemplateV2Insert | TCertificateTemplateV2Update) => {
     const serialized = { ...data } as Record<string, unknown>;
@@ -43,7 +43,17 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
     jsonFields.forEach((field) => {
       const value = raw[field];
       if (value !== null && value !== undefined) {
-        parsed[field] = typeof value === "string" ? JSON.parse(value) : value;
+        if (typeof value === "string") {
+          try {
+            parsed[field] = JSON.parse(value);
+          } catch (error) {
+            throw new Error(
+              `Invalid JSON in field '${field}': ${error instanceof Error ? error.message : "Parse error"}`
+            );
+          }
+        } else {
+          parsed[field] = value;
+        }
       } else {
         parsed[field] = undefined;
       }
@@ -55,9 +65,9 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
   const create = async (data: TCertificateTemplateV2Insert, tx?: Knex) => {
     try {
       const serializedData = serializeJsonFields(data);
-      const [certificateTemplateV2] = await (tx || db)(TableName.CertificateTemplateV2)
-        .insert(serializedData as TCertificateTemplatesV2Insert)
-        .returning("*");
+      const [certificateTemplateV2] = (await (tx || db)(TableName.PkiCertificateTemplateV2)
+        .insert(serializedData as TPkiCertificateTemplatesV2Insert)
+        .returning("*")) as Record<string, unknown>[];
 
       if (!certificateTemplateV2) {
         throw new Error("Failed to create certificate template v2");
@@ -72,10 +82,10 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
   const updateById = async (id: string, data: TCertificateTemplateV2Update, tx?: Knex) => {
     try {
       const serializedData = serializeJsonFields(data);
-      const [certificateTemplateV2] = await (tx || db)(TableName.CertificateTemplateV2)
+      const [certificateTemplateV2] = (await (tx || db)(TableName.PkiCertificateTemplateV2)
         .where({ id })
         .update(serializedData)
-        .returning("*");
+        .returning("*")) as Record<string, unknown>[];
 
       if (!certificateTemplateV2) {
         return null;
@@ -89,10 +99,10 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
 
   const deleteById = async (id: string, tx?: Knex) => {
     try {
-      const [certificateTemplateV2] = await (tx || db)(TableName.CertificateTemplateV2)
+      const [certificateTemplateV2] = (await (tx || db)(TableName.PkiCertificateTemplateV2)
         .where({ id })
         .del()
-        .returning("*");
+        .returning("*")) as Record<string, unknown>[];
 
       return certificateTemplateV2;
     } catch (error) {
@@ -102,7 +112,9 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     try {
-      const certificateTemplateV2 = await (tx || db)(TableName.CertificateTemplateV2).where({ id }).first();
+      const certificateTemplateV2 = (await (tx || db)(TableName.PkiCertificateTemplateV2).where({ id }).first()) as
+        | Record<string, unknown>
+        | undefined;
 
       if (!certificateTemplateV2) {
         return null;
@@ -126,7 +138,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
     try {
       const { offset = 0, limit = 20, search } = options;
 
-      let query = (tx || db)(TableName.CertificateTemplateV2).where({ projectId });
+      let query = (tx || db)(TableName.PkiCertificateTemplateV2).where({ projectId });
 
       if (search) {
         query = query.where((builder) => {
@@ -152,7 +164,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
     try {
       const { search } = options;
 
-      let query = (tx || db)(TableName.CertificateTemplateV2).where({ projectId });
+      let query = (tx || db)(TableName.PkiCertificateTemplateV2).where({ projectId });
 
       if (search) {
         query = query.where((builder) => {
@@ -169,9 +181,9 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
 
   const findByNameAndProjectId = async (name: string, projectId: string, tx?: Knex) => {
     try {
-      const certificateTemplateV2 = await (tx || db)(TableName.CertificateTemplateV2)
+      const certificateTemplateV2 = (await (tx || db)(TableName.PkiCertificateTemplateV2)
         .where({ name, projectId })
-        .first();
+        .first()) as Record<string, unknown> | undefined;
 
       if (!certificateTemplateV2) {
         return null;
@@ -185,7 +197,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
 
   const isTemplateInUse = async (templateId: string, tx?: Knex) => {
     try {
-      const profileCount = await (tx || db)(TableName.CertificateProfile)
+      const profileCount = await (tx || db)(TableName.PkiCertificateProfile)
         .where({ certificateTemplateId: templateId })
         .count("*")
         .first();
@@ -207,11 +219,11 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
 
   const getProfilesUsingTemplate = async (templateId: string, tx?: Knex) => {
     try {
-      const profiles = await (tx || db)(TableName.CertificateProfile)
+      const profiles = await (tx || db)(TableName.PkiCertificateProfile)
         .select("id", "slug", "description")
         .where({ certificateTemplateId: templateId });
 
-      return profiles;
+      return profiles as Array<{ id: string; slug: string; description?: string }>;
     } catch (error) {
       throw new DatabaseError({ error, name: "Get profiles using certificate template v2" });
     }

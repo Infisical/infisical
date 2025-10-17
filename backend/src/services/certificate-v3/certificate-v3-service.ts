@@ -116,24 +116,25 @@ const validateAlgorithmCompatibility = (
     throw new BadRequestError({ message: "CA key algorithm not found" });
   }
 
-  const compatibleAlgorithms = template.algorithms.signature.filter((sigAlg: string) => {
-    const parts = sigAlg.split("-");
-    const keyType = parts[parts.length - 1];
+  const compatibleAlgorithms =
+    template.algorithms?.signature?.filter((sigAlg: string) => {
+      const parts = sigAlg.split("-");
+      const keyType = parts[parts.length - 1];
 
-    if (caKeyAlgorithm.startsWith("RSA")) {
-      return keyType === "RSA";
-    }
+      if (caKeyAlgorithm.startsWith("RSA")) {
+        return keyType === "RSA";
+      }
 
-    if (caKeyAlgorithm.startsWith("EC")) {
-      return keyType === "ECDSA";
-    }
+      if (caKeyAlgorithm.startsWith("EC")) {
+        return keyType === "ECDSA";
+      }
 
-    return false;
-  });
+      return false;
+    }) || [];
 
   if (compatibleAlgorithms.length === 0) {
     throw new BadRequestError({
-      message: `Template signature algorithms (${template.algorithms.signature.join(", ")}) are not compatible with CA key algorithm (${caKeyAlgorithm})`
+      message: `Template signature algorithms (${template.algorithms?.signature?.join(", ") || "none"}) are not compatible with CA key algorithm (${caKeyAlgorithm})`
     });
   }
 };

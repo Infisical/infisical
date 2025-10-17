@@ -60,7 +60,10 @@ export const CertificateProfilesTab = () => {
         type: "success"
       });
     } catch (error) {
-      console.error("Failed to delete profile:", error);
+      console.error(
+        `Failed to delete profile "${selectedProfile.slug}" (ID: ${selectedProfile.id}):`,
+        error
+      );
     }
   };
 
@@ -78,7 +81,7 @@ export const CertificateProfilesTab = () => {
         {canCreateProfile && (
           <Button
             colorSchema="primary"
-            type="submit"
+            type="button"
             leftIcon={<FontAwesomeIcon icon={faPlus} />}
             onClick={handleCreateProfile}
           >

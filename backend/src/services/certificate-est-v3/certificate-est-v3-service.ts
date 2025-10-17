@@ -173,6 +173,11 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     const certTemplate = await certificateTemplateDAL.findById(profile.certificateTemplateId);
+    if (!certTemplate) {
+      throw new NotFoundError({
+        message: `Certificate template with ID '${profile.certificateTemplateId}' not found`
+      });
+    }
 
     const leafCertificate = extractX509CertFromChain(decodeURIComponent(sslClientCert))?.[0];
 

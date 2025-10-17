@@ -191,6 +191,23 @@ export const mapLegacyExtendedKeyUsageToStandard = (usage: string): CertExtended
   }
 };
 
+export enum CertKeyAlgorithm {
+  RSA_2048 = "RSA_2048",
+  RSA_3072 = "RSA_3072",
+  RSA_4096 = "RSA_4096",
+  ECDSA_P256 = "EC_prime256v1",
+  ECDSA_P384 = "EC_secp384r1"
+}
+
+export enum CertSignatureAlgorithm {
+  RSA_SHA256 = "RSA-SHA256",
+  RSA_SHA384 = "RSA-SHA384",
+  RSA_SHA512 = "RSA-SHA512",
+  ECDSA_SHA256 = "ECDSA-SHA256",
+  ECDSA_SHA384 = "ECDSA-SHA384",
+  ECDSA_SHA512 = "ECDSA-SHA512"
+}
+
 export const SAN_TYPE_OPTIONS = Object.values(CertSubjectAlternativeNameType);
 export const KEY_USAGE_OPTIONS = Object.values(CertKeyUsageType);
 export const EXTENDED_KEY_USAGE_OPTIONS = Object.values(CertExtendedKeyUsageType);
@@ -199,3 +216,5 @@ export const DURATION_UNIT_OPTIONS = Object.values(CertDurationUnit);
 export const SUBJECT_ATTRIBUTE_TYPE_OPTIONS = Object.values(CertSubjectAttributeType);
 export const ATTRIBUTE_RULE_OPTIONS = Object.values(CertAttributeRule);
 export const SAN_EFFECT_OPTIONS = Object.values(CertSanEffect);
+export const KEY_ALGORITHM_OPTIONS = Object.values(CertKeyAlgorithm);
+export const SIGNATURE_ALGORITHM_OPTIONS = Object.values(CertSignatureAlgorithm);

@@ -56,9 +56,6 @@ import {
   TCertificateBodies,
   TCertificateBodiesInsert,
   TCertificateBodiesUpdate,
-  TCertificateProfiles,
-  TCertificateProfilesInsert,
-  TCertificateProfilesUpdate,
   TCertificates,
   TCertificateSecrets,
   TCertificateSecretsInsert,
@@ -71,9 +68,6 @@ import {
   TCertificateTemplates,
   TCertificateTemplatesInsert,
   TCertificateTemplatesUpdate,
-  TCertificateTemplatesV2,
-  TCertificateTemplatesV2Insert,
-  TCertificateTemplatesV2Update,
   TDynamicSecretLeases,
   TDynamicSecretLeasesInsert,
   TDynamicSecretLeasesUpdate,
@@ -275,6 +269,12 @@ import {
   TPkiApiEnrollmentConfigs,
   TPkiApiEnrollmentConfigsInsert,
   TPkiApiEnrollmentConfigsUpdate,
+  TPkiCertificateProfiles,
+  TPkiCertificateProfilesInsert,
+  TPkiCertificateProfilesUpdate,
+  TPkiCertificateTemplatesV2,
+  TPkiCertificateTemplatesV2Insert,
+  TPkiCertificateTemplatesV2Update,
   TPkiCollectionItems,
   TPkiCollectionItemsInsert,
   TPkiCollectionItemsUpdate,
@@ -683,15 +683,15 @@ declare module "knex/types/tables" {
       TCertificateTemplatesInsert,
       TCertificateTemplatesUpdate
     >;
-    [TableName.CertificateTemplateV2]: KnexOriginal.CompositeTableType<
-      TCertificateTemplatesV2,
-      TCertificateTemplatesV2Insert,
-      TCertificateTemplatesV2Update
+    [TableName.PkiCertificateTemplateV2]: KnexOriginal.CompositeTableType<
+      TPkiCertificateTemplatesV2,
+      TPkiCertificateTemplatesV2Insert,
+      TPkiCertificateTemplatesV2Update
     >;
-    [TableName.CertificateProfile]: KnexOriginal.CompositeTableType<
-      TCertificateProfiles,
-      TCertificateProfilesInsert,
-      TCertificateProfilesUpdate
+    [TableName.PkiCertificateProfile]: KnexOriginal.CompositeTableType<
+      TPkiCertificateProfiles,
+      TPkiCertificateProfilesInsert,
+      TPkiCertificateProfilesUpdate
     >;
     [TableName.PkiEstEnrollmentConfig]: KnexOriginal.CompositeTableType<
       TPkiEstEnrollmentConfigs,

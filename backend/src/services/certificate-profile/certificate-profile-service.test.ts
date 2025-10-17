@@ -712,7 +712,7 @@ describe("CertificateProfileService", () => {
           estConfig: {
             disableBootstrapCaValidation: false,
             passphrase: "secret-passphrase",
-            encryptedCaChain: "encrypted-ca-chain-data"
+            encryptedCaChain: Buffer.from("test-ca-chain-data").toString("base64")
           }
         };
 
@@ -1117,14 +1117,17 @@ describe("CertificateProfileService", () => {
         ...sampleProfileWithConfigs,
         id: profileId,
         enrollmentType: EnrollmentType.EST,
-        estConfigEncryptedCaChain: Buffer.from("mock-ca-chain"),
-        estConfigDisableBootstrapCaValidation: false,
-        estConfigHashedPassphrase: "hashed-passphrase"
+        estConfig: {
+          id: "est-config-123",
+          disableBootstrapCaValidation: false,
+          hashedPassphrase: "hashed-passphrase",
+          encryptedCaChain: Buffer.from("mock-ca-chain").toString("base64")
+        }
       } as TCertificateProfileWithConfigs;
 
       (mockCertificateProfileDAL.findByIdWithConfigs as any).mockResolvedValue(mockProfile);
 
-      const result = await service.getEstConfigurationByProfile({ profileId });
+      const result = await service.getEstConfigurationByProfile({ ...mockActor, profileId });
 
       expect(result).toEqual({
         orgId: "project-123",
@@ -1139,7 +1142,7 @@ describe("CertificateProfileService", () => {
       const profileId = "non-existent-profile";
       (mockCertificateProfileDAL.findByIdWithConfigs as any).mockResolvedValue(null);
 
-      await expect(service.getEstConfigurationByProfile({ profileId })).rejects.toThrow(NotFoundError);
+      await expect(service.getEstConfigurationByProfile({ ...mockActor, profileId })).rejects.toThrow(NotFoundError);
     });
 
     it("should throw ForbiddenRequestError when profile is not configured for EST enrollment", async () => {
@@ -1148,15 +1151,20 @@ describe("CertificateProfileService", () => {
         ...sampleProfileWithConfigs,
         id: profileId,
         enrollmentType: EnrollmentType.API, // Wrong enrollment type
-        estConfigEncryptedCaChain: Buffer.from("mock-ca-chain"),
-        estConfigDisableBootstrapCaValidation: false,
-        estConfigHashedPassphrase: "hashed-passphrase"
+        estConfig: {
+          id: "est-config-123",
+          disableBootstrapCaValidation: false,
+          hashedPassphrase: "hashed-passphrase",
+          encryptedCaChain: Buffer.from("mock-ca-chain").toString("base64")
+        }
       } as TCertificateProfileWithConfigs;
 
       (mockCertificateProfileDAL.findByIdWithConfigs as any).mockResolvedValue(mockProfile);
 
-      await expect(service.getEstConfigurationByProfile({ profileId })).rejects.toThrow(ForbiddenRequestError);
-      await expect(service.getEstConfigurationByProfile({ profileId })).rejects.toThrow(
+      await expect(service.getEstConfigurationByProfile({ ...mockActor, profileId })).rejects.toThrow(
+        ForbiddenRequestError
+      );
+      await expect(service.getEstConfigurationByProfile({ ...mockActor, profileId })).rejects.toThrow(
         "Profile is not configured for EST enrollment"
       );
     });
@@ -1167,15 +1175,13 @@ describe("CertificateProfileService", () => {
         ...sampleProfileWithConfigs,
         id: profileId,
         enrollmentType: EnrollmentType.EST,
-        estConfigEncryptedCaChain: null, // Missing EST config
-        estConfigDisableBootstrapCaValidation: false,
-        estConfigHashedPassphrase: "hashed-passphrase"
+        estConfig: undefined // Missing EST config
       } as TCertificateProfileWithConfigs;
 
       (mockCertificateProfileDAL.findByIdWithConfigs as any).mockResolvedValue(mockProfile);
 
-      await expect(service.getEstConfigurationByProfile({ profileId })).rejects.toThrow(NotFoundError);
-      await expect(service.getEstConfigurationByProfile({ profileId })).rejects.toThrow(
+      await expect(service.getEstConfigurationByProfile({ ...mockActor, profileId })).rejects.toThrow(NotFoundError);
+      await expect(service.getEstConfigurationByProfile({ ...mockActor, profileId })).rejects.toThrow(
         "EST configuration not found for this profile"
       );
     });

@@ -109,7 +109,7 @@ export const PkiManagerLayout = () => {
                             <div className="w-6">
                               <FontAwesomeIcon icon={faStamp} />
                             </div>
-                            Certificates Authorities
+                            Certificate Authorities
                           </div>
                         </MenuItem>
                       )}

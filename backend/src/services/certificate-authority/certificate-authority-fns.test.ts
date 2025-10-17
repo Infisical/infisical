@@ -136,7 +136,7 @@ describe("signatureAlgorithmToAlgCfg", () => {
       const result = signatureAlgorithmToAlgCfg("ECDSA-SHA256", "EC_secp521r1");
 
       expect(result.name).toBe("ECDSA");
-      expect(result.namedCurve).toBe("P-256");
+      expect(result.namedCurve).toBe("P-521");
       expect(result.hash).toBe("SHA-256");
     });
 

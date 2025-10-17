@@ -581,18 +581,20 @@ describe("CertificateTemplateV2Service", () => {
         { ttl: "invalid", shouldThrow: true }
       ];
 
-      for (const testCase of testCases) {
-        const request = { ...validRequest, validity: { ttl: testCase.ttl } };
+      await Promise.all(
+        testCases.map(async (testCase) => {
+          const request = { ...validRequest, validity: { ttl: testCase.ttl } };
 
-        if (testCase.shouldThrow) {
-          await expect(service.validateCertificateRequest("template-123", request)).rejects.toThrow(
-            `Invalid TTL format: ${testCase.ttl}`
-          );
-        } else {
-          const result = await service.validateCertificateRequest("template-123", request);
-          expect(result.isValid).toBe(testCase.shouldBeValid);
-        }
-      }
+          if (testCase.shouldThrow) {
+            await expect(service.validateCertificateRequest("template-123", request)).rejects.toThrow(
+              `Invalid TTL format: ${testCase.ttl}`
+            );
+          } else {
+            const result = await service.validateCertificateRequest("template-123", request);
+            expect(result.isValid).toBe(testCase.shouldBeValid);
+          }
+        })
+      );
     });
 
     it("should allow optional key usages and extended key usages", async () => {
@@ -1108,21 +1110,23 @@ describe("CertificateTemplateV2Service", () => {
           { ttl: "1y", shouldBeValid: true, description: "exactly 365 days in years" }
         ];
 
-        for (const testCase of testCases) {
-          const request = {
-            commonName: "example.com",
-            keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
-            extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
-            validity: { ttl: testCase.ttl }
-          };
+        await Promise.all(
+          testCases.map(async (testCase) => {
+            const request = {
+              commonName: "example.com",
+              keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
+              extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH],
+              validity: { ttl: testCase.ttl }
+            };
 
-          const result = await service.validateCertificateRequest("template-123", request);
-          expect(result.isValid).toBe(testCase.shouldBeValid);
+            const result = await service.validateCertificateRequest("template-123", request);
+            expect(result.isValid).toBe(testCase.shouldBeValid);
 
-          if (!testCase.shouldBeValid) {
-            expect(result.errors.length).toBeGreaterThan(0);
-          }
-        }
+            if (!testCase.shouldBeValid) {
+              expect(result.errors.length).toBeGreaterThan(0);
+            }
+          })
+        );
       });
     });
 

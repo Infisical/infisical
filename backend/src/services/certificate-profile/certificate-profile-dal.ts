@@ -7,118 +7,188 @@ import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 import {
   EnrollmentType,
+  TCertificateProfile,
   TCertificateProfileCertificate,
   TCertificateProfileInsert,
   TCertificateProfileMetrics,
-  TCertificateProfileUpdate
+  TCertificateProfileUpdate,
+  TCertificateProfileWithConfigs,
+  TCertificateProfileWithRawMetrics
 } from "./certificate-profile-types";
 
 export type TCertificateProfileDALFactory = ReturnType<typeof certificateProfileDALFactory>;
 
 export const certificateProfileDALFactory = (db: TDbClient) => {
-  const certificateProfileOrm = ormify(db, TableName.CertificateProfile);
+  const certificateProfileOrm = ormify(db, TableName.PkiCertificateProfile);
 
-  const create = async (data: TCertificateProfileInsert, tx?: Knex) => {
+  const create = async (data: TCertificateProfileInsert, tx?: Knex): Promise<TCertificateProfile> => {
     try {
-      const [certificateProfile] = await (tx || db)(TableName.CertificateProfile).insert(data).returning("*");
+      const [certificateProfile] = (await (tx || db)(TableName.PkiCertificateProfile).insert(data).returning("*")) as [
+        TCertificateProfile
+      ];
       return certificateProfile;
     } catch (error) {
       throw new DatabaseError({ error, name: "Create certificate profile" });
     }
   };
 
-  const updateById = async (id: string, data: TCertificateProfileUpdate, tx?: Knex) => {
+  const updateById = async (id: string, data: TCertificateProfileUpdate, tx?: Knex): Promise<TCertificateProfile> => {
     try {
-      const [certificateProfile] = await (tx || db)(TableName.CertificateProfile)
+      const [certificateProfile] = (await (tx || db)(TableName.PkiCertificateProfile)
         .where({ id })
         .update(data)
-        .returning("*");
+        .returning("*")) as [TCertificateProfile];
       return certificateProfile;
     } catch (error) {
       throw new DatabaseError({ error, name: "Update certificate profile" });
     }
   };
 
-  const deleteById = async (id: string, tx?: Knex) => {
+  const deleteById = async (id: string, tx?: Knex): Promise<TCertificateProfile> => {
     try {
-      const [certificateProfile] = await (tx || db)(TableName.CertificateProfile).where({ id }).del().returning("*");
+      const [certificateProfile] = (await (tx || db)(TableName.PkiCertificateProfile)
+        .where({ id })
+        .del()
+        .returning("*")) as [TCertificateProfile];
       return certificateProfile;
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete certificate profile" });
     }
   };
 
-  const findById = async (id: string, tx?: Knex) => {
+  const findById = async (id: string, tx?: Knex): Promise<TCertificateProfile | undefined> => {
     try {
-      const certificateProfile = await (tx || db)(TableName.CertificateProfile).where({ id }).first();
+      const certificateProfile = (await (tx || db)(TableName.PkiCertificateProfile).where({ id }).first()) as
+        | TCertificateProfile
+        | undefined;
       return certificateProfile;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate profile by id" });
     }
   };
 
-  const findByIdWithConfigs = async (id: string, tx?: Knex) => {
+  const findByIdWithConfigs = async (id: string, tx?: Knex): Promise<TCertificateProfileWithConfigs | undefined> => {
     try {
-      const result = await (tx || db)(TableName.CertificateProfile)
-        .select(
-          selectAllTableCols(TableName.CertificateProfile),
-          (tx || db).ref("id").withSchema(TableName.CertificateAuthority).as("caId"),
-          (tx || db).ref("projectId").withSchema(TableName.CertificateAuthority).as("caProjectId"),
-          (tx || db).ref("status").withSchema(TableName.CertificateAuthority).as("caStatus"),
-          (tx || db).ref("name").withSchema(TableName.CertificateAuthority).as("caName"),
-          (tx || db).ref("id").withSchema(TableName.CertificateTemplateV2).as("templateId"),
-          (tx || db).ref("projectId").withSchema(TableName.CertificateTemplateV2).as("templateProjectId"),
-          (tx || db).ref("name").withSchema(TableName.CertificateTemplateV2).as("templateName"),
-          (tx || db).ref("description").withSchema(TableName.CertificateTemplateV2).as("templateDescription"),
-          (tx || db).ref("id").withSchema(TableName.PkiEstEnrollmentConfig).as("estConfigId"),
-          (tx || db)
-            .ref("disableBootstrapCaValidation")
-            .withSchema(TableName.PkiEstEnrollmentConfig)
-            .as("estConfigDisableBootstrapCaValidation"),
-          (tx || db)
-            .ref("hashedPassphrase")
-            .withSchema(TableName.PkiEstEnrollmentConfig)
-            .as("estConfigHashedPassphrase"),
-          (tx || db)
-            .ref("encryptedCaChain")
-            .withSchema(TableName.PkiEstEnrollmentConfig)
-            .as("estConfigEncryptedCaChain"),
-          (tx || db).ref("id").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigId"),
-          (tx || db).ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigAutoRenew"),
-          (tx || db).ref("autoRenewDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigAutoRenewDays")
-        )
+      const query = (tx || db)(TableName.PkiCertificateProfile)
         .leftJoin(
           TableName.CertificateAuthority,
-          `${TableName.CertificateProfile}.caId`,
+          `${TableName.PkiCertificateProfile}.caId`,
           `${TableName.CertificateAuthority}.id`
         )
         .leftJoin(
-          TableName.CertificateTemplateV2,
-          `${TableName.CertificateProfile}.certificateTemplateId`,
-          `${TableName.CertificateTemplateV2}.id`
+          TableName.PkiCertificateTemplateV2,
+          `${TableName.PkiCertificateProfile}.certificateTemplateId`,
+          `${TableName.PkiCertificateTemplateV2}.id`
         )
         .leftJoin(
           TableName.PkiEstEnrollmentConfig,
-          `${TableName.CertificateProfile}.estConfigId`,
+          `${TableName.PkiCertificateProfile}.estConfigId`,
           `${TableName.PkiEstEnrollmentConfig}.id`
         )
         .leftJoin(
           TableName.PkiApiEnrollmentConfig,
-          `${TableName.CertificateProfile}.apiConfigId`,
+          `${TableName.PkiCertificateProfile}.apiConfigId`,
           `${TableName.PkiApiEnrollmentConfig}.id`
         )
-        .where(`${TableName.CertificateProfile}.id`, id)
+        .select(selectAllTableCols(TableName.PkiCertificateProfile))
+        .select(
+          db.ref("id").withSchema(TableName.CertificateAuthority).as("caId"),
+          db.ref("projectId").withSchema(TableName.CertificateAuthority).as("caProjectId"),
+          db.ref("status").withSchema(TableName.CertificateAuthority).as("caStatus"),
+          db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"),
+          db.ref("id").withSchema(TableName.PkiCertificateTemplateV2).as("templateId"),
+          db.ref("projectId").withSchema(TableName.PkiCertificateTemplateV2).as("templateProjectId"),
+          db.ref("name").withSchema(TableName.PkiCertificateTemplateV2).as("templateName"),
+          db.ref("description").withSchema(TableName.PkiCertificateTemplateV2).as("templateDescription"),
+          db.ref("id").withSchema(TableName.PkiEstEnrollmentConfig).as("estConfigId"),
+          db
+            .ref("disableBootstrapCaValidation")
+            .withSchema(TableName.PkiEstEnrollmentConfig)
+            .as("estConfigDisableBootstrapCaValidation"),
+          db.ref("hashedPassphrase").withSchema(TableName.PkiEstEnrollmentConfig).as("estConfigHashedPassphrase"),
+          db.ref("encryptedCaChain").withSchema(TableName.PkiEstEnrollmentConfig).as("estConfigEncryptedCaChain"),
+          db.ref("id").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigId"),
+          db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigAutoRenew"),
+          db.ref("autoRenewDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigAutoRenewDays")
+        )
+        .where(`${TableName.PkiCertificateProfile}.id`, id)
         .first();
 
-      return result;
+      const result = await query;
+
+      if (!result) return undefined;
+
+      const estConfig =
+        result.estConfigEncryptedCaChain && result.estConfigId && result.estConfigHashedPassphrase
+          ? ({
+              id: result.estConfigId,
+              disableBootstrapCaValidation: !!result.estConfigDisableBootstrapCaValidation,
+              hashedPassphrase: result.estConfigHashedPassphrase,
+              encryptedCaChain: result.estConfigEncryptedCaChain.toString("base64")
+            } as TCertificateProfileWithConfigs["estConfig"])
+          : undefined;
+
+      const apiConfig = result.apiConfigId
+        ? ({
+            id: result.apiConfigId,
+            autoRenew: !!result.apiConfigAutoRenew,
+            autoRenewDays: result.apiConfigAutoRenewDays || undefined
+          } as TCertificateProfileWithConfigs["apiConfig"])
+        : undefined;
+
+      const certificateAuthority =
+        result.caId && result.caProjectId && result.caStatus && result.caName
+          ? ({
+              id: result.caId,
+              projectId: result.caProjectId,
+              status: result.caStatus,
+              name: result.caName
+            } as TCertificateProfileWithConfigs["certificateAuthority"])
+          : undefined;
+
+      const certificateTemplate =
+        result.templateId && result.templateProjectId && result.templateName
+          ? ({
+              id: result.templateId,
+              projectId: result.templateProjectId,
+              name: result.templateName,
+              description: result.templateDescription || undefined
+            } as TCertificateProfileWithConfigs["certificateTemplate"])
+          : undefined;
+
+      const transformedResult: TCertificateProfileWithConfigs = {
+        id: result.id,
+        projectId: result.projectId,
+        caId: result.caId,
+        certificateTemplateId: result.certificateTemplateId,
+        slug: result.slug,
+        description: result.description,
+        enrollmentType: result.enrollmentType as EnrollmentType,
+        estConfigId: result.estConfigId,
+        apiConfigId: result.apiConfigId,
+        createdAt: result.createdAt,
+        updatedAt: result.updatedAt,
+        estConfig,
+        apiConfig,
+        certificateAuthority,
+        certificateTemplate
+      };
+
+      return transformedResult;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate profile by id with configs" });
     }
   };
 
-  const findBySlugAndProjectId = async (slug: string, projectId: string, tx?: Knex) => {
+  const findBySlugAndProjectId = async (
+    slug: string,
+    projectId: string,
+    tx?: Knex
+  ): Promise<TCertificateProfile | undefined> => {
     try {
-      const certificateProfile = await (tx || db)(TableName.CertificateProfile).where({ slug, projectId }).first();
+      const certificateProfile = (await (tx || db)(TableName.PkiCertificateProfile)
+        .where({ slug, projectId })
+        .first()) as TCertificateProfile | undefined;
       return certificateProfile;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate profile by slug and project id" });
@@ -137,7 +207,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       expiringDays?: number;
     } = {},
     tx?: Knex
-  ) => {
+  ): Promise<TCertificateProfile[] | TCertificateProfileWithRawMetrics[]> => {
     try {
       const {
         offset = 0,
@@ -149,25 +219,27 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         expiringDays = 7
       } = options;
 
-      let query = (tx || db)(TableName.CertificateProfile).where(
-        `${TableName.CertificateProfile}.projectId`,
+      let query = (tx || db)(TableName.PkiCertificateProfile).where(
+        `${TableName.PkiCertificateProfile}.projectId`,
         projectId
       );
 
       if (search) {
         query = query.where((builder) => {
-          void builder
-            .whereILike(`${TableName.CertificateProfile}.slug`, `%${search}%`)
-            .orWhereILike(`${TableName.CertificateProfile}.description`, `%${search}%`);
+          void builder.where((qb) => {
+            void qb
+              .whereILike(`${TableName.PkiCertificateProfile}.slug`, `%${search}%`)
+              .orWhereILike(`${TableName.PkiCertificateProfile}.description`, `%${search}%`);
+          });
         });
       }
 
       if (enrollmentType) {
-        query = query.where(`${TableName.CertificateProfile}.enrollmentType`, enrollmentType);
+        query = query.where(`${TableName.PkiCertificateProfile}.enrollmentType`, enrollmentType);
       }
 
       if (caId) {
-        query = query.where(`${TableName.CertificateProfile}.caId`, caId);
+        query = query.where(`${TableName.PkiCertificateProfile}.caId`, caId);
       }
 
       if (includeMetrics) {
@@ -176,9 +248,13 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         expiringDate.setDate(now.getDate() + expiringDays);
 
         const certificateProfiles = await query
-          .leftJoin(TableName.Certificate, `${TableName.CertificateProfile}.id`, `${TableName.Certificate}.profileId`)
+          .leftJoin(
+            TableName.Certificate,
+            `${TableName.PkiCertificateProfile}.id`,
+            `${TableName.Certificate}.profileId`
+          )
           .select(
-            selectAllTableCols(TableName.CertificateProfile),
+            selectAllTableCols(TableName.PkiCertificateProfile),
             db.raw("COUNT(certificates.id) as total_certificates"),
             db.raw(
               'COUNT(CASE WHEN certificates."revokedAt" IS NULL AND certificates."notAfter" > ? THEN 1 END) as active_certificates',
@@ -194,21 +270,21 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             ),
             db.raw('COUNT(CASE WHEN certificates."revokedAt" IS NOT NULL THEN 1 END) as revoked_certificates')
           )
-          .groupBy(`${TableName.CertificateProfile}.id`)
-          .orderBy(`${TableName.CertificateProfile}.createdAt`, "desc")
+          .groupBy(`${TableName.PkiCertificateProfile}.id`)
+          .orderBy(`${TableName.PkiCertificateProfile}.createdAt`, "desc")
           .offset(offset)
           .limit(limit);
 
-        return certificateProfiles;
+        return certificateProfiles as TCertificateProfileWithRawMetrics[];
       }
 
       const certificateProfiles = await query
-        .select(selectAllTableCols(TableName.CertificateProfile))
-        .orderBy(`${TableName.CertificateProfile}.createdAt`, "desc")
+        .select(selectAllTableCols(TableName.PkiCertificateProfile))
+        .orderBy(`${TableName.PkiCertificateProfile}.createdAt`, "desc")
         .offset(offset)
         .limit(limit);
 
-      return certificateProfiles;
+      return certificateProfiles as TCertificateProfile[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate profiles by project id" });
     }
@@ -222,15 +298,17 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       caId?: string;
     } = {},
     tx?: Knex
-  ) => {
+  ): Promise<number> => {
     try {
       const { search, enrollmentType, caId } = options;
 
-      let query = (tx || db)(TableName.CertificateProfile).where({ projectId });
+      let query = (tx || db)(TableName.PkiCertificateProfile).where({ projectId });
 
       if (search) {
         query = query.where((builder) => {
-          void builder.orWhereILike("description", `%${search}%`).orWhereILike("slug", `%${search}%`);
+          void builder.where((qb) => {
+            void qb.whereILike("description", `%${search}%`).orWhereILike("slug", `%${search}%`);
+          });
         });
       }
 
@@ -249,11 +327,15 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByNameAndProjectId = async (name: string, projectId: string, tx?: Knex) => {
+  const findByNameAndProjectId = async (
+    name: string,
+    projectId: string,
+    tx?: Knex
+  ): Promise<TCertificateProfile | undefined> => {
     try {
-      const certificateProfile = await (tx || db)(TableName.CertificateProfile)
+      const certificateProfile = (await (tx || db)(TableName.PkiCertificateProfile)
         .where({ slug: name, projectId })
-        .first();
+        .first()) as TCertificateProfile | undefined;
       return certificateProfile;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate profile by name and project id" });
@@ -278,7 +360,9 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
 
       if (search) {
         query = query.where((builder) => {
-          void builder.whereILike("cn", `%${search}%`).orWhereILike("serialNumber", `%${search}%`);
+          void builder.where((qb) => {
+            void qb.whereILike("cn", `%${search}%`).orWhereILike("serialNumber", `%${search}%`);
+          });
         });
       }
 
@@ -311,7 +395,10 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         .offset(offset)
         .limit(limit);
 
-      return certificates;
+      return certificates.map((cert) => ({
+        ...cert,
+        revokedAt: cert.revokedAt ?? null
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Get certificates by profile" });
     }

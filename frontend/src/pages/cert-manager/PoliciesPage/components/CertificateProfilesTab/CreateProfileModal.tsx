@@ -18,6 +18,8 @@ import { useProject } from "@app/context";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
 import {
   TCertificateProfileWithDetails,
+  TCreateCertificateProfileDTO,
+  TUpdateCertificateProfileDTO,
   useCreateCertificateProfile,
   useUpdateCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
@@ -163,7 +165,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
       if (!currentProject?.id && !isEdit) return;
 
       if (isEdit) {
-        const updateData: any = {
+        const updateData: TUpdateCertificateProfileDTO = {
           profileId: profile.id,
           slug: data.slug,
           description: data.description
@@ -177,8 +179,12 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
 
         await updateProfile.mutateAsync(updateData);
       } else {
-        const createData: any = {
-          projectId: currentProject!.id,
+        if (!currentProject?.id) {
+          throw new Error("Project ID is required for creating a profile");
+        }
+
+        const createData: TCreateCertificateProfileDTO = {
+          projectId: currentProject.id,
           slug: data.slug,
           description: data.description,
           enrollmentType: data.enrollmentType,
@@ -273,9 +279,11 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   position="popper"
                   isDisabled={Boolean(isEdit)}
                 >
-                  {certificateAuthorities.map((ca: any) => (
+                  {certificateAuthorities.map((ca) => (
                     <SelectItem key={ca.id} value={ca.id}>
-                      {ca.friendlyName || ca.name || ca.commonName}
+                      {ca.type === "internal" && ca.configuration.friendlyName
+                        ? ca.configuration.friendlyName
+                        : ca.name}
                     </SelectItem>
                   ))}
                 </Select>
@@ -481,7 +489,20 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                       max="365"
                       className="w-full"
                       isDisabled={!watchedAutoRenew}
-                      onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 30)}
+                      onChange={(e) => {
+                        const { value } = e.target;
+                        if (value === "") {
+                          field.onChange("");
+                        } else {
+                          const parsed = parseInt(value, 10);
+                          if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 365) {
+                            field.onChange(parsed);
+                          } else {
+                            // Preserve the original field value instead of defaulting to 30
+                            field.onChange(field.value || "");
+                          }
+                        }
+                      }}
                     />
                   </FormControl>
                 )}

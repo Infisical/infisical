@@ -27,12 +27,17 @@ import {
   useCreateCertificateTemplateV2New,
   useUpdateCertificateTemplateV2New
 } from "@app/hooks/api/certificateTemplates/mutations";
-import { TCertificateTemplateV2New } from "@app/hooks/api/certificateTemplates/types";
+import {
+  TCertificateTemplateV2New,
+  TCertificateTemplateV2Policy
+} from "@app/hooks/api/certificateTemplates/types";
 
 import {
   CertDurationUnit,
   CertExtendedKeyUsageType,
   CertKeyUsageType,
+  CertSubjectAlternativeNameType,
+  CertSubjectAttributeType,
   SAN_INCLUDE_OPTIONS,
   SAN_TYPE_OPTIONS,
   SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS,
@@ -41,6 +46,13 @@ import {
 import { KeyUsagesSection, TemplateFormData, templateSchema } from "./shared";
 
 export type FormData = TemplateFormData;
+
+type AttributeTransform = NonNullable<TCertificateTemplateV2Policy["subject"]>[0];
+type SanTransform = NonNullable<TCertificateTemplateV2Policy["sans"]>[0];
+type KeyUsagesTransform = TCertificateTemplateV2Policy["keyUsages"];
+type ExtendedKeyUsagesTransform = TCertificateTemplateV2Policy["extendedKeyUsages"];
+type AlgorithmsTransform = TCertificateTemplateV2Policy["algorithms"];
+type ValidityTransform = TCertificateTemplateV2Policy["validity"];
 
 interface Props {
   isOpen: boolean;
@@ -100,13 +112,13 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
   const isEdit = mode === "edit" && template;
 
   const convertApiToUiFormat = (templateData: TCertificateTemplateV2New): FormData => {
-    const attributes: any[] = [];
+    const attributes: FormData["attributes"] = [];
     if (templateData.subject && Array.isArray(templateData.subject)) {
       templateData.subject.forEach((subj) => {
         if (subj.allowed && Array.isArray(subj.allowed)) {
           subj.allowed.forEach((allowedValue) => {
             attributes.push({
-              type: subj.type,
+              type: subj.type as CertSubjectAttributeType,
               include: "optional",
               value: [allowedValue]
             });
@@ -115,7 +127,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
         if (subj.denied && Array.isArray(subj.denied)) {
           subj.denied.forEach((deniedValue) => {
             attributes.push({
-              type: subj.type,
+              type: subj.type as CertSubjectAttributeType,
               include: "prohibit",
               value: [deniedValue]
             });
@@ -124,13 +136,13 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       });
     }
 
-    const subjectAlternativeNames: any[] = [];
+    const subjectAlternativeNames: FormData["subjectAlternativeNames"] = [];
     if (templateData.sans && Array.isArray(templateData.sans)) {
       templateData.sans.forEach((san) => {
         if (san.required && Array.isArray(san.required)) {
           san.required.forEach((requiredValue) => {
             subjectAlternativeNames.push({
-              type: san.type,
+              type: san.type as CertSubjectAlternativeNameType,
               include: "mandatory",
               value: [requiredValue]
             });
@@ -139,7 +151,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
         if (san.allowed && Array.isArray(san.allowed)) {
           san.allowed.forEach((allowedValue) => {
             subjectAlternativeNames.push({
-              type: san.type,
+              type: san.type as CertSubjectAlternativeNameType,
               include: "optional",
               value: [allowedValue]
             });
@@ -148,7 +160,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
         if (san.denied && Array.isArray(san.denied)) {
           san.denied.forEach((deniedValue) => {
             subjectAlternativeNames.push({
-              type: san.type,
+              type: san.type as CertSubjectAlternativeNameType,
               include: "prohibit",
               value: [deniedValue]
             });
@@ -171,23 +183,30 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     const validity = templateData.validity?.max
       ? (() => {
           const maxValue = templateData.validity.max;
-          const match = maxValue.match(/^(\d+)([dmy])$/);
-          if (match) {
-            const value = parseInt(match[1], 10);
-            const unitChar = match[2];
-            let unit: CertDurationUnit = CertDurationUnit.DAYS;
-            if (unitChar === "d") {
-              unit = CertDurationUnit.DAYS;
-            } else if (unitChar === "m") {
-              unit = CertDurationUnit.MONTHS;
-            } else {
-              unit = CertDurationUnit.YEARS;
-            }
-            return {
-              maxDuration: { value, unit }
-            };
+          if (maxValue.length < 2) return undefined;
+
+          const lastChar = maxValue.slice(-1);
+          const numberPart = maxValue.slice(0, -1);
+          const value = parseInt(numberPart, 10);
+
+          if (Number.isNaN(value) || value <= 0 || numberPart !== value.toString()) {
+            return undefined;
           }
-          return { maxDuration: { value: 365, unit: CertDurationUnit.DAYS } };
+
+          let unit: CertDurationUnit = CertDurationUnit.DAYS;
+          if (lastChar === "d") {
+            unit = CertDurationUnit.DAYS;
+          } else if (lastChar === "m") {
+            unit = CertDurationUnit.MONTHS;
+          } else if (lastChar === "y") {
+            unit = CertDurationUnit.YEARS;
+          } else {
+            return undefined;
+          }
+
+          return {
+            maxDuration: { value, unit }
+          };
         })()
       : { maxDuration: { value: 365, unit: CertDurationUnit.DAYS } };
 
@@ -202,7 +221,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     };
 
     return {
-      slug: templateData.name || "",
+      name: templateData.name || "",
       description: templateData.description || "",
       attributes,
       subjectAlternativeNames,
@@ -215,7 +234,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
   };
 
   const getDefaultValues = (): FormData => ({
-    slug: "",
+    name: "",
     description: "",
     attributes: [],
     keyUsages: { requiredUsages: [], optionalUsages: [] },
@@ -259,7 +278,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
   const transformToNewApiFormat = (data: FormData) => {
     const subject =
       data.attributes?.map((attr) => {
-        const result: any = { type: attr.type };
+        const result: AttributeTransform = { type: attr.type };
 
         if (attr.include === "optional" && attr.value && attr.value.length > 0) {
           result.allowed = attr.value;
@@ -272,7 +291,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
 
     const sans =
       data.subjectAlternativeNames?.map((san) => {
-        const result: any = { type: san.type };
+        const result: SanTransform = { type: san.type };
 
         if (san.include === "mandatory" && san.value && san.value.length > 0) {
           result.required = san.value;
@@ -285,7 +304,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
         return result;
       }) || [];
 
-    const keyUsages: any = {};
+    const keyUsages: KeyUsagesTransform = {};
     if (data.keyUsages?.requiredUsages && data.keyUsages.requiredUsages.length > 0) {
       keyUsages.required = data.keyUsages.requiredUsages;
     }
@@ -293,7 +312,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       keyUsages.allowed = data.keyUsages.optionalUsages;
     }
 
-    const extendedKeyUsages: any = {};
+    const extendedKeyUsages: ExtendedKeyUsagesTransform = {};
     if (
       data.extendedKeyUsages?.requiredUsages &&
       data.extendedKeyUsages.requiredUsages.length > 0
@@ -307,18 +326,27 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       extendedKeyUsages.allowed = data.extendedKeyUsages.optionalUsages;
     }
 
-    const algorithms: any = {};
+    const algorithms: AlgorithmsTransform = {};
     if (
       data.signatureAlgorithm?.allowedAlgorithms &&
       data.signatureAlgorithm.allowedAlgorithms.length > 0
     ) {
-      algorithms.signature = data.signatureAlgorithm.allowedAlgorithms;
+      algorithms.signature = data.signatureAlgorithm.allowedAlgorithms as Array<
+        | "SHA256-RSA"
+        | "SHA384-RSA"
+        | "SHA512-RSA"
+        | "SHA256-ECDSA"
+        | "SHA384-ECDSA"
+        | "SHA512-ECDSA"
+      >;
     }
     if (data.keyAlgorithm?.allowedKeyTypes && data.keyAlgorithm.allowedKeyTypes.length > 0) {
-      algorithms.keyAlgorithm = data.keyAlgorithm.allowedKeyTypes;
+      algorithms.keyAlgorithm = data.keyAlgorithm.allowedKeyTypes as Array<
+        "RSA-2048" | "RSA-3072" | "RSA-4096" | "ECDSA-P256" | "ECDSA-P384"
+      >;
     }
 
-    const validity: any = {};
+    const validity: ValidityTransform = {};
     if (data.validity?.maxDuration) {
       let unit = "d";
       if (data.validity.maxDuration.unit === CertDurationUnit.DAYS) {
@@ -332,7 +360,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     }
 
     return {
-      name: data.slug,
+      name: data.name,
       description: data.description,
       subject: subject.length > 0 ? subject : undefined,
       sans: sans.length > 0 ? sans : undefined,
@@ -372,8 +400,12 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
         };
         await updateTemplate.mutateAsync(updateData);
       } else {
+        if (!currentProject?.id) {
+          throw new Error("Project ID is required for creating a template");
+        }
+
         const createData = {
-          projectId: currentProject!.id,
+          projectId: currentProject.id,
           ...transformedData
         };
         await createTemplate.mutateAsync(createData);
@@ -424,22 +456,22 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
   };
 
   const handleKeyUsagesChange = (usages: {
-    requiredUsages: string[];
-    optionalUsages: string[];
+    requiredUsages: CertKeyUsageType[];
+    optionalUsages: CertKeyUsageType[];
   }) => {
     setValue("keyUsages", {
-      requiredUsages: usages.requiredUsages as any,
-      optionalUsages: usages.optionalUsages as any
+      requiredUsages: usages.requiredUsages,
+      optionalUsages: usages.optionalUsages
     });
   };
 
   const handleExtendedKeyUsagesChange = (usages: {
-    requiredUsages: string[];
-    optionalUsages: string[];
+    requiredUsages: CertExtendedKeyUsageType[];
+    optionalUsages: CertExtendedKeyUsageType[];
   }) => {
     setValue("extendedKeyUsages", {
-      requiredUsages: usages.requiredUsages as any,
-      optionalUsages: usages.optionalUsages as any
+      requiredUsages: usages.requiredUsages,
+      optionalUsages: usages.optionalUsages
     });
   };
 
@@ -467,7 +499,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
             <div className="space-y-4">
               <Controller
                 control={control}
-                name="slug"
+                name="name"
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     label="Template Name"
@@ -528,7 +560,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                               value={attr.type}
                               onValueChange={(value) => {
                                 const newAttributes = [...watchedAttributes];
-                                newAttributes[index] = { ...attr, type: value as any };
+                                newAttributes[index] = {
+                                  ...attr,
+                                  type: value as CertSubjectAttributeType
+                                };
                                 setValue("attributes", newAttributes);
                               }}
                               className="w-48"
@@ -544,7 +579,11 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                               value={attr.include}
                               onValueChange={(value) => {
                                 const newAttributes = [...watchedAttributes];
-                                newAttributes[index] = { ...attr, include: value as any };
+                                newAttributes[index] = {
+                                  ...attr,
+                                  include:
+                                    value as (typeof SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS)[number]
+                                };
                                 setValue("attributes", newAttributes);
                               }}
                               className="w-32"
@@ -627,7 +666,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                             value={san.type}
                             onValueChange={(value) => {
                               const newSans = [...watchedSans];
-                              newSans[index] = { ...san, type: value as any };
+                              newSans[index] = {
+                                ...san,
+                                type: value as CertSubjectAlternativeNameType
+                              };
                               setValue("subjectAlternativeNames", newSans);
                             }}
                             className="w-24"
@@ -643,7 +685,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                             value={san.include}
                             onValueChange={(value) => {
                               const newSans = [...watchedSans];
-                              newSans[index] = { ...san, include: value as any };
+                              newSans[index] = {
+                                ...san,
+                                include: value as (typeof SAN_INCLUDE_OPTIONS)[number]
+                              };
                               setValue("subjectAlternativeNames", newSans);
                             }}
                             className="w-32"
@@ -674,14 +719,16 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                             required
                           />
 
-                          <IconButton
-                            ariaLabel="Remove SAN"
-                            variant="plain"
-                            size="sm"
-                            onClick={() => removeSan(index)}
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </IconButton>
+                          {watchedSans.length > 1 && (
+                            <IconButton
+                              ariaLabel="Remove SAN"
+                              variant="plain"
+                              size="sm"
+                              onClick={() => removeSan(index)}
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </IconButton>
+                          )}
                         </div>
                       ))
                     )}

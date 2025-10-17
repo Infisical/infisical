@@ -5,7 +5,7 @@ import { EnrollmentType } from "./certificate-profile-types";
 
 export const createCertificateProfileSchema = z
   .object({
-    projectId: z.string().min(1),
+    projectId: z.string().uuid("Project ID must be valid"),
     caId: z.string().uuid(),
     certificateTemplateId: z.string().uuid(),
     slug: z
@@ -103,12 +103,12 @@ export const getCertificateProfileByIdSchema = z.object({
 });
 
 export const getCertificateProfileBySlugSchema = z.object({
-  projectId: z.string().min(1),
+  projectId: z.string().uuid("Project ID must be valid"),
   slug: z.string().min(1)
 });
 
 export const listCertificateProfilesSchema = z.object({
-  projectId: z.string().min(1),
+  projectId: z.string().uuid("Project ID must be valid"),
   offset: z.coerce.number().min(0).default(0),
   limit: z.coerce.number().min(1).max(100).default(20),
   search: z.string().optional(),

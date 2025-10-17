@@ -112,9 +112,11 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   const [allowedKeyAlgorithms, setAllowedKeyAlgorithms] = useState<string[]>([]);
   const { currentProject } = useProject();
 
-  const { data: cert } = useGetCert(
-    (popUp?.certificateIssuance?.data as { serialNumber: string })?.serialNumber || ""
-  );
+  const inputSerialNumber =
+    (popUp?.certificateIssuance?.data as { serialNumber: string })?.serialNumber || "";
+  const sanitizedSerialNumber = inputSerialNumber.replace(/[^a-fA-F0-9:]/g, "");
+
+  const { data: cert } = useGetCert(sanitizedSerialNumber);
 
   const { data: profilesData } = useListCertificateProfiles({
     projectId: currentProject?.id || "",
@@ -263,15 +265,14 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
 
   useEffect(() => {
     if (cert) {
-      const subjectAttrs: Array<{ type: string; value: string }> = [];
-      if (cert.commonName) subjectAttrs.push({ type: "common_name", value: cert.commonName });
+      const subjectAttrs: Array<{ type: "common_name"; value: string }> = [];
+      if (cert.commonName)
+        subjectAttrs.push({ type: "common_name" as const, value: cert.commonName });
 
       reset({
         profileId: "",
         subjectAttributes:
-          subjectAttrs.length > 0
-            ? (subjectAttrs as any)
-            : [{ type: "common_name" as const, value: "" }],
+          subjectAttrs.length > 0 ? subjectAttrs : [{ type: "common_name" as const, value: "" }],
         subjectAltNames: cert.subjectAltNames
           ? cert.subjectAltNames.split(",").map((name) => {
               const trimmed = name.trim();

@@ -166,42 +166,63 @@ export const USAGE_STATES = {
 
 export type UsageState = (typeof USAGE_STATES)[keyof typeof USAGE_STATES] | undefined;
 
-export const TEMPLATE_SIGNATURE_ALGORITHMS = [
-  "SHA256-RSA",
-  "SHA384-RSA",
-  "SHA512-RSA",
-  "SHA256-ECDSA",
-  "SHA384-ECDSA",
-  "SHA512-ECDSA"
-] as const;
+export enum CertKeyAlgorithm {
+  RSA_2048 = "RSA_2048",
+  RSA_3072 = "RSA_3072",
+  RSA_4096 = "RSA_4096",
+  ECDSA_P256 = "EC_prime256v1",
+  ECDSA_P384 = "EC_secp384r1"
+}
 
-export const TEMPLATE_KEY_ALGORITHMS = [
-  "RSA-2048",
-  "RSA-3072",
-  "RSA-4096",
-  "ECDSA-P256",
-  "ECDSA-P384"
-] as const;
+export enum CertSignatureAlgorithm {
+  RSA_SHA256 = "RSA-SHA256",
+  RSA_SHA384 = "RSA-SHA384",
+  RSA_SHA512 = "RSA-SHA512",
+  ECDSA_SHA256 = "ECDSA-SHA256",
+  ECDSA_SHA384 = "ECDSA-SHA384",
+  ECDSA_SHA512 = "ECDSA-SHA512"
+}
 
-// API format algorithm constants
-export const API_SIGNATURE_ALGORITHMS = [
-  "RSA-SHA256",
-  "RSA-SHA384",
-  "RSA-SHA512",
-  "ECDSA-SHA256",
-  "ECDSA-SHA384",
-  "ECDSA-SHA512"
-] as const;
+export const SIGNATURE_ALGORITHM_OPTIONS = Object.values(CertSignatureAlgorithm);
+export const KEY_ALGORITHM_OPTIONS = Object.values(CertKeyAlgorithm);
 
-export const API_KEY_ALGORITHMS = [
-  "RSA_2048",
-  "RSA_3072",
-  "RSA_4096",
-  "EC_prime256v1",
-  "EC_secp384r1"
-] as const;
+// Display name mappings for UI
+export const getSignatureAlgorithmDisplayName = (algorithm: CertSignatureAlgorithm): string => {
+  switch (algorithm) {
+    case CertSignatureAlgorithm.RSA_SHA256:
+      return "RSA with SHA-256";
+    case CertSignatureAlgorithm.RSA_SHA384:
+      return "RSA with SHA-384";
+    case CertSignatureAlgorithm.RSA_SHA512:
+      return "RSA with SHA-512";
+    case CertSignatureAlgorithm.ECDSA_SHA256:
+      return "ECDSA with SHA-256";
+    case CertSignatureAlgorithm.ECDSA_SHA384:
+      return "ECDSA with SHA-384";
+    case CertSignatureAlgorithm.ECDSA_SHA512:
+      return "ECDSA with SHA-512";
+    default:
+      return algorithm;
+  }
+};
 
-// Mapping functions between template and API formats
+export const getKeyAlgorithmDisplayName = (algorithm: CertKeyAlgorithm): string => {
+  switch (algorithm) {
+    case CertKeyAlgorithm.RSA_2048:
+      return "RSA 2048";
+    case CertKeyAlgorithm.RSA_3072:
+      return "RSA 3072";
+    case CertKeyAlgorithm.RSA_4096:
+      return "RSA 4096";
+    case CertKeyAlgorithm.ECDSA_P256:
+      return "ECDSA P-256";
+    case CertKeyAlgorithm.ECDSA_P384:
+      return "ECDSA P-384";
+    default:
+      return algorithm;
+  }
+};
+
 export const mapTemplateSignatureAlgorithmToApi = (templateFormat: string): string => {
   const mapping: Record<string, string> = {
     "SHA256-RSA": "RSA-SHA256",

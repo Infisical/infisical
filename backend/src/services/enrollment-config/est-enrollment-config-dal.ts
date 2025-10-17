@@ -14,7 +14,12 @@ export const estEnrollmentConfigDALFactory = (db: TDbClient) => {
 
   const create = async (data: TEstEnrollmentConfigInsert, tx?: Knex) => {
     try {
-      const [estConfig] = await (tx || db)(TableName.PkiEstEnrollmentConfig).insert(data).returning("*");
+      const result = await (tx || db)(TableName.PkiEstEnrollmentConfig).insert(data).returning("*");
+      const [estConfig] = result;
+
+      if (!estConfig) {
+        throw new Error("Failed to create EST enrollment config");
+      }
 
       return estConfig;
     } catch (error) {
@@ -24,7 +29,12 @@ export const estEnrollmentConfigDALFactory = (db: TDbClient) => {
 
   const updateById = async (id: string, data: TEstEnrollmentConfigUpdate, tx?: Knex) => {
     try {
-      const [estConfig] = await (tx || db)(TableName.PkiEstEnrollmentConfig).where({ id }).update(data).returning("*");
+      const result = await (tx || db)(TableName.PkiEstEnrollmentConfig).where({ id }).update(data).returning("*");
+      const [estConfig] = result;
+
+      if (!estConfig) {
+        return null;
+      }
 
       return estConfig;
     } catch (error) {
@@ -36,7 +46,7 @@ export const estEnrollmentConfigDALFactory = (db: TDbClient) => {
     try {
       const estConfig = await (tx || db)(TableName.PkiEstEnrollmentConfig).where({ id }).first();
 
-      return estConfig;
+      return estConfig || null;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find EST enrollment config by id" });
     }
