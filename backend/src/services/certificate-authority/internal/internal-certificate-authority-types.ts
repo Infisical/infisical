@@ -3,7 +3,12 @@ import { z } from "zod";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TProjectPermission } from "@app/lib/types";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
+import {
+  CertExtendedKeyUsage,
+  CertKeyAlgorithm,
+  CertKeyUsage,
+  CertSignatureAlgorithm
+} from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -131,8 +136,8 @@ export type TIssueCertFromCaDTO = {
   notAfter?: string;
   keyUsages?: CertKeyUsage[];
   extendedKeyUsages?: CertExtendedKeyUsage[];
-  signatureAlgorithm?: string;
-  keyAlgorithm?: string;
+  signatureAlgorithm?: CertSignatureAlgorithm;
+  keyAlgorithm?: CertKeyAlgorithm;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TSignCertFromCaDTO =

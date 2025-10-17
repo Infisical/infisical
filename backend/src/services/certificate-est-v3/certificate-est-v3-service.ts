@@ -94,14 +94,13 @@ export const certificateEstV3ServiceFactory = ({
         kmsId: certificateManagerKmsId
       });
 
-      let decryptedCaChain = "";
-      if (estConfig.encryptedCaChain) {
-        decryptedCaChain = (
-          await kmsDecryptor({
-            cipherTextBlob: estConfig.encryptedCaChain
-          })
-        ).toString();
-      }
+      const decryptedCaChain = estConfig.encryptedCaChain
+        ? (
+            await kmsDecryptor({
+              cipherTextBlob: estConfig.encryptedCaChain
+            })
+          ).toString()
+        : "";
 
       const caCerts = extractX509CertFromChain(decryptedCaChain)?.map((cert) => {
         return new x509.X509Certificate(cert);
@@ -114,7 +113,7 @@ export const certificateEstV3ServiceFactory = ({
       const leafCertificate = extractX509CertFromChain(decodeURIComponent(sslClientCert))?.[0];
 
       if (!leafCertificate) {
-        throw new BadRequestError({ message: "Missing client certificate" });
+        throw new UnauthorizedError({ message: "Missing client certificate" });
       }
 
       const certObj = new x509.X509Certificate(leafCertificate);

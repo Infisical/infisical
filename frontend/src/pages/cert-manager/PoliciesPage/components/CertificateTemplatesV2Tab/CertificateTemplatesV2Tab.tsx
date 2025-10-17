@@ -6,7 +6,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { useProjectPermission } from "@app/context";
 import {
-  ProjectPermissionActions,
+  ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { useDeleteCertificateTemplateV2New } from "@app/hooks/api/certificateTemplates/mutations";
@@ -26,8 +26,8 @@ export const CertificateTemplatesV2Tab = () => {
   const deleteTemplateV2 = useDeleteCertificateTemplateV2New();
 
   const canCreateTemplate = permission.can(
-    ProjectPermissionActions.Create,
-    ProjectPermissionSub.CertificateAuthorities
+    ProjectPermissionPkiTemplateActions.Create,
+    ProjectPermissionSub.CertificateTemplates
   );
 
   const handleCreateTemplate = () => {

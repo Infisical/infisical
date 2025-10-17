@@ -27,6 +27,21 @@ import {
   TCertificateProfileWithRawMetrics
 } from "./certificate-profile-types";
 
+const validateAndEncodeBase64CaChain = (caChain: unknown) => {
+  try {
+    if (typeof caChain !== "string") {
+      throw new BadRequestError({ message: "CA chain must be a string" });
+    }
+    const buffer = Buffer.from(caChain, "base64");
+    if (buffer.toString("base64") !== caChain) {
+      throw new BadRequestError({ message: "Invalid Base64 encoding in CA chain data" });
+    }
+    return { encryptedCaChain: buffer };
+  } catch (error) {
+    throw new BadRequestError({ message: "Failed to decode CA chain data: Invalid Base64 format" });
+  }
+};
+
 export type TCertificateProfileCreateData = Omit<TCertificateProfileInsert, "estConfigId" | "apiConfigId"> & {
   estConfig?: TEstConfigData;
   apiConfig?: TApiConfigData;
@@ -125,7 +140,7 @@ export const certificateProfileServiceFactory = ({
       if (data.enrollmentType === EnrollmentType.EST && data.estConfig) {
         const appCfg = getConfig();
         // Hash the passphrase
-        const hashedPassphrase = await crypto.hashing().createHash(data.estConfig.passphrase, appCfg.SALT_ROUNDS);
+        const hashedPassphrase = await crypto.hashing().createHash(data.estConfig.passphraseInput, appCfg.SALT_ROUNDS);
 
         let encryptedCaChainBuffer: Buffer;
         try {
@@ -243,24 +258,10 @@ export const certificateProfileServiceFactory = ({
           existingProfile.estConfigId,
           {
             disableBootstrapCaValidation: estConfig.disableBootstrapCaValidation,
-            ...(estConfig.passphrase && {
-              hashedPassphrase: await crypto.hashing().createHash(estConfig.passphrase, getConfig().SALT_ROUNDS)
+            ...(estConfig.passphraseInput && {
+              hashedPassphrase: await crypto.hashing().createHash(estConfig.passphraseInput, getConfig().SALT_ROUNDS)
             }),
-            ...(estConfig.caChain &&
-              (() => {
-                try {
-                  if (typeof estConfig.caChain !== "string") {
-                    throw new BadRequestError({ message: "CA chain must be a string" });
-                  }
-                  const buffer = Buffer.from(estConfig.caChain, "base64");
-                  if (buffer.toString("base64") !== estConfig.caChain) {
-                    throw new BadRequestError({ message: "Invalid Base64 encoding in CA chain data" });
-                  }
-                  return { encryptedCaChain: buffer };
-                } catch (error) {
-                  throw new BadRequestError({ message: "Failed to decode CA chain data: Invalid Base64 format" });
-                }
-              })())
+            ...(estConfig.caChain && validateAndEncodeBase64CaChain(estConfig.caChain))
           },
           tx
         );

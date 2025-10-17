@@ -52,21 +52,25 @@ export const apiEnrollmentConfigDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProfilesForAutoRenewal = async (renewalThresholdDays: number = 30, tx?: Knex) => {
+  const findProfilesForAutoRenewal = async (renewalThresholdDays: number = 30, projectId?: string, tx?: Knex) => {
     try {
-      const profiles = await (tx || db)(TableName.PkiCertificateProfile)
+      let query = (tx || db)(TableName.PkiCertificateProfile)
         .join(
           TableName.PkiApiEnrollmentConfig,
           `${TableName.PkiCertificateProfile}.apiConfigId`,
           `${TableName.PkiApiEnrollmentConfig}.id`
         )
-        .where(`${TableName.PkiApiEnrollmentConfig}.autoRenew`, true)
-        .where((query) => {
-          void query.where((qb) => {
-            void qb
-              .whereNull(`${TableName.PkiApiEnrollmentConfig}.autoRenewDays`)
-              .orWhere(`${TableName.PkiApiEnrollmentConfig}.autoRenewDays`, "<=", renewalThresholdDays);
-          });
+        .where(`${TableName.PkiApiEnrollmentConfig}.autoRenew`, true);
+
+      if (projectId) {
+        query = query.where(`${TableName.PkiCertificateProfile}.projectId`, projectId);
+      }
+
+      const profiles = await query
+        .where((qb) => {
+          void qb
+            .whereNull(`${TableName.PkiApiEnrollmentConfig}.autoRenewDays`)
+            .orWhere(`${TableName.PkiApiEnrollmentConfig}.autoRenewDays`, "<=", renewalThresholdDays);
         })
         .select((tx || db).ref("id").withSchema(TableName.PkiCertificateProfile))
         .select((tx || db).ref("name").withSchema(TableName.PkiCertificateProfile))
@@ -83,7 +87,20 @@ export const apiEnrollmentConfigDALFactory = (db: TDbClient) => {
     try {
       const doc = await (tx || db)(TableName.PkiCertificateProfile).where({ apiConfigId: configId }).count("*").first();
 
-      return parseInt((doc as { count?: string })?.count || "0", 10);
+      if (!doc || typeof doc !== "object") {
+        return 0;
+      }
+
+      const countValue = (doc as Record<string, unknown>).count;
+      if (typeof countValue === "number") {
+        return countValue;
+      }
+      if (typeof countValue === "string") {
+        const parsed = parseInt(countValue, 10);
+        return Number.isNaN(parsed) ? 0 : parsed;
+      }
+
+      return 0;
     } catch (error) {
       throw new DatabaseError({ error, name: "Check if API enrollment config is in use" });
     }

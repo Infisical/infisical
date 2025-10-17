@@ -42,6 +42,10 @@ export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {
 
   const templates = data?.certificateTemplates || [];
 
+  if (!currentProject?.id) {
+    return null;
+  }
+
   const canEditTemplate = permission.can(
     ProjectPermissionPkiTemplateActions.Edit,
     ProjectPermissionSub.CertificateTemplates

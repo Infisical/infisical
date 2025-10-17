@@ -711,7 +711,7 @@ describe("CertificateProfileService", () => {
           certificateTemplateId: "template-123",
           estConfig: {
             disableBootstrapCaValidation: false,
-            passphrase: "secret-passphrase",
+            passphraseInput: "secret-passphrase",
             encryptedCaChain: Buffer.from("test-ca-chain-data").toString("base64")
           }
         };

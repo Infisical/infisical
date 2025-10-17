@@ -114,17 +114,7 @@ export const apiTemplateSchema = z.object({
     .object({
       max: z
         .string()
-        .refine((val) => {
-          if (!val) return true;
-          if (val.length < 2 || val.length > 10) return false;
-
-          const lastChar = val.slice(-1);
-          if (!["d", "h", "m", "y"].includes(lastChar)) return false;
-
-          const numberPart = val.slice(0, -1);
-          const num = parseInt(numberPart, 10);
-          return !Number.isNaN(num) && num > 0 && numberPart === num.toString();
-        }, "Must be in format like '365d', '12m', '1y', or '24h'")
+        .regex(/^[1-9]\d*[dhmy]$/, "Must be in format like '365d', '12m', '1y', or '24h'")
         .optional()
     })
     .optional()

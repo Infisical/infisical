@@ -176,7 +176,7 @@ export const PkiManagerLayout = () => {
                           }}
                         >
                           {({ isActive }) => (
-                            <MenuItem isSelected={isActive}>
+                            <MenuItem isSelected={isActive} variant="project">
                               <div className="mx-1 flex gap-2">
                                 <div className="w-6">
                                   <FontAwesomeIcon icon={faSitemap} />
@@ -195,7 +195,7 @@ export const PkiManagerLayout = () => {
                           }}
                         >
                           {({ isActive }) => (
-                            <MenuItem isSelected={isActive}>
+                            <MenuItem isSelected={isActive} variant="project">
                               <div className="mx-1 flex gap-2">
                                 <div className="w-6">
                                   <FontAwesomeIcon icon={faFileLines} />

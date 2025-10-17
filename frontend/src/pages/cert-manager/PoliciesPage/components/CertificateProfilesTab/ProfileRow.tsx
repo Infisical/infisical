@@ -1,4 +1,3 @@
-/* eslint-disable no-nested-ternary */
 import { useCallback } from "react";
 import {
   faCheck,
@@ -34,6 +33,59 @@ import { TCertificateProfile } from "@app/hooks/api/certificateProfiles";
 import { useGetCertificateTemplateV2ById } from "@app/hooks/api/certificateTemplates/queries";
 import { CertificateIssuanceModal } from "@app/pages/cert-manager/CertificatesPage/components/CertificateIssuanceModal";
 
+const MetricsBadges = ({
+  metrics
+}: {
+  metrics?: {
+    totalCertificates: number;
+    activeCertificates: number;
+    expiringCertificates: number;
+    expiredCertificates: number;
+    revokedCertificates: number;
+  };
+}) => {
+  if (!metrics) {
+    return (
+      <Badge variant="primary" className="text-xs">
+        No metrics
+      </Badge>
+    );
+  }
+
+  if (metrics.totalCertificates === 0) {
+    return (
+      <Badge variant="primary" className="text-xs">
+        No certificates
+      </Badge>
+    );
+  }
+
+  return (
+    <>
+      {metrics.activeCertificates > 0 && (
+        <Badge variant="success" className="text-xs">
+          {metrics.activeCertificates} active
+        </Badge>
+      )}
+      {metrics.expiringCertificates > 0 && (
+        <Badge variant="primary" className="text-xs">
+          {metrics.expiringCertificates} expiring
+        </Badge>
+      )}
+      {metrics.expiredCertificates > 0 && (
+        <Badge variant="danger" className="text-xs">
+          {metrics.expiredCertificates} expired
+        </Badge>
+      )}
+      {metrics.revokedCertificates > 0 && (
+        <Badge variant="danger" className="text-xs">
+          {metrics.revokedCertificates} revoked
+        </Badge>
+      )}
+    </>
+  );
+};
+
 interface Props {
   profile: TCertificateProfile;
   onEditProfile: (profile: TCertificateProfile) => void;
@@ -58,11 +110,8 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
       type: "info"
     });
 
-    const timer = setTimeout(() => setIsIdCopied.off(), 2000);
-
-    // eslint-disable-next-line consistent-return
-    return () => clearTimeout(timer);
-  }, [isIdCopied, setIsIdCopied]);
+    setTimeout(() => setIsIdCopied.off(), 2000);
+  }, [setIsIdCopied]);
 
   const { data: templateData } = useGetCertificateTemplateV2ById({
     templateId: profile.certificateTemplateId
@@ -122,40 +171,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
       </Td>
       <Td>
         <div className="flex flex-wrap gap-1">
-          {profile.metrics ? (
-            profile.metrics.totalCertificates === 0 ? (
-              <Badge variant="primary" className="text-xs">
-                No certificates
-              </Badge>
-            ) : (
-              <>
-                {profile.metrics.activeCertificates > 0 && (
-                  <Badge variant="success" className="text-xs">
-                    {profile.metrics.activeCertificates} active
-                  </Badge>
-                )}
-                {profile.metrics.expiringCertificates > 0 && (
-                  <Badge variant="primary" className="text-xs">
-                    {profile.metrics.expiringCertificates} expiring
-                  </Badge>
-                )}
-                {profile.metrics.expiredCertificates > 0 && (
-                  <Badge variant="danger" className="text-xs">
-                    {profile.metrics.expiredCertificates} expired
-                  </Badge>
-                )}
-                {profile.metrics.revokedCertificates > 0 && (
-                  <Badge variant="danger" className="text-xs">
-                    {profile.metrics.revokedCertificates} revoked
-                  </Badge>
-                )}
-              </>
-            )
-          ) : (
-            <Badge variant="primary" className="text-xs">
-              No metrics
-            </Badge>
-          )}
+          <MetricsBadges metrics={profile.metrics} />
         </div>
       </Td>
       <Td className="text-right">

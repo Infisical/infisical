@@ -22,7 +22,7 @@ export const PkiSubscriberSection = () => {
   const { subscription } = useSubscription();
   const projectId = currentProject.id;
 
-  const allowNewSubscriberCreation = subscription.pkiLegacyTemplates;
+  const canCreateLegacySubscribers = subscription.pkiLegacyTemplates;
   const { mutateAsync: deletePkiSubscriber } = useDeletePkiSubscriber();
   const { mutateAsync: updatePkiSubscriber } = useUpdatePkiSubscriber();
 
@@ -104,7 +104,7 @@ export const PkiSubscriberSection = () => {
               />
             </span>
           </a>
-          {allowNewSubscriberCreation && (
+          {canCreateLegacySubscribers && (
             <ProjectPermissionCan
               I={ProjectPermissionPkiSubscriberActions.Create}
               a={ProjectPermissionSub.PkiSubscribers}

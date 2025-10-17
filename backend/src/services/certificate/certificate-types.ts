@@ -114,6 +114,13 @@ export type TGetCertificateCredentialsDTO = {
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
 };
 
+export enum CertSubjectAlternativeNameType {
+  DNS_NAME = "dns_name",
+  IP_ADDRESS = "ip_address",
+  EMAIL = "email",
+  URI = "uri"
+}
+
 export enum TAltNameType {
   EMAIL = "email",
   DNS = "dns",
@@ -121,12 +128,21 @@ export enum TAltNameType {
   URL = "url"
 }
 
-export enum CertSubjectAlternativeNameType {
-  DNS_NAME = "dns_name",
-  IP_ADDRESS = "ip_address",
-  EMAIL = "email",
-  URI = "uri"
-}
+export const mapLegacyAltNameType = (legacyType: TAltNameType): CertSubjectAlternativeNameType => {
+  switch (legacyType) {
+    case TAltNameType.EMAIL:
+      return CertSubjectAlternativeNameType.EMAIL;
+    case TAltNameType.DNS:
+      return CertSubjectAlternativeNameType.DNS_NAME;
+    case TAltNameType.IP:
+      return CertSubjectAlternativeNameType.IP_ADDRESS;
+    case TAltNameType.URL:
+      return CertSubjectAlternativeNameType.URI;
+    default:
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      throw new Error(`Unknown legacy alt name type: ${legacyType}`);
+  }
+};
 export type TAltNameMapping = {
   type: TAltNameType;
   value: string;

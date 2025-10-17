@@ -25,7 +25,7 @@ export const CertificatesSection = () => {
   const { subscription } = useSubscription();
   const { mutateAsync: deleteCert } = useDeleteCert();
 
-  const useOldCertificateFlow = subscription.pkiLegacyTemplates;
+  const isLegacyTemplatesEnabled = subscription.pkiLegacyTemplates;
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "certificateIssuance",
@@ -80,7 +80,7 @@ export const CertificatesSection = () => {
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() =>
-                  handlePopUpOpen(useOldCertificateFlow ? "certificate" : "certificateIssuance")
+                  handlePopUpOpen(isLegacyTemplatesEnabled ? "certificate" : "certificateIssuance")
                 }
                 isDisabled={!isAllowed}
               >
@@ -91,7 +91,7 @@ export const CertificatesSection = () => {
         </ProjectPermissionCan>
       </div>
       <CertificatesTable handlePopUpOpen={handlePopUpOpen} />
-      {useOldCertificateFlow ? (
+      {isLegacyTemplatesEnabled ? (
         <CertificateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       ) : (
         <CertificateIssuanceModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

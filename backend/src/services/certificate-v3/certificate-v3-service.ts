@@ -10,7 +10,11 @@ import {
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { CertificateOrderStatus } from "@app/services/certificate/certificate-types";
+import {
+  CertificateOrderStatus,
+  CertKeyAlgorithm,
+  CertSignatureAlgorithm
+} from "@app/services/certificate/certificate-types";
 import {
   TCertificateAuthorityDALFactory,
   TCertificateAuthorityWithAssociatedCa
@@ -119,6 +123,9 @@ const validateAlgorithmCompatibility = (
   const compatibleAlgorithms =
     template.algorithms?.signature?.filter((sigAlg: string) => {
       const parts = sigAlg.split("-");
+      if (parts.length === 0) {
+        return false;
+      }
       const keyType = parts[parts.length - 1];
 
       if (caKeyAlgorithm.startsWith("RSA")) {
@@ -221,8 +228,8 @@ export const certificateV3ServiceFactory = ({
 
     validateAlgorithmCompatibility(ca, template);
 
-    const effectiveSignatureAlgorithm = certificateRequest.signatureAlgorithm;
-    const effectiveKeyAlgorithm = certificateRequest.keyAlgorithm;
+    const effectiveSignatureAlgorithm = certificateRequest.signatureAlgorithm as CertSignatureAlgorithm | undefined;
+    const effectiveKeyAlgorithm = certificateRequest.keyAlgorithm as CertKeyAlgorithm | undefined;
 
     if (template.algorithms?.keyAlgorithm && !effectiveKeyAlgorithm) {
       throw new BadRequestError({
@@ -350,7 +357,7 @@ export const certificateV3ServiceFactory = ({
         caId: ca.id,
         csr,
         ttl: validity.ttl,
-        altNames: "",
+        altNames: undefined,
         notBefore: normalizeDateForApi(notBefore),
         notAfter: normalizeDateForApi(notAfter),
         signatureAlgorithm: effectiveSignatureAlgorithm,

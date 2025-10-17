@@ -26,6 +26,21 @@ import {
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 
+const validateTtlAndDateFields = (data: { notBefore?: string; notAfter?: string; ttl?: string }) => {
+  const hasDateFields = data.notBefore || data.notAfter;
+  const hasTtl = data.ttl;
+  return !(hasDateFields && hasTtl);
+};
+
+const validateDateOrder = (data: { notBefore?: string; notAfter?: string }) => {
+  if (data.notBefore && data.notAfter) {
+    const notBefore = new Date(data.notBefore);
+    const notAfter = new Date(data.notAfter);
+    return notBefore < notAfter;
+  }
+  return true;
+};
+
 export const registerCertificatesRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -49,30 +64,13 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
           keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional()
         })
-        .refine(
-          (data) => {
-            const hasDateFields = data.notBefore || data.notAfter;
-            const hasTtl = data.ttl;
-            return !(hasDateFields && hasTtl);
-          },
-          {
-            message:
-              "Cannot specify both TTL and notBefore/notAfter. Use either TTL for duration-based validity or notBefore/notAfter for explicit date range."
-          }
-        )
-        .refine(
-          (data) => {
-            if (data.notBefore && data.notAfter) {
-              const notBefore = new Date(data.notBefore);
-              const notAfter = new Date(data.notAfter);
-              return notBefore < notAfter;
-            }
-            return true;
-          },
-          {
-            message: "notBefore must be earlier than notAfter"
-          }
-        ),
+        .refine(validateTtlAndDateFields, {
+          message:
+            "Cannot specify both TTL and notBefore/notAfter. Use either TTL for duration-based validity or notBefore/notAfter for explicit date range."
+        })
+        .refine(validateDateOrder, {
+          message: "notBefore must be earlier than notAfter"
+        }),
       response: {
         200: z.object({
           certificate: z.string().trim(),
@@ -169,30 +167,13 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           notBefore: validateCaDateField.optional(),
           notAfter: validateCaDateField.optional()
         })
-        .refine(
-          (data) => {
-            const hasDateFields = data.notBefore || data.notAfter;
-            const hasTtl = data.ttl;
-            return !(hasDateFields && hasTtl);
-          },
-          {
-            message:
-              "Cannot specify both TTL and notBefore/notAfter. Use either TTL for duration-based validity or notBefore/notAfter for explicit date range."
-          }
-        )
-        .refine(
-          (data) => {
-            if (data.notBefore && data.notAfter) {
-              const notBefore = new Date(data.notBefore);
-              const notAfter = new Date(data.notAfter);
-              return notBefore < notAfter;
-            }
-            return true;
-          },
-          {
-            message: "notBefore must be earlier than notAfter"
-          }
-        ),
+        .refine(validateTtlAndDateFields, {
+          message:
+            "Cannot specify both TTL and notBefore/notAfter. Use either TTL for duration-based validity or notBefore/notAfter for explicit date range."
+        })
+        .refine(validateDateOrder, {
+          message: "notBefore must be earlier than notAfter"
+        }),
       response: {
         200: z.object({
           certificate: z.string().trim(),
@@ -266,30 +247,13 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
           keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional()
         })
-        .refine(
-          (data) => {
-            const hasDateFields = data.notBefore || data.notAfter;
-            const hasTtl = data.ttl;
-            return !(hasDateFields && hasTtl);
-          },
-          {
-            message:
-              "Cannot specify both TTL and notBefore/notAfter. Use either TTL for duration-based validity or notBefore/notAfter for explicit date range."
-          }
-        )
-        .refine(
-          (data) => {
-            if (data.notBefore && data.notAfter) {
-              const notBefore = new Date(data.notBefore);
-              const notAfter = new Date(data.notAfter);
-              return notBefore < notAfter;
-            }
-            return true;
-          },
-          {
-            message: "notBefore must be earlier than notAfter"
-          }
-        ),
+        .refine(validateTtlAndDateFields, {
+          message:
+            "Cannot specify both TTL and notBefore/notAfter. Use either TTL for duration-based validity or notBefore/notAfter for explicit date range."
+        })
+        .refine(validateDateOrder, {
+          message: "notBefore must be earlier than notAfter"
+        }),
       response: {
         200: z.object({
           orderId: z.string(),

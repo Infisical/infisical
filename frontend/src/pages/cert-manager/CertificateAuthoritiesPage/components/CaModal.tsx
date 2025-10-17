@@ -140,8 +140,8 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
           maxPathLength: ca.configuration.maxPathLength
             ? String(ca.configuration.maxPathLength)
             : "",
-          keyAlgorithm: (Object.values(CertKeyAlgorithm) as string[]).includes(
-            ca.configuration.keyAlgorithm
+          keyAlgorithm: Object.values(CertKeyAlgorithm).includes(
+            ca.configuration.keyAlgorithm as CertKeyAlgorithm
           )
             ? ca.configuration.keyAlgorithm
             : CertKeyAlgorithm.RSA_2048

@@ -34,7 +34,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
           estConfig: z
             .object({
               disableBootstrapCaValidation: z.boolean().default(false),
-              passphrase: z.string().min(1),
+              passphraseInput: z.string().min(1),
               encryptedCaChain: z.string()
             })
             .optional(),
@@ -332,7 +332,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
           estConfig: z
             .object({
               disableBootstrapCaValidation: z.boolean().default(false),
-              passphrase: z.string().min(1),
+              passphraseInput: z.string().min(1),
               encryptedCaChain: z.string()
             })
             .optional(),
