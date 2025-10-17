@@ -33,7 +33,7 @@ This migration approach lets you set up a connection to your Vault instance once
     In your Vault instance, create a policy that allows Infisical to read your secrets, policies, and authentication configurations. This policy grants read-only access and doesn't allow Infisical to modify anything in Vault.
 
     <Accordion title="View the complete policy">
-    ```python
+    ```hcl
     # System endpoints - for listing namespaces, policies, mounts, and auth methods
     path "sys/namespaces" {
       capabilities = ["list"]
@@ -162,7 +162,17 @@ The authentication settings (service accounts, TTL, policies, etc.) will be auto
 
 #### Import and Translate Access Control Policies
 
-When configuring project role-based access control, you can import Vault HCL policies and automatically translate them to Infisical permissions:
+When configuring project role-based access control, you can import Vault HCL policies and automatically translate them to Infisical permissions.
+
+<Note>
+  Policy translation is best-effort and provides a starting point based on your
+  Vault configuration. The translated permissions should be reviewed and
+  adjusted as needed since Vault and Infisical have different access control
+  models. Infisical will analyze path patterns and capabilities to suggest
+  equivalent permissions.
+</Note>
+
+**To import and translate a policy:**
 
 1. Navigate to your project, then go to **Access Control > Roles** and create or edit a role
 2. In the policy configuration, click **"Add from HashiCorp Vault"**
@@ -177,12 +187,16 @@ When configuring project role-based access control, you can import Vault HCL pol
 5. Review the automatically translated Infisical permissions
 6. Make any adjustments and save
 
-**How policy translation works:**
-
-- Vault path patterns are analyzed to identify KV secret engines and environments
-- Vault capabilities (`read`, `list`, `create`, etc.) are mapped to Infisical permissions
-- Wildcards in paths are converted to glob patterns
-- Secret paths are preserved for granular access control
+<Tip>
+  **How policy translation works:** 
+  
+  - Vault path patterns are analyzed to identify KV secret engines and environments
+  - Vault capabilities (`read`,`list`, `create`, etc.) are mapped to Infisical permissions
+  - Wildcards in paths are converted to glob patterns
+  - Secret paths are preserved for granular access control
+  
+  Always review the translated permissions carefully, as Vault's capability-based model may not map 1:1 with Infisical's permission structure.
+</Tip>
 
 ---
 
@@ -219,7 +233,7 @@ Before starting the bulk import, you need to decide how your Vault structure wil
     In your Vault instance, create a policy that allows Infisical to read all secrets and metadata. This policy grants read-only access.
 
     <Accordion title="View the bulk import policy">
-    ```python
+    ```hcl
     # Allow listing secret engines/mounts
     path "sys/mounts" {
       capabilities = ["read", "list"]

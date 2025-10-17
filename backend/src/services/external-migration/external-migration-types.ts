@@ -124,7 +124,7 @@ export enum ExternalMigrationProviders {
 
 export enum VaultImportStatus {
   Imported = "imported",
-  ApprovalRequired = "approval_required"
+  ApprovalRequired = "approval-required"
 }
 
 export type TCreateVaultExternalMigrationDTO = {

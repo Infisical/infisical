@@ -8,7 +8,8 @@ import {
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection/app-connection-enums";
@@ -231,8 +232,13 @@ export const externalMigrationServiceFactory = ({
 
     try {
       await listHCVaultPolicies(namespace, connection, gatewayService);
-      await listHCVaultSecretPaths(namespace, connection, gatewayService);
-      await listHCVaultMounts(connection, gatewayService);
+      await getHCVaultAuthMounts(namespace, HCVaultAuthType.Kubernetes, connection, gatewayService);
+
+      const mounts = await listHCVaultMounts(connection, gatewayService);
+      const sampleKvMount = mounts.find((mount) => mount.type === "kv");
+      if (sampleKvMount) {
+        await listHCVaultSecretPaths(namespace, connection, gatewayService, sampleKvMount.path);
+      }
     } catch (error) {
       throw new BadRequestError({
         message: `Failed to establish namespace confiugration. ${error instanceof Error ? error.message : "Unknown error"}`
@@ -264,13 +270,26 @@ export const externalMigrationServiceFactory = ({
       namespace
     });
 
-    const config = await vaultExternalMigrationConfigDAL.create({
-      namespace,
-      connectionId,
-      orgId: actor.orgId
-    });
+    try {
+      const config = await vaultExternalMigrationConfigDAL.create({
+        namespace,
+        connectionId,
+        orgId: actor.orgId
+      });
 
-    return config;
+      return config;
+    } catch (error) {
+      if (
+        error instanceof DatabaseError &&
+        (error.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
+      ) {
+        throw new BadRequestError({
+          message: `Vault external migration already exists for this namespace`
+        });
+      }
+
+      throw error;
+    }
   };
 
   const updateVaultExternalMigration = async ({

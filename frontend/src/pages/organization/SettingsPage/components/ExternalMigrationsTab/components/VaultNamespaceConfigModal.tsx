@@ -21,7 +21,9 @@ import {
 import { TVaultExternalMigrationConfig } from "@app/hooks/api/migration/types";
 
 const schema = z.object({
-  namespace: z.string().min(1, "Namespace is required"),
+  namespace: z
+    .string()
+    .min(1, "Namespace is required. If you intend to use the root namespace, use root or /."),
   connectionId: z.string().min(1, "Connection is required")
 });
 

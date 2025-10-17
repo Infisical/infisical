@@ -94,38 +94,25 @@ const Content = ({ onClose }: ContentProps) => {
       }
 
       // Apply the parsed permissions to the form
-      Object.entries(parsedPermissions).forEach(([subject, value]) => {
+      (Object.keys(parsedPermissions) as ProjectPermissionSub[]).forEach((subjectKey) => {
+        const value = parsedPermissions[subjectKey];
         if (!value) return;
 
-        const subjectKey = subject as ProjectPermissionSub;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const existingValue = rootForm.getValues(`permissions.${subjectKey}`) as any;
+        const existingValue = rootForm.getValues(`permissions.${subjectKey}`) as unknown[];
 
         if (Array.isArray(existingValue) && existingValue.length > 0) {
           // Merge with existing permissions
-          rootForm.setValue(
-            `permissions.${subjectKey}`,
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore-error
-            [...existingValue, ...value],
-            {
-              shouldDirty: true,
-              shouldTouch: true,
-              shouldValidate: true
-            }
-          );
+          rootForm.setValue(`permissions.${subjectKey}`, [...existingValue, ...value] as never, {
+            shouldDirty: true,
+            shouldTouch: true,
+            shouldValidate: true
+          });
         } else {
-          rootForm.setValue(
-            `permissions.${subjectKey}`,
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore-error
-            value,
-            {
-              shouldDirty: true,
-              shouldTouch: true,
-              shouldValidate: true
-            }
-          );
+          rootForm.setValue(`permissions.${subjectKey}`, value as never, {
+            shouldDirty: true,
+            shouldTouch: true,
+            shouldValidate: true
+          });
         }
       });
 

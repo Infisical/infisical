@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { faEdit, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -162,7 +163,14 @@ export const VaultConnectionSection = () => {
 
       <p className="mt-4 text-xs text-mineshaft-400">
         Configure namespace-specific connections to enable in-platform migration features. Manage
-        connections in the App Connections section.
+        connections in the{" "}
+        <Link
+          to="/organization/app-connections"
+          className="text-primary underline hover:text-primary-300"
+        >
+          App Connections
+        </Link>{" "}
+        section.
       </p>
 
       <VaultNamespaceConfigModal
