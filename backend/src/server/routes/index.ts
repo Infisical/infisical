@@ -245,7 +245,6 @@ import { userNotificationDALFactory } from "@app/services/notification/user-noti
 import { offlineUsageReportDALFactory } from "@app/services/offline-usage-report/offline-usage-report-dal";
 import { offlineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
-import { orgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { orgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
@@ -382,7 +381,6 @@ export const registerRoutes = async (
   const authTokenDAL = tokenDALFactory(db);
   const orgDAL = orgDALFactory(db);
   const orgMembershipDAL = orgMembershipDALFactory(db);
-  const orgBotDAL = orgBotDALFactory(db);
   const incidentContactDAL = incidentContactDALFactory(db);
   const rateLimitDAL = rateLimitDALFactory(db);
   const apiKeyDAL = apiKeyDALFactory(db);
@@ -889,7 +887,6 @@ export const registerRoutes = async (
     smtpService,
     userDAL,
     groupDAL,
-    orgBotDAL,
     oidcConfigDAL,
     ldapConfigDAL,
     loginService,
