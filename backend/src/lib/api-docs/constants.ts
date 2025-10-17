@@ -949,7 +949,8 @@ export const FOLDERS = {
     projectId: "The ID of the project to delete the folder from.",
     environment: "The slug of the environment where the folder is located.",
     directory: "The directory of the folder to delete. (Deprecated in favor of path)",
-    path: "The path of the folder to delete."
+    path: "The path of the folder to delete.",
+    forceDelete: "Whether to force delete the folder even if it contains resources."
   }
 } as const;
 

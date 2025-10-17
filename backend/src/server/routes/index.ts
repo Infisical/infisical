@@ -1344,7 +1344,8 @@ export const registerRoutes = async (
     projectDAL,
     folderCommitService,
     secretApprovalPolicyService,
-    secretV2BridgeDAL
+    secretV2BridgeDAL,
+    dynamicSecretDAL
   });
 
   const secretImportService = secretImportServiceFactory({
