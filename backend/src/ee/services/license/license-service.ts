@@ -214,6 +214,13 @@ export const licenseServiceFactory = ({
         const identityUsed = await licenseDAL.countOrgUsersAndIdentities(orgId);
         currentPlan.identitiesUsed = identityUsed;
 
+        if (currentPlan.identityLimit !== null && currentPlan.identityLimit !== identityUsed) {
+          await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
+            quantity: membersUsed,
+            quantityIdentities: identityUsed
+          });
+        }
+
         await keyStore.setItemWithExpiry(
           FEATURE_CACHE_KEY(org.id),
           LICENSE_SERVER_CLOUD_PLAN_TTL,
