@@ -48,8 +48,8 @@ import { usePopUp } from "@app/hooks";
 import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
 import { useDeleteGatewayV2ById } from "@app/hooks/api/gateways-v2";
 
-import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
 import { DeployGatewayModal } from "./components/DeployGatewayModal";
+import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
 
 const GatewayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;

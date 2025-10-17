@@ -1,3 +1,10 @@
+import { useEffect, useMemo, useState } from "react";
+import { SingleValue } from "react-select";
+import { faCopy, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate } from "@tanstack/react-router";
+import { twMerge } from "tailwind-merge";
+
 import { createNotification } from "@app/components/notifications";
 import {
   FilterableSelect,
@@ -7,6 +14,7 @@ import {
   Modal,
   ModalContent
 } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import {
   useAddIdentityTokenAuth,
@@ -16,14 +24,8 @@ import {
 } from "@app/hooks/api";
 import { useGetRelays } from "@app/hooks/api/relays";
 import { slugSchema } from "@app/lib/schemas";
-import { faCopy, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useEffect, useMemo, useState } from "react";
-import { SingleValue } from "react-select";
+
 import { RelayOption } from "./RelayOption";
-import { useNavigate } from "@tanstack/react-router";
-import { ROUTE_PATHS } from "@app/const/routes";
-import { twMerge } from "tailwind-merge";
 
 type Props = {
   isOpen: boolean;

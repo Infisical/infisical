@@ -43,6 +43,7 @@ import {
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useDeleteRelayById, useGetRelays } from "@app/hooks/api/relays";
+
 import { DeployRelayModal } from "../GatewayTab/components/DeployRelayModal";
 
 const RelayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {

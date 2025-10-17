@@ -1,3 +1,9 @@
+import { useEffect, useMemo, useState } from "react";
+import { SingleValue } from "react-select";
+import { faCopy, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
+
 import { createNotification } from "@app/components/notifications";
 import {
   FilterableSelect,
@@ -15,11 +21,6 @@ import {
   useGetIdentityTokenAuth
 } from "@app/hooks/api";
 import { slugSchema } from "@app/lib/schemas";
-import { faCopy, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useEffect, useMemo, useState } from "react";
-import { SingleValue } from "react-select";
-import { twMerge } from "tailwind-merge";
 
 type Props = {
   isOpen: boolean;
