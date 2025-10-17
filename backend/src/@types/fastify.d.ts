@@ -25,6 +25,7 @@ import { TKmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operati
 import { TKmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TNamespaceServiceFactory } from "@app/ee/services/namespace/namespace-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
@@ -107,6 +108,7 @@ import { TProjectKeyServiceFactory } from "@app/services/project-key/project-key
 import { TProjectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
 import { TReminderServiceFactory } from "@app/services/reminder/reminder-types";
 import { TRoleServiceFactory } from "@app/services/role/role-service";
+import { TScopedIdentityServiceFactory } from "@app/services/scoped-identity/scoped-identity-service";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TSecretBlindIndexServiceFactory } from "@app/services/secret-blind-index/secret-blind-index-service";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
@@ -327,6 +329,8 @@ declare module "fastify" {
       additionalPrivilege: TAdditionalPrivilegeServiceFactory;
       role: TRoleServiceFactory;
       convertor: TConvertorServiceFactory;
+      namespace: TNamespaceServiceFactory;
+      scopedIdentity: TScopedIdentityServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

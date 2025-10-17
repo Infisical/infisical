@@ -35,6 +35,7 @@ export type Filter =
       type: ProjectFilterType.SLUG;
       slug: string;
       orgId: string | undefined;
+      namespaceId?: string;
     };
 
 export type TCreateProjectDTO = {
@@ -45,6 +46,7 @@ export type TCreateProjectDTO = {
   projectName: string;
   projectDescription?: string;
   slug?: string;
+  namespaceId?: string;
   kmsKeyId?: string;
   createDefaultEnvs?: boolean;
   template?: string;
@@ -55,6 +57,7 @@ export type TCreateProjectDTO = {
 
 export type TDeleteProjectBySlugDTO = {
   slug: string;
+  namespaceId?: string;
   actor: ActorType;
   actorId: string;
   actorOrgId: string | undefined;
@@ -75,6 +78,7 @@ export type TToggleProjectDeleteProtectionDTO = {
 export type TUpdateProjectVersionLimitDTO = {
   pitVersionLimit: number;
   workspaceSlug: string;
+  namespaceId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateAuditLogsRetentionDTO = {
@@ -112,6 +116,7 @@ export type TDeleteProjectDTO = {
 export type TListProjectsDTO = {
   includeRoles: boolean;
   type?: ProjectType;
+  namespaceId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpgradeProjectDTO = {
@@ -217,6 +222,7 @@ export enum SearchProjectSortBy {
 }
 
 export type TSearchProjectsDTO = {
+  namespaceId?: string;
   permission: OrgServiceActor;
   name?: string;
   type?: ProjectType;

@@ -24,6 +24,7 @@ export type TDynamicSecretLeaseConfig = TDynamicSecretKubernetesLeaseConfig;
 export type TCreateDynamicSecretLeaseDTO = {
   dynamicSecretName: string;
   projectSlug: string;
+  namespaceId?: string;
   ttl?: string;
   path: string;
   environmentSlug: string;
@@ -35,6 +36,7 @@ export type TRenewDynamicSecretLeaseDTO = {
   leaseId: string;
   dynamicSecretName: string;
   ttl?: string;
+  namespaceId?: string;
   projectSlug: string;
   path: string;
   environmentSlug: string;
@@ -42,6 +44,7 @@ export type TRenewDynamicSecretLeaseDTO = {
 
 export type TListDynamicSecretLeaseDTO = {
   dynamicSecretName: string;
+  namespaceId?: string;
   projectSlug: string;
   path: string;
   environmentSlug: string;
@@ -51,6 +54,7 @@ export type TListDynamicSecretLeaseDTO = {
 export type TRevokeDynamicSecretLeaseDTO = {
   leaseId: string;
   dynamicSecretName: string;
+  namespaceId?: string;
   projectSlug: string;
   path: string;
   environmentSlug: string;

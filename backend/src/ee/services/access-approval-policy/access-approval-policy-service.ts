@@ -99,9 +99,10 @@ export const accessApprovalPolicyServiceFactory = ({
     enforcementLevel,
     allowedSelfApprovals,
     approvalsRequired,
-    maxTimePeriod
+    maxTimePeriod,
+    namespaceId
   }) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     // If there is a group approver people might be added to the group later to meet the approvers quota
@@ -283,8 +284,15 @@ export const accessApprovalPolicyServiceFactory = ({
   };
 
   const getAccessApprovalPolicyByProjectSlug: TAccessApprovalPolicyServiceFactory["getAccessApprovalPolicyByProjectSlug"] =
-    async ({ actorId, actor, actorOrgId, actorAuthMethod, projectSlug }: TListAccessApprovalPoliciesDTO) => {
-      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    async ({
+      actorId,
+      actor,
+      actorOrgId,
+      actorAuthMethod,
+      projectSlug,
+      namespaceId
+    }: TListAccessApprovalPoliciesDTO) => {
+      const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
       if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
       // Anyone in the project should be able to get the policies.
@@ -626,9 +634,10 @@ export const accessApprovalPolicyServiceFactory = ({
     actorAuthMethod,
     projectSlug,
     actorId,
-    envSlug
+    envSlug,
+    namespaceId
   }: TGetAccessPolicyCountByEnvironmentDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
 
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 

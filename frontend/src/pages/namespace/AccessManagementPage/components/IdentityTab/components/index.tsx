@@ -1,0 +1,1 @@
+export { AddIdentityNamespaceModal } from "./AddIdentityNamespaceModal";

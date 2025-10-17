@@ -282,6 +282,7 @@ export type TCreateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
   projectId?: string;
   projectSlug?: string;
+  namespaceId?: string;
   environment: string;
   secrets: {
     secretKey: string;
@@ -300,6 +301,7 @@ export type TUpdateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
   projectId?: string;
   projectSlug?: string;
+  namespaceId?: string;
   environment: string;
   mode: SecretUpdateMode;
   secrets: {
@@ -320,6 +322,7 @@ export type TDeleteManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   secretPath: string;
   projectId?: string;
   projectSlug?: string;
+  namespaceId?: string;
   environment: string;
   secrets: {
     secretKey: string;
@@ -368,6 +371,7 @@ export type TFnSecretBulkUpdate = {
 
 export type TAttachSecretTagsDTO = {
   projectSlug: string;
+  namespaceId?: string;
   secretName: string;
   tagSlugs: string[];
   environment: string;
@@ -537,6 +541,7 @@ export type TSyncSecretsDTO<T extends boolean = false> = {
 export type TMoveSecretsDTO = {
   projectId?: string;
   projectSlug?: string;
+  namespaceId?: string;
   sourceEnvironment: string;
   sourceSecretPath: string;
   destinationEnvironment: string;

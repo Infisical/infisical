@@ -18,6 +18,7 @@ import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/
 
 export enum ApiDocsTags {
   Identities = "Identities",
+  Namespaces = "Namespaces",
   IdentityTemplates = "Identity Templates",
   TokenAuth = "Token Auth",
   UniversalAuth = "Universal Auth",
@@ -35,6 +36,8 @@ export enum ApiDocsTags {
   Organizations = "Organizations",
   Projects = "Projects",
   ProjectUsers = "Project Users",
+  NamespaceUsers = "Namespace Users",
+  NamespaceIdentities = "Namespace Identities",
   ProjectGroups = "Project Groups",
   ProjectIdentities = "Project Identities",
   ProjectRoles = "Project Roles",
@@ -720,6 +723,7 @@ export const PROJECTS = {
   CREATE: {
     organizationSlug: "The slug of the organization to create the project in.",
     projectName: "The name of the project to create.",
+    namespaceId: "The id of the namespace to create project.",
     projectDescription: "An optional description label for the project.",
     slug: "An optional slug for the project.",
     template: "The name of the project template, if specified, to apply to this project."
@@ -843,6 +847,99 @@ export const PROJECT_USERS = {
   }
 };
 
+export const NAMESPACE_USERS = {
+  CREATE_USER_MEMBERSHIP: {
+    namespaceId: "The ID of the namespace to invite the member to.",
+    usernames: "A list of usernames to invite to the namespace.",
+    roles: "A list of roles to create the membership to."
+  },
+  REMOVE_MEMBER: {
+    namespaceId: "The ID of the namespace to remove the member from.",
+    userId: "A ID of the user to remove from the namespace."
+  },
+  GET_USER_MEMBERSHIPS: {
+    namespaceId: "The ID of the namespace to get memberships from."
+  },
+  GET_USER_MEMBERSHIP: {
+    namespaceId: "The ID of the namespace to get memberships from.",
+    userId: "The ID of the user to get membership."
+  },
+  UPDATE_USER_MEMBERSHIP: {
+    namespaceId: "The ID of the namespace to update the membership for.",
+    userId: "The ID of the user to update.",
+    roles: "A list of roles to update the membership to."
+  }
+};
+
+export const NAMESPACE_IDENTITIES = {
+  CREATE: {
+    name: "The name of the identity to create.",
+    namespaceId: "The ID of the namespace to create the identity in.",
+    hasDeleteProtection: "Prevents deletion of the identity when enabled."
+  },
+  UPDATE: {
+    identityId: "The ID of the identity to update.",
+    namespaceId: "The ID of the namespace the identity belongs to.",
+    name: "The new name of the identity.",
+    hasDeleteProtection: "Prevents deletion of the identity when enabled."
+  },
+  DELETE: {
+    identityId: "The ID of the identity to delete.",
+    namespaceId: "The ID of the namespace the identity belongs to."
+  },
+  GET_BY_ID: {
+    identityId: "The ID of the identity to get details.",
+    namespaceId: "The ID of the namespace the identity belongs to."
+  },
+  LIST: {
+    namespaceId: "The ID of the namespace to list identities from.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
+    limit: "The number of identities to return.",
+    search: "The text string that identity names will be filtered by."
+  },
+  LIST_IDENTITY_MEMBERSHIPS: {
+    namespaceId: "The ID of the namespace to get identity memberships from.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity membership.",
+    limit: "The number of identity memberships to return.",
+    identityName: "The name of the identity to filter by.",
+    roles: "The roles to filter by."
+  },
+  GET_IDENTITY_MEMBERSHIP_BY_ID: {
+    identityId: "The ID of the identity to get the membership for.",
+    namespaceId: "The ID of the namespace to get the identity membership for."
+  },
+  UPDATE_IDENTITY_MEMBERSHIP: {
+    namespaceId: "The ID of the namespace to update the identity membership for.",
+    identityId: "The ID of the identity to update the membership for.",
+    roles: {
+      description: "A list of role slugs to assign to the identity namespace membership.",
+      role: "The role slug to assign to the identity namespace membership.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
+      temporaryMode: "Type of temporary expiry.",
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s, 2m, 3h, etc.",
+      temporaryAccessStartTime: "Time to which the temporary access starts."
+    }
+  },
+  DELETE_IDENTITY_MEMBERSHIP: {
+    namespaceId: "The ID of the namespace to delete the identity membership from.",
+    identityId: "The ID of the identity to delete the membership from."
+  },
+  CREATE_IDENTITY_MEMBERSHIP: {
+    namespaceId: "The ID of the namespace to create the identity membership in.",
+    identityId: "The ID of the identity to create the membership for.",
+    roles: {
+      description: "A list of role slugs to assign to the newly created identity namespace membership.",
+      role: "The role slug to assign to the newly created identity namespace membership.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
+      temporaryMode: "Type of temporary expiry.",
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s, 2m, 3h, etc.",
+      temporaryAccessStartTime: "Time to which the temporary access starts."
+    }
+  }
+};
+
 export const PROJECT_IDENTITIES = {
   LIST_IDENTITY_MEMBERSHIPS: {
     projectId: "The ID of the project to get identity memberships from.",
@@ -941,6 +1038,7 @@ export const FOLDERS = {
     path: "The path of the folder to update.",
     directory: "The new directory of the folder to update. (Deprecated in favor of path)",
     projectSlug: "The slug of the project where the folder is located.",
+    namespaceId: "The id of the namespace to which project belong to.",
     projectId: "The ID of the project where the folder is located.",
     description: "An optional description label for the folder."
   },
@@ -962,6 +1060,7 @@ export const SECRETS = {
     environment: "The slug of the environment where the secret is located",
     viewSecretValue: "Whether or not to retrieve the secret value.",
     projectSlug: "The slug of the project where the secret is located.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     tagSlugs: "An array of existing tag slugs to attach to the secret."
   },
   DETACH_TAGS: {
@@ -970,6 +1069,7 @@ export const SECRETS = {
     type: "The type of the secret to attach tags to. (shared/personal)",
     environment: "The slug of the environment where the secret is located.",
     projectSlug: "The slug of the project where the secret is located.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     tagSlugs: "An array of existing tag slugs to detach from the secret."
   }
 } as const;
@@ -982,6 +1082,7 @@ export const RAW_SECRETS = {
     projectId: "The ID of the project to list secrets from.",
     workspaceSlug:
       "The slug of the project to list secrets from. This parameter is only applicable by machine identities.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
     viewSecretValue: "Whether or not to retrieve the secret value.",
@@ -993,6 +1094,7 @@ export const RAW_SECRETS = {
   CREATE: {
     secretName: "The name of the secret to create.",
     projectSlug: "The slug of the project to create the secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environment: "The slug of the environment to create the secret in.",
     secretComment: "Attach a comment to the secret.",
     secretPath: "The path to create the secret in.",
@@ -1009,6 +1111,7 @@ export const RAW_SECRETS = {
     secretName: "The name of the secret to get.",
     projectId: "The ID of the project to get the secret from.",
     workspaceSlug: "The slug of the project to get the secret from.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environment: "The slug of the environment to get the secret from.",
     secretPath: "The path of the secret to get.",
     version: "The version of the secret to get.",
@@ -1026,6 +1129,7 @@ export const RAW_SECRETS = {
     skipMultilineEncoding: "Skip multiline encoding for the secret value.",
     type: "The type of the secret to update.",
     projectSlug: "The slug of the project to update the secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     projectId: "The ID of the project to update the secret in.",
     tagIds: "The ID of the tags to be attached to the updated secret.",
     secretReminderRepeatDays: "Interval for secret rotation notifications, measured in days.",
@@ -1040,6 +1144,7 @@ export const RAW_SECRETS = {
     secretPath: "The path of the secret.",
     type: "The type of the secret to delete.",
     projectSlug: "The slug of the project to delete the secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     projectId: "The ID of the project where the secret is located."
   },
   GET_REFERENCE_TREE: {
@@ -1155,23 +1260,27 @@ export const AUDIT_LOGS = {
 export const DYNAMIC_SECRETS = {
   LIST: {
     projectSlug: "The slug of the project to create dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment to list folders from.",
     path: "The path to list folders from."
   },
   LIST_LEASES_BY_NAME: {
     projectSlug: "The slug of the project to create dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
     name: "The name of the dynamic secret."
   },
   GET_BY_NAME: {
     projectSlug: "The slug of the project to create dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
     name: "The name of the dynamic secret."
   },
   CREATE: {
     projectSlug: "The slug of the project to create dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment to create the dynamic secret in.",
     path: "The path to create the dynamic secret in.",
     name: "The name of the dynamic secret.",
@@ -1181,6 +1290,7 @@ export const DYNAMIC_SECRETS = {
   },
   UPDATE: {
     projectSlug: "The slug of the project to update dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment to update the dynamic secret in.",
     path: "The path to update the dynamic secret in.",
     name: "The name of the dynamic secret.",
@@ -1191,6 +1301,7 @@ export const DYNAMIC_SECRETS = {
   },
   DELETE: {
     projectSlug: "The slug of the project to delete dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment to delete the dynamic secret in.",
     path: "The path to delete the dynamic secret in.",
     name: "The name of the dynamic secret.",
@@ -1202,12 +1313,14 @@ export const DYNAMIC_SECRETS = {
 export const DYNAMIC_SECRET_LEASES = {
   GET_BY_LEASEID: {
     projectSlug: "The slug of the project to create dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
     leaseId: "The ID of the dynamic secret lease."
   },
   CREATE: {
     projectSlug: "The slug of the project of the dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment of the dynamic secret in.",
     path: "The path of the dynamic secret in.",
     dynamicSecretName: "The name of the dynamic secret.",
@@ -1215,6 +1328,7 @@ export const DYNAMIC_SECRET_LEASES = {
   },
   RENEW: {
     projectSlug: "The slug of the project of the dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment of the dynamic secret in.",
     path: "The path of the dynamic secret in.",
     leaseId: "The ID of the dynamic secret lease.",
@@ -1222,6 +1336,7 @@ export const DYNAMIC_SECRET_LEASES = {
   },
   DELETE: {
     projectSlug: "The slug of the project of the dynamic secret in.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     environmentSlug: "The slug of the environment of the dynamic secret in.",
     path: "The path of the dynamic secret in.",
     leaseId: "The ID of the dynamic secret lease.",
@@ -1708,6 +1823,7 @@ export const SSH_HOSTS = {
 export const CERTIFICATE_AUTHORITIES = {
   CREATE: {
     projectSlug: "Slug of the project to create the CA in.",
+    namespaceId: "The id of the namespace to which project belong to.",
     type: "The type of CA to create.",
     friendlyName: "A friendly name for the CA.",
     organization: "The organization (O) for the CA.",
@@ -1850,6 +1966,7 @@ export const CERTIFICATES = {
   },
   IMPORT: {
     projectSlug: "Slug of the project to import the certificate into.",
+    namespaceId: "The ID of the namespace to which the project belongs.",
     certificatePem: "The PEM-encoded leaf certificate.",
     privateKeyPem: "The PEM-encoded private key corresponding to the certificate.",
     chainPem: "The PEM-encoded chain of intermediate certificates.",
@@ -2938,6 +3055,38 @@ export const LdapSso = {
     groupSearchFilter:
       "The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.",
     caCert: "The CA certificate to use when verifying the LDAP server certificate."
+  }
+};
+
+export const NAMESPACES = {
+  CREATE: {
+    name: "The name of the namespace to create. Must be a valid slug (lowercase, alphanumeric, hyphens, underscores).",
+    description: "An optional description for the namespace."
+  },
+  LIST: {
+    offset: "The offset to start from. If you enter 10, it will start from the 10th namespace.",
+    limit: "The number of namespaces to return. Maximum is 100.",
+    search: "Search term to filter namespaces by name."
+  },
+  GET: {
+    name: "The name of the namespace to retrieve.",
+    id: "The id of the namespace to retrieve."
+  },
+  UPDATE: {
+    name: "The current name of the namespace to update.",
+    newName: "The new name for the namespace. Must be a valid slug (lowercase, alphanumeric, hyphens, underscores).",
+    description: "The new description for the namespace."
+  },
+  DELETE: {
+    name: "The name of the namespace to delete."
+  },
+  SEARCH: {
+    name: "Search term to filter namespaces by name.",
+    limit: "The number of namespaces to return. Maximum is 100.",
+    offset: "The offset to start from.",
+    orderBy: "The field to order by.",
+    orderDirection: "The direction to order by (ASC or DESC).",
+    namespaceIds: "Array of namespace IDs to filter by."
   }
 };
 

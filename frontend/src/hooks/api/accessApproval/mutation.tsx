@@ -29,11 +29,13 @@ export const useCreateAccessApprovalPolicy = () => {
       enforcementLevel,
       allowedSelfApprovals,
       approvalsRequired,
-      maxTimePeriod
+      maxTimePeriod,
+      namespaceId
     }) => {
       const { data } = await apiRequest.post("/api/v1/access-approvals/policies", {
         environments,
         projectSlug,
+        namespaceId,
         approvals,
         bypassers,
         approvers,
@@ -46,9 +48,9 @@ export const useCreateAccessApprovalPolicy = () => {
       });
       return data;
     },
-    onSuccess: (_, { projectSlug }) => {
+    onSuccess: (_, { projectSlug, namespaceId }) => {
       queryClient.invalidateQueries({
-        queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug)
+        queryKey: accessApprovalKeys.getAccessApprovalPolicies({ namespaceId, projectSlug })
       });
     }
   });
@@ -85,9 +87,9 @@ export const useUpdateAccessApprovalPolicy = () => {
       });
       return data;
     },
-    onSuccess: (_, { projectSlug }) => {
+    onSuccess: (_, { projectSlug, namespaceId }) => {
       queryClient.invalidateQueries({
-        queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug)
+        queryKey: accessApprovalKeys.getAccessApprovalPolicies({ namespaceId, projectSlug })
       });
     }
   });
@@ -101,9 +103,9 @@ export const useDeleteAccessApprovalPolicy = () => {
       const { data } = await apiRequest.delete(`/api/v1/access-approvals/policies/${id}`);
       return data;
     },
-    onSuccess: (_, { projectSlug }) => {
+    onSuccess: (_, { projectSlug, namespaceId }) => {
       queryClient.invalidateQueries({
-        queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug)
+        queryKey: accessApprovalKeys.getAccessApprovalPolicies({ projectSlug, namespaceId })
       });
     }
   });
@@ -112,25 +114,21 @@ export const useDeleteAccessApprovalPolicy = () => {
 export const useCreateAccessRequest = () => {
   const queryClient = useQueryClient();
   return useMutation<object, object, TCreateAccessRequestDTO>({
-    mutationFn: async ({ projectSlug, ...request }) => {
-      const { data } = await apiRequest.post<TAccessApproval>(
-        "/api/v1/access-approvals/requests",
-        {
-          ...request,
-          permissions: request.permissions ? packRules(request.permissions) : undefined
-        },
-        {
-          params: {
-            projectSlug
-          }
-        }
-      );
+    mutationFn: async (request) => {
+      const { data } = await apiRequest.post<TAccessApproval>("/api/v1/access-approvals/requests", {
+        ...request,
+        permissions: request.permissions ? packRules(request.permissions) : undefined
+      });
 
       return data;
     },
-    onSuccess: (_, { projectSlug }) => {
+    onSuccess: (_, { projectSlug, namespaceId }) => {
       queryClient.invalidateQueries({
-        queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
+        queryKey: accessApprovalKeys.getAccessApprovalRequestCount({
+          namespaceId,
+          projectSlug,
+          envSlug: ""
+        })
       });
     }
   });
@@ -147,9 +145,9 @@ export const useUpdateAccessRequest = () => {
 
       return data.approval;
     },
-    onSuccess: (_, { projectSlug }) => {
+    onSuccess: (_, { projectSlug, namespaceId }) => {
       queryClient.invalidateQueries({
-        queryKey: accessApprovalKeys.getAccessApprovalRequests(projectSlug)
+        queryKey: accessApprovalKeys.getAccessApprovalRequests({ namespaceId, projectSlug })
       });
     }
   });
@@ -167,6 +165,7 @@ export const useReviewAccessRequest = () => {
       envSlug?: string;
       requestedBy?: string;
       bypassReason?: string;
+      namespaceId?: string;
     }
   >({
     mutationFn: async ({ requestId, status, bypassReason }) => {
@@ -179,17 +178,21 @@ export const useReviewAccessRequest = () => {
       );
       return data;
     },
-    onSuccess: (_, { projectSlug, envSlug, requestedBy, bypassReason }) => {
+    onSuccess: (_, { projectSlug, envSlug, requestedBy, namespaceId }) => {
       queryClient.invalidateQueries({
-        queryKey: accessApprovalKeys.getAccessApprovalRequests(
+        queryKey: accessApprovalKeys.getAccessApprovalRequests({
           projectSlug,
+          namespaceId,
           envSlug,
-          requestedBy,
-          bypassReason
-        )
+          authorUserId: requestedBy
+        })
       });
       queryClient.invalidateQueries({
-        queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
+        queryKey: accessApprovalKeys.getAccessApprovalRequestCount({
+          namespaceId,
+          projectSlug,
+          envSlug: ""
+        })
       });
     }
   });

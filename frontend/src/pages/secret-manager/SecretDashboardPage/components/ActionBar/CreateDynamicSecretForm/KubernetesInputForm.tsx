@@ -21,6 +21,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { useProject } from "@app/context";
 import { OrgPermissionSubjects } from "@app/context/OrgPermissionContext";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
@@ -149,7 +150,6 @@ type Props = {
   onCompleted: () => void;
   onCancel: () => void;
   secretPath: string;
-  projectSlug: string;
   environments: ProjectEnv[];
   isSingleEnvironmentMode?: boolean;
 };
@@ -158,10 +158,10 @@ export const KubernetesInputForm = ({
   onCompleted,
   onCancel,
   secretPath,
-  projectSlug,
   environments,
   isSingleEnvironmentMode
 }: Props) => {
+  const { currentProject } = useProject();
   const {
     control,
     formState: { isSubmitting },
@@ -217,7 +217,8 @@ export const KubernetesInputForm = ({
         name: rest.name,
         path: secretPath,
         defaultTTL: rest.defaultTTL,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         environmentSlug: rest.environment.slug,
         usernameTemplate:
           !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate

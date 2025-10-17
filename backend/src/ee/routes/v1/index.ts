@@ -21,6 +21,11 @@ import { registerKmipRouter } from "./kmip-router";
 import { registerKmipSpecRouter } from "./kmip-spec-router";
 import { registerLdapRouter } from "./ldap-router";
 import { registerLicenseRouter } from "./license-router";
+import { registerNamespaceIdentityMembershipRouter } from "./namespace-identity-membership-router";
+import { registerNamespaceIdentityRouter } from "./namespace-identity-router";
+import { registerNamespaceRoleRouter } from "./namespace-role-router";
+import { registerNamespaceRouter } from "./namespace-router";
+import { registerNamespaceUserMembershipRouter } from "./namespace-user-membership-router";
 import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
 import { PAM_ACCOUNT_REGISTER_ROUTER_MAP } from "./pam-account-routers";
@@ -164,6 +169,16 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerIdentityTemplateRouter, { prefix: "/identity-templates" });
 
   await server.register(registerProjectTemplateRouter, { prefix: "/project-templates" });
+  await server.register(
+    async (namespaceRouter) => {
+      await namespaceRouter.register(registerNamespaceRouter);
+      await namespaceRouter.register(registerNamespaceRoleRouter);
+      await namespaceRouter.register(registerNamespaceUserMembershipRouter);
+      await namespaceRouter.register(registerNamespaceIdentityMembershipRouter);
+      await namespaceRouter.register(registerNamespaceIdentityRouter);
+    },
+    { prefix: "/namespaces" }
+  );
 
   await server.register(
     async (kmipRouter) => {

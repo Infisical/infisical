@@ -68,6 +68,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     path,
     name,
     projectSlug,
+    namespaceId,
     actor,
     actorId,
     actorOrgId,
@@ -76,7 +77,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     config
   }) => {
     const appCfg = getConfig();
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
@@ -191,9 +192,10 @@ export const dynamicSecretLeaseServiceFactory = ({
     projectSlug,
     path,
     environmentSlug,
+    namespaceId,
     leaseId
   }) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
@@ -285,13 +287,14 @@ export const dynamicSecretLeaseServiceFactory = ({
     environmentSlug,
     path,
     projectSlug,
+    namespaceId,
     actor,
     actorId,
     actorOrgId,
     actorAuthMethod,
     isForced
   }) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
@@ -378,9 +381,10 @@ export const dynamicSecretLeaseServiceFactory = ({
     projectSlug,
     actorOrgId,
     environmentSlug,
+    namespaceId,
     actorAuthMethod
   }) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
@@ -426,9 +430,10 @@ export const dynamicSecretLeaseServiceFactory = ({
     actor,
     actorId,
     leaseId,
+    namespaceId,
     actorAuthMethod
   }) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;

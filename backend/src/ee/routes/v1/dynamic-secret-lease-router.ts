@@ -23,6 +23,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       body: z.object({
         dynamicSecretName: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.CREATE.dynamicSecretName).toLowerCase(),
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.CREATE.projectSlug),
+        namespaceId: z.string().optional().describe(DYNAMIC_SECRET_LEASES.CREATE.namespaceId),
         ttl: z
           .string()
           .optional()
@@ -75,6 +76,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       }),
       body: z.object({
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.DELETE.projectSlug),
+        namespaceId: z.string().optional().describe(DYNAMIC_SECRET_LEASES.DELETE.namespaceId),
         path: z
           .string()
           .min(1)
@@ -131,6 +133,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
               ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
           }),
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.RENEW.projectSlug),
+        namespaceId: z.string().optional().describe(DYNAMIC_SECRET_LEASES.RENEW.namespaceId),
         path: z
           .string()
           .min(1)
@@ -174,6 +177,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       }),
       querystring: z.object({
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.GET_BY_LEASEID.projectSlug),
+        namespaceId: z.string().optional().describe(DYNAMIC_SECRET_LEASES.GET_BY_LEASEID.namespaceId),
         path: z
           .string()
           .trim()

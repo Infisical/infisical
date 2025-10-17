@@ -8,6 +8,7 @@ export * from "./ExternalImportStartedTemplate";
 export * from "./ExternalImportSucceededTemplate";
 export * from "./HealthAlertTemplate";
 export * from "./IntegrationSyncFailedTemplate";
+export * from "./NamespaceInvitationTemplate";
 export * from "./NewDeviceLoginTemplate";
 export * from "./OAuthPasswordResetTemplate";
 export * from "./OrgAdminBreakglassAccessTemplate";

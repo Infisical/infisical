@@ -12,21 +12,21 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TMembershipIdentityDALFactory } from "../membership-identity-dal";
 import { TMembershipIdentityScopeFactory } from "../membership-identity-types";
 
 type TProjectMembershipIdentityScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export const newProjectMembershipIdentityFactory = ({
   permissionService,
-  orgDAL,
-  membershipIdentityDAL
+  membershipIdentityDAL,
+  projectDAL
 }: TProjectMembershipIdentityScopeFactoryDep): TMembershipIdentityScopeFactory => {
   const getScopeField: TMembershipIdentityScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Project) {
@@ -48,7 +48,7 @@ export const newProjectMembershipIdentityFactory = ({
     dto
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, memberships } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -60,15 +60,27 @@ export const newProjectMembershipIdentityFactory = ({
       ProjectPermissionIdentityActions.Create,
       ProjectPermissionSub.Identity
     );
-    const orgMembership = await membershipIdentityDAL.findOne({
-      actorIdentityId: dto.data.identityId,
-      scopeOrgId: dto.permission.orgId,
-      scope: AccessScope.Organization
-    });
-    if (!orgMembership)
-      throw new BadRequestError({ message: `Identity ${dto.data.identityId} is missing organization membership` });
 
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
+    const project = await projectDAL.findById(scope.value);
+    if (project.namespaceId) {
+      const namespaceMembership = await membershipIdentityDAL.findOne({
+        actorIdentityId: dto.data.identityId,
+        scopeOrgId: dto.permission.orgId,
+        scopeNamespaceId: project.namespaceId,
+        scope: AccessScope.Namespace
+      });
+      if (!namespaceMembership)
+        throw new BadRequestError({ message: `Identity ${dto.data.identityId} is missing namespace membership` });
+    } else {
+      const orgMembership = await membershipIdentityDAL.findOne({
+        actorIdentityId: dto.data.identityId,
+        scopeOrgId: dto.permission.orgId,
+        scope: AccessScope.Organization
+      });
+      if (!orgMembership)
+        throw new BadRequestError({ message: `Identity ${dto.data.identityId} is missing organization membership` });
+    }
+    const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.map((el) => el.role),
       scope.value
@@ -100,7 +112,7 @@ export const newProjectMembershipIdentityFactory = ({
     dto
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, memberships } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
       actionProjectType: ActionProjectType.Any,
@@ -113,7 +125,7 @@ export const newProjectMembershipIdentityFactory = ({
       ProjectPermissionSub.Identity
     );
 
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
+    const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
       dto.data.roles.filter((el) => el.role !== ProjectMembershipRole.NoAccess).map((el) => el.role),
       scope.value

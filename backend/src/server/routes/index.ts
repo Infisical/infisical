@@ -61,6 +61,8 @@ import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-conf
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
+import { namespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
+import { namespaceServiceFactory } from "@app/ee/services/namespace/namespace-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
@@ -286,6 +288,8 @@ import { dailyResourceCleanUpQueueServiceFactory } from "@app/services/resource-
 import { resourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { roleDALFactory } from "@app/services/role/role-dal";
 import { roleServiceFactory } from "@app/services/role/role-service";
+import { scopedIdentityDALFactory } from "@app/services/scoped-identity/scoped-identity-dal";
+import { scopedIdentityServiceFactory } from "@app/services/scoped-identity/scoped-identity-service";
 import { secretDALFactory } from "@app/services/secret/secret-dal";
 import { secretQueueFactory } from "@app/services/secret/secret-queue";
 import { secretServiceFactory } from "@app/services/secret/secret-service";
@@ -540,6 +544,8 @@ export const registerRoutes = async (
   const eventBusService = eventBusFactory(server.redis);
   const sseService = sseServiceFactory(eventBusService, server.redis);
 
+  const namespaceDAL = namespaceDALFactory(db);
+
   const permissionService = permissionServiceFactory({
     permissionDAL,
     serviceTokenDAL,
@@ -567,6 +573,7 @@ export const registerRoutes = async (
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL });
 
   const membershipUserService = membershipUserServiceFactory({
+    namespaceDAL,
     licenseService,
     membershipRoleDAL,
     membershipUserDAL,
@@ -583,13 +590,23 @@ export const registerRoutes = async (
     additionalPrivilegeDAL
   });
 
+  const namespaceService = namespaceServiceFactory({
+    permissionService,
+    membershipRoleDAL,
+    membershipDAL,
+    licenseService,
+    namespaceDAL
+  });
+
   const membershipIdentityService = membershipIdentityServiceFactory({
+    projectDAL,
     membershipIdentityDAL,
     membershipRoleDAL,
-    orgDAL,
     permissionService,
     roleDAL,
-    additionalPrivilegeDAL
+    additionalPrivilegeDAL,
+    identityDAL,
+    licenseService
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
@@ -1569,7 +1586,18 @@ export const registerRoutes = async (
     accessTokenQueue,
     smtpService
   });
+  const scopedIdentityDAL = scopedIdentityDALFactory(db);
+  const scopedIdentityService = scopedIdentityServiceFactory({
+    projectDAL,
+    membershipRoleDAL,
+    membershipIdentityDAL,
+    licenseService,
+    permissionService,
+    identityDAL: scopedIdentityDAL,
+    identityMetadataDAL
+  });
 
+  // deprecated in favour of scopedIdentityService
   const identityService = identityServiceFactory({
     permissionService,
     identityDAL,
@@ -1609,7 +1637,6 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     permissionService,
     licenseService,
-    orgDAL,
     membershipIdentityDAL
   });
 
@@ -1620,7 +1647,6 @@ export const registerRoutes = async (
     identityUaDAL,
     licenseService,
     keyStore,
-    orgDAL,
     membershipIdentityDAL
   });
 
@@ -1630,7 +1656,6 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     gatewayService,
-    orgDAL,
     gatewayV2Service,
     gatewayV2DAL,
     gatewayDAL,
@@ -1639,7 +1664,6 @@ export const registerRoutes = async (
   });
   const identityGcpAuthService = identityGcpAuthServiceFactory({
     identityGcpAuthDAL,
-    orgDAL,
     identityAccessTokenDAL,
     permissionService,
     licenseService,
@@ -1648,7 +1672,6 @@ export const registerRoutes = async (
 
   const identityAliCloudAuthService = identityAliCloudAuthServiceFactory({
     identityAccessTokenDAL,
-    orgDAL,
     identityAliCloudAuthDAL,
     licenseService,
     permissionService,
@@ -1666,7 +1689,6 @@ export const registerRoutes = async (
 
   const identityAwsAuthService = identityAwsAuthServiceFactory({
     identityAccessTokenDAL,
-    orgDAL,
     identityAwsAuthDAL,
     licenseService,
     permissionService,
@@ -1675,7 +1697,6 @@ export const registerRoutes = async (
 
   const identityAzureAuthService = identityAzureAuthServiceFactory({
     identityAzureAuthDAL,
-    orgDAL,
     identityAccessTokenDAL,
     permissionService,
     licenseService,
@@ -1684,7 +1705,6 @@ export const registerRoutes = async (
 
   const identityOciAuthService = identityOciAuthServiceFactory({
     identityAccessTokenDAL,
-    orgDAL,
     identityOciAuthDAL,
     licenseService,
     permissionService,
@@ -1707,7 +1727,6 @@ export const registerRoutes = async (
 
   const identityOidcAuthService = identityOidcAuthServiceFactory({
     identityOidcAuthDAL,
-    orgDAL,
     identityAccessTokenDAL,
     permissionService,
     licenseService,
@@ -1717,7 +1736,6 @@ export const registerRoutes = async (
 
   const identityJwtAuthService = identityJwtAuthServiceFactory({
     identityJwtAuthDAL,
-    orgDAL,
     permissionService,
     identityAccessTokenDAL,
     licenseService,
@@ -1727,7 +1745,6 @@ export const registerRoutes = async (
 
   const identityLdapAuthService = identityLdapAuthServiceFactory({
     identityLdapAuthDAL,
-    orgDAL,
     permissionService,
     kmsService,
     identityAccessTokenDAL,
@@ -2358,7 +2375,9 @@ export const registerRoutes = async (
     role: roleService,
     additionalPrivilege: additionalPrivilegeService,
     identityProject: identityProjectService,
-    convertor: convertorService
+    convertor: convertorService,
+    namespace: namespaceService,
+    scopedIdentity: scopedIdentityService
   });
 
   const cronJobs: CronJob[] = [];

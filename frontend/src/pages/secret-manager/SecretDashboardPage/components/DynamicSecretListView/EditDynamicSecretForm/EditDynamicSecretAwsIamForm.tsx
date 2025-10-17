@@ -6,6 +6,7 @@ import { z } from "zod";
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Select, SelectItem, TextArea } from "@app/components/v2";
+import { useProject } from "@app/context";
 import { useGetServerConfig, useUpdateDynamicSecret } from "@app/hooks/api";
 import {
   DynamicSecretAwsIamAuth,
@@ -99,16 +100,16 @@ type Props = {
   dynamicSecret: TDynamicSecret & { inputs: unknown };
   secretPath: string;
   environment: string;
-  projectSlug: string;
 };
 
 export const EditDynamicSecretAwsIamForm = ({
   onClose,
   dynamicSecret,
   environment,
-  secretPath,
-  projectSlug
+  secretPath
 }: Props) => {
+  const { currentProject } = useProject();
+
   const { data: serverConfig } = useGetServerConfig();
 
   const {
@@ -147,7 +148,8 @@ export const EditDynamicSecretAwsIamForm = ({
       await updateDynamicSecret.mutateAsync({
         name: dynamicSecret.name,
         path: secretPath,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         environmentSlug: environment,
         data: {
           maxTTL: maxTTL || undefined,

@@ -12,6 +12,7 @@ export type SubscriptionPlan = {
   customAlerts: boolean;
   customRateLimits: boolean;
   pitRecovery: boolean;
+  namespace: boolean;
   githubOrgSync: boolean;
   ipAllowlisting: boolean;
   rbac: boolean;

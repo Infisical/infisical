@@ -50,10 +50,11 @@ export const useGetDynamicSecretDetails = ({
   projectSlug,
   environmentSlug,
   path,
-  name
+  name,
+  namespaceId
 }: TDetailsDynamicSecretDTO) => {
   return useQuery({
-    queryKey: dynamicSecretKeys.details({ path, environmentSlug, projectSlug, name }),
+    queryKey: dynamicSecretKeys.details({ path, environmentSlug, projectSlug, name, namespaceId }),
     enabled: Boolean(projectSlug && environmentSlug && path && name),
     queryFn: async () => {
       const { data } = await apiRequest.get<{

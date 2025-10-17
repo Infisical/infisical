@@ -14,10 +14,12 @@ export const useGetDynamicSecretLeases = ({
   environmentSlug,
   path,
   dynamicSecretName,
+  namespaceId,
   enabled = true
 }: TListDynamicSecretLeaseDTO) => {
   return useQuery({
     queryKey: dynamicSecretLeaseKeys.list({
+      namespaceId,
       path,
       environmentSlug,
       projectSlug,
@@ -30,6 +32,7 @@ export const useGetDynamicSecretLeases = ({
         {
           params: {
             projectSlug,
+            namespaceId,
             environmentSlug,
             path
           }

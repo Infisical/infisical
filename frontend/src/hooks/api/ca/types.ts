@@ -105,6 +105,7 @@ export type TCertificateAuthority = {
 
 export type TUpdateCaDTO = {
   projectSlug: string;
+  namespaceId?: string;
   caId: string;
   status?: CaStatus;
   requireTemplateForIssuance?: boolean;
@@ -112,6 +113,7 @@ export type TUpdateCaDTO = {
 
 export type TDeleteCaDTO = {
   projectSlug: string;
+  namespaceId?: string;
   caId: string;
 };
 
@@ -139,6 +141,7 @@ export type TAzureAdCsTemplate = {
 export type TImportCaCertificateDTO = {
   caId: string;
   projectSlug: string;
+  namespaceId?: string;
   certificate: string;
   certificateChain: string;
 };
@@ -150,6 +153,7 @@ export type TImportCaCertificateResponse = {
 
 export type TCreateCertificateDTO = {
   projectSlug: string;
+  namespaceId?: string;
   caId?: string;
   certificateTemplateId?: string;
   pkiCollectionId?: string;
@@ -173,6 +177,7 @@ export type TCreateCertificateResponse = {
 
 export type TRenewCaDTO = {
   projectSlug: string;
+  namespaceId?: string;
   caId: string;
   type: CaRenewalType;
   notAfter: string;

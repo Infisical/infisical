@@ -92,7 +92,8 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("id").withSchema(TableName.Identity).as("identityId"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity).as("identityHasDeleteProtection"),
-
+          db.ref("scopeNamespaceId").withSchema(TableName.Identity).as("identityScopeNamespaceId"),
+          db.ref("scopeProjectId").withSchema(TableName.Identity).as("identityScopeProjectId"),
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
           db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
           db.ref("role").withSchema(TableName.MembershipRole).as("membershipRole"),
@@ -153,6 +154,8 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
               name: identityName,
               id: actorIdentityId,
               hasDeleteProtection: identityHasDeleteProtection,
+              scopeNamespaceId: el.identityScopeNamespaceId,
+              scopeProjectId: el.identityScopeProjectId,
               authMethods: buildAuthMethods({
                 uaId,
                 awsId,
@@ -278,6 +281,8 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         .select(
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("id").withSchema(TableName.Identity).as("identityId"),
+          db.ref("scopeProjectId").withSchema(TableName.Identity).as("identityScopeProjectId"),
+          db.ref("scopeNamespaceId").withSchema(TableName.Identity).as("identityScopeNamespaceId"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity).as("identityHasDeleteProtection"),
 
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
@@ -307,13 +312,21 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         data: docs,
         key: "id",
         parentMapper: (el) => {
-          const { identityId: actorIdentityId, identityHasDeleteProtection, identityName } = el;
+          const {
+            identityId: actorIdentityId,
+            identityHasDeleteProtection,
+            identityName,
+            identityScopeProjectId,
+            identityScopeNamespaceId
+          } = el;
           return {
             ...MembershipsSchema.parse(el),
             identity: {
               name: identityName,
               id: actorIdentityId,
-              hasDeleteProtection: identityHasDeleteProtection
+              hasDeleteProtection: identityHasDeleteProtection,
+              scopeProjectId: identityScopeProjectId,
+              scopeNamespaceId: identityScopeNamespaceId
             }
           };
         },

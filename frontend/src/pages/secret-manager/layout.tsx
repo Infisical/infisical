@@ -4,6 +4,7 @@ import { BreadcrumbTypes } from "@app/components/v2";
 import { projectKeys } from "@app/hooks/api";
 import { fetchProjectById } from "@app/hooks/api/projects/queries";
 import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
+import { NamespaceSelect } from "@app/layouts/NamespaceLayout/components/NamespaceSelect";
 import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
 import { SecretManagerLayout } from "@app/layouts/SecretManagerLayout";
 
@@ -25,14 +26,23 @@ export const Route = createFileRoute(
       queryFn: () => fetchUserProjectPermissions({ projectId: params.projectId })
     });
 
+    const breadcrumbs = [
+      {
+        type: BreadcrumbTypes.Component,
+        component: ProjectSelect
+      }
+    ];
+
+    if (project.namespaceId) {
+      breadcrumbs.unshift({
+        type: BreadcrumbTypes.Component,
+        component: () => <NamespaceSelect namespaceId={project.namespaceId as string} />
+      });
+    }
+
     return {
       project,
-      breadcrumbs: [
-        {
-          type: BreadcrumbTypes.Component,
-          component: ProjectSelect
-        }
-      ]
+      breadcrumbs
     };
   }
 });

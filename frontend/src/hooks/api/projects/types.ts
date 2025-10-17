@@ -42,6 +42,7 @@ export type Project = {
   secretSharing: boolean;
   showSnapshotsLegacy: boolean;
   secretDetectionIgnoreValues: string[];
+  namespaceId?: string;
 };
 
 export type ProjectEnv = {
@@ -74,6 +75,7 @@ export type CreateWorkspaceDTO = {
   projectDescription?: string;
   kmsKeyId?: string;
   template?: string;
+  namespaceId?: string;
 };
 
 export type UpdateProjectDTO = {
@@ -195,6 +197,7 @@ export type TSearchProjectsDTO = {
   options?: { enabled?: boolean };
   orderBy?: ProjectIdentityOrderBy;
   orderDirection?: OrderByDirection;
+  namespaceId?: string;
 };
 
 export type TProjectSshConfig = {

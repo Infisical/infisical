@@ -264,7 +264,8 @@ const Form = ({
           })),
           bypassers: bypassers.length > 0 ? bypassers : undefined,
           environments: environments.map((env) => env.slug),
-          projectSlug
+          projectSlug,
+          namespaceId: currentProject.namespaceId
         });
       }
       createNotification({

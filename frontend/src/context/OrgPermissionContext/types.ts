@@ -37,12 +37,18 @@ export enum OrgPermissionMachineIdentityAuthTemplateActions {
   AttachTemplates = "attach-templates"
 }
 
+export enum OrgPermissionNamespaceActions {
+  Create = "create",
+  AccessNamespace = "access-namespace"
+}
+
 export enum OrgPermissionSubjects {
   Workspace = "workspace",
   Project = "project",
   Role = "role",
   Member = "member",
   Settings = "settings",
+  Namespace = "namespace",
   IncidentAccount = "incident-contact",
   Scim = "scim",
   Sso = "sso",
@@ -120,6 +126,8 @@ export type OrgPermissionSet =
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Workspace]
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Project]
   | [OrgPermissionActions.Read, OrgPermissionSubjects.Workspace]
+  | [OrgPermissionNamespaceActions.Create, OrgPermissionSubjects.Namespace]
+  | [OrgPermissionNamespaceActions.AccessNamespace, OrgPermissionSubjects.Namespace]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
   | [OrgPermissionActions, OrgPermissionSubjects.Member]
   | [OrgPermissionActions, OrgPermissionSubjects.Settings]

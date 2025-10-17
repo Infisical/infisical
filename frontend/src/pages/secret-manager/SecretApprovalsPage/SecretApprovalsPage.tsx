@@ -25,7 +25,10 @@ export const SecretApprovalsPage = () => {
   const { data: secretApprovalReqCount } = useGetSecretApprovalRequestCount({
     projectId
   });
-  const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({ projectSlug });
+  const { data: accessApprovalRequestCount } = useGetAccessRequestsCount({
+    projectSlug,
+    namespaceId: currentProject.namespaceId
+  });
   const defaultTab =
     (accessApprovalRequestCount?.pendingCount || 0) > (secretApprovalReqCount?.open || 0)
       ? TabSection.ResourceApprovalRequests
@@ -64,7 +67,7 @@ export const SecretApprovalsPage = () => {
             <SecretApprovalRequest />
           </TabPanel>
           <TabPanel value={TabSection.ResourceApprovalRequests}>
-            <AccessApprovalRequest projectId={projectId} projectSlug={projectSlug} />
+            <AccessApprovalRequest />
           </TabPanel>
           <TabPanel value={TabSection.Policies}>
             <ApprovalPolicyList projectId={projectId} />

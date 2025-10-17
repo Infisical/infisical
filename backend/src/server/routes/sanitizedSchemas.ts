@@ -265,7 +265,8 @@ export const SanitizedProjectSchema = ProjectsSchema.pick({
   hasDeleteProtection: true,
   secretSharing: true,
   showSnapshotsLegacy: true,
-  secretDetectionIgnoreValues: true
+  secretDetectionIgnoreValues: true,
+  namespaceId: true
 });
 
 export const SanitizedTagSchema = SecretTagsSchema.pick({
@@ -286,4 +287,15 @@ export const InternalCertificateAuthorityResponseSchema = CertificateAuthorities
   requireTemplateForIssuance: z.boolean().optional(),
   notAfter: z.string().optional(),
   notBefore: z.string().optional()
+});
+
+export const SanitizedNamespaceRoleSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  description: z.string().nullable().optional(),
+  slug: z.string(),
+  permissions: z.unknown(),
+  namespaceId: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date()
 });

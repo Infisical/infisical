@@ -74,7 +74,6 @@ export const ReviewAccessRequestModal = ({
   isOpen,
   onOpenChange,
   request,
-  projectSlug,
   selectedRequester,
   selectedEnvSlug,
   canBypass,
@@ -90,7 +89,6 @@ export const ReviewAccessRequestModal = ({
     isSelfApproveAllowed: boolean;
     isApprover: boolean;
   };
-  projectSlug: string;
   selectedRequester: string | undefined;
   selectedEnvSlug: string | undefined;
   canBypass: boolean;
@@ -98,11 +96,12 @@ export const ReviewAccessRequestModal = ({
   members: TWorkspaceUser[];
   onUpdate: (request: TAccessApprovalRequest) => void;
 }) => {
+  const { currentProject } = useProject();
+
   const [isLoading, setIsLoading] = useState<"approved" | "rejected" | null>(null);
   const [bypassApproval, setBypassApproval] = useState(false);
 
   const [bypassReason, setBypassReason] = useState("");
-  const { currentProject } = useProject();
   const { data: groupMemberships = [] } = useListWorkspaceGroups(currentProject?.id || "");
   const { user } = useUser();
 
@@ -166,7 +165,8 @@ export const ReviewAccessRequestModal = ({
         await reviewAccessRequest.mutateAsync({
           requestId: request.id,
           status,
-          projectSlug,
+          projectSlug: currentProject.slug,
+          namespaceId: currentProject.namespaceId,
           envSlug: selectedEnvSlug,
           requestedBy: selectedRequester,
           bypassReason: bypassApproval ? bypassReason : undefined
@@ -316,7 +316,6 @@ export const ReviewAccessRequestModal = ({
                         onOpenChange={(open) => handlePopUpToggle("editRequest", open)}
                         accessRequest={request}
                         onComplete={onUpdate}
-                        projectSlug={projectSlug}
                       />
                       <Tooltip content="Edit Access Duration">
                         <IconButton

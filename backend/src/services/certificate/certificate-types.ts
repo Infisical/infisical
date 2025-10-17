@@ -80,7 +80,7 @@ export type TGetCertBodyDTO = {
 
 export type TImportCertDTO = {
   projectSlug: string;
-
+  namespaceId?: string;
   friendlyName?: string;
   pkiCollectionId?: string;
 

@@ -12,6 +12,7 @@ export type TVerifyPermission = {
 
 export type TGetAccessRequestCountDTO = {
   projectSlug: string;
+  namespaceId?: string;
   policyId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
@@ -24,6 +25,7 @@ export type TReviewAccessRequestDTO = {
 
 export type TCreateAccessApprovalRequestDTO = {
   projectSlug: string;
+  namespaceId?: string;
   permissions: unknown;
   isTemporary: boolean;
   temporaryRange?: string;
@@ -38,6 +40,7 @@ export type TUpdateAccessApprovalRequestDTO = {
 
 export type TListApprovalRequestsDTO = {
   projectSlug: string;
+  namespaceId?: string;
   authorUserId?: string;
   envSlug?: string;
 } & Omit<TProjectPermission, "projectId">;

@@ -8,19 +8,16 @@ import {
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
 import { TMembershipIdentityScopeFactory } from "../membership-identity-types";
 
 type TOrgMembershipIdentityScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 export const newOrgMembershipIdentityFactory = ({
-  permissionService,
-  orgDAL
+  permissionService
 }: TOrgMembershipIdentityScopeFactoryDep): TMembershipIdentityScopeFactory => {
   const getScopeField: TMembershipIdentityScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Organization) {
@@ -48,7 +45,7 @@ export const newOrgMembershipIdentityFactory = ({
   const onUpdateMembershipIdentityGuard: TMembershipIdentityScopeFactory["onUpdateMembershipIdentityGuard"] = async (
     dto
   ) => {
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission, memberships } = await permissionService.getOrgPermission(
       dto.permission.type,
       dto.permission.id,
       dto.permission.orgId,
@@ -61,7 +58,7 @@ export const newOrgMembershipIdentityFactory = ({
       dto.permission.orgId
     );
 
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
+    const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
     for (const permissionRole of permissionRoles) {
       if (permissionRole?.role?.name !== OrgMembershipRole.NoAccess) {
         const permissionBoundary = validatePrivilegeChangeOperation(

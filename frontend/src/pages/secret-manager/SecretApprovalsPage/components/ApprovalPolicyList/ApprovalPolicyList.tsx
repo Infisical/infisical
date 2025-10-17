@@ -85,6 +85,7 @@ const useApprovalPolicies = (permission: TProjectPermission, currentProject?: Pr
   const { data: accessPolicies, isPending: isAccessPoliciesLoading } = useGetAccessApprovalPolicies(
     {
       projectSlug: currentProject?.slug as string,
+      namespaceId: currentProject?.namespaceId,
       options: {
         enabled:
           permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval) &&

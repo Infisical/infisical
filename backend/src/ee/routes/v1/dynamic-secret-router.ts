@@ -52,6 +52,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       tags: [ApiDocsTags.DynamicSecrets],
       body: z.object({
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRETS.CREATE.projectSlug),
+        namespaceId: z.string().optional().describe(DYNAMIC_SECRETS.CREATE.namespaceId),
         provider: DynamicSecretProviderSchema.describe(DYNAMIC_SECRETS.CREATE.provider),
         defaultTTL: z
           .string()
@@ -117,6 +118,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       }),
       body: z.object({
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRETS.UPDATE.projectSlug),
+        namespaceId: z.string().optional().describe(DYNAMIC_SECRETS.UPDATE.namespaceId),
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(DYNAMIC_SECRETS.UPDATE.path),
         environmentSlug: z.string().min(1).describe(DYNAMIC_SECRETS.UPDATE.environmentSlug),
         data: z.object({
@@ -190,6 +192,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       }),
       body: z.object({
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRETS.DELETE.projectSlug),
+        namespaceId: z.string().optional().describe(DYNAMIC_SECRETS.DELETE.namespaceId),
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(DYNAMIC_SECRETS.DELETE.path),
         environmentSlug: z.string().min(1).describe(DYNAMIC_SECRETS.DELETE.environmentSlug),
         isForced: z.boolean().default(false).describe(DYNAMIC_SECRETS.DELETE.isForced)
@@ -228,6 +231,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       }),
       querystring: z.object({
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRETS.GET_BY_NAME.projectSlug),
+        namespaceId: z.string().optional().describe(DYNAMIC_SECRETS.GET_BY_NAME.namespaceId),
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(DYNAMIC_SECRETS.GET_BY_NAME.path),
         environmentSlug: z.string().min(1).describe(DYNAMIC_SECRETS.GET_BY_NAME.environmentSlug)
       }),
@@ -265,6 +269,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       tags: [ApiDocsTags.DynamicSecrets],
       querystring: z.object({
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRETS.LIST.projectSlug),
+        namespaceId: z.string().optional().describe(DYNAMIC_SECRETS.LIST.namespaceId),
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(DYNAMIC_SECRETS.LIST.path),
         environmentSlug: z.string().min(1).describe(DYNAMIC_SECRETS.LIST.environmentSlug)
       }),
@@ -301,6 +306,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       }),
       querystring: z.object({
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRETS.LIST_LEASES_BY_NAME.projectSlug),
+        namespaceId: z.string().optional().describe(DYNAMIC_SECRETS.LIST_LEASES_BY_NAME.namespaceId),
         path: z
           .string()
           .trim()

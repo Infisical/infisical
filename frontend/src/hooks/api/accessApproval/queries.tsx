@@ -14,29 +14,26 @@ import {
 } from "./types";
 
 export const accessApprovalKeys = {
-  getAccessApprovalPolicies: (projectSlug: string) =>
-    [{ projectSlug }, "access-approval-policies"] as const,
+  getAccessApprovalPolicies: (dto: TGetAccessApprovalRequestsDTO) =>
+    ["access-approval-policies", dto] as const,
   getAccessApprovalPolicyOfABoard: (projectId: string, environment: string) =>
     [{ projectId, environment }, "access-approval-policy"] as const,
 
-  getAccessApprovalRequests: (
-    projectSlug: string,
-    envSlug?: string,
-    requestedBy?: string,
-    bypassReason?: string
-  ) => ["access-approvals-requests", projectSlug, envSlug, requestedBy, bypassReason] as const,
-  getAccessApprovalRequestCount: (projectSlug: string, policyId?: string) =>
-    [{ projectSlug }, "access-approval-request-count", ...(policyId ? [policyId] : [])] as const
+  getAccessApprovalRequests: (dto: TGetAccessApprovalRequestsDTO) =>
+    ["access-approvals-requests", dto] as const,
+  getAccessApprovalRequestCount: (dto: TGetAccessPolicyApprovalCountDTO) =>
+    ["access-approval-request-count", dto] as const
 };
 
 export const fetchPolicyApprovalCount = async ({
   projectSlug,
-  envSlug
+  envSlug,
+  namespaceId
 }: TGetAccessPolicyApprovalCountDTO) => {
   const { data } = await apiRequest.get<{ count: number }>(
     "/api/v1/access-approvals/policies/count",
     {
-      params: { projectSlug, envSlug }
+      params: { projectSlug, envSlug, namespaceId }
     }
   );
   return data.count;
@@ -44,20 +41,28 @@ export const fetchPolicyApprovalCount = async ({
 
 export const useGetAccessPolicyApprovalCount = ({
   projectSlug,
+  namespaceId,
   envSlug,
   options = {}
 }: TGetAccessPolicyApprovalCountDTO & TReactQueryOptions) =>
   useQuery({
-    queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug),
-    queryFn: () => fetchPolicyApprovalCount({ projectSlug, envSlug }),
+    queryKey: accessApprovalKeys.getAccessApprovalRequestCount({
+      namespaceId,
+      projectSlug,
+      envSlug
+    }),
+    queryFn: () => fetchPolicyApprovalCount({ projectSlug, envSlug, namespaceId }),
     ...options,
     enabled: Boolean(projectSlug) && (options?.enabled ?? true)
   });
 
-const fetchApprovalPolicies = async ({ projectSlug }: TGetAccessApprovalRequestsDTO) => {
+const fetchApprovalPolicies = async ({
+  projectSlug,
+  namespaceId
+}: TGetAccessApprovalRequestsDTO) => {
   const { data } = await apiRequest.get<{ approvals: TAccessApprovalPolicy[] }>(
     "/api/v1/access-approvals/policies",
-    { params: { projectSlug } }
+    { params: { projectSlug, namespaceId } }
   );
   return data.approvals;
 };
@@ -65,11 +70,12 @@ const fetchApprovalPolicies = async ({ projectSlug }: TGetAccessApprovalRequests
 const fetchApprovalRequests = async ({
   projectSlug,
   envSlug,
-  authorUserId
+  authorUserId,
+  namespaceId
 }: TGetAccessApprovalRequestsDTO) => {
   const { data } = await apiRequest.get<{ requests: TAccessApprovalRequest[] }>(
     "/api/v1/access-approvals/requests",
-    { params: { projectSlug, envSlug, authorUserId } }
+    { params: { projectSlug, envSlug, authorUserId, namespaceId } }
   );
 
   return data.requests.map((request) => ({
@@ -87,10 +93,14 @@ const fetchApprovalRequests = async ({
   }));
 };
 
-const fetchAccessRequestsCount = async (projectSlug: string, policyId?: string) => {
+const fetchAccessRequestsCount = async (params: {
+  projectSlug: string;
+  policyId?: string;
+  namespaceId?: string;
+}) => {
   const { data } = await apiRequest.get<TAccessRequestCount>(
     "/api/v1/access-approvals/requests/count",
-    { params: { projectSlug, policyId } }
+    { params }
   );
   return data;
 };
@@ -98,11 +108,17 @@ const fetchAccessRequestsCount = async (projectSlug: string, policyId?: string) 
 export const useGetAccessRequestsCount = ({
   projectSlug,
   policyId,
+  namespaceId,
+  envSlug,
   options = {}
 }: TGetAccessApprovalRequestsDTO & TReactQueryOptions) =>
   useQuery({
-    queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug, policyId),
-    queryFn: () => fetchAccessRequestsCount(projectSlug, policyId),
+    queryKey: accessApprovalKeys.getAccessApprovalRequestCount({
+      namespaceId,
+      projectSlug,
+      envSlug: envSlug || ""
+    }),
+    queryFn: () => fetchAccessRequestsCount({ projectSlug, namespaceId, policyId }),
     ...options,
     enabled: Boolean(projectSlug) && (options?.enabled ?? true)
   });
@@ -111,11 +127,17 @@ export const useGetAccessApprovalPolicies = ({
   projectSlug,
   envSlug,
   authorUserId,
-  options = {}
+  options = {},
+  namespaceId
 }: TGetAccessApprovalRequestsDTO & TReactQueryOptions) =>
   useQuery({
-    queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug),
-    queryFn: () => fetchApprovalPolicies({ projectSlug, envSlug, authorUserId }),
+    queryKey: accessApprovalKeys.getAccessApprovalPolicies({
+      projectSlug,
+      envSlug,
+      namespaceId,
+      authorUserId
+    }),
+    queryFn: () => fetchApprovalPolicies({ namespaceId, envSlug, projectSlug, authorUserId }),
     ...options,
     enabled: Boolean(projectSlug) && (options?.enabled ?? true)
   });
@@ -124,11 +146,17 @@ export const useGetAccessApprovalRequests = ({
   projectSlug,
   envSlug,
   authorUserId,
+  namespaceId,
   options = {}
 }: TGetAccessApprovalRequestsDTO & TReactQueryOptions) =>
   useQuery({
-    queryKey: accessApprovalKeys.getAccessApprovalRequests(projectSlug, envSlug, authorUserId),
-    queryFn: () => fetchApprovalRequests({ projectSlug, envSlug, authorUserId }),
+    queryKey: accessApprovalKeys.getAccessApprovalRequests({
+      authorUserId,
+      projectSlug,
+      envSlug,
+      namespaceId
+    }),
+    queryFn: () => fetchApprovalRequests({ projectSlug, envSlug, authorUserId, namespaceId }),
     ...options,
     enabled: Boolean(projectSlug) && (options?.enabled ?? true),
     placeholderData: (previousData) => previousData

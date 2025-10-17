@@ -426,6 +426,7 @@ export type TDynamicSecretProvider =
     };
 
 export type TCreateDynamicSecretDTO = {
+  namespaceId?: string;
   projectSlug: string;
   provider: TDynamicSecretProvider;
   defaultTTL: string;
@@ -440,6 +441,7 @@ export type TCreateDynamicSecretDTO = {
 
 export type TUpdateDynamicSecretDTO = {
   name: string;
+  namespaceId?: string;
   projectSlug: string;
   path: string;
   environmentSlug: string;
@@ -455,12 +457,14 @@ export type TUpdateDynamicSecretDTO = {
 };
 
 export type TListDynamicSecretDTO = {
+  namespaceId?: string;
   projectSlug: string;
   path: string;
   environmentSlug: string;
 };
 
 export type TDeleteDynamicSecretDTO = {
+  namespaceId?: string;
   projectSlug: string;
   path: string;
   environmentSlug: string;
@@ -469,6 +473,7 @@ export type TDeleteDynamicSecretDTO = {
 };
 
 export type TDetailsDynamicSecretDTO = {
+  namespaceId?: string;
   projectSlug: string;
   path: string;
   environmentSlug: string;
@@ -476,6 +481,7 @@ export type TDetailsDynamicSecretDTO = {
 };
 
 export type TGetDynamicSecretsByEnvsDTO = {
+  namespaceId?: string;
   projectSlug: string;
   path: string;
   environmentSlugs: string[];

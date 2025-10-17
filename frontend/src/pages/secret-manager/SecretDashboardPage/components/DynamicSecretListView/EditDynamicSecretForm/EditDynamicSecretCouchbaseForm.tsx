@@ -22,6 +22,7 @@ import {
   Switch,
   Tooltip
 } from "@app/components/v2";
+import { useProject } from "@app/context";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { slugSchema } from "@app/lib/schemas";
@@ -273,7 +274,6 @@ type Props = {
   onClose: () => void;
   dynamicSecret: TDynamicSecret & { inputs: unknown };
   secretPath: string;
-  projectSlug: string;
   environment: string;
 };
 
@@ -281,9 +281,10 @@ export const EditDynamicSecretCouchbaseForm = ({
   onClose,
   dynamicSecret,
   secretPath,
-  environment,
-  projectSlug
+  environment
 }: Props) => {
+  const { currentProject } = useProject();
+
   const {
     control,
     formState: { isSubmitting },
@@ -390,7 +391,8 @@ export const EditDynamicSecretCouchbaseForm = ({
       await updateDynamicSecret.mutateAsync({
         name: dynamicSecret.name,
         path: secretPath,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         environmentSlug: environment,
         data: {
           defaultTTL,

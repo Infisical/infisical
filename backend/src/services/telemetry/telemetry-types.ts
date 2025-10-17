@@ -241,7 +241,7 @@ export type TNotificationUpdatedEvent = {
   };
 };
 
-export type TPostHogEvent = { distinctId: string; organizationId?: string } & (
+export type TPostHogEvent = { distinctId: string; organizationId?: string; namespaceId?: string } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
   | TUserSignedUpEvent

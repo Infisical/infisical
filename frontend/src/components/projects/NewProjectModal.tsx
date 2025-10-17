@@ -56,9 +56,10 @@ type TAddProjectFormData = z.infer<typeof formSchema>;
 interface NewProjectModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  namespaceId?: string;
 }
 
-type NewProjectFormProps = Pick<NewProjectModalProps, "onOpenChange">;
+type NewProjectFormProps = Pick<NewProjectModalProps, "onOpenChange" | "namespaceId">;
 
 const PROJECT_TYPE_MENU_ITEMS = [
   {
@@ -87,7 +88,7 @@ const PROJECT_TYPE_MENU_ITEMS = [
   }
 ];
 
-const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
+const NewProjectForm = ({ onOpenChange, namespaceId }: NewProjectFormProps) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
@@ -149,7 +150,8 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
         projectDescription: description,
         kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined,
         template,
-        type
+        type,
+        namespaceId
       });
       await refetchWorkspaces();
 
@@ -348,14 +350,18 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
   );
 };
 
-export const NewProjectModal: FC<NewProjectModalProps> = ({ isOpen, onOpenChange }) => {
+export const NewProjectModal: FC<NewProjectModalProps> = ({
+  isOpen,
+  onOpenChange,
+  namespaceId
+}) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         title="Create a new project"
         subTitle="This project will contain your secrets and configurations."
       >
-        <NewProjectForm onOpenChange={onOpenChange} />
+        <NewProjectForm onOpenChange={onOpenChange} namespaceId={namespaceId} />
       </ModalContent>
     </Modal>
   );

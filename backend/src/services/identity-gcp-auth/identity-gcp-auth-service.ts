@@ -2,6 +2,10 @@ import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  NamespacePermissionIdentityActions,
+  NamespacePermissionSubjects
+} from "@app/ee/services/permission/namespace-permission";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
@@ -17,7 +21,6 @@ import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
-import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityGcpAuthDALFactory } from "./identity-gcp-auth-dal";
 import { validateIamIdentity, validateIdTokenIdentity } from "./identity-gcp-auth-fns";
@@ -34,9 +37,8 @@ type TIdentityGcpAuthServiceFactoryDep = {
   identityGcpAuthDAL: Pick<TIdentityGcpAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getNamespacePermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 export type TIdentityGcpAuthServiceFactory = ReturnType<typeof identityGcpAuthServiceFactory>;
@@ -46,8 +48,7 @@ export const identityGcpAuthServiceFactory = ({
   membershipIdentityDAL,
   identityAccessTokenDAL,
   permissionService,
-  licenseService,
-  orgDAL
+  licenseService
 }: TIdentityGcpAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: gcpJwt }: TLoginGcpAuthDTO) => {
     const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId });
@@ -204,14 +205,31 @@ export const identityGcpAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+    if (identityMembershipOrg.identity.scopeNamespaceId) {
+      const { permission } = await permissionService.getNamespacePermission({
+        actor,
+        actorId,
+        namespaceId: identityMembershipOrg.identity.scopeNamespaceId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        NamespacePermissionIdentityActions.Create,
+        NamespacePermissionSubjects.Identity
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.Create,
+        OrgPermissionSubjects.Identity
+      );
+    }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -290,14 +308,28 @@ export const identityGcpAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+    if (identityMembershipOrg.identity.scopeNamespaceId) {
+      const { permission } = await permissionService.getNamespacePermission({
+        actor,
+        actorId,
+        namespaceId: identityMembershipOrg.identity.scopeNamespaceId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        NamespacePermissionIdentityActions.Edit,
+        NamespacePermissionSubjects.Identity
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+    }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -354,14 +386,28 @@ export const identityGcpAuthServiceFactory = ({
 
     const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    if (identityMembershipOrg.identity.scopeNamespaceId) {
+      const { permission } = await permissionService.getNamespacePermission({
+        actor,
+        actorId,
+        namespaceId: identityMembershipOrg.identity.scopeNamespaceId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        NamespacePermissionIdentityActions.Read,
+        NamespacePermissionSubjects.Identity
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    }
 
     return { ...identityGcpAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
@@ -387,40 +433,82 @@ export const identityGcpAuthServiceFactory = ({
         message: "The identity does not have gcp auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
-    const permissionBoundary = validatePrivilegeChangeOperation(
-      shouldUseNewPrivilegeSystem,
-      OrgPermissionIdentityActions.RevokeAuth,
-      OrgPermissionSubjects.Identity,
-      permission,
-      rolePermission
-    );
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to revoke gcp auth of identity with more privileged role",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionIdentityActions.RevokeAuth,
-          OrgPermissionSubjects.Identity
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
+    if (identityMembershipOrg.identity.scopeNamespaceId) {
+      const { permission, memberships } = await permissionService.getNamespacePermission({
+        actor,
+        actorId,
+        namespaceId: identityMembershipOrg.identity.scopeNamespaceId,
+        actorAuthMethod,
+        actorOrgId
       });
+      ForbiddenError.from(permission).throwUnlessCan(
+        NamespacePermissionIdentityActions.Edit,
+        NamespacePermissionSubjects.Identity
+      );
+
+      const { permission: rolePermission } = await permissionService.getNamespacePermission({
+        actor,
+        actorId: identityMembershipOrg.identity.id,
+        namespaceId: identityMembershipOrg.identity.scopeNamespaceId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        NamespacePermissionIdentityActions.RevokeAuth,
+        NamespacePermissionSubjects.Identity,
+        permission,
+        rolePermission
+      );
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to revoke gcp auth of identity with more privileged role",
+            shouldUseNewPrivilegeSystem,
+            NamespacePermissionIdentityActions.RevokeAuth,
+            NamespacePermissionSubjects.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+    } else {
+      const { permission, memberships } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+
+      const { permission: rolePermission } = await permissionService.getOrgPermission(
+        ActorType.IDENTITY,
+        identityMembershipOrg.identity.id,
+        identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        OrgPermissionIdentityActions.RevokeAuth,
+        OrgPermissionSubjects.Identity,
+        permission,
+        rolePermission
+      );
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to revoke gcp auth of identity with more privileged role",
+            shouldUseNewPrivilegeSystem,
+            OrgPermissionIdentityActions.RevokeAuth,
+            OrgPermissionSubjects.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+    }
 
     const revokedIdentityGcpAuth = await identityGcpAuthDAL.transaction(async (tx) => {
       const deletedGcpAuth = await identityGcpAuthDAL.delete({ identityId }, tx);

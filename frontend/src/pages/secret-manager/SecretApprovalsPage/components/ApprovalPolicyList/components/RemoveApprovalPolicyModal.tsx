@@ -41,6 +41,7 @@ export const RemoveApprovalPolicyModal = ({
       } else {
         await deleteAccessApprovalPolicy({
           projectSlug: currentProject.slug,
+          namespaceId: currentProject.namespaceId,
           id: policyId
         });
       }
@@ -67,6 +68,7 @@ export const RemoveApprovalPolicyModal = ({
 
   const deleteAccessApprovalData = useGetAccessRequestsCount({
     projectSlug: currentProject.slug,
+    namespaceId: currentProject.namespaceId,
     policyId,
     options: {
       enabled: Boolean(policyId) && policyType === PolicyType.AccessPolicy

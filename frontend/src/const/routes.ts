@@ -68,6 +68,20 @@ export const ROUTE_PATHS = Object.freeze({
       )
     }
   },
+  Namespace: {
+    IdentityDetailsByIdPage: setRoute(
+      "/organization/namespaces/$namespaceId/identities/$identityId",
+      "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceId/_namespace-layout/identities/$identityId"
+    ),
+    UserDetailsByIDPage: setRoute(
+      "/organization/namespaces/$namespaceId/members/$userId",
+      "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceId/_namespace-layout/members/$userId"
+    ),
+    RoleByIDPage: setRoute(
+      "/organization/namespaces/$namespaceId/roles/$roleSlug",
+      "/_authenticate/_inject-org-details/_org-layout/organization/namespaces/$namespaceId/_namespace-layout/roles/$roleSlug"
+    )
+  },
   SecretManager: {
     ApprovalPage: setRoute(
       "/projects/secret-management/$projectId/approval",

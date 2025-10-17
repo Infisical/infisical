@@ -20,7 +20,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionSubjects, useProject } from "@app/context";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { gatewaysQueryKeys, useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
@@ -87,7 +87,6 @@ type Props = {
   onClose: () => void;
   dynamicSecret: TDynamicSecret & { inputs: unknown };
   secretPath: string;
-  projectSlug: string;
   environment: string;
 };
 
@@ -95,8 +94,7 @@ export const EditDynamicSecretVerticaForm = ({
   onClose,
   dynamicSecret,
   environment,
-  secretPath,
-  projectSlug
+  secretPath
 }: Props) => {
   const getDefaultPasswordRequirements = () => ({
     length: 48,
@@ -108,6 +106,7 @@ export const EditDynamicSecretVerticaForm = ({
     },
     allowedSymbols: "-_.~!*"
   });
+  const { currentProject } = useProject();
 
   const {
     control,
@@ -150,7 +149,8 @@ export const EditDynamicSecretVerticaForm = ({
       await updateDynamicSecret.mutateAsync({
         name: dynamicSecret.name,
         path: secretPath,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         environmentSlug: environment,
         data: {
           maxTTL: maxTTL || undefined,

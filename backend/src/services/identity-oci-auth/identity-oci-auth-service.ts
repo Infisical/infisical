@@ -5,6 +5,10 @@ import RE2 from "re2";
 
 import { AccessScope, IdentityAuthMethod } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  NamespacePermissionIdentityActions,
+  NamespacePermissionSubjects
+} from "@app/ee/services/permission/namespace-permission";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
@@ -22,7 +26,6 @@ import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
-import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityOciAuthDALFactory } from "./identity-oci-auth-dal";
 import {
@@ -39,8 +42,7 @@ type TIdentityOciAuthServiceFactoryDep = {
   identityOciAuthDAL: Pick<TIdentityOciAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getNamespacePermission">;
 };
 
 export type TIdentityOciAuthServiceFactory = ReturnType<typeof identityOciAuthServiceFactory>;
@@ -50,8 +52,7 @@ export const identityOciAuthServiceFactory = ({
   identityOciAuthDAL,
   membershipIdentityDAL,
   licenseService,
-  permissionService,
-  orgDAL
+  permissionService
 }: TIdentityOciAuthServiceFactoryDep) => {
   const login = async ({ identityId, headers, userOcid }: TLoginOciAuthDTO) => {
     const identityOciAuth = await identityOciAuthDAL.findOne({ identityId });
@@ -179,14 +180,31 @@ export const identityOciAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+    if (identityMembershipOrg.identity.scopeNamespaceId) {
+      const { permission } = await permissionService.getNamespacePermission({
+        actor,
+        actorId,
+        namespaceId: identityMembershipOrg.identity.scopeNamespaceId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        NamespacePermissionIdentityActions.Create,
+        NamespacePermissionSubjects.Identity
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.Create,
+        OrgPermissionSubjects.Identity
+      );
+    }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -262,14 +280,28 @@ export const identityOciAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+    if (identityMembershipOrg.identity.scopeNamespaceId) {
+      const { permission } = await permissionService.getNamespacePermission({
+        actor,
+        actorId,
+        namespaceId: identityMembershipOrg.identity.scopeNamespaceId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        NamespacePermissionIdentityActions.Edit,
+        NamespacePermissionSubjects.Identity
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+    }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -321,14 +353,28 @@ export const identityOciAuthServiceFactory = ({
 
     const ociIdentityAuth = await identityOciAuthDAL.findOne({ identityId });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    if (identityMembershipOrg.identity.scopeNamespaceId) {
+      const { permission } = await permissionService.getNamespacePermission({
+        actor,
+        actorId,
+        namespaceId: identityMembershipOrg.identity.scopeNamespaceId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        NamespacePermissionIdentityActions.Read,
+        NamespacePermissionSubjects.Identity
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    }
     return { ...ociIdentityAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -352,42 +398,84 @@ export const identityOciAuthServiceFactory = ({
         message: "The identity does not have OCI auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    );
-
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
-    const permissionBoundary = validatePrivilegeChangeOperation(
-      shouldUseNewPrivilegeSystem,
-      OrgPermissionIdentityActions.RevokeAuth,
-      OrgPermissionSubjects.Identity,
-      permission,
-      rolePermission
-    );
-
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to revoke OCI auth of identity with more privileged role",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionIdentityActions.RevokeAuth,
-          OrgPermissionSubjects.Identity
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
+    if (identityMembershipOrg.identity.scopeNamespaceId) {
+      const { permission, memberships } = await permissionService.getNamespacePermission({
+        actor,
+        actorId,
+        namespaceId: identityMembershipOrg.identity.scopeNamespaceId,
+        actorAuthMethod,
+        actorOrgId
       });
+      ForbiddenError.from(permission).throwUnlessCan(
+        NamespacePermissionIdentityActions.Edit,
+        NamespacePermissionSubjects.Identity
+      );
+
+      const { permission: rolePermission } = await permissionService.getNamespacePermission({
+        actor,
+        actorId: identityMembershipOrg.identity.id,
+        namespaceId: identityMembershipOrg.identity.scopeNamespaceId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        NamespacePermissionIdentityActions.RevokeAuth,
+        NamespacePermissionSubjects.Identity,
+        permission,
+        rolePermission
+      );
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to revoke OCI auth of identity with more privileged role",
+            shouldUseNewPrivilegeSystem,
+            NamespacePermissionIdentityActions.RevokeAuth,
+            NamespacePermissionSubjects.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+    } else {
+      const { permission, memberships } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+
+      const { permission: rolePermission } = await permissionService.getOrgPermission(
+        ActorType.IDENTITY,
+        identityMembershipOrg.identity.id,
+        identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      );
+
+      const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        OrgPermissionIdentityActions.RevokeAuth,
+        OrgPermissionSubjects.Identity,
+        permission,
+        rolePermission
+      );
+
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to revoke OCI auth of identity with more privileged role",
+            shouldUseNewPrivilegeSystem,
+            OrgPermissionIdentityActions.RevokeAuth,
+            OrgPermissionSubjects.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+    }
 
     const revokedIdentityOciAuth = await identityOciAuthDAL.transaction(async (tx) => {
       const deletedOciAuth = await identityOciAuthDAL.delete({ identityId }, tx);

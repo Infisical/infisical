@@ -8,6 +8,7 @@ import { z } from "zod";
 import { TtlFormLabel } from "@app/components/features";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, FormLabel, IconButton, Input, SecretInput } from "@app/components/v2";
+import { useProject } from "@app/context";
 import { useUpdateDynamicSecret } from "@app/hooks/api";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { slugSchema } from "@app/lib/schemas";
@@ -61,15 +62,15 @@ type Props = {
   dynamicSecret: TDynamicSecret & { inputs: unknown };
   secretPath: string;
   environment: string;
-  projectSlug: string;
 };
 export const EditDynamicSecretRabbitMqForm = ({
   onClose,
   dynamicSecret,
   secretPath,
-  environment,
-  projectSlug
+  environment
 }: Props) => {
+  const { currentProject } = useProject();
+
   const {
     control,
     formState: { isSubmitting },
@@ -106,7 +107,8 @@ export const EditDynamicSecretRabbitMqForm = ({
       await updateDynamicSecret.mutateAsync({
         name: dynamicSecret.name,
         path: secretPath,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         environmentSlug: environment,
         data: {
           maxTTL: maxTTL || undefined,

@@ -1,4 +1,11 @@
-import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import {
+  AccessScope,
+  ProjectMembershipRole,
+  TemporaryPermissionMode,
+  TIdentities,
+  TMembershipRolesInsert
+} from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -6,8 +13,9 @@ import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
-import { TOrgDALFactory } from "../org/org-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TMembershipIdentityDALFactory } from "./membership-identity-dal";
 import {
@@ -22,15 +30,14 @@ import { newOrgMembershipIdentityFactory } from "./org/org-membership-identity-f
 import { newProjectMembershipIdentityFactory } from "./project/project-membership-identity-factory";
 
 type TMembershipIdentityServiceFactoryDep = {
+  identityDAL: TIdentityDALFactory;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
   roleDAL: Pick<TRoleDALFactory, "find">;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getOrgPermission" | "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermissionByRoles"
-  >;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  permissionService: TPermissionServiceFactory;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "find">;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -40,20 +47,38 @@ export const membershipIdentityServiceFactory = ({
   roleDAL,
   membershipRoleDAL,
   permissionService,
-  orgDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  identityDAL,
+  licenseService,
+  projectDAL
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
-      orgDAL,
       permissionService
     }),
     [AccessScope.Project]: newProjectMembershipIdentityFactory({
       membershipIdentityDAL,
-      orgDAL,
-      permissionService
+      permissionService,
+      projectDAL
     }),
-    [AccessScope.Namespace]: newNamespaceMembershipIdentityFactory({})
+    [AccessScope.Namespace]: newNamespaceMembershipIdentityFactory({
+      membershipIdentityDAL,
+      permissionService,
+      licenseService
+    })
+  };
+
+  const $validateIdentityScope = (identity: TIdentities, scope: AccessScope) => {
+    const isProjectScoped = Boolean(identity.scopeProjectId);
+    const isNamespaceScoped = Boolean(identity.scopeNamespaceId);
+
+    if (isProjectScoped && scope !== AccessScope.Project) {
+      throw new BadRequestError({ message: "Invalid scope membership. This identity is scoped to project." });
+    }
+
+    if (isNamespaceScoped && scope === AccessScope.Organization) {
+      throw new BadRequestError({ message: "Invalid scope membership. This identity is scoped to namespace." });
+    }
   };
 
   const createMembership = async (dto: TCreateMembershipIdentityDTO) => {
@@ -82,6 +107,10 @@ export const membershipIdentityServiceFactory = ({
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     await factory.onCreateMembershipIdentityGuard(dto);
+    const identity = await identityDAL.findOne({
+      id: data.identityId
+    });
+    $validateIdentityScope(identity, dto.scopeData.scope);
 
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
@@ -174,6 +203,11 @@ export const membershipIdentityServiceFactory = ({
       });
     }
 
+    const identity = await identityDAL.findOne({
+      id: dto.selector.identityId
+    });
+    $validateIdentityScope(identity, dto.scopeData.scope);
+
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipIdentityDAL.findOne({
       scope: scopeData.scope,
@@ -257,6 +291,16 @@ export const membershipIdentityServiceFactory = ({
     const factory = scopeFactory[scopeData.scope];
 
     await factory.onDeleteMembershipIdentityGuard(dto);
+    const identity = await identityDAL.findOne({
+      id: dto.selector.identityId
+    });
+    $validateIdentityScope(identity, dto.scopeData.scope);
+    if (identity.scopeNamespaceId && scopeData.scope === AccessScope.Namespace) {
+      throw new BadRequestError({ message: "Namespace membership cannot be deleted for namespace scoped identity" });
+    }
+    if (identity.scopeProjectId && scopeData.scope === AccessScope.Project) {
+      throw new BadRequestError({ message: "Project membership cannot be deleted for project scoped identity" });
+    }
 
     const scopeField = factory.getScopeField(scopeData);
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
@@ -276,6 +320,33 @@ export const membershipIdentityServiceFactory = ({
       });
 
     const membershipDoc = await membershipIdentityDAL.transaction(async (tx) => {
+      // when deleting a namespace membership, need  to remove them from projects as well
+      if (scopeData.scope === AccessScope.Namespace) {
+        const projects = await projectDAL.find(
+          {
+            namespaceId: scopeData.namespaceId
+          },
+          { tx }
+        );
+        if (projects.length) {
+          await additionalPrivilegeDAL.delete(
+            {
+              actorIdentityId: dto.selector.identityId,
+              $in: { projectId: projects.map((el) => el.id) }
+            },
+            tx
+          );
+          await membershipIdentityDAL.delete(
+            {
+              actorIdentityId: dto.selector.identityId,
+              scope: AccessScope.Project,
+              $in: { scopeProjectId: projects.map((el) => el.id) }
+            },
+            tx
+          );
+        }
+      }
+
       await additionalPrivilegeDAL.delete(
         {
           actorIdentityId: dto.selector.identityId,

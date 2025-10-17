@@ -82,6 +82,7 @@ export const membershipUserDALFactory = (db: TDbClient) => {
           db.ref("key").withSchema(TableName.IdentityMetadata).as("metadataKey"),
           db.ref("value").withSchema(TableName.IdentityMetadata).as("metadataValue"),
           db.ref("username").withSchema(TableName.Users).as("userUsername"),
+          db.ref("isEmailVerified").withSchema(TableName.Users),
           db.ref("email").withSchema(TableName.Users).as("userEmail"),
           db.ref("firstName").withSchema(TableName.Users).as("userFirstName"),
           db.ref("lastName").withSchema(TableName.Users).as("userLastName"),
@@ -98,7 +99,8 @@ export const membershipUserDALFactory = (db: TDbClient) => {
             email: el.userEmail,
             firstName: el.userFirstName,
             lastName: el.userLastName,
-            id: el.userId
+            id: el.userId,
+            isEmailVerified: el.isEmailVerified
           }
         }),
         childrenMapper: [

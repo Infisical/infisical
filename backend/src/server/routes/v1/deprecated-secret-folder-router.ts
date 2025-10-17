@@ -199,6 +199,7 @@ export const registerDeprecatedSecretFolderRouter = async (server: FastifyZodPro
       ],
       body: z.object({
         projectSlug: z.string().trim().describe(FOLDERS.UPDATE.projectSlug),
+        namespaceId: z.string().trim().optional().describe(FOLDERS.UPDATE.namespaceId),
         folders: z
           .object({
             id: z.string().describe(FOLDERS.UPDATE.folderId),

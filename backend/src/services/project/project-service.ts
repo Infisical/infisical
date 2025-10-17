@@ -12,6 +12,10 @@ import {
   TProjectEnvironments
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import {
+  NamespacePermissionActions,
+  NamespacePermissionSubjects
+} from "@app/ee/services/permission/namespace-permission";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -242,22 +246,36 @@ export const projectServiceFactory = ({
     tx: trx,
     createDefaultEnvs = true,
     template = InfisicalProjectTemplate.Default,
-    type = ProjectType.SecretManager
+    type = ProjectType.SecretManager,
+    namespaceId
   }: TCreateProjectDTO) => {
     const organization = await orgDAL.findOne({ id: actorOrgId });
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
-      actorId,
-      organization.id,
-      actorAuthMethod,
-      actorOrgId
-    );
+    if (namespaceId) {
+      const { permission } = await permissionService.getNamespacePermission({
+        actor,
+        actorId,
+        namespaceId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      if (permission.cannot(NamespacePermissionActions.Create, NamespacePermissionSubjects.Project)) {
+        throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
+      }
+    } else {
+      const { permission } = await permissionService.getOrgPermission(
+        actor,
+        actorId,
+        organization.id,
+        actorAuthMethod,
+        actorOrgId
+      );
 
-    if (
-      permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace) &&
-      permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Project)
-    ) {
-      throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
+      if (
+        permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace) &&
+        permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Project)
+      ) {
+        throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
+      }
     }
 
     const results = await (trx || projectDAL).transaction(async (tx) => {
@@ -310,7 +328,8 @@ export const projectServiceFactory = ({
           slug: projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
           kmsSecretManagerKeyId: kmsKeyId,
           version: ProjectVersion.V3,
-          pitVersionLimit: 10
+          pitVersionLimit: 10,
+          namespaceId
         },
         tx
       );
@@ -506,11 +525,24 @@ export const projectServiceFactory = ({
     return deletedProject;
   };
 
-  const getProjects = async ({ actorId, actor, includeRoles, actorAuthMethod, actorOrgId, type }: TListProjectsDTO) => {
+  const getProjects = async ({
+    actorId,
+    actor,
+    includeRoles,
+    actorAuthMethod,
+    actorOrgId,
+    type,
+    namespaceId
+  }: TListProjectsDTO) => {
     const workspaces =
       actor === ActorType.IDENTITY
-        ? await projectDAL.findIdentityProjects(actorId, actorOrgId, type)
-        : await projectDAL.findUserProjects(actorId, actorOrgId, type);
+        ? await projectDAL.findIdentityProjects({
+            identityId: actorId,
+            orgId: actorOrgId,
+            projectType: type,
+            namespaceId
+          })
+        : await projectDAL.findUserProjects({ userId: actorId, orgId: actorOrgId, projectType: type, namespaceId });
 
     if (includeRoles) {
       const { permission } = await permissionService.getOrgPermission(
@@ -579,7 +611,8 @@ export const projectServiceFactory = ({
     if (update.slug) {
       const existingProject = await projectDAL.findOne({
         slug: update.slug,
-        orgId: actorOrgId
+        orgId: actorOrgId,
+        namespaceId: project.namespaceId
       });
       if (existingProject && existingProject.id !== project.id) {
         throw new BadRequestError({
@@ -666,9 +699,10 @@ export const projectServiceFactory = ({
     actorOrgId,
     actorAuthMethod,
     pitVersionLimit,
-    workspaceSlug
+    workspaceSlug,
+    namespaceId
   }: TUpdateProjectVersionLimitDTO) => {
-    const project = await projectDAL.findProjectBySlug(workspaceSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug({ slug: workspaceSlug, orgId: actorOrgId, namespaceId });
     if (!project) {
       throw new NotFoundError({
         message: `Project with slug '${workspaceSlug}' not found`
@@ -801,7 +835,8 @@ export const projectServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    namespaceId
   }: {
     projectSlug?: string;
     projectId?: string;
@@ -809,6 +844,7 @@ export const projectServiceFactory = ({
     actorAuthMethod: ActorAuthMethod;
     actor: ActorType;
     actorOrgId: string;
+    namespaceId?: string;
   }) => {
     if (projectId) return projectId;
     if (!projectSlug) throw new BadRequestError({ message: "You must provide projectSlug or workspaceId" });
@@ -816,7 +852,8 @@ export const projectServiceFactory = ({
       filter: {
         type: ProjectFilterType.SLUG,
         orgId: actorOrgId,
-        slug: projectSlug
+        slug: projectSlug,
+        namespaceId
       },
       actorId,
       actorAuthMethod,
@@ -1819,16 +1856,27 @@ export const projectServiceFactory = ({
     type,
     orderBy,
     orderDirection,
-    projectIds
+    projectIds,
+    namespaceId
   }: TSearchProjectsDTO) => {
-    // check user belong to org
-    await permissionService.getOrgPermission(
-      permission.type,
-      permission.id,
-      permission.orgId,
-      permission.authMethod,
-      permission.orgId
-    );
+    if (namespaceId) {
+      await permissionService.getNamespacePermission({
+        actor: permission.type,
+        actorId: permission.id,
+        namespaceId,
+        actorAuthMethod: permission.authMethod,
+        actorOrgId: permission.orgId
+      });
+    } else {
+      // check user belong to org
+      await permissionService.getOrgPermission(
+        permission.type,
+        permission.id,
+        permission.orgId,
+        permission.authMethod,
+        permission.orgId
+      );
+    }
 
     return projectDAL.searchProjects({
       limit,

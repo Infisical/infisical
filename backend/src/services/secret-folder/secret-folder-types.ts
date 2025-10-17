@@ -24,6 +24,7 @@ export type TUpdateFolderDTO = {
 
 export type TUpdateManyFoldersDTO = {
   projectSlug?: string;
+  namespaceId?: string;
   folders: {
     environment: string;
     path: string;

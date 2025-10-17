@@ -262,6 +262,7 @@ export const secretFolderServiceFactory = ({
     actor,
     actorId,
     projectSlug,
+    namespaceId,
     projectId: providedProjectId,
     actorAuthMethod,
     actorOrgId,
@@ -271,7 +272,7 @@ export const secretFolderServiceFactory = ({
   }: TUpdateManyFoldersDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[]; projectId?: string }) => {
     let projectId = providedProjectId;
     if (!projectId && projectSlug) {
-      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+      const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
       if (!project) {
         throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
       }

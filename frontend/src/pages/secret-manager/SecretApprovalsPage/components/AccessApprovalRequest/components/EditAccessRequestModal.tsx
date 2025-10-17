@@ -17,6 +17,7 @@ import {
   ModalContent,
   TextArea
 } from "@app/components/v2";
+import { useProject } from "@app/context";
 import { useUpdateAccessRequest } from "@app/hooks/api/accessApproval/mutation";
 import { accessApprovalKeys } from "@app/hooks/api/accessApproval/queries";
 import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
@@ -24,7 +25,6 @@ import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
 type ContentProps = {
   accessRequest: TAccessApprovalRequest;
   onComplete: (request: TAccessApprovalRequest) => void;
-  projectSlug: string;
 };
 
 const EditSchema = z.object({
@@ -49,7 +49,8 @@ const EditSchema = z.object({
 
 type FormData = z.infer<typeof EditSchema>;
 
-const Content = ({ accessRequest, onComplete, projectSlug }: ContentProps) => {
+const Content = ({ accessRequest, onComplete }: ContentProps) => {
+  const { currentProject } = useProject();
   const update = useUpdateAccessRequest();
   const queryClient = useQueryClient();
   const {
@@ -67,12 +68,16 @@ const Content = ({ accessRequest, onComplete, projectSlug }: ContentProps) => {
   const onSubmit = async (form: FormData) => {
     try {
       const request = await update.mutateAsync({
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         requestId: accessRequest.id,
-        projectSlug,
         ...form
       });
       await queryClient.refetchQueries({
-        queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug)
+        queryKey: accessApprovalKeys.getAccessApprovalPolicies({
+          projectSlug: currentProject.slug,
+          namespaceId: currentProject.namespaceId
+        })
       });
 
       createNotification({
@@ -153,15 +158,13 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   accessRequest?: TAccessApprovalRequest;
   onComplete: (request: TAccessApprovalRequest) => void;
-  projectSlug: string;
 };
 
 export const EditAccessRequestModal = ({
   isOpen,
   onOpenChange,
   accessRequest,
-  onComplete,
-  projectSlug
+  onComplete
 }: Props) => {
   if (!accessRequest) return null;
 
@@ -172,7 +175,6 @@ export const EditAccessRequestModal = ({
         subTitle="Modify this access request for re-approval."
       >
         <Content
-          projectSlug={projectSlug}
           accessRequest={accessRequest}
           onComplete={(request) => {
             onComplete(request);

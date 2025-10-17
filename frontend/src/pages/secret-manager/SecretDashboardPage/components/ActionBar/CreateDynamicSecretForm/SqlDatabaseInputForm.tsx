@@ -23,6 +23,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { useProject } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -109,7 +110,6 @@ type Props = {
   onCompleted: () => void;
   onCancel: () => void;
   secretPath: string;
-  projectSlug: string;
   environments: ProjectEnv[];
   isSingleEnvironmentMode?: boolean;
 };
@@ -170,9 +170,9 @@ export const SqlDatabaseInputForm = ({
   onCancel,
   environments,
   secretPath,
-  projectSlug,
   isSingleEnvironmentMode
 }: Props) => {
+  const { currentProject } = useProject();
   const {
     control,
     setValue,
@@ -224,7 +224,8 @@ export const SqlDatabaseInputForm = ({
         name,
         path: secretPath,
         defaultTTL,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         environmentSlug: environment.slug,
         metadata,
         usernameTemplate:

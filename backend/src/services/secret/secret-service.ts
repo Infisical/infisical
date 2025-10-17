@@ -2103,6 +2103,7 @@ export const secretServiceFactory = ({
   const createManySecretsRaw = async ({
     actorId,
     projectSlug,
+    namespaceId,
     projectId: optionalProjectId,
     environment,
     actor,
@@ -2117,7 +2118,7 @@ export const secretServiceFactory = ({
     let projectId = optionalProjectId as string;
     // pick either project slug or projectid
     if (!optionalProjectId && projectSlug) {
-      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+      const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
       if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
       projectId = project.id;
     }
@@ -2267,6 +2268,7 @@ export const secretServiceFactory = ({
   const updateManySecretsRaw = async ({
     actorId,
     projectSlug,
+    namespaceId,
     projectId: optionalProjectId,
     environment,
     actor,
@@ -2281,7 +2283,7 @@ export const secretServiceFactory = ({
 
     let projectId = optionalProjectId as string;
     if (!optionalProjectId && projectSlug) {
-      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+      const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
       if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
       projectId = project.id;
     }
@@ -2468,6 +2470,7 @@ export const secretServiceFactory = ({
   const deleteManySecretsRaw = async ({
     actorId,
     projectSlug,
+    namespaceId,
     projectId: optionalProjectId,
     environment,
     actor,
@@ -2481,7 +2484,7 @@ export const secretServiceFactory = ({
 
     let projectId = optionalProjectId as string;
     if (!optionalProjectId && projectSlug) {
-      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+      const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
       if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
       projectId = project.id;
     }
@@ -2692,12 +2695,13 @@ export const secretServiceFactory = ({
     environment,
     type,
     projectSlug,
+    namespaceId,
     actor,
     actorAuthMethod,
     actorOrgId,
     actorId
   }: TAttachSecretTagsDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2798,12 +2802,13 @@ export const secretServiceFactory = ({
     environment,
     type,
     projectSlug,
+    namespaceId,
     actor,
     actorAuthMethod,
     actorOrgId,
     actorId
   }: TAttachSecretTagsDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2969,6 +2974,7 @@ export const secretServiceFactory = ({
     destinationSecretPath,
     secretIds,
     projectSlug,
+    namespaceId,
     shouldOverwrite,
     actor,
     actorId,
@@ -2978,7 +2984,7 @@ export const secretServiceFactory = ({
   }: TMoveSecretsDTO) => {
     let project;
     if (projectSlug) {
-      project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+      project = await projectDAL.findProjectBySlug({ slug: projectSlug, orgId: actorOrgId, namespaceId });
     } else if (inputProjectId) {
       project = await projectDAL.findById(inputProjectId);
     }

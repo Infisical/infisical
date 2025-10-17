@@ -7,6 +7,7 @@ import {
 } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TNamespaceDALFactory } from "@app/ee/services/namespace/namespace-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -43,10 +44,7 @@ type TMembershipUserServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "transaction">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   userDAL: TUserDALFactory;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermission"
-  >;
+  permissionService: TPermissionServiceFactory;
   licenseService: TLicenseServiceFactory;
   projectKeyDAL: TProjectKeyDALFactory;
   userAliasDAL: TUserAliasDALFactory;
@@ -55,6 +53,7 @@ type TMembershipUserServiceFactoryDep = {
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectDAL: TProjectDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
+  namespaceDAL: TNamespaceDALFactory;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -73,7 +72,8 @@ export const membershipUserServiceFactory = ({
   tokenService,
   userGroupMembershipDAL,
   projectDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  namespaceDAL
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -85,9 +85,14 @@ export const membershipUserServiceFactory = ({
       userDAL,
       userGroupMembershipDAL
     }),
-    [AccessScope.Namespace]: newNamespaceMembershipUserFactory({}),
+    [AccessScope.Namespace]: newNamespaceMembershipUserFactory({
+      permissionService,
+      membershipUserDAL,
+      smtpService,
+      licenseService,
+      namespaceDAL
+    }),
     [AccessScope.Project]: newProjectMembershipUserFactory({
-      orgDAL,
       permissionService,
       membershipUserDAL,
       projectDAL,
@@ -417,6 +422,33 @@ export const membershipUserServiceFactory = ({
           additionalPrivilegeDAL
         });
         return doc;
+      }
+
+      // when deleting a namespace membership, need  to remove them from projects as well
+      if (dto.scopeData.scope === AccessScope.Namespace) {
+        const projects = await projectDAL.find(
+          {
+            namespaceId: dto.scopeData.namespaceId
+          },
+          { tx }
+        );
+        if (projects.length) {
+          await additionalPrivilegeDAL.delete(
+            {
+              actorUserId: dto.selector.userId,
+              $in: { projectId: projects.map((el) => el.id) }
+            },
+            tx
+          );
+          await membershipUserDAL.delete(
+            {
+              actorUserId: dto.selector.userId,
+              scope: AccessScope.Project,
+              $in: { scopeProjectId: projects.map((el) => el.id) }
+            },
+            tx
+          );
+        }
       }
 
       if (dto.scopeData.scope === AccessScope.Project) {

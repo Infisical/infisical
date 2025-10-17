@@ -13,7 +13,11 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
-import { ProjectPermissionDynamicSecretActions, ProjectPermissionSub } from "@app/context";
+import {
+  ProjectPermissionDynamicSecretActions,
+  ProjectPermissionSub,
+  useProject
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteDynamicSecret } from "@app/hooks/api";
 import {
@@ -34,16 +38,15 @@ const formatProviderName = (type: DynamicSecretProviders) => {
 type Props = {
   dynamicSecrets?: TDynamicSecret[];
   environment: string;
-  projectSlug: string;
   secretPath?: string;
 };
 
 export const DynamicSecretListView = ({
   dynamicSecrets = [],
   environment,
-  projectSlug,
   secretPath = "/"
 }: Props) => {
+  const { currentProject } = useProject();
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "dynamicSecretLeases",
     "createDynamicSecretLease",
@@ -60,7 +63,8 @@ export const DynamicSecretListView = ({
       };
       await deleteDynamicSecret.mutateAsync({
         environmentSlug: environment,
-        projectSlug,
+        projectSlug: currentProject.slug,
+        namespaceId: currentProject.namespaceId,
         path: secretPath,
         name,
         isForced
@@ -247,7 +251,6 @@ export const DynamicSecretListView = ({
                 dynamicSecret={secret}
                 onClickNewLease={() => handlePopUpOpen("createDynamicSecretLease", secret)}
                 onClose={() => handlePopUpClose("dynamicSecretLeases")}
-                projectSlug={projectSlug}
                 key={secret.id}
                 dynamicSecretName={secret.name}
                 secretPath={secretPath}
@@ -267,7 +270,6 @@ export const DynamicSecretListView = ({
               (popUp.createDynamicSecretLease?.data as { type: DynamicSecretProviders })?.type
             }
             onClose={() => handlePopUpClose("createDynamicSecretLease")}
-            projectSlug={projectSlug}
             dynamicSecretName={(popUp.createDynamicSecretLease?.data as { name: string })?.name}
             secretPath={secretPath}
             environment={environment}
@@ -281,7 +283,6 @@ export const DynamicSecretListView = ({
         <ModalContent title="Edit dynamic secret" className="max-w-3xl">
           <EditDynamicSecretForm
             onClose={() => handlePopUpClose("updateDynamicSecret")}
-            projectSlug={projectSlug}
             dynamicSecretName={(popUp.updateDynamicSecret?.data as TDynamicSecret)?.name}
             secretPath={secretPath}
             environment={environment}

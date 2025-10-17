@@ -54,6 +54,7 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
       await importCaCertificate({
         caId,
         projectSlug: currentProject?.slug,
+        namespaceId: currentProject.namespaceId,
         certificate,
         certificateChain
       });
