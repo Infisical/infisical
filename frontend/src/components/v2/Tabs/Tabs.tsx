@@ -10,7 +10,7 @@ export const Tabs = ({ className, children, ...props }: TabsProps) => (
     className={twMerge(
       "flex",
       className,
-      props.orientation === "vertical" ? "flex-col lg:flex-row lg:gap-x-12" : "flex-col"
+      props.orientation === "vertical" ? "flex-col xl:flex-row xl:gap-x-12" : "flex-col"
     )}
     {...props}
   >
@@ -24,7 +24,7 @@ export const TabList = ({ className, children, ...props }: TabListProps) => (
   <TabsPrimitive.List
     className={twMerge(
       "no-scrollbar flex shrink-0 overflow-auto border-b-2 border-mineshaft-800",
-      "data-[orientation=vertical]:lg:flex-col data-[orientation=vertical]:lg:items-start data-[orientation=vertical]:lg:gap-y-6 data-[orientation=vertical]:lg:border-b-0",
+      "data-[orientation=vertical]:xl:flex-col data-[orientation=vertical]:xl:items-start data-[orientation=vertical]:xl:gap-y-6 data-[orientation=vertical]:xl:border-b-0",
       className
     )}
     {...props}
@@ -49,7 +49,7 @@ export const Tab = ({
     className={twMerge(
       "flex h-10 cursor-pointer items-center justify-center border-transparent",
       "px-3 text-sm font-medium whitespace-nowrap text-mineshaft-400 transition-all select-none",
-      "data-[orientation=vertical]:lg:h-5 data-[orientation=vertical]:lg:border-b-0 data-[orientation=vertical]:lg:border-l",
+      "data-[orientation=vertical]:xl:h-5 data-[orientation=vertical]:xl:border-b-0 data-[orientation=vertical]:xl:border-l",
       "border-b hover:text-mineshaft-200",
       "data-[state=active]:border-mineshaft-400 data-[state=active]:text-white",
       "hover:border-mineshaft-400",
@@ -71,7 +71,7 @@ export type TabPanelProps = TabsPrimitive.TabsContentProps;
 export const TabPanel = ({ className, children, ...props }: TabPanelProps) => (
   <TabsPrimitive.Content
     className={twMerge(
-      "grow rounded-br-md rounded-bl-md py-5 outline-hidden data-[orientation=vertical]:lg:py-0",
+      "grow rounded-br-md rounded-bl-md py-5 outline-hidden data-[orientation=vertical]:xl:overflow-x-hidden data-[orientation=vertical]:xl:py-0",
       className
     )}
     {...props}
