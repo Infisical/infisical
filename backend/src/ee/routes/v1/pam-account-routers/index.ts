@@ -1,3 +1,8 @@
+import {
+  CreateMySQLAccountSchema,
+  SanitizedMySQLAccountWithResourceSchema,
+  UpdateMySQLAccountSchema
+} from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import {
   CreatePostgresAccountSchema,
@@ -15,6 +20,15 @@ export const PAM_ACCOUNT_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fasti
       accountResponseSchema: SanitizedPostgresAccountWithResourceSchema,
       createAccountSchema: CreatePostgresAccountSchema,
       updateAccountSchema: UpdatePostgresAccountSchema
+    });
+  },
+  [PamResource.MySQL]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.MySQL,
+      accountResponseSchema: SanitizedMySQLAccountWithResourceSchema,
+      createAccountSchema: CreateMySQLAccountSchema,
+      updateAccountSchema: UpdateMySQLAccountSchema
     });
   }
 };
