@@ -2452,20 +2452,6 @@
             "group": "Infisical PKI",
             "pages": [
               {
-                "group": "Subscribers",
-                "pages": [
-                  "api-reference/endpoints/pki/subscribers/list-certs",
-                  "api-reference/endpoints/pki/subscribers/create",
-                  "api-reference/endpoints/pki/subscribers/read",
-                  "api-reference/endpoints/pki/subscribers/update",
-                  "api-reference/endpoints/pki/subscribers/delete",
-                  "api-reference/endpoints/pki/subscribers/issue-cert",
-                  "api-reference/endpoints/pki/subscribers/sign-cert",
-                  "api-reference/endpoints/pki/subscribers/order-cert",
-                  "api-reference/endpoints/pki/subscribers/get-latest-cert-bundle"
-                ]
-              },
-              {
                 "group": "Certificate Authorities",
                 "pages": [
                   {
@@ -2525,17 +2511,7 @@
                   "api-reference/endpoints/certificate-templates-v2/create",
                   "api-reference/endpoints/certificate-templates-v2/update",
                   "api-reference/endpoints/certificate-templates-v2/get-by-id",
-                  "api-reference/endpoints/certificate-templates-v2/delete",
-                  {
-                    "group": "Legacy",
-                    "pages": [
-                      "api-reference/endpoints/certificate-templates/list",
-                      "api-reference/endpoints/certificate-templates/create",
-                      "api-reference/endpoints/certificate-templates/update",
-                      "api-reference/endpoints/certificate-templates/get-by-id",
-                      "api-reference/endpoints/certificate-templates/delete"
-                    ]
-                  }
+                  "api-reference/endpoints/certificate-templates-v2/delete"
                 ]
               },
               {

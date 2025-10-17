@@ -8,6 +8,7 @@ import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 
 export enum CertStatus {
   ACTIVE = "active",
+  EXPIRED = "expired",
   REVOKED = "revoked"
 }
 

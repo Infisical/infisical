@@ -559,7 +559,6 @@ describe("CertificateProfileService", () => {
 
       expect(result).toEqual(sampleProfile);
       expect(mockCertificateProfileDAL.findById).toHaveBeenCalledWith("profile-123");
-      expect(mockCertificateProfileDAL.isProfileInUse).toHaveBeenCalledWith("profile-123");
       expect(mockCertificateProfileDAL.deleteById).toHaveBeenCalledWith("profile-123");
     });
 
@@ -572,18 +571,6 @@ describe("CertificateProfileService", () => {
           profileId: "profile-123"
         })
       ).rejects.toThrow(NotFoundError);
-    });
-
-    it("should throw ForbiddenRequestError when profile is in use", async () => {
-      (mockCertificateProfileDAL.isProfileInUse as any).mockResolvedValue(true);
-
-      await expect(
-        service.deleteProfile({
-          ...mockActor,
-          profileId: "profile-123"
-        })
-      ).rejects.toThrow(ForbiddenRequestError);
-      expect(mockCertificateProfileDAL.deleteById).not.toHaveBeenCalled();
     });
   });
 
@@ -841,23 +828,8 @@ describe("CertificateProfileService", () => {
         expect(result.enrollmentType).toBe(EnrollmentType.EST);
       });
 
-      it("should prevent deletion of profiles with active certificates", async () => {
+      it("should allow deletion of profiles", async () => {
         (mockCertificateProfileDAL.findById as any).mockResolvedValue(sampleProfile);
-        (mockCertificateProfileDAL.isProfileInUse as any).mockResolvedValue(true);
-
-        await expect(
-          service.deleteProfile({
-            ...mockActor,
-            profileId: "profile-123"
-          })
-        ).rejects.toThrow(ForbiddenRequestError);
-
-        expect(mockCertificateProfileDAL.deleteById).not.toHaveBeenCalled();
-      });
-
-      it("should allow deletion of unused profiles", async () => {
-        (mockCertificateProfileDAL.findById as any).mockResolvedValue(sampleProfile);
-        (mockCertificateProfileDAL.isProfileInUse as any).mockResolvedValue(false);
         (mockCertificateProfileDAL.deleteById as any).mockResolvedValue(sampleProfile);
 
         const result = await service.deleteProfile({
@@ -866,7 +838,6 @@ describe("CertificateProfileService", () => {
         });
 
         expect(result).toEqual(sampleProfile);
-        expect(mockCertificateProfileDAL.isProfileInUse).toHaveBeenCalledWith("profile-123");
         expect(mockCertificateProfileDAL.deleteById).toHaveBeenCalledWith("profile-123");
       });
     });

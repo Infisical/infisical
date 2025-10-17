@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import {
@@ -13,9 +14,9 @@ const sanTypeSchema = z.nativeEnum(CertSubjectAlternativeNameType);
 const templateV2SubjectSchema = z
   .object({
     type: attributeTypeSchema,
-    allowed: z.array(z.string()).optional(),
-    required: z.array(z.string()).optional(),
-    denied: z.array(z.string()).optional()
+    allowed: z.array(z.string().trim().min(1, "Value cannot be empty")).optional(),
+    required: z.array(z.string().trim().min(1, "Value cannot be empty")).optional(),
+    denied: z.array(z.string().trim().min(1, "Value cannot be empty")).optional()
   })
   .refine(
     (data) => {
@@ -68,9 +69,9 @@ const templateV2ExtendedKeyUsagesSchema = z
 const templateV2SanSchema = z
   .object({
     type: sanTypeSchema,
-    allowed: z.array(z.string()).optional(),
-    required: z.array(z.string()).optional(),
-    denied: z.array(z.string()).optional()
+    allowed: z.array(z.string().trim().min(1, "Value cannot be empty")).optional(),
+    required: z.array(z.string().trim().min(1, "Value cannot be empty")).optional(),
+    denied: z.array(z.string().trim().min(1, "Value cannot be empty")).optional()
   })
   .refine(
     (data) => {
@@ -87,22 +88,33 @@ const templateV2SanSchema = z
 const templateV2ValiditySchema = z.object({
   max: z
     .string()
-    .regex(/^\d+[dhmy]$/, {
+    .regex(new RE2("^\\d+[dhmy]$"), {
       message: "Max validity must be in format like '365d', '12m', '1y', or '24h'"
     })
     .optional()
 });
 
 const templateV2AlgorithmsSchema = z.object({
-  signature: z.array(z.string()).min(1, "At least one signature algorithm must be provided").optional(),
-  keyAlgorithm: z.array(z.string()).min(1, "At least one key algorithm must be provided").optional()
+  signature: z
+    .array(z.string().trim().min(1, "Algorithm cannot be empty"))
+    .min(1, "At least one signature algorithm must be provided")
+    .optional(),
+  keyAlgorithm: z
+    .array(z.string().trim().min(1, "Algorithm cannot be empty"))
+    .min(1, "At least one key algorithm must be provided")
+    .optional()
 });
 
 export const certificateTemplateV2ResponseSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string().uuid("Project ID must be valid"),
-  name: z.string(),
-  description: z.string().nullable().optional(),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Template name is required")
+    .max(255, "Template name must be less than 255 characters")
+    .regex(new RE2("^[a-zA-Z0-9-_]+$"), "Template name must contain only letters, numbers, hyphens, and underscores"),
+  description: z.string().trim().max(1000, "Description must be less than 1000 characters").nullable().optional(),
   subject: z.array(templateV2SubjectSchema).optional(),
   sans: z.array(templateV2SanSchema).optional(),
   keyUsages: templateV2KeyUsagesSchema.optional(),
@@ -114,26 +126,53 @@ export const certificateTemplateV2ResponseSchema = z.object({
 });
 
 export const certificateRequestSchema = z.object({
-  commonName: z.string().optional(),
-  organization: z.string().optional(),
-  country: z.string().optional(),
-  keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
-  extendedKeyUsages: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
+  commonName: z
+    .string()
+    .trim()
+    .min(1, "Common name cannot be empty")
+    .max(64, "Common name must be less than 64 characters")
+    .optional(),
+  organization: z
+    .string()
+    .trim()
+    .min(1, "Organization cannot be empty")
+    .max(64, "Organization must be less than 64 characters")
+    .optional(),
+  country: z
+    .string()
+    .trim()
+    .min(2, "Country code must be 2 characters")
+    .max(2, "Country code must be 2 characters")
+    .optional(),
+  keyUsages: z.array(z.nativeEnum(CertKeyUsageType)).min(1, "At least one key usage must be provided").optional(),
+  extendedKeyUsages: z
+    .array(z.nativeEnum(CertExtendedKeyUsageType))
+    .min(1, "At least one extended key usage must be provided")
+    .optional(),
   subjectAlternativeNames: z
     .array(
       z.object({
         type: sanTypeSchema,
-        value: z.string()
+        value: z
+          .string()
+          .trim()
+          .min(1, "SAN value cannot be empty")
+          .max(255, "SAN value must be less than 255 characters")
       })
     )
+    .min(1, "At least one SAN must be provided")
     .optional(),
   validity: z
     .object({
-      ttl: z.string()
+      ttl: z
+        .string()
+        .trim()
+        .min(1, "TTL cannot be empty")
+        .regex(new RE2("^\\d+[dhmy]$"), "TTL must be in format like '365d', '12m', '1y', or '24h'")
     })
     .optional(),
-  signatureAlgorithm: z.string().optional(),
-  keyAlgorithm: z.string().optional()
+  signatureAlgorithm: z.string().trim().min(1, "Signature algorithm cannot be empty").optional(),
+  keyAlgorithm: z.string().trim().min(1, "Key algorithm cannot be empty").optional()
 });
 
 export const validateCertificateRequestSchema = z.object({

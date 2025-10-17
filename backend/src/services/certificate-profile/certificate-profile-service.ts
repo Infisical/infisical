@@ -116,7 +116,7 @@ export const certificateProfileServiceFactory = ({
     const existingSlugProfile = await certificateProfileDAL.findBySlugAndProjectId(data.slug, projectId);
     if (existingSlugProfile) {
       throw new ForbiddenRequestError({
-        message: "Certificate profile with this slug already exists in project"
+        message: "Certificate profile with this name already exists in project"
       });
     }
 
@@ -245,7 +245,7 @@ export const certificateProfileServiceFactory = ({
       );
       if (conflictingProfile && conflictingProfile.id !== profileId) {
         throw new ForbiddenRequestError({
-          message: "Certificate profile with this slug already exists in project"
+          message: "Certificate profile with this name already exists in project"
         });
       }
     }
@@ -520,14 +520,6 @@ export const certificateProfileServiceFactory = ({
       ProjectPermissionCertificateProfileActions.Delete,
       ProjectPermissionSub.CertificateProfiles
     );
-
-    // Check if profile is in use by any certificates
-    const isInUse = await certificateProfileDAL.isProfileInUse(profileId);
-    if (isInUse) {
-      throw new ForbiddenRequestError({
-        message: "Cannot delete certificate profile that has issued certificates"
-      });
-    }
 
     const deletedProfile = await certificateProfileDAL.deleteById(profileId);
     if (!deletedProfile) {

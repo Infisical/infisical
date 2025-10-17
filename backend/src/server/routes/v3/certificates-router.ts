@@ -54,8 +54,12 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       body: z
         .object({
           profileId: z.string().uuid(),
-          commonName: validateTemplateRegexField,
-          ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
+          commonName: validateTemplateRegexField.optional(),
+          ttl: z
+            .string()
+            .trim()
+            .min(1, "TTL cannot be empty")
+            .refine((val) => ms(val) > 0, "TTL must be a positive number"),
           keyUsages: z.nativeEnum(CertKeyUsageType).array().optional(),
           extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
           notBefore: validateCaDateField.optional(),
@@ -162,8 +166,12 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       body: z
         .object({
           profileId: z.string().uuid(),
-          csr: z.string().trim().min(1).max(4096),
-          ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
+          csr: z.string().trim().min(1, "CSR cannot be empty").max(4096, "CSR cannot exceed 4096 characters"),
+          ttl: z
+            .string()
+            .trim()
+            .min(1, "TTL cannot be empty")
+            .refine((val) => ms(val) > 0, "TTL must be a positive number"),
           notBefore: validateCaDateField.optional(),
           notAfter: validateCaDateField.optional()
         })
@@ -234,11 +242,19 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             .array(
               z.object({
                 type: z.nativeEnum(ACMESANType),
-                value: z.string()
+                value: z
+                  .string()
+                  .trim()
+                  .min(1, "SAN value cannot be empty")
+                  .max(255, "SAN value must be less than 255 characters")
               })
             )
-            .min(1),
-          ttl: z.string().refine((val) => ms(val) > 0, "TTL must be a positive number"),
+            .min(1, "At least one subject alternative name must be provided"),
+          ttl: z
+            .string()
+            .trim()
+            .min(1, "TTL cannot be empty")
+            .refine((val) => ms(val) > 0, "TTL must be a positive number"),
           keyUsages: z.nativeEnum(CertKeyUsageType).array().optional(),
           extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
           notBefore: validateCaDateField.optional(),

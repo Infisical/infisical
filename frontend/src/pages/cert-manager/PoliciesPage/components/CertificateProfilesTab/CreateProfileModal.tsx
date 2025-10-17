@@ -27,8 +27,20 @@ import { useListCertificateTemplatesV2 } from "@app/hooks/api/certificateTemplat
 
 const createSchema = z
   .object({
-    slug: z.string().trim().min(1, "Profile slug is required"),
-    description: z.string().optional(),
+    slug: z
+      .string()
+      .trim()
+      .min(1, "Profile slug is required")
+      .max(255, "Profile slug must be less than 255 characters")
+      .regex(
+        /^[a-zA-Z0-9-_]+$/,
+        "Profile slug must contain only letters, numbers, hyphens, and underscores"
+      ),
+    description: z
+      .string()
+      .trim()
+      .max(1000, "Description must be less than 1000 characters")
+      .optional(),
     enrollmentType: z.enum(["api", "est"]),
     certificateAuthorityId: z.string().min(1, "Certificate Authority is required"),
     certificateTemplateId: z.string().min(1, "Certificate Template is required"),
@@ -36,8 +48,19 @@ const createSchema = z
       .object({
         disableBootstrapCaValidation: z.boolean().optional(),
         passphrase: z.string().min(1, "EST passphrase is required"),
-        caChain: z.string().min(1, "EST CA chain is required")
+        caChain: z.string().min(1, "EST CA chain is required").optional()
       })
+      .refine(
+        (data) => {
+          if (!data.disableBootstrapCaValidation && !data.caChain) {
+            return false;
+          }
+          return true;
+        },
+        {
+          message: "EST CA chain is required"
+        }
+      )
       .optional(),
     apiConfig: z
       .object({
@@ -63,8 +86,20 @@ const createSchema = z
 
 const editSchema = z
   .object({
-    slug: z.string().trim().min(1, "Profile slug is required"),
-    description: z.string().optional(),
+    slug: z
+      .string()
+      .trim()
+      .min(1, "Profile slug is required")
+      .max(255, "Profile slug must be less than 255 characters")
+      .regex(
+        /^[a-zA-Z0-9-_]+$/,
+        "Profile slug must contain only letters, numbers, hyphens, and underscores"
+      ),
+    description: z
+      .string()
+      .trim()
+      .max(1000, "Description must be less than 1000 characters")
+      .optional(),
     enrollmentType: z.enum(["api", "est"]),
     certificateAuthorityId: z.string().optional(),
     certificateTemplateId: z.string().optional(),
@@ -136,7 +171,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           estConfig: {
             disableBootstrapCaValidation: profile.estConfig?.disableBootstrapCaValidation || false,
             passphrase: "",
-            caChain: ""
+            caChain: undefined
           },
           apiConfig: {
             autoRenew: profile.apiConfig?.autoRenew || false,
@@ -193,7 +228,11 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
         };
 
         if (data.enrollmentType === "est" && data.estConfig) {
-          createData.estConfig = data.estConfig;
+          createData.estConfig = {
+            passphrase: data.estConfig.passphrase,
+            caChain: data.estConfig.caChain || "",
+            disableBootstrapCaValidation: data.estConfig.disableBootstrapCaValidation
+          };
         } else if (data.enrollmentType === "api" && data.apiConfig) {
           createData.apiConfig = data.apiConfig;
         }
@@ -241,7 +280,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             name="slug"
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="Profile Slug"
+                label="Name"
                 isRequired
                 isError={Boolean(error)}
                 errorText={error?.message}

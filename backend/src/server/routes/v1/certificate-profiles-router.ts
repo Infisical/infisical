@@ -7,6 +7,7 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 
 export const registerCertificateProfilesRouter = async (server: FastifyZodProvider) => {
@@ -453,7 +454,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       querystring: z.object({
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(20),
-        status: z.enum(["active", "expired", "revoked"]).optional(),
+        status: z.nativeEnum(CertStatus).optional(),
         search: z.string().optional()
       }),
       response: {

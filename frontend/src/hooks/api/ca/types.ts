@@ -176,7 +176,7 @@ export type TCreateCertificateV3DTO = {
   profileId: string;
   pkiCollectionId?: string;
   friendlyName?: string;
-  commonName: string;
+  commonName?: string;
   organization?: string;
   organizationUnit?: string;
   locality?: string;
@@ -195,7 +195,11 @@ export type TCreateCertificateV3DTO = {
   keyAlgorithm?: string;
 };
 
-export type TCreateCertificateV3Response = TCreateCertificateResponse;
+export type TCreateCertificateV3Response = TCreateCertificateResponse & {
+  projectId: string;
+  profileName: string;
+  certificateId: string;
+};
 
 export type TOrderCertificateDTO = {
   projectSlug: string;

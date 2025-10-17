@@ -89,7 +89,7 @@ export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {
               >
                 <Td>
                   <div className="flex items-center gap-2">
-                    <div className="font-medium">{template.name}</div>
+                    <div className="text-mineshaft-300">{template.name}</div>
                     {template.description && (
                       <Tooltip content={template.description}>
                         <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />

@@ -12,8 +12,7 @@ import {
   Modal,
   ModalContent,
   Select,
-  SelectItem,
-  Switch
+  SelectItem
   // DatePicker
 } from "@app/components/v2";
 import { useProject } from "@app/context";
@@ -152,7 +151,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
         type: CaType.INTERNAL,
         name: "",
         status: CaStatus.ACTIVE,
-        enableDirectIssuance: true,
+        enableDirectIssuance: false,
         configuration: {
           type: InternalCaType.ROOT,
           organization: "",
@@ -455,23 +454,6 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
                 <Input {...field} placeholder="Example CA" isDisabled={Boolean(ca)} />
               </FormControl>
             )}
-          />
-          <Controller
-            control={control}
-            name="enableDirectIssuance"
-            render={({ field, fieldState: { error } }) => {
-              return (
-                <FormControl isError={Boolean(error)} errorText={error?.message} className="my-8">
-                  <Switch
-                    id="enable-direct-issuance"
-                    onCheckedChange={(value) => field.onChange(value)}
-                    isChecked={field.value}
-                  >
-                    <p className="w-full">Enable Direct Issuance</p>
-                  </Switch>
-                </FormControl>
-              );
-            }}
           />
           <div className="flex items-center">
             <Button

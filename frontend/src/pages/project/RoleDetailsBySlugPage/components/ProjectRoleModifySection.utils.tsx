@@ -393,12 +393,8 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
-      [ProjectPermissionSub.CertificateProfiles]: CertificateProfilePolicyActionSchema.extend({
-        inverted: z.boolean().optional(),
-        conditions: ConditionSchema
-      })
-        .array()
-        .default([]),
+      [ProjectPermissionSub.CertificateProfiles]:
+        CertificateProfilePolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SshCertificateAuthorities]: GeneralPolicyActionSchema.array().default(
         []
       ),
@@ -479,7 +475,6 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.SecretRotation ||
   subject === ProjectPermissionSub.PkiSubscribers ||
   subject === ProjectPermissionSub.CertificateTemplates ||
-  subject === ProjectPermissionSub.CertificateProfiles ||
   subject === ProjectPermissionSub.SecretSyncs ||
   subject === ProjectPermissionSub.PkiSyncs ||
   subject === ProjectPermissionSub.SecretEvents ||
@@ -1176,9 +1171,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ),
         [ProjectPermissionCertificateProfileActions.IssueCert]: action.includes(
           ProjectPermissionCertificateProfileActions.IssueCert
-        ),
-        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
-        inverted
+        )
       });
 
       return;
@@ -2195,6 +2188,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.PkiSyncs,
           actions: [ProjectPermissionPkiSyncActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.CertificateProfiles,
+          actions: [ProjectPermissionCertificateProfileActions.Read]
         }
       ]
     },
@@ -2226,6 +2223,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.PkiSyncs,
           actions: Object.values(ProjectPermissionPkiSyncActions)
+        },
+        {
+          subject: ProjectPermissionSub.CertificateProfiles,
+          actions: Object.values(ProjectPermissionCertificateProfileActions)
         }
       ]
     },

@@ -129,8 +129,7 @@ export enum ProjectPermissionCertificateProfileActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  IssueCert = "issue-cert",
-  ListCerts = "list-certs"
+  IssueCert = "issue-cert"
 }
 
 export enum ProjectPermissionSecretRotationActions {
@@ -226,7 +225,6 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SshHosts
   | ProjectPermissionSub.PkiSubscribers
   | ProjectPermissionSub.CertificateTemplates
-  | ProjectPermissionSub.CertificateProfiles
   | ProjectPermissionSub.SecretFolders
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.SecretRotation

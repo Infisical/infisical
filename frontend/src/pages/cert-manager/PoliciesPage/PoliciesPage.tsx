@@ -52,7 +52,7 @@ export const PoliciesPage = () => {
               />
 
               <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabSections)}>
-                <TabList className="mb-6 w-full">
+                <TabList className="w-full">
                   <div className="flex w-full border-b border-mineshaft-600">
                     <Tab value={TabSections.CertificateProfiles}>Certificate Profiles</Tab>
                     <Tab value={TabSections.CertificateTemplatesV2}>Certificate Templates</Tab>

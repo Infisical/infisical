@@ -27,10 +27,8 @@ import { useProject } from "@app/context";
 import { useCreateCertificateV3, useGetCert } from "@app/hooks/api";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
-  certKeyAlgorithms,
   EXTENDED_KEY_USAGES_OPTIONS,
-  KEY_USAGES_OPTIONS,
-  SIGNATURE_ALGORITHMS_OPTIONS
+  KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { useGetCertificateTemplateV2ById } from "@app/hooks/api/certificateTemplates/queries";
@@ -42,49 +40,60 @@ import {
 
 import { CertificateContent } from "./CertificateContent";
 
-const schema = z.object({
-  profileId: z.string().min(1, "Profile is required"),
-  subjectAttributes: z
-    .array(
-      z.object({
-        type: z.enum(["common_name"]),
-        value: z.string().min(1, "Value is required")
-      })
-    )
-    .min(1, "At least one subject attribute is required"),
-  subjectAltNames: z
-    .array(
-      z.object({
-        type: z.enum(["dns", "ip", "email", "uri"]),
-        value: z.string().min(1, "Value is required")
-      })
-    )
-    .default([]),
-  ttl: z.string().trim().min(1, "TTL is required"),
-  signatureAlgorithm: z.string().optional(),
-  keyAlgorithm: z.string().optional(),
-  keyUsages: z.object({
-    [CertKeyUsage.DIGITAL_SIGNATURE]: z.boolean().optional(),
-    [CertKeyUsage.KEY_ENCIPHERMENT]: z.boolean().optional(),
-    [CertKeyUsage.NON_REPUDIATION]: z.boolean().optional(),
-    [CertKeyUsage.DATA_ENCIPHERMENT]: z.boolean().optional(),
-    [CertKeyUsage.KEY_AGREEMENT]: z.boolean().optional(),
-    [CertKeyUsage.KEY_CERT_SIGN]: z.boolean().optional(),
-    [CertKeyUsage.CRL_SIGN]: z.boolean().optional(),
-    [CertKeyUsage.ENCIPHER_ONLY]: z.boolean().optional(),
-    [CertKeyUsage.DECIPHER_ONLY]: z.boolean().optional()
-  }),
-  extendedKeyUsages: z.object({
-    [CertExtendedKeyUsage.CLIENT_AUTH]: z.boolean().optional(),
-    [CertExtendedKeyUsage.CODE_SIGNING]: z.boolean().optional(),
-    [CertExtendedKeyUsage.EMAIL_PROTECTION]: z.boolean().optional(),
-    [CertExtendedKeyUsage.OCSP_SIGNING]: z.boolean().optional(),
-    [CertExtendedKeyUsage.SERVER_AUTH]: z.boolean().optional(),
-    [CertExtendedKeyUsage.TIMESTAMPING]: z.boolean().optional()
-  })
-});
+const createSchema = (shouldShowSubjectSection: boolean) => {
+  return z.object({
+    profileId: z.string().min(1, "Profile is required"),
+    subjectAttributes: shouldShowSubjectSection
+      ? z
+          .array(
+            z.object({
+              type: z.enum(["common_name"]),
+              value: z.string().min(1, "Value is required")
+            })
+          )
+          .min(1, "At least one subject attribute is required")
+      : z
+          .array(
+            z.object({
+              type: z.enum(["common_name"]),
+              value: z.string().min(1, "Value is required")
+            })
+          )
+          .optional(),
+    subjectAltNames: z
+      .array(
+        z.object({
+          type: z.enum(["dns", "ip", "email", "uri"]),
+          value: z.string().min(1, "Value is required")
+        })
+      )
+      .default([]),
+    ttl: z.string().trim().min(1, "TTL is required"),
+    signatureAlgorithm: z.string().min(1, "Signature algorithm is required"),
+    keyAlgorithm: z.string().min(1, "Key algorithm is required"),
+    keyUsages: z.object({
+      [CertKeyUsage.DIGITAL_SIGNATURE]: z.boolean().optional(),
+      [CertKeyUsage.KEY_ENCIPHERMENT]: z.boolean().optional(),
+      [CertKeyUsage.NON_REPUDIATION]: z.boolean().optional(),
+      [CertKeyUsage.DATA_ENCIPHERMENT]: z.boolean().optional(),
+      [CertKeyUsage.KEY_AGREEMENT]: z.boolean().optional(),
+      [CertKeyUsage.KEY_CERT_SIGN]: z.boolean().optional(),
+      [CertKeyUsage.CRL_SIGN]: z.boolean().optional(),
+      [CertKeyUsage.ENCIPHER_ONLY]: z.boolean().optional(),
+      [CertKeyUsage.DECIPHER_ONLY]: z.boolean().optional()
+    }),
+    extendedKeyUsages: z.object({
+      [CertExtendedKeyUsage.CLIENT_AUTH]: z.boolean().optional(),
+      [CertExtendedKeyUsage.CODE_SIGNING]: z.boolean().optional(),
+      [CertExtendedKeyUsage.EMAIL_PROTECTION]: z.boolean().optional(),
+      [CertExtendedKeyUsage.OCSP_SIGNING]: z.boolean().optional(),
+      [CertExtendedKeyUsage.SERVER_AUTH]: z.boolean().optional(),
+      [CertExtendedKeyUsage.TIMESTAMPING]: z.boolean().optional()
+    })
+  });
+};
 
-export type FormData = z.infer<typeof schema>;
+export type FormData = z.infer<ReturnType<typeof createSchema>>;
 
 type Props = {
   popUp: UsePopUpState<["certificateIssuance"]>;
@@ -110,6 +119,9 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   const [requiredExtendedKeyUsages, setRequiredExtendedKeyUsages] = useState<string[]>([]);
   const [allowedSignatureAlgorithms, setAllowedSignatureAlgorithms] = useState<string[]>([]);
   const [allowedKeyAlgorithms, setAllowedKeyAlgorithms] = useState<string[]>([]);
+  const [allowedSanTypes, setAllowedSanTypes] = useState<string[]>(["dns", "ip", "email", "uri"]);
+  const [shouldShowSanSection, setShouldShowSanSection] = useState<boolean>(true);
+  const [shouldShowSubjectSection, setShouldShowSubjectSection] = useState<boolean>(true);
   const { currentProject } = useProject();
 
   const inputSerialNumber =
@@ -133,10 +145,12 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
     setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(createSchema(shouldShowSubjectSection)),
     defaultValues: {
       profileId: profileId || "",
-      subjectAttributes: [{ type: "common_name", value: "" }],
+      subjectAttributes: shouldShowSubjectSection
+        ? [{ type: "common_name", value: "" }]
+        : undefined,
       subjectAltNames: [],
       ttl: "30d",
       signatureAlgorithm: "",
@@ -154,6 +168,9 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
     setRequiredExtendedKeyUsages([]);
     setAllowedSignatureAlgorithms([]);
     setAllowedKeyAlgorithms([]);
+    setAllowedSanTypes(["dns", "ip", "email", "uri"]);
+    setShouldShowSanSection(true);
+    setShouldShowSubjectSection(true);
     reset();
   }, [reset]);
 
@@ -168,21 +185,31 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   });
 
   const filteredKeyUsages = useMemo(() => {
-    if (allowedKeyUsages.length === 0) return KEY_USAGES_OPTIONS;
     return KEY_USAGES_OPTIONS.filter(({ value }) => allowedKeyUsages.includes(value));
   }, [allowedKeyUsages]);
 
   const filteredExtendedKeyUsages = useMemo(() => {
-    if (allowedExtendedKeyUsages.length === 0) return EXTENDED_KEY_USAGES_OPTIONS;
     return EXTENDED_KEY_USAGES_OPTIONS.filter(({ value }) =>
       allowedExtendedKeyUsages.includes(value)
     );
   }, [allowedExtendedKeyUsages]);
 
-  const availableSignatureAlgorithms = useMemo(() => {
-    if (allowedSignatureAlgorithms.length === 0) {
-      return SIGNATURE_ALGORITHMS_OPTIONS;
+  const mapBackendSanTypeToFrontend = (backendType: string): string => {
+    switch (backendType) {
+      case "dns_name":
+        return "dns";
+      case "ip_address":
+        return "ip";
+      case "email":
+        return "email";
+      case "uri":
+        return "uri";
+      default:
+        return backendType;
     }
+  };
+
+  const availableSignatureAlgorithms = useMemo(() => {
     return allowedSignatureAlgorithms.map((templateAlgorithm) => {
       const apiAlgorithm = mapTemplateSignatureAlgorithmToApi(templateAlgorithm);
       return {
@@ -193,9 +220,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   }, [allowedSignatureAlgorithms]);
 
   const availableKeyAlgorithms = useMemo(() => {
-    if (allowedKeyAlgorithms.length === 0) {
-      return certKeyAlgorithms;
-    }
     return allowedKeyAlgorithms.map((templateAlgorithm) => {
       const apiAlgorithm = mapTemplateKeyAlgorithmToApi(templateAlgorithm);
       return {
@@ -247,6 +271,33 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
       setRequiredKeyUsages(templateData.keyUsages?.required || []);
       setRequiredExtendedKeyUsages(templateData.extendedKeyUsages?.required || []);
 
+      if (templateData.sans && templateData.sans.length > 0) {
+        const sanTypes: string[] = [];
+        templateData.sans.forEach((sanPolicy) => {
+          const frontendType = mapBackendSanTypeToFrontend(sanPolicy.type);
+          if (!sanTypes.includes(frontendType)) {
+            sanTypes.push(frontendType);
+          }
+        });
+        setAllowedSanTypes(sanTypes);
+        setShouldShowSanSection(true);
+      } else {
+        setAllowedSanTypes([]);
+        setShouldShowSanSection(false);
+        setValue("subjectAltNames", []);
+      }
+
+      if (templateData.subject && templateData.subject.length > 0) {
+        setShouldShowSubjectSection(true);
+        const currentSubjectAttrs = watch("subjectAttributes");
+        if (!currentSubjectAttrs || currentSubjectAttrs.length === 0) {
+          setValue("subjectAttributes", [{ type: "common_name", value: "" }]);
+        }
+      } else {
+        setShouldShowSubjectSection(false);
+        setValue("subjectAttributes", undefined);
+      }
+
       const initialKeyUsages: Record<string, boolean> = {};
       const initialExtendedKeyUsages: Record<string, boolean> = {};
 
@@ -261,7 +312,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
       setValue("keyUsages", initialKeyUsages);
       setValue("extendedKeyUsages", initialExtendedKeyUsages);
     }
-  }, [templateData, selectedProfile, setValue, popUp?.certificateIssuance?.isOpen]);
+  }, [templateData, selectedProfile, setValue, watch, popUp?.certificateIssuance?.isOpen]);
 
   useEffect(() => {
     if (cert) {
@@ -299,22 +350,19 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   }, [popUp?.certificateIssuance?.isOpen, profileId, cert, setValue]);
 
   const getAttributeValue = useCallback(
-    (subjectAttributes: typeof schema._type.subjectAttributes, type: string) => {
-      const foundAttr = subjectAttributes.find((attr) => attr.type === type);
+    (subjectAttributes: FormData["subjectAttributes"], type: string) => {
+      const foundAttr = subjectAttributes?.find((attr) => attr.type === type);
       return foundAttr?.value || "";
     },
     []
   );
 
-  const formatSubjectAltNames = useCallback(
-    (subjectAltNames: typeof schema._type.subjectAltNames) => {
-      return subjectAltNames
-        .filter((san) => san.value.trim())
-        .map((san) => san.value.trim())
-        .join(", ");
-    },
-    []
-  );
+  const formatSubjectAltNames = useCallback((subjectAltNames: FormData["subjectAltNames"]) => {
+    return subjectAltNames
+      .filter((san) => san.value.trim())
+      .map((san) => san.value.trim())
+      .join(", ");
+  }, []);
 
   const filterUsages = useCallback(<T extends Record<string, boolean>>(usages: T) => {
     return Object.entries(usages)
@@ -350,28 +398,40 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
           return;
         }
 
-        const commonName = getAttributeValue(subjectAttributes, "common_name");
-        if (!commonName.trim()) {
-          createNotification({
-            text: "Common name is required.",
-            type: "error"
-          });
-          return;
+        let commonName = "";
+        if (shouldShowSubjectSection && subjectAttributes && subjectAttributes.length > 0) {
+          commonName = getAttributeValue(subjectAttributes, "common_name");
+          if (!commonName.trim()) {
+            createNotification({
+              text: "Common name is required.",
+              type: "error"
+            });
+            return;
+          }
         }
 
-        const { serialNumber, certificate, certificateChain, privateKey } = await createCertificate(
-          {
-            profileId: formProfileId,
-            projectSlug: currentProject.slug,
-            commonName,
-            subjectAltNames: formatSubjectAltNames(subjectAltNames),
-            ttl,
-            signatureAlgorithm,
-            keyAlgorithm,
-            keyUsages: filterUsages(keyUsages) as CertKeyUsage[],
-            extendedKeyUsages: filterUsages(extendedKeyUsages) as CertExtendedKeyUsage[]
+        const certificateRequest: any = {
+          profileId: formProfileId,
+          projectSlug: currentProject.slug,
+          ttl,
+          signatureAlgorithm,
+          keyAlgorithm,
+          keyUsages: filterUsages(keyUsages) as CertKeyUsage[],
+          extendedKeyUsages: filterUsages(extendedKeyUsages) as CertExtendedKeyUsage[]
+        };
+
+        if (shouldShowSubjectSection && commonName) {
+          certificateRequest.commonName = commonName;
+        }
+        if (shouldShowSanSection && subjectAltNames && subjectAltNames.length > 0) {
+          const formattedSans = formatSubjectAltNames(subjectAltNames);
+          if (formattedSans) {
+            certificateRequest.subjectAltNames = formattedSans;
           }
-        );
+        }
+
+        const { serialNumber, certificate, certificateChain, privateKey } =
+          await createCertificate(certificateRequest);
 
         setCertificateDetails({
           serialNumber,
@@ -399,7 +459,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
     [
       currentProject?.slug,
       createCertificate,
-      reset,
+      shouldShowSubjectSection,
+      shouldShowSanSection,
       getAttributeValue,
       formatSubjectAltNames,
       filterUsages
@@ -517,47 +578,132 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
 
             {(selectedProfile || profileId) && (
               <>
-                <Controller
-                  control={control}
-                  name="subjectAttributes"
-                  render={({ field: { onChange, value }, fieldState: { error } }) => (
-                    <FormControl
-                      label="Subject Attributes"
-                      isRequired
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                    >
-                      <div className="space-y-2">
-                        {value.map((attr, index) => (
-                          // eslint-disable-next-line react/no-array-index-key
-                          <div key={`subject-attr-${index}`} className="flex items-center gap-2">
-                            <Select
-                              value={attr.type}
-                              onValueChange={(newType) => {
-                                const newValue = [...value];
-                                newValue[index] = {
-                                  ...attr,
-                                  type: newType as typeof attr.type
-                                };
-                                onChange(newValue);
-                              }}
-                              className="w-48"
+                {shouldShowSubjectSection && (
+                  <Controller
+                    control={control}
+                    name="subjectAttributes"
+                    render={({ field: { onChange, value }, fieldState: { error } }) => (
+                      <FormControl
+                        label="Subject Attributes"
+                        isRequired
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                      >
+                        <div className="space-y-2">
+                          {(value || []).map((attr, index) => (
+                            // eslint-disable-next-line react/no-array-index-key
+                            <div key={`subject-attr-${index}`} className="flex items-center gap-2">
+                              <Select
+                                value={attr.type}
+                                onValueChange={(newType) => {
+                                  const newValue = [...(value || [])];
+                                  newValue[index] = {
+                                    ...attr,
+                                    type: newType as typeof attr.type
+                                  };
+                                  onChange(newValue);
+                                }}
+                                className="w-48"
+                              >
+                                <SelectItem value="common_name">Common Name</SelectItem>
+                              </Select>
+                              <Input
+                                value={attr.value}
+                                onChange={(e) => {
+                                  const newValue = [...(value || [])];
+                                  newValue[index] = { ...attr, value: e.target.value };
+                                  onChange(newValue);
+                                }}
+                                placeholder="example.com"
+                                className="flex-1"
+                              />
+                              {(value || []).length > 1 && (
+                                <IconButton
+                                  ariaLabel="Remove Subject Attribute"
+                                  variant="plain"
+                                  size="sm"
+                                  onClick={() => {
+                                    const newValue = (value || []).filter((_, i) => i !== index);
+                                    onChange(newValue);
+                                  }}
+                                >
+                                  <FontAwesomeIcon icon={faTrash} />
+                                </IconButton>
+                              )}
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline_bg"
+                            size="xs"
+                            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                            onClick={() => {
+                              onChange([...(value || []), { type: "common_name", value: "" }]);
+                            }}
+                            className="w-full"
+                          >
+                            Add Subject Attribute
+                          </Button>
+                        </div>
+                      </FormControl>
+                    )}
+                  />
+                )}
+
+                {shouldShowSanSection && (
+                  <Controller
+                    control={control}
+                    name="subjectAltNames"
+                    render={({ field: { onChange, value }, fieldState: { error } }) => (
+                      <FormControl
+                        label="Subject Alternative Names (SANs)"
+                        errorText={error?.message}
+                        isError={Boolean(error)}
+                      >
+                        <div className="space-y-2">
+                          {value.map((san, index) => (
+                            <div
+                              // eslint-disable-next-line react/no-array-index-key
+                              key={`subject-alt-name-${index}`}
+                              className="flex items-center gap-2"
                             >
-                              <SelectItem value="common_name">Common Name</SelectItem>
-                            </Select>
-                            <Input
-                              value={attr.value}
-                              onChange={(e) => {
-                                const newValue = [...value];
-                                newValue[index] = { ...attr, value: e.target.value };
-                                onChange(newValue);
-                              }}
-                              placeholder="example.com"
-                              className="flex-1"
-                            />
-                            {value.length > 1 && (
+                              <Select
+                                value={san.type}
+                                onValueChange={(newType) => {
+                                  const newValue = [...value];
+                                  newValue[index] = {
+                                    ...san,
+                                    type: newType as "dns" | "ip" | "email" | "uri"
+                                  };
+                                  onChange(newValue);
+                                }}
+                                className="w-24"
+                              >
+                                {allowedSanTypes.includes("dns") && (
+                                  <SelectItem value="dns">DNS</SelectItem>
+                                )}
+                                {allowedSanTypes.includes("ip") && (
+                                  <SelectItem value="ip">IP</SelectItem>
+                                )}
+                                {allowedSanTypes.includes("email") && (
+                                  <SelectItem value="email">Email</SelectItem>
+                                )}
+                                {allowedSanTypes.includes("uri") && (
+                                  <SelectItem value="uri">URI</SelectItem>
+                                )}
+                              </Select>
+                              <Input
+                                value={san.value}
+                                onChange={(e) => {
+                                  const newValue = [...value];
+                                  newValue[index] = { ...san, value: e.target.value };
+                                  onChange(newValue);
+                                }}
+                                placeholder={getSanPlaceholder(san.type)}
+                                className="flex-1"
+                              />
                               <IconButton
-                                ariaLabel="Remove Subject Attribute"
+                                ariaLabel="Remove SAN"
                                 variant="plain"
                                 size="sm"
                                 onClick={() => {
@@ -567,98 +713,30 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                               >
                                 <FontAwesomeIcon icon={faTrash} />
                               </IconButton>
-                            )}
-                          </div>
-                        ))}
-                        <Button
-                          type="button"
-                          variant="outline_bg"
-                          size="xs"
-                          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                          onClick={() => {
-                            onChange([...value, { type: "common_name", value: "" }]);
-                          }}
-                          className="w-full"
-                        >
-                          Add Subject Attribute
-                        </Button>
-                      </div>
-                    </FormControl>
-                  )}
-                />
-
-                <Controller
-                  control={control}
-                  name="subjectAltNames"
-                  render={({ field: { onChange, value }, fieldState: { error } }) => (
-                    <FormControl
-                      label="Subject Alternative Names (SANs)"
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                    >
-                      <div className="space-y-2">
-                        {value.map((san, index) => (
-                          <div
-                            // eslint-disable-next-line react/no-array-index-key
-                            key={`subject-alt-name-${index}`}
-                            className="flex items-center gap-2"
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline_bg"
+                            size="xs"
+                            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                            onClick={() => {
+                              const defaultType =
+                                allowedSanTypes.length > 0 ? allowedSanTypes[0] : "dns";
+                              onChange([
+                                ...value,
+                                { type: defaultType as "dns" | "ip" | "email" | "uri", value: "" }
+                              ]);
+                            }}
+                            className="w-full"
                           >
-                            <Select
-                              value={san.type}
-                              onValueChange={(newType) => {
-                                const newValue = [...value];
-                                newValue[index] = {
-                                  ...san,
-                                  type: newType as "dns" | "ip" | "email" | "uri"
-                                };
-                                onChange(newValue);
-                              }}
-                              className="w-24"
-                            >
-                              <SelectItem value="dns">DNS</SelectItem>
-                              <SelectItem value="ip">IP</SelectItem>
-                              <SelectItem value="email">Email</SelectItem>
-                              <SelectItem value="uri">URI</SelectItem>
-                            </Select>
-                            <Input
-                              value={san.value}
-                              onChange={(e) => {
-                                const newValue = [...value];
-                                newValue[index] = { ...san, value: e.target.value };
-                                onChange(newValue);
-                              }}
-                              placeholder={getSanPlaceholder(san.type)}
-                              className="flex-1"
-                            />
-                            <IconButton
-                              ariaLabel="Remove SAN"
-                              variant="plain"
-                              size="sm"
-                              onClick={() => {
-                                const newValue = value.filter((_, i) => i !== index);
-                                onChange(newValue);
-                              }}
-                            >
-                              <FontAwesomeIcon icon={faTrash} />
-                            </IconButton>
-                          </div>
-                        ))}
-                        <Button
-                          type="button"
-                          variant="outline_bg"
-                          size="xs"
-                          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                          onClick={() => {
-                            onChange([...value, { type: "dns", value: "" }]);
-                          }}
-                          className="w-full"
-                        >
-                          Add SAN
-                        </Button>
-                      </div>
-                    </FormControl>
-                  )}
-                />
+                            Add SAN
+                          </Button>
+                        </div>
+                      </FormControl>
+                    )}
+                  />
+                )}
 
                 <Controller
                   control={control}
@@ -744,85 +822,89 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                 </div>
 
                 <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="key-usages">
-                    <AccordionTrigger>Key Usages</AccordionTrigger>
-                    <AccordionContent>
-                      <div className="grid grid-cols-2 gap-2 pl-2">
-                        {filteredKeyUsages.map(({ label, value }) => {
-                          const isRequired = requiredKeyUsages.includes(value);
-                          return (
-                            <Controller
-                              key={label}
-                              control={control}
-                              name={`keyUsages.${value}` as any}
-                              render={({ field }) => (
-                                <div className="flex items-center space-x-3">
-                                  <Checkbox
-                                    id={`key-usage-${value}`}
-                                    isChecked={field.value || false}
-                                    onCheckedChange={(checked) => {
-                                      if (!isRequired) {
-                                        field.onChange(checked);
-                                      }
-                                    }}
-                                    isDisabled={isRequired}
-                                  />
-                                  <div className="flex items-center gap-2">
-                                    <FormLabel
+                  {filteredKeyUsages.length > 0 && (
+                    <AccordionItem value="key-usages">
+                      <AccordionTrigger>Key Usages</AccordionTrigger>
+                      <AccordionContent>
+                        <div className="grid grid-cols-2 gap-2 pl-2">
+                          {filteredKeyUsages.map(({ label, value }) => {
+                            const isRequired = requiredKeyUsages.includes(value);
+                            return (
+                              <Controller
+                                key={label}
+                                control={control}
+                                name={`keyUsages.${value}` as any}
+                                render={({ field }) => (
+                                  <div className="flex items-center space-x-3">
+                                    <Checkbox
                                       id={`key-usage-${value}`}
-                                      className={`text-sm ${isRequired ? "text-mineshaft-200" : "cursor-pointer text-mineshaft-300"}`}
-                                      label={label}
+                                      isChecked={field.value || false}
+                                      onCheckedChange={(checked) => {
+                                        if (!isRequired) {
+                                          field.onChange(checked);
+                                        }
+                                      }}
+                                      isDisabled={isRequired}
                                     />
-                                    {isRequired && <span className="text-xs">(Required)</span>}
+                                    <div className="flex items-center gap-2">
+                                      <FormLabel
+                                        id={`key-usage-${value}`}
+                                        className={`text-sm ${isRequired ? "text-mineshaft-200" : "cursor-pointer text-mineshaft-300"}`}
+                                        label={label}
+                                      />
+                                      {isRequired && <span className="text-xs">(Required)</span>}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
-                            />
-                          );
-                        })}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
+                                )}
+                              />
+                            );
+                          })}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  )}
 
-                  <AccordionItem value="extended-key-usages">
-                    <AccordionTrigger>Extended Key Usages</AccordionTrigger>
-                    <AccordionContent>
-                      <div className="grid grid-cols-2 gap-2 pl-2">
-                        {filteredExtendedKeyUsages.map(({ label, value }) => {
-                          const isRequired = requiredExtendedKeyUsages.includes(value);
-                          return (
-                            <Controller
-                              key={label}
-                              control={control}
-                              name={`extendedKeyUsages.${value}` as any}
-                              render={({ field }) => (
-                                <div className="flex items-center space-x-3">
-                                  <Checkbox
-                                    id={`ext-key-usage-${value}`}
-                                    isChecked={field.value || false}
-                                    onCheckedChange={(checked) => {
-                                      if (!isRequired) {
-                                        field.onChange(checked);
-                                      }
-                                    }}
-                                    isDisabled={isRequired}
-                                  />
-                                  <div className="flex items-center gap-2">
-                                    <FormLabel
+                  {filteredExtendedKeyUsages.length > 0 && (
+                    <AccordionItem value="extended-key-usages">
+                      <AccordionTrigger>Extended Key Usages</AccordionTrigger>
+                      <AccordionContent>
+                        <div className="grid grid-cols-2 gap-2 pl-2">
+                          {filteredExtendedKeyUsages.map(({ label, value }) => {
+                            const isRequired = requiredExtendedKeyUsages.includes(value);
+                            return (
+                              <Controller
+                                key={label}
+                                control={control}
+                                name={`extendedKeyUsages.${value}` as any}
+                                render={({ field }) => (
+                                  <div className="flex items-center space-x-3">
+                                    <Checkbox
                                       id={`ext-key-usage-${value}`}
-                                      className={`text-sm ${isRequired ? "text-mineshaft-200" : "cursor-pointer text-mineshaft-300"}`}
-                                      label={label}
+                                      isChecked={field.value || false}
+                                      onCheckedChange={(checked) => {
+                                        if (!isRequired) {
+                                          field.onChange(checked);
+                                        }
+                                      }}
+                                      isDisabled={isRequired}
                                     />
-                                    {isRequired && <span className="text-xs">(Required)</span>}
+                                    <div className="flex items-center gap-2">
+                                      <FormLabel
+                                        id={`ext-key-usage-${value}`}
+                                        className={`text-sm ${isRequired ? "text-mineshaft-200" : "cursor-pointer text-mineshaft-300"}`}
+                                        label={label}
+                                      />
+                                      {isRequired && <span className="text-xs">(Required)</span>}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
-                            />
-                          );
-                        })}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
+                                )}
+                              />
+                            );
+                          })}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  )}
                 </Accordion>
               </>
             )}

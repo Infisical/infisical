@@ -362,8 +362,8 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     return {
       name: data.name,
       description: data.description,
-      subject: subject.length > 0 ? subject : undefined,
-      sans: sans.length > 0 ? sans : undefined,
+      subject,
+      sans,
       keyUsages: Object.keys(keyUsages).length > 0 ? keyUsages : undefined,
       extendedKeyUsages: Object.keys(extendedKeyUsages).length > 0 ? extendedKeyUsages : undefined,
       algorithms: Object.keys(algorithms).length > 0 ? algorithms : undefined,
@@ -614,7 +614,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                               required
                             />
 
-                            {watchedAttributes.length > 1 && (
+                            {watchedAttributes.length > 0 && (
                               <IconButton
                                 ariaLabel="Remove Attribute"
                                 variant="plain"
@@ -672,7 +672,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                               };
                               setValue("subjectAlternativeNames", newSans);
                             }}
-                            className="w-24"
+                            className="w-36"
                           >
                             {SAN_TYPE_OPTIONS.map((type) => (
                               <SelectItem key={type} value={type}>
@@ -719,7 +719,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                             required
                           />
 
-                          {watchedSans.length > 1 && (
+                          {watchedSans.length > 0 && (
                             <IconButton
                               ariaLabel="Remove SAN"
                               variant="plain"
@@ -755,7 +755,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                 <div className="space-y-6">
                   <div>
                     <h4 className="mb-3 text-sm font-medium text-mineshaft-200">
-                      Signature Algorithms
+                      Allowed Signature Algorithms
                     </h4>
                     <Controller
                       control={control}
@@ -799,7 +799,9 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                   </div>
 
                   <div>
-                    <h4 className="mb-3 text-sm font-medium text-mineshaft-200">Key Algorithms</h4>
+                    <h4 className="mb-3 text-sm font-medium text-mineshaft-200">
+                      Allowed Key Algorithms
+                    </h4>
                     <Controller
                       control={control}
                       name="keyAlgorithm.allowedKeyTypes"

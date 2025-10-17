@@ -150,7 +150,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
     <Tr key={profile.id} className="h-10 transition-colors duration-100 hover:bg-mineshaft-700">
       <Td>
         <div className="flex items-center gap-2">
-          <div className="font-medium text-mineshaft-100">{profile.slug}</div>
+          <div className="text-mineshaft-300">{profile.slug}</div>
           {profile.description && (
             <Tooltip content={profile.description}>
               <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />

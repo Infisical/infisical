@@ -166,6 +166,10 @@ export const useCreateCertificateV3 = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.forProjectCertificates(projectSlug)
       });
+
+      queryClient.invalidateQueries({
+        queryKey: ["certificate-profiles"]
+      });
     }
   });
 };
