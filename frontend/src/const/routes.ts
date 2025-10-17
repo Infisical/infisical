@@ -66,7 +66,11 @@ export const ROUTE_PATHS = Object.freeze({
         "/organization/app-connections/$appConnection/oauth/callback",
         "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback"
       )
-    }
+    },
+    NetworkingPage: setRoute(
+      "/organization/networking",
+      "/_authenticate/_inject-org-details/_org-layout/organization/networking"
+    )
   },
   SecretManager: {
     ApprovalPage: setRoute(

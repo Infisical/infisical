@@ -5,16 +5,16 @@ import { z } from "zod";
 import { NetworkingPage } from "./NetworkingPage";
 
 const NetworkingPageQueryParams = z.object({
-  selectedTab: z.string().catch("")
+  selectedTab: z.string().catch("gateways")
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organization/networking/"
+  "/_authenticate/_inject-org-details/_org-layout/organization/networking"
 )({
   component: NetworkingPage,
   validateSearch: zodValidator(NetworkingPageQueryParams),
   search: {
-    middlewares: [stripSearchParams({ selectedTab: "" })]
+    middlewares: [stripSearchParams({ selectedTab: "gateways" })]
   },
   context: () => ({
     breadcrumbs: [
