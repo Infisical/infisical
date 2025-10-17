@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import * as x509 from "@peculiar/x509";
 
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -68,6 +69,13 @@ export const parseDistinguishedName = (dn: string): TDNParts => {
 
 export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
   switch (keyAlgorithm) {
+    case CertKeyAlgorithm.RSA_3072:
+      return {
+        name: "RSASSA-PKCS1-v1_5",
+        hash: "SHA-256",
+        publicExponent: new Uint8Array([1, 0, 1]),
+        modulusLength: 3072
+      };
     case CertKeyAlgorithm.RSA_4096:
       return {
         name: "RSASSA-PKCS1-v1_5",
@@ -137,7 +145,8 @@ export const signatureAlgorithmToAlgCfg = (signatureAlgorithm: string, keyAlgori
         name: "RSASSA-PKCS1-v1_5",
         hash: normalizedHash || "SHA-256",
         publicExponent: new Uint8Array([1, 0, 1]),
-        modulusLength: keyAlgorithm === CertKeyAlgorithm.RSA_4096 ? 4096 : 2048
+        modulusLength:
+          keyAlgorithm === CertKeyAlgorithm.RSA_4096 ? 4096 : keyAlgorithm === CertKeyAlgorithm.RSA_3072 ? 3072 : 2048
       };
     case "ECDSA":
       // eslint-disable-next-line no-case-declarations
@@ -177,7 +186,8 @@ export const getCaCredentials = async ({
   certificateAuthorityDAL,
   certificateAuthoritySecretDAL,
   projectDAL,
-  kmsService
+  kmsService,
+  signatureAlgorithm
 }: TGetCaCredentialsDTO) => {
   const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
   if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
@@ -198,7 +208,7 @@ export const getCaCredentials = async ({
     cipherTextBlob: caSecret.encryptedPrivateKey
   });
 
-  const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
+  const alg = signatureAlgorithm || keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
   const skObj = crypto.nativeCrypto.createPrivateKey({ key: decryptedPrivateKey, format: "der", type: "pkcs8" });
   const caPrivateKey = await crypto.nativeCrypto.subtle.importKey(
     "pkcs8",

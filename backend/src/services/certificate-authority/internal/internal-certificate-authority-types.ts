@@ -195,6 +195,7 @@ export type TGetCaCredentialsDTO = {
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  signatureAlgorithm?: RsaHashedImportParams | EcKeyImportParams;
 };
 
 export type TGetCaCertChainsDTO = {

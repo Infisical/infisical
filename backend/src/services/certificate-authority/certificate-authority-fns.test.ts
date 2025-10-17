@@ -28,6 +28,17 @@ describe("signatureAlgorithmToAlgCfg", () => {
       });
     });
 
+    it("should handle RSA-SHA256 with RSA_3072 correctly", () => {
+      const result = signatureAlgorithmToAlgCfg("RSA-SHA256", CertKeyAlgorithm.RSA_3072);
+
+      expect(result).toEqual({
+        name: "RSASSA-PKCS1-v1_5",
+        hash: "SHA-256",
+        publicExponent: new Uint8Array([1, 0, 1]),
+        modulusLength: 3072
+      });
+    });
+
     it("should handle RSA-SHA512 correctly", () => {
       const result = signatureAlgorithmToAlgCfg("RSA-SHA512", CertKeyAlgorithm.RSA_2048);
 

@@ -174,9 +174,11 @@ export const certificateTemplateV2ServiceFactory = ({
   const mapTemplateKeyAlgorithmToApi = (templateFormat: string): string => {
     const mapping: Record<string, string> = {
       "RSA-2048": "RSA_2048",
+      "RSA-3072": "RSA_3072",
       "RSA-4096": "RSA_4096",
       "ECDSA-P256": "EC_prime256v1",
-      "ECDSA-P384": "EC_secp384r1"
+      "ECDSA-P384": "EC_secp384r1",
+      "ECDSA-P521": "EC_secp521r1"
     };
     return mapping[templateFormat] || templateFormat;
   };

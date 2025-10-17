@@ -1322,7 +1322,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
       projectDAL,
-      kmsService
+      kmsService,
+      signatureAlgorithm: signingAlg
     });
 
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
