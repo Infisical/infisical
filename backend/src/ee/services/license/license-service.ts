@@ -214,7 +214,7 @@ export const licenseServiceFactory = ({
         const identityUsed = await licenseDAL.countOrgUsersAndIdentities(orgId);
         currentPlan.identitiesUsed = identityUsed;
 
-        if (currentPlan.identityLimit !== null && currentPlan.identityLimit !== identityUsed) {
+        if (currentPlan.identityLimit && currentPlan.identityLimit !== identityUsed) {
           try {
             await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
               quantity: membersUsed,
