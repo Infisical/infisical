@@ -165,7 +165,7 @@ describe("Secret Folder Router", async () => {
   });
 
   test("Creating a duplicate folder should return a 400 error", async () => {
-    await createFolder({ name: "folder-duplicate", path: "/level1/level2" });
+    const newFolder = await createFolder({ name: "folder-duplicate", path: "/level1/level2" });
 
     const res = await testServer.inject({
       method: "POST",
@@ -183,5 +183,6 @@ describe("Secret Folder Router", async () => {
     expect(res.statusCode).toBe(400);
     const payload = JSON.parse(res.payload);
     expect(payload).toHaveProperty("error");
+    await deleteFolder({ path: "/level1/level2", id: newFolder.id });
   });
 });
