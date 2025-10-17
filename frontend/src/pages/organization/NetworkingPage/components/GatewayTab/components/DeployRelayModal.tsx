@@ -171,7 +171,7 @@ export const DeployRelayModal = ({ isOpen, onOpenChange }: Props) => {
 
         <FormLabel label="CLI Command" className="mt-4" />
         <div className="flex gap-2">
-          <Input value={command} isDisabled isError={!isCommandReady} className="opacity-50" />
+          <Input value={command} isDisabled isError={!isCommandReady} />
           <IconButton
             ariaLabel="copy"
             variant="outline_bg"
