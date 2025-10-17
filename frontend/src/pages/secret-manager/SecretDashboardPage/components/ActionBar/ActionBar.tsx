@@ -77,6 +77,11 @@ import {
   fetchDashboardProjectSecretsByKeys
 } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
+import {
+  useGetVaultExternalMigrationConfigs,
+  useImportVaultSecrets
+} from "@app/hooks/api/migration";
+import { VaultImportStatus } from "@app/hooks/api/migration/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
@@ -98,6 +103,7 @@ import { CreateDynamicSecretForm } from "./CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
 import { MoveSecretsModal } from "./MoveSecretsModal";
+import { VaultSecretImportModal } from "./VaultSecretImportModal";
 
 type TParsedEnv = { value: string; comments: string[]; secretPath?: string; secretKey: string }[];
 type TParsedFolderEnv = Record<
@@ -171,7 +177,8 @@ export const ActionBar = ({
     "upgradePlan",
     "replicateFolder",
     "confirmUpload",
-    "requestAccess"
+    "requestAccess",
+    "importFromVault"
   ] as const);
   const isProtectedBranch = Boolean(protectedBranchPolicyName);
   const { subscription } = useSubscription();
@@ -185,6 +192,7 @@ export const ActionBar = ({
   const { mutateAsync: createSecretBatch, isPending: isCreatingSecrets } = useCreateSecretBatch({
     options: { onSuccess: undefined }
   });
+  const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
   const queryClient = useQueryClient();
   const { addPendingChange } = useBatchModeActions();
 
@@ -193,6 +201,8 @@ export const ActionBar = ({
   const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
 
   const { permission } = useProjectPermission();
+  const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
+  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
     try {
@@ -663,6 +673,40 @@ export const ActionBar = ({
     }
   };
 
+  const handleVaultImport = async (vaultPath: string, namespace: string) => {
+    try {
+      const result = await importVaultSecrets({
+        projectId,
+        environment,
+        secretPath,
+        vaultNamespace: namespace,
+        vaultSecretPath: vaultPath
+      });
+
+      if (result.status === VaultImportStatus.ApprovalRequired) {
+        createNotification({
+          type: "info",
+          text: "Secret change request created successfully. Awaiting approval."
+        });
+      } else {
+        createNotification({
+          type: "success",
+          text: "Successfully imported secrets from HashiCorp Vault"
+        });
+      }
+    } catch (err) {
+      console.error("Vault import error:", err);
+      const error = err as AxiosError<{ message?: string }>;
+      const errorMessage =
+        error.response?.data?.message || "Failed to import secrets from Vault. Please try again.";
+
+      createNotification({
+        type: "error",
+        text: errorMessage
+      });
+    }
+  };
+
   const isTableFiltered =
     Object.values(filter.tags).some(Boolean) || Object.values(filter.include).some(Boolean);
 
@@ -1059,6 +1103,39 @@ export const ActionBar = ({
                     </Button>
                   )}
                 </ProjectPermissionCan>
+                {hasVaultConnection && (
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Create}
+                    a={subject(ProjectPermissionSub.Secrets, {
+                      environment,
+                      secretPath,
+                      secretName: "*",
+                      secretTags: ["*"]
+                    })}
+                  >
+                    {(isAllowed) => (
+                      <Button
+                        leftIcon={
+                          <img
+                            src="/images/integrations/Vault.png"
+                            alt="HashiCorp Vault"
+                            className="h-4 w-4"
+                          />
+                        }
+                        onClick={() => {
+                          handlePopUpOpen("importFromVault");
+                          handlePopUpClose("misc");
+                        }}
+                        isDisabled={!isAllowed}
+                        variant="outline_bg"
+                        className="h-10 text-left"
+                        isFullWidth
+                      >
+                        Add from HashiCorp Vault
+                      </Button>
+                    )}
+                  </ProjectPermissionCan>
+                )}
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1277,6 +1354,13 @@ export const ActionBar = ({
           </div>
         </ModalContent>
       </Modal>
+      <VaultSecretImportModal
+        isOpen={popUp.importFromVault.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}
+        environment={environment}
+        secretPath={secretPath}
+        onImport={handleVaultImport}
+      />
     </>
   );
 };

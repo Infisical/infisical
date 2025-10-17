@@ -45,7 +45,8 @@ export const AppConnectionsBrowser = () => {
     {"name": "Redis", "slug": "redis", "path": "/integrations/app-connections/redis", "description": "Learn how to connect Redis to pull secrets from Infisical.", "category": "Databases"},
     {"name": "LDAP", "slug": "ldap", "path": "/integrations/app-connections/ldap", "description": "Learn how to connect your LDAP to pull secrets from Infisical.", "category": "Directory Services"},
     {"name": "Auth0", "slug": "auth0", "path": "/integrations/app-connections/auth0", "description": "Learn how to connect your Auth0 to pull secrets from Infisical.", "category": "Identity & Auth"},
-    {"name": "Okta", "slug": "okta", "path": "/integrations/app-connections/okta", "description": "Learn how to connect your Okta to pull secrets from Infisical.", "category": "Identity & Auth"}
+    {"name": "Okta", "slug": "okta", "path": "/integrations/app-connections/okta", "description": "Learn how to connect your Okta to pull secrets from Infisical.", "category": "Identity & Auth"},
+    {"name": "Laravel Forge", "slug": "laravel-forge", "path": "/integrations/app-connections/laravel-forge", "description": "Learn how to connect your Laravel Forge to pull secrets from Infisical.", "category": "Hosting"},
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

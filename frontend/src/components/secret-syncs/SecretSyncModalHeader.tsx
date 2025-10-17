@@ -17,7 +17,7 @@ export const SecretSyncModalHeader = ({ destination, isConfigured }: Props) => {
       <img
         alt={`${destinationDetails.name} logo`}
         src={`/images/integrations/${destinationDetails.image}`}
-        className="h-12 w-12 rounded-md bg-bunker-500 p-2"
+        className="h-12 w-12 rounded-md bg-bunker-500 object-contain p-2"
       />
       <div>
         <div className="flex items-center text-mineshaft-300">

@@ -59,6 +59,7 @@ export type TDeleteFolderDTO = {
   environment: string;
   folderId: string;
   path?: string;
+  forceDelete?: boolean;
 };
 
 export type TUpdateFolderBatchDTO = {

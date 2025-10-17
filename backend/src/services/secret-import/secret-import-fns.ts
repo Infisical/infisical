@@ -258,10 +258,6 @@ export const fnSecretsV2FromImports = async ({
     })[];
   }[] = [{ secretImports: rootSecretImports, depth: 0, parentImportedSecrets: [] }];
 
-  const processedSecretImports = await processReservedImports(rootSecretImports, secretImportDAL);
-
-  stack[0] = { secretImports: processedSecretImports, depth: 0, parentImportedSecrets: [] };
-
   const processedImports: TSecretImportSecretsV2[] = [];
 
   while (stack.length) {
@@ -299,7 +295,9 @@ export const fnSecretsV2FromImports = async ({
     );
     const importedSecretsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
 
-    sanitizedImports.forEach(({ importPath, importEnv }) => {
+    const processedBatchImports = await processReservedImports(sanitizedImports, secretImportDAL);
+
+    processedBatchImports.forEach(({ importPath, importEnv }) => {
       cyclicDetector.add(getImportUniqKey(importEnv.slug, importPath));
     });
     // now we need to check recursively deeper imports made inside other imports
@@ -308,7 +306,7 @@ export const fnSecretsV2FromImports = async ({
     const deeperImportsGroupByFolderId = groupBy(deeperImports, (i) => i.folderId);
 
     const isFirstIteration = !processedImports.length;
-    sanitizedImports.forEach(({ importPath, importEnv, id, folderId }, i) => {
+    processedBatchImports.forEach(({ importPath, importEnv, id, folderId }, i) => {
       const sourceImportFolder = importedFolderGroupBySourceImport[`${importEnv.id}-${importPath}`]?.[0];
       const secretsWithDuplicate = (importedSecretsGroupByFolderId?.[importedFolders?.[i]?.id as string] || [])
         .filter((item) =>

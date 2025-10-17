@@ -13,7 +13,7 @@ export const registerIdentityAccessTokenRouter = async (server: FastifyZodProvid
     schema: {
       hide: false,
       tags: [ApiDocsTags.UniversalAuth],
-      description: "Renew access token",
+      description: "Renew machine identity access token",
       body: z.object({
         accessToken: z.string().trim().describe(UNIVERSAL_AUTH.RENEW_ACCESS_TOKEN.accessToken)
       }),
@@ -48,7 +48,7 @@ export const registerIdentityAccessTokenRouter = async (server: FastifyZodProvid
     schema: {
       hide: false,
       tags: [ApiDocsTags.UniversalAuth],
-      description: "Revoke access token",
+      description: "Revoke machine identity access token",
       body: z.object({
         accessToken: z.string().trim().describe(UNIVERSAL_AUTH.REVOKE_ACCESS_TOKEN.accessToken)
       }),
