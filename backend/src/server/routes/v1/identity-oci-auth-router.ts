@@ -20,7 +20,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.OciAuth],
-      description: "Login with OCI Auth",
+      description: "Login with OCI Auth for machine identity",
       body: z.object({
         identityId: z.string().trim().describe(OCI_AUTH.LOGIN.identityId),
         userOcid: z.string().trim().describe(OCI_AUTH.LOGIN.userOcid),
@@ -87,7 +87,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.OciAuth],
-      description: "Attach OCI Auth configuration onto identity",
+      description: "Attach OCI Auth configuration onto machine identity",
       security: [
         {
           bearerAuth: []
@@ -176,7 +176,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.OciAuth],
-      description: "Update OCI Auth configuration on identity",
+      description: "Update OCI Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -259,7 +259,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.OciAuth],
-      description: "Retrieve OCI Auth configuration on identity",
+      description: "Retrieve OCI Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -307,7 +307,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.OciAuth],
-      description: "Delete OCI Auth configuration on identity",
+      description: "Delete OCI Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []

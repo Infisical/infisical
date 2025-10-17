@@ -122,16 +122,16 @@ export const IDENTITIES = {
     hasDeleteProtection: "Prevents deletion of the identity when enabled."
   },
   UPDATE: {
-    identityId: "The ID of the identity to update.",
+    identityId: "The ID of the machine identity to update.",
     name: "The new name of the identity.",
     role: "The new role of the identity.",
     hasDeleteProtection: "Prevents deletion of the identity when enabled."
   },
   DELETE: {
-    identityId: "The ID of the identity to delete."
+    identityId: "The ID of the machine identity to delete."
   },
   GET_BY_ID: {
-    identityId: "The ID of the identity to get details.",
+    identityId: "The ID of the machine identity to get details.",
     orgId: "The ID of the org of the identity"
   },
   LIST: {
@@ -156,7 +156,7 @@ export const UNIVERSAL_AUTH = {
     clientSecret: "Your Machine Identity Client Secret."
   },
   ATTACH: {
-    identityId: "The ID of the identity to attach the configuration onto.",
+    identityId: "The ID of the machine identity to attach the configuration onto.",
     clientSecretTrustedIps:
       "A list of IPs or CIDR ranges that the Client Secret can be used from together with the Client ID to get back an access token. You can use 0.0.0.0/0, to allow usage from any network address.",
     accessTokenTrustedIps:
@@ -175,13 +175,13 @@ export const UNIVERSAL_AUTH = {
       "How long to wait from the most recent failed login until resetting the lockout counter."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve the auth method for."
+    identityId: "The ID of the machine identity to retrieve the auth method for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke the auth method for."
+    identityId: "The ID of the machine identity to revoke the auth method for."
   },
   UPDATE: {
-    identityId: "The ID of the identity to update the auth method for.",
+    identityId: "The ID of the machine identity to update the auth method for.",
     clientSecretTrustedIps: "The new list of IPs or CIDR ranges that the Client Secret can be used from.",
     accessTokenTrustedIps: "The new list of IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
@@ -195,25 +195,25 @@ export const UNIVERSAL_AUTH = {
       "How long to wait from the most recent failed login until resetting the lockout counter."
   },
   CREATE_CLIENT_SECRET: {
-    identityId: "The ID of the identity to create a client secret for.",
+    identityId: "The ID of the machine identity to create a client secret for.",
     description: "The description of the client secret.",
     numUsesLimit:
       "The maximum number of times that the client secret can be used; a value of 0 implies infinite number of uses.",
     ttl: "The lifetime for the client secret in seconds."
   },
   LIST_CLIENT_SECRETS: {
-    identityId: "The ID of the identity to list client secrets for."
+    identityId: "The ID of the machine identity to list client secrets for."
   },
   GET_CLIENT_SECRET: {
-    identityId: "The ID of the identity to get the client secret from.",
+    identityId: "The ID of the machine identity to get the client secret from.",
     clientSecretId: "The ID of the client secret to get details."
   },
   REVOKE_CLIENT_SECRET: {
-    identityId: "The ID of the identity to revoke the client secret from.",
+    identityId: "The ID of the machine identity to revoke the client secret from.",
     clientSecretId: "The ID of the client secret to revoke."
   },
   CLEAR_CLIENT_LOCKOUTS: {
-    identityId: "The ID of the identity to clear the client lockouts from."
+    identityId: "The ID of the machine identity to clear the client lockouts from."
   },
   RENEW_ACCESS_TOKEN: {
     accessToken: "The access token to renew."
@@ -225,13 +225,13 @@ export const UNIVERSAL_AUTH = {
 
 export const LDAP_AUTH = {
   LOGIN: {
-    identityId: "The ID of the identity to login.",
+    identityId: "The ID of the machine identity to login.",
     username: "The username of the LDAP user to login.",
     password: "The password of the LDAP user to login."
   },
   ATTACH: {
     templateId: "The ID of the identity auth template to attach the configuration onto.",
-    identityId: "The ID of the identity to attach the configuration onto.",
+    identityId: "The ID of the machine identity to attach the configuration onto.",
     url: "The URL of the LDAP server.",
     allowedFields:
       "The comma-separated array of key/value pairs of required fields that the LDAP entry must have in order to authenticate.",
@@ -251,7 +251,7 @@ export const LDAP_AUTH = {
       "How long to wait from the most recent failed login until resetting the lockout counter."
   },
   UPDATE: {
-    identityId: "The ID of the identity to update the configuration for.",
+    identityId: "The ID of the machine identity to update the configuration for.",
     url: "The new URL of the LDAP server.",
     allowedFields: "The comma-separated list of allowed fields to return from the LDAP user.",
     searchBase: "The new base DN to search for the LDAP user.",
@@ -271,19 +271,19 @@ export const LDAP_AUTH = {
       "How long to wait from the most recent failed login until resetting the lockout counter."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve the configuration for."
+    identityId: "The ID of the machine identity to retrieve the configuration for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke the configuration for."
+    identityId: "The ID of the machine identity to revoke the configuration for."
   },
   CLEAR_CLIENT_LOCKOUTS: {
-    identityId: "The ID of the identity to clear the client lockouts from."
+    identityId: "The ID of the machine identity to clear the client lockouts from."
   }
 } as const;
 
 export const ALICLOUD_AUTH = {
   LOGIN: {
-    identityId: "The ID of the identity to login.",
+    identityId: "The ID of the machine identity to login.",
     Action: "The Alibaba Cloud API action. For STS GetCallerIdentity, this should be 'GetCallerIdentity'.",
     Format: "The response format. For STS GetCallerIdentity, this should be 'JSON'.",
     Version: "The API version. This should be in 'YYYY-MM-DD' format (e.g., '2015-04-01').",
@@ -295,7 +295,7 @@ export const ALICLOUD_AUTH = {
     Signature: "The signature string calculated based on the request parameters and AccessKey Secret."
   },
   ATTACH: {
-    identityId: "The ID of the identity to attach the configuration onto.",
+    identityId: "The ID of the machine identity to attach the configuration onto.",
     allowedArns: "The comma-separated list of trusted ARNs that are allowed to authenticate with Infisical.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
@@ -303,7 +303,7 @@ export const ALICLOUD_AUTH = {
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
   },
   UPDATE: {
-    identityId: "The ID of the identity to update the auth method for.",
+    identityId: "The ID of the machine identity to update the auth method for.",
     allowedArns: "The comma-separated list of trusted ARNs that are allowed to authenticate with Infisical.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
@@ -311,19 +311,19 @@ export const ALICLOUD_AUTH = {
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve the auth method for."
+    identityId: "The ID of the machine identity to retrieve the auth method for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke the auth method for."
+    identityId: "The ID of the machine identity to revoke the auth method for."
   }
 } as const;
 
 export const TLS_CERT_AUTH = {
   LOGIN: {
-    identityId: "The ID of the identity to login."
+    identityId: "The ID of the machine identity to login."
   },
   ATTACH: {
-    identityId: "The ID of the identity to attach the configuration onto.",
+    identityId: "The ID of the machine identity to attach the configuration onto.",
     allowedCommonNames:
       "The comma-separated list of trusted common names that are allowed to authenticate with Infisical.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
@@ -333,7 +333,7 @@ export const TLS_CERT_AUTH = {
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
   },
   UPDATE: {
-    identityId: "The ID of the identity to update the auth method for.",
+    identityId: "The ID of the machine identity to update the auth method for.",
     allowedCommonNames:
       "The comma-separated list of trusted common names that are allowed to authenticate with Infisical.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
@@ -343,16 +343,16 @@ export const TLS_CERT_AUTH = {
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve the auth method for."
+    identityId: "The ID of the machine identity to retrieve the auth method for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke the auth method for."
+    identityId: "The ID of the machine identity to revoke the auth method for."
   }
 } as const;
 
 export const AWS_AUTH = {
   LOGIN: {
-    identityId: "The ID of the identity to login.",
+    identityId: "The ID of the machine identity to login.",
     iamHttpRequestMethod: "The HTTP request method used in the signed request.",
     iamRequestUrl:
       "The base64-encoded HTTP URL used in the signed request. Most likely, the base64-encoding of https://sts.amazonaws.com/.",
@@ -361,7 +361,7 @@ export const AWS_AUTH = {
     iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request."
   },
   ATTACH: {
-    identityId: "The ID of the identity to attach the configuration onto.",
+    identityId: "The ID of the machine identity to attach the configuration onto.",
     allowedPrincipalArns:
       "The comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
     allowedAccountIds:
@@ -373,7 +373,7 @@ export const AWS_AUTH = {
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
   },
   UPDATE: {
-    identityId: "The ID of the identity to update the auth method for.",
+    identityId: "The ID of the machine identity to update the auth method for.",
     allowedPrincipalArns:
       "The new comma-separated list of trusted IAM principal ARNs that are allowed to authenticate with Infisical.",
     allowedAccountIds:
@@ -385,21 +385,21 @@ export const AWS_AUTH = {
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve the auth method for."
+    identityId: "The ID of the machine identity to retrieve the auth method for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke the auth method for."
+    identityId: "The ID of the machine identity to revoke the auth method for."
   }
 } as const;
 
 export const OCI_AUTH = {
   LOGIN: {
-    identityId: "The ID of the identity to login.",
+    identityId: "The ID of the machine identity to login.",
     userOcid: "The OCID of the user attempting login.",
     headers: "The headers of the signed request."
   },
   ATTACH: {
-    identityId: "The ID of the identity to attach the configuration onto.",
+    identityId: "The ID of the machine identity to attach the configuration onto.",
     tenancyOcid: "The OCID of your tenancy.",
     allowedUsernames:
       "The comma-separated list of trusted OCI account usernames that are allowed to authenticate with Infisical.",
@@ -409,7 +409,7 @@ export const OCI_AUTH = {
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from."
   },
   UPDATE: {
-    identityId: "The ID of the identity to update the auth method for.",
+    identityId: "The ID of the machine identity to update the auth method for.",
     tenancyOcid: "The OCID of your tenancy.",
     allowedUsernames:
       "The comma-separated list of trusted OCI account usernames that are allowed to authenticate with Infisical.",
@@ -419,19 +419,19 @@ export const OCI_AUTH = {
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve the auth method for."
+    identityId: "The ID of the machine identity to retrieve the auth method for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke the auth method for."
+    identityId: "The ID of the machine identity to revoke the auth method for."
   }
 } as const;
 
 export const AZURE_AUTH = {
   LOGIN: {
-    identityId: "The ID of the identity to login."
+    identityId: "The ID of the machine identity to login."
   },
   ATTACH: {
-    identityId: "The ID of the identity to attach the configuration onto.",
+    identityId: "The ID of the machine identity to attach the configuration onto.",
     tenantId: "The tenant ID for the Azure AD organization.",
     resource: "The resource URL for the application registered in Azure AD.",
     allowedServicePrincipalIds:
@@ -442,7 +442,7 @@ export const AZURE_AUTH = {
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
   },
   UPDATE: {
-    identityId: "The ID of the identity to update the auth method for.",
+    identityId: "The ID of the machine identity to update the auth method for.",
     tenantId: "The new tenant ID for the Azure AD organization.",
     resource: "The new resource URL for the application registered in Azure AD.",
     allowedServicePrincipalIds:
@@ -453,19 +453,19 @@ export const AZURE_AUTH = {
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve the auth method for."
+    identityId: "The ID of the machine identity to retrieve the auth method for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke the auth method for."
+    identityId: "The ID of the machine identity to revoke the auth method for."
   }
 } as const;
 
 export const GCP_AUTH = {
   LOGIN: {
-    identityId: "The ID of the identity to login."
+    identityId: "The ID of the machine identity to login."
   },
   ATTACH: {
-    identityId: "The ID of the identity to attach the configuration onto.",
+    identityId: "The ID of the machine identity to attach the configuration onto.",
     allowedServiceAccounts:
       "The comma-separated list of trusted service account emails corresponding to the GCE resource(s) allowed to authenticate with Infisical.",
     allowedProjects:
@@ -478,7 +478,7 @@ export const GCP_AUTH = {
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
   },
   UPDATE: {
-    identityId: "The ID of the identity to update the auth method for.",
+    identityId: "The ID of the machine identity to update the auth method for.",
     allowedServiceAccounts:
       "The new comma-separated list of trusted service account emails corresponding to the GCE resource(s) allowed to authenticate with Infisical.",
     allowedProjects:
@@ -491,19 +491,19 @@ export const GCP_AUTH = {
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve the auth method for."
+    identityId: "The ID of the machine identity to retrieve the auth method for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke the auth method for."
+    identityId: "The ID of the machine identity to revoke the auth method for."
   }
 } as const;
 
 export const KUBERNETES_AUTH = {
   LOGIN: {
-    identityId: "The ID of the identity to login."
+    identityId: "The ID of the machine identity to login."
   },
   ATTACH: {
-    identityId: "The ID of the identity to attach the configuration onto.",
+    identityId: "The ID of the machine identity to attach the configuration onto.",
     kubernetesHost: "The host string, host:port pair, or URL to the base of the Kubernetes API server.",
     caCert: "The PEM-encoded CA cert for the Kubernetes API server.",
     tokenReviewerJwt:
@@ -522,7 +522,7 @@ export const KUBERNETES_AUTH = {
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
   },
   UPDATE: {
-    identityId: "The ID of the identity to update the auth method for.",
+    identityId: "The ID of the machine identity to update the auth method for.",
     kubernetesHost: "The new host string, host:port pair, or URL to the base of the Kubernetes API server.",
     caCert: "The new PEM-encoded CA cert for the Kubernetes API server.",
     tokenReviewerJwt:
@@ -541,41 +541,41 @@ export const KUBERNETES_AUTH = {
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve the auth method for."
+    identityId: "The ID of the machine identity to retrieve the auth method for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke the auth method for."
+    identityId: "The ID of the machine identity to revoke the auth method for."
   }
 } as const;
 
 export const TOKEN_AUTH = {
   ATTACH: {
-    identityId: "The ID of the identity to attach the configuration onto.",
+    identityId: "The ID of the machine identity to attach the configuration onto.",
     accessTokenTrustedIps: "The IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
   },
   UPDATE: {
-    identityId: "The ID of the identity to update the auth method for.",
+    identityId: "The ID of the machine identity to update the auth method for.",
     accessTokenTrustedIps: "The new IPs or CIDR ranges that access tokens can be used from.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve the auth method for."
+    identityId: "The ID of the machine identity to retrieve the auth method for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke the auth method for."
+    identityId: "The ID of the machine identity to revoke the auth method for."
   },
   GET_TOKENS: {
-    identityId: "The ID of the identity to list token metadata for.",
+    identityId: "The ID of the machine identity to list token metadata for.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th token.",
     limit: "The number of tokens to return."
   },
   CREATE_TOKEN: {
-    identityId: "The ID of the identity to create the token for.",
+    identityId: "The ID of the machine identity to create the token for.",
     name: "The name of the token to create."
   },
   UPDATE_TOKEN: {
@@ -589,10 +589,10 @@ export const TOKEN_AUTH = {
 
 export const OIDC_AUTH = {
   LOGIN: {
-    identityId: "The ID of the identity to login."
+    identityId: "The ID of the machine identity to login."
   },
   ATTACH: {
-    identityId: "The ID of the identity to attach the configuration onto.",
+    identityId: "The ID of the machine identity to attach the configuration onto.",
     oidcDiscoveryUrl: "The URL used to retrieve the OpenID Connect configuration from the identity provider.",
     caCert: "The PEM-encoded CA cert for establishing secure communication with the Identity Provider endpoints.",
     boundIssuer: "The unique identifier of the identity provider issuing the JWT.",
@@ -606,7 +606,7 @@ export const OIDC_AUTH = {
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
   },
   UPDATE: {
-    identityId: "The ID of the identity to update the auth method for.",
+    identityId: "The ID of the machine identity to update the auth method for.",
     oidcDiscoveryUrl: "The new URL used to retrieve the OpenID Connect configuration from the identity provider.",
     caCert: "The new PEM-encoded CA cert for establishing secure communication with the Identity Provider endpoints.",
     boundIssuer: "The new unique identifier of the identity provider issuing the JWT.",
@@ -620,19 +620,19 @@ export const OIDC_AUTH = {
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve the auth method for."
+    identityId: "The ID of the machine identity to retrieve the auth method for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke the auth method for."
+    identityId: "The ID of the machine identity to revoke the auth method for."
   }
 } as const;
 
 export const JWT_AUTH = {
   LOGIN: {
-    identityId: "The ID of the identity to login."
+    identityId: "The ID of the machine identity to login."
   },
   ATTACH: {
-    identityId: "The ID of the identity to attach the configuration onto.",
+    identityId: "The ID of the machine identity to attach the configuration onto.",
     configurationType: "The configuration for validating JWTs. Must be one of: 'jwks', 'static'",
     jwksUrl:
       "The URL of the JWKS endpoint. Required if configurationType is 'jwks'. This endpoint must serve JSON Web Key Sets (JWKS) containing the public keys used to verify JWT signatures.",
@@ -649,7 +649,7 @@ export const JWT_AUTH = {
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used."
   },
   UPDATE: {
-    identityId: "The ID of the identity to update the auth method for.",
+    identityId: "The ID of the machine identity to update the auth method for.",
     configurationType: "The new configuration for validating JWTs. Must be one of: 'jwks', 'static'",
     jwksUrl:
       "The new URL of the JWKS endpoint. This endpoint must serve JSON Web Key Sets (JWKS) containing the public keys used to verify JWT signatures.",
@@ -666,10 +666,10 @@ export const JWT_AUTH = {
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used."
   },
   RETRIEVE: {
-    identityId: "The ID of the identity to retrieve the auth method for."
+    identityId: "The ID of the machine identity to retrieve the auth method for."
   },
   REVOKE: {
-    identityId: "The ID of the identity to revoke the auth method for."
+    identityId: "The ID of the machine identity to revoke the auth method for."
   }
 } as const;
 
@@ -853,12 +853,12 @@ export const PROJECT_IDENTITIES = {
     search: "The text string that identity membership names will be filtered by."
   },
   GET_IDENTITY_MEMBERSHIP_BY_ID: {
-    identityId: "The ID of the identity to get the membership for.",
+    identityId: "The ID of the machine identity to get the membership for.",
     projectId: "The ID of the project to get the identity membership for."
   },
   UPDATE_IDENTITY_MEMBERSHIP: {
     projectId: "The ID of the project to update the identity membership for.",
-    identityId: "The ID of the identity to update the membership for.",
+    identityId: "The ID of the machine identity to update the membership for.",
     roles: {
       description: "A list of role slugs to assign to the identity project membership.",
       role: "The role slug to assign to the newly created identity project membership.",
@@ -871,11 +871,11 @@ export const PROJECT_IDENTITIES = {
   },
   DELETE_IDENTITY_MEMBERSHIP: {
     projectId: "The ID of the project to delete the identity membership from.",
-    identityId: "The ID of the identity to delete the membership from."
+    identityId: "The ID of the machine identity to delete the membership from."
   },
   CREATE_IDENTITY_MEMBERSHIP: {
     projectId: "The ID of the project to create the identity membership from.",
-    identityId: "The ID of the identity to create the membership from.",
+    identityId: "The ID of the machine identity to create the membership from.",
     role: "The role slug to assign to the newly created identity project membership.",
     roles: {
       description: "A list of role slugs to assign to the newly created identity project membership.",
@@ -1270,7 +1270,7 @@ export const SECRET_TAGS = {
 export const IDENTITY_ADDITIONAL_PRIVILEGE = {
   CREATE: {
     projectSlug: "The slug of the project of the identity in.",
-    identityId: "The ID of the identity to create.",
+    identityId: "The ID of the machine identity to create.",
     slug: "The slug of the privilege to create.",
     permissions: `@deprecated - use privilegePermission
 The permission object for the privilege.
@@ -1296,7 +1296,7 @@ The permission object for the privilege.
   },
   UPDATE: {
     projectSlug: "The slug of the project of the identity in.",
-    identityId: "The ID of the identity to update.",
+    identityId: "The ID of the machine identity to update.",
     slug: "The slug of the privilege to update.",
     newSlug: "The new slug of the privilege to update.",
     permissions: `@deprecated - use privilegePermission
@@ -1322,17 +1322,17 @@ The permission object for the privilege.
   },
   DELETE: {
     projectSlug: "The slug of the project of the identity in.",
-    identityId: "The ID of the identity to delete.",
+    identityId: "The ID of the machine identity to delete.",
     slug: "The slug of the privilege to delete."
   },
   GET_BY_SLUG: {
     projectSlug: "The slug of the project of the identity in.",
-    identityId: "The ID of the identity to list.",
+    identityId: "The ID of the machine identity to list.",
     slug: "The slug of the privilege."
   },
   LIST: {
     projectSlug: "The slug of the project of the identity in.",
-    identityId: "The ID of the identity to list.",
+    identityId: "The ID of the machine identity to list.",
     unpacked: "Whether the system should send the permissions as unpacked."
   }
 };
@@ -1374,7 +1374,7 @@ export const PROJECT_USER_ADDITIONAL_PRIVILEGE = {
 
 export const IDENTITY_ADDITIONAL_PRIVILEGE_V2 = {
   CREATE: {
-    identityId: "The ID of the identity to create the privilege for.",
+    identityId: "The ID of the machine identity to create the privilege for.",
     projectId: "The ID of the project of the identity in.",
     slug: "The slug of the privilege to create.",
     permission: "The permission for the privilege.",
@@ -1385,7 +1385,7 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE_V2 = {
   },
   UPDATE: {
     id: "The ID of the identity privilege.",
-    identityId: "The ID of the identity to update.",
+    identityId: "The ID of the machine identity to update.",
     slug: "The slug of the privilege to update.",
     privilegePermission: "The permission for the privilege.",
     isTemporary: "Whether the privilege is temporary.",
@@ -1395,12 +1395,12 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE_V2 = {
   },
   DELETE: {
     id: "The ID of the identity privilege.",
-    identityId: "The ID of the identity to delete.",
+    identityId: "The ID of the machine identity to delete.",
     slug: "The slug of the privilege to delete."
   },
   GET_BY_SLUG: {
     projectSlug: "The slug of the project of the identity in.",
-    identityId: "The ID of the identity to list.",
+    identityId: "The ID of the machine identity to list.",
     slug: "The slug of the privilege."
   },
   GET_BY_ID: {
@@ -1408,7 +1408,7 @@ export const IDENTITY_ADDITIONAL_PRIVILEGE_V2 = {
   },
   LIST: {
     projectId: "The ID of the project that the identity is in.",
-    identityId: "The ID of the identity to list."
+    identityId: "The ID of the machine identity to list."
   }
 };
 
