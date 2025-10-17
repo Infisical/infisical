@@ -33,6 +33,7 @@ import {
   CertKeyAlgorithm,
   CertKeyUsage,
   CertSignatureAlgorithm,
+  CertSignatureType,
   CertStatus,
   TAltNameMapping
 } from "../../certificate/certificate-types";
@@ -1663,19 +1664,15 @@ export const internalCertificateAuthorityServiceFactory = ({
       const caKeyAlgorithm = ca.internalCa.keyAlgorithm;
       const requestedKeyType = signatureAlgorithm.split("-")[0]; // Get the first part (RSA, ECDSA)
 
-      const isRsaCa = caKeyAlgorithm.startsWith(CertKeyAlgorithm.RSA_2048.split("_")[0]);
-      const isEcdsaCa = caKeyAlgorithm.startsWith(CertKeyAlgorithm.ECDSA_P256.split("_")[0]);
+      const isRsaCa = caKeyAlgorithm.startsWith(CertSignatureType.RSA);
+      const isEcdsaCa = caKeyAlgorithm.startsWith(CertSignatureType.ECDSA);
 
       if (
-        (requestedKeyType === CertSignatureAlgorithm.RSA_SHA256.split("-")[0] && !isRsaCa) ||
-        (requestedKeyType === CertSignatureAlgorithm.ECDSA_SHA256.split("-")[0] && !isEcdsaCa)
+        (requestedKeyType === CertSignatureType.RSA && !isRsaCa) ||
+        (requestedKeyType === CertSignatureType.ECDSA && !isEcdsaCa)
       ) {
         // eslint-disable-next-line no-nested-ternary
-        const supportedType = isRsaCa
-          ? CertSignatureAlgorithm.RSA_SHA256.split("-")[0]
-          : isEcdsaCa
-            ? CertSignatureAlgorithm.ECDSA_SHA256.split("-")[0]
-            : "unknown";
+        const supportedType = isRsaCa ? CertSignatureType.RSA : isEcdsaCa ? CertSignatureType.ECDSA : "unknown";
         throw new BadRequestError({
           message: `Requested signature algorithm ${signatureAlgorithm} is not compatible with CA key algorithm ${caKeyAlgorithm}. CA can only sign with ${supportedType}-based signature algorithms.`
         });

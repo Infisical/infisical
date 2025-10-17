@@ -51,6 +51,11 @@ export enum CertExtendedKeyUsage {
   OCSP_SIGNING = "ocspSigning"
 }
 
+export enum CertSignatureType {
+  RSA = "RSA",
+  ECDSA = "ECDSA"
+}
+
 export const CertExtendedKeyUsageOIDToName: Record<string, CertExtendedKeyUsage> = {
   [x509.ExtendedKeyUsage.clientAuth]: CertExtendedKeyUsage.CLIENT_AUTH,
   [x509.ExtendedKeyUsage.serverAuth]: CertExtendedKeyUsage.SERVER_AUTH,
