@@ -13,7 +13,7 @@ type Props = {
   description?: ReactNode;
   children?: ReactNode;
   className?: string;
-  scope: "org" | "namespace" | "instance" | ProjectType;
+  scope: "org" | "namespace" | "instance" | ProjectType | null;
 };
 
 const SCOPE_NAME: Record<NonNullable<Props["scope"]>, { label: string; icon: IconDefinition }> = {

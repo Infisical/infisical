@@ -8,7 +8,7 @@ type Props = {
 
 export const FolderBreadCrumbs = ({ path = "/" }: Props) => {
   const navigate = useNavigate({
-    from: "/projects/secret-management/$projectId/overview"
+    from: "/projects/pam/$projectId/accounts"
   });
 
   const onFolderCrumbClick = (index: number) => {
@@ -29,7 +29,12 @@ export const FolderBreadCrumbs = ({ path = "/" }: Props) => {
       <div
         className="breadcrumb relative z-20 border-solid border-mineshaft-600 bg-mineshaft-800 py-1 pr-2 pl-5 text-sm hover:bg-mineshaft-600"
         onClick={() => onFolderCrumbClick(0)}
-        onKeyDown={() => null}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onFolderCrumbClick(0);
+          }
+        }}
         role="button"
         tabIndex={0}
       >
@@ -45,7 +50,12 @@ export const FolderBreadCrumbs = ({ path = "/" }: Props) => {
               index + 1 === arr.length ? "cursor-default" : "cursor-pointer"
             } border-solid border-mineshaft-600 py-1 pr-2 pl-5 text-sm text-mineshaft-200`}
             onClick={() => onFolderCrumbClick(index + 1)}
-            onKeyDown={() => null}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onFolderCrumbClick(index + 1);
+              }
+            }}
             role="button"
             tabIndex={0}
           >

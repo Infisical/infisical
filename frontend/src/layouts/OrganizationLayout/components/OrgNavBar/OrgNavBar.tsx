@@ -24,7 +24,6 @@ export const OrgNavBar = ({ isHidden }: Props) => {
             animate={{ x: 0 }}
             exit={{ x: -150 }}
             transition={{ duration: 0.2 }}
-            className=""
           >
             <nav className="w-full">
               <Tabs value="selected">

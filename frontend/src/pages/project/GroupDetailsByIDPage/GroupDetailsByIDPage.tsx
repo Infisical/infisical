@@ -55,7 +55,7 @@ const Page = () => {
           <PageHeader
             scope={currentProject.type}
             title={groupMembership.group.name}
-            description={`Group joined on ${groupMembership?.createdAt && formatRelative(new Date(groupMembership?.createdAt || ""), new Date())}`}
+            description={`Group joined on ${formatRelative(new Date(groupMembership.createdAt || ""), new Date())}`}
           />
           <div className="flex">
             <div className="mr-4 w-96">

@@ -12,7 +12,6 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteIdentity, useGetIdentityById } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { TabSections } from "@app/pages/organization/GroupDetailsByIDPage/GroupDetailsByIDPage";
 import { ViewIdentityAuthModal } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityAuthModal";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
@@ -81,7 +80,7 @@ const Page = () => {
           <Link
             to="/organization/access-management"
             search={{
-              selectedTab: TabSections.Identities
+              selectedTab: OrgAccessControlTabSections.Identities
             }}
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
           >

@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet } from "@tanstack/react-router";
 
 import { WishForm } from "@app/components/features/WishForm";
+import { Navbar } from "@app/layouts/OrganizationLayout/components/NavBar";
 
 import { InsecureConnectionBanner } from "../OrganizationLayout/components/InsecureConnectionBanner";
 
@@ -12,27 +13,10 @@ export const PersonalSettingsLayout = () => {
 
   return (
     <>
-      <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
+      <div className="dark hidden h-screen w-full flex-col overflow-x-hidden bg-bunker-800 md:flex">
         {!window.isSecureContext && <InsecureConnectionBanner />}
         <div className="flex grow flex-col overflow-y-hidden md:flex-row">
-          <aside className="dark w-full border-r border-mineshaft-600 bg-linear-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
-            <nav className="items-between flex h-full flex-col justify-between overflow-y-auto dark:scheme-dark">
-              <div className="grow">
-                <Link to="/organization/projects">
-                  <div className="my-6 flex cursor-default items-center justify-center pr-2 text-sm text-mineshaft-300 hover:text-mineshaft-100">
-                    <FontAwesomeIcon icon={faArrowLeft} className="pr-3" />
-                    Back to organization
-                  </div>
-                </Link>
-              </div>
-              <div className="relative mt-10 flex w-full cursor-default flex-col items-center px-3 text-sm text-mineshaft-400">
-                {(window.location.origin.includes("https://app.infisical.com") ||
-                  window.location.origin.includes("https://gamma.infisical.com")) && <WishForm />}
-              </div>
-              )
-            </nav>
-          </aside>
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 dark:scheme-dark">
+          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 px-12 pt-10 pb-4 dark:scheme-dark">
             <Outlet />
           </main>
         </div>

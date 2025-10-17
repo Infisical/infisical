@@ -19,7 +19,6 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteOrgRole, useGetOrgRole } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { TabSections } from "@app/pages/organization/GroupDetailsByIDPage/GroupDetailsByIDPage";
 import { DuplicateOrgRoleModal } from "@app/pages/organization/RoleByIDPage/components/DuplicateOrgRoleModal";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
@@ -84,7 +83,7 @@ export const Page = () => {
           <Link
             to="/organization/access-management"
             search={{
-              selectedTab: TabSections.Roles
+              selectedTab: OrgAccessControlTabSections.Roles
             }}
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
           >

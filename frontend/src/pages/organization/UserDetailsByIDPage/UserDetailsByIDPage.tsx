@@ -32,7 +32,6 @@ import {
   useUpdateOrgMembership
 } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { TabSections } from "@app/pages/organization/GroupDetailsByIDPage/GroupDetailsByIDPage";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { UserAuditLogsSection } from "./components/UserProjectsSection/UserAuditLogsSection";
@@ -124,7 +123,7 @@ const Page = withPermission(
             <Link
               to="/organization/access-management"
               search={{
-                selectedTab: TabSections.Member
+                selectedTab: OrgAccessControlTabSections.Member
               }}
               className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
             >

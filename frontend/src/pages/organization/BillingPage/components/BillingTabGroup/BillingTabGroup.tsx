@@ -25,7 +25,7 @@ export const BillingTabGroup = withPermission(
       <Tabs orientation="vertical" defaultValue={tabs[0].key}>
         <TabList>
           {tabs.map((tab) => (
-            <Tab variant="org" value={tab.key}>
+            <Tab variant="org" key={tab.key} value={tab.key}>
               {tab.name}
             </Tab>
           ))}
