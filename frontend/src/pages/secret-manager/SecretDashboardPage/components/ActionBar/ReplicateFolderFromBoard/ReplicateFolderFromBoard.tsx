@@ -224,7 +224,6 @@ export const ReplicateFolderFromBoard = ({
       }}
     >
       <ModalContent
-        bodyClassName="overflow-visible"
         className="max-w-2xl"
         title={
           <div className="flex items-center gap-1 text-mineshaft-300">

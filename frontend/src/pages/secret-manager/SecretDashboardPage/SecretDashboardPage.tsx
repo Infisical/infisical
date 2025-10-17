@@ -1065,7 +1065,6 @@ const Page = () => {
             <ModalContent
               title="Create Secret"
               subTitle="Add a secret to this particular environment and folder"
-              bodyClassName="overflow-visible"
             >
               <CreateSecretForm
                 environment={environment}
