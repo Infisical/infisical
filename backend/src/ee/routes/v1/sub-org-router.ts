@@ -7,6 +7,14 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+const sanitiziedSubOrganizationSchema = OrganizationsSchema.pick({
+  id: true,
+  name: true,
+  slug: true,
+  createdAt: true,
+  updatedAt: true
+});
+
 export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -28,7 +36,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organization: OrganizationsSchema
+          organization: sanitiziedSubOrganizationSchema
         })
       }
     },
@@ -77,7 +85,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
-        limit: z.coerce.number().min(1).max(100).default(25).describe(SUB_ORGANIZATIONS.LIST.limit),
+        limit: z.coerce.number().min(1).max(1000).default(25).describe(SUB_ORGANIZATIONS.LIST.limit),
         offset: z.coerce.number().min(0).default(0).describe(SUB_ORGANIZATIONS.LIST.offset),
         isAccessible: z
           .enum(["true", "false"])
@@ -87,7 +95,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organizations: OrganizationsSchema.array()
+          organizations: sanitiziedSubOrganizationSchema.array()
         })
       }
     },

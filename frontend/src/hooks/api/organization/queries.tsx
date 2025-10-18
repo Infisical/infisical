@@ -64,7 +64,9 @@ export const useGetOrganizations = () => {
 export const fetchOrganizationById = async (id: string) => {
   const {
     data: { organization }
-  } = await apiRequest.get<{ organization: Organization }>(`/api/v1/organization/${id}`);
+  } = await apiRequest.get<{
+    organization: Organization & { subOrganization?: { id: string; name: string } };
+  }>(`/api/v1/organization/${id}`);
   return organization;
 };
 

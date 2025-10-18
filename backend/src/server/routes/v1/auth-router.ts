@@ -94,6 +94,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
           decodedToken.userId,
           decodedToken.organizationId,
           decodedToken.authMethod,
+          decodedToken.organizationId,
           decodedToken.organizationId
         );
         if (org && org.userTokenExpiration) {

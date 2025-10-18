@@ -285,7 +285,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           MembershipsSchema.extend({
             orgAuthEnforced: z.boolean().optional().nullable(),
             shouldUseNewPrivilegeSystem: z.boolean().optional().nullable(),
-            parentOrgId: z.boolean().optional().nullable(),
+            parentOrgId: z.string().optional().nullable(),
             orgGoogleSsoAuthEnforced: z.boolean(),
             bypassOrgAuthEnabled: z.boolean()
           }).parse(el),

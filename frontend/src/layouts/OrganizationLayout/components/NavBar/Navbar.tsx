@@ -6,12 +6,14 @@ import {
   faBook,
   faCaretDown,
   faCheck,
+  faCubes,
   faEnvelope,
   faExclamationTriangle,
   faGlobe,
   faInfinity,
   faInfo,
   faInfoCircle,
+  faPlus,
   faServer,
   faSignOut,
   faToolbox,
@@ -19,7 +21,7 @@ import {
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
@@ -34,6 +36,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownSubMenu,
+  DropdownSubMenuContent,
+  DropdownSubMenuTrigger,
   IconButton,
   Modal,
   ModalContent,
@@ -44,7 +49,7 @@ import { envConfig } from "@app/config/env";
 import { useOrganization, useSubscription, useUser } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
-import { projectKeys, useGetOrganizations, useGetOrgTrialUrl, useLogoutUser } from "@app/hooks/api";
+import { projectKeys, subOrganizationsQuery, useGetOrganizations, useGetOrgTrialUrl, useLogoutUser } from "@app/hooks/api";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
@@ -54,6 +59,7 @@ import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NotificationDropdown } from "./NotificationDropdown";
+import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
 
 const getPlan = (subscription: SubscriptionPlan) => {
   if (subscription.groups) return "Enterprise";
@@ -119,9 +125,15 @@ export const INFISICAL_SUPPORT_OPTIONS = [
 export const Navbar = () => {
   const { user } = useUser();
   const { subscription } = useSubscription();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
+
   const [showAdminsModal, setShowAdminsModal] = useState(false);
+  const [showSubOrgForm, setShowSubOrgForm] = useState(false);
   const [showCardDeclinedModal, setShowCardDeclinedModal] = useState(false);
+  const { data: subOrganizations = [] } = useQuery({
+    ...subOrganizationsQuery.list({ limit: 500 }),
+    enabled: Boolean(subscription.subOrganization) && !isSubOrganization
+  });
 
   useEffect(() => {
     if (subscription?.cardDeclined && !sessionStorage.getItem("paymentFailed")) {
@@ -517,6 +529,7 @@ export const Navbar = () => {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
       <Modal isOpen={showCardDeclinedModal} onOpenChange={setShowCardDeclinedModal}>
         <ModalContent
           title={
@@ -557,6 +570,16 @@ export const Navbar = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </ModalContent>
+      </Modal>
+      <Modal isOpen={showSubOrgForm} onOpenChange={setShowSubOrgForm}>
+        <ModalContent
+          title="Create Sub-Organizations"
+          subTitle="Define a new sub-organization under your current organization."
+        >
+          <div className="mb-2">
+            <NewSubOrganizationForm onClose={() => setShowSubOrgForm(true)} />
           </div>
         </ModalContent>
       </Modal>

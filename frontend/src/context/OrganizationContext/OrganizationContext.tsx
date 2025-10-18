@@ -15,5 +15,12 @@ export const useOrganization = () => {
     staleTime: Infinity
   });
 
-  return { currentOrg };
+  return {
+    currentOrg: {
+      ...currentOrg,
+      id: currentOrg?.subOrganization?.id || currentOrg?.id,
+      parentOrgId: currentOrg.id
+    },
+    isSubOrganization: Boolean(currentOrg.subOrganization)
+  };
 };

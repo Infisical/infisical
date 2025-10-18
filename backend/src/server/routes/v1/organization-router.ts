@@ -59,7 +59,14 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organization: sanitizedOrganizationSchema
+          organization: sanitizedOrganizationSchema.extend({
+            subOrganization: z
+              .object({
+                id: z.string(),
+                name: z.string()
+              })
+              .optional()
+          })
         })
       }
     },
@@ -69,6 +76,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         req.permission.id,
         req.params.organizationId,
         req.permission.authMethod,
+        req.permission.parentOrgId,
         req.permission.orgId
       );
       return { organization };

@@ -50,10 +50,12 @@ import { registerSshHostGroupRouter } from "./ssh-host-group-router";
 import { registerSshHostRouter } from "./ssh-host-router";
 import { registerTrustedIpRouter } from "./trusted-ip-router";
 import { registerUserAdditionalPrivilegeRouter } from "./user-additional-privilege-router";
+import { registerSubOrgRouter } from "./sub-org-router";
 
 export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   // org role starts with organization
   await server.register(registerOrgRoleRouter, { prefix: "/organization" });
+  await server.register(registerSubOrgRouter, { prefix: "/sub-organizations" });
   await server.register(registerLicenseRouter, { prefix: "/organizations" });
 
   // depreciated in favour of infisical workspace

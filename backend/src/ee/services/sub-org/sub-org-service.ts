@@ -45,7 +45,7 @@ export const subOrgServiceFactory = ({
     );
 
     const orgLicensePlan = await licenseService.getPlan(permissionActor.parentOrgId);
-    if (!orgLicensePlan.gateway) {
+    if (!orgLicensePlan.subOrganization) {
       throw new BadRequestError({
         message: "Child organization creation failed. Please upgrade your instance to Infisical's Enterprise plan."
       });
