@@ -312,6 +312,12 @@ export enum ActionProjectType {
   Any = "any"
 }
 
+export enum OrganizationActionScope {
+  ChildOrganization = "child-organization-only",
+  ParentOrganization = "parent-organization-only",
+  Any = "any"
+}
+
 export enum TemporaryPermissionMode {
   Relative = "relative"
 }

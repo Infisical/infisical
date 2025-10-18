@@ -78,6 +78,7 @@ export type OrgServiceActor = {
   id: string;
   authMethod: ActorAuthMethod;
   orgId: string;
+  parentOrgId: string;
 };
 
 export enum QueueWorkerProfile {

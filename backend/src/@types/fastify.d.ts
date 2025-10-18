@@ -126,6 +126,7 @@ import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
+import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 
 declare module "@fastify/request-context" {
   interface RequestContextData {
@@ -178,6 +179,7 @@ declare module "fastify" {
       type: ActorType;
       id: string;
       orgId: string;
+      parentOrgId: string;
     };
     rateLimits: RateLimitConfiguration;
     // passport data
@@ -327,6 +329,7 @@ declare module "fastify" {
       additionalPrivilege: TAdditionalPrivilegeServiceFactory;
       role: TRoleServiceFactory;
       convertor: TConvertorServiceFactory;
+      subOrganization: TSubOrgServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

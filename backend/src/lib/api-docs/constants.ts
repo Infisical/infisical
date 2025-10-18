@@ -33,6 +33,7 @@ export enum ApiDocsTags {
   LdapAuth = "LDAP Auth",
   Groups = "Groups",
   Organizations = "Organizations",
+  SubOrganizations = "Sub Organizations",
   Projects = "Projects",
   ProjectUsers = "Project Users",
   ProjectGroups = "Project Groups",
@@ -713,6 +714,17 @@ export const ORGANIZATIONS = {
   },
   LIST_GROUPS: {
     organizationId: "The ID of the organization to list groups for."
+  }
+} as const;
+
+export const SUB_ORGANIZATIONS = {
+  CREATE: {
+    name: "The name of the child organization to create."
+  },
+  LIST: {
+    limit: "The number of child organizations to return.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th child organization.",
+    isAccessible: "Filter to only return child organizations that the actor has access to."
   }
 } as const;
 

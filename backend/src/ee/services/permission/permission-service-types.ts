@@ -2,7 +2,7 @@ import { MongoAbility } from "@casl/ability";
 import { MongoQuery } from "@ucast/mongo2js";
 import { Knex } from "knex";
 
-import { ActionProjectType, TMemberships } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, TMemberships } from "@app/db/schemas";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionSet } from "./org-permission";
@@ -17,21 +17,6 @@ export type TBuildOrgPermissionDTO = {
   permissions?: unknown;
   role: string;
 }[];
-
-export type TGetUserProjectPermissionArg = {
-  userId: string;
-  projectId: string;
-  authMethod: ActorAuthMethod;
-  actionProjectType: ActionProjectType;
-  userOrgId?: string;
-};
-
-export type TGetIdentityProjectPermissionArg = {
-  identityId: string;
-  projectId: string;
-  identityOrgId?: string;
-  actionProjectType: ActionProjectType;
-};
 
 export type TGetServiceTokenProjectPermissionArg = {
   serviceTokenId: string;
@@ -55,16 +40,11 @@ export type TGetOrgPermissionArg = {
   orgId: string;
   actorAuthMethod: ActorAuthMethod;
   actorOrgId?: string;
+  scope: OrganizationActionScope;
 };
 
 export type TPermissionServiceFactory = {
-  getOrgPermission: (
-    type: ActorType,
-    id: string,
-    orgId: string,
-    authMethod: ActorAuthMethod,
-    actorOrgId: string | undefined
-  ) => Promise<{
+  getOrgPermission: (arg: TGetOrgPermissionArg) => Promise<{
     permission: MongoAbility<OrgPermissionSet, MongoQuery>;
     memberships: Array<
       TMemberships & {

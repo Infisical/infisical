@@ -15,6 +15,11 @@ export enum OrgPermissionActions {
   Delete = "delete"
 }
 
+export enum OrgPermissionChildOrgActions {
+  Create = "create",
+  DirectAccess = "direct-access"
+}
+
 export enum OrgPermissionAppConnectionActions {
   Read = "read",
   Create = "create",
@@ -117,7 +122,8 @@ export enum OrgPermissionSubjects {
   Kmip = "kmip",
   Gateway = "gateway",
   Relay = "relay",
-  SecretShare = "secret-share"
+  SecretShare = "secret-share",
+  ChildOrganization = "child-organization"
 }
 
 export type AppConnectionSubjectFields = {
@@ -128,6 +134,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Workspace]
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Project]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
+  | [OrgPermissionChildOrgActions, OrgPermissionSubjects.ChildOrganization]
   | [OrgPermissionActions, OrgPermissionSubjects.Member]
   | [OrgPermissionActions, OrgPermissionSubjects.Settings]
   | [OrgPermissionActions, OrgPermissionSubjects.IncidentAccount]
@@ -184,6 +191,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   z.object({
     subject: z.literal(OrgPermissionSubjects.Role).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+  }),
+  z.object({
+    subject: z.literal(OrgPermissionSubjects.ChildOrganization).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionChildOrgActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Member).describe("The entity this permission pertains to."),
@@ -308,6 +321,10 @@ const buildAdminPermission = () => {
   // ws permissions
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Project);
+
+  can(OrgPermissionChildOrgActions.Create, OrgPermissionSubjects.ChildOrganization);
+  can(OrgPermissionChildOrgActions.DirectAccess, OrgPermissionSubjects.ChildOrganization);
+
   // role permission
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Role);
