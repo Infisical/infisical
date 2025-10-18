@@ -43,7 +43,7 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
       const oneHourInMs = 1000 * 60 * 60;
 
       if (typeof valueInMs === "number" && valueInMs > 0) {
-        const hours = valueInMs / oneHourInMs;
+        const hours = Math.floor(valueInMs / oneHourInMs);
         return `${hours}h`;
       }
     }
