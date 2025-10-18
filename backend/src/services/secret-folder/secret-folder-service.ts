@@ -118,24 +118,11 @@ export const secretFolderServiceFactory = ({
         });
       }
 
-      // check if the exact folder already exists
-      const existingFolder = await folderDAL.findOne(
-        {
-          envId: env.id,
-          parentId: parentFolder.id,
-          name,
-          isReserved: false
-        },
-        tx
-      );
-
-      if (existingFolder) {
-        return existingFolder;
-      }
-
       // exact folder case
       if (parentFolder.path === pathWithFolder) {
-        return parentFolder;
+        throw new BadRequestError({
+          message: `Folder with name '${name}' already exists in path '${secretPath}'`
+        });
       }
 
       let currentParentId = parentFolder.id;

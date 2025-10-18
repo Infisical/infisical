@@ -25,7 +25,12 @@ import {
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
-import { useCreateFolder, useCreateSecretV3, useCreateWsTag, useGetWsTags } from "@app/hooks/api";
+import {
+  useCreateSecretV3,
+  useCreateWsTag,
+  useGetOrCreateFolder,
+  useGetWsTags
+} from "@app/hooks/api";
 import { SecretType } from "@app/hooks/api/types";
 
 const typeSchema = z
@@ -64,7 +69,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
   const environments = currentProject?.environments || [];
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
-  const { mutateAsync: createFolder } = useCreateFolder();
+  const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
   const { data: projectTags, isPending: isTagsLoading } = useGetWsTags(
     canReadTags ? projectId : ""
   );
@@ -92,7 +97,7 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
         );
 
         if (folderName && parentPath && canCreateFolder) {
-          await createFolder({
+          await getOrCreateFolder({
             projectId,
             path: parentPath,
             environment,
