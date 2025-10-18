@@ -19,12 +19,44 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
 
   const isDurationValid = useMemo(() => duration && ms(duration || "1s") > 0, [duration]);
 
+  const cliDuration = useMemo(() => {
+    if (!duration) return duration;
+
+    const unit = duration.replace(/[\d\s.-]/g, "");
+
+    const dayOrLargerUnits = [
+      "d",
+      "day",
+      "days",
+      "w",
+      "week",
+      "weeks",
+      "y",
+      "yr",
+      "yrs",
+      "year",
+      "years"
+    ];
+
+    if (unit === "M" || dayOrLargerUnits.includes(unit.toLowerCase())) {
+      const valueInMs = ms(duration);
+      const oneHourInMs = 1000 * 60 * 60;
+
+      if (typeof valueInMs === "number" && valueInMs > 0) {
+        const hours = valueInMs / oneHourInMs;
+        return `${hours}h`;
+      }
+    }
+
+    return duration;
+  }, [duration]);
+
   const command = useMemo(
     () =>
       account && account.resource.resourceType === PamResourceType.Postgres
-        ? `infisical pam db access-account ${account.id} --duration ${duration}`
+        ? `infisical pam db access-account ${account.id} --duration ${cliDuration}`
         : "",
-    [account, duration]
+    [account, cliDuration]
   );
 
   if (!account) return null;
@@ -48,7 +80,7 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
         />
         <FormLabel label="CLI Command" className="mt-4" />
         <div className="flex gap-2">
-          <Input value={command} isDisabled className="opacity-50" />
+          <Input value={command} isDisabled />
           <IconButton
             ariaLabel="copy"
             variant="outline_bg"
