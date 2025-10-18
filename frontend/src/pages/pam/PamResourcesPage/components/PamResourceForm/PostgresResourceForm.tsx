@@ -34,10 +34,12 @@ export const PostgresResourceForm = ({ resource, onSubmit }: Props) => {
     defaultValues: resource
       ? {
           ...resource,
-          rotationAccountCredentials: {
-            ...resource.rotationAccountCredentials,
-            password: "******"
-          }
+          rotationAccountCredentials: resource.rotationAccountCredentials
+            ? {
+                ...resource.rotationAccountCredentials,
+                password: "******"
+              }
+            : resource.rotationAccountCredentials
         }
       : {
           resourceType: PamResourceType.Postgres,
