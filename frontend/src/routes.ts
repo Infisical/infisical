@@ -40,7 +40,7 @@ const organizationRoutes = route("/organization", [
       "organization/AppConnections/OauthCallbackPage/route.tsx"
     )
   ]),
-  route("/networking", [index("organization/NetworkingPage/route.tsx")])
+  route("/networking", "organization/NetworkingPage/route.tsx")
 ]);
 
 const secretManagerRoutes = route("/projects/secret-management/$projectId", [
