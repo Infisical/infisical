@@ -211,7 +211,7 @@ export const DeployGatewayModal = ({ isOpen, onOpenChange }: Props) => {
 
         <FormLabel label="CLI Command" className="mt-4" />
         <div className="flex gap-2">
-          <Input value={command} isDisabled isError={!isCommandReady} />
+          <Input value={command} isDisabled className={isCommandReady ? "" : "opacity-50"} />
           <IconButton
             ariaLabel="copy"
             variant="outline_bg"
