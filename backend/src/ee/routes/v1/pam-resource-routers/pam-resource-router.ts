@@ -3,14 +3,14 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   PostgresResourceListItemSchema,
-  PostgresResourceSchema
+  SanitizedPostgresResourceSchema
 } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 // Use z.union([...]) when more resources are added
-const ResourceSchema = PostgresResourceSchema;
+const SanitizedResourceSchema = SanitizedPostgresResourceSchema;
 
 const ResourceOptionsSchema = z.discriminatedUnion("resource", [PostgresResourceListItemSchema]);
 
@@ -50,7 +50,7 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          resources: ResourceSchema.array()
+          resources: SanitizedResourceSchema.array()
         })
       }
     },

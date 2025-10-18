@@ -26,6 +26,15 @@ export const PostgresResourceSchema = BasePostgresResourceSchema.extend({
   rotationAccountCredentials: PostgresAccountCredentialsSchema.nullable().optional()
 });
 
+export const SanitizedPostgresResourceSchema = BasePostgresResourceSchema.extend({
+  connectionDetails: PostgresResourceConnectionDetailsSchema,
+  rotationAccountCredentials: PostgresAccountCredentialsSchema.pick({
+    username: true
+  })
+    .nullable()
+    .optional()
+});
+
 export const PostgresResourceListItemSchema = z.object({
   name: z.literal("PostgreSQL"),
   resource: z.literal(PamResource.Postgres)

@@ -6,11 +6,10 @@ import {
   AccordionItem,
   AccordionTrigger,
   FormControl,
-  Input,
-  SecretInput
+  Input
 } from "@app/components/v2";
 
-export const SqlRotateAccountFields = () => {
+export const SqlRotateAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
   const { control } = useFormContext();
 
   return (
@@ -49,9 +48,21 @@ export const SqlRotateAccountFields = () => {
                   isError={Boolean(error?.message)}
                   label="Password"
                 >
-                  <SecretInput
-                    containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                  <Input
                     {...field}
+                    type="password"
+                    onFocus={(e) => {
+                      if (isUpdate && field.value === "******") {
+                        field.onChange("");
+                      }
+                      e.target.type = "text";
+                    }}
+                    onBlur={(e) => {
+                      if (isUpdate && field.value === "") {
+                        field.onChange("******");
+                      }
+                      e.target.type = "password";
+                    }}
                   />
                 </FormControl>
               )}

@@ -31,17 +31,25 @@ export const PostgresResourceForm = ({ resource, onSubmit }: Props) => {
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: resource ?? {
-      resourceType: PamResourceType.Postgres,
-      connectionDetails: {
-        host: "",
-        port: 5432,
-        database: "default",
-        sslEnabled: true,
-        sslRejectUnauthorized: true,
-        sslCertificate: undefined
-      }
-    }
+    defaultValues: resource
+      ? {
+          ...resource,
+          rotationAccountCredentials: {
+            ...resource.rotationAccountCredentials,
+            password: "******"
+          }
+        }
+      : {
+          resourceType: PamResourceType.Postgres,
+          connectionDetails: {
+            host: "",
+            port: 5432,
+            database: "default",
+            sslEnabled: true,
+            sslRejectUnauthorized: true,
+            sslCertificate: undefined
+          }
+        }
   });
 
   const {
@@ -62,7 +70,7 @@ export const PostgresResourceForm = ({ resource, onSubmit }: Props) => {
           selectedTabIndex={selectedTabIndex}
           setSelectedTabIndex={setSelectedTabIndex}
         />
-        <SqlRotateAccountFields />
+        <SqlRotateAccountFields isUpdate={isUpdate} />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

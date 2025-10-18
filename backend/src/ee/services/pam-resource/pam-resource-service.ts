@@ -10,7 +10,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "../license/license-service";
-import { encryptAccountCredentials } from "../pam-account/pam-account-fns";
+import { decryptAccountCredentials, encryptAccountCredentials } from "../pam-account/pam-account-fns";
 import { TPamResourceDALFactory } from "./pam-resource-dal";
 import { PamResource } from "./pam-resource-enums";
 import { PAM_RESOURCE_FACTORY_MAP } from "./pam-resource-factory";
@@ -192,8 +192,19 @@ export const pamResourceServiceFactory = ({
           gatewayV2Service
         );
 
-        const validatedRotationAccountCredentials =
-          await factory.validateAccountCredentials(rotationAccountCredentials);
+        // Logic to prevent overwriting unedited censored values
+        const finalCredentials = { ...rotationAccountCredentials };
+        if (resource.encryptedRotationAccountCredentials && rotationAccountCredentials.password === "******") {
+          const decryptedCredentials = await decryptAccountCredentials({
+            encryptedCredentials: resource.encryptedRotationAccountCredentials,
+            projectId: resource.projectId,
+            kmsService
+          });
+
+          finalCredentials.password = decryptedCredentials.password;
+        }
+
+        const validatedRotationAccountCredentials = await factory.validateAccountCredentials(finalCredentials);
 
         updateDoc.encryptedRotationAccountCredentials = await encryptAccountCredentials({
           credentials: validatedRotationAccountCredentials,
