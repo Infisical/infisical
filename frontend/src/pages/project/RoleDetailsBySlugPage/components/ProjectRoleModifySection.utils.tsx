@@ -7,6 +7,7 @@ import { Tooltip } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionCmekActions,
   ProjectPermissionSub
 } from "@app/context";
@@ -215,6 +216,13 @@ const PkiTemplatePolicyActionSchema = z.object({
   [ProjectPermissionPkiTemplateActions.IssueCert]: z.boolean().optional(),
   [ProjectPermissionPkiTemplateActions.ListCerts]: z.boolean().optional()
 });
+const CertificateProfilePolicyActionSchema = z.object({
+  [ProjectPermissionCertificateProfileActions.Read]: z.boolean().optional(),
+  [ProjectPermissionCertificateProfileActions.Create]: z.boolean().optional(),
+  [ProjectPermissionCertificateProfileActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionCertificateProfileActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionCertificateProfileActions.IssueCert]: z.boolean().optional()
+});
 
 const SecretEventsPolicyActionSchema = z.object({
   [ProjectPermissionSecretEventActions.SubscribeCreated]: z.boolean().optional(),
@@ -385,6 +393,8 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
+      [ProjectPermissionSub.CertificateProfiles]:
+        CertificateProfilePolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SshCertificateAuthorities]: GeneralPolicyActionSchema.array().default(
         []
       ),
@@ -808,7 +818,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canDelete = action.includes(ProjectPermissionActions.Delete);
       const canCreate = action.includes(ProjectPermissionActions.Create);
 
-      if (!formVal[subject]) formVal[subject] = [{}];
+      if (!formVal[subject]) {
+        formVal[subject] = [{ conditions: [] }];
+      }
       if (canRead) formVal[subject as ProjectPermissionSub.Member]![0].read = true;
       if (canEdit) formVal[subject as ProjectPermissionSub.Member]![0].edit = true;
       if (canCreate) formVal[subject as ProjectPermissionSub.Member]![0].create = true;
@@ -1138,6 +1150,31 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
         inverted
       });
+
+      return;
+    }
+    if (subject === ProjectPermissionSub.CertificateProfiles) {
+      if (!formVal[subject]) formVal[subject] = [];
+
+      formVal[subject]!.push({
+        [ProjectPermissionCertificateProfileActions.Edit]: action.includes(
+          ProjectPermissionCertificateProfileActions.Edit
+        ),
+        [ProjectPermissionCertificateProfileActions.Delete]: action.includes(
+          ProjectPermissionCertificateProfileActions.Delete
+        ),
+        [ProjectPermissionCertificateProfileActions.Create]: action.includes(
+          ProjectPermissionCertificateProfileActions.Create
+        ),
+        [ProjectPermissionCertificateProfileActions.Read]: action.includes(
+          ProjectPermissionCertificateProfileActions.Read
+        ),
+        [ProjectPermissionCertificateProfileActions.IssueCert]: action.includes(
+          ProjectPermissionCertificateProfileActions.IssueCert
+        )
+      });
+
+      return;
     }
 
     if (subject === ProjectPermissionSub.PamAccounts) {
@@ -1522,6 +1559,16 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "List Certificates", value: ProjectPermissionPkiTemplateActions.ListCerts }
     ]
   },
+  [ProjectPermissionSub.CertificateProfiles]: {
+    title: "Certificate Profiles",
+    actions: [
+      { label: "Read", value: ProjectPermissionCertificateProfileActions.Read },
+      { label: "Create", value: ProjectPermissionCertificateProfileActions.Create },
+      { label: "Modify", value: ProjectPermissionCertificateProfileActions.Edit },
+      { label: "Remove", value: ProjectPermissionCertificateProfileActions.Delete },
+      { label: "Issue Certificates", value: ProjectPermissionCertificateProfileActions.IssueCert }
+    ]
+  },
   [ProjectPermissionSub.SshCertificateAuthorities]: {
     title: "SSH Certificate Authorities",
     actions: [
@@ -1869,6 +1916,7 @@ const CertificateManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.PkiSyncs]: enabled,
   [ProjectPermissionSub.CertificateAuthorities]: enabled,
   [ProjectPermissionSub.CertificateTemplates]: enabled,
+  [ProjectPermissionSub.CertificateProfiles]: enabled,
   [ProjectPermissionSub.Certificates]: enabled
 });
 
@@ -2140,6 +2188,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.PkiSyncs,
           actions: [ProjectPermissionPkiSyncActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.CertificateProfiles,
+          actions: [ProjectPermissionCertificateProfileActions.Read]
         }
       ]
     },
@@ -2171,6 +2223,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.PkiSyncs,
           actions: Object.values(ProjectPermissionPkiSyncActions)
+        },
+        {
+          subject: ProjectPermissionSub.CertificateProfiles,
+          actions: Object.values(ProjectPermissionCertificateProfileActions)
         }
       ]
     },

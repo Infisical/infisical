@@ -24,6 +24,7 @@ export const getCertStatusBadgeVariant = (status: CertStatus) => {
 
 export const certKeyAlgorithmToNameMap: { [K in CertKeyAlgorithm]: string } = {
   [CertKeyAlgorithm.RSA_2048]: "RSA 2048",
+  [CertKeyAlgorithm.RSA_3072]: "RSA 3072",
   [CertKeyAlgorithm.RSA_4096]: "RSA 4096",
   [CertKeyAlgorithm.ECDSA_P256]: "ECDSA P256",
   [CertKeyAlgorithm.ECDSA_P384]: "ECDSA P384"
@@ -31,6 +32,7 @@ export const certKeyAlgorithmToNameMap: { [K in CertKeyAlgorithm]: string } = {
 
 export const certKeyAlgorithms = [
   { label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.RSA_2048], value: CertKeyAlgorithm.RSA_2048 },
+  { label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.RSA_3072], value: CertKeyAlgorithm.RSA_3072 },
   { label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.RSA_4096], value: CertKeyAlgorithm.RSA_4096 },
   {
     label: certKeyAlgorithmToNameMap[CertKeyAlgorithm.ECDSA_P256],
@@ -95,4 +97,13 @@ export const EXTENDED_KEY_USAGES_OPTIONS = [
   { value: CertExtendedKeyUsage.OCSP_SIGNING, label: "OCSP Signing" },
   { value: CertExtendedKeyUsage.CODE_SIGNING, label: "Code Signing" },
   { value: CertExtendedKeyUsage.TIMESTAMPING, label: "Timestamping" }
+] as const;
+
+export const SIGNATURE_ALGORITHMS_OPTIONS = [
+  { value: "RSA-SHA256", label: "RSA-SHA256" },
+  { value: "RSA-SHA384", label: "RSA-SHA384" },
+  { value: "RSA-SHA512", label: "RSA-SHA512" },
+  { value: "ECDSA-SHA256", label: "ECDSA-SHA256" },
+  { value: "ECDSA-SHA384", label: "ECDSA-SHA384" },
+  { value: "ECDSA-SHA512", label: "ECDSA-SHA512" }
 ] as const;

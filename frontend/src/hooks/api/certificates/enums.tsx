@@ -5,6 +5,7 @@ export enum CertStatus {
 
 export enum CertKeyAlgorithm {
   RSA_2048 = "RSA_2048",
+  RSA_3072 = "RSA_3072",
   RSA_4096 = "RSA_4096",
   ECDSA_P256 = "EC_prime256v1",
   ECDSA_P384 = "EC_secp384r1"
@@ -24,22 +25,22 @@ export enum CrlReason {
 }
 
 export enum CertKeyUsage {
-  DIGITAL_SIGNATURE = "digitalSignature",
-  KEY_ENCIPHERMENT = "keyEncipherment",
-  NON_REPUDIATION = "nonRepudiation",
-  DATA_ENCIPHERMENT = "dataEncipherment",
-  KEY_AGREEMENT = "keyAgreement",
-  KEY_CERT_SIGN = "keyCertSign",
-  CRL_SIGN = "cRLSign",
-  ENCIPHER_ONLY = "encipherOnly",
-  DECIPHER_ONLY = "decipherOnly"
+  DIGITAL_SIGNATURE = "digital_signature",
+  KEY_ENCIPHERMENT = "key_encipherment",
+  NON_REPUDIATION = "non_repudiation",
+  DATA_ENCIPHERMENT = "data_encipherment",
+  KEY_AGREEMENT = "key_agreement",
+  KEY_CERT_SIGN = "key_cert_sign",
+  CRL_SIGN = "crl_sign",
+  ENCIPHER_ONLY = "encipher_only",
+  DECIPHER_ONLY = "decipher_only"
 }
 
 export enum CertExtendedKeyUsage {
-  CLIENT_AUTH = "clientAuth",
-  SERVER_AUTH = "serverAuth",
-  CODE_SIGNING = "codeSigning",
-  EMAIL_PROTECTION = "emailProtection",
-  TIMESTAMPING = "timeStamping",
-  OCSP_SIGNING = "ocspSigning"
+  CLIENT_AUTH = "client_auth",
+  SERVER_AUTH = "server_auth",
+  CODE_SIGNING = "code_signing",
+  EMAIL_PROTECTION = "email_protection",
+  TIMESTAMPING = "time_stamping",
+  OCSP_SIGNING = "ocsp_signing"
 }

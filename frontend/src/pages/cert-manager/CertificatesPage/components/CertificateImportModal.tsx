@@ -7,7 +7,6 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FormControl,
-  Input,
   Modal,
   ModalContent,
   Select,
@@ -24,8 +23,6 @@ const schema = z.object({
   certificatePem: z.string().trim().min(1, "Certificate PEM is required"),
   privateKeyPem: z.string().trim().min(1, "Private Key PEM is required"),
   chainPem: z.string().trim().min(1, "Certificate Chain PEM is required"),
-
-  friendlyName: z.string(),
   collectionId: z.string().optional()
 });
 
@@ -72,7 +69,6 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
     certificatePem,
     privateKeyPem,
     chainPem,
-    friendlyName,
     collectionId
   }: FormData) => {
     try {
@@ -84,8 +80,6 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
         certificatePem,
         privateKeyPem,
         chainPem,
-
-        friendlyName,
         pkiCollectionId: collectionId
       });
 
@@ -147,20 +141,6 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
                       </SelectItem>
                     ))}
                   </Select>
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              defaultValue=""
-              name="friendlyName"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Friendly Name"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input {...field} placeholder="My Certificate" isDisabled={Boolean(cert)} />
                 </FormControl>
               )}
             />

@@ -7,22 +7,28 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
-  useProject
+  useProject,
+  useSubscription
 } from "@app/context";
 import { useDeleteCert } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CertificateCertModal } from "./CertificateCertModal";
 import { CertificateImportModal } from "./CertificateImportModal";
+import { CertificateIssuanceModal } from "./CertificateIssuanceModal";
 import { CertificateModal } from "./CertificateModal";
 import { CertificateRevocationModal } from "./CertificateRevocationModal";
 import { CertificatesTable } from "./CertificatesTable";
 
 export const CertificatesSection = () => {
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
   const { mutateAsync: deleteCert } = useDeleteCert();
 
+  const isLegacyTemplatesEnabled = subscription.pkiLegacyTemplates;
+
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+    "certificateIssuance",
     "certificate",
     "certificateImport",
     "certificateCert",
@@ -73,7 +79,9 @@ export const CertificatesSection = () => {
                 colorSchema="primary"
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("certificate")}
+                onClick={() =>
+                  handlePopUpOpen(isLegacyTemplatesEnabled ? "certificate" : "certificateIssuance")
+                }
                 isDisabled={!isAllowed}
               >
                 Issue
@@ -83,7 +91,11 @@ export const CertificatesSection = () => {
         </ProjectPermissionCan>
       </div>
       <CertificatesTable handlePopUpOpen={handlePopUpOpen} />
-      <CertificateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      {isLegacyTemplatesEnabled ? (
+        <CertificateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      ) : (
+        <CertificateIssuanceModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      )}
       <CertificateImportModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

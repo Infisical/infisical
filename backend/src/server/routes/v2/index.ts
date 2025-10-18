@@ -1,4 +1,5 @@
 import { registerCaRouter } from "./certificate-authority-router";
+import { registerCertificateTemplatesV2Router } from "./certificate-templates-v2-router";
 import { registerDeprecatedGroupProjectRouter } from "./deprecated-group-project-router";
 import { registerDeprecatedIdentityProjectRouter } from "./deprecated-identity-project-router";
 import { registerDeprecatedProjectMembershipRouter } from "./deprecated-project-membership-router";
@@ -18,6 +19,8 @@ export const registerV2Routes = async (server: FastifyZodProvider) => {
   await server.register(registerUserRouter, { prefix: "/users" });
   await server.register(registerServiceTokenRouter, { prefix: "/service-token" });
   await server.register(registerPasswordRouter, { prefix: "/password" });
+
+  await server.register(registerCertificateTemplatesV2Router, { prefix: "/certificate-templates" });
 
   await server.register(
     async (pkiRouter) => {

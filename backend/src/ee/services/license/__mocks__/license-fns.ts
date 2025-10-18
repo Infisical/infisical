@@ -33,7 +33,8 @@ export const getDefaultOnPremFeatures = () => {
     enterpriseSecretSyncs: false,
     enterpriseCertificateSyncs: false,
     enterpriseAppConnections: true,
-    machineIdentityAuthTemplates: false
+    machineIdentityAuthTemplates: false,
+    pkiLegacyTemplates: false
   };
 };
 

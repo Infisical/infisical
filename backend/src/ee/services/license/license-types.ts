@@ -78,6 +78,7 @@ export type TFeatureSet = {
   enterpriseCertificateSyncs: false;
   enterpriseAppConnections: false;
   machineIdentityAuthTemplates: false;
+  pkiLegacyTemplates: false;
   fips: false;
   eventSubscriptions: false;
   pam: false;

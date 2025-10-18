@@ -52,6 +52,10 @@ export const useRevokeCert = () => {
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
       });
+
+      queryClient.invalidateQueries({
+        queryKey: ["certificate-profiles", "list"]
+      });
     }
   });
 };

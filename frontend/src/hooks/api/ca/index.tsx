@@ -2,8 +2,10 @@ export { AcmeDnsProvider, CaRenewalType, CaStatus, CaType, InternalCaType } from
 export {
   useCreateCa,
   useCreateCertificate,
+  useCreateCertificateV3,
   useDeleteCa,
   useImportCaCertificate,
+  useOrderCertificateWithProfile,
   useRenewCa,
   useSignIntermediate,
   useUpdateCa
@@ -21,3 +23,4 @@ export {
   useListCasByTypeAndProjectId,
   useListExternalCasByProjectId
 } from "./queries";
+export type { TOrderCertificateDTO, TOrderCertificateResponse } from "./types";

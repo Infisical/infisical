@@ -420,7 +420,7 @@ export const certificateTemplateServiceFactory = ({
   };
 
   const getEstConfiguration = async (dto: TGetEstConfigurationDTO) => {
-    const { certificateTemplateId } = dto;
+    const { certificateTemplateId, isInternal } = dto;
 
     const certTemplate = await certificateTemplateDAL.getById(certificateTemplateId);
     if (!certTemplate) {
@@ -429,7 +429,7 @@ export const certificateTemplateServiceFactory = ({
       });
     }
 
-    if (!dto.isInternal) {
+    if (!isInternal) {
       const { permission } = await permissionService.getProjectPermission({
         actor: dto.actor,
         actorId: dto.actorId,
@@ -440,7 +440,7 @@ export const certificateTemplateServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionPkiTemplateActions.Edit,
+        ProjectPermissionPkiTemplateActions.Read,
         subject(ProjectPermissionSub.CertificateTemplates, { name: certTemplate.name })
       );
     }
