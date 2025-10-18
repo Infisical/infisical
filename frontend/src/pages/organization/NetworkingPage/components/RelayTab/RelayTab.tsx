@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   faArrowUpRightFromSquare,
   faBookOpen,
@@ -12,6 +12,7 @@ import {
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { formatRelative } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
@@ -36,6 +37,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionSubjects,
   OrgRelayPermissionActions
@@ -74,6 +76,25 @@ export const RelayTab = withPermission(
       "deleteRelay",
       "deployRelay"
     ] as const);
+
+    const action = useSearch({
+      from: ROUTE_PATHS.Organization.NetworkingPage.id,
+      select: (s) => s.action
+    });
+
+    const navigate = useNavigate({
+      from: ROUTE_PATHS.Organization.NetworkingPage.path
+    });
+
+    useEffect(() => {
+      if (action === "deploy-relay") {
+        handlePopUpOpen("deployRelay");
+        navigate({
+          search: (prev) => ({ ...prev, action: undefined }),
+          replace: true
+        });
+      }
+    }, [action]);
 
     const deleteRelayById = useDeleteRelayById();
 

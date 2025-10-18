@@ -166,7 +166,7 @@ export const DeployGatewayModal = ({ isOpen, onOpenChange }: Props) => {
           onChange={(newValue) => {
             if ((newValue as SingleValue<{ id: string }>)?.id === "_create") {
               navigate({
-                search: { selectedTab: "relays" }
+                search: (prev) => ({ ...prev, selectedTab: "relays", action: "deploy-relay" })
               });
               return;
             }

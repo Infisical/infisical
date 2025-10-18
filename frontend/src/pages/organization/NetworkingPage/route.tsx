@@ -5,7 +5,8 @@ import { z } from "zod";
 import { NetworkingPage } from "./NetworkingPage";
 
 const NetworkingPageQueryParams = z.object({
-  selectedTab: z.string().catch("gateways")
+  selectedTab: z.string().catch("gateways"),
+  action: z.string().optional()
 });
 
 export const Route = createFileRoute(
