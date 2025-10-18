@@ -16,15 +16,15 @@ export const Notification = ({ notification, onDelete }: Props) => {
   return (
     <div
       className={twMerge(
-        "group relative flex cursor-pointer items-start border-b border-mineshaft-600 p-3 transition-colors",
+        "group relative flex cursor-pointer items-start border-b border-mineshaft-600 p-2 transition-colors",
         notification.link ? "hover:bg-mineshaft-700" : "cursor-default",
         !notification.isRead && "bg-mineshaft-800"
       )}
     >
-      <div className="flex w-full min-w-0 flex-col">
+      <div className="flex w-full min-w-0 flex-col p-1">
         <div className="flex gap-2">
           {!notification.isRead && (
-            <FontAwesomeIcon icon={faCircle} className="mt-1.5 size-2 text-yellow-400" />
+            <FontAwesomeIcon icon={faCircle} className="mt-0.5 size-2 text-yellow-400" />
           )}
           <Tooltip
             content={<Markdown>{notification.title}</Markdown>}
@@ -45,7 +45,7 @@ export const Notification = ({ notification, onDelete }: Props) => {
           </span>
         )}
       </div>
-      <div className="flex w-0 shrink-0 justify-end opacity-0 transition-all group-hover:w-[24px] group-hover:opacity-100">
+      <div className="mt-0.5 flex w-0 shrink-0 justify-end opacity-0 transition-all group-hover:w-[24px] group-hover:opacity-100">
         <IconButton
           ariaLabel="delete"
           variant="plain"
