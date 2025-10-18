@@ -5,22 +5,22 @@ description: "Learn how to use Machine Identities to programmatically interact w
 
 ## Concept
 
-An Infisical machine identity is an entity that represents a workload or application that require access to various resources in Infisical. This is conceptually similar to an IAM user in AWS or service account in Google Cloud Platform (GCP).
+An Infisical machine identity is an entity that represents a workload or application that require access to various resources in Infisical. This is conceptually similar to an IAM user in AWS or a service account in Google Cloud Platform (GCP).
 
-Each identity must authenticate with the Infisical API using a supported authentication method like [Token Auth](/documentation/platform/identities/token-auth), [Universal Auth](/documentation/platform/identities/universal-auth), [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth), [AWS Auth](/documentation/platform/identities/aws-auth), [Azure Auth](/documentation/platform/identities/azure-auth), or [GCP Auth](/documentation/platform/identities/gcp-auth) to get back a short-lived access token to be used in subsequent requests.
+Each identity must authenticate with the Infisical API using a supported authentication method like [Token Auth](../identities/token-auth), [Universal Auth](../identities/universal-auth), [Kubernetes Auth](../identities/kubernetes-auth), [AWS Auth](../identities/aws-auth), [Azure Auth](../identities/azure-auth), or [GCP Auth](../identities/gcp-auth) to get back a short-lived access token to be used in subsequent requests.
 
 ![Organization Identities](/images/platform/organization/organization-machine-identities.png)
 
 Key Features:
 
-- Role Assignment: Identities must be assigned [roles](/documentation/platform/role-based-access-controls). These roles determine the scope of access to resources, either at the organization level or project level.
-- Auth/Token Configuration: Identities must be configured with corresponding authentication methods and access token properties to securely interact with the Infisical API.
+- **Role Assignment:** Identities must be assigned [roles](../access-controls/role-based-access-controls#role-assignment). These roles determine the scope of access to resources, either at the organization level or project level.
+- **Auth/Token Configuration:** Identities must be configured with corresponding authentication methods and access token properties to securely interact with the Infisical API.
 
 ## Workflow
 
 A typical workflow for using identities consists of four steps:
 
-1. Creating the identity with a name and [role](/documentation/platform/access-controls/role-based-access-controls) in Organization Access Control > Machine Identities.
+1. Creating the identity with a name and [role](../access-controls/role-based-access-controls#role-assignment) in Organization Access Control → Machine Identities.  
    This step also involves configuring an authentication method for it.
 2. Adding the identity to the project(s) you want it to have access to.
 3. Authenticating the identity with the Infisical API based on the configured authentication method on it and receiving a short-lived access token back.
@@ -30,17 +30,17 @@ A typical workflow for using identities consists of four steps:
 
 To interact with various resources in Infisical, Machine Identities can authenticate with the Infisical API using:
 
-- [Token Auth](/documentation/platform/identities/token-auth): A platform-agnostic, simple authentication method suitable to authenticate with Infisical using a token.
-- [Universal Auth](/documentation/platform/identities/universal-auth): A platform-agnostic authentication method suitable to authenticate with Infisical using a Client ID and Client Secret.
-- [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth): A Kubernetes-native authentication method for applications (e.g. pods).
-- [AWS Auth](/documentation/platform/identities/aws-auth): An AWS-native authentication method for AWS services (e.g. EC2, Lambda functions, etc.).
-- [Azure Auth](/documentation/platform/identities/azure-auth): An Azure-native authentication method for Azure resources (e.g. Azure VMs, Azure App Services, Azure Functions, Azure Kubernetes Service, etc.).
-- [GCP Auth](/documentation/platform/identities/gcp-auth): A GCP-native authentication method for GCP resources (e.g. Compute Engine, App Engine, Cloud Run, Google Kubernetes Engine, IAM service accounts, etc.).
-- [OIDC Auth](/documentation/platform/identities/oidc-auth): A platform-agnostic, JWT-based authentication method for workloads using an OpenID Connect identity provider.
+- [Token Auth](../identities/token-auth): A platform-agnostic, simple authentication method suitable to authenticate with Infisical using a token.
+- [Universal Auth](../identities/universal-auth): A platform-agnostic authentication method suitable to authenticate with Infisical using a Client ID and Client Secret.
+- [Kubernetes Auth](../identities/kubernetes-auth): A Kubernetes-native authentication method for applications (e.g. pods).
+- [AWS Auth](../identities/aws-auth): An AWS-native authentication method for AWS services (e.g. EC2, Lambda functions, etc.).
+- [Azure Auth](../identities/azure-auth): An Azure-native authentication method for Azure resources (e.g. Azure VMs, Azure App Services, Azure Functions, Azure Kubernetes Service, etc.).
+- [GCP Auth](../identities/gcp-auth): A GCP-native authentication method for GCP resources (e.g. Compute Engine, App Engine, Cloud Run, Google Kubernetes Engine, IAM service accounts, etc.).
+- [OIDC Auth](../identities/oidc-auth): A platform-agnostic, JWT-based authentication method for workloads using an OpenID Connect identity provider.
 
 ## Identity Lockout
 
-Lockout is a feature that prevents brute-force attacks on identity login endpoints. Auth methods that support lockout include: [Universal Auth](/documentation/platform/identities/universal-auth), [LDAP Auth](/documentation/platform/identities/ldap-auth/general).
+Lockout is a feature that prevents brute-force attacks on identity login endpoints. Auth methods that support lockout include: [Universal Auth](../identities/universal-auth), [LDAP Auth](../identities/ldap-auth/general).
 
 Supported auth methods have lockout enabled by default. If triggered, lockout temporarily disables the login endpoint for 5 minutes after 3 consecutive failed login attempts within a 30-second window. Lockout can be configured and disabled in the identity auth method settings.
 
@@ -49,25 +49,25 @@ Supported auth methods have lockout enabled by default. If triggered, lockout te
 <AccordionGroup>
 <Accordion title="Can I use machine identities with the CLI?">
 
-Yes - Identities can be used with the CLI.
+Yes — identities can be used with the CLI.
 
 You can learn more about how to do this in the CLI quickstart [here](/cli/usage).
 
 </Accordion>
 
 <Accordion title="What is the difference between an identity and service token?">
-  A service token is a project-level authentication method that is being deprecated in favor of identities. The service token method will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
+A service token is a project-level authentication method that is being deprecated in favor of identities. The service token method will be removed in the future in accordance with the deprecation notice and timeline stated [here](https://infisical.com/blog/deprecating-api-keys).
 
-  Amongst many differences, identities provide broader access over the Infisical API, utilizes the same
-  permission system as user identities, and come with a significantly larger number of configurable authentication and security features.
+Among many differences, identities provide broader access over the Infisical API, utilize the same permission system as user identities, and come with a significantly larger number of configurable authentication and security features.
 
-  If you're looking for a simple authentication method, similar to service tokens, that can be bound onto an identity, we recommend checking out [Token Auth](/documentation/platform/identities/token-auth).
+If you're looking for a simple authentication method, similar to service tokens, that can be bound onto an identity, we recommend checking out [Token Auth](../identities/token-auth).
 </Accordion>
-<Accordion title="Why can I not create, read, update, or delete an identity?">
-  There are a few reasons for why this might happen:
 
-  - You have insufficient organization permissions to create, read, update, delete identities.
-  - The identity you are trying to read, update, or delete is more privileged than yourself.
-  - The role you are trying to create an identity for or update an identity to is more privileged than yours.
+<Accordion title="Why can I not create, read, update, or delete an identity?">
+There are a few reasons for why this might happen:
+
+- You have insufficient organization permissions to create, read, update, or delete identities.
+- The identity you are trying to read, update, or delete is more privileged than yourself.
+- The role you are trying to create an identity for or update an identity to is more privileged than yours.
 </Accordion>
 </AccordionGroup>
