@@ -15,13 +15,24 @@ import {
   BaseSqlResourceConnectionDetailsSchema
 } from "../shared/sql/sql-resource-schemas";
 
-// Resources
 export const PostgresResourceConnectionDetailsSchema = BaseSqlResourceConnectionDetailsSchema;
+export const PostgresAccountCredentialsSchema = BaseSqlAccountCredentialsSchema;
 
+// Resources
 const BasePostgresResourceSchema = BasePamResourceSchema.extend({ resourceType: z.literal(PamResource.Postgres) });
 
 export const PostgresResourceSchema = BasePostgresResourceSchema.extend({
-  connectionDetails: PostgresResourceConnectionDetailsSchema
+  connectionDetails: PostgresResourceConnectionDetailsSchema,
+  rotationAccountCredentials: PostgresAccountCredentialsSchema.nullable().optional()
+});
+
+export const SanitizedPostgresResourceSchema = BasePostgresResourceSchema.extend({
+  connectionDetails: PostgresResourceConnectionDetailsSchema,
+  rotationAccountCredentials: PostgresAccountCredentialsSchema.pick({
+    username: true
+  })
+    .nullable()
+    .optional()
 });
 
 export const PostgresResourceListItemSchema = z.object({
@@ -30,16 +41,16 @@ export const PostgresResourceListItemSchema = z.object({
 });
 
 export const CreatePostgresResourceSchema = BaseCreatePamResourceSchema.extend({
-  connectionDetails: PostgresResourceConnectionDetailsSchema
+  connectionDetails: PostgresResourceConnectionDetailsSchema,
+  rotationAccountCredentials: PostgresAccountCredentialsSchema.nullable().optional()
 });
 
 export const UpdatePostgresResourceSchema = BaseUpdatePamResourceSchema.extend({
-  connectionDetails: PostgresResourceConnectionDetailsSchema.optional()
+  connectionDetails: PostgresResourceConnectionDetailsSchema.optional(),
+  rotationAccountCredentials: PostgresAccountCredentialsSchema.nullable().optional()
 });
 
 // Accounts
-export const PostgresAccountCredentialsSchema = BaseSqlAccountCredentialsSchema;
-
 export const PostgresAccountSchema = BasePamAccountSchema.extend({
   credentials: PostgresAccountCredentialsSchema
 });

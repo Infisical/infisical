@@ -6,6 +6,7 @@ import { slugSchema } from "@app/server/lib/schemas";
 // Resources
 export const BasePamResourceSchema = PamResourcesSchema.omit({
   encryptedConnectionDetails: true,
+  encryptedRotationAccountCredentials: true,
   resourceType: true
 });
 
@@ -37,10 +38,14 @@ export const BaseCreatePamAccountSchema = z.object({
   resourceId: z.string().uuid(),
   folderId: z.string().uuid().optional(),
   name: slugSchema({ field: "name" }),
-  description: z.string().max(512).nullable().optional()
+  description: z.string().max(512).nullable().optional(),
+  rotationEnabled: z.boolean(),
+  rotationIntervalSeconds: z.number().min(3600)
 });
 
 export const BaseUpdatePamAccountSchema = z.object({
   name: slugSchema({ field: "name" }).optional(),
-  description: z.string().max(512).nullable().optional()
+  description: z.string().max(512).nullable().optional(),
+  rotationEnabled: z.boolean().optional(),
+  rotationIntervalSeconds: z.number().min(3600).optional()
 });

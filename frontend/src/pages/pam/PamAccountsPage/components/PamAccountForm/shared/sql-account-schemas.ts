@@ -5,6 +5,10 @@ export const BaseSqlAccountSchema = z.object({
     .string()
     .trim()
     .min(1, "Username required")
-    .max(255, "Username must be 255 characters or less"),
-  password: z.string().trim().min(1, "Password required")
+    .max(63, "Username must be 63 characters or less"),
+  password: z
+    .string()
+    .trim()
+    .min(1, "Password required")
+    .max(256, "Password must be 256 characters or less")
 });

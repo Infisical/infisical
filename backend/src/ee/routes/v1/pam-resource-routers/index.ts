@@ -1,7 +1,7 @@
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import {
   CreatePostgresResourceSchema,
-  PostgresResourceSchema,
+  SanitizedPostgresResourceSchema,
   UpdatePostgresResourceSchema
 } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
 
@@ -12,7 +12,7 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
     registerPamResourceEndpoints({
       server,
       resourceType: PamResource.Postgres,
-      resourceResponseSchema: PostgresResourceSchema,
+      resourceResponseSchema: SanitizedPostgresResourceSchema,
       createResourceSchema: CreatePostgresResourceSchema,
       updateResourceSchema: UpdatePostgresResourceSchema
     });

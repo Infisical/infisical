@@ -34,10 +34,11 @@ const CreateForm = ({
 }: CreateFormProps) => {
   const createPamAccount = useCreatePamAccount();
 
-  console.log({ folderId });
-
   const onSubmit = async (
-    formData: DiscriminativePick<TPamAccount, "name" | "description" | "credentials">
+    formData: DiscriminativePick<
+      TPamAccount,
+      "name" | "description" | "credentials" | "rotationEnabled" | "rotationIntervalSeconds"
+    >
   ) => {
     try {
       const account = await createPamAccount.mutateAsync({
@@ -74,7 +75,10 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
   const updatePamAccount = useUpdatePamAccount();
 
   const onSubmit = async (
-    formData: DiscriminativePick<TPamAccount, "name" | "description" | "credentials">
+    formData: DiscriminativePick<
+      TPamAccount,
+      "name" | "description" | "credentials" | "rotationEnabled" | "rotationIntervalSeconds"
+    >
   ) => {
     try {
       const updatedAccount = await updatePamAccount.mutateAsync({

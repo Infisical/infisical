@@ -8,13 +8,14 @@ import { TPostgresAccount } from "@app/hooks/api/pam";
 import { BaseSqlAccountSchema } from "./shared/sql-account-schemas";
 import { SqlAccountFields } from "./shared/SqlAccountFields";
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import { RotateAccountFields, rotateAccountFieldsSchema } from "./RotateAccountFields";
 
 type Props = {
   account?: TPostgresAccount;
   onSubmit: (formData: FormData) => Promise<void>;
 };
 
-const formSchema = genericAccountFieldsSchema.extend({
+const formSchema = genericAccountFieldsSchema.extend(rotateAccountFieldsSchema.shape).extend({
   credentials: BaseSqlAccountSchema
 });
 
@@ -50,6 +51,7 @@ export const PostgresAccountForm = ({ account, onSubmit }: Props) => {
       >
         <GenericAccountFields />
         <SqlAccountFields isUpdate={isUpdate} />
+        <RotateAccountFields />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

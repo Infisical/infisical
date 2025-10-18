@@ -6,9 +6,14 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { PamResource } from "../../pam-resource-enums";
-import { TPamResourceFactory, TPamResourceFactoryValidateAccountCredentials } from "../../pam-resource-types";
+import {
+  TPamResourceFactory,
+  TPamResourceFactoryRotateAccountCredentials,
+  TPamResourceFactoryValidateAccountCredentials
+} from "../../pam-resource-types";
 import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "./sql-resource-types";
 
 const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
@@ -176,8 +181,66 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
     }
   };
 
+  const rotateAccountCredentials: TPamResourceFactoryRotateAccountCredentials<TSqlAccountCredentials> = async (
+    rotationAccountCredentials,
+    currentCredentials
+  ) => {
+    try {
+      const newPassword = alphaNumericNanoId(32);
+
+      await executeWithGateway(
+        {
+          connectionDetails,
+          gatewayId,
+          resourceType,
+          username: rotationAccountCredentials.username,
+          password: rotationAccountCredentials.password
+        },
+        gatewayV2Service,
+        async (client) => {
+          switch (resourceType) {
+            case PamResource.Postgres:
+              await client.raw(`ALTER USER ?? WITH PASSWORD '${newPassword}'`, [currentCredentials.username]);
+              break;
+            default:
+              throw new BadRequestError({
+                message: `Password rotation for ${resourceType as PamResource} is not supported.`
+              });
+          }
+        }
+      );
+
+      return { username: currentCredentials.username, password: newPassword };
+    } catch (error) {
+      if (error instanceof BadRequestError) {
+        if (error.message === `password authentication failed for user "${rotationAccountCredentials.username}"`) {
+          throw new BadRequestError({
+            message: "Management credentials invalid: Username or password incorrect"
+          });
+        }
+
+        if (error.message.includes("permission denied")) {
+          throw new BadRequestError({
+            message: `Management credentials lack permission to rotate password for user "${currentCredentials.username}"`
+          });
+        }
+
+        if (error.message === "Connection terminated unexpectedly") {
+          throw new BadRequestError({
+            message: "Connection terminated unexpectedly. Verify that host and port are correct"
+          });
+        }
+      }
+
+      throw new BadRequestError({
+        message: `Unable to rotate account credentials for ${resourceType}: ${(error as Error).message || String(error)}`
+      });
+    }
+  };
+
   return {
     validateConnection,
-    validateAccountCredentials
+    validateAccountCredentials,
+    rotateAccountCredentials
   };
 };

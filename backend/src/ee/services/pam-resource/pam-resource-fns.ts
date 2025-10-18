@@ -2,6 +2,7 @@ import { TPamResources } from "@app/db/schemas";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { decryptAccountCredentials } from "../pam-account/pam-account-fns";
 import { TPamResource, TPamResourceConnectionDetails } from "./pam-resource-types";
 import { getPostgresResourceListItem } from "./postgres/postgres-resource-fns";
 
@@ -63,6 +64,13 @@ export const decryptResource = async (
       encryptedConnectionDetails: resource.encryptedConnectionDetails,
       projectId,
       kmsService
-    })
+    }),
+    rotationAccountCredentials: resource.encryptedRotationAccountCredentials
+      ? await decryptAccountCredentials({
+          encryptedCredentials: resource.encryptedRotationAccountCredentials,
+          projectId,
+          kmsService
+        })
+      : null
   } as TPamResource;
 };
