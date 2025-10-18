@@ -318,6 +318,14 @@ interface GetIdentityUniversalAuthClientSecretsEvent {
   };
 }
 
+interface GetIdentityUniversalAuthClientSecretByIdEvent {
+  type: EventType.GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID;
+  metadata: {
+    identityId: string;
+    clientSecretId: string;
+  };
+}
+
 interface RevokeIdentityUniversalAuthClientSecretEvent {
   type: EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET;
   metadata: {
@@ -906,6 +914,7 @@ export type Event =
   | GetIdentityUniversalAuthEvent
   | CreateIdentityUniversalAuthClientSecretEvent
   | GetIdentityUniversalAuthClientSecretsEvent
+  | GetIdentityUniversalAuthClientSecretByIdEvent
   | RevokeIdentityUniversalAuthClientSecretEvent
   | ClearIdentityUniversalAuthLockoutsEvent
   | CreateEnvironmentEvent

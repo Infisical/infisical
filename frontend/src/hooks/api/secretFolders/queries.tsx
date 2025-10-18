@@ -218,12 +218,13 @@ export const useDeleteFolder = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TDeleteFolderDTO>({
-    mutationFn: async ({ path = "/", folderId, environment, projectId }) => {
+    mutationFn: async ({ path = "/", folderId, environment, projectId, forceDelete = true }) => {
       const { data } = await apiRequest.delete(`/api/v2/folders/${folderId}`, {
         data: {
           environment,
           projectId,
-          path
+          path,
+          forceDelete
         }
       });
       return data;

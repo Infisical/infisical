@@ -18,7 +18,7 @@ const createFolder = async (dto: { path: string; name: string }) => {
   return res.json().folder;
 };
 
-const deleteFolder = async (dto: { path: string; id: string }) => {
+const deleteFolder = async (dto: { path: string; id: string; forceDelete?: boolean }) => {
   const res = await testServer.inject({
     method: "DELETE",
     url: `/api/v2/folders/${dto.id}`,
@@ -28,7 +28,8 @@ const deleteFolder = async (dto: { path: string; id: string }) => {
     body: {
       projectId: seedData1.project.id,
       environment: seedData1.environment.slug,
-      path: dto.path
+      path: dto.path,
+      forceDelete: dto.forceDelete ?? false
     }
   });
   expect(res.statusCode).toBe(200);
@@ -86,7 +87,7 @@ describe("Secret Folder Router", async () => {
       folders: expect.arrayContaining(expected.folders.map((el) => expect.objectContaining(el)))
     });
 
-    await Promise.all(newFolders.map(({ id }) => deleteFolder({ path, id })));
+    await Promise.all(newFolders.map(({ id }) => deleteFolder({ path, id, forceDelete: true })));
   });
 
   test("Update a deep folder", async () => {

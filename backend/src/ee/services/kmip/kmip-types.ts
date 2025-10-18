@@ -78,7 +78,7 @@ export type TKmipRegisterDTO = {
   name: string;
   key: string;
   algorithm: SymmetricKeyAlgorithm;
-  kmipMetadata?: Record<string, unknown>;
+  kmipMetadata?: Record<string, unknown> | null;
 } & KmipOperationBaseDTO;
 
 export type TSetupOrgKmipDTO = {
