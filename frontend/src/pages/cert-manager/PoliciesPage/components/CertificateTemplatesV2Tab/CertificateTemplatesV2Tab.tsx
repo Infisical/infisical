@@ -9,8 +9,8 @@ import {
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { useDeleteCertificateTemplateV2New } from "@app/hooks/api/certificateTemplates/mutations";
-import { TCertificateTemplateV2New } from "@app/hooks/api/certificateTemplates/types";
+import { useDeleteCertificateTemplateV2WithPolicies } from "@app/hooks/api/certificateTemplates/mutations";
+import { TCertificateTemplateV2WithPolicies } from "@app/hooks/api/certificateTemplates/types";
 
 import { CreateTemplateModal } from "./CreateTemplateModal";
 import { TemplateList } from "./TemplateList";
@@ -21,9 +21,10 @@ export const CertificateTemplatesV2Tab = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<TCertificateTemplateV2New | null>(null);
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<TCertificateTemplateV2WithPolicies | null>(null);
 
-  const deleteTemplateV2 = useDeleteCertificateTemplateV2New();
+  const deleteTemplateV2 = useDeleteCertificateTemplateV2WithPolicies();
 
   const canCreateTemplate = permission.can(
     ProjectPermissionPkiTemplateActions.Create,
@@ -34,12 +35,12 @@ export const CertificateTemplatesV2Tab = () => {
     setIsCreateModalOpen(true);
   };
 
-  const handleEditTemplate = (template: TCertificateTemplateV2New) => {
+  const handleEditTemplate = (template: TCertificateTemplateV2WithPolicies) => {
     setSelectedTemplate(template);
     setIsEditModalOpen(true);
   };
 
-  const handleDeleteTemplate = (template: TCertificateTemplateV2New) => {
+  const handleDeleteTemplate = (template: TCertificateTemplateV2WithPolicies) => {
     setSelectedTemplate(template);
     setIsDeleteModalOpen(true);
   };

@@ -13,7 +13,7 @@ export const PkiEstEnrollmentConfigsSchema = z.object({
   id: z.string().uuid(),
   disableBootstrapCaValidation: z.boolean().default(false).nullable().optional(),
   hashedPassphrase: z.string(),
-  encryptedCaChain: zodBuffer,
+  encryptedCaChain: zodBuffer.nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

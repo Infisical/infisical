@@ -1,30 +1,55 @@
-import RE2 from "re2";
+import * as x509 from "@peculiar/x509";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
   ACMESANType,
+  CertExtendedKeyUsageOIDToName,
   CertificateOrderStatus,
   CertKeyAlgorithm,
-  CertSignatureAlgorithm
+  CertKeyUsage,
+  CertSignatureAlgorithm,
+  mapLegacyAltNameType,
+  TAltNameMapping
 } from "@app/services/certificate/certificate-types";
+import { parseDistinguishedName } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
-  validateAltNamesField,
   validateAndMapAltNameType,
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
-  CertSubjectAlternativeNameType
+  CertSubjectAlternativeNameType,
+  mapLegacyExtendedKeyUsageToStandard,
+  mapLegacyKeyUsageToStandard
 } from "@app/services/certificate-common/certificate-constants";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
+import { TCertificateRequest } from "@app/services/certificate-template-v2/certificate-template-v2-types";
+
+interface CertificateRequestForService {
+  commonName?: string;
+  keyUsages?: CertKeyUsageType[];
+  extendedKeyUsages?: CertExtendedKeyUsageType[];
+  altNames?: Array<{
+    type: CertSubjectAlternativeNameType;
+    value: string;
+  }>;
+  validity: {
+    ttl: string;
+  };
+  notBefore?: Date;
+  notAfter?: Date;
+  signatureAlgorithm?: string;
+  keyAlgorithm?: string;
+}
 
 const validateTtlAndDateFields = (data: { notBefore?: string; notAfter?: string; ttl?: string }) => {
   const hasDateFields = data.notBefore || data.notAfter;
@@ -41,6 +66,67 @@ const validateDateOrder = (data: { notBefore?: string; notAfter?: string }) => {
   return true;
 };
 
+const extractCertificateRequestFromCSR = (csr: string): TCertificateRequest => {
+  let csrPem = csr;
+  if (!csr.includes("-----BEGIN CERTIFICATE REQUEST-----")) {
+    try {
+      csrPem = Buffer.from(csr, "base64").toString("utf8");
+    } catch (error) {
+      throw new BadRequestError({ message: "Invalid base64 CSR encoding" });
+    }
+  }
+
+  const csrObj = new x509.Pkcs10CertificateRequest(csrPem);
+  const subject = parseDistinguishedName(csrObj.subject);
+
+  const certificateRequest: TCertificateRequest = {
+    commonName: subject.commonName,
+    organization: subject.organization,
+    organizationUnit: subject.ou,
+    locality: subject.locality,
+    state: subject.province,
+    country: subject.country
+  };
+
+  const csrKeyUsageExtension = csrObj.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
+  if (csrKeyUsageExtension) {
+    const csrKeyUsages = Object.values(CertKeyUsage).filter(
+      // eslint-disable-next-line no-bitwise
+      (keyUsage) => (x509.KeyUsageFlags[keyUsage] & csrKeyUsageExtension.usages) !== 0
+    );
+    certificateRequest.keyUsages = csrKeyUsages.map(mapLegacyKeyUsageToStandard);
+  }
+
+  const csrExtendedKeyUsageExtension = csrObj.getExtension("2.5.29.37") as x509.ExtendedKeyUsageExtension;
+  if (csrExtendedKeyUsageExtension) {
+    const csrExtendedKeyUsages = csrExtendedKeyUsageExtension.usages
+      .map((ekuOid) => CertExtendedKeyUsageOIDToName[ekuOid as string])
+      .filter((eku) => eku !== undefined);
+    certificateRequest.extendedKeyUsages = csrExtendedKeyUsages.map(mapLegacyExtendedKeyUsageToStandard);
+  }
+
+  const sanExtension = csrObj.extensions.find((ext) => ext.type === "2.5.29.17");
+  if (sanExtension) {
+    const sanNames = new x509.GeneralNames(sanExtension.value);
+    const altNamesArray: TAltNameMapping[] = sanNames.items
+      .filter((value) => value.type === "email" || value.type === "dns" || value.type === "url" || value.type === "ip")
+      .map((name): TAltNameMapping => {
+        const altNameType = validateAndMapAltNameType(name.value);
+        if (!altNameType) {
+          throw new BadRequestError({ message: `Invalid altName from CSR: ${name.value}` });
+        }
+        return altNameType;
+      });
+
+    certificateRequest.subjectAlternativeNames = altNamesArray.map((altName) => ({
+      type: mapLegacyAltNameType(altName.type),
+      value: altName.value
+    }));
+  }
+
+  return certificateRequest;
+};
+
 export const registerCertificatesRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -54,6 +140,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       body: z
         .object({
           profileId: z.string().uuid(),
+          csr: z.string().trim().optional(),
           commonName: validateTemplateRegexField.optional(),
           ttl: z
             .string()
@@ -64,7 +151,14 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
           notBefore: validateCaDateField.optional(),
           notAfter: validateCaDateField.optional(),
-          subjectAltNames: validateAltNamesField.optional(),
+          altNames: z
+            .array(
+              z.object({
+                type: z.nativeEnum(CertSubjectAlternativeNameType),
+                value: z.string().min(1, "SAN value cannot be empty")
+              })
+            )
+            .optional(),
           signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
           keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional()
         })
@@ -88,44 +182,45 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const rawCertificateRequest = {
-        commonName: req.body.commonName,
-        keyUsages: req.body.keyUsages,
-        extendedKeyUsages: req.body.extendedKeyUsages,
-        altNames: req.body.subjectAltNames
-          ? (() => {
-              const splitRegex = new RE2("[,;]+");
-              return req.body.subjectAltNames
-                .split(splitRegex)
-                .map((name) => name.trim())
-                .filter((name) => name.length > 0)
-                .map((name) => {
-                  const mappedType = validateAndMapAltNameType(name);
-                  if (!mappedType) return null;
-                  const typeMapping = {
-                    dns: "dns_name",
-                    ip: "ip_address",
-                    email: "email",
-                    url: "uri"
-                  } as const;
-                  return {
-                    type: typeMapping[mappedType.type] as CertSubjectAlternativeNameType,
-                    value: mappedType.value
-                  };
-                })
-                .filter((item): item is NonNullable<typeof item> => item !== null);
-            })()
-          : undefined,
-        validity: {
-          ttl: req.body.ttl
-        },
-        notBefore: req.body.notBefore ? new Date(req.body.notBefore) : undefined,
-        notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined,
-        signatureAlgorithm: req.body.signatureAlgorithm,
-        keyAlgorithm: req.body.keyAlgorithm
-      };
+      let certificateRequestForService: CertificateRequestForService;
 
-      const mappedCertificateRequest = mapEnumsForValidation(rawCertificateRequest);
+      if (req.body.csr) {
+        try {
+          const csrData = extractCertificateRequestFromCSR(req.body.csr);
+
+          certificateRequestForService = {
+            commonName: csrData.commonName,
+            keyUsages: csrData.keyUsages,
+            extendedKeyUsages: csrData.extendedKeyUsages,
+            altNames: csrData.subjectAlternativeNames,
+            validity: {
+              ttl: req.body.ttl
+            },
+            notBefore: req.body.notBefore ? new Date(req.body.notBefore) : undefined,
+            notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined,
+            signatureAlgorithm: req.body.signatureAlgorithm,
+            keyAlgorithm: req.body.keyAlgorithm
+          };
+        } catch (error) {
+          throw new BadRequestError({ message: `Invalid CSR: ${(error as Error).message}` });
+        }
+      } else {
+        certificateRequestForService = {
+          commonName: req.body.commonName,
+          keyUsages: req.body.keyUsages,
+          extendedKeyUsages: req.body.extendedKeyUsages,
+          altNames: req.body.altNames,
+          validity: {
+            ttl: req.body.ttl
+          },
+          notBefore: req.body.notBefore ? new Date(req.body.notBefore) : undefined,
+          notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined,
+          signatureAlgorithm: req.body.signatureAlgorithm,
+          keyAlgorithm: req.body.keyAlgorithm
+        };
+      }
+
+      const mappedCertificateRequest = mapEnumsForValidation(certificateRequestForService);
 
       const data = await server.services.certificateV3.issueCertificateFromProfile({
         actor: req.permission.type,
@@ -173,7 +268,9 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             .min(1, "TTL cannot be empty")
             .refine((val) => ms(val) > 0, "TTL must be a positive number"),
           notBefore: validateCaDateField.optional(),
-          notAfter: validateCaDateField.optional()
+          notAfter: validateCaDateField.optional(),
+          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
+          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional()
         })
         .refine(validateTtlAndDateFields, {
           message:
@@ -205,7 +302,9 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           ttl: req.body.ttl
         },
         notBefore: req.body.notBefore ? new Date(req.body.notBefore) : undefined,
-        notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined
+        notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined,
+        signatureAlgorithm: req.body.signatureAlgorithm,
+        keyAlgorithm: req.body.keyAlgorithm
       });
 
       await server.services.auditLog.createAuditLog({

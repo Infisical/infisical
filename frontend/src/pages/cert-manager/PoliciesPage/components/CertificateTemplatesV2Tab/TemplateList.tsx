@@ -23,11 +23,11 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { useListCertificateTemplatesV2 } from "@app/hooks/api/certificateTemplates/queries";
-import { TCertificateTemplateV2New } from "@app/hooks/api/certificateTemplates/types";
+import { TCertificateTemplateV2WithPolicies } from "@app/hooks/api/certificateTemplates/types";
 
 interface Props {
-  onEditTemplate: (template: TCertificateTemplateV2New) => void;
-  onDeleteTemplate: (template: TCertificateTemplateV2New) => void;
+  onEditTemplate: (template: TCertificateTemplateV2WithPolicies) => void;
+  onDeleteTemplate: (template: TCertificateTemplateV2WithPolicies) => void;
 }
 
 export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {

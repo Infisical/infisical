@@ -156,7 +156,7 @@ export type TCertificateTemplateV2Policy = {
   };
 };
 
-export type TCertificateTemplateV2New = {
+export type TCertificateTemplateV2WithPolicies = {
   id: string;
   projectId: string;
   name: string;
@@ -171,7 +171,7 @@ export type TCertificateTemplateV2New = {
   updatedAt: string;
 };
 
-export type TCreateCertificateTemplateV2NewDTO = {
+export type TCreateCertificateTemplateV2WithPoliciesDTO = {
   projectId: string;
   name: string;
   description?: string;
@@ -183,7 +183,7 @@ export type TCreateCertificateTemplateV2NewDTO = {
   validity?: TCertificateTemplateV2Policy["validity"];
 };
 
-export type TUpdateCertificateTemplateV2NewDTO = {
+export type TUpdateCertificateTemplateV2WithPoliciesDTO = {
   templateId: string;
   name?: string;
   description?: string;
@@ -195,7 +195,7 @@ export type TUpdateCertificateTemplateV2NewDTO = {
   validity?: TCertificateTemplateV2Policy["validity"];
 };
 
-export type TDeleteCertificateTemplateV2NewDTO = {
+export type TDeleteCertificateTemplateV2WithPoliciesDTO = {
   templateId: string;
 };
 

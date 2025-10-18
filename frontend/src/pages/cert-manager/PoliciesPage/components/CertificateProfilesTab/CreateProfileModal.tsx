@@ -47,7 +47,7 @@ const createSchema = z
     estConfig: z
       .object({
         disableBootstrapCaValidation: z.boolean().optional(),
-        passphrase: z.string().min(1, "EST passphrase is required"),
+        passphraseInput: z.string().min(1, "EST passphrase is required"),
         caChain: z.string().min(1, "EST CA chain is required").optional()
       })
       .refine(
@@ -58,7 +58,8 @@ const createSchema = z
           return true;
         },
         {
-          message: "EST CA chain is required"
+          message: "EST CA chain is required when bootstrap CA validation is enabled",
+          path: ["caChain"]
         }
       )
       .optional(),
@@ -106,7 +107,7 @@ const editSchema = z
     estConfig: z
       .object({
         disableBootstrapCaValidation: z.boolean().optional(),
-        passphrase: z.string().optional(),
+        passphraseInput: z.string().optional(),
         caChain: z.string().optional()
       })
       .optional(),
@@ -168,15 +169,22 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           enrollmentType: profile.enrollmentType,
           certificateAuthorityId: profile.caId,
           certificateTemplateId: profile.certificateTemplateId,
-          estConfig: {
-            disableBootstrapCaValidation: profile.estConfig?.disableBootstrapCaValidation || false,
-            passphrase: "",
-            caChain: undefined
-          },
-          apiConfig: {
-            autoRenew: profile.apiConfig?.autoRenew || false,
-            autoRenewDays: profile.apiConfig?.autoRenewDays || 30
-          }
+          estConfig:
+            profile.enrollmentType === "est"
+              ? {
+                  disableBootstrapCaValidation:
+                    profile.estConfig?.disableBootstrapCaValidation || false,
+                  passphraseInput: "",
+                  caChain: profile.estConfig?.encryptedCaChain || ""
+                }
+              : undefined,
+          apiConfig:
+            profile.enrollmentType === "api"
+              ? {
+                  autoRenew: profile.apiConfig?.autoRenew || false,
+                  autoRenewDays: profile.apiConfig?.autoRenewDays || 30
+                }
+              : undefined
         }
       : {
           slug: "",
@@ -229,8 +237,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
 
         if (data.enrollmentType === "est" && data.estConfig) {
           createData.estConfig = {
-            passphrase: data.estConfig.passphrase,
-            caChain: data.estConfig.caChain || "",
+            passphraseInput: data.estConfig.passphraseInput,
+            caChain: data.estConfig.caChain || undefined,
             disableBootstrapCaValidation: data.estConfig.disableBootstrapCaValidation
           };
         } else if (data.enrollmentType === "api" && data.apiConfig) {
@@ -346,8 +354,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                     if (watchedEnrollmentType === "est") {
                       setValue("estConfig", {
                         disableBootstrapCaValidation: false,
-                        passphrase: "",
-                        caChain: ""
+                        passphraseInput: ""
                       });
                       setValue("apiConfig", undefined);
                     } else {
@@ -391,8 +398,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                       setValue("apiConfig", undefined);
                       setValue("estConfig", {
                         disableBootstrapCaValidation: false,
-                        passphrase: "",
-                        caChain: ""
+                        passphraseInput: ""
                       });
                     } else {
                       setValue("estConfig", undefined);
@@ -444,7 +450,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
 
                 <Controller
                   control={control}
-                  name="estConfig.passphrase"
+                  name="estConfig.passphraseInput"
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="EST Passphrase"

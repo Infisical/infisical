@@ -34,7 +34,7 @@ export async function up(knex: Knex): Promise<void> {
 
       t.boolean("disableBootstrapCaValidation").defaultTo(false);
       t.text("hashedPassphrase").notNullable();
-      t.binary("encryptedCaChain").notNullable();
+      t.binary("encryptedCaChain");
 
       t.timestamps(true, true, true);
     });

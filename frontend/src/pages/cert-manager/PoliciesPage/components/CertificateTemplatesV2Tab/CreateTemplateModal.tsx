@@ -24,12 +24,12 @@ import {
 } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
-  useCreateCertificateTemplateV2New,
-  useUpdateCertificateTemplateV2New
+  useCreateCertificateTemplateV2WithPolicies,
+  useUpdateCertificateTemplateV2WithPolicies
 } from "@app/hooks/api/certificateTemplates/mutations";
 import {
-  TCertificateTemplateV2New,
-  TCertificateTemplateV2Policy
+  TCertificateTemplateV2Policy,
+  TCertificateTemplateV2WithPolicies
 } from "@app/hooks/api/certificateTemplates/types";
 
 import {
@@ -57,7 +57,7 @@ type ValidityTransform = TCertificateTemplateV2Policy["validity"];
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  template?: TCertificateTemplateV2New;
+  template?: TCertificateTemplateV2WithPolicies;
   mode?: "create" | "edit";
 }
 
@@ -106,12 +106,12 @@ const KEY_ALGORITHMS = [
 
 export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create" }: Props) => {
   const { currentProject } = useProject();
-  const createTemplate = useCreateCertificateTemplateV2New();
-  const updateTemplate = useUpdateCertificateTemplateV2New();
+  const createTemplate = useCreateCertificateTemplateV2WithPolicies();
+  const updateTemplate = useUpdateCertificateTemplateV2WithPolicies();
 
   const isEdit = mode === "edit" && template;
 
-  const convertApiToUiFormat = (templateData: TCertificateTemplateV2New): FormData => {
+  const convertApiToUiFormat = (templateData: TCertificateTemplateV2WithPolicies): FormData => {
     const attributes: FormData["attributes"] = [];
     if (templateData.subject && Array.isArray(templateData.subject)) {
       templateData.subject.forEach((subj) => {
@@ -244,12 +244,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       maxDuration: { value: 365, unit: CertDurationUnit.DAYS }
     },
     signatureAlgorithm: {
-      allowedAlgorithms: [],
-      defaultAlgorithm: ""
+      allowedAlgorithms: []
     },
     keyAlgorithm: {
-      allowedKeyTypes: [],
-      defaultKeyType: ""
+      allowedKeyTypes: []
     }
   });
 
@@ -275,8 +273,38 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     optionalUsages: []
   };
 
-  const transformToNewApiFormat = (data: FormData) => {
-    const subject =
+  const consolidateByType = <
+    T extends { type: string; allowed?: string[]; required?: string[]; denied?: string[] }
+  >(
+    items: T[]
+  ): T[] => {
+    const consolidated = new Map<string, T>();
+
+    items.forEach((item) => {
+      const existing = consolidated.get(item.type);
+      if (existing) {
+        const mergedItem = {
+          ...item,
+          allowed: [...new Set([...(existing.allowed || []), ...(item.allowed || [])])],
+          required: [...new Set([...(existing.required || []), ...(item.required || [])])],
+          denied: [...new Set([...(existing.denied || []), ...(item.denied || [])])]
+        } as T;
+
+        if (mergedItem.allowed?.length === 0) delete mergedItem.allowed;
+        if (mergedItem.required?.length === 0) delete mergedItem.required;
+        if (mergedItem.denied?.length === 0) delete mergedItem.denied;
+
+        consolidated.set(item.type, mergedItem);
+      } else {
+        consolidated.set(item.type, item);
+      }
+    });
+
+    return Array.from(consolidated.values());
+  };
+
+  const transformToApiFormat = (data: FormData) => {
+    const subjectRaw =
       data.attributes?.map((attr) => {
         const result: AttributeTransform = { type: attr.type };
 
@@ -289,7 +317,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
         return result;
       }) || [];
 
-    const sans =
+    const sansRaw =
       data.subjectAlternativeNames?.map((san) => {
         const result: SanTransform = { type: san.type };
 
@@ -304,7 +332,13 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
         return result;
       }) || [];
 
-    const keyUsages: KeyUsagesTransform = {};
+    const subject = consolidateByType(subjectRaw);
+    const sans = consolidateByType(sansRaw);
+
+    const keyUsages: KeyUsagesTransform = {
+      required: [],
+      allowed: []
+    };
     if (data.keyUsages?.requiredUsages && data.keyUsages.requiredUsages.length > 0) {
       keyUsages.required = data.keyUsages.requiredUsages;
     }
@@ -312,7 +346,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       keyUsages.allowed = data.keyUsages.optionalUsages;
     }
 
-    const extendedKeyUsages: ExtendedKeyUsagesTransform = {};
+    const extendedKeyUsages: ExtendedKeyUsagesTransform = {
+      required: [],
+      allowed: []
+    };
     if (
       data.extendedKeyUsages?.requiredUsages &&
       data.extendedKeyUsages.requiredUsages.length > 0
@@ -364,10 +401,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       description: data.description,
       subject,
       sans,
-      keyUsages: Object.keys(keyUsages).length > 0 ? keyUsages : undefined,
-      extendedKeyUsages: Object.keys(extendedKeyUsages).length > 0 ? extendedKeyUsages : undefined,
-      algorithms: Object.keys(algorithms).length > 0 ? algorithms : undefined,
-      validity: Object.keys(validity).length > 0 ? validity : undefined
+      keyUsages,
+      extendedKeyUsages,
+      algorithms,
+      validity
     };
   };
 
@@ -391,7 +428,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
         return;
       }
 
-      const transformedData = transformToNewApiFormat(data);
+      const transformedData = transformToApiFormat(data);
 
       if (isEdit) {
         const updateData = {

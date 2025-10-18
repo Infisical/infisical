@@ -40,13 +40,15 @@ export const uiValiditySchema = z.object({
 });
 
 export const uiSignatureAlgorithmSchema = z.object({
-  allowedAlgorithms: z.array(z.string()).optional(),
-  defaultAlgorithm: z.string().optional()
+  allowedAlgorithms: z
+    .array(z.string().min(1, "Algorithm cannot be empty"))
+    .min(1, "At least one algorithm must be selected")
 });
 
 export const uiKeyAlgorithmSchema = z.object({
-  allowedKeyTypes: z.array(z.string()).optional(),
-  defaultKeyType: z.string().optional()
+  allowedKeyTypes: z
+    .array(z.string().min(1, "Key type cannot be empty"))
+    .min(1, "At least one key type must be selected")
 });
 
 export const templateSchema = z.object({
@@ -69,8 +71,8 @@ export const templateSchema = z.object({
   keyUsages: uiKeyUsagesSchema.optional(),
   extendedKeyUsages: uiExtendedKeyUsagesSchema.optional(),
   validity: uiValiditySchema.optional(),
-  signatureAlgorithm: uiSignatureAlgorithmSchema.optional(),
-  keyAlgorithm: uiKeyAlgorithmSchema.optional()
+  signatureAlgorithm: uiSignatureAlgorithmSchema,
+  keyAlgorithm: uiKeyAlgorithmSchema
 });
 
 export type TemplateFormData = z.infer<typeof templateSchema>;

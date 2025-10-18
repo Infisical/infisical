@@ -201,7 +201,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
                 Edit Profile
               </DropdownMenuItem>
             )}
-            {canIssueCertificate && (
+            {canIssueCertificate && profile.enrollmentType === "api" && (
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();

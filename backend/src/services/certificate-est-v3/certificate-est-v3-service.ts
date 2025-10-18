@@ -3,13 +3,31 @@ import * as x509 from "@peculiar/x509";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { isCertChainValid } from "@app/services/certificate/certificate-fns";
+import {
+  CertExtendedKeyUsageOIDToName,
+  CertKeyUsage,
+  mapLegacyAltNameType,
+  TAltNameMapping
+} from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { getCaCertChain, getCaCertChains } from "@app/services/certificate-authority/certificate-authority-fns";
+import {
+  getCaCertChain,
+  getCaCertChains,
+  parseDistinguishedName
+} from "@app/services/certificate-authority/certificate-authority-fns";
+import { validateAndMapAltNameType } from "@app/services/certificate-authority/certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import {
+  mapLegacyExtendedKeyUsageToStandard,
+  mapLegacyKeyUsageToStandard
+} from "@app/services/certificate-common/certificate-constants";
+import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
+import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
+import { TCertificateRequest } from "@app/services/certificate-template-v2/certificate-template-v2-types";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -21,6 +39,7 @@ import { TLicenseServiceFactory } from "../../ee/services/license/license-servic
 type TCertificateEstV3ServiceFactoryDep = {
   internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "findById">;
+  certificateTemplateV2Service: Pick<TCertificateTemplateV2ServiceFactory, "validateCertificateRequest">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
@@ -35,6 +54,7 @@ export type TCertificateEstV3ServiceFactory = ReturnType<typeof certificateEstV3
 export const certificateEstV3ServiceFactory = ({
   internalCertificateAuthorityService,
   certificateTemplateDAL,
+  certificateTemplateV2Service,
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
   projectDAL,
@@ -43,6 +63,59 @@ export const certificateEstV3ServiceFactory = ({
   certificateProfileDAL,
   estEnrollmentConfigDAL
 }: TCertificateEstV3ServiceFactoryDep) => {
+  const extractCertificateRequestFromCSR = (csr: string): TCertificateRequest => {
+    const csrObj = new x509.Pkcs10CertificateRequest(csr);
+    const subject = parseDistinguishedName(csrObj.subject);
+
+    const certificateRequest: TCertificateRequest = {
+      commonName: subject.commonName,
+      organization: subject.organization,
+      organizationUnit: subject.ou,
+      locality: subject.locality,
+      state: subject.province,
+      country: subject.country
+    };
+
+    const csrKeyUsageExtension = csrObj.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
+    if (csrKeyUsageExtension) {
+      const csrKeyUsages = Object.values(CertKeyUsage).filter(
+        // eslint-disable-next-line no-bitwise
+        (keyUsage) => (x509.KeyUsageFlags[keyUsage] & csrKeyUsageExtension.usages) !== 0
+      );
+      certificateRequest.keyUsages = csrKeyUsages.map(mapLegacyKeyUsageToStandard);
+    }
+
+    const csrExtendedKeyUsageExtension = csrObj.getExtension("2.5.29.37") as x509.ExtendedKeyUsageExtension;
+    if (csrExtendedKeyUsageExtension) {
+      const csrExtendedKeyUsages = csrExtendedKeyUsageExtension.usages.map(
+        (ekuOid) => CertExtendedKeyUsageOIDToName[ekuOid as string]
+      );
+      certificateRequest.extendedKeyUsages = csrExtendedKeyUsages.map(mapLegacyExtendedKeyUsageToStandard);
+    }
+
+    const sanExtension = csrObj.extensions.find((ext) => ext.type === "2.5.29.17");
+    if (sanExtension) {
+      const sanNames = new x509.GeneralNames(sanExtension.value);
+      const altNamesArray: TAltNameMapping[] = sanNames.items
+        .filter(
+          (value) => value.type === "email" || value.type === "dns" || value.type === "url" || value.type === "ip"
+        )
+        .map((name): TAltNameMapping => {
+          const altNameType = validateAndMapAltNameType(name.value);
+          if (!altNameType) {
+            throw new BadRequestError({ message: `Invalid altName from CSR: ${name.value}` });
+          }
+          return altNameType;
+        });
+
+      certificateRequest.subjectAlternativeNames = altNamesArray.map((altName) => ({
+        type: mapLegacyAltNameType(altName.type),
+        value: altName.value
+      }));
+    }
+
+    return certificateRequest;
+  };
   const simpleEnrollByProfile = async ({
     csr,
     profileId,
@@ -122,9 +195,22 @@ export const certificateEstV3ServiceFactory = ({
       }
     }
 
+    const certificateRequest = extractCertificateRequestFromCSR(csr);
+    const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
+    const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
+      profile.certificateTemplateId,
+      mappedCertificateRequest
+    );
+
+    if (!validationResult.isValid) {
+      throw new BadRequestError({
+        message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
+      });
+    }
+
     const { certificate } = await internalCertificateAuthorityService.signCertFromCa({
       isInternal: true,
-      certificateTemplateId: profile.certificateTemplateId,
+      caId: profile.caId,
       csr
     });
 
@@ -235,9 +321,22 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
+    const certificateRequest = extractCertificateRequestFromCSR(csr);
+    const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
+    const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
+      profile.certificateTemplateId,
+      mappedCertificateRequest
+    );
+
+    if (!validationResult.isValid) {
+      throw new BadRequestError({
+        message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
+      });
+    }
+
     const { certificate } = await internalCertificateAuthorityService.signCertFromCa({
       isInternal: true,
-      certificateTemplateId: profile.certificateTemplateId,
+      caId: profile.caId,
       csr
     });
 

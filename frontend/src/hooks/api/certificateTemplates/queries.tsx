@@ -5,7 +5,7 @@ import { apiRequest } from "@app/config/request";
 import {
   TCertificateTemplate,
   TCertificateTemplateV2,
-  TCertificateTemplateV2New,
+  TCertificateTemplateV2WithPolicies,
   TEstConfig,
   TGetCertificateTemplateV2ByIdDTO,
   TListCertificateTemplatesDTO,
@@ -90,7 +90,7 @@ export const useListCertificateTemplatesV2 = ({
     queryKey: certTemplateKeys.listTemplatesV2({ projectId, limit, offset }),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
-        certificateTemplates: TCertificateTemplateV2New[];
+        certificateTemplates: TCertificateTemplateV2WithPolicies[];
         totalCount: number;
       }>("/api/v2/certificate-templates", {
         params: {
@@ -112,7 +112,7 @@ export const useGetCertificateTemplateV2ById = ({
     queryKey: certTemplateKeys.getTemplateV2ById(templateId),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
-        certificateTemplate: TCertificateTemplateV2New;
+        certificateTemplate: TCertificateTemplateV2WithPolicies;
       }>(`/api/v2/certificate-templates/${templateId}`);
       return data.certificateTemplate;
     },

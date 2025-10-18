@@ -27,12 +27,34 @@ type TCertificateTemplateV2ServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
-export type TCertificateTemplateV2ServiceFactory = ReturnType<typeof certificateTemplateV2ServiceFactory>;
-
 export const certificateTemplateV2ServiceFactory = ({
   certificateTemplateV2DAL,
   permissionService
 }: TCertificateTemplateV2ServiceFactoryDep) => {
+  const consolidateAttributeArray = <
+    T extends { type: string; allowed?: string[]; required?: string[]; denied?: string[] }
+  >(
+    attributes: T[]
+  ): T[] => {
+    const consolidated = new Map<string, T>();
+
+    attributes.forEach((attr) => {
+      const existing = consolidated.get(attr.type);
+      if (existing) {
+        consolidated.set(attr.type, {
+          ...attr,
+          allowed: [...new Set([...(existing.allowed || []), ...(attr.allowed || [])])],
+          required: [...new Set([...(existing.required || []), ...(attr.required || [])])],
+          denied: [...new Set([...(existing.denied || []), ...(attr.denied || [])])]
+        } as T);
+      } else {
+        consolidated.set(attr.type, attr);
+      }
+    });
+
+    return Array.from(consolidated.values());
+  };
+
   const parseTTL = (ttl: string): number => {
     const regex = new RE2("^(\\d+)([dmyh])$");
     const match = regex.exec(ttl);
@@ -298,44 +320,14 @@ export const certificateTemplateV2ServiceFactory = ({
     if (request.country) requestAttributes.set(CertSubjectAttributeType.COUNTRY, request.country);
 
     if (subjectPolicies && subjectPolicies.length > 0) {
-      // Validate each template subject attribute policy
       for (const attrPolicy of subjectPolicies) {
         const requestValue = requestAttributes.get(attrPolicy.type);
 
-        // Check denied values first
-        if (requestValue && attrPolicy.denied && attrPolicy.denied.length > 0) {
-          const validation = validateValueAgainstConstraints(requestValue, attrPolicy.denied, attrPolicy.type);
-          if (validation.isValid) {
-            errors.push(`${attrPolicy.type} value '${requestValue}' is denied by template policy`);
-            // Skip further validation for this attribute if it's denied
-          } else if (requestValue && attrPolicy.allowed && attrPolicy.allowed.length > 0) {
-            // Check allowed values if present and not denied
-            const allowedValidation = validateValueAgainstConstraints(
-              requestValue,
-              attrPolicy.allowed,
-              attrPolicy.type
-            );
-            if (!allowedValidation.isValid && allowedValidation.error) {
-              errors.push(allowedValidation.error);
-            }
-          }
-        } else if (requestValue && attrPolicy.allowed && attrPolicy.allowed.length > 0) {
-          // Check allowed values if present and not denied
-          const allowedValidation = validateValueAgainstConstraints(requestValue, attrPolicy.allowed, attrPolicy.type);
-          if (!allowedValidation.isValid && allowedValidation.error) {
-            errors.push(allowedValidation.error);
-          }
-        }
-      }
-
-      // Check for required subject attributes
-      for (const attrPolicy of subjectPolicies) {
         if (attrPolicy.required && attrPolicy.required.length > 0) {
-          const requestValue = requestAttributes.get(attrPolicy.type);
           if (!requestValue) {
             errors.push(`Missing required ${attrPolicy.type} attribute`);
           } else {
-            // Validate that the request value matches at least one required pattern
+            // Validate that the request value matches the required pattern
             const hasMatchingRequired = attrPolicy.required.some((requiredValue) => {
               const validation = validateValueAgainstConstraints(requestValue, [requiredValue], attrPolicy.type);
               return validation.isValid;
@@ -344,6 +336,38 @@ export const certificateTemplateV2ServiceFactory = ({
               errors.push(
                 `${attrPolicy.type} value '${requestValue}' does not match any required patterns: ${attrPolicy.required.join(", ")}`
               );
+            }
+          }
+        }
+
+        if (requestValue) {
+          let isValueDenied = false;
+          if (attrPolicy.denied && attrPolicy.denied.length > 0) {
+            const validation = validateValueAgainstConstraints(requestValue, attrPolicy.denied, attrPolicy.type);
+            if (validation.isValid) {
+              errors.push(`${attrPolicy.type} value '${requestValue}' is denied by template policy`);
+              isValueDenied = true;
+            }
+          }
+
+          if (!isValueDenied && attrPolicy.allowed && attrPolicy.allowed.length > 0) {
+            let satisfiesRequired = false;
+            if (attrPolicy.required && attrPolicy.required.length > 0) {
+              satisfiesRequired = attrPolicy.required.some((requiredValue) => {
+                const validation = validateValueAgainstConstraints(requestValue, [requiredValue], attrPolicy.type);
+                return validation.isValid;
+              });
+            }
+
+            if (!satisfiesRequired) {
+              const allowedValidation = validateValueAgainstConstraints(
+                requestValue,
+                attrPolicy.allowed,
+                attrPolicy.type
+              );
+              if (!allowedValidation.isValid && allowedValidation.error) {
+                errors.push(allowedValidation.error);
+              }
             }
           }
         }
@@ -409,9 +433,19 @@ export const certificateTemplateV2ServiceFactory = ({
         // Check ALLOWED values - if present, all SANs must match at least one allowed pattern
         if (sanPolicy.allowed && sanPolicy.allowed.length > 0 && requestSans.length > 0) {
           for (const sanValue of requestSans) {
-            const validation = validateValueAgainstConstraints(sanValue, sanPolicy.allowed, `${sanPolicy.type} SAN`);
-            if (!validation.isValid && validation.error) {
-              errors.push(validation.error);
+            let satisfiesRequired = false;
+            if (sanPolicy.required && sanPolicy.required.length > 0) {
+              satisfiesRequired = sanPolicy.required.some((requiredValue) => {
+                const validation = validateValueAgainstConstraints(sanValue, [requiredValue], `${sanPolicy.type} SAN`);
+                return validation.isValid;
+              });
+            }
+
+            if (!satisfiesRequired) {
+              const validation = validateValueAgainstConstraints(sanValue, sanPolicy.allowed, `${sanPolicy.type} SAN`);
+              if (!validation.isValid && validation.error) {
+                errors.push(validation.error);
+              }
             }
           }
         }
@@ -615,20 +649,26 @@ export const certificateTemplateV2ServiceFactory = ({
       throw new Error("Template data is required");
     }
 
-    if (data.subject) {
-      validateSubjectAttributePolicy(data.subject);
+    const consolidatedData = {
+      ...data,
+      subject: data.subject ? consolidateAttributeArray(data.subject) : undefined,
+      sans: data.sans ? consolidateAttributeArray(data.sans) : undefined
+    };
+
+    if (consolidatedData.subject) {
+      validateSubjectAttributePolicy(consolidatedData.subject);
     }
 
-    if (data.sans) {
-      validateSanPolicy(data.sans);
+    if (consolidatedData.sans) {
+      validateSanPolicy(consolidatedData.sans);
     }
 
-    if (data.keyUsages) {
-      validateKeyUsagePolicy(data.keyUsages);
+    if (consolidatedData.keyUsages) {
+      validateKeyUsagePolicy(consolidatedData.keyUsages);
     }
 
-    if (data.extendedKeyUsages) {
-      validateExtendedKeyUsagePolicy(data.extendedKeyUsages);
+    if (consolidatedData.extendedKeyUsages) {
+      validateExtendedKeyUsagePolicy(consolidatedData.extendedKeyUsages);
     }
 
     // Generate slug from name and ensure it's unique within project
@@ -640,7 +680,7 @@ export const certificateTemplateV2ServiceFactory = ({
     const uniqueSlug = await ensureUniqueSlug(projectId, slug);
 
     const template = await certificateTemplateV2DAL.create({
-      ...data,
+      ...consolidatedData,
       name: uniqueSlug,
       projectId
     });
@@ -682,23 +722,29 @@ export const certificateTemplateV2ServiceFactory = ({
       ProjectPermissionSub.CertificateTemplates
     );
 
-    if (data.subject) {
-      validateSubjectAttributePolicy(data.subject);
+    const consolidatedData = {
+      ...data,
+      subject: data.subject ? consolidateAttributeArray(data.subject) : undefined,
+      sans: data.sans ? consolidateAttributeArray(data.sans) : undefined
+    };
+
+    if (consolidatedData.subject) {
+      validateSubjectAttributePolicy(consolidatedData.subject);
     }
 
-    if (data.sans) {
-      validateSanPolicy(data.sans);
+    if (consolidatedData.sans) {
+      validateSanPolicy(consolidatedData.sans);
     }
 
-    if (data.keyUsages) {
-      validateKeyUsagePolicy(data.keyUsages);
+    if (consolidatedData.keyUsages) {
+      validateKeyUsagePolicy(consolidatedData.keyUsages);
     }
 
-    if (data.extendedKeyUsages) {
-      validateExtendedKeyUsagePolicy(data.extendedKeyUsages);
+    if (consolidatedData.extendedKeyUsages) {
+      validateExtendedKeyUsagePolicy(consolidatedData.extendedKeyUsages);
     }
 
-    const updateData = { ...data };
+    const updateData = { ...consolidatedData };
     if (data.name && typeof data.name === "string") {
       const newSlug = generateTemplateSlug(data.name);
       if (newSlug !== existingTemplate.name) {
@@ -871,7 +917,9 @@ export const certificateTemplateV2ServiceFactory = ({
     const isInUse = await certificateTemplateV2DAL.isTemplateInUse(templateId);
     if (isInUse) {
       const profilesUsingTemplate = await certificateTemplateV2DAL.getProfilesUsingTemplate(templateId);
-      const profileNames = profilesUsingTemplate.map((profile) => profile.slug || profile.id).join(", ");
+      const profileNames = profilesUsingTemplate
+        .map((profile: { slug?: string; id: string }) => profile.slug || profile.id)
+        .join(", ");
 
       throw new ForbiddenRequestError({
         message:
@@ -910,3 +958,5 @@ export const certificateTemplateV2ServiceFactory = ({
     validateCertificateRequest
   };
 };
+
+export type TCertificateTemplateV2ServiceFactory = ReturnType<typeof certificateTemplateV2ServiceFactory>;

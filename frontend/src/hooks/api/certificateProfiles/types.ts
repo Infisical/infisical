@@ -48,8 +48,8 @@ export type TCreateCertificateProfileDTO = {
   enrollmentType: "api" | "est";
   estConfig?: {
     disableBootstrapCaValidation?: boolean;
-    passphrase: string;
-    caChain: string;
+    passphraseInput: string;
+    caChain?: string;
   };
   apiConfig?: {
     autoRenew?: boolean;
