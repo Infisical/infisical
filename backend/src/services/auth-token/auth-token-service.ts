@@ -7,10 +7,10 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedErro
 
 import { AuthModeJwtTokenPayload, AuthModeRefreshJwtTokenPayload, AuthTokenType } from "../auth/auth-type";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TTokenDALFactory } from "./auth-token-dal";
 import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenForUserDTO } from "./auth-token-types";
-import { TOrgDALFactory } from "../org/org-dal";
 
 type TAuthTokenServiceFactoryDep = {
   tokenDAL: TTokenDALFactory;

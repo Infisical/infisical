@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, IdentityAuthMethod, TableName } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod, OrganizationActionScope, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -90,13 +90,14 @@ export const identityTokenAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
@@ -172,13 +173,14 @@ export const identityTokenAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
@@ -232,13 +234,14 @@ export const identityTokenAuthServiceFactory = ({
 
     const identityTokenAuth = await identityTokenAuthDAL.findOne({ identityId });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     return { ...identityTokenAuth, orgId: identityMembershipOrg.scopeOrgId };
@@ -268,22 +271,24 @@ export const identityTokenAuthServiceFactory = ({
         message: "The identity does not have Token Auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
+    const { permission: rolePermission } = await permissionService.getOrgPermission({
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
 
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
@@ -341,22 +346,26 @@ export const identityTokenAuthServiceFactory = ({
         message: "The identity does not have Token Auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
+
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
+    const { permission: rolePermission } = await permissionService.getOrgPermission({
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
 
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
@@ -449,13 +458,14 @@ export const identityTokenAuthServiceFactory = ({
         message: "The identity does not have Token Auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     const tokens = await identityAccessTokenDAL.find(
@@ -501,22 +511,24 @@ export const identityTokenAuthServiceFactory = ({
         message: "The identity does not have Token Auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
+    const { permission: rolePermission } = await permissionService.getOrgPermission({
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
       shouldUseNewPrivilegeSystem,
@@ -580,13 +592,14 @@ export const identityTokenAuthServiceFactory = ({
       throw new NotFoundError({ message: `Failed to find identity with ID ${identityAccessToken.identityId}` });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityOrgMembership.scopeOrgId,
+      orgId: identityOrgMembership.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const [revokedToken] = await identityAccessTokenDAL.update(

@@ -4,7 +4,7 @@ import https from "https";
 import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
 
-import { AccessScope, IdentityAuthMethod, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod, OrganizationActionScope, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -269,13 +269,14 @@ export const identityOidcAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
@@ -367,13 +368,14 @@ export const identityOidcAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
@@ -447,13 +449,14 @@ export const identityOidcAuthServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     const identityOidcAuth = await identityOidcAuthDAL.findOne({ identityId });
@@ -488,23 +491,25 @@ export const identityOidcAuthServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
+    const { permission: rolePermission } = await permissionService.getOrgPermission({
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
 
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(

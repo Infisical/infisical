@@ -131,6 +131,7 @@ import { sshHostLoginUserDALFactory } from "@app/ee/services/ssh-host/ssh-login-
 import { sshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
 import { sshHostGroupMembershipDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-membership-dal";
 import { sshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-service";
+import { subOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
@@ -564,7 +565,7 @@ export const registerRoutes = async (
     projectDAL
   });
 
-  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL });
+  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL });
 
   const membershipUserService = membershipUserServiceFactory({
     licenseService,
@@ -904,6 +905,15 @@ export const registerRoutes = async (
     userGroupMembershipDAL,
     additionalPrivilegeDAL
   });
+
+  const subOrgService = subOrgServiceFactory({
+    licenseService,
+    membershipDAL,
+    membershipRoleDAL,
+    orgDAL,
+    permissionService
+  });
+
   const signupService = authSignupServiceFactory({
     tokenService,
     smtpService,
@@ -1601,7 +1611,8 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     accessTokenQueue,
     identityDAL,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    orgDAL
   });
 
   const identityTokenAuthService = identityTokenAuthServiceFactory({
@@ -2248,6 +2259,7 @@ export const registerRoutes = async (
     groupProject: groupProjectService,
     permission: permissionService,
     org: orgService,
+    subOrganization: subOrgService,
     oidc: oidcService,
     apiKey: apiKeyService,
     authToken: tokenService,

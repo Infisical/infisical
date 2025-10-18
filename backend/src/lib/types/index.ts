@@ -81,6 +81,13 @@ export type OrgServiceActor = {
   parentOrgId: string;
 };
 
+export type ProjectServiceActor = {
+  type: ActorType;
+  id: string;
+  authMethod: ActorAuthMethod;
+  orgId: string;
+};
+
 export enum QueueWorkerProfile {
   All = "all",
   Standard = "standard",

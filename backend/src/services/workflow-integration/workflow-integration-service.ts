@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 
@@ -23,13 +24,14 @@ export const workflowIntegrationServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TGetWorkflowIntegrationsByOrg) => {
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
 

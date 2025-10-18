@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, IdentityAuthMethod } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -200,13 +200,14 @@ export const identityTlsCertAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
@@ -288,13 +289,14 @@ export const identityTlsCertAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
@@ -359,13 +361,14 @@ export const identityTlsCertAuthServiceFactory = ({
 
     const identityAuth = await identityTlsCertAuthDAL.findOne({ identityId });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -399,23 +402,24 @@ export const identityTlsCertAuthServiceFactory = ({
         message: "The identity does not have TLS Certificate auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission, memberships } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
+    const { permission: rolePermission, memberships } = await permissionService.getOrgPermission({
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
-
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
     const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
     const permissionBoundary = validatePrivilegeChangeOperation(
       shouldUseNewPrivilegeSystem,

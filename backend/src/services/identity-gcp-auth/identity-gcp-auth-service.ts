@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, IdentityAuthMethod } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -204,13 +204,14 @@ export const identityGcpAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
@@ -290,13 +291,14 @@ export const identityGcpAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
@@ -354,13 +356,14 @@ export const identityGcpAuthServiceFactory = ({
 
     const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     return { ...identityGcpAuth, orgId: identityMembershipOrg.scopeOrgId };
@@ -387,22 +390,24 @@ export const identityGcpAuthServiceFactory = ({
         message: "The identity does not have gcp auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
+    const { permission: rolePermission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
       shouldUseNewPrivilegeSystem,

@@ -8,9 +8,9 @@ import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-to
 import { AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload, TRenewAccessTokenDTO } from "./identity-access-token-types";
-import { TOrgDALFactory } from "../org/org-dal";
 
 type TIdentityAccessTokenServiceFactoryDep = {
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;

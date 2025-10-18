@@ -3,7 +3,12 @@ import axios, { AxiosError } from "axios";
 import https from "https";
 import RE2 from "re2";
 
-import { AccessScope, IdentityAuthMethod, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
+import {
+  AccessScope,
+  IdentityAuthMethod,
+  OrganizationActionScope,
+  TIdentityKubernetesAuthsUpdate
+} from "@app/db/schemas";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
@@ -519,13 +524,14 @@ export const identityKubernetesAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
@@ -560,13 +566,14 @@ export const identityKubernetesAuthServiceFactory = ({
         isGatewayV1 = false;
       }
 
-      const { permission: orgPermission } = await permissionService.getOrgPermission(
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
         actor,
         actorId,
-        identityMembershipOrg.scopeOrgId,
+        orgId: identityMembershipOrg.scopeOrgId,
         actorAuthMethod,
         actorOrgId
-      );
+      });
       ForbiddenError.from(orgPermission).throwUnlessCan(
         OrgPermissionGatewayActions.AttachGateways,
         OrgPermissionSubjects.Gateway
@@ -650,13 +657,14 @@ export const identityKubernetesAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
@@ -692,13 +700,14 @@ export const identityKubernetesAuthServiceFactory = ({
         isGatewayV1 = false;
       }
 
-      const { permission: orgPermission } = await permissionService.getOrgPermission(
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
         actor,
         actorId,
-        identityMembershipOrg.scopeOrgId,
+        orgId: identityMembershipOrg.scopeOrgId,
         actorAuthMethod,
         actorOrgId
-      );
+      });
       ForbiddenError.from(orgPermission).throwUnlessCan(
         OrgPermissionGatewayActions.AttachGateways,
         OrgPermissionSubjects.Gateway
@@ -791,13 +800,14 @@ export const identityKubernetesAuthServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -847,22 +857,24 @@ export const identityKubernetesAuthServiceFactory = ({
         message: "The identity does not have kubernetes auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
+    const { permission: rolePermission } = await permissionService.getOrgPermission({
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
       shouldUseNewPrivilegeSystem,

@@ -48,6 +48,7 @@ import { TSshCertificateAuthorityServiceFactory } from "@app/ee/services/ssh/ssh
 import { TSshCertificateTemplateServiceFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-service";
 import { TSshHostServiceFactory } from "@app/ee/services/ssh-host/ssh-host-service";
 import { TSshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-service";
+import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
@@ -126,7 +127,6 @@ import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
-import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 
 declare module "@fastify/request-context" {
   interface RequestContextData {

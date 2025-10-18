@@ -1,4 +1,4 @@
-import { TSecretSharing } from "@app/db/schemas";
+import { OrganizationActionScope, TSecretSharing } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -81,7 +81,14 @@ export const secretSharingServiceFactory = ({
   }: TCreateSharedSecretDTO) => {
     const appCfg = getConfig();
 
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
     if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
     $validateSharedSecretExpiry(expiresAt);
 
@@ -196,7 +203,14 @@ export const secretSharingServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TCreateSecretRequestDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
 
     $validateSharedSecretExpiry(expiresAt);
@@ -228,7 +242,14 @@ export const secretSharingServiceFactory = ({
       throw new NotFoundError({ message: `Secret request with ID '${id}' not found` });
     }
 
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
 
     if (secretRequest.userId !== actorId || secretRequest.orgId !== orgId) {
@@ -267,13 +288,14 @@ export const secretSharingServiceFactory = ({
         throw new UnauthorizedError();
       }
 
-      const { permission } = await permissionService.getOrgPermission(
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
         actor,
         actorId,
-        secretRequest.orgId,
+        orgId: secretRequest.orgId,
         actorAuthMethod,
         actorOrgId
-      );
+      });
       if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
     }
 
@@ -316,13 +338,14 @@ export const secretSharingServiceFactory = ({
         throw new UnauthorizedError();
       }
 
-      const { permission } = await permissionService.getOrgPermission(
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
         actor,
         actorId,
-        secretRequest.orgId,
+        orgId: secretRequest.orgId,
         actorAuthMethod,
         actorOrgId
-      );
+      });
       if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
 
       const user = await userDAL.findById(actorId);
@@ -415,13 +438,14 @@ export const secretSharingServiceFactory = ({
   }: TGetSharedSecretsDTO) => {
     if (!actorOrgId) throw new ForbiddenRequestError();
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     if (!permission) throw new ForbiddenRequestError({ name: "User does not belong to the specified organization" });
 
     const secrets = await secretSharingDAL.find(
@@ -563,7 +587,14 @@ export const secretSharingServiceFactory = ({
 
   const deleteSharedSecretById = async (deleteSharedSecretInput: TDeleteSharedSecretDTO) => {
     const { actor, actorId, orgId, actorAuthMethod, actorOrgId, sharedSecretId } = deleteSharedSecretInput;
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     if (!permission) throw new ForbiddenRequestError({ name: "User does not belong to the specified organization" });
 
     const sharedSecret = isUuidV4(sharedSecretId)

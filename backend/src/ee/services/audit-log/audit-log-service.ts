@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -47,13 +47,14 @@ export const auditLogServiceFactory = ({
       );
     } else {
       // Organization-wide logs
-      const { permission } = await permissionService.getOrgPermission(
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
         actor,
         actorId,
-        actorOrgId,
+        orgId: actorOrgId,
         actorAuthMethod,
         actorOrgId
-      );
+      });
 
       ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionAuditLogsActions.Read,

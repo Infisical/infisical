@@ -26,8 +26,8 @@ import {
 } from "@app/lib/knex";
 import { generateKnexQueryFromScim } from "@app/lib/knex/scim";
 
-import { OrgAuthMethod } from "./org-types";
 import { ActorType } from "../auth/auth-type";
+import { OrgAuthMethod } from "./org-types";
 
 export type TOrgDALFactory = ReturnType<typeof orgDALFactory>;
 

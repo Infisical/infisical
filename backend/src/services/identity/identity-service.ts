@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -67,7 +67,14 @@ export const identityServiceFactory = ({
     actorOrgId,
     metadata
   }: TCreateIdentityDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
     const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([role], orgId);
@@ -104,7 +111,7 @@ export const identityServiceFactory = ({
     }
 
     const identity = await identityDAL.transaction(async (tx) => {
-      const newIdentity = await identityDAL.create({ name, hasDeleteProtection }, tx);
+      const newIdentity = await identityDAL.create({ name, hasDeleteProtection, orgId }, tx);
       const membership = await membershipIdentityDAL.create(
         {
           scope: AccessScope.Organization,
@@ -172,13 +179,14 @@ export const identityServiceFactory = ({
     });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityOrgMembership.scopeOrgId,
+      orgId: identityOrgMembership.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     let customRole: TRoles | undefined;
@@ -264,13 +272,14 @@ export const identityServiceFactory = ({
     const identity = doc[0];
     if (!identity) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identity.orgId,
+      orgId: identity.orgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     // TODO(namespace): check this in identity service
@@ -314,13 +323,14 @@ export const identityServiceFactory = ({
     });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${id}` });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityOrgMembership.scopeOrgId,
+      orgId: identityOrgMembership.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
 
@@ -346,7 +356,14 @@ export const identityServiceFactory = ({
     orderDirection,
     search
   }: TListOrgIdentitiesByOrgIdDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     const identityMemberships = await identityOrgMembershipDAL.find({
@@ -379,7 +396,14 @@ export const identityServiceFactory = ({
     orderDirection,
     searchFilter = {}
   }: TSearchOrgIdentitiesByOrgIdDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     const { totalCount, docs } = await identityOrgMembershipDAL.searchIdentities({
@@ -408,13 +432,14 @@ export const identityServiceFactory = ({
     });
     if (!identityOrgMembership) throw new NotFoundError({ message: `Failed to find identity with id ${identityId}` });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityOrgMembership.scopeOrgId,
+      orgId: identityOrgMembership.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     const identityMemberships = await identityProjectDAL.findByIdentityId(identityId);

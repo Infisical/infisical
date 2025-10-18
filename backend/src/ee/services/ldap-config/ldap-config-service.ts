@@ -1,7 +1,14 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, OrgMembershipStatus, TableName, TLdapConfigsUpdate, TUsers } from "@app/db/schemas";
+import {
+  AccessScope,
+  OrganizationActionScope,
+  OrgMembershipStatus,
+  TableName,
+  TLdapConfigsUpdate,
+  TUsers
+} from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -119,7 +126,14 @@ export const ldapConfigServiceFactory = ({
     groupSearchFilter,
     caCert
   }: TCreateLdapCfgDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
@@ -238,7 +252,14 @@ export const ldapConfigServiceFactory = ({
     groupSearchFilter,
     caCert
   }: TUpdateLdapCfgDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
@@ -316,7 +337,14 @@ export const ldapConfigServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TGetLdapCfgDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Ldap);
     return getLdapCfg({
       orgId
@@ -649,7 +677,14 @@ export const ldapConfigServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TGetLdapGroupMapsDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Ldap);
 
     const ldapConfig = await ldapConfigDAL.findOne({
@@ -678,7 +713,14 @@ export const ldapConfigServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TCreateLdapGroupMapDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
@@ -732,7 +774,14 @@ export const ldapConfigServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TDeleteLdapGroupMapDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
@@ -771,7 +820,14 @@ export const ldapConfigServiceFactory = ({
     caCert,
     url
   }: TTestLdapConnectionDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
