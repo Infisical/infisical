@@ -16,6 +16,7 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TMembershipUserScopeFactory } from "../membership-user-types";
+import { TMembershipUserDALFactory } from "../membership-user-dal";
 
 type TOrgMembershipUserScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -25,6 +26,7 @@ type TOrgMembershipUserScopeFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
 };
 
 export const newOrgMembershipUserFactory = ({
@@ -33,7 +35,8 @@ export const newOrgMembershipUserFactory = ({
   userDAL,
   orgDAL,
   smtpService,
-  licenseService
+  licenseService,
+  membershipUserDAL
 }: TOrgMembershipUserScopeFactoryDep): TMembershipUserScopeFactory => {
   const getScopeField: TMembershipUserScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Organization) {
@@ -51,7 +54,10 @@ export const newOrgMembershipUserFactory = ({
 
   const isCustomRole: TMembershipUserScopeFactory["isCustomRole"] = (role: string) => isCustomOrgRole(role);
 
-  const onCreateMembershipUserGuard: TMembershipUserScopeFactory["onCreateMembershipUserGuard"] = async (dto) => {
+  const onCreateMembershipUserGuard: TMembershipUserScopeFactory["onCreateMembershipUserGuard"] = async (
+    dto,
+    newMembers
+  ) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: dto.permission.type,
       actorId: dto.permission.id,
@@ -77,6 +83,19 @@ export const newOrgMembershipUserFactory = ({
         name: "InviteUser",
         message: "Failed to invite user due to org-level auth enforced for organization"
       });
+    }
+    if (org.rootOrgId) {
+      const rootOrgMembership = await membershipUserDAL.find({
+        scope: AccessScope.Organization,
+        $in: {
+          actorUserId: newMembers.map((el) => el.id)
+        },
+        scopeOrgId: org.rootOrgId
+      });
+      if (rootOrgMembership.length !== newMembers.length)
+        throw new BadRequestError({
+          message: "User doesn't have membership in root organization"
+        });
     }
   };
 

@@ -585,6 +585,7 @@ export const registerRoutes = async (
   });
 
   const membershipIdentityService = membershipIdentityServiceFactory({
+    identityDAL,
     membershipIdentityDAL,
     membershipRoleDAL,
     orgDAL,
@@ -1577,7 +1578,8 @@ export const registerRoutes = async (
     permissionService,
     projectDAL,
     accessTokenQueue,
-    smtpService
+    smtpService,
+    orgDAL
   });
 
   const identityService = identityServiceFactory({

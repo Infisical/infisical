@@ -49,7 +49,8 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
           type: req.permission.type,
           authMethod: req.permission.authMethod,
           orgId: req.permission.orgId,
-          parentOrgId: req.permission.parentOrgId
+          parentOrgId: req.permission.parentOrgId,
+          rootOrgId: req.permission.rootOrgId
         }
       });
 
@@ -107,7 +108,8 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
           type: req.permission.type,
           authMethod: req.permission.authMethod,
           orgId: req.permission.orgId,
-          parentOrgId: req.permission.orgId
+          parentOrgId: req.permission.orgId,
+          rootOrgId: req.permission.rootOrgId
         },
         data: {
           limit: req.query.limit,

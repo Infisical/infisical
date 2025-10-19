@@ -236,7 +236,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, membershipUserDAL, orgD
         }
         orgId = subOrganization.id;
         rootOrgId = token.organizationId;
-        parentOrgId = subOrganization.parentOrgId;
+        parentOrgId = subOrganization.parentOrgId as string;
       } else {
         const orgMembership = await membershipUserDAL.findOne({
           actorUserId: user.id,

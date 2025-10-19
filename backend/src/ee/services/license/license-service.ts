@@ -285,19 +285,20 @@ export const licenseServiceFactory = ({
   };
 
   const updateSubscriptionOrgMemberCount = async (orgId: string, tx?: Knex) => {
-    if (instanceType === InstanceType.Cloud) {
-      const org = await orgDAL.findOrgById(orgId);
-      if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+    const org = await orgDAL.findOrgById(orgId);
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
-      const quantity = await licenseDAL.countOfOrgMembers(orgId, tx);
-      const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(orgId, tx);
+    const rootOrgId = org.rootOrgId || org.id;
+    if (instanceType === InstanceType.Cloud) {
+      const quantity = await licenseDAL.countOfOrgMembers(rootOrgId, tx);
+      const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(rootOrgId, tx);
       if (org?.customerId) {
         await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
           quantity,
           quantityIdentities
         });
       }
-      await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
+      await keyStore.deleteItem(FEATURE_CACHE_KEY(rootOrgId));
     } else if (instanceType === InstanceType.EnterpriseOnPrem) {
       const usedSeats = await licenseDAL.countOfOrgMembers(null, tx);
       const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null, tx);
@@ -308,7 +309,7 @@ export const licenseServiceFactory = ({
         usedIdentitySeats
       });
     }
-    await refreshPlan(orgId);
+    await refreshPlan(rootOrgId);
   };
 
   // below all are api calls

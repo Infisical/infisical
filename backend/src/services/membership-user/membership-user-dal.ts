@@ -291,13 +291,37 @@ export const membershipUserDALFactory = (db: TDbClient) => {
     }
   };
 
-  // const listAvailableUsers = async (scopeData: AccessScopeData) => {
-  //   try {
-  //     const query = await db.replicaNode()(TableName.Membership).where(`${TableName.Membership}.scopeOrgId`);
-  //   } catch (error) {
-  //     throw new DatabaseError({ error, name: "ListAvailableUsers" });
-  //   }
-  // };
+  // this right nwo only support sub organization
+  const listAvailableUsers = async (orgId: string, rootOrgId: string) => {
+    try {
+      const usersConnectedToOrg = db
+        .replicaNode()(TableName.Membership)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .select("actorUserId");
 
-  return { ...orm, findUsers, getUserById };
+      const docs = await db
+        .replicaNode()(TableName.Membership)
+        .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Users}.isGhost`, false)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .where(`${TableName.Membership}.scopeOrgId`, rootOrgId)
+        .whereNot(`${TableName.Membership}.actorUserId`, usersConnectedToOrg)
+        .select(
+          db.ref("id").withSchema(TableName.Users),
+          db.ref("email").withSchema(TableName.Users),
+          db.ref("username").withSchema(TableName.Users),
+          db.ref("firstName").withSchema(TableName.Users),
+          db.ref("lastName").withSchema(TableName.Users)
+        );
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "ListAvailableUsers" });
+    }
+  };
+
+  return { ...orm, findUsers, getUserById, listAvailableUsers };
 };

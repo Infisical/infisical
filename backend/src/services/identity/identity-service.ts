@@ -216,11 +216,12 @@ export const identityServiceFactory = ({
       if (isCustomRole) customRole = rolePermissionDetails?.role;
     }
 
+    const identityDetails = await identityDAL.findById(id);
     const identity = await identityDAL.transaction(async (tx) => {
       const newIdentity =
-        name || hasDeleteProtection
+        identityDetails.orgId === actorOrgId && (name || hasDeleteProtection)
           ? await identityDAL.updateById(id, { name, hasDeleteProtection }, tx)
-          : await identityDAL.findById(id, tx);
+          : identityDetails;
 
       if (role) {
         await membershipRoleDAL.delete({ membershipId: identityOrgMembership.id }, tx);
@@ -282,7 +283,6 @@ export const identityServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
-    // TODO(namespace): check this in identity service
     const activeLockouts = await keyStore.getKeysByPattern(`lockout:identity:${id}:*`);
 
     const activeLockoutAuthMethods = new Set<string>();

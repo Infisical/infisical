@@ -42,7 +42,9 @@ export const organizationKeys = {
     [...organizationKeys.getOrgIdentityMemberships(orgId), params] as const,
   getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const,
   getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const,
-  getOrgById: (orgId: string) => ["organization", { orgId }]
+  getOrgById: (orgId: string) => ["organization", { orgId }],
+  getAvailableIdentities: () => ["available-identities"],
+  getAvailableUsers: () => ["available-users"]
 };
 
 export const fetchOrganizations = async () => {
@@ -574,3 +576,29 @@ export const useGetOrgIntegrationAuths = <TData = IntegrationAuth[],>(
     select
   });
 };
+
+export const useGetAvailableOrgIdentities = (enabled = true) =>
+  useQuery({
+    queryKey: organizationKeys.getAvailableIdentities(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ identities: { name: string; id: string }[] }>(
+        `/api/v1/organization/identities/available`
+      );
+
+      return data.identities;
+    },
+    enabled
+  });
+
+export const useGetAvailableOrgUsers = (enabled = true) =>
+  useQuery({
+    queryKey: organizationKeys.getAvailableUsers(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        users: { username: string; id: string; firstName: string; lastName: string }[];
+      }>(`/api/v1/organization/users/available`);
+
+      return data.users;
+    },
+    enabled
+  });

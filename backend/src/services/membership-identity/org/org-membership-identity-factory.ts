@@ -12,15 +12,18 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
 import { TMembershipIdentityScopeFactory } from "../membership-identity-types";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 
 type TOrgMembershipIdentityScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
 };
 
 export const newOrgMembershipIdentityFactory = ({
   permissionService,
-  orgDAL
+  orgDAL,
+  identityDAL
 }: TOrgMembershipIdentityScopeFactoryDep): TMembershipIdentityScopeFactory => {
   const getScopeField: TMembershipIdentityScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Organization) {
@@ -38,12 +41,53 @@ export const newOrgMembershipIdentityFactory = ({
 
   const isCustomRole: TMembershipIdentityScopeFactory["isCustomRole"] = (role: string) => isCustomOrgRole(role);
 
-  const onCreateMembershipIdentityGuard: TMembershipIdentityScopeFactory["onCreateMembershipIdentityGuard"] =
-    async () => {
-      throw new BadRequestError({
-        message: "Organization membership cannot be created for organization scoped identity"
-      });
-    };
+  const onCreateMembershipIdentityGuard: TMembershipIdentityScopeFactory["onCreateMembershipIdentityGuard"] = async (
+    dto
+  ) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: dto.permission.type,
+      actorId: dto.permission.id,
+      orgId: dto.permission.orgId,
+      actorAuthMethod: dto.permission.authMethod,
+      actorOrgId: dto.permission.orgId,
+      scope: OrganizationActionScope.ChildOrganization
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+
+    const identityDetails = await identityDAL.findById(dto.data.identityId);
+    if (identityDetails.orgId !== dto.permission.rootOrgId) {
+      throw new BadRequestError({ message: "Only identites from parent organization can be invited" });
+    }
+
+    const permissionRoles = await permissionService.getOrgPermissionByRoles(
+      dto.data.roles.map((el) => el.role),
+      dto.permission.orgId
+    );
+
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
+    for (const permissionRole of permissionRoles) {
+      if (permissionRole?.role?.name !== OrgMembershipRole.NoAccess) {
+        const permissionBoundary = validatePrivilegeChangeOperation(
+          shouldUseNewPrivilegeSystem,
+          OrgPermissionIdentityActions.GrantPrivileges,
+          OrgPermissionSubjects.Identity,
+          permission,
+          permissionRole.permission
+        );
+        if (!permissionBoundary.isValid)
+          throw new PermissionBoundaryError({
+            message: constructPermissionErrorMessage(
+              "Failed to update identity org membership",
+              shouldUseNewPrivilegeSystem,
+              OrgPermissionIdentityActions.GrantPrivileges,
+              OrgPermissionSubjects.Identity
+            ),
+            details: { missingPermissions: permissionBoundary.missingPermissions }
+          });
+      }
+    }
+  };
 
   const onUpdateMembershipIdentityGuard: TMembershipIdentityScopeFactory["onUpdateMembershipIdentityGuard"] = async (
     dto
@@ -87,12 +131,29 @@ export const newOrgMembershipIdentityFactory = ({
     }
   };
 
-  const onDeleteMembershipIdentityGuard: TMembershipIdentityScopeFactory["onDeleteMembershipIdentityGuard"] =
-    async () => {
-      throw new BadRequestError({
-        message: "Organization membership cannot be deleted for organization scoped identity"
-      });
-    };
+  const onDeleteMembershipIdentityGuard: TMembershipIdentityScopeFactory["onDeleteMembershipIdentityGuard"] = async (
+    dto
+  ) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: dto.permission.type,
+      actorId: dto.permission.id,
+      orgId: dto.permission.orgId,
+      actorAuthMethod: dto.permission.authMethod,
+      actorOrgId: dto.permission.orgId,
+      scope: OrganizationActionScope.ChildOrganization
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+
+    const identityDetails = await identityDAL.findById(dto.selector.identityId);
+    if (identityDetails.orgId !== dto.permission.rootOrgId) {
+      throw new BadRequestError({ message: "Only identites from parent organization can do this operation" });
+    }
+
+    if (identityDetails.orgId === dto.permission.orgId) {
+      throw new BadRequestError({ message: "Identity cannot exist as orphan" });
+    }
+  };
 
   const onListMembershipIdentityGuard: TMembershipIdentityScopeFactory["onListMembershipIdentityGuard"] = async (
     dto

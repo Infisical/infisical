@@ -21,6 +21,7 @@ export const useOrganization = () => {
       id: currentOrg?.subOrganization?.id || currentOrg?.id,
       parentOrgId: currentOrg.id
     },
-    isSubOrganization: Boolean(currentOrg.subOrganization)
+    isSubOrganization: Boolean(currentOrg.subOrganization),
+    isRootOrganization: !currentOrg.subOrganization
   };
 };

@@ -83,7 +83,8 @@ export const membershipUserServiceFactory = ({
       orgDAL,
       tokenService,
       userDAL,
-      userGroupMembershipDAL
+      userGroupMembershipDAL,
+      membershipUserDAL
     }),
     [AccessScope.Namespace]: newNamespaceMembershipUserFactory({}),
     [AccessScope.Project]: newProjectMembershipUserFactory({
@@ -471,11 +472,26 @@ export const membershipUserServiceFactory = ({
     return membership;
   };
 
+  // Should only be used for sub organization as of now
+  const listAvailableUsers = async (dto: TListMembershipUserDTO) => {
+    const { scopeData } = dto;
+    const factory = scopeFactory[scopeData.scope];
+
+    await factory.onListMembershipUserGuard(dto);
+
+    const organizationDetails = await orgDAL.findById(dto.scopeData.orgId);
+    if (!organizationDetails.rootOrgId) return { users: [] };
+
+    const users = await membershipUserDAL.listAvailableUsers(organizationDetails.id, organizationDetails.rootOrgId);
+    return { users };
+  };
+
   return {
     createMembership,
     updateMembership,
     deleteMembership,
     listMemberships,
-    getMembershipByUserId
+    getMembershipByUserId,
+    listAvailableUsers
   };
 };

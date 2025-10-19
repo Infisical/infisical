@@ -91,6 +91,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         .select(
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("id").withSchema(TableName.Identity).as("identityId"),
+          db.ref("orgId").withSchema(TableName.Identity).as("identityOrgId"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity).as("identityHasDeleteProtection"),
 
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
@@ -132,6 +133,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         parentMapper: (el) => {
           const {
             identityId: actorIdentityId,
+            identityOrgId,
             identityHasDeleteProtection,
             identityName,
             uaId,
@@ -153,6 +155,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
               name: identityName,
               id: actorIdentityId,
               hasDeleteProtection: identityHasDeleteProtection,
+              identityOrgId,
               authMethods: buildAuthMethods({
                 uaId,
                 awsId,
@@ -353,5 +356,34 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findIdentities, getIdentityById };
+  // this right nwo only support sub organization
+  const listAvailableIdentities = async (orgId: string, rootOrgId: string) => {
+    try {
+      const usersConnectedToOrg = db
+        .replicaNode()(TableName.Membership)
+        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .select("actorIdentityId");
+
+      const docs = await db
+        .replicaNode()(TableName.Membership)
+        .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .where(`${TableName.Membership}.scopeOrgId`, rootOrgId)
+        .whereNotIn(`${TableName.Membership}.actorIdentityId`, usersConnectedToOrg)
+        .select(
+          db.ref("id").withSchema(TableName.Identity),
+          db.ref("name").withSchema(TableName.Identity),
+          db.ref("hasDeleteProtection").withSchema(TableName.Identity)
+        );
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "ListAvailableUsers" });
+    }
+  };
+
+  return { ...orm, findIdentities, getIdentityById, listAvailableIdentities };
 };

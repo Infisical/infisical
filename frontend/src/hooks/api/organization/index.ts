@@ -1,5 +1,6 @@
 export {
   useAddOrgPmtMethod,
+  useGetAvailableOrgIdentities,
   useAddOrgTaxId,
   useCreateCustomerPortalSession,
   useCreateOrg,
