@@ -460,7 +460,7 @@ export const groupServiceFactory = ({
     const { permission } = await permissionService.getOrgPermission({
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
       actorOrgId,
       scope: OrganizationActionScope.Any

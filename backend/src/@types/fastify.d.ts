@@ -180,6 +180,7 @@ declare module "fastify" {
       id: string;
       orgId: string;
       parentOrgId: string;
+      rootOrgId: string;
     };
     rateLimits: RateLimitConfiguration;
     // passport data

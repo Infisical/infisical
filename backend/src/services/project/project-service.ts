@@ -298,7 +298,6 @@ export const projectServiceFactory = ({
           projectTemplate = await projectTemplateService.findProjectTemplateByName(template, {
             id: actorId,
             orgId: organization.id,
-            parentOrgId: organization.id,
             type: actor,
             authMethod: actorAuthMethod
           });

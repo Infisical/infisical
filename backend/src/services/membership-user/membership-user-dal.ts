@@ -291,5 +291,13 @@ export const membershipUserDALFactory = (db: TDbClient) => {
     }
   };
 
+  // const listAvailableUsers = async (scopeData: AccessScopeData) => {
+  //   try {
+  //     const query = await db.replicaNode()(TableName.Membership).where(`${TableName.Membership}.scopeOrgId`);
+  //   } catch (error) {
+  //     throw new DatabaseError({ error, name: "ListAvailableUsers" });
+  //   }
+  // };
+
   return { ...orm, findUsers, getUserById };
 };

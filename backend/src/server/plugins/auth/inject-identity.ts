@@ -20,6 +20,7 @@ export type TAuthMode =
       tokenVersionId: string; // the session id of token used
       user: TUsers;
       orgId: string;
+      rootOrgId: string;
       parentOrgId: string;
       authMethod: AuthMethod;
       isMfaVerified?: boolean;
@@ -32,6 +33,7 @@ export type TAuthMode =
       userId: string;
       user: TUsers;
       orgId: string;
+      rootOrgId: string;
       parentOrgId: string;
       token: string;
     }
@@ -41,6 +43,7 @@ export type TAuthMode =
       actor: ActorType.SERVICE;
       serviceTokenId: string;
       orgId: string;
+      rootOrgId: string;
       parentOrgId: string;
       authMethod: null;
       token: string;
@@ -51,6 +54,7 @@ export type TAuthMode =
       identityId: string;
       identityName: string;
       orgId: string;
+      rootOrgId: string;
       parentOrgId: string;
       authMethod: null;
       isInstanceAdmin?: boolean;
@@ -61,6 +65,7 @@ export type TAuthMode =
       actor: ActorType.SCIM_CLIENT;
       scimTokenId: string;
       orgId: string;
+      rootOrgId: string;
       parentOrgId: string;
       authMethod: null;
     };
@@ -145,10 +150,8 @@ export const injectIdentity = fp(
 
       switch (authMode) {
         case AuthMode.JWT: {
-          const { user, tokenVersionId, orgId, parentOrgId } = await server.services.authToken.fnValidateJwtIdentity(
-            token,
-            subOrganizationSelector
-          );
+          const { user, tokenVersionId, orgId, rootOrgId, parentOrgId } =
+            await server.services.authToken.fnValidateJwtIdentity(token, subOrganizationSelector);
           requestContext.set("orgId", orgId);
 
           req.auth = {
@@ -158,6 +161,7 @@ export const injectIdentity = fp(
             tokenVersionId,
             actor,
             orgId,
+            rootOrgId,
             parentOrgId,
             authMethod: token.authMethod,
             isMfaVerified: token.isMfaVerified,
@@ -177,6 +181,7 @@ export const injectIdentity = fp(
             authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
             actor,
             orgId: identity.orgId,
+            rootOrgId: identity.rootOrgId,
             parentOrgId: identity.parentOrgId,
             identityId: identity.identityId,
             identityName: identity.name,
@@ -213,7 +218,8 @@ export const injectIdentity = fp(
 
           req.auth = {
             orgId: serviceToken.orgId,
-            parentOrgId: serviceToken.orgId,
+            rootOrgId: serviceToken.rootOrgId,
+            parentOrgId: serviceToken.parentOrgId,
             authMode: AuthMode.SERVICE_TOKEN as const,
             serviceToken,
             serviceTokenId: serviceToken.id,
@@ -235,7 +241,16 @@ export const injectIdentity = fp(
           if (subOrganizationSelector)
             throw new BadRequestError({ message: `Service token doesn't support sub organization selector` });
 
-          req.auth = { authMode: AuthMode.SCIM_TOKEN, actor, scimTokenId, orgId, authMethod: null, parentOrgId: orgId };
+          req.auth = {
+            authMode: AuthMode.SCIM_TOKEN,
+            actor,
+            scimTokenId,
+            orgId,
+            authMethod: null,
+            // scim cannot be done for sub organization
+            rootOrgId: orgId,
+            parentOrgId: orgId
+          };
           break;
         }
         default:

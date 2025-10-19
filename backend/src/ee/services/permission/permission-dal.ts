@@ -19,7 +19,7 @@ interface TPermissionDataReturn extends TMemberships {
   orgAuthEnforced?: boolean | null;
   orgGoogleSsoAuthEnforced?: boolean | null;
   shouldUseNewPrivilegeSystem?: boolean | null;
-  parentOrgId?: boolean | null;
+  rootOrgId?: string | null;
   bypassOrgAuthEnabled?: boolean | null;
   roles: {
     id: string;
@@ -275,7 +275,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           db.ref("authEnforced").withSchema(TableName.Organization).as("orgAuthEnforced"),
           db.ref("googleSsoAuthEnforced").withSchema(TableName.Organization).as("orgGoogleSsoAuthEnforced"),
           db.ref("bypassOrgAuthEnabled").withSchema(TableName.Organization).as("bypassOrgAuthEnabled"),
-          db.ref("parentOrgId").withSchema(TableName.Organization).as("parentOrgId")
+          db.ref("rootOrgId").withSchema(TableName.Organization).as("rootOrgId")
         );
 
       const data = sqlNestRelationships({
@@ -285,7 +285,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
           MembershipsSchema.extend({
             orgAuthEnforced: z.boolean().optional().nullable(),
             shouldUseNewPrivilegeSystem: z.boolean().optional().nullable(),
-            parentOrgId: z.string().optional().nullable(),
+            rootOrgId: z.string().optional().nullable(),
             orgGoogleSsoAuthEnforced: z.boolean(),
             bypassOrgAuthEnabled: z.boolean()
           }).parse(el),

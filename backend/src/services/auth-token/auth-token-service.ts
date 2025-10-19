@@ -210,11 +210,12 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, membershipUserDAL, orgD
     if (!user || !user.isAccepted) throw new NotFoundError({ message: `User with ID '${session.userId}' not found` });
 
     let orgId = "";
+    let rootOrgId = "";
     let parentOrgId = "";
     if (token.organizationId) {
       if (subOrganizationSelector) {
         const subOrganization = await orgDAL.findOne({
-          parentOrgId: token.organizationId,
+          rootOrgId: token.organizationId,
           slug: subOrganizationSelector
         });
         if (!subOrganization)
@@ -234,7 +235,8 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, membershipUserDAL, orgD
           throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
         }
         orgId = subOrganization.id;
-        parentOrgId = token.organizationId;
+        rootOrgId = token.organizationId;
+        parentOrgId = subOrganization.parentOrgId;
       } else {
         const orgMembership = await membershipUserDAL.findOne({
           actorUserId: user.id,
@@ -251,11 +253,12 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, membershipUserDAL, orgD
         }
 
         orgId = token.organizationId;
+        rootOrgId = token.organizationId;
         parentOrgId = token.organizationId;
       }
     }
 
-    return { user, tokenVersionId: token.tokenVersionId, orgId, parentOrgId };
+    return { user, tokenVersionId: token.tokenVersionId, orgId, rootOrgId, parentOrgId };
   };
 
   return {

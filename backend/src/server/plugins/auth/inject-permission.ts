@@ -15,6 +15,7 @@ export const injectPermission = fp(async (server) => {
         id: req.auth.userId,
         orgId: req.auth.orgId, // if the req.auth.authMode is AuthMode.API_KEY, the orgId will be "API_KEY"
         authMethod: req.auth.authMethod, // if the req.auth.authMode is AuthMode.API_KEY, the authMethod will be null
+        rootOrgId: req.auth.rootOrgId,
         parentOrgId: req.auth.parentOrgId
       };
 
@@ -27,6 +28,7 @@ export const injectPermission = fp(async (server) => {
         id: req.auth.identityId,
         orgId: req.auth.orgId,
         authMethod: null,
+        rootOrgId: req.auth.rootOrgId,
         parentOrgId: req.auth.parentOrgId
       };
 
@@ -38,7 +40,8 @@ export const injectPermission = fp(async (server) => {
         type: ActorType.SERVICE,
         id: req.auth.serviceTokenId,
         orgId: req.auth.orgId,
-        parentOrgId: req.auth.orgId,
+        rootOrgId: req.auth.rootOrgId,
+        parentOrgId: req.auth.parentOrgId,
         authMethod: null
       };
 
@@ -50,7 +53,8 @@ export const injectPermission = fp(async (server) => {
         type: ActorType.SCIM_CLIENT,
         id: req.auth.scimTokenId,
         orgId: req.auth.orgId,
-        parentOrgId: req.auth.orgId,
+        rootOrgId: req.auth.rootOrgId,
+        parentOrgId: req.auth.parentOrgId,
         authMethod: null
       };
 

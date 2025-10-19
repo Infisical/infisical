@@ -157,7 +157,7 @@ export const orgServiceFactory = ({
     userId: string,
     orgId: string,
     actorAuthMethod: ActorAuthMethod,
-    parentOrgId: string,
+    rootOrgId: string,
     actorOrgId: string
   ) => {
     await permissionService.getOrgPermission({
@@ -165,17 +165,17 @@ export const orgServiceFactory = ({
       actorId: userId,
       orgId,
       actorAuthMethod,
-      actorOrgId: parentOrgId,
+      actorOrgId: rootOrgId,
       scope: OrganizationActionScope.Any
     });
     const appCfg = getConfig();
     const org = await orgDAL.findOrgById(orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
-    const hasSubOrg = actorOrgId !== parentOrgId;
+    const hasSubOrg = actorOrgId !== rootOrgId;
     let subOrg;
     if (hasSubOrg) {
-      subOrg = await orgDAL.findOne({ parentOrgId, id: actorOrgId });
+      subOrg = await orgDAL.findOne({ rootOrgId, id: actorOrgId });
     }
 
     if (!org.userTokenExpiration) {

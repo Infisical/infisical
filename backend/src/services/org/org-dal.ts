@@ -65,7 +65,7 @@ export const orgDALFactory = (db: TDbClient) => {
       const buildBaseQuery = (orgIdSubquery: Knex.QueryBuilder) => {
         return db
           .replicaNode()(TableName.Organization)
-          .whereNull(`${TableName.Organization}.parentOrgId`)
+          .whereNull(`${TableName.Organization}.rootOrgId`)
           .whereIn(`${TableName.Organization}.id`, orgIdSubquery)
           .leftJoin(TableName.Project, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)
           .leftJoin(TableName.Membership, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
@@ -168,7 +168,7 @@ export const orgDALFactory = (db: TDbClient) => {
       // TODO(sub-org:group): check this when implement group support
       const query = db
         .replicaNode()(TableName.Organization)
-        .where(`${TableName.Organization}.parentOrgId`, dto.orgId)
+        .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
         .select(selectAllTableCols(TableName.Organization));
 
       if (dto.isAccessible) {
@@ -196,7 +196,7 @@ export const orgDALFactory = (db: TDbClient) => {
       const org = (await db
         .replicaNode()(TableName.Organization)
         .where({ [`${TableName.Organization}.id` as "id"]: orgId })
-        .whereNull(`${TableName.Organization}.parentOrgId`)
+        .whereNull(`${TableName.Organization}.rootOrgId`)
         .leftJoin(TableName.SamlConfig, (qb) => {
           qb.on(`${TableName.SamlConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
             `${TableName.SamlConfig}.isActive`,
@@ -233,7 +233,7 @@ export const orgDALFactory = (db: TDbClient) => {
     try {
       const org = (await db
         .replicaNode()(TableName.Organization)
-        .whereNull(`${TableName.Organization}.parentOrgId`)
+        .whereNull(`${TableName.Organization}.rootOrgId`)
         .where({ [`${TableName.Organization}.slug` as "slug"]: orgSlug })
         .leftJoin(TableName.SamlConfig, (qb) => {
           qb.on(`${TableName.SamlConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
@@ -279,7 +279,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
-        .whereNull(`${TableName.Organization}.parentOrgId`)
+        .whereNull(`${TableName.Organization}.rootOrgId`)
         .leftJoin(TableName.SamlConfig, (qb) => {
           qb.on(`${TableName.SamlConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
             `${TableName.SamlConfig}.isActive`,
@@ -651,7 +651,7 @@ export const orgDALFactory = (db: TDbClient) => {
         })
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
         .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
-        .whereNull(`${TableName.Organization}.parentOrgId`)
+        .whereNull(`${TableName.Organization}.rootOrgId`)
         .leftJoin(TableName.UserAliases, function joinUserAlias() {
           this.on(`${TableName.UserAliases}.userId`, "=", `${TableName.Membership}.actorUserId`)
             .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.Membership}.scopeOrgId`)
@@ -690,7 +690,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .replicaNode()(TableName.Membership)
         .where({ actorIdentityId: identityId })
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .whereNull(`${TableName.Organization}.parentOrgId`)
+        .whereNull(`${TableName.Organization}.rootOrgId`)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)

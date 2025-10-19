@@ -76,7 +76,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         req.permission.id,
         req.params.organizationId,
         req.permission.authMethod,
-        req.permission.parentOrgId,
+        req.permission.rootOrgId,
         req.permission.orgId
       );
       return { organization };

@@ -209,8 +209,8 @@ export const permissionServiceFactory = ({
     });
     if (!permissionData?.length) throw new ForbiddenRequestError({ name: "You are not member of this organization" });
 
-    const parentOrgId = permissionData?.[0]?.parentOrgId;
-    const isChild = Boolean(parentOrgId);
+    const rootOrgId = permissionData?.[0]?.rootOrgId;
+    const isChild = Boolean(rootOrgId);
     if (scope === OrganizationActionScope.ParentOrganization && isChild) {
       throw new BadRequestError({ message: `Child organization cannot do this operation` });
     } else if (scope === OrganizationActionScope.ChildOrganization && !isChild) {

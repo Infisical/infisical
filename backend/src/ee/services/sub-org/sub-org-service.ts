@@ -44,7 +44,7 @@ export const subOrgServiceFactory = ({
       OrgPermissionSubjects.ChildOrganization
     );
 
-    const orgLicensePlan = await licenseService.getPlan(permissionActor.parentOrgId);
+    const orgLicensePlan = await licenseService.getPlan(permissionActor.rootOrgId);
     if (!orgLicensePlan.subOrganization) {
       throw new BadRequestError({
         message: "Child organization creation failed. Please upgrade your instance to Infisical's Enterprise plan."
@@ -52,7 +52,10 @@ export const subOrgServiceFactory = ({
     }
 
     const organization = await orgDAL.transaction(async (tx) => {
-      const org = await orgDAL.create({ name, slug: name, parentOrgId: permissionActor.orgId }, tx);
+      const org = await orgDAL.create(
+        { name, slug: name, rootOrgId: permissionActor.orgId, parentOrgId: permissionActor.orgId },
+        tx
+      );
       const membership = await membershipDAL.create(
         {
           scope: AccessScope.Organization,
@@ -83,7 +86,7 @@ export const subOrgServiceFactory = ({
       actorId: permissionActor.id,
       actor: permissionActor.type,
       orgId: permissionActor.parentOrgId,
-      actorOrgId: permissionActor.parentOrgId,
+      actorOrgId: permissionActor.rootOrgId,
       actorAuthMethod: permissionActor.authMethod,
       scope: OrganizationActionScope.ParentOrganization
     });
@@ -91,7 +94,7 @@ export const subOrgServiceFactory = ({
     const organizations = await orgDAL.listSubOrganizations({
       actorId: permissionActor.id,
       actorType: permissionActor.type,
-      orgId: permissionActor.parentOrgId,
+      orgId: permissionActor.rootOrgId,
       isAccessible: data?.isAccessible,
       limit: data?.limit,
       offset: data?.offset

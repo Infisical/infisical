@@ -210,10 +210,12 @@ export const identityAccessTokenServiceFactory = ({
       });
     }
     let orgId = "";
-    const parentOrgId = identityAccessToken.identityScopeOrgId;
+    let parentOrgId = "";
+    const identityOrgDetails = await orgDAL.findOne({ id: identityAccessToken.identityScopeOrgId });
+    const rootOrgId = identityOrgDetails.rootOrgId || identityOrgDetails.id;
 
     if (subOrganizationSelector) {
-      const subOrganization = await orgDAL.findOne({ parentOrgId, slug: subOrganizationSelector });
+      const subOrganization = await orgDAL.findOne({ rootOrgId, slug: subOrganizationSelector });
       if (!subOrganizationSelector)
         throw new BadRequestError({ message: `Sub organization ${subOrganizationSelector} not found` });
 
@@ -227,18 +229,20 @@ export const identityAccessTokenServiceFactory = ({
         throw new BadRequestError({ message: "Identity does not belong to any organization" });
       }
       orgId = subOrganization.id;
+      parentOrgId = subOrganization.parentOrgId as string;
     } else {
       const identityOrgMembership = await membershipIdentityDAL.findOne({
         scope: AccessScope.Organization,
         actorIdentityId: identityAccessToken.identityId,
-        scopeOrgId: parentOrgId
+        scopeOrgId: rootOrgId
       });
 
       if (!identityOrgMembership) {
         throw new BadRequestError({ message: "Identity does not belong to any organization" });
       }
 
-      orgId = parentOrgId;
+      orgId = rootOrgId;
+      parentOrgId = rootOrgId;
     }
 
     let { accessTokenNumUses } = identityAccessToken;
@@ -249,7 +253,7 @@ export const identityAccessTokenServiceFactory = ({
     await validateAccessTokenExp({ ...identityAccessToken, accessTokenNumUses });
 
     await accessTokenQueue.updateIdentityAccessTokenStatus(identityAccessToken.id, Number(accessTokenNumUses) + 1);
-    return { ...identityAccessToken, orgId, parentOrgId };
+    return { ...identityAccessToken, orgId, rootOrgId, parentOrgId };
   };
 
   return { renewAccessToken, revokeAccessToken, fnValidateIdentityAccessToken };
